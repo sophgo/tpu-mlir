@@ -103,11 +103,11 @@ std::pair<unsigned, unsigned> SMullOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SMullOpAdaptor::a() {
+::mlir::Value SMullOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SMullOpAdaptor::b() {
+::mlir::Value SMullOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
@@ -129,21 +129,21 @@ std::pair<unsigned, unsigned> SMullOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SMullOp::a() {
+::mlir::TypedValue<::mlir::VectorType> SMullOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SMullOp::b() {
+::mlir::TypedValue<::mlir::VectorType> SMullOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange SMullOp::aMutable() {
+::mlir::MutableOperandRange SMullOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SMullOp::bMutable() {
+::mlir::MutableOperandRange SMullOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -159,7 +159,7 @@ std::pair<unsigned, unsigned> SMullOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SMullOp::res() {
+::mlir::TypedValue<::mlir::VectorType> SMullOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -209,7 +209,7 @@ void SMullOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, b} have same type");
   if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<VectorType>().scaleElementBitwidth(2), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that res has same vector shape and element bitwidth scaled by 2 as a");
@@ -264,22 +264,22 @@ void SMullOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   result.addTypes(resTypes);
   if (parser.resolveOperands(aOperands, aTypes, aOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(bOperands, aTypes[0], result.operands))
+  if (parser.resolveOperands(bOperands, aTypes[0], bOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void SMullOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << b();
+  _odsPrinter << getB();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = a().getType();
+    auto type = getA().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -288,7 +288,7 @@ void SMullOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "to";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -330,15 +330,15 @@ std::pair<unsigned, unsigned> Sdot2dOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Sdot2dOpAdaptor::a() {
+::mlir::Value Sdot2dOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Sdot2dOpAdaptor::b() {
+::mlir::Value Sdot2dOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value Sdot2dOpAdaptor::c() {
+::mlir::Value Sdot2dOpAdaptor::getC() {
   return *getODSOperands(2).begin();
 }
 
@@ -360,31 +360,31 @@ std::pair<unsigned, unsigned> Sdot2dOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Sdot2dOp::a() {
+::mlir::TypedValue<::mlir::VectorType> Sdot2dOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Sdot2dOp::b() {
+::mlir::TypedValue<::mlir::VectorType> Sdot2dOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value Sdot2dOp::c() {
+::mlir::TypedValue<::mlir::VectorType> Sdot2dOp::getC() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange Sdot2dOp::aMutable() {
+::mlir::MutableOperandRange Sdot2dOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Sdot2dOp::bMutable() {
+::mlir::MutableOperandRange Sdot2dOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Sdot2dOp::cMutable() {
+::mlir::MutableOperandRange Sdot2dOp::getCMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -400,7 +400,7 @@ std::pair<unsigned, unsigned> Sdot2dOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Sdot2dOp::res() {
+::mlir::TypedValue<::mlir::VectorType> Sdot2dOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -458,17 +458,17 @@ void Sdot2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType()})))))
+  if (!((((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()))))
     return emitOpError("failed to verify that all of {b, c} have same type");
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, res} have same type");
-  if (!((a().getType().cast<VectorType>().getShape().size() == 1)))
+  if (!((getA().getType().cast<VectorType>().getShape().size() == 1)))
     return emitOpError("failed to verify that operand `a` should be 1-dimensional");
-  if (!((b().getType().cast<VectorType>().getShape().size() == 2)))
+  if (!((getB().getType().cast<VectorType>().getShape().size() == 2)))
     return emitOpError("failed to verify that operand `b` should be 2-dimensional");
-  if (!((b().getType().cast<VectorType>().getShape()[1] == 4)))
+  if (!((getB().getType().cast<VectorType>().getShape()[1] == 4)))
     return emitOpError("failed to verify that operand `b` should have 4 columns");
-  if (!((b().getType().cast<VectorType>().getShape()[0] == a().getType().cast<VectorType>().getShape()[0])))
+  if (!((getB().getType().cast<VectorType>().getShape()[0] == getA().getType().cast<VectorType>().getShape()[0])))
     return emitOpError("failed to verify that operand `b` should have as many rows as the size of operand `a`");
   return ::mlir::success();
 }
@@ -539,7 +539,7 @@ void Sdot2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     resRawTypes[0] = type;
   }
   result.addTypes(resTypes);
-  if (parser.resolveOperands(aOperands, resTypes[0], result.operands))
+  if (parser.resolveOperands(aOperands, resTypes[0], aOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(bOperands, bTypes, bOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -550,18 +550,18 @@ void Sdot2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 
 void Sdot2dOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << b();
+  _odsPrinter << getB();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << c();
+  _odsPrinter << getC();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = b().getType();
+    auto type = getB().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -570,7 +570,7 @@ void Sdot2dOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = c().getType();
+    auto type = getC().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -579,7 +579,7 @@ void Sdot2dOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "to";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -621,15 +621,15 @@ std::pair<unsigned, unsigned> SdotOpAdaptor::getODSOperandIndexAndLength(unsigne
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SdotOpAdaptor::a() {
+::mlir::Value SdotOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SdotOpAdaptor::b() {
+::mlir::Value SdotOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value SdotOpAdaptor::c() {
+::mlir::Value SdotOpAdaptor::getC() {
   return *getODSOperands(2).begin();
 }
 
@@ -651,31 +651,31 @@ std::pair<unsigned, unsigned> SdotOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SdotOp::a() {
+::mlir::TypedValue<::mlir::VectorType> SdotOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SdotOp::b() {
+::mlir::TypedValue<::mlir::VectorType> SdotOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value SdotOp::c() {
+::mlir::TypedValue<::mlir::VectorType> SdotOp::getC() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange SdotOp::aMutable() {
+::mlir::MutableOperandRange SdotOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SdotOp::bMutable() {
+::mlir::MutableOperandRange SdotOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SdotOp::cMutable() {
+::mlir::MutableOperandRange SdotOp::getCMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -691,7 +691,7 @@ std::pair<unsigned, unsigned> SdotOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SdotOp::res() {
+::mlir::TypedValue<::mlir::VectorType> SdotOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -749,9 +749,9 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType()})))))
+  if (!((((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()))))
     return emitOpError("failed to verify that all of {b, c} have same type");
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {a, res} have same type");
   if (!((std::equal_to<>()(VectorType::get({(*this->getODSOperands(1).begin()).getType().cast<VectorType>().getShape()[0] / 4},IntegerType::get((*this->getODSOperands(1).begin()).getType().getContext(), 32)), (*this->getODSResults(0).begin()).getType()))))
     return emitOpError("failed to verify that res has the same number of elements as operand b");
@@ -824,7 +824,7 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     resRawTypes[0] = type;
   }
   result.addTypes(resTypes);
-  if (parser.resolveOperands(aOperands, resTypes[0], result.operands))
+  if (parser.resolveOperands(aOperands, resTypes[0], aOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(bOperands, bTypes, bOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -835,18 +835,18 @@ void SdotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
 
 void SdotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << a();
+  _odsPrinter << getA();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << b();
+  _odsPrinter << getB();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << c();
+  _odsPrinter << getC();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = b().getType();
+    auto type = getB().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -855,7 +855,7 @@ void SdotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ",";
   _odsPrinter << ' ';
   {
-    auto type = c().getType();
+    auto type = getC().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -864,7 +864,7 @@ void SdotOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "to";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::VectorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else

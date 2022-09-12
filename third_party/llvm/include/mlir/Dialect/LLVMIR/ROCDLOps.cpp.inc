@@ -27,23 +27,34 @@
 ::mlir::ROCDL::ThreadIdXOp,
 ::mlir::ROCDL::ThreadIdYOp,
 ::mlir::ROCDL::ThreadIdZOp,
+::mlir::ROCDL::mfma_f32_16x16x16bf16_1k,
 ::mlir::ROCDL::mfma_f32_16x16x16f16,
 ::mlir::ROCDL::mfma_f32_16x16x1f32,
 ::mlir::ROCDL::mfma_f32_16x16x2bf16,
+::mlir::ROCDL::mfma_f32_16x16x4bf16_1k,
 ::mlir::ROCDL::mfma_f32_16x16x4f16,
 ::mlir::ROCDL::mfma_f32_16x16x4f32,
+::mlir::ROCDL::mfma_f32_16x16x8_xf32,
 ::mlir::ROCDL::mfma_f32_16x16x8bf16,
 ::mlir::ROCDL::mfma_f32_32x32x1f32,
 ::mlir::ROCDL::mfma_f32_32x32x2bf16,
 ::mlir::ROCDL::mfma_f32_32x32x2f32,
+::mlir::ROCDL::mfma_f32_32x32x4_xf32,
 ::mlir::ROCDL::mfma_f32_32x32x4bf16,
+::mlir::ROCDL::mfma_f32_32x32x4bf16_1k,
 ::mlir::ROCDL::mfma_f32_32x32x4f16,
+::mlir::ROCDL::mfma_f32_32x32x8bf16_1k,
 ::mlir::ROCDL::mfma_f32_32x32x8f16,
 ::mlir::ROCDL::mfma_f32_4x4x1f32,
 ::mlir::ROCDL::mfma_f32_4x4x2bf16,
+::mlir::ROCDL::mfma_f32_4x4x4bf16_1k,
 ::mlir::ROCDL::mfma_f32_4x4x4f16,
+::mlir::ROCDL::mfma_f64_16x16x4f64,
+::mlir::ROCDL::mfma_f64_4x4x4f64,
 ::mlir::ROCDL::mfma_i32_16x16x16i8,
+::mlir::ROCDL::mfma_i32_16x16x32_i8,
 ::mlir::ROCDL::mfma_i32_16x16x4i8,
+::mlir::ROCDL::mfma_i32_32x32x16_i8,
 ::mlir::ROCDL::mfma_i32_32x32x4i8,
 ::mlir::ROCDL::mfma_i32_32x32x8i8,
 ::mlir::ROCDL::mfma_i32_4x4x4i8
@@ -219,7 +230,7 @@ std::pair<unsigned, unsigned> BlockDimXOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockDimXOp::res() {
+::mlir::Value BlockDimXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -280,7 +291,7 @@ void BlockDimXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -350,7 +361,7 @@ std::pair<unsigned, unsigned> BlockDimYOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockDimYOp::res() {
+::mlir::Value BlockDimYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -411,7 +422,7 @@ void BlockDimYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -481,7 +492,7 @@ std::pair<unsigned, unsigned> BlockDimZOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockDimZOp::res() {
+::mlir::Value BlockDimZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -542,7 +553,7 @@ void BlockDimZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -612,7 +623,7 @@ std::pair<unsigned, unsigned> BlockIdXOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockIdXOp::res() {
+::mlir::Value BlockIdXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -673,7 +684,7 @@ void BlockIdXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -743,7 +754,7 @@ std::pair<unsigned, unsigned> BlockIdYOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockIdYOp::res() {
+::mlir::Value BlockIdYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -804,7 +815,7 @@ void BlockIdYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -874,7 +885,7 @@ std::pair<unsigned, unsigned> BlockIdZOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockIdZOp::res() {
+::mlir::Value BlockIdZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -935,7 +946,7 @@ void BlockIdZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1005,7 +1016,7 @@ std::pair<unsigned, unsigned> GridDimXOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GridDimXOp::res() {
+::mlir::Value GridDimXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1066,7 +1077,7 @@ void GridDimXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1136,7 +1147,7 @@ std::pair<unsigned, unsigned> GridDimYOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GridDimYOp::res() {
+::mlir::Value GridDimYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1197,7 +1208,7 @@ void GridDimYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1267,7 +1278,7 @@ std::pair<unsigned, unsigned> GridDimZOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GridDimZOp::res() {
+::mlir::Value GridDimZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1328,7 +1339,7 @@ void GridDimZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1370,23 +1381,23 @@ std::pair<unsigned, unsigned> MubufLoadOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MubufLoadOpAdaptor::rsrc() {
+::mlir::Value MubufLoadOpAdaptor::getRsrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MubufLoadOpAdaptor::vindex() {
+::mlir::Value MubufLoadOpAdaptor::getVindex() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MubufLoadOpAdaptor::offset() {
+::mlir::Value MubufLoadOpAdaptor::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MubufLoadOpAdaptor::glc() {
+::mlir::Value MubufLoadOpAdaptor::getGlc() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MubufLoadOpAdaptor::slc() {
+::mlir::Value MubufLoadOpAdaptor::getSlc() {
   return *getODSOperands(4).begin();
 }
 
@@ -1408,51 +1419,51 @@ std::pair<unsigned, unsigned> MubufLoadOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MubufLoadOp::rsrc() {
+::mlir::Value MubufLoadOp::getRsrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MubufLoadOp::vindex() {
+::mlir::Value MubufLoadOp::getVindex() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MubufLoadOp::offset() {
+::mlir::Value MubufLoadOp::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MubufLoadOp::glc() {
+::mlir::Value MubufLoadOp::getGlc() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MubufLoadOp::slc() {
+::mlir::Value MubufLoadOp::getSlc() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange MubufLoadOp::rsrcMutable() {
+::mlir::MutableOperandRange MubufLoadOp::getRsrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufLoadOp::vindexMutable() {
+::mlir::MutableOperandRange MubufLoadOp::getVindexMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufLoadOp::offsetMutable() {
+::mlir::MutableOperandRange MubufLoadOp::getOffsetMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufLoadOp::glcMutable() {
+::mlir::MutableOperandRange MubufLoadOp::getGlcMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufLoadOp::slcMutable() {
+::mlir::MutableOperandRange MubufLoadOp::getSlcMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1468,7 +1479,7 @@ std::pair<unsigned, unsigned> MubufLoadOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MubufLoadOp::res() {
+::mlir::Value MubufLoadOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1580,27 +1591,27 @@ std::pair<unsigned, unsigned> MubufStoreOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MubufStoreOpAdaptor::vdata() {
+::mlir::Value MubufStoreOpAdaptor::getVdata() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MubufStoreOpAdaptor::rsrc() {
+::mlir::Value MubufStoreOpAdaptor::getRsrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MubufStoreOpAdaptor::vindex() {
+::mlir::Value MubufStoreOpAdaptor::getVindex() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MubufStoreOpAdaptor::offset() {
+::mlir::Value MubufStoreOpAdaptor::getOffset() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MubufStoreOpAdaptor::glc() {
+::mlir::Value MubufStoreOpAdaptor::getGlc() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::Value MubufStoreOpAdaptor::slc() {
+::mlir::Value MubufStoreOpAdaptor::getSlc() {
   return *getODSOperands(5).begin();
 }
 
@@ -1622,61 +1633,61 @@ std::pair<unsigned, unsigned> MubufStoreOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MubufStoreOp::vdata() {
+::mlir::Value MubufStoreOp::getVdata() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MubufStoreOp::rsrc() {
+::mlir::Value MubufStoreOp::getRsrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value MubufStoreOp::vindex() {
+::mlir::Value MubufStoreOp::getVindex() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value MubufStoreOp::offset() {
+::mlir::Value MubufStoreOp::getOffset() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value MubufStoreOp::glc() {
+::mlir::Value MubufStoreOp::getGlc() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::Value MubufStoreOp::slc() {
+::mlir::Value MubufStoreOp::getSlc() {
   return *getODSOperands(5).begin();
 }
 
-::mlir::MutableOperandRange MubufStoreOp::vdataMutable() {
+::mlir::MutableOperandRange MubufStoreOp::getVdataMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufStoreOp::rsrcMutable() {
+::mlir::MutableOperandRange MubufStoreOp::getRsrcMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufStoreOp::vindexMutable() {
+::mlir::MutableOperandRange MubufStoreOp::getVindexMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufStoreOp::offsetMutable() {
+::mlir::MutableOperandRange MubufStoreOp::getOffsetMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufStoreOp::glcMutable() {
+::mlir::MutableOperandRange MubufStoreOp::getGlcMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MubufStoreOp::slcMutable() {
+::mlir::MutableOperandRange MubufStoreOp::getSlcMutable() {
   auto range = getODSOperandIndexAndLength(5);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1798,23 +1809,23 @@ std::pair<unsigned, unsigned> RawBufferAtomicFAddOpAdaptor::getODSOperandIndexAn
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferAtomicFAddOpAdaptor::vdata() {
+::mlir::Value RawBufferAtomicFAddOpAdaptor::getVdata() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOpAdaptor::rsrc() {
+::mlir::Value RawBufferAtomicFAddOpAdaptor::getRsrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOpAdaptor::offset() {
+::mlir::Value RawBufferAtomicFAddOpAdaptor::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOpAdaptor::soffset() {
+::mlir::Value RawBufferAtomicFAddOpAdaptor::getSoffset() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOpAdaptor::aux() {
+::mlir::Value RawBufferAtomicFAddOpAdaptor::getAux() {
   return *getODSOperands(4).begin();
 }
 
@@ -1836,51 +1847,51 @@ std::pair<unsigned, unsigned> RawBufferAtomicFAddOp::getODSOperandIndexAndLength
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferAtomicFAddOp::vdata() {
+::mlir::Value RawBufferAtomicFAddOp::getVdata() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOp::rsrc() {
+::mlir::Value RawBufferAtomicFAddOp::getRsrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOp::offset() {
+::mlir::Value RawBufferAtomicFAddOp::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOp::soffset() {
+::mlir::Value RawBufferAtomicFAddOp::getSoffset() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value RawBufferAtomicFAddOp::aux() {
+::mlir::Value RawBufferAtomicFAddOp::getAux() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange RawBufferAtomicFAddOp::vdataMutable() {
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::getVdataMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferAtomicFAddOp::rsrcMutable() {
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::getRsrcMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferAtomicFAddOp::offsetMutable() {
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::getOffsetMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferAtomicFAddOp::soffsetMutable() {
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::getSoffsetMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferAtomicFAddOp::auxMutable() {
+::mlir::MutableOperandRange RawBufferAtomicFAddOp::getAuxMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1994,19 +2005,19 @@ std::pair<unsigned, unsigned> RawBufferLoadOpAdaptor::getODSOperandIndexAndLengt
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferLoadOpAdaptor::rsrc() {
+::mlir::Value RawBufferLoadOpAdaptor::getRsrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RawBufferLoadOpAdaptor::offset() {
+::mlir::Value RawBufferLoadOpAdaptor::getOffset() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value RawBufferLoadOpAdaptor::soffset() {
+::mlir::Value RawBufferLoadOpAdaptor::getSoffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value RawBufferLoadOpAdaptor::aux() {
+::mlir::Value RawBufferLoadOpAdaptor::getAux() {
   return *getODSOperands(3).begin();
 }
 
@@ -2028,41 +2039,41 @@ std::pair<unsigned, unsigned> RawBufferLoadOp::getODSOperandIndexAndLength(unsig
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferLoadOp::rsrc() {
+::mlir::Value RawBufferLoadOp::getRsrc() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RawBufferLoadOp::offset() {
+::mlir::Value RawBufferLoadOp::getOffset() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value RawBufferLoadOp::soffset() {
+::mlir::Value RawBufferLoadOp::getSoffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value RawBufferLoadOp::aux() {
+::mlir::Value RawBufferLoadOp::getAux() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::MutableOperandRange RawBufferLoadOp::rsrcMutable() {
+::mlir::MutableOperandRange RawBufferLoadOp::getRsrcMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferLoadOp::offsetMutable() {
+::mlir::MutableOperandRange RawBufferLoadOp::getOffsetMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferLoadOp::soffsetMutable() {
+::mlir::MutableOperandRange RawBufferLoadOp::getSoffsetMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferLoadOp::auxMutable() {
+::mlir::MutableOperandRange RawBufferLoadOp::getAuxMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2078,7 +2089,7 @@ std::pair<unsigned, unsigned> RawBufferLoadOp::getODSResultIndexAndLength(unsign
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferLoadOp::res() {
+::mlir::Value RawBufferLoadOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2182,23 +2193,23 @@ std::pair<unsigned, unsigned> RawBufferStoreOpAdaptor::getODSOperandIndexAndLeng
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferStoreOpAdaptor::vdata() {
+::mlir::Value RawBufferStoreOpAdaptor::getVdata() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RawBufferStoreOpAdaptor::rsrc() {
+::mlir::Value RawBufferStoreOpAdaptor::getRsrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value RawBufferStoreOpAdaptor::offset() {
+::mlir::Value RawBufferStoreOpAdaptor::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value RawBufferStoreOpAdaptor::soffset() {
+::mlir::Value RawBufferStoreOpAdaptor::getSoffset() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value RawBufferStoreOpAdaptor::aux() {
+::mlir::Value RawBufferStoreOpAdaptor::getAux() {
   return *getODSOperands(4).begin();
 }
 
@@ -2220,51 +2231,51 @@ std::pair<unsigned, unsigned> RawBufferStoreOp::getODSOperandIndexAndLength(unsi
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RawBufferStoreOp::vdata() {
+::mlir::Value RawBufferStoreOp::getVdata() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RawBufferStoreOp::rsrc() {
+::mlir::Value RawBufferStoreOp::getRsrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value RawBufferStoreOp::offset() {
+::mlir::Value RawBufferStoreOp::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value RawBufferStoreOp::soffset() {
+::mlir::Value RawBufferStoreOp::getSoffset() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::Value RawBufferStoreOp::aux() {
+::mlir::Value RawBufferStoreOp::getAux() {
   return *getODSOperands(4).begin();
 }
 
-::mlir::MutableOperandRange RawBufferStoreOp::vdataMutable() {
+::mlir::MutableOperandRange RawBufferStoreOp::getVdataMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferStoreOp::rsrcMutable() {
+::mlir::MutableOperandRange RawBufferStoreOp::getRsrcMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferStoreOp::offsetMutable() {
+::mlir::MutableOperandRange RawBufferStoreOp::getOffsetMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferStoreOp::soffsetMutable() {
+::mlir::MutableOperandRange RawBufferStoreOp::getSoffsetMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange RawBufferStoreOp::auxMutable() {
+::mlir::MutableOperandRange RawBufferStoreOp::getAuxMutable() {
   auto range = getODSOperandIndexAndLength(4);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2406,7 +2417,7 @@ std::pair<unsigned, unsigned> ThreadIdXOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadIdXOp::res() {
+::mlir::Value ThreadIdXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2467,7 +2478,7 @@ void ThreadIdXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2537,7 +2548,7 @@ std::pair<unsigned, unsigned> ThreadIdYOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadIdYOp::res() {
+::mlir::Value ThreadIdYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2598,7 +2609,7 @@ void ThreadIdYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2668,7 +2679,7 @@ std::pair<unsigned, unsigned> ThreadIdZOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadIdZOp::res() {
+::mlir::Value ThreadIdZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2729,7 +2740,7 @@ void ThreadIdZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2743,6 +2754,184 @@ void ThreadIdZOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::Effect
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::ThreadIdZOp)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_16x16x16bf16_1k definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_16x16x16bf16_1kAdaptor::mfma_f32_16x16x16bf16_1kAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x16bf16.1k", odsAttrs.getContext());
+}
+
+mfma_f32_16x16x16bf16_1kAdaptor::mfma_f32_16x16x16bf16_1kAdaptor(mfma_f32_16x16x16bf16_1k op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_16x16x16bf16_1kAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x16bf16_1kAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_16x16x16bf16_1kAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_16x16x16bf16_1kAdaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_16x16x16bf16_1kAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_16x16x16bf16_1kAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x16bf16_1k::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_16x16x16bf16_1k::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_16x16x16bf16_1k::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_16x16x16bf16_1k::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x16bf16_1k::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_16x16x16bf16_1k::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_16x16x16bf16_1k::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_16x16x16bf16_1k::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_16x16x16bf16_1k::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_16x16x16bf16_1k::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_16x16x16bf16_1k::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_16x16x16bf16_1k::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_16x16x16bf16_1k::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x16bf16_1k)
 
 namespace mlir {
 namespace ROCDL {
@@ -2785,7 +2974,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x16f16Adaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_16x16x16f16Adaptor::args() {
+::mlir::ValueRange mfma_f32_16x16x16f16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -2821,11 +3010,11 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x16f16::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_16x16x16f16::args() {
+::mlir::Operation::operand_range mfma_f32_16x16x16f16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_16x16x16f16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_16x16x16f16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2841,7 +3030,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x16f16::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_16x16x16f16::res() {
+::mlir::Value mfma_f32_16x16x16f16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2911,11 +3100,11 @@ void mfma_f32_16x16x16f16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 void mfma_f32_16x16x16f16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -2963,7 +3152,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x1f32Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_16x16x1f32Adaptor::args() {
+::mlir::ValueRange mfma_f32_16x16x1f32Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -2999,11 +3188,11 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x1f32::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_16x16x1f32::args() {
+::mlir::Operation::operand_range mfma_f32_16x16x1f32::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_16x16x1f32::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_16x16x1f32::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3019,7 +3208,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x1f32::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_16x16x1f32::res() {
+::mlir::Value mfma_f32_16x16x1f32::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3089,11 +3278,11 @@ void mfma_f32_16x16x1f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_16x16x1f32::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -3141,7 +3330,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x2bf16Adaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_16x16x2bf16Adaptor::args() {
+::mlir::ValueRange mfma_f32_16x16x2bf16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -3177,11 +3366,11 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x2bf16::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_16x16x2bf16::args() {
+::mlir::Operation::operand_range mfma_f32_16x16x2bf16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_16x16x2bf16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_16x16x2bf16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3197,7 +3386,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x2bf16::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_16x16x2bf16::res() {
+::mlir::Value mfma_f32_16x16x2bf16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3267,16 +3456,194 @@ void mfma_f32_16x16x2bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 void mfma_f32_16x16x2bf16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x2bf16)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_16x16x4bf16_1k definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_16x16x4bf16_1kAdaptor::mfma_f32_16x16x4bf16_1kAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x4bf16.1k", odsAttrs.getContext());
+}
+
+mfma_f32_16x16x4bf16_1kAdaptor::mfma_f32_16x16x4bf16_1kAdaptor(mfma_f32_16x16x4bf16_1k op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_16x16x4bf16_1kAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x4bf16_1kAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_16x16x4bf16_1kAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_16x16x4bf16_1kAdaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_16x16x4bf16_1kAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_16x16x4bf16_1kAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x4bf16_1k::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_16x16x4bf16_1k::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_16x16x4bf16_1k::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_16x16x4bf16_1k::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x4bf16_1k::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_16x16x4bf16_1k::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_16x16x4bf16_1k::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_16x16x4bf16_1k::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_16x16x4bf16_1k::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_16x16x4bf16_1k::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_16x16x4bf16_1k::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_16x16x4bf16_1k::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_16x16x4bf16_1k::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x4bf16_1k)
 
 namespace mlir {
 namespace ROCDL {
@@ -3319,7 +3686,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x4f16Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_16x16x4f16Adaptor::args() {
+::mlir::ValueRange mfma_f32_16x16x4f16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -3355,11 +3722,11 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x4f16::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_16x16x4f16::args() {
+::mlir::Operation::operand_range mfma_f32_16x16x4f16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_16x16x4f16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_16x16x4f16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3375,7 +3742,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x4f16::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_16x16x4f16::res() {
+::mlir::Value mfma_f32_16x16x4f16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3445,11 +3812,11 @@ void mfma_f32_16x16x4f16::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_16x16x4f16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -3497,7 +3864,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x4f32Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_16x16x4f32Adaptor::args() {
+::mlir::ValueRange mfma_f32_16x16x4f32Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -3533,11 +3900,11 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x4f32::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_16x16x4f32::args() {
+::mlir::Operation::operand_range mfma_f32_16x16x4f32::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_16x16x4f32::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_16x16x4f32::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3553,7 +3920,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x4f32::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_16x16x4f32::res() {
+::mlir::Value mfma_f32_16x16x4f32::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3623,16 +3990,194 @@ void mfma_f32_16x16x4f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_16x16x4f32::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x4f32)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_16x16x8_xf32 definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_16x16x8_xf32Adaptor::mfma_f32_16x16x8_xf32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.16x16x8.xf32", odsAttrs.getContext());
+}
+
+mfma_f32_16x16x8_xf32Adaptor::mfma_f32_16x16x8_xf32Adaptor(mfma_f32_16x16x8_xf32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_16x16x8_xf32Adaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x8_xf32Adaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_16x16x8_xf32Adaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_16x16x8_xf32Adaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_16x16x8_xf32Adaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_16x16x8_xf32Adaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x8_xf32::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_16x16x8_xf32::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_16x16x8_xf32::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_16x16x8_xf32::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_16x16x8_xf32::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_16x16x8_xf32::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_16x16x8_xf32::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_16x16x8_xf32::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_16x16x8_xf32::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_16x16x8_xf32::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_16x16x8_xf32::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_16x16x8_xf32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_16x16x8_xf32::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_16x16x8_xf32)
 
 namespace mlir {
 namespace ROCDL {
@@ -3675,7 +4220,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x8bf16Adaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_16x16x8bf16Adaptor::args() {
+::mlir::ValueRange mfma_f32_16x16x8bf16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -3711,11 +4256,11 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x8bf16::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_16x16x8bf16::args() {
+::mlir::Operation::operand_range mfma_f32_16x16x8bf16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_16x16x8bf16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_16x16x8bf16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3731,7 +4276,7 @@ std::pair<unsigned, unsigned> mfma_f32_16x16x8bf16::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_16x16x8bf16::res() {
+::mlir::Value mfma_f32_16x16x8bf16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3801,11 +4346,11 @@ void mfma_f32_16x16x8bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 void mfma_f32_16x16x8bf16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -3853,7 +4398,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x1f32Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_32x32x1f32Adaptor::args() {
+::mlir::ValueRange mfma_f32_32x32x1f32Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -3889,11 +4434,11 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x1f32::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_32x32x1f32::args() {
+::mlir::Operation::operand_range mfma_f32_32x32x1f32::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_32x32x1f32::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_32x32x1f32::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3909,7 +4454,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x1f32::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_32x32x1f32::res() {
+::mlir::Value mfma_f32_32x32x1f32::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3979,11 +4524,11 @@ void mfma_f32_32x32x1f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_32x32x1f32::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -4031,7 +4576,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x2bf16Adaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_32x32x2bf16Adaptor::args() {
+::mlir::ValueRange mfma_f32_32x32x2bf16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4067,11 +4612,11 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x2bf16::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_32x32x2bf16::args() {
+::mlir::Operation::operand_range mfma_f32_32x32x2bf16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_32x32x2bf16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_32x32x2bf16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4087,7 +4632,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x2bf16::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_32x32x2bf16::res() {
+::mlir::Value mfma_f32_32x32x2bf16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -4157,11 +4702,11 @@ void mfma_f32_32x32x2bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 void mfma_f32_32x32x2bf16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -4209,7 +4754,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x2f32Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_32x32x2f32Adaptor::args() {
+::mlir::ValueRange mfma_f32_32x32x2f32Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4245,11 +4790,11 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x2f32::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_32x32x2f32::args() {
+::mlir::Operation::operand_range mfma_f32_32x32x2f32::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_32x32x2f32::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_32x32x2f32::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4265,7 +4810,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x2f32::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_32x32x2f32::res() {
+::mlir::Value mfma_f32_32x32x2f32::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -4335,16 +4880,194 @@ void mfma_f32_32x32x2f32::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_32x32x2f32::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x2f32)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_32x32x4_xf32 definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_32x32x4_xf32Adaptor::mfma_f32_32x32x4_xf32Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x4.xf32", odsAttrs.getContext());
+}
+
+mfma_f32_32x32x4_xf32Adaptor::mfma_f32_32x32x4_xf32Adaptor(mfma_f32_32x32x4_xf32 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_32x32x4_xf32Adaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x4_xf32Adaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_32x32x4_xf32Adaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_32x32x4_xf32Adaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_32x32x4_xf32Adaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_32x32x4_xf32Adaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x4_xf32::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_32x32x4_xf32::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_32x32x4_xf32::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_32x32x4_xf32::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x4_xf32::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_32x32x4_xf32::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_32x32x4_xf32::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_32x32x4_xf32::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_32x32x4_xf32::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_32x32x4_xf32::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_32x32x4_xf32::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_32x32x4_xf32::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_32x32x4_xf32::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4_xf32)
 
 namespace mlir {
 namespace ROCDL {
@@ -4387,7 +5110,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x4bf16Adaptor::getODSOperandIndexAnd
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_32x32x4bf16Adaptor::args() {
+::mlir::ValueRange mfma_f32_32x32x4bf16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4423,11 +5146,11 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x4bf16::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_32x32x4bf16::args() {
+::mlir::Operation::operand_range mfma_f32_32x32x4bf16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_32x32x4bf16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_32x32x4bf16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4443,7 +5166,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x4bf16::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_32x32x4bf16::res() {
+::mlir::Value mfma_f32_32x32x4bf16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -4513,16 +5236,194 @@ void mfma_f32_32x32x4bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &od
 
 void mfma_f32_32x32x4bf16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4bf16)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_32x32x4bf16_1k definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_32x32x4bf16_1kAdaptor::mfma_f32_32x32x4bf16_1kAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x4bf16.1k", odsAttrs.getContext());
+}
+
+mfma_f32_32x32x4bf16_1kAdaptor::mfma_f32_32x32x4bf16_1kAdaptor(mfma_f32_32x32x4bf16_1k op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_32x32x4bf16_1kAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x4bf16_1kAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_32x32x4bf16_1kAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_32x32x4bf16_1kAdaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_32x32x4bf16_1kAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_32x32x4bf16_1kAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x4bf16_1k::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_32x32x4bf16_1k::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_32x32x4bf16_1k::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_32x32x4bf16_1k::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x4bf16_1k::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_32x32x4bf16_1k::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_32x32x4bf16_1k::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_32x32x4bf16_1k::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_32x32x4bf16_1k::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_32x32x4bf16_1k::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_32x32x4bf16_1k::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_32x32x4bf16_1k::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_32x32x4bf16_1k::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4bf16_1k)
 
 namespace mlir {
 namespace ROCDL {
@@ -4565,7 +5466,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x4f16Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_32x32x4f16Adaptor::args() {
+::mlir::ValueRange mfma_f32_32x32x4f16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4601,11 +5502,11 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x4f16::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_32x32x4f16::args() {
+::mlir::Operation::operand_range mfma_f32_32x32x4f16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_32x32x4f16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_32x32x4f16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4621,7 +5522,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x4f16::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_32x32x4f16::res() {
+::mlir::Value mfma_f32_32x32x4f16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -4691,16 +5592,194 @@ void mfma_f32_32x32x4f16::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_32x32x4f16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x4f16)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_32x32x8bf16_1k definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_32x32x8bf16_1kAdaptor::mfma_f32_32x32x8bf16_1kAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.32x32x8bf16.1k", odsAttrs.getContext());
+}
+
+mfma_f32_32x32x8bf16_1kAdaptor::mfma_f32_32x32x8bf16_1kAdaptor(mfma_f32_32x32x8bf16_1k op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_32x32x8bf16_1kAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x8bf16_1kAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_32x32x8bf16_1kAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_32x32x8bf16_1kAdaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_32x32x8bf16_1kAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_32x32x8bf16_1kAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x8bf16_1k::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_32x32x8bf16_1k::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_32x32x8bf16_1k::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_32x32x8bf16_1k::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_32x32x8bf16_1k::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_32x32x8bf16_1k::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_32x32x8bf16_1k::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_32x32x8bf16_1k::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_32x32x8bf16_1k::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_32x32x8bf16_1k::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_32x32x8bf16_1k::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_32x32x8bf16_1k::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_32x32x8bf16_1k::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_32x32x8bf16_1k)
 
 namespace mlir {
 namespace ROCDL {
@@ -4743,7 +5822,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x8f16Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_32x32x8f16Adaptor::args() {
+::mlir::ValueRange mfma_f32_32x32x8f16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4779,11 +5858,11 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x8f16::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_32x32x8f16::args() {
+::mlir::Operation::operand_range mfma_f32_32x32x8f16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_32x32x8f16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_32x32x8f16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4799,7 +5878,7 @@ std::pair<unsigned, unsigned> mfma_f32_32x32x8f16::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_32x32x8f16::res() {
+::mlir::Value mfma_f32_32x32x8f16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -4869,11 +5948,11 @@ void mfma_f32_32x32x8f16::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_f32_32x32x8f16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -4921,7 +6000,7 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x1f32Adaptor::getODSOperandIndexAndLen
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_4x4x1f32Adaptor::args() {
+::mlir::ValueRange mfma_f32_4x4x1f32Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4957,11 +6036,11 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x1f32::getODSOperandIndexAndLength(uns
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_4x4x1f32::args() {
+::mlir::Operation::operand_range mfma_f32_4x4x1f32::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_4x4x1f32::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_4x4x1f32::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4977,7 +6056,7 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x1f32::getODSResultIndexAndLength(unsi
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_4x4x1f32::res() {
+::mlir::Value mfma_f32_4x4x1f32::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5047,11 +6126,11 @@ void mfma_f32_4x4x1f32::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 
 void mfma_f32_4x4x1f32::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -5099,7 +6178,7 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x2bf16Adaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_4x4x2bf16Adaptor::args() {
+::mlir::ValueRange mfma_f32_4x4x2bf16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -5135,11 +6214,11 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x2bf16::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_4x4x2bf16::args() {
+::mlir::Operation::operand_range mfma_f32_4x4x2bf16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_4x4x2bf16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_4x4x2bf16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5155,7 +6234,7 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x2bf16::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_4x4x2bf16::res() {
+::mlir::Value mfma_f32_4x4x2bf16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5225,16 +6304,194 @@ void mfma_f32_4x4x2bf16::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 void mfma_f32_4x4x2bf16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x2bf16)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f32_4x4x4bf16_1k definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f32_4x4x4bf16_1kAdaptor::mfma_f32_4x4x4bf16_1kAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f32.4x4x4bf16.1k", odsAttrs.getContext());
+}
+
+mfma_f32_4x4x4bf16_1kAdaptor::mfma_f32_4x4x4bf16_1kAdaptor(mfma_f32_4x4x4bf16_1k op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f32_4x4x4bf16_1kAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_4x4x4bf16_1kAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f32_4x4x4bf16_1kAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f32_4x4x4bf16_1kAdaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f32_4x4x4bf16_1kAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f32_4x4x4bf16_1kAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f32_4x4x4bf16_1k::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f32_4x4x4bf16_1k::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f32_4x4x4bf16_1k::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f32_4x4x4bf16_1k::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f32_4x4x4bf16_1k::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f32_4x4x4bf16_1k::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f32_4x4x4bf16_1k::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f32_4x4x4bf16_1k::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f32_4x4x4bf16_1k::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f32_4x4x4bf16_1k::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f32_4x4x4bf16_1k::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f32_4x4x4bf16_1k::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f32_4x4x4bf16_1k::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x4bf16_1k)
 
 namespace mlir {
 namespace ROCDL {
@@ -5277,7 +6534,7 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x4f16Adaptor::getODSOperandIndexAndLen
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_f32_4x4x4f16Adaptor::args() {
+::mlir::ValueRange mfma_f32_4x4x4f16Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -5313,11 +6570,11 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x4f16::getODSOperandIndexAndLength(uns
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_f32_4x4x4f16::args() {
+::mlir::Operation::operand_range mfma_f32_4x4x4f16::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_f32_4x4x4f16::argsMutable() {
+::mlir::MutableOperandRange mfma_f32_4x4x4f16::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5333,7 +6590,7 @@ std::pair<unsigned, unsigned> mfma_f32_4x4x4f16::getODSResultIndexAndLength(unsi
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_f32_4x4x4f16::res() {
+::mlir::Value mfma_f32_4x4x4f16::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5403,16 +6660,372 @@ void mfma_f32_4x4x4f16::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 
 void mfma_f32_4x4x4f16::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f32_4x4x4f16)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f64_16x16x4f64 definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f64_16x16x4f64Adaptor::mfma_f64_16x16x4f64Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f64.16x16x4f64", odsAttrs.getContext());
+}
+
+mfma_f64_16x16x4f64Adaptor::mfma_f64_16x16x4f64Adaptor(mfma_f64_16x16x4f64 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f64_16x16x4f64Adaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f64_16x16x4f64Adaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f64_16x16x4f64Adaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f64_16x16x4f64Adaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f64_16x16x4f64Adaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f64_16x16x4f64Adaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f64_16x16x4f64::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f64_16x16x4f64::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f64_16x16x4f64::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f64_16x16x4f64::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f64_16x16x4f64::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f64_16x16x4f64::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f64_16x16x4f64::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f64_16x16x4f64::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f64_16x16x4f64::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f64_16x16x4f64::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f64_16x16x4f64::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f64_16x16x4f64::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f64_16x16x4f64::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f64_16x16x4f64)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_f64_4x4x4f64 definitions
+//===----------------------------------------------------------------------===//
+
+mfma_f64_4x4x4f64Adaptor::mfma_f64_4x4x4f64Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.f64.4x4x4f64", odsAttrs.getContext());
+}
+
+mfma_f64_4x4x4f64Adaptor::mfma_f64_4x4x4f64Adaptor(mfma_f64_4x4x4f64 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_f64_4x4x4f64Adaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_f64_4x4x4f64Adaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_f64_4x4x4f64Adaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_f64_4x4x4f64Adaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_f64_4x4x4f64Adaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_f64_4x4x4f64Adaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_f64_4x4x4f64::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_f64_4x4x4f64::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_f64_4x4x4f64::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_f64_4x4x4f64::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_f64_4x4x4f64::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_f64_4x4x4f64::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_f64_4x4x4f64::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_f64_4x4x4f64::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_f64_4x4x4f64::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_f64_4x4x4f64::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_f64_4x4x4f64::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_f64_4x4x4f64::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_f64_4x4x4f64::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_f64_4x4x4f64)
 
 namespace mlir {
 namespace ROCDL {
@@ -5455,7 +7068,7 @@ std::pair<unsigned, unsigned> mfma_i32_16x16x16i8Adaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_i32_16x16x16i8Adaptor::args() {
+::mlir::ValueRange mfma_i32_16x16x16i8Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -5491,11 +7104,11 @@ std::pair<unsigned, unsigned> mfma_i32_16x16x16i8::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_i32_16x16x16i8::args() {
+::mlir::Operation::operand_range mfma_i32_16x16x16i8::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_i32_16x16x16i8::argsMutable() {
+::mlir::MutableOperandRange mfma_i32_16x16x16i8::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5511,7 +7124,7 @@ std::pair<unsigned, unsigned> mfma_i32_16x16x16i8::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_i32_16x16x16i8::res() {
+::mlir::Value mfma_i32_16x16x16i8::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5581,16 +7194,194 @@ void mfma_i32_16x16x16i8::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
 
 void mfma_i32_16x16x16i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x16i8)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_i32_16x16x32_i8 definitions
+//===----------------------------------------------------------------------===//
+
+mfma_i32_16x16x32_i8Adaptor::mfma_i32_16x16x32_i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.16x16x32.i8", odsAttrs.getContext());
+}
+
+mfma_i32_16x16x32_i8Adaptor::mfma_i32_16x16x32_i8Adaptor(mfma_i32_16x16x32_i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_i32_16x16x32_i8Adaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_i32_16x16x32_i8Adaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_i32_16x16x32_i8Adaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_i32_16x16x32_i8Adaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_i32_16x16x32_i8Adaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_i32_16x16x32_i8Adaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_i32_16x16x32_i8::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_i32_16x16x32_i8::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_i32_16x16x32_i8::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_i32_16x16x32_i8::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_i32_16x16x32_i8::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_i32_16x16x32_i8::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_i32_16x16x32_i8::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_i32_16x16x32_i8::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_i32_16x16x32_i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_i32_16x16x32_i8::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_i32_16x16x32_i8::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_i32_16x16x32_i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_i32_16x16x32_i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x32_i8)
 
 namespace mlir {
 namespace ROCDL {
@@ -5633,7 +7424,7 @@ std::pair<unsigned, unsigned> mfma_i32_16x16x4i8Adaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_i32_16x16x4i8Adaptor::args() {
+::mlir::ValueRange mfma_i32_16x16x4i8Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -5669,11 +7460,11 @@ std::pair<unsigned, unsigned> mfma_i32_16x16x4i8::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_i32_16x16x4i8::args() {
+::mlir::Operation::operand_range mfma_i32_16x16x4i8::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_i32_16x16x4i8::argsMutable() {
+::mlir::MutableOperandRange mfma_i32_16x16x4i8::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5689,7 +7480,7 @@ std::pair<unsigned, unsigned> mfma_i32_16x16x4i8::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_i32_16x16x4i8::res() {
+::mlir::Value mfma_i32_16x16x4i8::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5759,16 +7550,194 @@ void mfma_i32_16x16x4i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 void mfma_i32_16x16x4i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_16x16x4i8)
+
+namespace mlir {
+namespace ROCDL {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ROCDL::mfma_i32_32x32x16_i8 definitions
+//===----------------------------------------------------------------------===//
+
+mfma_i32_32x32x16_i8Adaptor::mfma_i32_32x32x16_i8Adaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("rocdl.mfma.i32.32x32x16.i8", odsAttrs.getContext());
+}
+
+mfma_i32_32x32x16_i8Adaptor::mfma_i32_32x32x16_i8Adaptor(mfma_i32_32x32x16_i8 op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange mfma_i32_32x32x16_i8Adaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> mfma_i32_32x32x16_i8Adaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange mfma_i32_32x32x16_i8Adaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange mfma_i32_32x32x16_i8Adaptor::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::DictionaryAttr mfma_i32_32x32x16_i8Adaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult mfma_i32_32x32x16_i8Adaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> mfma_i32_32x32x16_i8::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range mfma_i32_32x32x16_i8::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range mfma_i32_32x32x16_i8::getArgs() {
+  return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange mfma_i32_32x32x16_i8::getArgsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> mfma_i32_32x32x16_i8::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range mfma_i32_32x32x16_i8::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value mfma_i32_32x32x16_i8::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void mfma_i32_32x32x16_i8::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::ValueRange args) {
+  odsState.addOperands(args);
+  odsState.addTypes(res);
+}
+
+void mfma_i32_32x32x16_i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult mfma_i32_32x32x16_i8::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ROCDLOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult mfma_i32_32x32x16_i8::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult mfma_i32_32x32x16_i8::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> argsOperands;
+  ::llvm::SMLoc argsOperandsLoc;
+  (void)argsOperandsLoc;
+  ::llvm::ArrayRef<::mlir::Type> argsTypes;
+  ::llvm::ArrayRef<::mlir::Type> resTypes;
+
+  argsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(argsOperands))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  ::mlir::FunctionType args__res_functionType;
+  if (parser.parseType(args__res_functionType))
+    return ::mlir::failure();
+  argsTypes = args__res_functionType.getInputs();
+  resTypes = args__res_functionType.getResults();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void mfma_i32_32x32x16_i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArgs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
+}
+
+} // namespace ROCDL
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ROCDL::mfma_i32_32x32x16_i8)
 
 namespace mlir {
 namespace ROCDL {
@@ -5811,7 +7780,7 @@ std::pair<unsigned, unsigned> mfma_i32_32x32x4i8Adaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_i32_32x32x4i8Adaptor::args() {
+::mlir::ValueRange mfma_i32_32x32x4i8Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -5847,11 +7816,11 @@ std::pair<unsigned, unsigned> mfma_i32_32x32x4i8::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_i32_32x32x4i8::args() {
+::mlir::Operation::operand_range mfma_i32_32x32x4i8::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_i32_32x32x4i8::argsMutable() {
+::mlir::MutableOperandRange mfma_i32_32x32x4i8::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5867,7 +7836,7 @@ std::pair<unsigned, unsigned> mfma_i32_32x32x4i8::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_i32_32x32x4i8::res() {
+::mlir::Value mfma_i32_32x32x4i8::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5937,11 +7906,11 @@ void mfma_i32_32x32x4i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 void mfma_i32_32x32x4i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -5989,7 +7958,7 @@ std::pair<unsigned, unsigned> mfma_i32_32x32x8i8Adaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_i32_32x32x8i8Adaptor::args() {
+::mlir::ValueRange mfma_i32_32x32x8i8Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -6025,11 +7994,11 @@ std::pair<unsigned, unsigned> mfma_i32_32x32x8i8::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_i32_32x32x8i8::args() {
+::mlir::Operation::operand_range mfma_i32_32x32x8i8::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_i32_32x32x8i8::argsMutable() {
+::mlir::MutableOperandRange mfma_i32_32x32x8i8::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6045,7 +8014,7 @@ std::pair<unsigned, unsigned> mfma_i32_32x32x8i8::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_i32_32x32x8i8::res() {
+::mlir::Value mfma_i32_32x32x8i8::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -6115,11 +8084,11 @@ void mfma_i32_32x32x8i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 void mfma_i32_32x32x8i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL
@@ -6167,7 +8136,7 @@ std::pair<unsigned, unsigned> mfma_i32_4x4x4i8Adaptor::getODSOperandIndexAndLeng
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange mfma_i32_4x4x4i8Adaptor::args() {
+::mlir::ValueRange mfma_i32_4x4x4i8Adaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -6203,11 +8172,11 @@ std::pair<unsigned, unsigned> mfma_i32_4x4x4i8::getODSOperandIndexAndLength(unsi
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range mfma_i32_4x4x4i8::args() {
+::mlir::Operation::operand_range mfma_i32_4x4x4i8::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange mfma_i32_4x4x4i8::argsMutable() {
+::mlir::MutableOperandRange mfma_i32_4x4x4i8::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6223,7 +8192,7 @@ std::pair<unsigned, unsigned> mfma_i32_4x4x4i8::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value mfma_i32_4x4x4i8::res() {
+::mlir::Value mfma_i32_4x4x4i8::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -6293,11 +8262,11 @@ void mfma_i32_4x4x4i8::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
 
 void mfma_i32_4x4x4i8::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace ROCDL

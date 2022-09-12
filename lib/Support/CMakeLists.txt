@@ -6,7 +6,7 @@ add_llvm_library(TPUMLIRSupport
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport
-  MLIRQuant
+  MLIRQuantDialect
   MLIRQuantUtils
   MLIRInferenceInterface
   cnpy

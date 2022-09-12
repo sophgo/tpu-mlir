@@ -17,16 +17,20 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::acc::ClauseDefaultValueAttr::getMnemonic()) {
-    value = ::mlir::acc::ClauseDefaultValueAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  if (mnemonic == ::mlir::acc::ReductionOpAttr::getMnemonic()) {
-    value = ::mlir::acc::ReductionOpAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::acc::ClauseDefaultValueAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::acc::ClauseDefaultValueAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Case(::mlir::acc::ReductionOpAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::acc::ReductionOpAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -48,7 +52,7 @@ namespace acc {
 namespace detail {
 struct ClauseDefaultValueAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::acc::ClauseDefaultValue>;
-  ClauseDefaultValueAttrStorage(::mlir::acc::ClauseDefaultValue value) : ::mlir::AttributeStorage(), value(value) {}
+  ClauseDefaultValueAttrStorage(::mlir::acc::ClauseDefaultValue value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -71,6 +75,7 @@ ClauseDefaultValueAttr ClauseDefaultValueAttr::get(::mlir::MLIRContext *context,
 }
 
 ::mlir::Attribute ClauseDefaultValueAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::acc::ClauseDefaultValue> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -92,10 +97,11 @@ ClauseDefaultValueAttr ClauseDefaultValueAttr::get(::mlir::MLIRContext *context,
   }
   assert(::mlir::succeeded(_result_value));
   return ClauseDefaultValueAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::acc::ClauseDefaultValue((*_result_value)));
 }
 
 void ClauseDefaultValueAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyClauseDefaultValue(getValue());
 }
@@ -112,7 +118,7 @@ namespace acc {
 namespace detail {
 struct ReductionOpAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::acc::ReductionOp>;
-  ReductionOpAttrStorage(::mlir::acc::ReductionOp value) : ::mlir::AttributeStorage(), value(value) {}
+  ReductionOpAttrStorage(::mlir::acc::ReductionOp value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -135,6 +141,7 @@ ReductionOpAttr ReductionOpAttr::get(::mlir::MLIRContext *context, ::mlir::acc::
 }
 
 ::mlir::Attribute ReductionOpAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
   ::mlir::FailureOr<::mlir::acc::ReductionOp> _result_value;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
@@ -156,10 +163,11 @@ ReductionOpAttr ReductionOpAttr::get(::mlir::MLIRContext *context, ::mlir::acc::
   }
   assert(::mlir::succeeded(_result_value));
   return ReductionOpAttr::get(odsParser.getContext(),
-      *_result_value);
+      ::mlir::acc::ReductionOp((*_result_value)));
 }
 
 void ReductionOpAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
   odsPrinter << ' ';
   odsPrinter << stringifyReductionOp(getValue());
 }
@@ -179,12 +187,10 @@ namespace acc {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

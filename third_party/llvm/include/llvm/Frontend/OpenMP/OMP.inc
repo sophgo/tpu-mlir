@@ -684,6 +684,76 @@ namespace omp {
   static OmpClauseSet requiredClauses_OMPD_for_simd {
   };
 
+  // Sets for masked taskloop
+
+  static OmpClauseSet allowedClauses_OMPD_masked_taskloop {
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_final,
+    llvm::omp::Clause::OMPC_untied,
+    llvm::omp::Clause::OMPC_mergeable,
+    llvm::omp::Clause::OMPC_priority,
+    llvm::omp::Clause::OMPC_grainsize,
+    llvm::omp::Clause::OMPC_nogroup,
+    llvm::omp::Clause::OMPC_num_tasks,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_in_reduction,
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_filter,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_masked_taskloop {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_masked_taskloop {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_masked_taskloop {
+  };
+
+  // Sets for masked taskloop simd
+
+  static OmpClauseSet allowedClauses_OMPD_masked_taskloop_simd {
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_final,
+    llvm::omp::Clause::OMPC_untied,
+    llvm::omp::Clause::OMPC_mergeable,
+    llvm::omp::Clause::OMPC_priority,
+    llvm::omp::Clause::OMPC_linear,
+    llvm::omp::Clause::OMPC_aligned,
+    llvm::omp::Clause::OMPC_safelen,
+    llvm::omp::Clause::OMPC_simdlen,
+    llvm::omp::Clause::OMPC_grainsize,
+    llvm::omp::Clause::OMPC_nogroup,
+    llvm::omp::Clause::OMPC_num_tasks,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_in_reduction,
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_nontemporal,
+    llvm::omp::Clause::OMPC_order,
+    llvm::omp::Clause::OMPC_filter,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_masked_taskloop_simd {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_masked_taskloop_simd {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_masked_taskloop_simd {
+  };
+
   // Sets for master
 
   static OmpClauseSet allowedClauses_OMPD_master {
@@ -963,6 +1033,105 @@ namespace omp {
   static OmpClauseSet requiredClauses_OMPD_parallel_for_simd {
   };
 
+  // Sets for parallel masked
+
+  static OmpClauseSet allowedClauses_OMPD_parallel_masked {
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_num_threads,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_copyin,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_proc_bind,
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_filter,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_parallel_masked {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_parallel_masked {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_parallel_masked {
+  };
+
+  // Sets for parallel masked taskloop
+
+  static OmpClauseSet allowedClauses_OMPD_parallel_masked_taskloop {
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_final,
+    llvm::omp::Clause::OMPC_untied,
+    llvm::omp::Clause::OMPC_mergeable,
+    llvm::omp::Clause::OMPC_priority,
+    llvm::omp::Clause::OMPC_grainsize,
+    llvm::omp::Clause::OMPC_nogroup,
+    llvm::omp::Clause::OMPC_num_tasks,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_num_threads,
+    llvm::omp::Clause::OMPC_proc_bind,
+    llvm::omp::Clause::OMPC_copyin,
+    llvm::omp::Clause::OMPC_filter,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_parallel_masked_taskloop {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_parallel_masked_taskloop {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_parallel_masked_taskloop {
+  };
+
+  // Sets for parallel masked taskloop simd
+
+  static OmpClauseSet allowedClauses_OMPD_parallel_masked_taskloop_simd {
+    llvm::omp::Clause::OMPC_if,
+    llvm::omp::Clause::OMPC_shared,
+    llvm::omp::Clause::OMPC_private,
+    llvm::omp::Clause::OMPC_firstprivate,
+    llvm::omp::Clause::OMPC_lastprivate,
+    llvm::omp::Clause::OMPC_default,
+    llvm::omp::Clause::OMPC_collapse,
+    llvm::omp::Clause::OMPC_final,
+    llvm::omp::Clause::OMPC_untied,
+    llvm::omp::Clause::OMPC_mergeable,
+    llvm::omp::Clause::OMPC_priority,
+    llvm::omp::Clause::OMPC_grainsize,
+    llvm::omp::Clause::OMPC_nogroup,
+    llvm::omp::Clause::OMPC_num_tasks,
+    llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_allocate,
+    llvm::omp::Clause::OMPC_num_threads,
+    llvm::omp::Clause::OMPC_proc_bind,
+    llvm::omp::Clause::OMPC_copyin,
+    llvm::omp::Clause::OMPC_linear,
+    llvm::omp::Clause::OMPC_aligned,
+    llvm::omp::Clause::OMPC_safelen,
+    llvm::omp::Clause::OMPC_simdlen,
+    llvm::omp::Clause::OMPC_nontemporal,
+    llvm::omp::Clause::OMPC_order,
+    llvm::omp::Clause::OMPC_filter,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_parallel_masked_taskloop_simd {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_parallel_masked_taskloop_simd {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_parallel_masked_taskloop_simd {
+  };
+
   // Sets for parallel master
 
   static OmpClauseSet allowedClauses_OMPD_parallel_master {
@@ -1233,6 +1402,7 @@ namespace omp {
     llvm::omp::Clause::OMPC_is_device_ptr,
     llvm::omp::Clause::OMPC_has_device_addr,
     llvm::omp::Clause::OMPC_reduction,
+    llvm::omp::Clause::OMPC_in_reduction,
     llvm::omp::Clause::OMPC_allocate,
     llvm::omp::Clause::OMPC_uses_allocators,
   };
@@ -2740,6 +2910,22 @@ namespace omp {
       llvm::omp::requiredClauses_OMPD_for_simd,
     }
   },
+  {llvm::omp::Directive::OMPD_masked_taskloop,
+    {
+      llvm::omp::allowedClauses_OMPD_masked_taskloop,
+      llvm::omp::allowedOnceClauses_OMPD_masked_taskloop,
+      llvm::omp::allowedExclusiveClauses_OMPD_masked_taskloop,
+      llvm::omp::requiredClauses_OMPD_masked_taskloop,
+    }
+  },
+  {llvm::omp::Directive::OMPD_masked_taskloop_simd,
+    {
+      llvm::omp::allowedClauses_OMPD_masked_taskloop_simd,
+      llvm::omp::allowedOnceClauses_OMPD_masked_taskloop_simd,
+      llvm::omp::allowedExclusiveClauses_OMPD_masked_taskloop_simd,
+      llvm::omp::requiredClauses_OMPD_masked_taskloop_simd,
+    }
+  },
   {llvm::omp::Directive::OMPD_master,
     {
       llvm::omp::allowedClauses_OMPD_master,
@@ -2826,6 +3012,30 @@ namespace omp {
       llvm::omp::allowedOnceClauses_OMPD_parallel_for_simd,
       llvm::omp::allowedExclusiveClauses_OMPD_parallel_for_simd,
       llvm::omp::requiredClauses_OMPD_parallel_for_simd,
+    }
+  },
+  {llvm::omp::Directive::OMPD_parallel_masked,
+    {
+      llvm::omp::allowedClauses_OMPD_parallel_masked,
+      llvm::omp::allowedOnceClauses_OMPD_parallel_masked,
+      llvm::omp::allowedExclusiveClauses_OMPD_parallel_masked,
+      llvm::omp::requiredClauses_OMPD_parallel_masked,
+    }
+  },
+  {llvm::omp::Directive::OMPD_parallel_masked_taskloop,
+    {
+      llvm::omp::allowedClauses_OMPD_parallel_masked_taskloop,
+      llvm::omp::allowedOnceClauses_OMPD_parallel_masked_taskloop,
+      llvm::omp::allowedExclusiveClauses_OMPD_parallel_masked_taskloop,
+      llvm::omp::requiredClauses_OMPD_parallel_masked_taskloop,
+    }
+  },
+  {llvm::omp::Directive::OMPD_parallel_masked_taskloop_simd,
+    {
+      llvm::omp::allowedClauses_OMPD_parallel_masked_taskloop_simd,
+      llvm::omp::allowedOnceClauses_OMPD_parallel_masked_taskloop_simd,
+      llvm::omp::allowedExclusiveClauses_OMPD_parallel_masked_taskloop_simd,
+      llvm::omp::requiredClauses_OMPD_parallel_masked_taskloop_simd,
     }
   },
   {llvm::omp::Directive::OMPD_parallel_master,
@@ -3298,7 +3508,7 @@ WRAPPER_CLASS(Depend, OmpDependClause);
 EMPTY_CLASS(Depobj);
 EMPTY_CLASS(Destroy);
 EMPTY_CLASS(Detach);
-WRAPPER_CLASS(Device, ScalarIntExpr);
+WRAPPER_CLASS(Device, OmpDeviceClause);
 EMPTY_CLASS(DeviceType);
 WRAPPER_CLASS(DistSchedule, std::optional<ScalarIntExpr>);
 EMPTY_CLASS(DynamicAllocators);
@@ -3313,7 +3523,7 @@ WRAPPER_CLASS(Grainsize, ScalarIntExpr);
 WRAPPER_CLASS(HasDeviceAddr, std::list<Name>);
 WRAPPER_CLASS(Hint, ConstantExpr);
 WRAPPER_CLASS(If, OmpIfClause);
-EMPTY_CLASS(InReduction);
+WRAPPER_CLASS(InReduction, OmpInReductionClause);
 EMPTY_CLASS(Inbranch);
 EMPTY_CLASS(Inclusive);
 EMPTY_CLASS(Indirect);
@@ -3709,7 +3919,12 @@ void Unparse(const OmpClause::If &x) {
   Walk(x.v);
   Put(")");
 }
-void Before(const OmpClause::InReduction &) { Word("IN_REDUCTION"); }
+void Unparse(const OmpClause::InReduction &x) {
+  Word("IN_REDUCTION");
+  Put("(");
+  Walk(x.v);
+  Put(")");
+}
 void Before(const OmpClause::Inbranch &) { Word("INBRANCH"); }
 void Before(const OmpClause::Inclusive &) { Word("INCLUSIVE"); }
 void Before(const OmpClause::Indirect &) { Word("INDIRECT"); }
@@ -4190,6 +4405,109 @@ llvm_unreachable("Invalid OpenMP Parser clause");
 
 #endif // GEN_FLANG_CLAUSE_PARSER_KIND_MAP
 
+#ifdef GEN_FLANG_CLAUSES_PARSER
+#undef GEN_FLANG_CLAUSES_PARSER
+
+TYPE_PARSER(
+  "write" >> construct<OmpClause>(construct<OmpClause::Write>()) ||
+  "when" >> construct<OmpClause>(construct<OmpClause::When>()) ||
+  "uses_allocators" >> construct<OmpClause>(construct<OmpClause::UsesAllocators>()) ||
+  "use_device_ptr" >> construct<OmpClause>(construct<OmpClause::UseDevicePtr>(parenthesized(name))) ||
+  "use_device_addr" >> construct<OmpClause>(construct<OmpClause::UseDeviceAddr>()) ||
+  "use" >> construct<OmpClause>(construct<OmpClause::Use>()) ||
+  "update" >> construct<OmpClause>(construct<OmpClause::Update>()) ||
+  "untied" >> construct<OmpClause>(construct<OmpClause::Untied>()) ||
+  "unknown" >> construct<OmpClause>(construct<OmpClause::Unknown>()) ||
+  "uniform" >> construct<OmpClause>(construct<OmpClause::Uniform>(parenthesized(name))) ||
+  "unified_shared_memory" >> construct<OmpClause>(construct<OmpClause::UnifiedSharedMemory>()) ||
+  "unified_address" >> construct<OmpClause>(construct<OmpClause::UnifiedAddress>()) ||
+  "to" >> construct<OmpClause>(construct<OmpClause::To>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "threads" >> construct<OmpClause>(construct<OmpClause::Threads>()) ||
+  "threadprivate" >> construct<OmpClause>(construct<OmpClause::Threadprivate>()) ||
+  "thread_limit" >> construct<OmpClause>(construct<OmpClause::ThreadLimit>(parenthesized(scalarIntExpr))) ||
+  "task_reduction" >> construct<OmpClause>(construct<OmpClause::TaskReduction>(parenthesized(Parser<OmpReductionClause>{}))) ||
+  "sizes" >> construct<OmpClause>(construct<OmpClause::Sizes>()) ||
+  "simdlen" >> construct<OmpClause>(construct<OmpClause::Simdlen>(parenthesized(scalarIntConstantExpr))) ||
+  "simd" >> construct<OmpClause>(construct<OmpClause::Simd>()) ||
+  "shared" >> construct<OmpClause>(construct<OmpClause::Shared>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "seq_cst" >> construct<OmpClause>(construct<OmpClause::SeqCst>()) ||
+  "schedule" >> construct<OmpClause>(construct<OmpClause::Schedule>(parenthesized(Parser<OmpScheduleClause>{}))) ||
+  "safelen" >> construct<OmpClause>(construct<OmpClause::Safelen>(parenthesized(scalarIntConstantExpr))) ||
+  "reverse_offload" >> construct<OmpClause>(construct<OmpClause::ReverseOffload>()) ||
+  "release" >> construct<OmpClause>(construct<OmpClause::Release>()) ||
+  "relaxed" >> construct<OmpClause>(construct<OmpClause::Relaxed>()) ||
+  "reduction" >> construct<OmpClause>(construct<OmpClause::Reduction>(parenthesized(Parser<OmpReductionClause>{}))) ||
+  "read" >> construct<OmpClause>(construct<OmpClause::Read>()) ||
+  "proc_bind" >> construct<OmpClause>(construct<OmpClause::ProcBind>(parenthesized(Parser<OmpProcBindClause>{}))) ||
+  "private" >> construct<OmpClause>(construct<OmpClause::Private>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "priority" >> construct<OmpClause>(construct<OmpClause::Priority>(parenthesized(scalarIntExpr))) ||
+  "partial" >> construct<OmpClause>(construct<OmpClause::Partial>()) ||
+  "ordered" >> construct<OmpClause>(construct<OmpClause::Ordered>(maybe(parenthesized(scalarIntConstantExpr)))) ||
+  "order" >> construct<OmpClause>(construct<OmpClause::Order>()) ||
+  "num_threads" >> construct<OmpClause>(construct<OmpClause::NumThreads>(parenthesized(scalarIntExpr))) ||
+  "num_teams" >> construct<OmpClause>(construct<OmpClause::NumTeams>(parenthesized(scalarIntExpr))) ||
+  "num_tasks" >> construct<OmpClause>(construct<OmpClause::NumTasks>(parenthesized(scalarIntExpr))) ||
+  "nowait" >> construct<OmpClause>(construct<OmpClause::Nowait>()) ||
+  "novariants" >> construct<OmpClause>(construct<OmpClause::Novariants>(parenthesized(scalarLogicalExpr))) ||
+  "notinbranch" >> construct<OmpClause>(construct<OmpClause::Notinbranch>()) ||
+  "nontemporal" >> construct<OmpClause>(construct<OmpClause::Nontemporal>(parenthesized(name))) ||
+  "nogroup" >> construct<OmpClause>(construct<OmpClause::Nogroup>()) ||
+  "nocontext" >> construct<OmpClause>(construct<OmpClause::Nocontext>(parenthesized(scalarLogicalExpr))) ||
+  "mergeable" >> construct<OmpClause>(construct<OmpClause::Mergeable>()) ||
+  "memory_order" >> construct<OmpClause>(construct<OmpClause::MemoryOrder>()) ||
+  "match" >> construct<OmpClause>(construct<OmpClause::Match>()) ||
+  "map" >> construct<OmpClause>(construct<OmpClause::Map>(parenthesized(Parser<OmpMapClause>{}))) ||
+  "link" >> construct<OmpClause>(construct<OmpClause::Link>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "linear" >> construct<OmpClause>(construct<OmpClause::Linear>(parenthesized(Parser<OmpLinearClause>{}))) ||
+  "lastprivate" >> construct<OmpClause>(construct<OmpClause::Lastprivate>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "is_device_ptr" >> construct<OmpClause>(construct<OmpClause::IsDevicePtr>(parenthesized(name))) ||
+  "init" >> construct<OmpClause>(construct<OmpClause::Init>()) ||
+  "indirect" >> construct<OmpClause>(construct<OmpClause::Indirect>()) ||
+  "inclusive" >> construct<OmpClause>(construct<OmpClause::Inclusive>()) ||
+  "inbranch" >> construct<OmpClause>(construct<OmpClause::Inbranch>()) ||
+  "in_reduction" >> construct<OmpClause>(construct<OmpClause::InReduction>(parenthesized(Parser<OmpInReductionClause>{}))) ||
+  "if" >> construct<OmpClause>(construct<OmpClause::If>(parenthesized(Parser<OmpIfClause>{}))) ||
+  "hint" >> construct<OmpClause>(construct<OmpClause::Hint>(parenthesized(Parser<ConstantExpr>{}))) ||
+  "has_device_addr" >> construct<OmpClause>(construct<OmpClause::HasDeviceAddr>(parenthesized(name))) ||
+  "grainsize" >> construct<OmpClause>(construct<OmpClause::Grainsize>(parenthesized(scalarIntExpr))) ||
+  "full" >> construct<OmpClause>(construct<OmpClause::Full>()) ||
+  "from" >> construct<OmpClause>(construct<OmpClause::From>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "flush" >> construct<OmpClause>(construct<OmpClause::Flush>()) ||
+  "firstprivate" >> construct<OmpClause>(construct<OmpClause::Firstprivate>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "final" >> construct<OmpClause>(construct<OmpClause::Final>(parenthesized(scalarLogicalExpr))) ||
+  "filter" >> construct<OmpClause>(construct<OmpClause::Filter>(parenthesized(scalarIntExpr))) ||
+  "exclusive" >> construct<OmpClause>(construct<OmpClause::Exclusive>()) ||
+  "dynamic_allocators" >> construct<OmpClause>(construct<OmpClause::DynamicAllocators>()) ||
+  "dist_schedule" >> construct<OmpClause>(construct<OmpClause::DistSchedule>(maybe(parenthesized(scalarIntExpr)))) ||
+  "device_type" >> construct<OmpClause>(construct<OmpClause::DeviceType>()) ||
+  "device" >> construct<OmpClause>(construct<OmpClause::Device>(parenthesized(Parser<OmpDeviceClause>{}))) ||
+  "detach" >> construct<OmpClause>(construct<OmpClause::Detach>()) ||
+  "destroy" >> construct<OmpClause>(construct<OmpClause::Destroy>()) ||
+  "depobj" >> construct<OmpClause>(construct<OmpClause::Depobj>()) ||
+  "depend" >> construct<OmpClause>(construct<OmpClause::Depend>(parenthesized(Parser<OmpDependClause>{}))) ||
+  "defaultmap" >> construct<OmpClause>(construct<OmpClause::Defaultmap>(parenthesized(Parser<OmpDefaultmapClause>{}))) ||
+  "default" >> construct<OmpClause>(construct<OmpClause::Default>(parenthesized(Parser<OmpDefaultClause>{}))) ||
+  "copyprivate" >> construct<OmpClause>(construct<OmpClause::Copyprivate>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "copyin" >> construct<OmpClause>(construct<OmpClause::Copyin>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "compare" >> construct<OmpClause>(construct<OmpClause::Compare>()) ||
+  "collapse" >> construct<OmpClause>(construct<OmpClause::Collapse>(parenthesized(scalarIntConstantExpr))) ||
+  "capture" >> construct<OmpClause>(construct<OmpClause::Capture>()) ||
+  "cancellation_construct_type" >> construct<OmpClause>(construct<OmpClause::CancellationConstructType>()) ||
+  "bind" >> construct<OmpClause>(construct<OmpClause::Bind>()) ||
+  "atomic_default_mem_order" >> construct<OmpClause>(construct<OmpClause::AtomicDefaultMemOrder>()) ||
+  "append_args" >> construct<OmpClause>(construct<OmpClause::AppendArgs>()) ||
+  "allocator" >> construct<OmpClause>(construct<OmpClause::Allocator>(parenthesized(scalarIntExpr))) ||
+  "allocate" >> construct<OmpClause>(construct<OmpClause::Allocate>(parenthesized(Parser<OmpAllocateClause>{}))) ||
+  "aligned" >> construct<OmpClause>(construct<OmpClause::Aligned>(parenthesized(Parser<OmpAlignedClause>{}))) ||
+  "align" >> construct<OmpClause>(construct<OmpClause::Align>()) ||
+  "affinity" >> construct<OmpClause>(construct<OmpClause::Affinity>()) ||
+  "adjust_args" >> construct<OmpClause>(construct<OmpClause::AdjustArgs>()) ||
+  "acquire" >> construct<OmpClause>(construct<OmpClause::Acquire>()) ||
+  "acq_rel" >> construct<OmpClause>(construct<OmpClause::AcqRel>())
+)
+
+#endif // GEN_FLANG_CLAUSES_PARSER
+
 #ifdef GEN_CLANG_CLAUSE_CLASS
 #undef GEN_CLANG_CLAUSE_CLASS
 
@@ -4361,6 +4679,8 @@ Directive llvm::omp::getOpenMPDirectiveKind(llvm::StringRef Str) {
     .Case("flush",OMPD_flush)
     .Case("for",OMPD_for)
     .Case("for simd",OMPD_for_simd)
+    .Case("masked taskloop",OMPD_masked_taskloop)
+    .Case("masked taskloop simd",OMPD_masked_taskloop_simd)
     .Case("master",OMPD_master)
     .Case("master taskloop",OMPD_master_taskloop)
     .Case("master taskloop simd",OMPD_master_taskloop_simd)
@@ -4372,6 +4692,9 @@ Directive llvm::omp::getOpenMPDirectiveKind(llvm::StringRef Str) {
     .Case("parallel do simd",OMPD_parallel_do_simd)
     .Case("parallel for",OMPD_parallel_for)
     .Case("parallel for simd",OMPD_parallel_for_simd)
+    .Case("parallel masked",OMPD_parallel_masked)
+    .Case("parallel masked taskloop",OMPD_parallel_masked_taskloop)
+    .Case("parallel masked taskloop simd",OMPD_parallel_masked_taskloop_simd)
     .Case("parallel master",OMPD_parallel_master)
     .Case("parallel master taskloop",OMPD_parallel_master_taskloop)
     .Case("parallel master taskloop simd",OMPD_parallel_master_taskloop_simd)
@@ -4502,6 +4825,10 @@ llvm::StringRef llvm::omp::getOpenMPDirectiveName(Directive Kind) {
       return "for";
     case OMPD_for_simd:
       return "for simd";
+    case OMPD_masked_taskloop:
+      return "masked taskloop";
+    case OMPD_masked_taskloop_simd:
+      return "masked taskloop simd";
     case OMPD_master:
       return "master";
     case OMPD_master_taskloop:
@@ -4524,6 +4851,12 @@ llvm::StringRef llvm::omp::getOpenMPDirectiveName(Directive Kind) {
       return "parallel for";
     case OMPD_parallel_for_simd:
       return "parallel for simd";
+    case OMPD_parallel_masked:
+      return "parallel masked";
+    case OMPD_parallel_masked_taskloop:
+      return "parallel masked taskloop";
+    case OMPD_parallel_masked_taskloop_simd:
+      return "parallel masked taskloop simd";
     case OMPD_parallel_master:
       return "parallel master";
     case OMPD_parallel_master_taskloop:
@@ -5625,6 +5958,102 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return false;
       }
       break;
+    case OMPD_masked_taskloop:
+      switch (C) {
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_final:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_untied:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_mergeable:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_priority:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_grainsize:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nogroup:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_tasks:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_in_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_filter:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_masked_taskloop_simd:
+      switch (C) {
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_final:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_untied:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_mergeable:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_priority:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_linear:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_aligned:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_safelen:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_simdlen:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_grainsize:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nogroup:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_tasks:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_in_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nontemporal:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_order:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_filter:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
     case OMPD_master:
       return false;
       break;
@@ -5935,6 +6364,138 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return false;
       }
       break;
+    case OMPD_parallel_masked:
+      switch (C) {
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_threads:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_copyin:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_proc_bind:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_filter:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_parallel_masked_taskloop:
+      switch (C) {
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_final:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_untied:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_mergeable:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_priority:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_grainsize:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nogroup:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_tasks:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_threads:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_proc_bind:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_copyin:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_filter:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_parallel_masked_taskloop_simd:
+      switch (C) {
+        case OMPC_if:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_shared:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_private:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_firstprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_lastprivate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_default:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_collapse:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_final:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_untied:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_mergeable:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_priority:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_grainsize:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nogroup:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_tasks:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_reduction:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_allocate:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_num_threads:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_proc_bind:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_copyin:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_linear:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_aligned:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_safelen:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_simdlen:
+          return 1 <= Version && 2147483647 >= Version;
+        case OMPC_nontemporal:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_order:
+          return 50 <= Version && 2147483647 >= Version;
+        case OMPC_filter:
+          return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
     case OMPD_parallel_master:
       switch (C) {
         case OMPC_if:
@@ -6226,6 +6787,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
           return 51 <= Version && 2147483647 >= Version;
         case OMPC_reduction:
           return 1 <= Version && 2147483647 >= Version;
+        case OMPC_in_reduction:
+          return 50 <= Version && 2147483647 >= Version;
         case OMPC_allocate:
           return 1 <= Version && 2147483647 >= Version;
         case OMPC_uses_allocators:

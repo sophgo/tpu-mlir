@@ -13,28 +13,32 @@ struct ElementsAttrInterfaceTraits {
   struct Concept {
     ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> (*getValuesImpl)(const Concept *impl, ::mlir::Attribute , ::mlir::TypeID);
     bool (*isSplat)(const Concept *impl, ::mlir::Attribute );
+    ::mlir::ShapedType (*getType)(const Concept *impl, ::mlir::Attribute );
   };
   template<typename ConcreteAttr>
   class Model : public Concept {
   public:
     using Interface = ::mlir::ElementsAttr;
-    Model() : Concept{getValuesImpl, isSplat} {}
+    Model() : Concept{getValuesImpl, isSplat, getType} {}
 
     static inline ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID);
     static inline bool isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
+    static inline ::mlir::ShapedType getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
   };
   template<typename ConcreteAttr>
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::ElementsAttr;
-    FallbackModel() : Concept{getValuesImpl, isSplat} {}
+    FallbackModel() : Concept{getValuesImpl, isSplat, getType} {}
 
     static inline ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID);
     static inline bool isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
+    static inline ::mlir::ShapedType getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteAttr>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteAttr;
     ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> getValuesImpl(::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) const;
     bool isSplat(::mlir::Attribute tablegen_opaque_val) const;
   };
@@ -47,8 +51,15 @@ public:
   using ::mlir::AttributeInterface<ElementsAttr, detail::ElementsAttrInterfaceTraits>::AttributeInterface;
   template <typename ConcreteAttr>
   struct Trait : public detail::ElementsAttrTrait<ConcreteAttr> {};
+  /// This method returns an opaque range indexer for the given elementID, which
+  /// corresponds to a desired C++ element data type. Returns the indexer if the
+  /// attribute supports the given data type, failure otherwise.
   ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> getValuesImpl(::mlir::TypeID elementID) const;
+  /// Returns true if the attribute elements correspond to a splat, i.e. that
+  /// all elements of the attribute are the same value.
   bool isSplat() const;
+  /// Returns the shaped type of the elements attribute.
+  ::mlir::ShapedType getType() const;
 
     template <typename T>
     using iterator = detail::ElementsAttrIterator<T>;
@@ -59,19 +70,17 @@ public:
     // Accessors
     //===------------------------------------------------------------------===//
 
-    /// Return the type of this attribute.
-    ShapedType getType() const;
-
     /// Return the element type of this ElementsAttr.
     Type getElementType() const { return getElementType(*this); }
-    static Type getElementType(Attribute elementsAttr);
+    static Type getElementType(ElementsAttr elementsAttr);
 
     /// Return if the given 'index' refers to a valid element in this attribute.
     bool isValidIndex(ArrayRef<uint64_t> index) const {
       return isValidIndex(*this, index);
     }
     static bool isValidIndex(ShapedType type, ArrayRef<uint64_t> index);
-    static bool isValidIndex(Attribute elementsAttr, ArrayRef<uint64_t> index);
+    static bool isValidIndex(ElementsAttr elementsAttr,
+                             ArrayRef<uint64_t> index);
 
     /// Return the 1 dimensional flattened row-major index from the given
     /// multi-dimensional index.
@@ -80,14 +89,14 @@ public:
     }
     static uint64_t getFlattenedIndex(Type type,
                                       ArrayRef<uint64_t> index);
-    static uint64_t getFlattenedIndex(Attribute elementsAttr,
+    static uint64_t getFlattenedIndex(ElementsAttr elementsAttr,
                                       ArrayRef<uint64_t> index) {
       return getFlattenedIndex(elementsAttr.getType(), index);
     }
 
     /// Returns the number of elements held by this attribute.
     int64_t getNumElements() const { return getNumElements(*this); }
-    static int64_t getNumElements(Attribute elementsAttr);
+    static int64_t getNumElements(ElementsAttr elementsAttr);
 
     //===------------------------------------------------------------------===//
     // Value Iteration
@@ -114,7 +123,7 @@ public:
     /// Return the elements of this attribute as a value of type 'T'.
     template <typename T>
     DefaultValueCheckT<T, iterator_range<T>> getValues() const {
-      return {Attribute::getType(), value_begin<T>(), value_end<T>()};
+      return {getType(), value_begin<T>(), value_end<T>()};
     }
     template <typename T>
     DefaultValueCheckT<T, iterator<T>> value_begin() const;
@@ -134,8 +143,8 @@ public:
     template <typename T, typename = DerivedAttrValueCheckT<T>>
     DerivedAttrValueIteratorRange<T> getValues() const {
       auto castFn = [](Attribute attr) { return attr.template cast<T>(); };
-      return {Attribute::getType(), llvm::map_range(getValues<Attribute>(),
-                             static_cast<T (*)(Attribute)>(castFn))};
+      return {getType(), llvm::map_range(getValues<Attribute>(),
+              static_cast<T (*)(Attribute)>(castFn))};
     }
     template <typename T, typename = DerivedAttrValueCheckT<T>>
     DerivedAttrValueIterator<T> value_begin() const {
@@ -153,10 +162,8 @@ public:
     /// return the iterable range. Otherwise, return llvm::None.
     template <typename T>
     DefaultValueCheckT<T, Optional<iterator_range<T>>> tryGetValues() const {
-      if (Optional<iterator<T>> beginIt = try_value_begin<T>()) {
-        return iterator_range<T>(Attribute::getType(), *beginIt,
-                                 value_end<T>());
-      }
+      if (Optional<iterator<T>> beginIt = try_value_begin<T>())
+        return iterator_range<T>(getType(), *beginIt, value_end<T>());
       return llvm::None;
     }
     template <typename T>
@@ -172,7 +179,7 @@ public:
 
       auto castFn = [](Attribute attr) { return attr.template cast<T>(); };
       return DerivedAttrValueIteratorRange<T>(
-        Attribute::getType(),
+        getType(),
         llvm::map_range(*values, static_cast<T (*)(Attribute)>(castFn))
       );
     }
@@ -193,6 +200,9 @@ public:
 namespace detail {
   template <typename ConcreteAttr>
   struct ElementsAttrTrait : public ::mlir::AttributeInterface<ElementsAttr, detail::ElementsAttrInterfaceTraits>::Trait<ConcreteAttr> {
+    /// This method returns an opaque range indexer for the given elementID, which
+    /// corresponds to a desired C++ element data type. Returns the indexer if the
+    /// attribute supports the given data type, failure otherwise.
     ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> getValuesImpl(::mlir::TypeID elementID) const {
       auto result = getValueImpl(
         (typename ConcreteAttr::ContiguousIterableTypesT *)nullptr, elementID,
@@ -204,6 +214,8 @@ namespace detail {
         (typename ConcreteAttr::NonContiguousIterableTypesT *)nullptr,
         elementID, /*isContiguous=*/std::false_type());
     }
+    /// Returns true if the attribute elements correspond to a splat, i.e. that
+    /// all elements of the attribute are the same value.
     bool isSplat() const {
       // By default, only check for a single element splat.
         return (*static_cast<const ConcreteAttr *>(this)).getNumElements() == 1;
@@ -284,18 +296,22 @@ namespace detail {
           /*isSplat=*/false, nullptr);
       }
 
-      auto valueIt = (*static_cast<const ConcreteAttr *>(this)).value_begin_impl(OverloadToken<T>());
+      auto valueIt = (*static_cast<const ConcreteAttr *>(this)).try_value_begin_impl(OverloadToken<T>());
+      if (::mlir::failed(valueIt))
+        return ::mlir::failure();
       return ::mlir::detail::ElementsAttrIndexer::contiguous(
-        (*static_cast<const ConcreteAttr *>(this)).isSplat(), &*valueIt);
+        (*static_cast<const ConcreteAttr *>(this)).isSplat(), &**valueIt);
     }
     /// Build an indexer for the given type `T`, which is represented via a
     /// non-contiguous range.
     template <typename T>
     ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> buildValueResult(
         /*isContiguous*/std::false_type) const {
-      auto valueIt = (*static_cast<const ConcreteAttr *>(this)).value_begin_impl(OverloadToken<T>());
+      auto valueIt = (*static_cast<const ConcreteAttr *>(this)).try_value_begin_impl(OverloadToken<T>());
+      if (::mlir::failed(valueIt))
+        return ::mlir::failure();
       return ::mlir::detail::ElementsAttrIndexer::nonContiguous(
-        (*static_cast<const ConcreteAttr *>(this)).isSplat(), valueIt);
+        (*static_cast<const ConcreteAttr *>(this)).isSplat(), *valueIt);
     }
 
   public:
@@ -315,7 +331,7 @@ namespace detail {
     /// type `T`.
     template <typename T>
     auto value_begin() const {
-      return (*static_cast<const ConcreteAttr *>(this)).value_begin_impl(OverloadToken<T>());
+      return *(*static_cast<const ConcreteAttr *>(this)).try_value_begin_impl(OverloadToken<T>());
     }
 
     /// Return the elements of this attribute as a value of type 'T'.
@@ -323,7 +339,7 @@ namespace detail {
     auto getValues() const {
       auto beginIt = (*static_cast<const ConcreteAttr *>(this)).template value_begin<T>();
       return detail::ElementsAttrRange<decltype(beginIt)>(
-        Attribute((*static_cast<const ConcreteAttr *>(this))).getType(), beginIt, std::next(beginIt, size()));
+        (*static_cast<const ConcreteAttr *>(this)).getType(), beginIt, std::next(beginIt, size()));
     }
   
     /// Return the number of elements held by this attribute.
@@ -343,12 +359,20 @@ bool detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::isSplat(const Con
   return (tablegen_opaque_val.cast<ConcreteAttr>()).isSplat();
 }
 template<typename ConcreteAttr>
+::mlir::ShapedType detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getType();
+}
+template<typename ConcreteAttr>
 ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) {
   return static_cast<const ConcreteAttr *>(impl)->getValuesImpl(tablegen_opaque_val, elementID);
 }
 template<typename ConcreteAttr>
 bool detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
   return static_cast<const ConcreteAttr *>(impl)->isSplat(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+::mlir::ShapedType detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->getType(tablegen_opaque_val);
 }
 template<typename ConcreteModel, typename ConcreteAttr>
 ::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::getValuesImpl(::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) const {
@@ -400,6 +424,7 @@ struct MemRefLayoutAttrInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteAttr>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteAttr;
     bool isIdentity(::mlir::Attribute tablegen_opaque_val) const;
     ::mlir::LogicalResult verifyLayout(::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const;
   };
@@ -412,16 +437,21 @@ public:
   using ::mlir::AttributeInterface<MemRefLayoutAttrInterface, detail::MemRefLayoutAttrInterfaceInterfaceTraits>::AttributeInterface;
   template <typename ConcreteAttr>
   struct Trait : public detail::MemRefLayoutAttrInterfaceTrait<ConcreteAttr> {};
+  /// Get the MemRef layout as an AffineMap, the method must not return NULL
   ::mlir::AffineMap getAffineMap() const;
+  /// Return true if this attribute represents the identity layout
   bool isIdentity() const;
+  /// Check if the current layout is applicable to the provided shape
   ::mlir::LogicalResult verifyLayout(::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const;
 };
 namespace detail {
   template <typename ConcreteAttr>
   struct MemRefLayoutAttrInterfaceTrait : public ::mlir::AttributeInterface<MemRefLayoutAttrInterface, detail::MemRefLayoutAttrInterfaceInterfaceTraits>::Trait<ConcreteAttr> {
+    /// Return true if this attribute represents the identity layout
     bool isIdentity() const {
       return (*static_cast<const ConcreteAttr *>(this)).getAffineMap().isIdentity();
     }
+    /// Check if the current layout is applicable to the provided shape
     ::mlir::LogicalResult verifyLayout(::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const {
       return ::mlir::detail::verifyAffineMapAsLayout((*static_cast<const ConcreteAttr *>(this)).getAffineMap(),
                                                        shape, emitError);
@@ -460,5 +490,59 @@ template<typename ConcreteModel, typename ConcreteAttr>
 ::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::verifyLayout(::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const {
 return ::mlir::detail::verifyAffineMapAsLayout((tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap(),
                                                        shape, emitError);
+}
+} // namespace mlir
+namespace mlir {
+class TypedAttr;
+namespace detail {
+struct TypedAttrInterfaceTraits {
+  struct Concept {
+    ::mlir::Type (*getType)(const Concept *impl, ::mlir::Attribute );
+  };
+  template<typename ConcreteAttr>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::TypedAttr;
+    Model() : Concept{getType} {}
+
+    static inline ::mlir::Type getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
+  };
+  template<typename ConcreteAttr>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::TypedAttr;
+    FallbackModel() : Concept{getType} {}
+
+    static inline ::mlir::Type getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val);
+  };
+  template<typename ConcreteModel, typename ConcreteAttr>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    using ConcreteEntity = ConcreteAttr;
+  };
+};template <typename ConcreteAttr>
+struct TypedAttrTrait;
+
+} // namespace detail
+class TypedAttr : public ::mlir::AttributeInterface<TypedAttr, detail::TypedAttrInterfaceTraits> {
+public:
+  using ::mlir::AttributeInterface<TypedAttr, detail::TypedAttrInterfaceTraits>::AttributeInterface;
+  template <typename ConcreteAttr>
+  struct Trait : public detail::TypedAttrTrait<ConcreteAttr> {};
+  /// Get the attribute's type
+  ::mlir::Type getType() const;
+};
+namespace detail {
+  template <typename ConcreteAttr>
+  struct TypedAttrTrait : public ::mlir::AttributeInterface<TypedAttr, detail::TypedAttrInterfaceTraits>::Trait<ConcreteAttr> {
+  };
+}// namespace detail
+template<typename ConcreteAttr>
+::mlir::Type detail::TypedAttrInterfaceTraits::Model<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getType();
+}
+template<typename ConcreteAttr>
+::mlir::Type detail::TypedAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->getType(tablegen_opaque_val);
 }
 } // namespace mlir

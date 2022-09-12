@@ -35,6 +35,7 @@ struct RegionKindInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct RegionKindInterfaceTrait;
@@ -45,7 +46,9 @@ public:
   using ::mlir::OpInterface<RegionKindInterface, detail::RegionKindInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::RegionKindInterfaceTrait<ConcreteOp> {};
+  /// Return the kind of the region with the given index inside this operation.
   ::mlir::RegionKind getRegionKind(unsigned index);
+  /// Return true if the kind of the given region requires the SSA-Dominance property
   bool hasSSADominance(unsigned index);
 };
 namespace detail {

@@ -33,6 +33,7 @@ struct PointerLikeTypeInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteType>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteType;
   };
 };template <typename ConcreteType>
 struct PointerLikeTypeTrait;
@@ -43,6 +44,7 @@ public:
   using ::mlir::TypeInterface<PointerLikeType, detail::PointerLikeTypeInterfaceTraits>::TypeInterface;
   template <typename ConcreteType>
   struct Trait : public detail::PointerLikeTypeTrait<ConcreteType> {};
+  /// Returns the pointee type.
   ::mlir::Type getElementType() const;
 };
 namespace detail {

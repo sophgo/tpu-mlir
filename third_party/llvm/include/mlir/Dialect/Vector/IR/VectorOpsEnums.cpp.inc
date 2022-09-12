@@ -73,7 +73,7 @@ std::string stringifyCombiningKind(CombiningKind symbol) {
 }
 
 ::llvm::Optional<CombiningKind> symbolizeCombiningKind(uint32_t value) {
-  if (value & ~static_cast<uint32_t>(1u | 2u | 4u | 8u | 16u | 32u | 64u | 128u | 256u | 512u | 1024u)) return llvm::None;
+  if (value & ~static_cast<uint32_t>(2047u)) return llvm::None;
   return static_cast<CombiningKind>(value);
 }
 } // namespace vector

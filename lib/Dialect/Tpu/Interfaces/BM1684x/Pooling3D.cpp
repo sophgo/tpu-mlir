@@ -96,10 +96,10 @@ void tpu::AvgPool3DOp::codegen_global_bm1684x() {
   spec.relu_limit = attrs.relu_limit;
   spec.avg_pooling_quant_mode = 2;
   spec.merge_requant = true;
-  if (scale().hasValue())
-    spec.rq_scale = scale().getValue().convertToDouble();
-  if (offset().hasValue())
-    spec.rq_offset = offset().getValue().convertToDouble();
+  if (scale().has_value())
+    spec.rq_scale = scale().value().convertToDouble();
+  if (offset().has_value())
+    spec.rq_offset = offset().value().convertToDouble();
   BM1684x::instance().call_global_func("backend_api_pool3d_global", &spec,
                                        sizeof(pooling3d_spec_t));
 }
@@ -252,10 +252,10 @@ void tpu::AvgPool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   spec.relu_limit = attrs.relu_limit;
   spec.avg_pooling_quant_mode = 2;
   spec.merge_requant = true;
-  if (scale().hasValue())
-    spec.rq_scale = static_cast<float>(scale().getValue().convertToDouble());
-  if (offset().hasValue())
-    spec.rq_offset = static_cast<float>(offset().getValue().convertToDouble());
+  if (scale().has_value())
+    spec.rq_scale = static_cast<float>(scale().value().convertToDouble());
+  if (offset().has_value())
+    spec.rq_offset = static_cast<float>(offset().value().convertToDouble());
 
   BM1684x::instance().call_local_func("backend_api_pool3d_local", &spec,
                                       sizeof(pooling3d_spec_t));

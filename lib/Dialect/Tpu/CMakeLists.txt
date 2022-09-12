@@ -24,17 +24,14 @@ add_mlir_library(TPUMLIRTpu
   MLIRGlobalGenInterfaceIncGen
   MLIRFlopsInterfaceIncGen
   MLIRLocalGenInterfaceIncGen
-  Builder
-
-  LINK_COMPONENTS
-  Core
 
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRPass
   MLIRSupport
-  MLIRFunc
-  MLIRQuant
+  MLIRParser
+  MLIRFuncDialect
+  MLIRQuantDialect
   MLIRRewrite
   MLIRTransforms
   MLIRSideEffectInterfaces

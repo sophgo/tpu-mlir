@@ -15,7 +15,7 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+DefaultValuedOptionalAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -65,7 +65,7 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -97,8 +97,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<UnaryFnAttr, "UnaryFn::exp">:$fun,
-DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+DefaultValuedOptionalAttr<UnaryFnAttr, "UnaryFn::exp">:$fun,
+DefaultValuedOptionalAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -149,7 +149,7 @@ $_state.addAttribute("cast", cast);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -181,8 +181,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<BinaryFnAttr, "BinaryFn::add">:$fun,
-DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+DefaultValuedOptionalAttr<BinaryFnAttr, "BinaryFn::add">:$fun,
+DefaultValuedOptionalAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -233,7 +233,7 @@ $_state.addAttribute("cast", cast);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -265,7 +265,7 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
+DefaultValuedOptionalAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -315,7 +315,7 @@ DefaultValuedAttr<TypeFnAttr, "TypeFn::cast_signed">:$cast
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -386,7 +386,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -459,7 +459,7 @@ matmul.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -535,7 +535,7 @@ def Mmt4DOp : LinalgStructuredBase_Op<"mmt4d", !listconcat([AttrSizedOperandSegm
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -606,7 +606,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -679,7 +679,7 @@ matmul.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -750,7 +750,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -821,7 +821,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -892,7 +892,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -963,7 +963,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1034,7 +1034,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1105,7 +1105,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1176,7 +1176,7 @@ them to the same data type as the accumulator/output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1208,8 +1208,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1260,7 +1260,98 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for Conv1DNcwFcwOp
+//===----------------------------------------------------------------------===//
+
+def Conv1DNcwFcwOp : LinalgStructuredBase_Op<"conv_1d_ncw_fcw", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs 1-D convolution. }];
+  let description = [{
+    Layout:
+  * Input: NCW.
+  * Kernel: FCW.
+
+Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv1DNcwFcwOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv1DNcwFcwOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv1DNcwFcwOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1299,8 +1390,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1351,7 +1442,98 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for Conv2DNhwcFhwcOp
+//===----------------------------------------------------------------------===//
+
+def Conv2DNhwcFhwcOp : LinalgStructuredBase_Op<"conv_2d_nhwc_fhwc", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs 2-D convolution. }];
+  let description = [{
+    Layout:
+  * Input: NHWC.
+  * Kernel: FHWC.
+
+Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv2DNhwcFhwcOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv2DNhwcFhwcOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv2DNhwcFhwcOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1391,8 +1573,8 @@ point offsets common to quantized operations.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1443,7 +1625,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1482,8 +1664,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1534,7 +1716,98 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for Conv2DNgchwFgchwOp
+//===----------------------------------------------------------------------===//
+
+def Conv2DNgchwFgchwOp : LinalgStructuredBase_Op<"conv_2d_ngchw_fgchw", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs 2-D grouped convolution. }];
+  let description = [{
+    Layout:
+  * Input: NGCHW.
+  * Kernel: FGCHW.
+
+Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, Conv2DNgchwFgchwOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, Conv2DNgchwFgchwOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, Conv2DNgchwFgchwOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1569,8 +1842,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1621,7 +1894,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1657,8 +1930,8 @@ which is a special case for most depthwise convolutions.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1709,7 +1982,94 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for DepthwiseConv1DNwcWcmOp
+//===----------------------------------------------------------------------===//
+
+def DepthwiseConv1DNwcWcmOp : LinalgStructuredBase_Op<"depthwise_conv_1d_nwc_wcm", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs depth-wise 1-D convolution. }];
+  let description = [{
+    Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[1]>, "{ static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv1DNwcWcmOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv1DNwcWcmOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv1DNwcWcmOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1745,8 +2105,8 @@ which is a special case for most depthwise convolutions.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1797,7 +2157,95 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for DepthwiseConv2DNchwChwOp
+//===----------------------------------------------------------------------===//
+
+def DepthwiseConv2DNchwChwOp : LinalgStructuredBase_Op<"depthwise_conv_2d_nchw_chw", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs depth-wise 2-D convolution. }];
+  let description = [{
+    Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output. Multiplier is set to 1
+which is a special case for most depthwise convolutions.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv2DNchwChwOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv2DNchwChwOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv2DNchwChwOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1832,8 +2280,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1884,7 +2332,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -1919,8 +2367,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -1971,7 +2419,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2006,8 +2454,8 @@ them to the same data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2058,7 +2506,182 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for DepthwiseConv3DNdhwcDhwcOp
+//===----------------------------------------------------------------------===//
+
+def DepthwiseConv3DNdhwcDhwcOp : LinalgStructuredBase_Op<"depthwise_conv_3d_ndhwc_dhwc", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs depth-wise 3-D convolution. }];
+  let description = [{
+    Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output. Multiplier is set to 1
+which is a special case for most depthwise convolutions.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv3DNdhwcDhwcOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv3DNdhwcDhwcOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv3DNdhwcDhwcOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
+      static void regionBuilder(ImplicitLocOpBuilder &b,
+                                Block &block, ArrayRef<NamedAttribute> attrs);
+      static std::function<void(ImplicitLocOpBuilder &,
+                                Block &, ArrayRef<NamedAttribute>)>
+      getRegionBuilder() {
+        return regionBuilder;
+      }
+
+      // Generic methods.
+      static unsigned getNumRegionArgs();
+      std::string getLibraryCallName();
+      
+        bool hasDynamicIndexingMaps();
+        LogicalResult verifyIndexingMapRequiredAttributes();
+      
+    }];
+}
+
+//===----------------------------------------------------------------------===//
+// Op definition for DepthwiseConv3DNdhwcDhwcmOp
+//===----------------------------------------------------------------------===//
+
+def DepthwiseConv3DNdhwcDhwcmOp : LinalgStructuredBase_Op<"depthwise_conv_3d_ndhwc_dhwcm", !listconcat([AttrSizedOperandSegments],
+  /*extraInterfaces=*/[LinalgConvolutionOpInterface])> {
+    
+  let summary = [{ Performs depth-wise 3-D convolution. }];
+  let description = [{
+    Numeric casting is performed on the operands to the inner multiply, promoting
+them to the same data type as the accumulator/output.
+  }];
+
+    let arguments = (ins
+      Variadic<AnyType>:$inputs,
+      Variadic<AnyShaped>:$outputs,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+    );
+    let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
+    let regions = (region AnyRegion:$region);
+
+    let skipDefaultBuilders = 1;
+    let builders = [
+      OpBuilder<
+      (ins "ValueRange":$inputs, "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
+          attributes, DepthwiseConv3DNdhwcDhwcmOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+            "ValueRange":$outputs,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        buildStructuredOp($_builder, $_state, resultTensorTypes,
+          inputs, outputs, attributes, DepthwiseConv3DNdhwcDhwcmOp::getRegionBuilder());
+      }]>,
+      OpBuilder<
+      (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
+            CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+      [{
+        $_state.addOperands(operands);
+        $_state.addAttributes(attributes);
+        $_state.addTypes(resultTensorTypes);
+        (void)$_state.addRegion();
+      }]>
+      
+  , OpBuilder<
+  (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
+       "ValueRange":$outputs, "Attribute":$strides, "Attribute":$dilations,
+       CArg<"ArrayRef<NamedAttribute>", "{}">:$attributes),
+  [{
+    $_state.addAttribute("strides", strides);
+$_state.addAttribute("dilations", dilations);
+    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
+      attributes, DepthwiseConv3DNdhwcDhwcmOp::getRegionBuilder());
+  }]>
+
+    ];
+    let hasCustomAssemblyFormat = 1;
+    let hasFolder = 1;
+    
+
+    let extraClassDeclaration = structuredOpsBaseDecls # [{
+      // Auto-generated.
+      ArrayAttr iterator_types();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2097,8 +2720,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2149,7 +2772,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2188,8 +2811,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2240,7 +2863,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2275,8 +2898,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2327,7 +2950,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2362,8 +2985,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2414,7 +3037,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2449,8 +3072,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2501,7 +3124,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2536,8 +3159,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2588,7 +3211,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2623,8 +3246,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[2]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2675,7 +3298,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2710,8 +3333,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2762,7 +3385,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2797,8 +3420,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2849,7 +3472,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -2884,8 +3507,8 @@ data type as the accumulator/output.
     let arguments = (ins
       Variadic<AnyType>:$inputs,
       Variadic<AnyShaped>:$outputs,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
-DefaultValuedAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$strides,
+DefaultValuedOptionalAttr<RankedI64ElementsAttr<[3]>, "{ static_cast<int64_t>(1), static_cast<int64_t>(1), static_cast<int64_t>(1) }">:$dilations
     );
     let results = (outs Variadic<AnyRankedTensor>:$result_tensors);
     let regions = (region AnyRegion:$region);
@@ -2936,7 +3559,7 @@ $_state.addAttribute("dilations", dilations);
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -3012,7 +3635,7 @@ the value operand, promoting it to the same data type as the output.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -3088,7 +3711,7 @@ the range of the generated random numbers.
     let extraClassDeclaration = structuredOpsBaseDecls # [{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr indexing_maps();
+      ArrayAttr getIndexingMaps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,

@@ -11,6 +11,7 @@
 
 ::mlir::arith::AddFOp,
 ::mlir::arith::AddIOp,
+::mlir::arith::AddUICarryOp,
 ::mlir::arith::AndIOp,
 ::mlir::arith::BitcastOp,
 ::mlir::arith::CeilDivSIOp,
@@ -88,9 +89,9 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ArithmeticOps1(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ArithmeticOps2(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((((type.isSignlessIntOrIndex())) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isSignlessIntOrIndex()); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isSignlessIntOrIndex()); }(type.cast<::mlir::ShapedType>().getElementType())))) || (((type.isa<::mlir::FloatType>())) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::FloatType>()); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::FloatType>()); }(type.cast<::mlir::ShapedType>().getElementType()))))) || (((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger())) || ((elementType.isa<::mlir::IndexType>())) || ((elementType.isa<::mlir::FloatType>())); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
+  if (!(((type.isSignlessInteger(1))) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(1)); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(1)); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be signless-integer-or-float-like or memref of signless-integer or float, but got " << type;
+        << " must be bool-like, but got " << type;
   }
   return ::mlir::success();
 }
@@ -98,9 +99,9 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ArithmeticOps2(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_ArithmeticOps3(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!(((type.isSignlessInteger(1))) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(1)); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(1)); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
+  if (!(((((type.isSignlessIntOrIndex())) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isSignlessIntOrIndex()); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isSignlessIntOrIndex()); }(type.cast<::mlir::ShapedType>().getElementType())))) || (((type.isa<::mlir::FloatType>())) || ((((type.isa<::mlir::VectorType>())) && ((type.cast<::mlir::VectorType>().getRank() > 0))) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::FloatType>()); }(type.cast<::mlir::ShapedType>().getElementType()))) || (((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isa<::mlir::FloatType>()); }(type.cast<::mlir::ShapedType>().getElementType()))))) || (((type.isa<::mlir::MemRefType>())) && ([](::mlir::Type elementType) { return ((elementType.isSignlessInteger())) || ((elementType.isa<::mlir::IndexType>())) || ((elementType.isa<::mlir::FloatType>())); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
-        << " must be bool-like, but got " << type;
+        << " must be signless-integer-or-float-like or memref of signless-integer or float, but got " << type;
   }
   return ::mlir::success();
 }
@@ -175,9 +176,9 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_ArithmeticOps1(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_ArithmeticOps2(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !((true))) {
+  if (attr && !((attr.isa<::mlir::TypedAttr>()))) {
     return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: any attribute";
+        << "' failed to satisfy constraint: TypedAttr instance";
   }
   return ::mlir::success();
 }
@@ -393,9 +394,9 @@ void AddFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -635,9 +636,9 @@ void AddIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -666,6 +667,258 @@ void AddIOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInsta
 } // namespace arith
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arith::AddIOp)
+
+namespace mlir {
+namespace arith {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::arith::AddUICarryOp definitions
+//===----------------------------------------------------------------------===//
+
+AddUICarryOpAdaptor::AddUICarryOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("arith.addui_carry", odsAttrs.getContext());
+}
+
+AddUICarryOpAdaptor::AddUICarryOpAdaptor(AddUICarryOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange AddUICarryOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> AddUICarryOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange AddUICarryOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AddUICarryOpAdaptor::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value AddUICarryOpAdaptor::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::DictionaryAttr AddUICarryOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult AddUICarryOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+void AddUICarryOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
+  auto resultGroup0 = getODSResults(0);
+  if (!llvm::empty(resultGroup0))
+    setNameFn(*resultGroup0.begin(), "sum");
+  auto resultGroup1 = getODSResults(1);
+  if (!llvm::empty(resultGroup1))
+    setNameFn(*resultGroup1.begin(), "carry");
+}
+
+std::pair<unsigned, unsigned> AddUICarryOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range AddUICarryOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AddUICarryOp::getLhs() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Value AddUICarryOp::getRhs() {
+  return *getODSOperands(1).begin();
+}
+
+::mlir::MutableOperandRange AddUICarryOp::getLhsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange AddUICarryOp::getRhsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> AddUICarryOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range AddUICarryOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AddUICarryOp::getSum() {
+  return *getODSResults(0).begin();
+}
+
+::mlir::Value AddUICarryOp::getCarry() {
+  return *getODSResults(1).begin();
+}
+
+void AddUICarryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value lhs, Value rhs) {
+      build(odsBuilder, odsState, lhs.getType(), ::getI1SameShape(lhs.getType()),
+            lhs, rhs);
+    
+}
+
+void AddUICarryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type sum, ::mlir::Type carry, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  odsState.addTypes(sum);
+  odsState.addTypes(carry);
+}
+
+void AddUICarryOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value lhs, ::mlir::Value rhs) {
+  odsState.addOperands(lhs);
+  odsState.addOperands(rhs);
+  assert(resultTypes.size() == 2u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void AddUICarryOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 2u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult AddUICarryOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps1(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSResults(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps2(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
+    return emitOpError("failed to verify that all of {lhs, rhs, sum} have same type");
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AddUICarryOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult AddUICarryOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand lhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> lhsOperands(lhsRawOperands);  ::llvm::SMLoc lhsOperandsLoc;
+  (void)lhsOperandsLoc;
+  ::mlir::OpAsmParser::UnresolvedOperand rhsRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> rhsOperands(rhsRawOperands);  ::llvm::SMLoc rhsOperandsLoc;
+  (void)rhsOperandsLoc;
+  ::mlir::Type sumRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> sumTypes(sumRawTypes);
+  ::mlir::Type carryRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> carryTypes(carryRawTypes);
+
+  lhsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(lhsRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  rhsOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(rhsRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    sumRawTypes[0] = type;
+  }
+  if (parser.parseComma())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    carryRawTypes[0] = type;
+  }
+  result.addTypes(sumTypes);
+  result.addTypes(carryTypes);
+  if (parser.resolveOperands(lhsOperands, sumTypes[0], lhsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(rhsOperands, sumTypes[0], rhsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AddUICarryOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getLhs();
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  _odsPrinter << getRhs();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getSum().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+  _odsPrinter << ",";
+  _odsPrinter << ' ';
+  {
+    auto type = getCarry().getType();
+    if (auto validType = type.dyn_cast<::mlir::Type>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void AddUICarryOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace arith
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::arith::AddUICarryOp)
 
 namespace mlir {
 namespace arith {
@@ -877,9 +1130,9 @@ void AndIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1007,7 +1260,7 @@ void BitcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps2(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps3(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -1016,7 +1269,7 @@ void BitcastOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps2(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps3(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1306,9 +1559,9 @@ void CeilDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1548,9 +1801,9 @@ void CeilDivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1622,7 +1875,7 @@ std::pair<unsigned, unsigned> CmpFOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::arith::CmpFPredicateAttr CmpFOpAdaptor::getPredicateAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CmpFOp::getPredicateAttrName(*odsOpName)).cast<::mlir::arith::CmpFPredicateAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::arith::CmpFPredicate CmpFOpAdaptor::getPredicate() {
@@ -1786,7 +2039,7 @@ void CmpFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     auto valueGroup0 = getODSResults(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps3(*this, v.getType(), "result", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps2(*this, v.getType(), "result", index++)))
         return ::mlir::failure();
     }
   }
@@ -1820,7 +2073,7 @@ void CmpFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         parser.parseOptionalAttribute(attrVal,
                                       parser.getBuilder().getNoneType(),
                                       "predicate", attrStorage);
-      if (parseResult.hasValue()) {
+      if (parseResult.has_value()) {
         if (failed(*parseResult))
           return ::mlir::failure();
         attrStr = attrVal.getValue();
@@ -1834,7 +2087,7 @@ void CmpFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         return parser.emitError(loc, "invalid ")
                << "predicate attribute specification: \"" << attrStr << '"';;
 
-      predicateAttr = ::mlir::arith::CmpFPredicateAttr::get(parser.getBuilder().getContext(), attrOptional.getValue());
+      predicateAttr = ::mlir::arith::CmpFPredicateAttr::get(parser.getBuilder().getContext(), attrOptional.value());
       result.addAttribute("predicate", predicateAttr);
     }
   }
@@ -1870,7 +2123,7 @@ void CmpFOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   result.addTypes(::getI1SameShape(lhsTypes[0]));
   if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, lhsTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, lhsTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1950,7 +2203,7 @@ std::pair<unsigned, unsigned> CmpIOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::arith::CmpIPredicateAttr CmpIOpAdaptor::getPredicateAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CmpIOp::getPredicateAttrName(*odsOpName)).cast<::mlir::arith::CmpIPredicateAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::arith::CmpIPredicate CmpIOpAdaptor::getPredicate() {
@@ -2148,7 +2401,7 @@ void CmpIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         parser.parseOptionalAttribute(attrVal,
                                       parser.getBuilder().getNoneType(),
                                       "predicate", attrStorage);
-      if (parseResult.hasValue()) {
+      if (parseResult.has_value()) {
         if (failed(*parseResult))
           return ::mlir::failure();
         attrStr = attrVal.getValue();
@@ -2162,7 +2415,7 @@ void CmpIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
         return parser.emitError(loc, "invalid ")
                << "predicate attribute specification: \"" << attrStr << '"';;
 
-      predicateAttr = ::mlir::arith::CmpIPredicateAttr::get(parser.getBuilder().getContext(), attrOptional.getValue());
+      predicateAttr = ::mlir::arith::CmpIPredicateAttr::get(parser.getBuilder().getContext(), attrOptional.value());
       result.addAttribute("predicate", predicateAttr);
     }
   }
@@ -2198,7 +2451,7 @@ void CmpIOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   result.addTypes(::getI1SameShape(lhsTypes[0]));
   if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, lhsTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, lhsTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2267,13 +2520,13 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
   return odsAttrs;
 }
 
-::mlir::Attribute ConstantOpAdaptor::getValueAttr() {
+::mlir::TypedAttr ConstantOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantOp::getValueAttrName(*odsOpName)).cast<::mlir::Attribute>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantOp::getValueAttrName(*odsOpName)).cast<::mlir::TypedAttr>();
+  return attr;
 }
 
-::mlir::Attribute ConstantOpAdaptor::getValue() {
+::mlir::TypedAttr ConstantOpAdaptor::getValue() {
   auto attr = getValueAttr();
   return attr;
 }
@@ -2292,8 +2545,8 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
     ++namedAttrIt;
   }
 
-  if (tblgen_value && !((true)))
-    return emitError(loc, "'arith.constant' op ""attribute 'value' failed to satisfy constraint: any attribute");
+  if (tblgen_value && !((tblgen_value.isa<::mlir::TypedAttr>())))
+    return emitError(loc, "'arith.constant' op ""attribute 'value' failed to satisfy constraint: TypedAttr instance");
   return ::mlir::success();
 }
 
@@ -2321,16 +2574,16 @@ std::pair<unsigned, unsigned> ConstantOp::getODSResultIndexAndLength(unsigned in
   return *getODSResults(0).begin();
 }
 
-::mlir::Attribute ConstantOp::getValueAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getValueAttrName()).cast<::mlir::Attribute>();
+::mlir::TypedAttr ConstantOp::getValueAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getValueAttrName()).cast<::mlir::TypedAttr>();
 }
 
-::mlir::Attribute ConstantOp::getValue() {
+::mlir::TypedAttr ConstantOp::getValue() {
   auto attr = getValueAttr();
   return attr;
 }
 
-void ConstantOp::setValueAttr(::mlir::Attribute attr) {
+void ConstantOp::setValueAttr(::mlir::TypedAttr attr) {
   (*this)->setAttr(getValueAttrName(), attr);
 }
 
@@ -2338,12 +2591,12 @@ void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
  build(odsBuilder, odsState, type, value); 
 }
 
-void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Attribute value) {
+void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::TypedAttr value) {
   odsState.addAttribute(getValueAttrName(odsState.name), value);
   odsState.addTypes(result);
 }
 
-void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Attribute value) {
+void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypedAttr value) {
   odsState.addAttribute(getValueAttrName(odsState.name), value);
 
         ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
@@ -2356,7 +2609,7 @@ void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
           ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
-void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Attribute value) {
+void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::TypedAttr value) {
   odsState.addAttribute(getValueAttrName(odsState.name), value);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -2412,7 +2665,7 @@ void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getValueAttrName()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!(((getValue().getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == (getValue().getType()))))
     return emitOpError("failed to verify that all of {value, result} have same type");
   return ::mlir::success();
 }
@@ -2426,18 +2679,20 @@ void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 ::mlir::LogicalResult ConstantOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
   inferredReturnTypes.resize(1);
   ::mlir::Builder odsBuilder(context);
-  ::mlir::Type odsInferredType0 = attributes.get("value").getType();
+  ::mlir::Type odsInferredType0 = attributes.get("value").cast<::mlir::TypedAttr>().getType();
   inferredReturnTypes[0] = odsInferredType0;
   return ::mlir::success();
 }
 
 ::mlir::ParseResult ConstantOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
-  ::mlir::Attribute valueAttr;
+  ::mlir::TypedAttr valueAttr;
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
 
-  if (parser.parseAttribute(valueAttr, ::mlir::Type{}, "value", result.attributes))
+  if (parser.parseCustomAttributeWithFallback(valueAttr, ::mlir::Type{}, "value",
+          result.attributes)) {
     return ::mlir::failure();
+  }
   result.addTypes(valueAttr.getType());
   return ::mlir::success();
 }
@@ -2445,7 +2700,7 @@ void ConstantOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 void ConstantOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"value"});
   _odsPrinter << ' ';
-  _odsPrinter.printAttribute(getValueAttr());
+_odsPrinter.printStrippedAttrOrType(getValueAttr());
 }
 
 void ConstantOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -2665,9 +2920,9 @@ void DivFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2907,9 +3162,9 @@ void DivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3149,9 +3404,9 @@ void DivUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -4332,9 +4587,9 @@ void FloorDivSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -4761,9 +5016,9 @@ void MaxFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5003,9 +5258,9 @@ void MaxSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5245,9 +5500,9 @@ void MaxUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5487,9 +5742,9 @@ void MinFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5729,9 +5984,9 @@ void MinSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5971,9 +6226,9 @@ void MinUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -6213,9 +6468,9 @@ void MulFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -6455,9 +6710,9 @@ void MulIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -6665,7 +6920,7 @@ void NegFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(operandOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(operandOperands, resultTypes[0], operandOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -6902,9 +7157,9 @@ void OrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -7144,9 +7399,9 @@ void RemFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -7386,9 +7641,9 @@ void RemSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -7628,9 +7883,9 @@ void RemUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -8057,9 +8312,9 @@ void ShLIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -8299,9 +8554,9 @@ void ShRSIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -8541,9 +8796,9 @@ void ShRUIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -8783,9 +9038,9 @@ void SubFOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -9025,9 +9280,9 @@ void SubIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -9832,9 +10087,9 @@ void XOrIOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -10026,7 +10281,7 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps3(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ArithmeticOps2(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -10051,7 +10306,7 @@ void SelectOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(1).begin()).getType(), (*this->getODSOperands(2).begin()).getType(), (*this->getODSResults(0).begin()).getType()})))))
+  if (!((((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(2).begin()).getType()) && ((*this->getODSOperands(2).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()))))
     return emitOpError("failed to verify that all of {true_value, false_value, result} have same type");
   return ::mlir::success();
 }

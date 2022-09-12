@@ -9,11 +9,11 @@ get_filename_component(LLVM_INSTALL_PREFIX "${LLVM_INSTALL_PREFIX}" PATH)
 # For finding self-installed Find*.cmake packages.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
-set(LLVM_VERSION_MAJOR 15)
+set(LLVM_VERSION_MAJOR 16)
 set(LLVM_VERSION_MINOR 0)
 set(LLVM_VERSION_PATCH 0)
 set(LLVM_VERSION_SUFFIX git)
-set(LLVM_PACKAGE_VERSION 15.0.0git)
+set(LLVM_PACKAGE_VERSION 16.0.0git)
 set(LLVM_PACKAGE_BUGREPORT https://github.com/llvm/llvm-project/issues/)
 
 set(LLVM_BUILD_TYPE Release)
@@ -163,6 +163,11 @@ if(LLVM_ENABLE_ZLIB)
   find_package(ZLIB)
 endif()
 
+set(LLVM_ENABLE_ZSTD 0)
+if(LLVM_ENABLE_ZSTD)
+  find_package(zstd)
+endif()
+
 set(LLVM_ENABLE_LIBXML2 )
 if(LLVM_ENABLE_LIBXML2)
   find_package(LibXml2)
@@ -211,19 +216,18 @@ set(LLVM_DEFINITIONS "-D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS -D__STDC_F
 set(LLVM_BINARY_DIR "${LLVM_INSTALL_PREFIX}")
 set(LLVM_CMAKE_DIR "${LLVM_INSTALL_PREFIX}/lib/cmake/llvm")
 set(LLVM_TOOLS_BINARY_DIR "${LLVM_INSTALL_PREFIX}/bin")
-set(LLVM_TOOLS_INSTALL_DIR "bin")
-set(LLVM_HAVE_OPT_VIEWER_MODULES 0)
+set(LLVM_HAVE_OPT_VIEWER_MODULES 1)
 set(LLVM_CONFIGURATION_TYPES )
 set(LLVM_ENABLE_SHARED_LIBS OFF)
 
-set(LLVM_DEFAULT_EXTERNAL_LIT "${CMAKE_BINARY_DIR}/bin/llvm-lit")
+set(LLVM_DEFAULT_EXTERNAL_LIT "/workspace/third-party/llvm-project/build/./bin/llvm-lit")
 set(LLVM_LIT_ARGS "-sv")
 
 set(LLVM_HAVE_LIBXAR "")
 
 if(NOT TARGET LLVMSupport)
   include("${LLVM_CMAKE_DIR}/LLVMExports.cmake")
-
+  
 endif()
 
 # By creating intrinsics_gen, omp_gen and acc_gen here, subprojects that depend

@@ -105,10 +105,21 @@ std::pair<unsigned, unsigned> IndexOpAdaptor::getODSOperandIndexAndLength(unsign
   return odsAttrs;
 }
 
+::mlir::IntegerAttr IndexOpAdaptor::getDimAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, IndexOp::getDimAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
+}
+
+uint64_t IndexOpAdaptor::getDim() {
+  auto attr = getDimAttr();
+  return attr.getValue().getZExtValue();
+}
+
 ::mlir::IntegerAttr IndexOpAdaptor::dimAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, IndexOp::dimAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, IndexOp::getDimAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
 uint64_t IndexOpAdaptor::dim() {
@@ -123,7 +134,7 @@ uint64_t IndexOpAdaptor::dim() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'linalg.index' op ""requires attribute 'dim'");
-    if (namedAttrIt->getName() == IndexOp::dimAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == IndexOp::getDimAttrName(*odsOpName)) {
       tblgen_dim = namedAttrIt->getValue();
       break;
     }
@@ -155,12 +166,25 @@ std::pair<unsigned, unsigned> IndexOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IndexOp::result() {
+::mlir::TypedValue<::mlir::IndexType> IndexOp::getResult() {
   return *getODSResults(0).begin();
 }
 
+::mlir::TypedValue<::mlir::IndexType> IndexOp::result() {
+  return *getODSResults(0).begin();
+}
+
+::mlir::IntegerAttr IndexOp::getDimAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getDimAttrName()).cast<::mlir::IntegerAttr>();
+}
+
+uint64_t IndexOp::getDim() {
+  auto attr = getDimAttr();
+  return attr.getValue().getZExtValue();
+}
+
 ::mlir::IntegerAttr IndexOp::dimAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, dimAttrName()).cast<::mlir::IntegerAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getDimAttrName()).cast<::mlir::IntegerAttr>();
 }
 
 uint64_t IndexOp::dim() {
@@ -168,17 +192,21 @@ uint64_t IndexOp::dim() {
   return attr.getValue().getZExtValue();
 }
 
+void IndexOp::setDimAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getDimAttrName(), attr);
+}
+
 void IndexOp::dimAttr(::mlir::IntegerAttr attr) {
   (*this)->setAttr(dimAttrName(), attr);
 }
 
 void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::IntegerAttr dim) {
-  odsState.addAttribute(dimAttrName(odsState.name), dim);
+  odsState.addAttribute(getDimAttrName(odsState.name), dim);
   odsState.addTypes(result);
 }
 
 void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr dim) {
-  odsState.addAttribute(dimAttrName(odsState.name), dim);
+  odsState.addAttribute(getDimAttrName(odsState.name), dim);
 
         ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
         if (::mlir::succeeded(IndexOp::inferReturnTypes(odsBuilder.getContext(),
@@ -191,18 +219,18 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr dim) {
-  odsState.addAttribute(dimAttrName(odsState.name), dim);
+  odsState.addAttribute(getDimAttrName(odsState.name), dim);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, uint64_t dim) {
-  odsState.addAttribute(dimAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), dim));
+  odsState.addAttribute(getDimAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), dim));
   odsState.addTypes(result);
 }
 
 void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint64_t dim) {
-  odsState.addAttribute(dimAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), dim));
+  odsState.addAttribute(getDimAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), dim));
 
         ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
         if (::mlir::succeeded(IndexOp::inferReturnTypes(odsBuilder.getContext(),
@@ -215,7 +243,7 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 }
 
 void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, uint64_t dim) {
-  odsState.addAttribute(dimAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), dim));
+  odsState.addAttribute(getDimAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), dim));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -252,7 +280,7 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dim'");
-    if (namedAttrIt->getName() == dimAttrName()) {
+    if (namedAttrIt->getName() == getDimAttrName()) {
       tblgen_dim = namedAttrIt->getValue();
       break;
     }
@@ -313,12 +341,12 @@ void IndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
 
 void IndexOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(dimAttr());
+  _odsPrinter.printAttributeWithoutType(getDimAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"dim"});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = result().getType();
+    auto type = getResult().getType();
     if (auto validType = type.dyn_cast<::mlir::IndexType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -374,6 +402,10 @@ std::pair<unsigned, unsigned> InitTensorOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
+::mlir::ValueRange InitTensorOpAdaptor::getSizes() {
+  return getODSOperands(0);
+}
+
 ::mlir::ValueRange InitTensorOpAdaptor::sizes() {
   return getODSOperands(0);
 }
@@ -382,10 +414,21 @@ std::pair<unsigned, unsigned> InitTensorOpAdaptor::getODSOperandIndexAndLength(u
   return odsAttrs;
 }
 
+::mlir::ArrayAttr InitTensorOpAdaptor::getStaticSizesAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitTensorOp::getStaticSizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr InitTensorOpAdaptor::getStaticSizes() {
+  auto attr = getStaticSizesAttr();
+  return attr;
+}
+
 ::mlir::ArrayAttr InitTensorOpAdaptor::static_sizesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitTensorOp::static_sizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, InitTensorOp::getStaticSizesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
 }
 
 ::mlir::ArrayAttr InitTensorOpAdaptor::static_sizes() {
@@ -400,7 +443,7 @@ std::pair<unsigned, unsigned> InitTensorOpAdaptor::getODSOperandIndexAndLength(u
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'linalg.init_tensor' op ""requires attribute 'static_sizes'");
-    if (namedAttrIt->getName() == InitTensorOp::static_sizesAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == InitTensorOp::getStaticSizesAttrName(*odsOpName)) {
       tblgen_static_sizes = namedAttrIt->getValue();
       break;
     }
@@ -436,8 +479,18 @@ std::pair<unsigned, unsigned> InitTensorOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
+::mlir::Operation::operand_range InitTensorOp::getSizes() {
+  return getODSOperands(0);
+}
+
 ::mlir::Operation::operand_range InitTensorOp::sizes() {
   return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange InitTensorOp::getSizesMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
 }
 
 ::mlir::MutableOperandRange InitTensorOp::sizesMutable() {
@@ -456,17 +509,34 @@ std::pair<unsigned, unsigned> InitTensorOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value InitTensorOp::result() {
+::mlir::TypedValue<::mlir::TensorType> InitTensorOp::getResult() {
   return *getODSResults(0).begin();
 }
 
+::mlir::TypedValue<::mlir::TensorType> InitTensorOp::result() {
+  return *getODSResults(0).begin();
+}
+
+::mlir::ArrayAttr InitTensorOp::getStaticSizesAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getStaticSizesAttrName()).cast<::mlir::ArrayAttr>();
+}
+
+::mlir::ArrayAttr InitTensorOp::getStaticSizes() {
+  auto attr = getStaticSizesAttr();
+  return attr;
+}
+
 ::mlir::ArrayAttr InitTensorOp::static_sizesAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, static_sizesAttrName()).cast<::mlir::ArrayAttr>();
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getStaticSizesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
 ::mlir::ArrayAttr InitTensorOp::static_sizes() {
   auto attr = static_sizesAttr();
   return attr;
+}
+
+void InitTensorOp::setStaticSizesAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStaticSizesAttrName(), attr);
 }
 
 void InitTensorOp::static_sizesAttr(::mlir::ArrayAttr attr) {
@@ -494,13 +564,13 @@ void InitTensorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
 
 void InitTensorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ValueRange sizes, ::mlir::ArrayAttr static_sizes) {
   odsState.addOperands(sizes);
-  odsState.addAttribute(static_sizesAttrName(odsState.name), static_sizes);
+  odsState.addAttribute(getStaticSizesAttrName(odsState.name), static_sizes);
   odsState.addTypes(result);
 }
 
 void InitTensorOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange sizes, ::mlir::ArrayAttr static_sizes) {
   odsState.addOperands(sizes);
-  odsState.addAttribute(static_sizesAttrName(odsState.name), static_sizes);
+  odsState.addAttribute(getStaticSizesAttrName(odsState.name), static_sizes);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -519,7 +589,7 @@ void InitTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'static_sizes'");
-    if (namedAttrIt->getName() == static_sizesAttrName()) {
+    if (namedAttrIt->getName() == getStaticSizesAttrName()) {
       tblgen_static_sizes = namedAttrIt->getValue();
       break;
     }
@@ -564,7 +634,7 @@ void InitTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   ::llvm::ArrayRef<::mlir::Type> resultTypes(resultRawTypes);
   {
     sizesOperandsLoc = parser.getCurrentLocation();
-    if (parseOperandsOrIntegersSizesList(parser, sizesOperands, static_sizesAttr))
+    if (parseDynamicIndexList(parser, sizesOperands, static_sizesAttr, ShapedType::kDynamicSize))
       return ::mlir::failure();
     result.addAttribute("static_sizes", static_sizesAttr);
   }
@@ -581,19 +651,19 @@ void InitTensorOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   }
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(sizesOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(sizesOperands, odsBuildableType0, sizesOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void InitTensorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  printOperandsOrIntegersSizesList(_odsPrinter, *this, sizes(), static_sizesAttr());
+  printDynamicIndexList(_odsPrinter, *this, getSizes(), getStaticSizesAttr(), ShapedType::kDynamicSize);
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"static_sizes"});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = result().getType();
+    auto type = getResult().getType();
     if (auto validType = type.dyn_cast<::mlir::TensorType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -649,6 +719,10 @@ std::pair<unsigned, unsigned> YieldOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
+::mlir::ValueRange YieldOpAdaptor::getValues() {
+  return getODSOperands(0);
+}
+
 ::mlir::ValueRange YieldOpAdaptor::values() {
   return getODSOperands(0);
 }
@@ -685,8 +759,18 @@ std::pair<unsigned, unsigned> YieldOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
+::mlir::Operation::operand_range YieldOp::getValues() {
+  return getODSOperands(0);
+}
+
 ::mlir::Operation::operand_range YieldOp::values() {
   return getODSOperands(0);
+}
+
+::mlir::MutableOperandRange YieldOp::getValuesMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
 }
 
 ::mlir::MutableOperandRange YieldOp::valuesMutable() {

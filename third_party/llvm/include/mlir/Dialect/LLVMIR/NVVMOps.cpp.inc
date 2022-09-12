@@ -25,6 +25,7 @@
 ::mlir::NVVM::LaneIdOp,
 ::mlir::NVVM::LdMatrixOp,
 ::mlir::NVVM::MmaOp,
+::mlir::NVVM::RcpApproxFtzF32Op,
 ::mlir::NVVM::ShflOp,
 ::mlir::NVVM::ThreadIdXOp,
 ::mlir::NVVM::ThreadIdYOp,
@@ -98,6 +99,16 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_NVVMOps4(
 }
 
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_NVVMOps5(
+    ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
+    unsigned valueIndex) {
+  if (!((type.isF32()))) {
+    return op->emitOpError(valueKind) << " #" << valueIndex
+        << " must be 32-bit float, but got " << type;
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_type_constraint_NVVMOps6(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
   if (!((type.isSignlessInteger(32)))) {
@@ -337,7 +348,7 @@ std::pair<unsigned, unsigned> BlockDimXOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockDimXOp::res() {
+::mlir::Value BlockDimXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -398,7 +409,7 @@ void BlockDimXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -468,7 +479,7 @@ std::pair<unsigned, unsigned> BlockDimYOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockDimYOp::res() {
+::mlir::Value BlockDimYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -529,7 +540,7 @@ void BlockDimYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -599,7 +610,7 @@ std::pair<unsigned, unsigned> BlockDimZOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockDimZOp::res() {
+::mlir::Value BlockDimZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -660,7 +671,7 @@ void BlockDimZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -730,7 +741,7 @@ std::pair<unsigned, unsigned> BlockIdXOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockIdXOp::res() {
+::mlir::Value BlockIdXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -791,7 +802,7 @@ void BlockIdXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -861,7 +872,7 @@ std::pair<unsigned, unsigned> BlockIdYOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockIdYOp::res() {
+::mlir::Value BlockIdYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -922,7 +933,7 @@ void BlockIdYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -992,7 +1003,7 @@ std::pair<unsigned, unsigned> BlockIdZOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BlockIdZOp::res() {
+::mlir::Value BlockIdZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1053,7 +1064,7 @@ void BlockIdZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1188,11 +1199,11 @@ std::pair<unsigned, unsigned> CpAsyncOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CpAsyncOpAdaptor::dst() {
+::mlir::Value CpAsyncOpAdaptor::getDst() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value CpAsyncOpAdaptor::src() {
+::mlir::Value CpAsyncOpAdaptor::getSrc() {
   return *getODSOperands(1).begin();
 }
 
@@ -1200,25 +1211,25 @@ std::pair<unsigned, unsigned> CpAsyncOpAdaptor::getODSOperandIndexAndLength(unsi
   return odsAttrs;
 }
 
-::mlir::IntegerAttr CpAsyncOpAdaptor::sizeAttr() {
+::mlir::IntegerAttr CpAsyncOpAdaptor::getSizeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CpAsyncOp::sizeAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CpAsyncOp::getSizeAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t CpAsyncOpAdaptor::size() {
-  auto attr = sizeAttr();
+uint32_t CpAsyncOpAdaptor::getSize() {
+  auto attr = getSizeAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::UnitAttr CpAsyncOpAdaptor::bypass_l1Attr() {
+::mlir::UnitAttr CpAsyncOpAdaptor::getBypassL1Attr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, CpAsyncOp::bypass_l1AttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, CpAsyncOp::getBypassL1AttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
 }
 
-::llvm::Optional<bool> CpAsyncOpAdaptor::bypass_l1() {
-  auto attr = bypass_l1Attr();
+::llvm::Optional<bool> CpAsyncOpAdaptor::getBypassL1() {
+  auto attr = getBypassL1Attr();
   return attr ? ::llvm::Optional<bool>(attr != nullptr) : (::llvm::None);
 }
 
@@ -1230,11 +1241,11 @@ uint32_t CpAsyncOpAdaptor::size() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.cp.async.shared.global' op ""requires attribute 'size'");
-    if (namedAttrIt->getName() == CpAsyncOp::sizeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == CpAsyncOp::getSizeAttrName(*odsOpName)) {
       tblgen_size = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == CpAsyncOp::bypass_l1AttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == CpAsyncOp::getBypassL1AttrName(*odsOpName)) {
       tblgen_bypass_l1 = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -1258,21 +1269,21 @@ std::pair<unsigned, unsigned> CpAsyncOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CpAsyncOp::dst() {
+::mlir::Value CpAsyncOp::getDst() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value CpAsyncOp::src() {
+::mlir::Value CpAsyncOp::getSrc() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange CpAsyncOp::dstMutable() {
+::mlir::MutableOperandRange CpAsyncOp::getDstMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange CpAsyncOp::srcMutable() {
+::mlir::MutableOperandRange CpAsyncOp::getSrcMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1288,51 +1299,51 @@ std::pair<unsigned, unsigned> CpAsyncOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::IntegerAttr CpAsyncOp::sizeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, sizeAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr CpAsyncOp::getSizeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getSizeAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t CpAsyncOp::size() {
-  auto attr = sizeAttr();
+uint32_t CpAsyncOp::getSize() {
+  auto attr = getSizeAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::UnitAttr CpAsyncOp::bypass_l1Attr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, bypass_l1AttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+::mlir::UnitAttr CpAsyncOp::getBypassL1Attr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getBypassL1AttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
-::llvm::Optional<bool> CpAsyncOp::bypass_l1() {
-  auto attr = bypass_l1Attr();
+::llvm::Optional<bool> CpAsyncOp::getBypassL1() {
+  auto attr = getBypassL1Attr();
   return attr ? ::llvm::Optional<bool>(attr != nullptr) : (::llvm::None);
 }
 
-void CpAsyncOp::sizeAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(sizeAttrName(), attr);
+void CpAsyncOp::setSizeAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getSizeAttrName(), attr);
 }
 
-void CpAsyncOp::bypass_l1Attr(::mlir::UnitAttr attr) {
-  (*this)->setAttr(bypass_l1AttrName(), attr);
+void CpAsyncOp::setBypassL1Attr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(getBypassL1AttrName(), attr);
 }
 
 ::mlir::Attribute CpAsyncOp::removeBypass_l1Attr() {
-  return (*this)->removeAttr(bypass_l1AttrName());
+  return (*this)->removeAttr(getBypassL1AttrName());
 }
 
 void CpAsyncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value dst, ::mlir::Value src, ::mlir::IntegerAttr size, /*optional*/::mlir::UnitAttr bypass_l1) {
   odsState.addOperands(dst);
   odsState.addOperands(src);
-  odsState.addAttribute(sizeAttrName(odsState.name), size);
+  odsState.addAttribute(getSizeAttrName(odsState.name), size);
   if (bypass_l1) {
-  odsState.addAttribute(bypass_l1AttrName(odsState.name), bypass_l1);
+  odsState.addAttribute(getBypassL1AttrName(odsState.name), bypass_l1);
   }
 }
 
 void CpAsyncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value dst, ::mlir::Value src, ::mlir::IntegerAttr size, /*optional*/::mlir::UnitAttr bypass_l1) {
   odsState.addOperands(dst);
   odsState.addOperands(src);
-  odsState.addAttribute(sizeAttrName(odsState.name), size);
+  odsState.addAttribute(getSizeAttrName(odsState.name), size);
   if (bypass_l1) {
-  odsState.addAttribute(bypass_l1AttrName(odsState.name), bypass_l1);
+  odsState.addAttribute(getBypassL1AttrName(odsState.name), bypass_l1);
   }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -1341,18 +1352,18 @@ void CpAsyncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
 void CpAsyncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value dst, ::mlir::Value src, uint32_t size, /*optional*/::mlir::UnitAttr bypass_l1) {
   odsState.addOperands(dst);
   odsState.addOperands(src);
-  odsState.addAttribute(sizeAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), size));
+  odsState.addAttribute(getSizeAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), size));
   if (bypass_l1) {
-  odsState.addAttribute(bypass_l1AttrName(odsState.name), bypass_l1);
+  odsState.addAttribute(getBypassL1AttrName(odsState.name), bypass_l1);
   }
 }
 
 void CpAsyncOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value dst, ::mlir::Value src, uint32_t size, /*optional*/::mlir::UnitAttr bypass_l1) {
   odsState.addOperands(dst);
   odsState.addOperands(src);
-  odsState.addAttribute(sizeAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), size));
+  odsState.addAttribute(getSizeAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), size));
   if (bypass_l1) {
-  odsState.addAttribute(bypass_l1AttrName(odsState.name), bypass_l1);
+  odsState.addAttribute(getBypassL1AttrName(odsState.name), bypass_l1);
   }
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -1374,11 +1385,11 @@ void CpAsyncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'size'");
-    if (namedAttrIt->getName() == sizeAttrName()) {
+    if (namedAttrIt->getName() == getSizeAttrName()) {
       tblgen_size = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == bypass_l1AttrName()) {
+    else if (namedAttrIt->getName() == getBypassL1AttrName()) {
       tblgen_bypass_l1 = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -1442,22 +1453,22 @@ void CpAsyncOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = ::mlir::LLVM::LLVMPointerType::get(::mlir::IntegerType::get(parser.getBuilder().getContext(), 8), 3);
   ::mlir::Type odsBuildableType1 = ::mlir::LLVM::LLVMPointerType::get(::mlir::IntegerType::get(parser.getBuilder().getContext(), 8), 1);
-  if (parser.resolveOperands(dstOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(dstOperands, odsBuildableType0, dstOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(srcOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(srcOperands, odsBuildableType1, srcOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void CpAsyncOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << dst();
+  _odsPrinter << getDst();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << src();
+  _odsPrinter << getSrc();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(sizeAttr());
+  _odsPrinter.printAttributeWithoutType(getSizeAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"size"});
 }
 
@@ -1496,14 +1507,14 @@ std::pair<unsigned, unsigned> CpAsyncWaitGroupOpAdaptor::getODSOperandIndexAndLe
   return odsAttrs;
 }
 
-::mlir::IntegerAttr CpAsyncWaitGroupOpAdaptor::nAttr() {
+::mlir::IntegerAttr CpAsyncWaitGroupOpAdaptor::getNAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CpAsyncWaitGroupOp::nAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CpAsyncWaitGroupOp::getNAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t CpAsyncWaitGroupOpAdaptor::n() {
-  auto attr = nAttr();
+uint32_t CpAsyncWaitGroupOpAdaptor::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -1514,7 +1525,7 @@ uint32_t CpAsyncWaitGroupOpAdaptor::n() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.cp.async.wait.group' op ""requires attribute 'n'");
-    if (namedAttrIt->getName() == CpAsyncWaitGroupOp::nAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == CpAsyncWaitGroupOp::getNAttrName(*odsOpName)) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -1546,35 +1557,35 @@ std::pair<unsigned, unsigned> CpAsyncWaitGroupOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::IntegerAttr CpAsyncWaitGroupOp::nAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, nAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr CpAsyncWaitGroupOp::getNAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getNAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t CpAsyncWaitGroupOp::n() {
-  auto attr = nAttr();
+uint32_t CpAsyncWaitGroupOp::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-void CpAsyncWaitGroupOp::nAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(nAttrName(), attr);
+void CpAsyncWaitGroupOp::setNAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getNAttrName(), attr);
 }
 
 void CpAsyncWaitGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr n) {
-  odsState.addAttribute(nAttrName(odsState.name), n);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
 }
 
 void CpAsyncWaitGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr n) {
-  odsState.addAttribute(nAttrName(odsState.name), n);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void CpAsyncWaitGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint32_t n) {
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
 }
 
 void CpAsyncWaitGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, uint32_t n) {
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1594,7 +1605,7 @@ void CpAsyncWaitGroupOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'n'");
-    if (namedAttrIt->getName() == nAttrName()) {
+    if (namedAttrIt->getName() == getNAttrName()) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -1624,7 +1635,7 @@ void CpAsyncWaitGroupOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
 
 void CpAsyncWaitGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(nAttr());
+  _odsPrinter.printAttributeWithoutType(getNAttr());
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"n"});
 }
 
@@ -1687,7 +1698,7 @@ std::pair<unsigned, unsigned> GridDimXOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GridDimXOp::res() {
+::mlir::Value GridDimXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1748,7 +1759,7 @@ void GridDimXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1818,7 +1829,7 @@ std::pair<unsigned, unsigned> GridDimYOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GridDimYOp::res() {
+::mlir::Value GridDimYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -1879,7 +1890,7 @@ void GridDimYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -1949,7 +1960,7 @@ std::pair<unsigned, unsigned> GridDimZOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GridDimZOp::res() {
+::mlir::Value GridDimZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2010,7 +2021,7 @@ void GridDimZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2080,7 +2091,7 @@ std::pair<unsigned, unsigned> LaneIdOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LaneIdOp::res() {
+::mlir::Value LaneIdOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -2141,7 +2152,7 @@ void LaneIdOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -2183,7 +2194,7 @@ std::pair<unsigned, unsigned> LdMatrixOpAdaptor::getODSOperandIndexAndLength(uns
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LdMatrixOpAdaptor::ptr() {
+::mlir::Value LdMatrixOpAdaptor::getPtr() {
   return *getODSOperands(0).begin();
 }
 
@@ -2191,25 +2202,25 @@ std::pair<unsigned, unsigned> LdMatrixOpAdaptor::getODSOperandIndexAndLength(uns
   return odsAttrs;
 }
 
-::mlir::IntegerAttr LdMatrixOpAdaptor::numAttr() {
+::mlir::IntegerAttr LdMatrixOpAdaptor::getNumAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LdMatrixOp::numAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, LdMatrixOp::getNumAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t LdMatrixOpAdaptor::num() {
-  auto attr = numAttr();
+uint32_t LdMatrixOpAdaptor::getNum() {
+  auto attr = getNumAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr LdMatrixOpAdaptor::layoutAttr() {
+::mlir::NVVM::MMALayoutAttr LdMatrixOpAdaptor::getLayoutAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LdMatrixOp::layoutAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, LdMatrixOp::getLayoutAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout LdMatrixOpAdaptor::layout() {
-  auto attr = layoutAttr();
+::mlir::NVVM::MMALayout LdMatrixOpAdaptor::getLayout() {
+  auto attr = getLayoutAttr();
   return attr.getValue();
 }
 
@@ -2220,7 +2231,7 @@ uint32_t LdMatrixOpAdaptor::num() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.ldmatrix' op ""requires attribute 'layout'");
-    if (namedAttrIt->getName() == LdMatrixOp::layoutAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == LdMatrixOp::getLayoutAttrName(*odsOpName)) {
       tblgen_layout = namedAttrIt->getValue();
       break;
     }
@@ -2230,7 +2241,7 @@ uint32_t LdMatrixOpAdaptor::num() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.ldmatrix' op ""requires attribute 'num'");
-    if (namedAttrIt->getName() == LdMatrixOp::numAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == LdMatrixOp::getNumAttrName(*odsOpName)) {
       tblgen_num = namedAttrIt->getValue();
       break;
     }
@@ -2255,11 +2266,11 @@ std::pair<unsigned, unsigned> LdMatrixOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LdMatrixOp::ptr() {
+::mlir::TypedValue<::mlir::LLVM::LLVMPointerType> LdMatrixOp::getPtr() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange LdMatrixOp::ptrMutable() {
+::mlir::MutableOperandRange LdMatrixOp::getPtrMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2275,62 +2286,62 @@ std::pair<unsigned, unsigned> LdMatrixOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LdMatrixOp::res() {
+::mlir::Value LdMatrixOp::getRes() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr LdMatrixOp::numAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, numAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr LdMatrixOp::getNumAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getNumAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t LdMatrixOp::num() {
-  auto attr = numAttr();
+uint32_t LdMatrixOp::getNum() {
+  auto attr = getNumAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr LdMatrixOp::layoutAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, layoutAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr LdMatrixOp::getLayoutAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getLayoutAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout LdMatrixOp::layout() {
-  auto attr = layoutAttr();
+::mlir::NVVM::MMALayout LdMatrixOp::getLayout() {
+  auto attr = getLayoutAttr();
   return attr.getValue();
 }
 
-void LdMatrixOp::numAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(numAttrName(), attr);
+void LdMatrixOp::setNumAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getNumAttrName(), attr);
 }
 
-void LdMatrixOp::layoutAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutAttrName(), attr);
+void LdMatrixOp::setLayoutAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutAttrName(), attr);
 }
 
 void LdMatrixOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::IntegerAttr num, ::mlir::NVVM::MMALayoutAttr layout) {
   odsState.addOperands(ptr);
-  odsState.addAttribute(numAttrName(odsState.name), num);
-  odsState.addAttribute(layoutAttrName(odsState.name), layout);
+  odsState.addAttribute(getNumAttrName(odsState.name), num);
+  odsState.addAttribute(getLayoutAttrName(odsState.name), layout);
   odsState.addTypes(res);
 }
 
 void LdMatrixOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::IntegerAttr num, ::mlir::NVVM::MMALayoutAttr layout) {
   odsState.addOperands(ptr);
-  odsState.addAttribute(numAttrName(odsState.name), num);
-  odsState.addAttribute(layoutAttrName(odsState.name), layout);
+  odsState.addAttribute(getNumAttrName(odsState.name), num);
+  odsState.addAttribute(getLayoutAttrName(odsState.name), layout);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void LdMatrixOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, uint32_t num, ::mlir::NVVM::MMALayout layout) {
   odsState.addOperands(ptr);
-  odsState.addAttribute(numAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), num));
-  odsState.addAttribute(layoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
+  odsState.addAttribute(getNumAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), num));
+  odsState.addAttribute(getLayoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
   odsState.addTypes(res);
 }
 
 void LdMatrixOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, uint32_t num, ::mlir::NVVM::MMALayout layout) {
   odsState.addOperands(ptr);
-  odsState.addAttribute(numAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), num));
-  odsState.addAttribute(layoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
+  odsState.addAttribute(getNumAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), num));
+  odsState.addAttribute(getLayoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -2350,7 +2361,7 @@ void LdMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layout'");
-    if (namedAttrIt->getName() == layoutAttrName()) {
+    if (namedAttrIt->getName() == getLayoutAttrName()) {
       tblgen_layout = namedAttrIt->getValue();
       break;
     }
@@ -2360,7 +2371,7 @@ void LdMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'num'");
-    if (namedAttrIt->getName() == numAttrName()) {
+    if (namedAttrIt->getName() == getNumAttrName()) {
       tblgen_num = namedAttrIt->getValue();
       break;
     }
@@ -2427,11 +2438,11 @@ void LdMatrixOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
 
 void LdMatrixOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << ptr();
+  _odsPrinter << getPtr();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(::llvm::ArrayRef<::mlir::Type>(ptr().getType()), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(::llvm::ArrayRef<::mlir::Type>(getPtr().getType()), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace NVVM
@@ -2457,16 +2468,12 @@ MmaOpAdaptor::MmaOpAdaptor(MmaOp op) : odsOperands(op->getOperands()), odsAttrs(
 
 std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, MmaOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, MmaOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange MmaOpAdaptor::getODSOperands(unsigned index) {
@@ -2475,15 +2482,15 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange MmaOpAdaptor::operandA() {
+::mlir::ValueRange MmaOpAdaptor::getOperandA() {
   return getODSOperands(0);
 }
 
-::mlir::ValueRange MmaOpAdaptor::operandB() {
+::mlir::ValueRange MmaOpAdaptor::getOperandB() {
   return getODSOperands(1);
 }
 
-::mlir::ValueRange MmaOpAdaptor::operandC() {
+::mlir::ValueRange MmaOpAdaptor::getOperandC() {
   return getODSOperands(2);
 }
 
@@ -2491,80 +2498,80 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
   return odsAttrs;
 }
 
-::mlir::NVVM::MMAShapeAttr MmaOpAdaptor::shapeAttr() {
+::mlir::NVVM::MMAShapeAttr MmaOpAdaptor::getShapeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, MmaOp::shapeAttrName(*odsOpName)).cast<::mlir::NVVM::MMAShapeAttr>();
-    return attr;
-}
-
-::mlir::NVVM::MMAShapeAttr MmaOpAdaptor::shape() {
-  auto attr = shapeAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, MmaOp::getShapeAttrName(*odsOpName)).cast<::mlir::NVVM::MMAShapeAttr>();
   return attr;
 }
 
-::mlir::NVVM::MMAB1OpAttr MmaOpAdaptor::b1OpAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 4, MmaOp::b1OpAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMAB1OpAttr>();
-    return attr;
+::mlir::NVVM::MMAShapeAttr MmaOpAdaptor::getShape() {
+  auto attr = getShapeAttr();
+  return attr.cast<::mlir::NVVM::MMAShapeAttr>();
 }
 
-::llvm::Optional<::mlir::NVVM::MMAB1Op> MmaOpAdaptor::b1Op() {
-  auto attr = b1OpAttr();
+::mlir::NVVM::MMAB1OpAttr MmaOpAdaptor::getB1OpAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 4, MmaOp::getB1OpAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMAB1OpAttr>();
+  return attr;
+}
+
+::llvm::Optional<::mlir::NVVM::MMAB1Op> MmaOpAdaptor::getB1Op() {
+  auto attr = getB1OpAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMAB1Op>(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::NVVM::MMAIntOverflowAttr MmaOpAdaptor::intOverflowBehaviorAttr() {
+::mlir::NVVM::MMAIntOverflowAttr MmaOpAdaptor::getIntOverflowBehaviorAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 4, MmaOp::intOverflowBehaviorAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMAIntOverflowAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 4, MmaOp::getIntOverflowBehaviorAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMAIntOverflowAttr>();
+  return attr;
 }
 
-::llvm::Optional<::mlir::NVVM::MMAIntOverflow> MmaOpAdaptor::intOverflowBehavior() {
-  auto attr = intOverflowBehaviorAttr();
+::llvm::Optional<::mlir::NVVM::MMAIntOverflow> MmaOpAdaptor::getIntOverflowBehavior() {
+  auto attr = getIntOverflowBehaviorAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMAIntOverflow>(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::NVVM::MMALayoutAttr MmaOpAdaptor::layoutAAttr() {
+::mlir::NVVM::MMALayoutAttr MmaOpAdaptor::getLayoutAAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, MmaOp::layoutAAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, MmaOp::getLayoutAAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout MmaOpAdaptor::layoutA() {
-  auto attr = layoutAAttr();
+::mlir::NVVM::MMALayout MmaOpAdaptor::getLayoutA() {
+  auto attr = getLayoutAAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMALayoutAttr MmaOpAdaptor::layoutBAttr() {
+::mlir::NVVM::MMALayoutAttr MmaOpAdaptor::getLayoutBAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, MmaOp::layoutBAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, MmaOp::getLayoutBAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout MmaOpAdaptor::layoutB() {
-  auto attr = layoutBAttr();
+::mlir::NVVM::MMALayout MmaOpAdaptor::getLayoutB() {
+  auto attr = getLayoutBAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr MmaOpAdaptor::multiplicandAPtxTypeAttr() {
+::mlir::NVVM::MMATypesAttr MmaOpAdaptor::getMultiplicandAPtxTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 2, MmaOp::multiplicandAPtxTypeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 2, MmaOp::getMultiplicandAPtxTypeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
+  return attr;
 }
 
-::llvm::Optional<::mlir::NVVM::MMATypes> MmaOpAdaptor::multiplicandAPtxType() {
-  auto attr = multiplicandAPtxTypeAttr();
+::llvm::Optional<::mlir::NVVM::MMATypes> MmaOpAdaptor::getMultiplicandAPtxType() {
+  auto attr = getMultiplicandAPtxTypeAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMATypes>(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::NVVM::MMATypesAttr MmaOpAdaptor::multiplicandBPtxTypeAttr() {
+::mlir::NVVM::MMATypesAttr MmaOpAdaptor::getMultiplicandBPtxTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 2, MmaOp::multiplicandBPtxTypeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 2, MmaOp::getMultiplicandBPtxTypeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
+  return attr;
 }
 
-::llvm::Optional<::mlir::NVVM::MMATypes> MmaOpAdaptor::multiplicandBPtxType() {
-  auto attr = multiplicandBPtxTypeAttr();
+::llvm::Optional<::mlir::NVVM::MMATypes> MmaOpAdaptor::getMultiplicandBPtxType() {
+  auto attr = getMultiplicandBPtxTypeAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMATypes>(attr.getValue()) : (::llvm::None);
 }
 
@@ -2577,14 +2584,14 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.mma.sync' op ""requires attribute 'layoutA'");
-    if (namedAttrIt->getName() == MmaOp::layoutAAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MmaOp::getLayoutAAttrName(*odsOpName)) {
       tblgen_layoutA = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == MmaOp::b1OpAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == MmaOp::getB1OpAttrName(*odsOpName)) {
       tblgen_b1Op = namedAttrIt->getValue();
     }
-    else if (namedAttrIt->getName() == MmaOp::intOverflowBehaviorAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == MmaOp::getIntOverflowBehaviorAttrName(*odsOpName)) {
       tblgen_intOverflowBehavior = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -2593,7 +2600,7 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.mma.sync' op ""requires attribute 'layoutB'");
-    if (namedAttrIt->getName() == MmaOp::layoutBAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MmaOp::getLayoutBAttrName(*odsOpName)) {
       tblgen_layoutB = namedAttrIt->getValue();
       break;
     }
@@ -2605,14 +2612,14 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.mma.sync' op ""requires attribute 'operand_segment_sizes'");
-    if (namedAttrIt->getName() == MmaOp::operand_segment_sizesAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MmaOp::getOperandSegmentSizesAttrName(*odsOpName)) {
       tblgen_operand_segment_sizes = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == MmaOp::multiplicandAPtxTypeAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == MmaOp::getMultiplicandAPtxTypeAttrName(*odsOpName)) {
       tblgen_multiplicandAPtxType = namedAttrIt->getValue();
     }
-    else if (namedAttrIt->getName() == MmaOp::multiplicandBPtxTypeAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == MmaOp::getMultiplicandBPtxTypeAttrName(*odsOpName)) {
       tblgen_multiplicandBPtxType = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -2621,7 +2628,7 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.mma.sync' op ""requires attribute 'shape'");
-    if (namedAttrIt->getName() == MmaOp::shapeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MmaOp::getShapeAttrName(*odsOpName)) {
       tblgen_shape = namedAttrIt->getValue();
       break;
     }
@@ -2629,9 +2636,8 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'nvvm.mma.sync' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -2661,16 +2667,12 @@ std::pair<unsigned, unsigned> MmaOpAdaptor::getODSOperandIndexAndLength(unsigned
 }
 
 std::pair<unsigned, unsigned> MmaOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range MmaOp::getODSOperands(unsigned index) {
@@ -2679,33 +2681,33 @@ std::pair<unsigned, unsigned> MmaOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range MmaOp::operandA() {
+::mlir::Operation::operand_range MmaOp::getOperandA() {
   return getODSOperands(0);
 }
 
-::mlir::Operation::operand_range MmaOp::operandB() {
+::mlir::Operation::operand_range MmaOp::getOperandB() {
   return getODSOperands(1);
 }
 
-::mlir::Operation::operand_range MmaOp::operandC() {
+::mlir::Operation::operand_range MmaOp::getOperandC() {
   return getODSOperands(2);
 }
 
-::mlir::MutableOperandRange MmaOp::operandAMutable() {
+::mlir::MutableOperandRange MmaOp::getOperandAMutable() {
   auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MmaOp::operandBMutable() {
+::mlir::MutableOperandRange MmaOp::getOperandBMutable() {
   auto range = getODSOperandIndexAndLength(1);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MmaOp::operandCMutable() {
+::mlir::MutableOperandRange MmaOp::getOperandCMutable() {
   auto range = getODSOperandIndexAndLength(2);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, operand_segment_sizesAttrName())));
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getOperandSegmentSizesAttrName())));
   return mutableRange;
 }
 
@@ -2719,136 +2721,136 @@ std::pair<unsigned, unsigned> MmaOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MmaOp::res() {
+::mlir::Value MmaOp::getRes() {
   return *getODSResults(0).begin();
 }
 
-::mlir::NVVM::MMAShapeAttr MmaOp::shapeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, shapeAttrName()).cast<::mlir::NVVM::MMAShapeAttr>();
+::mlir::NVVM::MMAShapeAttr MmaOp::getShapeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, getShapeAttrName()).cast<::mlir::NVVM::MMAShapeAttr>();
 }
 
-::mlir::NVVM::MMAShapeAttr MmaOp::shape() {
-  auto attr = shapeAttr();
-  return attr;
+::mlir::NVVM::MMAShapeAttr MmaOp::getShape() {
+  auto attr = getShapeAttr();
+  return attr.cast<::mlir::NVVM::MMAShapeAttr>();
 }
 
-::mlir::NVVM::MMAB1OpAttr MmaOp::b1OpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 4, b1OpAttrName()).dyn_cast_or_null<::mlir::NVVM::MMAB1OpAttr>();
+::mlir::NVVM::MMAB1OpAttr MmaOp::getB1OpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 4, getB1OpAttrName()).dyn_cast_or_null<::mlir::NVVM::MMAB1OpAttr>();
 }
 
-::llvm::Optional<::mlir::NVVM::MMAB1Op> MmaOp::b1Op() {
-  auto attr = b1OpAttr();
+::llvm::Optional<::mlir::NVVM::MMAB1Op> MmaOp::getB1Op() {
+  auto attr = getB1OpAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMAB1Op>(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::NVVM::MMAIntOverflowAttr MmaOp::intOverflowBehaviorAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 4, intOverflowBehaviorAttrName()).dyn_cast_or_null<::mlir::NVVM::MMAIntOverflowAttr>();
+::mlir::NVVM::MMAIntOverflowAttr MmaOp::getIntOverflowBehaviorAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 4, getIntOverflowBehaviorAttrName()).dyn_cast_or_null<::mlir::NVVM::MMAIntOverflowAttr>();
 }
 
-::llvm::Optional<::mlir::NVVM::MMAIntOverflow> MmaOp::intOverflowBehavior() {
-  auto attr = intOverflowBehaviorAttr();
+::llvm::Optional<::mlir::NVVM::MMAIntOverflow> MmaOp::getIntOverflowBehavior() {
+  auto attr = getIntOverflowBehaviorAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMAIntOverflow>(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::NVVM::MMALayoutAttr MmaOp::layoutAAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, layoutAAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr MmaOp::getLayoutAAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getLayoutAAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout MmaOp::layoutA() {
-  auto attr = layoutAAttr();
+::mlir::NVVM::MMALayout MmaOp::getLayoutA() {
+  auto attr = getLayoutAAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMALayoutAttr MmaOp::layoutBAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, layoutBAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr MmaOp::getLayoutBAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, getLayoutBAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout MmaOp::layoutB() {
-  auto attr = layoutBAttr();
+::mlir::NVVM::MMALayout MmaOp::getLayoutB() {
+  auto attr = getLayoutBAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr MmaOp::multiplicandAPtxTypeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 2, multiplicandAPtxTypeAttrName()).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
+::mlir::NVVM::MMATypesAttr MmaOp::getMultiplicandAPtxTypeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 2, getMultiplicandAPtxTypeAttrName()).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
 }
 
-::llvm::Optional<::mlir::NVVM::MMATypes> MmaOp::multiplicandAPtxType() {
-  auto attr = multiplicandAPtxTypeAttr();
+::llvm::Optional<::mlir::NVVM::MMATypes> MmaOp::getMultiplicandAPtxType() {
+  auto attr = getMultiplicandAPtxTypeAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMATypes>(attr.getValue()) : (::llvm::None);
 }
 
-::mlir::NVVM::MMATypesAttr MmaOp::multiplicandBPtxTypeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 2, multiplicandBPtxTypeAttrName()).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
+::mlir::NVVM::MMATypesAttr MmaOp::getMultiplicandBPtxTypeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 2, getMultiplicandBPtxTypeAttrName()).dyn_cast_or_null<::mlir::NVVM::MMATypesAttr>();
 }
 
-::llvm::Optional<::mlir::NVVM::MMATypes> MmaOp::multiplicandBPtxType() {
-  auto attr = multiplicandBPtxTypeAttr();
+::llvm::Optional<::mlir::NVVM::MMATypes> MmaOp::getMultiplicandBPtxType() {
+  auto attr = getMultiplicandBPtxTypeAttr();
   return attr ? ::llvm::Optional<::mlir::NVVM::MMATypes>(attr.getValue()) : (::llvm::None);
 }
 
-void MmaOp::shapeAttr(::mlir::NVVM::MMAShapeAttr attr) {
-  (*this)->setAttr(shapeAttrName(), attr);
+void MmaOp::setShapeAttr(::mlir::NVVM::MMAShapeAttr attr) {
+  (*this)->setAttr(getShapeAttrName(), attr);
 }
 
-void MmaOp::b1OpAttr(::mlir::NVVM::MMAB1OpAttr attr) {
-  (*this)->setAttr(b1OpAttrName(), attr);
+void MmaOp::setB1OpAttr(::mlir::NVVM::MMAB1OpAttr attr) {
+  (*this)->setAttr(getB1OpAttrName(), attr);
 }
 
-void MmaOp::intOverflowBehaviorAttr(::mlir::NVVM::MMAIntOverflowAttr attr) {
-  (*this)->setAttr(intOverflowBehaviorAttrName(), attr);
+void MmaOp::setIntOverflowBehaviorAttr(::mlir::NVVM::MMAIntOverflowAttr attr) {
+  (*this)->setAttr(getIntOverflowBehaviorAttrName(), attr);
 }
 
-void MmaOp::layoutAAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutAAttrName(), attr);
+void MmaOp::setLayoutAAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutAAttrName(), attr);
 }
 
-void MmaOp::layoutBAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutBAttrName(), attr);
+void MmaOp::setLayoutBAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutBAttrName(), attr);
 }
 
-void MmaOp::multiplicandAPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr) {
-  (*this)->setAttr(multiplicandAPtxTypeAttrName(), attr);
+void MmaOp::setMultiplicandAPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr) {
+  (*this)->setAttr(getMultiplicandAPtxTypeAttrName(), attr);
 }
 
-void MmaOp::multiplicandBPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr) {
-  (*this)->setAttr(multiplicandBPtxTypeAttrName(), attr);
+void MmaOp::setMultiplicandBPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr) {
+  (*this)->setAttr(getMultiplicandBPtxTypeAttrName(), attr);
 }
 
 ::mlir::Attribute MmaOp::removeB1OpAttr() {
-  return (*this)->removeAttr(b1OpAttrName());
+  return (*this)->removeAttr(getB1OpAttrName());
 }
 
 ::mlir::Attribute MmaOp::removeIntOverflowBehaviorAttr() {
-  return (*this)->removeAttr(intOverflowBehaviorAttrName());
+  return (*this)->removeAttr(getIntOverflowBehaviorAttrName());
 }
 
 ::mlir::Attribute MmaOp::removeMultiplicandAPtxTypeAttr() {
-  return (*this)->removeAttr(multiplicandAPtxTypeAttrName());
+  return (*this)->removeAttr(getMultiplicandAPtxTypeAttrName());
 }
 
 ::mlir::Attribute MmaOp::removeMultiplicandBPtxTypeAttr() {
-  return (*this)->removeAttr(multiplicandBPtxTypeAttrName());
+  return (*this)->removeAttr(getMultiplicandBPtxTypeAttrName());
 }
 
 void MmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::NVVM::MMAShapeAttr shape, /*optional*/::mlir::NVVM::MMAB1OpAttr b1Op, /*optional*/::mlir::NVVM::MMAIntOverflowAttr intOverflowBehavior, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandAPtxType, /*optional*/::mlir::NVVM::MMATypesAttr multiplicandBPtxType, ::mlir::ValueRange operandA, ::mlir::ValueRange operandB, ::mlir::ValueRange operandC) {
   odsState.addOperands(operandA);
   odsState.addOperands(operandB);
   odsState.addOperands(operandC);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
-  odsState.addAttribute(shapeAttrName(odsState.name), shape);
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
+  odsState.addAttribute(getShapeAttrName(odsState.name), shape);
   if (b1Op) {
-  odsState.addAttribute(b1OpAttrName(odsState.name), b1Op);
+  odsState.addAttribute(getB1OpAttrName(odsState.name), b1Op);
   }
   if (intOverflowBehavior) {
-  odsState.addAttribute(intOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
+  odsState.addAttribute(getIntOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
   }
-  odsState.addAttribute(layoutAAttrName(odsState.name), layoutA);
-  odsState.addAttribute(layoutBAttrName(odsState.name), layoutB);
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), layoutA);
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), layoutB);
   if (multiplicandAPtxType) {
-  odsState.addAttribute(multiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
+  odsState.addAttribute(getMultiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
   }
   if (multiplicandBPtxType) {
-  odsState.addAttribute(multiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
+  odsState.addAttribute(getMultiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
   }
   odsState.addTypes(res);
 }
@@ -2857,21 +2859,21 @@ void MmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   odsState.addOperands(operandA);
   odsState.addOperands(operandB);
   odsState.addOperands(operandC);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
-  odsState.addAttribute(shapeAttrName(odsState.name), shape);
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
+  odsState.addAttribute(getShapeAttrName(odsState.name), shape);
   if (b1Op) {
-  odsState.addAttribute(b1OpAttrName(odsState.name), b1Op);
+  odsState.addAttribute(getB1OpAttrName(odsState.name), b1Op);
   }
   if (intOverflowBehavior) {
-  odsState.addAttribute(intOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
+  odsState.addAttribute(getIntOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
   }
-  odsState.addAttribute(layoutAAttrName(odsState.name), layoutA);
-  odsState.addAttribute(layoutBAttrName(odsState.name), layoutB);
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), layoutA);
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), layoutB);
   if (multiplicandAPtxType) {
-  odsState.addAttribute(multiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
+  odsState.addAttribute(getMultiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
   }
   if (multiplicandBPtxType) {
-  odsState.addAttribute(multiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
+  odsState.addAttribute(getMultiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -2881,21 +2883,21 @@ void MmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   odsState.addOperands(operandA);
   odsState.addOperands(operandB);
   odsState.addOperands(operandC);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
-  odsState.addAttribute(shapeAttrName(odsState.name), shape);
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
+  odsState.addAttribute(getShapeAttrName(odsState.name), shape);
   if (b1Op) {
-  odsState.addAttribute(b1OpAttrName(odsState.name), b1Op);
+  odsState.addAttribute(getB1OpAttrName(odsState.name), b1Op);
   }
   if (intOverflowBehavior) {
-  odsState.addAttribute(intOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
+  odsState.addAttribute(getIntOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
   }
-  odsState.addAttribute(layoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
-  odsState.addAttribute(layoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
   if (multiplicandAPtxType) {
-  odsState.addAttribute(multiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
+  odsState.addAttribute(getMultiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
   }
   if (multiplicandBPtxType) {
-  odsState.addAttribute(multiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
+  odsState.addAttribute(getMultiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
   }
   odsState.addTypes(res);
 }
@@ -2904,21 +2906,21 @@ void MmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   odsState.addOperands(operandA);
   odsState.addOperands(operandB);
   odsState.addOperands(operandC);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
-  odsState.addAttribute(shapeAttrName(odsState.name), shape);
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(operandA.size()), static_cast<int32_t>(operandB.size()), static_cast<int32_t>(operandC.size())}));
+  odsState.addAttribute(getShapeAttrName(odsState.name), shape);
   if (b1Op) {
-  odsState.addAttribute(b1OpAttrName(odsState.name), b1Op);
+  odsState.addAttribute(getB1OpAttrName(odsState.name), b1Op);
   }
   if (intOverflowBehavior) {
-  odsState.addAttribute(intOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
+  odsState.addAttribute(getIntOverflowBehaviorAttrName(odsState.name), intOverflowBehavior);
   }
-  odsState.addAttribute(layoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
-  odsState.addAttribute(layoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
   if (multiplicandAPtxType) {
-  odsState.addAttribute(multiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
+  odsState.addAttribute(getMultiplicandAPtxTypeAttrName(odsState.name), multiplicandAPtxType);
   }
   if (multiplicandBPtxType) {
-  odsState.addAttribute(multiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
+  odsState.addAttribute(getMultiplicandBPtxTypeAttrName(odsState.name), multiplicandBPtxType);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -2940,14 +2942,14 @@ void MmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layoutA'");
-    if (namedAttrIt->getName() == layoutAAttrName()) {
+    if (namedAttrIt->getName() == getLayoutAAttrName()) {
       tblgen_layoutA = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == b1OpAttrName()) {
+    else if (namedAttrIt->getName() == getB1OpAttrName()) {
       tblgen_b1Op = namedAttrIt->getValue();
     }
-    else if (namedAttrIt->getName() == intOverflowBehaviorAttrName()) {
+    else if (namedAttrIt->getName() == getIntOverflowBehaviorAttrName()) {
       tblgen_intOverflowBehavior = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -2956,7 +2958,7 @@ void MmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layoutB'");
-    if (namedAttrIt->getName() == layoutBAttrName()) {
+    if (namedAttrIt->getName() == getLayoutBAttrName()) {
       tblgen_layoutB = namedAttrIt->getValue();
       break;
     }
@@ -2968,14 +2970,14 @@ void MmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'operand_segment_sizes'");
-    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+    if (namedAttrIt->getName() == getOperandSegmentSizesAttrName()) {
       tblgen_operand_segment_sizes = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == multiplicandAPtxTypeAttrName()) {
+    else if (namedAttrIt->getName() == getMultiplicandAPtxTypeAttrName()) {
       tblgen_multiplicandAPtxType = namedAttrIt->getValue();
     }
-    else if (namedAttrIt->getName() == multiplicandBPtxTypeAttrName()) {
+    else if (namedAttrIt->getName() == getMultiplicandBPtxTypeAttrName()) {
       tblgen_multiplicandBPtxType = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -2984,7 +2986,7 @@ void MmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'shape'");
-    if (namedAttrIt->getName() == shapeAttrName()) {
+    if (namedAttrIt->getName() == getShapeAttrName()) {
       tblgen_shape = namedAttrIt->getValue();
       break;
     }
@@ -2992,9 +2994,8 @@ void MmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -3067,6 +3068,174 @@ namespace mlir {
 namespace NVVM {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::NVVM::RcpApproxFtzF32Op definitions
+//===----------------------------------------------------------------------===//
+
+RcpApproxFtzF32OpAdaptor::RcpApproxFtzF32OpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("nvvm.rcp.approx.ftz.f", odsAttrs.getContext());
+}
+
+RcpApproxFtzF32OpAdaptor::RcpApproxFtzF32OpAdaptor(RcpApproxFtzF32Op op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange RcpApproxFtzF32OpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> RcpApproxFtzF32OpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange RcpApproxFtzF32OpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value RcpApproxFtzF32OpAdaptor::getArg() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr RcpApproxFtzF32OpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult RcpApproxFtzF32OpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> RcpApproxFtzF32Op::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range RcpApproxFtzF32Op::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::FloatType> RcpApproxFtzF32Op::getArg() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange RcpApproxFtzF32Op::getArgMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> RcpApproxFtzF32Op::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range RcpApproxFtzF32Op::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::FloatType> RcpApproxFtzF32Op::getRes() {
+  return *getODSResults(0).begin();
+}
+
+void RcpApproxFtzF32Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value arg) {
+  odsState.addOperands(arg);
+  odsState.addTypes(res);
+}
+
+void RcpApproxFtzF32Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg) {
+  odsState.addOperands(arg);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void RcpApproxFtzF32Op::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult RcpApproxFtzF32Op::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult RcpApproxFtzF32Op::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult RcpApproxFtzF32Op::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand argRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> argOperands(argRawOperands);  ::llvm::SMLoc argOperandsLoc;
+  (void)argOperandsLoc;
+  ::mlir::Type resRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> resTypes(resRawTypes);
+
+  argOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(argRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::FloatType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    resRawTypes[0] = type;
+  }
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getF32Type();
+  result.addTypes(resTypes);
+  if (parser.resolveOperands(argOperands, odsBuildableType0, argOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void RcpApproxFtzF32Op::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getArg();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getRes().getType();
+    if (auto validType = type.dyn_cast<::mlir::FloatType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void RcpApproxFtzF32Op::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace NVVM
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::NVVM::RcpApproxFtzF32Op)
+
+namespace mlir {
+namespace NVVM {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::NVVM::ShflOp definitions
 //===----------------------------------------------------------------------===//
 
@@ -3090,19 +3259,19 @@ std::pair<unsigned, unsigned> ShflOpAdaptor::getODSOperandIndexAndLength(unsigne
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ShflOpAdaptor::dst() {
+::mlir::Value ShflOpAdaptor::getDst() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ShflOpAdaptor::val() {
+::mlir::Value ShflOpAdaptor::getVal() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value ShflOpAdaptor::offset() {
+::mlir::Value ShflOpAdaptor::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value ShflOpAdaptor::mask_and_clamp() {
+::mlir::Value ShflOpAdaptor::getMaskAndClamp() {
   return *getODSOperands(3).begin();
 }
 
@@ -3110,25 +3279,25 @@ std::pair<unsigned, unsigned> ShflOpAdaptor::getODSOperandIndexAndLength(unsigne
   return odsAttrs;
 }
 
-::mlir::NVVM::ShflKindAttr ShflOpAdaptor::kindAttr() {
+::mlir::NVVM::ShflKindAttr ShflOpAdaptor::getKindAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShflOp::kindAttrName(*odsOpName)).cast<::mlir::NVVM::ShflKindAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ShflOp::getKindAttrName(*odsOpName)).cast<::mlir::NVVM::ShflKindAttr>();
+  return attr;
 }
 
-::mlir::NVVM::ShflKind ShflOpAdaptor::kind() {
-  auto attr = kindAttr();
+::mlir::NVVM::ShflKind ShflOpAdaptor::getKind() {
+  auto attr = getKindAttr();
   return attr.getValue();
 }
 
-::mlir::UnitAttr ShflOpAdaptor::return_value_and_is_validAttr() {
+::mlir::UnitAttr ShflOpAdaptor::getReturnValueAndIsValidAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ShflOp::return_value_and_is_validAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ShflOp::getReturnValueAndIsValidAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
 }
 
-::llvm::Optional<bool> ShflOpAdaptor::return_value_and_is_valid() {
-  auto attr = return_value_and_is_validAttr();
+::llvm::Optional<bool> ShflOpAdaptor::getReturnValueAndIsValid() {
+  auto attr = getReturnValueAndIsValidAttr();
   return attr ? ::llvm::Optional<bool>(attr != nullptr) : (::llvm::None);
 }
 
@@ -3139,7 +3308,7 @@ std::pair<unsigned, unsigned> ShflOpAdaptor::getODSOperandIndexAndLength(unsigne
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.shfl.sync' op ""requires attribute 'kind'");
-    if (namedAttrIt->getName() == ShflOp::kindAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ShflOp::getKindAttrName(*odsOpName)) {
       tblgen_kind = namedAttrIt->getValue();
       break;
     }
@@ -3150,7 +3319,7 @@ std::pair<unsigned, unsigned> ShflOpAdaptor::getODSOperandIndexAndLength(unsigne
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == ShflOp::return_value_and_is_validAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == ShflOp::getReturnValueAndIsValidAttrName(*odsOpName)) {
       tblgen_return_value_and_is_valid = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -3174,41 +3343,41 @@ std::pair<unsigned, unsigned> ShflOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ShflOp::dst() {
+::mlir::TypedValue<::mlir::IntegerType> ShflOp::getDst() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ShflOp::val() {
+::mlir::Value ShflOp::getVal() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value ShflOp::offset() {
+::mlir::TypedValue<::mlir::IntegerType> ShflOp::getOffset() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::Value ShflOp::mask_and_clamp() {
+::mlir::TypedValue<::mlir::IntegerType> ShflOp::getMaskAndClamp() {
   return *getODSOperands(3).begin();
 }
 
-::mlir::MutableOperandRange ShflOp::dstMutable() {
+::mlir::MutableOperandRange ShflOp::getDstMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ShflOp::valMutable() {
+::mlir::MutableOperandRange ShflOp::getValMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ShflOp::offsetMutable() {
+::mlir::MutableOperandRange ShflOp::getOffsetMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ShflOp::mask_and_clampMutable() {
+::mlir::MutableOperandRange ShflOp::getMaskAndClampMutable() {
   auto range = getODSOperandIndexAndLength(3);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3224,38 +3393,38 @@ std::pair<unsigned, unsigned> ShflOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ShflOp::res() {
+::mlir::Value ShflOp::getRes() {
   return *getODSResults(0).begin();
 }
 
-::mlir::NVVM::ShflKindAttr ShflOp::kindAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, kindAttrName()).cast<::mlir::NVVM::ShflKindAttr>();
+::mlir::NVVM::ShflKindAttr ShflOp::getKindAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getKindAttrName()).cast<::mlir::NVVM::ShflKindAttr>();
 }
 
-::mlir::NVVM::ShflKind ShflOp::kind() {
-  auto attr = kindAttr();
+::mlir::NVVM::ShflKind ShflOp::getKind() {
+  auto attr = getKindAttr();
   return attr.getValue();
 }
 
-::mlir::UnitAttr ShflOp::return_value_and_is_validAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, return_value_and_is_validAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+::mlir::UnitAttr ShflOp::getReturnValueAndIsValidAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getReturnValueAndIsValidAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
 
-::llvm::Optional<bool> ShflOp::return_value_and_is_valid() {
-  auto attr = return_value_and_is_validAttr();
+::llvm::Optional<bool> ShflOp::getReturnValueAndIsValid() {
+  auto attr = getReturnValueAndIsValidAttr();
   return attr ? ::llvm::Optional<bool>(attr != nullptr) : (::llvm::None);
 }
 
-void ShflOp::kindAttr(::mlir::NVVM::ShflKindAttr attr) {
-  (*this)->setAttr(kindAttrName(), attr);
+void ShflOp::setKindAttr(::mlir::NVVM::ShflKindAttr attr) {
+  (*this)->setAttr(getKindAttrName(), attr);
 }
 
-void ShflOp::return_value_and_is_validAttr(::mlir::UnitAttr attr) {
-  (*this)->setAttr(return_value_and_is_validAttrName(), attr);
+void ShflOp::setReturnValueAndIsValidAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(getReturnValueAndIsValidAttrName(), attr);
 }
 
 ::mlir::Attribute ShflOp::removeReturn_value_and_is_validAttr() {
-  return (*this)->removeAttr(return_value_and_is_validAttrName());
+  return (*this)->removeAttr(getReturnValueAndIsValidAttrName());
 }
 
 void ShflOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value dst, ::mlir::Value val, ::mlir::Value offset, ::mlir::Value mask_and_clamp, ::mlir::NVVM::ShflKindAttr kind, /*optional*/::mlir::UnitAttr return_value_and_is_valid) {
@@ -3263,9 +3432,9 @@ void ShflOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(val);
   odsState.addOperands(offset);
   odsState.addOperands(mask_and_clamp);
-  odsState.addAttribute(kindAttrName(odsState.name), kind);
+  odsState.addAttribute(getKindAttrName(odsState.name), kind);
   if (return_value_and_is_valid) {
-  odsState.addAttribute(return_value_and_is_validAttrName(odsState.name), return_value_and_is_valid);
+  odsState.addAttribute(getReturnValueAndIsValidAttrName(odsState.name), return_value_and_is_valid);
   }
   odsState.addTypes(res);
 }
@@ -3275,9 +3444,9 @@ void ShflOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(val);
   odsState.addOperands(offset);
   odsState.addOperands(mask_and_clamp);
-  odsState.addAttribute(kindAttrName(odsState.name), kind);
+  odsState.addAttribute(getKindAttrName(odsState.name), kind);
   if (return_value_and_is_valid) {
-  odsState.addAttribute(return_value_and_is_validAttrName(odsState.name), return_value_and_is_valid);
+  odsState.addAttribute(getReturnValueAndIsValidAttrName(odsState.name), return_value_and_is_valid);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -3288,9 +3457,9 @@ void ShflOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(val);
   odsState.addOperands(offset);
   odsState.addOperands(mask_and_clamp);
-  odsState.addAttribute(kindAttrName(odsState.name), ::mlir::NVVM::ShflKindAttr::get(odsBuilder.getContext(), kind));
+  odsState.addAttribute(getKindAttrName(odsState.name), ::mlir::NVVM::ShflKindAttr::get(odsBuilder.getContext(), kind));
   if (return_value_and_is_valid) {
-  odsState.addAttribute(return_value_and_is_validAttrName(odsState.name), return_value_and_is_valid);
+  odsState.addAttribute(getReturnValueAndIsValidAttrName(odsState.name), return_value_and_is_valid);
   }
   odsState.addTypes(res);
 }
@@ -3300,9 +3469,9 @@ void ShflOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
   odsState.addOperands(val);
   odsState.addOperands(offset);
   odsState.addOperands(mask_and_clamp);
-  odsState.addAttribute(kindAttrName(odsState.name), ::mlir::NVVM::ShflKindAttr::get(odsBuilder.getContext(), kind));
+  odsState.addAttribute(getKindAttrName(odsState.name), ::mlir::NVVM::ShflKindAttr::get(odsBuilder.getContext(), kind));
   if (return_value_and_is_valid) {
-  odsState.addAttribute(return_value_and_is_validAttrName(odsState.name), return_value_and_is_valid);
+  odsState.addAttribute(getReturnValueAndIsValidAttrName(odsState.name), return_value_and_is_valid);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -3323,7 +3492,7 @@ void ShflOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kind'");
-    if (namedAttrIt->getName() == kindAttrName()) {
+    if (namedAttrIt->getName() == getKindAttrName()) {
       tblgen_kind = namedAttrIt->getValue();
       break;
     }
@@ -3334,7 +3503,7 @@ void ShflOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == return_value_and_is_validAttrName()) {
+    else if (namedAttrIt->getName() == getReturnValueAndIsValidAttrName()) {
       tblgen_return_value_and_is_valid = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -3350,7 +3519,7 @@ void ShflOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup1 = getODSOperands(1);
@@ -3362,13 +3531,13 @@ void ShflOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
     auto valueGroup3 = getODSOperands(3);
 
     for (auto v : valueGroup3) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -3457,36 +3626,36 @@ void ShflOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(32);
   result.addTypes(resTypes);
-  if (parser.resolveOperands(dstOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(dstOperands, odsBuildableType0, dstOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(valOperands, valTypes, valOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(offsetOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(offsetOperands, odsBuildableType0, offsetOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(mask_and_clampOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(mask_and_clampOperands, odsBuildableType0, mask_and_clampOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void ShflOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-_odsPrinter.printStrippedAttrOrType(kindAttr());
+_odsPrinter.printStrippedAttrOrType(getKindAttr());
   _odsPrinter << ' ';
-  _odsPrinter << dst();
+  _odsPrinter << getDst();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << val();
+  _odsPrinter << getVal();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << offset();
+  _odsPrinter << getOffset();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << mask_and_clamp();
+  _odsPrinter << getMaskAndClamp();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"kind"});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = val().getType();
+    auto type = getVal().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3495,7 +3664,7 @@ _odsPrinter.printStrippedAttrOrType(kindAttr());
   _odsPrinter << ' ' << "->";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3562,7 +3731,7 @@ std::pair<unsigned, unsigned> ThreadIdXOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadIdXOp::res() {
+::mlir::Value ThreadIdXOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3623,7 +3792,7 @@ void ThreadIdXOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3693,7 +3862,7 @@ std::pair<unsigned, unsigned> ThreadIdYOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadIdYOp::res() {
+::mlir::Value ThreadIdYOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3754,7 +3923,7 @@ void ThreadIdYOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3824,7 +3993,7 @@ std::pair<unsigned, unsigned> ThreadIdZOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadIdZOp::res() {
+::mlir::Value ThreadIdZOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -3885,7 +4054,7 @@ void ThreadIdZOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -3927,11 +4096,11 @@ std::pair<unsigned, unsigned> VoteBallotOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value VoteBallotOpAdaptor::mask() {
+::mlir::Value VoteBallotOpAdaptor::getMask() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value VoteBallotOpAdaptor::pred() {
+::mlir::Value VoteBallotOpAdaptor::getPred() {
   return *getODSOperands(1).begin();
 }
 
@@ -3953,21 +4122,21 @@ std::pair<unsigned, unsigned> VoteBallotOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value VoteBallotOp::mask() {
+::mlir::Value VoteBallotOp::getMask() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value VoteBallotOp::pred() {
+::mlir::Value VoteBallotOp::getPred() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange VoteBallotOp::maskMutable() {
+::mlir::MutableOperandRange VoteBallotOp::getMaskMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange VoteBallotOp::predMutable() {
+::mlir::MutableOperandRange VoteBallotOp::getPredMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3983,7 +4152,7 @@ std::pair<unsigned, unsigned> VoteBallotOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value VoteBallotOp::res() {
+::mlir::Value VoteBallotOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -4071,11 +4240,11 @@ std::pair<unsigned, unsigned> WMMALoadOpAdaptor::getODSOperandIndexAndLength(uns
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WMMALoadOpAdaptor::ptr() {
+::mlir::Value WMMALoadOpAdaptor::getPtr() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value WMMALoadOpAdaptor::stride() {
+::mlir::Value WMMALoadOpAdaptor::getStride() {
   return *getODSOperands(1).begin();
 }
 
@@ -4083,69 +4252,69 @@ std::pair<unsigned, unsigned> WMMALoadOpAdaptor::getODSOperandIndexAndLength(uns
   return odsAttrs;
 }
 
-::mlir::IntegerAttr WMMALoadOpAdaptor::mAttr() {
+::mlir::IntegerAttr WMMALoadOpAdaptor::getMAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 1, WMMALoadOp::mAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 1, WMMALoadOp::getMAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMALoadOpAdaptor::m() {
-  auto attr = mAttr();
+uint32_t WMMALoadOpAdaptor::getM() {
+  auto attr = getMAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMALoadOpAdaptor::nAttr() {
+::mlir::IntegerAttr WMMALoadOpAdaptor::getNAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 0, WMMALoadOp::nAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 0, WMMALoadOp::getNAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMALoadOpAdaptor::n() {
-  auto attr = nAttr();
+uint32_t WMMALoadOpAdaptor::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMALoadOpAdaptor::kAttr() {
+::mlir::IntegerAttr WMMALoadOpAdaptor::getKAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 3, WMMALoadOp::kAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 3, WMMALoadOp::getKAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMALoadOpAdaptor::k() {
-  auto attr = kAttr();
+uint32_t WMMALoadOpAdaptor::getK() {
+  auto attr = getKAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMALoadOpAdaptor::layoutAttr() {
+::mlir::NVVM::MMALayoutAttr WMMALoadOpAdaptor::getLayoutAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 2, WMMALoadOp::layoutAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 2, WMMALoadOp::getLayoutAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout WMMALoadOpAdaptor::layout() {
-  auto attr = layoutAttr();
+::mlir::NVVM::MMALayout WMMALoadOpAdaptor::getLayout() {
+  auto attr = getLayoutAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMALoadOpAdaptor::eltypeAttr() {
+::mlir::NVVM::MMATypesAttr WMMALoadOpAdaptor::getEltypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 5, WMMALoadOp::eltypeAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 5, WMMALoadOp::getEltypeAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMATypes WMMALoadOpAdaptor::eltype() {
-  auto attr = eltypeAttr();
+::mlir::NVVM::MMATypes WMMALoadOpAdaptor::getEltype() {
+  auto attr = getEltypeAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMAFragAttr WMMALoadOpAdaptor::fragAttr() {
+::mlir::NVVM::MMAFragAttr WMMALoadOpAdaptor::getFragAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 4, WMMALoadOp::fragAttrName(*odsOpName)).cast<::mlir::NVVM::MMAFragAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 4, WMMALoadOp::getFragAttrName(*odsOpName)).cast<::mlir::NVVM::MMAFragAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMAFrag WMMALoadOpAdaptor::frag() {
-  auto attr = fragAttr();
+::mlir::NVVM::MMAFrag WMMALoadOpAdaptor::getFrag() {
+  auto attr = getFragAttr();
   return attr.getValue();
 }
 
@@ -4156,7 +4325,7 @@ uint32_t WMMALoadOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.load' op ""requires attribute 'eltype'");
-    if (namedAttrIt->getName() == WMMALoadOp::eltypeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMALoadOp::getEltypeAttrName(*odsOpName)) {
       tblgen_eltype = namedAttrIt->getValue();
       break;
     }
@@ -4166,7 +4335,7 @@ uint32_t WMMALoadOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.load' op ""requires attribute 'frag'");
-    if (namedAttrIt->getName() == WMMALoadOp::fragAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMALoadOp::getFragAttrName(*odsOpName)) {
       tblgen_frag = namedAttrIt->getValue();
       break;
     }
@@ -4176,7 +4345,7 @@ uint32_t WMMALoadOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.load' op ""requires attribute 'k'");
-    if (namedAttrIt->getName() == WMMALoadOp::kAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMALoadOp::getKAttrName(*odsOpName)) {
       tblgen_k = namedAttrIt->getValue();
       break;
     }
@@ -4186,7 +4355,7 @@ uint32_t WMMALoadOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.load' op ""requires attribute 'layout'");
-    if (namedAttrIt->getName() == WMMALoadOp::layoutAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMALoadOp::getLayoutAttrName(*odsOpName)) {
       tblgen_layout = namedAttrIt->getValue();
       break;
     }
@@ -4196,7 +4365,7 @@ uint32_t WMMALoadOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.load' op ""requires attribute 'm'");
-    if (namedAttrIt->getName() == WMMALoadOp::mAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMALoadOp::getMAttrName(*odsOpName)) {
       tblgen_m = namedAttrIt->getValue();
       break;
     }
@@ -4206,7 +4375,7 @@ uint32_t WMMALoadOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.load' op ""requires attribute 'n'");
-    if (namedAttrIt->getName() == WMMALoadOp::nAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMALoadOp::getNAttrName(*odsOpName)) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -4243,21 +4412,21 @@ std::pair<unsigned, unsigned> WMMALoadOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WMMALoadOp::ptr() {
+::mlir::TypedValue<::mlir::LLVM::LLVMPointerType> WMMALoadOp::getPtr() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value WMMALoadOp::stride() {
+::mlir::TypedValue<::mlir::IntegerType> WMMALoadOp::getStride() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange WMMALoadOp::ptrMutable() {
+::mlir::MutableOperandRange WMMALoadOp::getPtrMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange WMMALoadOp::strideMutable() {
+::mlir::MutableOperandRange WMMALoadOp::getStrideMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4273,109 +4442,109 @@ std::pair<unsigned, unsigned> WMMALoadOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WMMALoadOp::res() {
+::mlir::Value WMMALoadOp::getRes() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr WMMALoadOp::mAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 1, mAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMALoadOp::getMAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 1, getMAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMALoadOp::m() {
-  auto attr = mAttr();
+uint32_t WMMALoadOp::getM() {
+  auto attr = getMAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMALoadOp::nAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 0, nAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMALoadOp::getNAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 0, getNAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMALoadOp::n() {
-  auto attr = nAttr();
+uint32_t WMMALoadOp::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMALoadOp::kAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 3, kAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMALoadOp::getKAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 3, getKAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMALoadOp::k() {
-  auto attr = kAttr();
+uint32_t WMMALoadOp::getK() {
+  auto attr = getKAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMALoadOp::layoutAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 2, layoutAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr WMMALoadOp::getLayoutAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 2, getLayoutAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout WMMALoadOp::layout() {
-  auto attr = layoutAttr();
+::mlir::NVVM::MMALayout WMMALoadOp::getLayout() {
+  auto attr = getLayoutAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMALoadOp::eltypeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 5, eltypeAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
+::mlir::NVVM::MMATypesAttr WMMALoadOp::getEltypeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 5, getEltypeAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
 }
 
-::mlir::NVVM::MMATypes WMMALoadOp::eltype() {
-  auto attr = eltypeAttr();
+::mlir::NVVM::MMATypes WMMALoadOp::getEltype() {
+  auto attr = getEltypeAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMAFragAttr WMMALoadOp::fragAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 4, fragAttrName()).cast<::mlir::NVVM::MMAFragAttr>();
+::mlir::NVVM::MMAFragAttr WMMALoadOp::getFragAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 4, getFragAttrName()).cast<::mlir::NVVM::MMAFragAttr>();
 }
 
-::mlir::NVVM::MMAFrag WMMALoadOp::frag() {
-  auto attr = fragAttr();
+::mlir::NVVM::MMAFrag WMMALoadOp::getFrag() {
+  auto attr = getFragAttr();
   return attr.getValue();
 }
 
-void WMMALoadOp::mAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(mAttrName(), attr);
+void WMMALoadOp::setMAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getMAttrName(), attr);
 }
 
-void WMMALoadOp::nAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(nAttrName(), attr);
+void WMMALoadOp::setNAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getNAttrName(), attr);
 }
 
-void WMMALoadOp::kAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(kAttrName(), attr);
+void WMMALoadOp::setKAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getKAttrName(), attr);
 }
 
-void WMMALoadOp::layoutAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutAttrName(), attr);
+void WMMALoadOp::setLayoutAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutAttrName(), attr);
 }
 
-void WMMALoadOp::eltypeAttr(::mlir::NVVM::MMATypesAttr attr) {
-  (*this)->setAttr(eltypeAttrName(), attr);
+void WMMALoadOp::setEltypeAttr(::mlir::NVVM::MMATypesAttr attr) {
+  (*this)->setAttr(getEltypeAttrName(), attr);
 }
 
-void WMMALoadOp::fragAttr(::mlir::NVVM::MMAFragAttr attr) {
-  (*this)->setAttr(fragAttrName(), attr);
+void WMMALoadOp::setFragAttr(::mlir::NVVM::MMAFragAttr attr) {
+  (*this)->setAttr(getFragAttrName(), attr);
 }
 
 void WMMALoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::Value stride, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::NVVM::MMAFragAttr frag) {
   odsState.addOperands(ptr);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), m);
-  odsState.addAttribute(nAttrName(odsState.name), n);
-  odsState.addAttribute(kAttrName(odsState.name), k);
-  odsState.addAttribute(layoutAttrName(odsState.name), layout);
-  odsState.addAttribute(eltypeAttrName(odsState.name), eltype);
-  odsState.addAttribute(fragAttrName(odsState.name), frag);
+  odsState.addAttribute(getMAttrName(odsState.name), m);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
+  odsState.addAttribute(getKAttrName(odsState.name), k);
+  odsState.addAttribute(getLayoutAttrName(odsState.name), layout);
+  odsState.addAttribute(getEltypeAttrName(odsState.name), eltype);
+  odsState.addAttribute(getFragAttrName(odsState.name), frag);
   odsState.addTypes(res);
 }
 
 void WMMALoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::Value stride, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::NVVM::MMAFragAttr frag) {
   odsState.addOperands(ptr);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), m);
-  odsState.addAttribute(nAttrName(odsState.name), n);
-  odsState.addAttribute(kAttrName(odsState.name), k);
-  odsState.addAttribute(layoutAttrName(odsState.name), layout);
-  odsState.addAttribute(eltypeAttrName(odsState.name), eltype);
-  odsState.addAttribute(fragAttrName(odsState.name), frag);
+  odsState.addAttribute(getMAttrName(odsState.name), m);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
+  odsState.addAttribute(getKAttrName(odsState.name), k);
+  odsState.addAttribute(getLayoutAttrName(odsState.name), layout);
+  odsState.addAttribute(getEltypeAttrName(odsState.name), eltype);
+  odsState.addAttribute(getFragAttrName(odsState.name), frag);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -4383,24 +4552,24 @@ void WMMALoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
 void WMMALoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::Value stride, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layout, ::mlir::NVVM::MMATypes eltype, ::mlir::NVVM::MMAFrag frag) {
   odsState.addOperands(ptr);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
-  odsState.addAttribute(kAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
-  odsState.addAttribute(layoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
-  odsState.addAttribute(eltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
-  odsState.addAttribute(fragAttrName(odsState.name), ::mlir::NVVM::MMAFragAttr::get(odsBuilder.getContext(), frag));
+  odsState.addAttribute(getMAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getKAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
+  odsState.addAttribute(getLayoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
+  odsState.addAttribute(getEltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
+  odsState.addAttribute(getFragAttrName(odsState.name), ::mlir::NVVM::MMAFragAttr::get(odsBuilder.getContext(), frag));
   odsState.addTypes(res);
 }
 
 void WMMALoadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::Value stride, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layout, ::mlir::NVVM::MMATypes eltype, ::mlir::NVVM::MMAFrag frag) {
   odsState.addOperands(ptr);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
-  odsState.addAttribute(kAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
-  odsState.addAttribute(layoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
-  odsState.addAttribute(eltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
-  odsState.addAttribute(fragAttrName(odsState.name), ::mlir::NVVM::MMAFragAttr::get(odsBuilder.getContext(), frag));
+  odsState.addAttribute(getMAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getKAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
+  odsState.addAttribute(getLayoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
+  odsState.addAttribute(getEltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
+  odsState.addAttribute(getFragAttrName(odsState.name), ::mlir::NVVM::MMAFragAttr::get(odsBuilder.getContext(), frag));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -4420,7 +4589,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'eltype'");
-    if (namedAttrIt->getName() == eltypeAttrName()) {
+    if (namedAttrIt->getName() == getEltypeAttrName()) {
       tblgen_eltype = namedAttrIt->getValue();
       break;
     }
@@ -4430,7 +4599,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'frag'");
-    if (namedAttrIt->getName() == fragAttrName()) {
+    if (namedAttrIt->getName() == getFragAttrName()) {
       tblgen_frag = namedAttrIt->getValue();
       break;
     }
@@ -4440,7 +4609,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'k'");
-    if (namedAttrIt->getName() == kAttrName()) {
+    if (namedAttrIt->getName() == getKAttrName()) {
       tblgen_k = namedAttrIt->getValue();
       break;
     }
@@ -4450,7 +4619,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layout'");
-    if (namedAttrIt->getName() == layoutAttrName()) {
+    if (namedAttrIt->getName() == getLayoutAttrName()) {
       tblgen_layout = namedAttrIt->getValue();
       break;
     }
@@ -4460,7 +4629,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'm'");
-    if (namedAttrIt->getName() == mAttrName()) {
+    if (namedAttrIt->getName() == getMAttrName()) {
       tblgen_m = namedAttrIt->getValue();
       break;
     }
@@ -4470,7 +4639,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'n'");
-    if (namedAttrIt->getName() == nAttrName()) {
+    if (namedAttrIt->getName() == getNAttrName()) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -4505,7 +4674,7 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     auto valueGroup1 = getODSOperands(1);
 
     for (auto v : valueGroup1) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -4560,21 +4729,21 @@ void WMMALoadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   result.addTypes(resTypes);
   if (parser.resolveOperands(ptrOperands, ptrTypes, ptrOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(strideOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(strideOperands, odsBuildableType0, strideOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void WMMALoadOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << ptr();
+  _odsPrinter << getPtr();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << stride();
+  _odsPrinter << getStride();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(::llvm::ArrayRef<::mlir::Type>(ptr().getType()), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(::llvm::ArrayRef<::mlir::Type>(getPtr().getType()), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace NVVM
@@ -4622,7 +4791,7 @@ std::pair<unsigned, unsigned> WMMAMmaOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange WMMAMmaOpAdaptor::args() {
+::mlir::ValueRange WMMAMmaOpAdaptor::getArgs() {
   return getODSOperands(0);
 }
 
@@ -4630,80 +4799,80 @@ std::pair<unsigned, unsigned> WMMAMmaOpAdaptor::getODSOperandIndexAndLength(unsi
   return odsAttrs;
 }
 
-::mlir::IntegerAttr WMMAMmaOpAdaptor::mAttr() {
+::mlir::IntegerAttr WMMAMmaOpAdaptor::getMAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, WMMAMmaOp::mAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, WMMAMmaOp::getMAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMAMmaOpAdaptor::m() {
-  auto attr = mAttr();
+uint32_t WMMAMmaOpAdaptor::getM() {
+  auto attr = getMAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAMmaOpAdaptor::nAttr() {
+::mlir::IntegerAttr WMMAMmaOpAdaptor::getNAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, WMMAMmaOp::nAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, WMMAMmaOp::getNAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMAMmaOpAdaptor::n() {
-  auto attr = nAttr();
+uint32_t WMMAMmaOpAdaptor::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAMmaOpAdaptor::kAttr() {
+::mlir::IntegerAttr WMMAMmaOpAdaptor::getKAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, WMMAMmaOp::kAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, WMMAMmaOp::getKAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMAMmaOpAdaptor::k() {
-  auto attr = kAttr();
+uint32_t WMMAMmaOpAdaptor::getK() {
+  auto attr = getKAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMAMmaOpAdaptor::layoutAAttr() {
+::mlir::NVVM::MMALayoutAttr WMMAMmaOpAdaptor::getLayoutAAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, WMMAMmaOp::layoutAAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, WMMAMmaOp::getLayoutAAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout WMMAMmaOpAdaptor::layoutA() {
-  auto attr = layoutAAttr();
+::mlir::NVVM::MMALayout WMMAMmaOpAdaptor::getLayoutA() {
+  auto attr = getLayoutAAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMAMmaOpAdaptor::layoutBAttr() {
+::mlir::NVVM::MMALayoutAttr WMMAMmaOpAdaptor::getLayoutBAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, WMMAMmaOp::layoutBAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, WMMAMmaOp::getLayoutBAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout WMMAMmaOpAdaptor::layoutB() {
-  auto attr = layoutBAttr();
+::mlir::NVVM::MMALayout WMMAMmaOpAdaptor::getLayoutB() {
+  auto attr = getLayoutBAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMAMmaOpAdaptor::eltypeAAttr() {
+::mlir::NVVM::MMATypesAttr WMMAMmaOpAdaptor::getEltypeAAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, WMMAMmaOp::eltypeAAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, WMMAMmaOp::getEltypeAAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMATypes WMMAMmaOpAdaptor::eltypeA() {
-  auto attr = eltypeAAttr();
+::mlir::NVVM::MMATypes WMMAMmaOpAdaptor::getEltypeA() {
+  auto attr = getEltypeAAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMAMmaOpAdaptor::eltypeBAttr() {
+::mlir::NVVM::MMATypesAttr WMMAMmaOpAdaptor::getEltypeBAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, WMMAMmaOp::eltypeBAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, WMMAMmaOp::getEltypeBAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMATypes WMMAMmaOpAdaptor::eltypeB() {
-  auto attr = eltypeBAttr();
+::mlir::NVVM::MMATypes WMMAMmaOpAdaptor::getEltypeB() {
+  auto attr = getEltypeBAttr();
   return attr.getValue();
 }
 
@@ -4714,7 +4883,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'eltypeA'");
-    if (namedAttrIt->getName() == WMMAMmaOp::eltypeAAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getEltypeAAttrName(*odsOpName)) {
       tblgen_eltypeA = namedAttrIt->getValue();
       break;
     }
@@ -4724,7 +4893,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'eltypeB'");
-    if (namedAttrIt->getName() == WMMAMmaOp::eltypeBAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getEltypeBAttrName(*odsOpName)) {
       tblgen_eltypeB = namedAttrIt->getValue();
       break;
     }
@@ -4734,7 +4903,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'k'");
-    if (namedAttrIt->getName() == WMMAMmaOp::kAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getKAttrName(*odsOpName)) {
       tblgen_k = namedAttrIt->getValue();
       break;
     }
@@ -4744,7 +4913,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'layoutA'");
-    if (namedAttrIt->getName() == WMMAMmaOp::layoutAAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getLayoutAAttrName(*odsOpName)) {
       tblgen_layoutA = namedAttrIt->getValue();
       break;
     }
@@ -4754,7 +4923,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'layoutB'");
-    if (namedAttrIt->getName() == WMMAMmaOp::layoutBAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getLayoutBAttrName(*odsOpName)) {
       tblgen_layoutB = namedAttrIt->getValue();
       break;
     }
@@ -4764,7 +4933,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'm'");
-    if (namedAttrIt->getName() == WMMAMmaOp::mAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getMAttrName(*odsOpName)) {
       tblgen_m = namedAttrIt->getValue();
       break;
     }
@@ -4774,7 +4943,7 @@ uint32_t WMMAMmaOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.mma' op ""requires attribute 'n'");
-    if (namedAttrIt->getName() == WMMAMmaOp::nAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAMmaOp::getNAttrName(*odsOpName)) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -4828,11 +4997,11 @@ std::pair<unsigned, unsigned> WMMAMmaOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range WMMAMmaOp::args() {
+::mlir::Operation::operand_range WMMAMmaOp::getArgs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange WMMAMmaOp::argsMutable() {
+::mlir::MutableOperandRange WMMAMmaOp::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4848,147 +5017,147 @@ std::pair<unsigned, unsigned> WMMAMmaOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WMMAMmaOp::res() {
+::mlir::Value WMMAMmaOp::getRes() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr WMMAMmaOp::mAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, mAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMAMmaOp::getMAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, getMAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMAMmaOp::m() {
-  auto attr = mAttr();
+uint32_t WMMAMmaOp::getM() {
+  auto attr = getMAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAMmaOp::nAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, nAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMAMmaOp::getNAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, getNAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMAMmaOp::n() {
-  auto attr = nAttr();
+uint32_t WMMAMmaOp::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAMmaOp::kAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, kAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMAMmaOp::getKAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, getKAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMAMmaOp::k() {
-  auto attr = kAttr();
+uint32_t WMMAMmaOp::getK() {
+  auto attr = getKAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMAMmaOp::layoutAAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, layoutAAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr WMMAMmaOp::getLayoutAAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, getLayoutAAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout WMMAMmaOp::layoutA() {
-  auto attr = layoutAAttr();
+::mlir::NVVM::MMALayout WMMAMmaOp::getLayoutA() {
+  auto attr = getLayoutAAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMAMmaOp::layoutBAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, layoutBAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr WMMAMmaOp::getLayoutBAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, getLayoutBAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout WMMAMmaOp::layoutB() {
-  auto attr = layoutBAttr();
+::mlir::NVVM::MMALayout WMMAMmaOp::getLayoutB() {
+  auto attr = getLayoutBAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMAMmaOp::eltypeAAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, eltypeAAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
+::mlir::NVVM::MMATypesAttr WMMAMmaOp::getEltypeAAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, getEltypeAAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
 }
 
-::mlir::NVVM::MMATypes WMMAMmaOp::eltypeA() {
-  auto attr = eltypeAAttr();
+::mlir::NVVM::MMATypes WMMAMmaOp::getEltypeA() {
+  auto attr = getEltypeAAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMAMmaOp::eltypeBAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, eltypeBAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
+::mlir::NVVM::MMATypesAttr WMMAMmaOp::getEltypeBAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, getEltypeBAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
 }
 
-::mlir::NVVM::MMATypes WMMAMmaOp::eltypeB() {
-  auto attr = eltypeBAttr();
+::mlir::NVVM::MMATypes WMMAMmaOp::getEltypeB() {
+  auto attr = getEltypeBAttr();
   return attr.getValue();
 }
 
-void WMMAMmaOp::mAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(mAttrName(), attr);
+void WMMAMmaOp::setMAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getMAttrName(), attr);
 }
 
-void WMMAMmaOp::nAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(nAttrName(), attr);
+void WMMAMmaOp::setNAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getNAttrName(), attr);
 }
 
-void WMMAMmaOp::kAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(kAttrName(), attr);
+void WMMAMmaOp::setKAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getKAttrName(), attr);
 }
 
-void WMMAMmaOp::layoutAAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutAAttrName(), attr);
+void WMMAMmaOp::setLayoutAAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutAAttrName(), attr);
 }
 
-void WMMAMmaOp::layoutBAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutBAttrName(), attr);
+void WMMAMmaOp::setLayoutBAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutBAttrName(), attr);
 }
 
-void WMMAMmaOp::eltypeAAttr(::mlir::NVVM::MMATypesAttr attr) {
-  (*this)->setAttr(eltypeAAttrName(), attr);
+void WMMAMmaOp::setEltypeAAttr(::mlir::NVVM::MMATypesAttr attr) {
+  (*this)->setAttr(getEltypeAAttrName(), attr);
 }
 
-void WMMAMmaOp::eltypeBAttr(::mlir::NVVM::MMATypesAttr attr) {
-  (*this)->setAttr(eltypeBAttrName(), attr);
+void WMMAMmaOp::setEltypeBAttr(::mlir::NVVM::MMATypesAttr attr) {
+  (*this)->setAttr(getEltypeBAttrName(), attr);
 }
 
 void WMMAMmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, ::mlir::NVVM::MMATypesAttr eltypeA, ::mlir::NVVM::MMATypesAttr eltypeB, ::mlir::ValueRange args) {
   odsState.addOperands(args);
-  odsState.addAttribute(mAttrName(odsState.name), m);
-  odsState.addAttribute(nAttrName(odsState.name), n);
-  odsState.addAttribute(kAttrName(odsState.name), k);
-  odsState.addAttribute(layoutAAttrName(odsState.name), layoutA);
-  odsState.addAttribute(layoutBAttrName(odsState.name), layoutB);
-  odsState.addAttribute(eltypeAAttrName(odsState.name), eltypeA);
-  odsState.addAttribute(eltypeBAttrName(odsState.name), eltypeB);
+  odsState.addAttribute(getMAttrName(odsState.name), m);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
+  odsState.addAttribute(getKAttrName(odsState.name), k);
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), layoutA);
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), layoutB);
+  odsState.addAttribute(getEltypeAAttrName(odsState.name), eltypeA);
+  odsState.addAttribute(getEltypeBAttrName(odsState.name), eltypeB);
   odsState.addTypes(res);
 }
 
 void WMMAMmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, ::mlir::NVVM::MMATypesAttr eltypeA, ::mlir::NVVM::MMATypesAttr eltypeB, ::mlir::ValueRange args) {
   odsState.addOperands(args);
-  odsState.addAttribute(mAttrName(odsState.name), m);
-  odsState.addAttribute(nAttrName(odsState.name), n);
-  odsState.addAttribute(kAttrName(odsState.name), k);
-  odsState.addAttribute(layoutAAttrName(odsState.name), layoutA);
-  odsState.addAttribute(layoutBAttrName(odsState.name), layoutB);
-  odsState.addAttribute(eltypeAAttrName(odsState.name), eltypeA);
-  odsState.addAttribute(eltypeBAttrName(odsState.name), eltypeB);
+  odsState.addAttribute(getMAttrName(odsState.name), m);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
+  odsState.addAttribute(getKAttrName(odsState.name), k);
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), layoutA);
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), layoutB);
+  odsState.addAttribute(getEltypeAAttrName(odsState.name), eltypeA);
+  odsState.addAttribute(getEltypeBAttrName(odsState.name), eltypeB);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void WMMAMmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layoutA, ::mlir::NVVM::MMALayout layoutB, ::mlir::NVVM::MMATypes eltypeA, ::mlir::NVVM::MMATypes eltypeB, ::mlir::ValueRange args) {
   odsState.addOperands(args);
-  odsState.addAttribute(mAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
-  odsState.addAttribute(kAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
-  odsState.addAttribute(layoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
-  odsState.addAttribute(layoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
-  odsState.addAttribute(eltypeAAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeA));
-  odsState.addAttribute(eltypeBAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeB));
+  odsState.addAttribute(getMAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getKAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
+  odsState.addAttribute(getEltypeAAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeA));
+  odsState.addAttribute(getEltypeBAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeB));
   odsState.addTypes(res);
 }
 
 void WMMAMmaOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layoutA, ::mlir::NVVM::MMALayout layoutB, ::mlir::NVVM::MMATypes eltypeA, ::mlir::NVVM::MMATypes eltypeB, ::mlir::ValueRange args) {
   odsState.addOperands(args);
-  odsState.addAttribute(mAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
-  odsState.addAttribute(kAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
-  odsState.addAttribute(layoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
-  odsState.addAttribute(layoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
-  odsState.addAttribute(eltypeAAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeA));
-  odsState.addAttribute(eltypeBAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeB));
+  odsState.addAttribute(getMAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getKAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
+  odsState.addAttribute(getLayoutAAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutA));
+  odsState.addAttribute(getLayoutBAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layoutB));
+  odsState.addAttribute(getEltypeAAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeA));
+  odsState.addAttribute(getEltypeBAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltypeB));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -5007,7 +5176,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'eltypeA'");
-    if (namedAttrIt->getName() == eltypeAAttrName()) {
+    if (namedAttrIt->getName() == getEltypeAAttrName()) {
       tblgen_eltypeA = namedAttrIt->getValue();
       break;
     }
@@ -5017,7 +5186,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'eltypeB'");
-    if (namedAttrIt->getName() == eltypeBAttrName()) {
+    if (namedAttrIt->getName() == getEltypeBAttrName()) {
       tblgen_eltypeB = namedAttrIt->getValue();
       break;
     }
@@ -5027,7 +5196,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'k'");
-    if (namedAttrIt->getName() == kAttrName()) {
+    if (namedAttrIt->getName() == getKAttrName()) {
       tblgen_k = namedAttrIt->getValue();
       break;
     }
@@ -5037,7 +5206,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layoutA'");
-    if (namedAttrIt->getName() == layoutAAttrName()) {
+    if (namedAttrIt->getName() == getLayoutAAttrName()) {
       tblgen_layoutA = namedAttrIt->getValue();
       break;
     }
@@ -5047,7 +5216,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layoutB'");
-    if (namedAttrIt->getName() == layoutBAttrName()) {
+    if (namedAttrIt->getName() == getLayoutBAttrName()) {
       tblgen_layoutB = namedAttrIt->getValue();
       break;
     }
@@ -5057,7 +5226,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'm'");
-    if (namedAttrIt->getName() == mAttrName()) {
+    if (namedAttrIt->getName() == getMAttrName()) {
       tblgen_m = namedAttrIt->getValue();
       break;
     }
@@ -5067,7 +5236,7 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'n'");
-    if (namedAttrIt->getName() == nAttrName()) {
+    if (namedAttrIt->getName() == getNAttrName()) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -5149,11 +5318,11 @@ void WMMAMmaOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
 void WMMAMmaOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
-  _odsPrinter.printFunctionalType(args().getTypes(), ::llvm::ArrayRef<::mlir::Type>(res().getType()));
+  _odsPrinter.printFunctionalType(getArgs().getTypes(), ::llvm::ArrayRef<::mlir::Type>(getRes().getType()));
 }
 
 } // namespace NVVM
@@ -5201,15 +5370,15 @@ std::pair<unsigned, unsigned> WMMAStoreOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WMMAStoreOpAdaptor::ptr() {
+::mlir::Value WMMAStoreOpAdaptor::getPtr() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange WMMAStoreOpAdaptor::args() {
+::mlir::ValueRange WMMAStoreOpAdaptor::getArgs() {
   return getODSOperands(1);
 }
 
-::mlir::Value WMMAStoreOpAdaptor::stride() {
+::mlir::Value WMMAStoreOpAdaptor::getStride() {
   return *getODSOperands(2).begin();
 }
 
@@ -5217,58 +5386,58 @@ std::pair<unsigned, unsigned> WMMAStoreOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::IntegerAttr WMMAStoreOpAdaptor::mAttr() {
+::mlir::IntegerAttr WMMAStoreOpAdaptor::getMAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 1, WMMAStoreOp::mAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 1, WMMAStoreOp::getMAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMAStoreOpAdaptor::m() {
-  auto attr = mAttr();
+uint32_t WMMAStoreOpAdaptor::getM() {
+  auto attr = getMAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAStoreOpAdaptor::nAttr() {
+::mlir::IntegerAttr WMMAStoreOpAdaptor::getNAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 0, WMMAStoreOp::nAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 0, WMMAStoreOp::getNAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMAStoreOpAdaptor::n() {
-  auto attr = nAttr();
+uint32_t WMMAStoreOpAdaptor::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAStoreOpAdaptor::kAttr() {
+::mlir::IntegerAttr WMMAStoreOpAdaptor::getKAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 3, WMMAStoreOp::kAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 3, WMMAStoreOp::getKAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t WMMAStoreOpAdaptor::k() {
-  auto attr = kAttr();
+uint32_t WMMAStoreOpAdaptor::getK() {
+  auto attr = getKAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMAStoreOpAdaptor::layoutAttr() {
+::mlir::NVVM::MMALayoutAttr WMMAStoreOpAdaptor::getLayoutAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 2, WMMAStoreOp::layoutAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 2, WMMAStoreOp::getLayoutAttrName(*odsOpName)).cast<::mlir::NVVM::MMALayoutAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMALayout WMMAStoreOpAdaptor::layout() {
-  auto attr = layoutAttr();
+::mlir::NVVM::MMALayout WMMAStoreOpAdaptor::getLayout() {
+  auto attr = getLayoutAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMAStoreOpAdaptor::eltypeAttr() {
+::mlir::NVVM::MMATypesAttr WMMAStoreOpAdaptor::getEltypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 4, WMMAStoreOp::eltypeAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 4, WMMAStoreOp::getEltypeAttrName(*odsOpName)).cast<::mlir::NVVM::MMATypesAttr>();
+  return attr;
 }
 
-::mlir::NVVM::MMATypes WMMAStoreOpAdaptor::eltype() {
-  auto attr = eltypeAttr();
+::mlir::NVVM::MMATypes WMMAStoreOpAdaptor::getEltype() {
+  auto attr = getEltypeAttr();
   return attr.getValue();
 }
 
@@ -5279,7 +5448,7 @@ uint32_t WMMAStoreOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.store' op ""requires attribute 'eltype'");
-    if (namedAttrIt->getName() == WMMAStoreOp::eltypeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAStoreOp::getEltypeAttrName(*odsOpName)) {
       tblgen_eltype = namedAttrIt->getValue();
       break;
     }
@@ -5289,7 +5458,7 @@ uint32_t WMMAStoreOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.store' op ""requires attribute 'k'");
-    if (namedAttrIt->getName() == WMMAStoreOp::kAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAStoreOp::getKAttrName(*odsOpName)) {
       tblgen_k = namedAttrIt->getValue();
       break;
     }
@@ -5299,7 +5468,7 @@ uint32_t WMMAStoreOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.store' op ""requires attribute 'layout'");
-    if (namedAttrIt->getName() == WMMAStoreOp::layoutAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAStoreOp::getLayoutAttrName(*odsOpName)) {
       tblgen_layout = namedAttrIt->getValue();
       break;
     }
@@ -5309,7 +5478,7 @@ uint32_t WMMAStoreOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.store' op ""requires attribute 'm'");
-    if (namedAttrIt->getName() == WMMAStoreOp::mAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAStoreOp::getMAttrName(*odsOpName)) {
       tblgen_m = namedAttrIt->getValue();
       break;
     }
@@ -5319,7 +5488,7 @@ uint32_t WMMAStoreOpAdaptor::k() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'nvvm.wmma.store' op ""requires attribute 'n'");
-    if (namedAttrIt->getName() == WMMAStoreOp::nAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == WMMAStoreOp::getNAttrName(*odsOpName)) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -5367,31 +5536,31 @@ std::pair<unsigned, unsigned> WMMAStoreOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WMMAStoreOp::ptr() {
+::mlir::TypedValue<::mlir::LLVM::LLVMPointerType> WMMAStoreOp::getPtr() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range WMMAStoreOp::args() {
+::mlir::Operation::operand_range WMMAStoreOp::getArgs() {
   return getODSOperands(1);
 }
 
-::mlir::Value WMMAStoreOp::stride() {
+::mlir::TypedValue<::mlir::IntegerType> WMMAStoreOp::getStride() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange WMMAStoreOp::ptrMutable() {
+::mlir::MutableOperandRange WMMAStoreOp::getPtrMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange WMMAStoreOp::argsMutable() {
+::mlir::MutableOperandRange WMMAStoreOp::getArgsMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange WMMAStoreOp::strideMutable() {
+::mlir::MutableOperandRange WMMAStoreOp::getStrideMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5407,91 +5576,91 @@ std::pair<unsigned, unsigned> WMMAStoreOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::IntegerAttr WMMAStoreOp::mAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 1, mAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMAStoreOp::getMAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 1, getMAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMAStoreOp::m() {
-  auto attr = mAttr();
+uint32_t WMMAStoreOp::getM() {
+  auto attr = getMAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAStoreOp::nAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 0, nAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMAStoreOp::getNAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 0, getNAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMAStoreOp::n() {
-  auto attr = nAttr();
+uint32_t WMMAStoreOp::getN() {
+  auto attr = getNAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr WMMAStoreOp::kAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 3, kAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr WMMAStoreOp::getKAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 3, getKAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t WMMAStoreOp::k() {
-  auto attr = kAttr();
+uint32_t WMMAStoreOp::getK() {
+  auto attr = getKAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::NVVM::MMALayoutAttr WMMAStoreOp::layoutAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 2, layoutAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
+::mlir::NVVM::MMALayoutAttr WMMAStoreOp::getLayoutAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 2, getLayoutAttrName()).cast<::mlir::NVVM::MMALayoutAttr>();
 }
 
-::mlir::NVVM::MMALayout WMMAStoreOp::layout() {
-  auto attr = layoutAttr();
+::mlir::NVVM::MMALayout WMMAStoreOp::getLayout() {
+  auto attr = getLayoutAttr();
   return attr.getValue();
 }
 
-::mlir::NVVM::MMATypesAttr WMMAStoreOp::eltypeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 4, eltypeAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
+::mlir::NVVM::MMATypesAttr WMMAStoreOp::getEltypeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 4, getEltypeAttrName()).cast<::mlir::NVVM::MMATypesAttr>();
 }
 
-::mlir::NVVM::MMATypes WMMAStoreOp::eltype() {
-  auto attr = eltypeAttr();
+::mlir::NVVM::MMATypes WMMAStoreOp::getEltype() {
+  auto attr = getEltypeAttr();
   return attr.getValue();
 }
 
-void WMMAStoreOp::mAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(mAttrName(), attr);
+void WMMAStoreOp::setMAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getMAttrName(), attr);
 }
 
-void WMMAStoreOp::nAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(nAttrName(), attr);
+void WMMAStoreOp::setNAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getNAttrName(), attr);
 }
 
-void WMMAStoreOp::kAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(kAttrName(), attr);
+void WMMAStoreOp::setKAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getKAttrName(), attr);
 }
 
-void WMMAStoreOp::layoutAttr(::mlir::NVVM::MMALayoutAttr attr) {
-  (*this)->setAttr(layoutAttrName(), attr);
+void WMMAStoreOp::setLayoutAttr(::mlir::NVVM::MMALayoutAttr attr) {
+  (*this)->setAttr(getLayoutAttrName(), attr);
 }
 
-void WMMAStoreOp::eltypeAttr(::mlir::NVVM::MMATypesAttr attr) {
-  (*this)->setAttr(eltypeAttrName(), attr);
+void WMMAStoreOp::setEltypeAttr(::mlir::NVVM::MMATypesAttr attr) {
+  (*this)->setAttr(getEltypeAttrName(), attr);
 }
 
 void WMMAStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value ptr, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::ValueRange args, ::mlir::Value stride) {
   odsState.addOperands(ptr);
   odsState.addOperands(args);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), m);
-  odsState.addAttribute(nAttrName(odsState.name), n);
-  odsState.addAttribute(kAttrName(odsState.name), k);
-  odsState.addAttribute(layoutAttrName(odsState.name), layout);
-  odsState.addAttribute(eltypeAttrName(odsState.name), eltype);
+  odsState.addAttribute(getMAttrName(odsState.name), m);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
+  odsState.addAttribute(getKAttrName(odsState.name), k);
+  odsState.addAttribute(getLayoutAttrName(odsState.name), layout);
+  odsState.addAttribute(getEltypeAttrName(odsState.name), eltype);
 }
 
 void WMMAStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::ValueRange args, ::mlir::Value stride) {
   odsState.addOperands(ptr);
   odsState.addOperands(args);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), m);
-  odsState.addAttribute(nAttrName(odsState.name), n);
-  odsState.addAttribute(kAttrName(odsState.name), k);
-  odsState.addAttribute(layoutAttrName(odsState.name), layout);
-  odsState.addAttribute(eltypeAttrName(odsState.name), eltype);
+  odsState.addAttribute(getMAttrName(odsState.name), m);
+  odsState.addAttribute(getNAttrName(odsState.name), n);
+  odsState.addAttribute(getKAttrName(odsState.name), k);
+  odsState.addAttribute(getLayoutAttrName(odsState.name), layout);
+  odsState.addAttribute(getEltypeAttrName(odsState.name), eltype);
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -5500,22 +5669,22 @@ void WMMAStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(ptr);
   odsState.addOperands(args);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
-  odsState.addAttribute(kAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
-  odsState.addAttribute(layoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
-  odsState.addAttribute(eltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
+  odsState.addAttribute(getMAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getKAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
+  odsState.addAttribute(getLayoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
+  odsState.addAttribute(getEltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
 }
 
 void WMMAStoreOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layout, ::mlir::NVVM::MMATypes eltype, ::mlir::ValueRange args, ::mlir::Value stride) {
   odsState.addOperands(ptr);
   odsState.addOperands(args);
   odsState.addOperands(stride);
-  odsState.addAttribute(mAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
-  odsState.addAttribute(nAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
-  odsState.addAttribute(kAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
-  odsState.addAttribute(layoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
-  odsState.addAttribute(eltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
+  odsState.addAttribute(getMAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), m));
+  odsState.addAttribute(getNAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), n));
+  odsState.addAttribute(getKAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), k));
+  odsState.addAttribute(getLayoutAttrName(odsState.name), ::mlir::NVVM::MMALayoutAttr::get(odsBuilder.getContext(), layout));
+  odsState.addAttribute(getEltypeAttrName(odsState.name), ::mlir::NVVM::MMATypesAttr::get(odsBuilder.getContext(), eltype));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -5535,7 +5704,7 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'eltype'");
-    if (namedAttrIt->getName() == eltypeAttrName()) {
+    if (namedAttrIt->getName() == getEltypeAttrName()) {
       tblgen_eltype = namedAttrIt->getValue();
       break;
     }
@@ -5545,7 +5714,7 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'k'");
-    if (namedAttrIt->getName() == kAttrName()) {
+    if (namedAttrIt->getName() == getKAttrName()) {
       tblgen_k = namedAttrIt->getValue();
       break;
     }
@@ -5555,7 +5724,7 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'layout'");
-    if (namedAttrIt->getName() == layoutAttrName()) {
+    if (namedAttrIt->getName() == getLayoutAttrName()) {
       tblgen_layout = namedAttrIt->getValue();
       break;
     }
@@ -5565,7 +5734,7 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'm'");
-    if (namedAttrIt->getName() == mAttrName()) {
+    if (namedAttrIt->getName() == getMAttrName()) {
       tblgen_m = namedAttrIt->getValue();
       break;
     }
@@ -5575,7 +5744,7 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'n'");
-    if (namedAttrIt->getName() == nAttrName()) {
+    if (namedAttrIt->getName() == getNAttrName()) {
       tblgen_n = namedAttrIt->getValue();
       break;
     }
@@ -5613,7 +5782,7 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     auto valueGroup2 = getODSOperands(2);
 
     for (auto v : valueGroup2) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps5(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_NVVMOps6(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -5676,25 +5845,25 @@ void WMMAStoreOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     return ::mlir::failure();
   if (parser.resolveOperands(argsOperands, argsTypes, argsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(strideOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(strideOperands, odsBuildableType0, strideOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
 
 void WMMAStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
-  _odsPrinter << ptr();
+  _odsPrinter << getPtr();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << stride();
+  _odsPrinter << getStride();
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << args();
+  _odsPrinter << getArgs();
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = ptr().getType();
+    auto type = getPtr().getType();
     if (auto validType = type.dyn_cast<::mlir::LLVM::LLVMPointerType>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else
@@ -5702,7 +5871,7 @@ void WMMAStoreOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
   _odsPrinter << ",";
   _odsPrinter << ' ';
-  _odsPrinter << args().getTypes();
+  _odsPrinter << getArgs().getTypes();
 }
 
 } // namespace NVVM
@@ -5764,7 +5933,7 @@ std::pair<unsigned, unsigned> WarpSizeOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value WarpSizeOp::res() {
+::mlir::Value WarpSizeOp::getRes() {
   return *getODSResults(0).begin();
 }
 
@@ -5825,7 +5994,7 @@ void WarpSizeOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ';
   {
-    auto type = res().getType();
+    auto type = getRes().getType();
     if (auto validType = type.dyn_cast<::mlir::Type>())
       _odsPrinter.printStrippedAttrOrType(validType);
    else

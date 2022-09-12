@@ -16,24 +16,91 @@
 #ifndef TPU_MLIR_TPU_OPS
 #define TPU_MLIR_TPU_OPS
 
+include "mlir/IR/AttrTypeBase.td"
+include "mlir/IR/OpBase.td"
+include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.td"
 include "tpu_mlir/Interfaces/LocalGenInterface.td"
 include "tpu_mlir/Interfaces/WeightReorderInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
-// ----------
-// type
-// ----------
+// =============================================================================
+//
+// Defines Tpu Dialect.
+//
+//===----------------------------------------------------------------------===//
+
+def Tpu_Dialect : Dialect {
+  let name = "tpu";
+  let summary = "A tpu dialect for the SOPHGO AI chips";
+  let cppNamespace = "::tpu_mlir::tpu";
+  let useDefaultAttributePrinterParser = 1;
+  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
+}
+
+//===----------------------------------------------------------------------===//
+// Tpu Attributes.
+//===----------------------------------------------------------------------===//
+
+class Tpu_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
+    : AttrDef<Tpu_Dialect, attrName, traits> {
+  let mnemonic = attrMnemonic;
+}
+
+def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
+  let summary = "Structure of layer group parameters";
+  let parameters = (ins
+    "int64_t":$out_addr,
+    "int64_t":$out_size,
+    "int64_t":$buffer_addr,
+    "int64_t":$buffer_size,
+    "bool":$eu_align,
+    ArrayRefParameter<"int64_t">:$h_idx,
+    ArrayRefParameter<"int64_t">:$h_slice,
+    ArrayRefParameter<"int64_t">:$n_idx,
+    ArrayRefParameter<"int64_t">:$n_slice,
+    "int64_t":$id,
+    "int64_t":$stage
+  );
+  let assemblyFormat = "`<` struct(params) `>`";
+}
+
+def Tpu_DequantMode: I32EnumAttr<"DequantMode",
+    "dequant mode supported by DequantOp",
+    [
+      I32EnumAttrCase<"Normal", 0>,
+      I32EnumAttrCase<"TFlite", 1>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_DequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_DequantMode, "dq_mode">;
+
+def Tpu_RequantMode: I32EnumAttr<"RequantMode",
+    "requant mode supported by RequantOp",
+    [
+      I32EnumAttrCase<"TFlite_Lshift", 0>,
+      I32EnumAttrCase<"TFlite", 1>,
+      I32EnumAttrCase<"Normal", 2>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
+
+//===----------------------------------------------------------------------===//
+// Tpu Types.
+//===----------------------------------------------------------------------===//
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
-// ----------
-// op definition
-// ----------
+//===----------------------------------------------------------------------===//
+// Tpu Operations.
+//===----------------------------------------------------------------------===//
+
 class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,[NoSideEffect, TpuTypeRestrict])> ;
 

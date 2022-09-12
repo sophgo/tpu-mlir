@@ -45,6 +45,8 @@ enum class Directive {
   OMPD_flush,
   OMPD_for,
   OMPD_for_simd,
+  OMPD_masked_taskloop,
+  OMPD_masked_taskloop_simd,
   OMPD_master,
   OMPD_master_taskloop,
   OMPD_master_taskloop_simd,
@@ -56,6 +58,9 @@ enum class Directive {
   OMPD_parallel_do_simd,
   OMPD_parallel_for,
   OMPD_parallel_for_simd,
+  OMPD_parallel_masked,
+  OMPD_parallel_masked_taskloop,
+  OMPD_parallel_masked_taskloop_simd,
   OMPD_parallel_master,
   OMPD_parallel_master_taskloop,
   OMPD_parallel_master_taskloop_simd,
@@ -113,7 +118,7 @@ enum class Directive {
   OMPD_teams_loop,
 };
 
-static constexpr std::size_t Directive_enumSize = 101;
+static constexpr std::size_t Directive_enumSize = 106;
 
 constexpr auto OMPD_allocate = llvm::omp::Directive::OMPD_allocate;
 constexpr auto OMPD_assumes = llvm::omp::Directive::OMPD_assumes;
@@ -150,6 +155,8 @@ constexpr auto OMPD_end_workshare = llvm::omp::Directive::OMPD_end_workshare;
 constexpr auto OMPD_flush = llvm::omp::Directive::OMPD_flush;
 constexpr auto OMPD_for = llvm::omp::Directive::OMPD_for;
 constexpr auto OMPD_for_simd = llvm::omp::Directive::OMPD_for_simd;
+constexpr auto OMPD_masked_taskloop = llvm::omp::Directive::OMPD_masked_taskloop;
+constexpr auto OMPD_masked_taskloop_simd = llvm::omp::Directive::OMPD_masked_taskloop_simd;
 constexpr auto OMPD_master = llvm::omp::Directive::OMPD_master;
 constexpr auto OMPD_master_taskloop = llvm::omp::Directive::OMPD_master_taskloop;
 constexpr auto OMPD_master_taskloop_simd = llvm::omp::Directive::OMPD_master_taskloop_simd;
@@ -161,6 +168,9 @@ constexpr auto OMPD_parallel_do = llvm::omp::Directive::OMPD_parallel_do;
 constexpr auto OMPD_parallel_do_simd = llvm::omp::Directive::OMPD_parallel_do_simd;
 constexpr auto OMPD_parallel_for = llvm::omp::Directive::OMPD_parallel_for;
 constexpr auto OMPD_parallel_for_simd = llvm::omp::Directive::OMPD_parallel_for_simd;
+constexpr auto OMPD_parallel_masked = llvm::omp::Directive::OMPD_parallel_masked;
+constexpr auto OMPD_parallel_masked_taskloop = llvm::omp::Directive::OMPD_parallel_masked_taskloop;
+constexpr auto OMPD_parallel_masked_taskloop_simd = llvm::omp::Directive::OMPD_parallel_masked_taskloop_simd;
 constexpr auto OMPD_parallel_master = llvm::omp::Directive::OMPD_parallel_master;
 constexpr auto OMPD_parallel_master_taskloop = llvm::omp::Directive::OMPD_parallel_master_taskloop;
 constexpr auto OMPD_parallel_master_taskloop_simd = llvm::omp::Directive::OMPD_parallel_master_taskloop_simd;

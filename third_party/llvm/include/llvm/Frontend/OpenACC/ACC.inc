@@ -709,7 +709,7 @@ WRAPPER_CLASS(Device, AccObjectList);
 WRAPPER_CLASS(DeviceNum, ScalarIntExpr);
 WRAPPER_CLASS(Deviceptr, AccObjectList);
 WRAPPER_CLASS(DeviceResident, AccObjectList);
-WRAPPER_CLASS(DeviceType, std::optional<std::list<ScalarIntExpr>>);
+WRAPPER_CLASS(DeviceType, AccDeviceTypeExprList);
 EMPTY_CLASS(Finalize);
 WRAPPER_CLASS(Firstprivate, AccObjectList);
 WRAPPER_CLASS(Gang, std::optional<AccGangArgument>);
@@ -726,7 +726,7 @@ WRAPPER_CLASS(Present, AccObjectList);
 WRAPPER_CLASS(Private, AccObjectList);
 EMPTY_CLASS(Read);
 WRAPPER_CLASS(Reduction, AccObjectListWithReduction);
-WRAPPER_CLASS(Self, AccSelfClause);
+WRAPPER_CLASS(Self, std::optional<AccSelfClause>);
 EMPTY_CLASS(Seq);
 WRAPPER_CLASS(Tile, AccTileExprList);
 EMPTY_CLASS(Unknown);
@@ -943,10 +943,7 @@ void Unparse(const AccClause::DeviceResident &x) {
 void Unparse(const AccClause::DeviceType &x) {
   Word("DEVICE_TYPE");
   Put("(");
-  if (x.v.has_value())
-    Walk(x.v, ",");
-  else
-    Put("*");
+  Walk(x.v);
   Put(")");
 }
 void Before(const AccClause::Finalize &) { Word("FINALIZE"); }
@@ -1020,9 +1017,7 @@ void Unparse(const AccClause::Reduction &x) {
 }
 void Unparse(const AccClause::Self &x) {
   Word("SELF");
-  Put("(");
-  Walk(x.v);
-  Put(")");
+  Walk("(", x.v, ")");
 }
 void Before(const AccClause::Seq &) { Word("SEQ"); }
 void Unparse(const AccClause::Tile &x) {
@@ -1207,6 +1202,59 @@ if constexpr (std::is_same_v<A, parser::AccClause::Write>)
 llvm_unreachable("Invalid OpenACC Parser clause");
 
 #endif // GEN_FLANG_CLAUSE_PARSER_KIND_MAP
+
+#ifdef GEN_FLANG_CLAUSES_PARSER
+#undef GEN_FLANG_CLAUSES_PARSER
+
+TYPE_PARSER(
+  "write" >> construct<AccClause>(construct<AccClause::Write>()) ||
+  "worker" >> construct<AccClause>(construct<AccClause::Worker>(maybe(parenthesized("num:" >> scalarIntExpr || scalarIntExpr)))) ||
+  "wait" >> construct<AccClause>(construct<AccClause::Wait>(maybe(parenthesized(Parser<AccWaitArgument>{})))) ||
+  "vector_length" >> construct<AccClause>(construct<AccClause::VectorLength>(parenthesized(scalarIntExpr))) ||
+  "vector" >> construct<AccClause>(construct<AccClause::Vector>(maybe(parenthesized("length:" >> scalarIntExpr || scalarIntExpr)))) ||
+  "use_device" >> construct<AccClause>(construct<AccClause::UseDevice>(parenthesized(Parser<AccObjectList>{}))) ||
+  "unknown" >> construct<AccClause>(construct<AccClause::Unknown>()) ||
+  "tile" >> construct<AccClause>(construct<AccClause::Tile>(parenthesized(Parser<AccTileExprList>{}))) ||
+  "seq" >> construct<AccClause>(construct<AccClause::Seq>()) ||
+  "self" >> construct<AccClause>(construct<AccClause::Self>(maybe(parenthesized(Parser<AccSelfClause>{})))) ||
+  "reduction" >> construct<AccClause>(construct<AccClause::Reduction>(parenthesized(Parser<AccObjectListWithReduction>{}))) ||
+  "read" >> construct<AccClause>(construct<AccClause::Read>()) ||
+  "private" >> construct<AccClause>(construct<AccClause::Private>(parenthesized(Parser<AccObjectList>{}))) ||
+  "present" >> construct<AccClause>(construct<AccClause::Present>(parenthesized(Parser<AccObjectList>{}))) ||
+  "num_workers" >> construct<AccClause>(construct<AccClause::NumWorkers>(parenthesized(scalarIntExpr))) ||
+  "num_gangs" >> construct<AccClause>(construct<AccClause::NumGangs>(parenthesized(scalarIntExpr))) ||
+  "nohost" >> construct<AccClause>(construct<AccClause::Nohost>()) ||
+  "no_create" >> construct<AccClause>(construct<AccClause::NoCreate>(parenthesized(Parser<AccObjectList>{}))) ||
+  "link" >> construct<AccClause>(construct<AccClause::Link>(parenthesized(Parser<AccObjectList>{}))) ||
+  "independent" >> construct<AccClause>(construct<AccClause::Independent>()) ||
+  "if_present" >> construct<AccClause>(construct<AccClause::IfPresent>()) ||
+  "if" >> construct<AccClause>(construct<AccClause::If>(parenthesized(scalarLogicalExpr))) ||
+  "host" >> construct<AccClause>(construct<AccClause::Host>(parenthesized(Parser<AccObjectList>{}))) ||
+  "gang" >> construct<AccClause>(construct<AccClause::Gang>(maybe(parenthesized(Parser<AccGangArgument>{})))) ||
+  "firstprivate" >> construct<AccClause>(construct<AccClause::Firstprivate>(parenthesized(Parser<AccObjectList>{}))) ||
+  "finalize" >> construct<AccClause>(construct<AccClause::Finalize>()) ||
+  "deviceptr" >> construct<AccClause>(construct<AccClause::Deviceptr>(parenthesized(Parser<AccObjectList>{}))) ||
+  ("device_type"_tok || "dtype"_tok) >> construct<AccClause>(construct<AccClause::DeviceType>(parenthesized(Parser<AccDeviceTypeExprList>{}))) ||
+  "device_resident" >> construct<AccClause>(construct<AccClause::DeviceResident>(parenthesized(Parser<AccObjectList>{}))) ||
+  "device_num" >> construct<AccClause>(construct<AccClause::DeviceNum>(parenthesized(scalarIntExpr))) ||
+  "device" >> construct<AccClause>(construct<AccClause::Device>(parenthesized(Parser<AccObjectList>{}))) ||
+  "detach" >> construct<AccClause>(construct<AccClause::Detach>(parenthesized(Parser<AccObjectList>{}))) ||
+  "delete" >> construct<AccClause>(construct<AccClause::Delete>(parenthesized(Parser<AccObjectList>{}))) ||
+  "default_async" >> construct<AccClause>(construct<AccClause::DefaultAsync>(parenthesized(scalarIntExpr))) ||
+  "default" >> construct<AccClause>(construct<AccClause::Default>(parenthesized(Parser<AccDefaultClause>{}))) ||
+  ("create"_tok || "present_or_create"_tok || "pcreate"_tok) >> construct<AccClause>(construct<AccClause::Create>(parenthesized(Parser<AccObjectListWithModifier>{}))) ||
+  ("copyout"_tok || "present_or_copyout"_tok || "pcopyout"_tok) >> construct<AccClause>(construct<AccClause::Copyout>(parenthesized(Parser<AccObjectListWithModifier>{}))) ||
+  ("copyin"_tok || "present_or_copyin"_tok || "pcopyin"_tok) >> construct<AccClause>(construct<AccClause::Copyin>(parenthesized(Parser<AccObjectListWithModifier>{}))) ||
+  ("copy"_tok || "present_or_copy"_tok || "pcopy"_tok) >> construct<AccClause>(construct<AccClause::Copy>(parenthesized(Parser<AccObjectList>{}))) ||
+  "collapse" >> construct<AccClause>(construct<AccClause::Collapse>(parenthesized(scalarIntConstantExpr))) ||
+  "capture" >> construct<AccClause>(construct<AccClause::Capture>()) ||
+  "bind" >> construct<AccClause>(construct<AccClause::Bind>(parenthesized(Parser<AccBindClause>{}))) ||
+  "auto" >> construct<AccClause>(construct<AccClause::Auto>()) ||
+  "attach" >> construct<AccClause>(construct<AccClause::Attach>(parenthesized(Parser<AccObjectList>{}))) ||
+  "async" >> construct<AccClause>(construct<AccClause::Async>(maybe(parenthesized(scalarIntExpr))))
+)
+
+#endif // GEN_FLANG_CLAUSES_PARSER
 
 #ifdef GEN_CLANG_CLAUSE_CLASS
 #undef GEN_CLANG_CLAUSE_CLASS

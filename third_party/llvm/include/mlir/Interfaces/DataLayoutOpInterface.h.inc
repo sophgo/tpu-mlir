@@ -44,6 +44,7 @@ struct DataLayoutOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     static unsigned getTypeSize(::mlir::Type type, const ::mlir::DataLayout &dataLayout, ::mlir::DataLayoutEntryListRef params);
     static unsigned getTypeSizeInBits(::mlir::Type type, const ::mlir::DataLayout &dataLayout, ::mlir::DataLayoutEntryListRef params);
     static unsigned getTypeABIAlignment(::mlir::Type type, const ::mlir::DataLayout &dataLayout, ::mlir::DataLayoutEntryListRef params);
@@ -58,26 +59,35 @@ public:
   using ::mlir::OpInterface<DataLayoutOpInterface, detail::DataLayoutOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::DataLayoutOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the data layout specification for this op, or null if it does not exist.
   ::mlir::DataLayoutSpecInterface getDataLayoutSpec();
+  /// Returns the size of the given type computed using the relevant entries. The data layout object can be used for recursive queries.
   unsigned getTypeSize(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params);
+  /// Returns the size of the given type in bits computed using the relevant entries. The data layout object can be used for recursive queries.
   unsigned getTypeSizeInBits(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params);
+  /// Returns the alignment required by the ABI for the given type computed using the relevant entries. The data layout object can be used for recursive queries.
   unsigned getTypeABIAlignment(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params);
+  /// Returns the alignment preferred by the given type computed using the relevant entries. The data layoutobject can be used for recursive queries.
   unsigned getTypePreferredAlignment(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params);
 };
 namespace detail {
   template <typename ConcreteOp>
   struct DataLayoutOpInterfaceTrait : public ::mlir::OpInterface<DataLayoutOpInterface, detail::DataLayoutOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Returns the size of the given type computed using the relevant entries. The data layout object can be used for recursive queries.
     static unsigned getTypeSize(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) {
       unsigned bits = ConcreteOp::getTypeSizeInBits(type, dataLayout, params);
         return ::llvm::divideCeil(bits, 8);
     }
+    /// Returns the size of the given type in bits computed using the relevant entries. The data layout object can be used for recursive queries.
     static unsigned getTypeSizeInBits(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) {
       return ::mlir::detail::getDefaultTypeSizeInBits(type, dataLayout,
                                                         params);
     }
+    /// Returns the alignment required by the ABI for the given type computed using the relevant entries. The data layout object can be used for recursive queries.
     static unsigned getTypeABIAlignment(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) {
       return ::mlir::detail::getDefaultABIAlignment(type, dataLayout, params);
     }
+    /// Returns the alignment preferred by the given type computed using the relevant entries. The data layoutobject can be used for recursive queries.
     static unsigned getTypePreferredAlignment(::mlir::Type type, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) {
       return ::mlir::detail::getDefaultPreferredAlignment(type, dataLayout,
                                                             params);

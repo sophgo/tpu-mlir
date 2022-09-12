@@ -59,8 +59,8 @@ void tpu::LeakyReluOp::codegen_global_bm1684x() {
   param.relu_limit = -1;
   param.dtype = BM168x::getDataType(input());
   if (Quant::isUniformQuantized(input())) {
-    param.slope_val = static_cast<float>(multiplier().getValue());
-    param.rshift_bit = rshift().getValue();
+    param.slope_val = static_cast<float>(multiplier().value());
+    param.rshift_bit = rshift().value();
     BM1684x::instance().call_global_func("backend_api_prelu_global", &param,
                                          sizeof(leakyrelu_param_t));
   } else {
@@ -99,8 +99,8 @@ void tpu::LeakyReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.relu_limit = -1;
   param.dtype = BM168x::getDataType(input());
   if (Quant::isUniformQuantized(input())) {
-    param.slope_val = static_cast<float>(multiplier().getValue());
-    param.rshift_bit = rshift().getValue();
+    param.slope_val = static_cast<float>(multiplier().value());
+    param.rshift_bit = rshift().value();
   } else {
     param.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
     param.rshift_bit = 0;

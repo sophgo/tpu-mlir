@@ -236,7 +236,7 @@ std::pair<unsigned, unsigned> AddToGroupOp::getODSOperandIndexAndLength(unsigned
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AddToGroupOp::group() {
+::mlir::TypedValue<::mlir::async::GroupType> AddToGroupOp::group() {
   return *getODSOperands(1).begin();
 }
 
@@ -262,7 +262,7 @@ std::pair<unsigned, unsigned> AddToGroupOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AddToGroupOp::rank() {
+::mlir::TypedValue<::mlir::IndexType> AddToGroupOp::rank() {
   return *getODSResults(0).begin();
 }
 
@@ -393,7 +393,7 @@ void AddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   result.addTypes(odsBuildableType0);
   if (parser.resolveOperands(operandOperands, operandTypes, operandOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(groupOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(groupOperands, odsBuildableType1, groupOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -469,7 +469,7 @@ std::pair<unsigned, unsigned> AwaitAllOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AwaitAllOp::operand() {
+::mlir::TypedValue<::mlir::async::GroupType> AwaitAllOp::operand() {
   return *getODSOperands(0).begin();
 }
 
@@ -535,7 +535,7 @@ void AwaitAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::GroupType>();
-  if (parser.resolveOperands(operandOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(operandOperands, odsBuildableType0, operandOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -761,7 +761,7 @@ std::pair<unsigned, unsigned> CoroBeginOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroBeginOp::id() {
+::mlir::TypedValue<::mlir::async::CoroIdType> CoroBeginOp::id() {
   return *getODSOperands(0).begin();
 }
 
@@ -781,7 +781,7 @@ std::pair<unsigned, unsigned> CoroBeginOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroBeginOp::handle() {
+::mlir::TypedValue<::mlir::async::CoroHandleType> CoroBeginOp::handle() {
   return *getODSResults(0).begin();
 }
 
@@ -881,7 +881,7 @@ void CoroBeginOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroHandleType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::async::CoroIdType>();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(idOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(idOperands, odsBuildableType1, idOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -945,7 +945,7 @@ std::pair<unsigned, unsigned> CoroEndOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroEndOp::handle() {
+::mlir::TypedValue<::mlir::async::CoroHandleType> CoroEndOp::handle() {
   return *getODSOperands(0).begin();
 }
 
@@ -1011,7 +1011,7 @@ void CoroEndOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroHandleType>();
-  if (parser.resolveOperands(handleOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(handleOperands, odsBuildableType0, handleOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1079,11 +1079,11 @@ std::pair<unsigned, unsigned> CoroFreeOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroFreeOp::id() {
+::mlir::TypedValue<::mlir::async::CoroIdType> CoroFreeOp::id() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value CoroFreeOp::handle() {
+::mlir::TypedValue<::mlir::async::CoroHandleType> CoroFreeOp::handle() {
   return *getODSOperands(1).begin();
 }
 
@@ -1173,9 +1173,9 @@ void CoroFreeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroIdType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::async::CoroHandleType>();
-  if (parser.resolveOperands(idOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(idOperands, odsBuildableType0, idOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(handleOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(handleOperands, odsBuildableType1, handleOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1248,7 +1248,7 @@ std::pair<unsigned, unsigned> CoroIdOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroIdOp::id() {
+::mlir::TypedValue<::mlir::async::CoroIdType> CoroIdOp::id() {
   return *getODSResults(0).begin();
 }
 
@@ -1387,7 +1387,7 @@ std::pair<unsigned, unsigned> CoroSaveOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroSaveOp::handle() {
+::mlir::TypedValue<::mlir::async::CoroHandleType> CoroSaveOp::handle() {
   return *getODSOperands(0).begin();
 }
 
@@ -1407,7 +1407,7 @@ std::pair<unsigned, unsigned> CoroSaveOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroSaveOp::state() {
+::mlir::TypedValue<::mlir::async::CoroStateType> CoroSaveOp::state() {
   return *getODSResults(0).begin();
 }
 
@@ -1507,7 +1507,7 @@ void CoroSaveOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroStateType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::async::CoroHandleType>();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(handleOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(handleOperands, odsBuildableType1, handleOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1571,7 +1571,7 @@ std::pair<unsigned, unsigned> CoroSuspendOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CoroSuspendOp::state() {
+::mlir::TypedValue<::mlir::async::CoroStateType> CoroSuspendOp::state() {
   return *getODSOperands(0).begin();
 }
 
@@ -1679,7 +1679,7 @@ void CoroSuspendOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   result.addSuccessors(resumeDestSuccessor);
   result.addSuccessors(cleanupDestSuccessor);
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroStateType>();
-  if (parser.resolveOperands(stateOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(stateOperands, odsBuildableType0, stateOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1752,7 +1752,7 @@ std::pair<unsigned, unsigned> CreateGroupOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CreateGroupOp::size() {
+::mlir::TypedValue<::mlir::IndexType> CreateGroupOp::size() {
   return *getODSOperands(0).begin();
 }
 
@@ -1772,7 +1772,7 @@ std::pair<unsigned, unsigned> CreateGroupOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CreateGroupOp::result() {
+::mlir::TypedValue<::mlir::async::GroupType> CreateGroupOp::result() {
   return *getODSResults(0).begin();
 }
 
@@ -1886,7 +1886,7 @@ void CreateGroupOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &resul
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(sizeOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(sizeOperands, odsBuildableType0, sizeOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1932,16 +1932,12 @@ ExecuteOpAdaptor::ExecuteOpAdaptor(ExecuteOp op) : odsOperands(op->getOperands()
 
 std::pair<unsigned, unsigned> ExecuteOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExecuteOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ExecuteOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange ExecuteOpAdaptor::getODSOperands(unsigned index) {
@@ -1985,9 +1981,8 @@ std::pair<unsigned, unsigned> ExecuteOpAdaptor::getODSOperandIndexAndLength(unsi
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 2)
       return emitError(loc, "'async.execute' op ""'operand_segment_sizes' attribute for specifying operand segments must have 2 "
                 "elements, but got ") << numElements;
@@ -2005,16 +2000,12 @@ void ExecuteOp::getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn) {
 }
 
 std::pair<unsigned, unsigned> ExecuteOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range ExecuteOp::getODSOperands(unsigned index) {
@@ -2067,7 +2058,7 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExecuteOp::token() {
+::mlir::TypedValue<::mlir::async::TokenType> ExecuteOp::token() {
   return *getODSResults(0).begin();
 }
 
@@ -2094,9 +2085,8 @@ std::pair<unsigned, unsigned> ExecuteOp::getODSResultIndexAndLength(unsigned ind
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 2)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 2 "
                 "elements, but got ") << numElements;
@@ -2187,7 +2177,7 @@ std::pair<unsigned, unsigned> RuntimeAddRefOpAdaptor::getODSOperandIndexAndLengt
 ::mlir::IntegerAttr RuntimeAddRefOpAdaptor::countAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RuntimeAddRefOp::countAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 uint64_t RuntimeAddRefOpAdaptor::count() {
@@ -2423,7 +2413,7 @@ std::pair<unsigned, unsigned> RuntimeAddToGroupOp::getODSOperandIndexAndLength(u
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RuntimeAddToGroupOp::group() {
+::mlir::TypedValue<::mlir::async::GroupType> RuntimeAddToGroupOp::group() {
   return *getODSOperands(1).begin();
 }
 
@@ -2449,7 +2439,7 @@ std::pair<unsigned, unsigned> RuntimeAddToGroupOp::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeAddToGroupOp::rank() {
+::mlir::TypedValue<::mlir::IndexType> RuntimeAddToGroupOp::rank() {
   return *getODSResults(0).begin();
 }
 
@@ -2580,7 +2570,7 @@ void RuntimeAddToGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operation
   result.addTypes(odsBuildableType0);
   if (parser.resolveOperands(operandOperands, operandTypes, operandOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(groupOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(groupOperands, odsBuildableType1, groupOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2664,7 +2654,7 @@ std::pair<unsigned, unsigned> RuntimeAwaitAndResumeOp::getODSOperandIndexAndLeng
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RuntimeAwaitAndResumeOp::handle() {
+::mlir::TypedValue<::mlir::async::CoroHandleType> RuntimeAwaitAndResumeOp::handle() {
   return *getODSOperands(1).begin();
 }
 
@@ -2766,7 +2756,7 @@ void RuntimeAwaitAndResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState 
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroHandleType>();
   if (parser.resolveOperands(operandOperands, operandTypes, operandOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(handleOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(handleOperands, odsBuildableType0, handleOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2991,7 +2981,7 @@ std::pair<unsigned, unsigned> RuntimeCreateGroupOp::getODSOperandIndexAndLength(
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeCreateGroupOp::size() {
+::mlir::TypedValue<::mlir::IndexType> RuntimeCreateGroupOp::size() {
   return *getODSOperands(0).begin();
 }
 
@@ -3011,7 +3001,7 @@ std::pair<unsigned, unsigned> RuntimeCreateGroupOp::getODSResultIndexAndLength(u
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeCreateGroupOp::result() {
+::mlir::TypedValue<::mlir::async::GroupType> RuntimeCreateGroupOp::result() {
   return *getODSResults(0).begin();
 }
 
@@ -3121,7 +3111,7 @@ void RuntimeCreateGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operatio
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(sizeOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(sizeOperands, odsBuildableType0, sizeOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3311,7 +3301,7 @@ std::pair<unsigned, unsigned> RuntimeDropRefOpAdaptor::getODSOperandIndexAndLeng
 ::mlir::IntegerAttr RuntimeDropRefOpAdaptor::countAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RuntimeDropRefOp::countAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 uint64_t RuntimeDropRefOpAdaptor::count() {
@@ -3559,7 +3549,7 @@ std::pair<unsigned, unsigned> RuntimeIsErrorOp::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeIsErrorOp::is_error() {
+::mlir::TypedValue<::mlir::IntegerType> RuntimeIsErrorOp::is_error() {
   return *getODSResults(0).begin();
 }
 
@@ -3742,7 +3732,7 @@ std::pair<unsigned, unsigned> RuntimeLoadOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeLoadOp::storage() {
+::mlir::TypedValue<::mlir::async::ValueType> RuntimeLoadOp::storage() {
   return *getODSOperands(0).begin();
 }
 
@@ -3920,7 +3910,7 @@ std::pair<unsigned, unsigned> RuntimeNumWorkerThreadsOp::getODSResultIndexAndLen
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeNumWorkerThreadsOp::result() {
+::mlir::TypedValue<::mlir::IndexType> RuntimeNumWorkerThreadsOp::result() {
   return *getODSResults(0).begin();
 }
 
@@ -4078,7 +4068,7 @@ std::pair<unsigned, unsigned> RuntimeResumeOp::getODSOperandIndexAndLength(unsig
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RuntimeResumeOp::handle() {
+::mlir::TypedValue<::mlir::async::CoroHandleType> RuntimeResumeOp::handle() {
   return *getODSOperands(0).begin();
 }
 
@@ -4144,7 +4134,7 @@ void RuntimeResumeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::async::CoroHandleType>();
-  if (parser.resolveOperands(handleOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(handleOperands, odsBuildableType0, handleOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -4514,7 +4504,7 @@ std::pair<unsigned, unsigned> RuntimeStoreOp::getODSOperandIndexAndLength(unsign
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value RuntimeStoreOp::storage() {
+::mlir::TypedValue<::mlir::async::ValueType> RuntimeStoreOp::storage() {
   return *getODSOperands(1).begin();
 }
 

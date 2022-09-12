@@ -4,5 +4,5 @@ add_llvm_library(TPUMLIRTrait
   ${_sources}
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRQuant
+  MLIRQuantDialect
 )

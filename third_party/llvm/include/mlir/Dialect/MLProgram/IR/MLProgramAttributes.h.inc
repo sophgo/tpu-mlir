@@ -20,7 +20,7 @@ class ExternAttr;
 namespace detail {
 struct ExternAttrStorage;
 } // namespace detail
-class ExternAttr : public ::mlir::Attribute::AttrBase<ExternAttr, ::mlir::Attribute, detail::ExternAttrStorage> {
+class ExternAttr : public ::mlir::Attribute::AttrBase<ExternAttr, ::mlir::Attribute, detail::ExternAttrStorage, ::mlir::TypedAttr::Trait> {
 public:
   using Base::Base;
 public:

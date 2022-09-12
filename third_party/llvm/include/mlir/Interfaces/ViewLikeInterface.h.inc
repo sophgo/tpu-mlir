@@ -110,6 +110,7 @@ struct OffsetSizeAndStrideOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     ::mlir::OperandRange offsets(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::OperandRange sizes(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::OperandRange strides(::mlir::Operation *tablegen_opaque_val) const;
@@ -145,32 +146,67 @@ public:
   using ::mlir::OpInterface<OffsetSizeAndStrideOpInterface, detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::OffsetSizeAndStrideOpInterfaceTrait<ConcreteOp> {};
+  /// Return the number of leading operands before the `offsets`, `sizes` and
+  /// and `strides` operands.
   unsigned getOffsetSizeAndStrideStartOperandIndex();
+  /// Return the expected rank of each of the`static_offsets`, `static_sizes`
+  /// and `static_strides` attributes.
   std::array<unsigned, 3> getArrayAttrMaxRanks();
+  /// Return the dynamic offset operands.
   ::mlir::OperandRange offsets();
+  /// Return the dynamic size operands.
   ::mlir::OperandRange sizes();
+  /// Return the dynamic stride operands.
   ::mlir::OperandRange strides();
+  /// Return the static offset attributes.
   ::mlir::ArrayAttr static_offsets();
+  /// Return the static size attributes.
   ::mlir::ArrayAttr static_sizes();
+  /// Return the dynamic stride attributes.
   ::mlir::ArrayAttr static_strides();
+  /// Return a vector of all the static or dynamic sizes of the op.
   ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets();
+  /// Return a vector of all the static or dynamic sizes of the op.
   ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes();
+  /// Return a vector of all the static or dynamic strides of the op.
   ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides();
+  /// Return true if the offset `idx` is dynamic.
   bool isDynamicOffset(unsigned idx);
+  /// Return true if the size `idx` is dynamic.
   bool isDynamicSize(unsigned idx);
+  /// Return true if the stride `idx` is dynamic.
   bool isDynamicStride(unsigned idx);
+  /// Assert the offset `idx` is a static constant and return its value.
   int64_t getStaticOffset(unsigned idx);
+  /// Assert the size `idx` is a static constant and return its value.
   int64_t getStaticSize(unsigned idx);
+  /// Assert the stride `idx` is a static constant and return its value.
   int64_t getStaticStride(unsigned idx);
+  /// Assert the offset `idx` is dynamic and return the position of the
+  /// corresponding operand.
   unsigned getIndexOfDynamicOffset(unsigned idx);
+  /// Assert the size `idx` is dynamic and return the position of the
+  /// corresponding operand.
   unsigned getIndexOfDynamicSize(unsigned idx);
+  /// Assert the stride `idx` is dynamic and return the position of the
+  /// corresponding operand.
   unsigned getIndexOfDynamicStride(unsigned idx);
+  /// Helper method to compute the number of dynamic entries of `attr`, up to
+  /// `idx` using `isDynamic` to determine whether an entry is dynamic.
   unsigned getNumDynamicEntriesUpToIdx(::mlir::ArrayAttr attr, ::llvm::function_ref<bool(int64_t)> isDynamic, unsigned idx);
+  /// Assert the offset `idx` is dynamic and return its value.
   ::mlir::Value getDynamicOffset(unsigned idx);
+  /// Assert the size `idx` is dynamic and return its value.
   ::mlir::Value getDynamicSize(unsigned idx);
+  /// Assert the stride `idx` is dynamic and return its value.
   ::mlir::Value getDynamicStride(unsigned idx);
+  /// Return true if all `other`'s offsets, sizes and strides are the same.
+  /// Takes a custom `cmp` comparison function on OpFoldResult to avoid taking
+  /// a dialect dependence.
   bool isSameAs(::mlir::OffsetSizeAndStrideOpInterface other, ::llvm::function_ref<bool(::mlir::OpFoldResult, ::mlir::OpFoldResult)> cmp);
+  /// Return true if all strides are guaranteed to be 1.
   bool hasUnitStride();
+  /// Return true if all offsets are guaranteed to be 0.
   bool hasZeroOffset();
 
     static unsigned getOffsetOperandGroupPosition() { return 0; }
@@ -192,87 +228,91 @@ public:
         ::mlir::OffsetSizeAndStrideOpInterface::getStaticStridesAttrName(),
         ::mlir::OpTrait::AttrSizedOperandSegments<void>::getOperandSegmentSizeAttr()};
       return names;
-   }
-   /// Assume target is a shaped type and offsets/sizes/strides are vectors of
-   /// the same length and lower than target's rank.
-   /// Complete missing dims `i` with offset=0, size=dim(target, i), stride=1
-   /// until all vectors have size rank. The commpletion occurs for the most
-   /// minor dimensions (i.e. fastest varying).
-   /// Take a `createDim` lambda that knows how to build the size of a
-   /// particular dimension of `target` (to avoid dialect dependencies).
-   static void expandToRank(
-     Value target,
-     SmallVector<OpFoldResult> &offsets,
-     SmallVector<OpFoldResult> &sizes,
-     SmallVector<OpFoldResult> &strides,
-     llvm::function_ref<OpFoldResult(Value, int64_t)> createDim);
+    }
   
 };
 namespace detail {
   template <typename ConcreteOp>
   struct OffsetSizeAndStrideOpInterfaceTrait : public ::mlir::OpInterface<OffsetSizeAndStrideOpInterface, detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the dynamic offset operands.
     ::mlir::OperandRange offsets() {
-      return (*static_cast<ConcreteOp *>(this)).offsets();
+      return (*static_cast<ConcreteOp *>(this)).getOffsets();
     }
+    /// Return the dynamic size operands.
     ::mlir::OperandRange sizes() {
-      return (*static_cast<ConcreteOp *>(this)).sizes();
+      return (*static_cast<ConcreteOp *>(this)).getSizes();
     }
+    /// Return the dynamic stride operands.
     ::mlir::OperandRange strides() {
-      return (*static_cast<ConcreteOp *>(this)).strides();
+      return (*static_cast<ConcreteOp *>(this)).getStrides();
     }
+    /// Return the static offset attributes.
     ::mlir::ArrayAttr static_offsets() {
-      return (*static_cast<ConcreteOp *>(this)).static_offsets();
+      return (*static_cast<ConcreteOp *>(this)).getStaticOffsets();
     }
+    /// Return the static size attributes.
     ::mlir::ArrayAttr static_sizes() {
-      return (*static_cast<ConcreteOp *>(this)).static_sizes();
+      return (*static_cast<ConcreteOp *>(this)).getStaticSizes();
     }
+    /// Return the dynamic stride attributes.
     ::mlir::ArrayAttr static_strides() {
-      return (*static_cast<ConcreteOp *>(this)).static_strides();
+      return (*static_cast<ConcreteOp *>(this)).getStaticStrides();
     }
+    /// Return a vector of all the static or dynamic sizes of the op.
     ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedOffsets() {
-      return ::mlir::getMixedOffsets((*static_cast<ConcreteOp *>(this)), (*static_cast<ConcreteOp *>(this)).static_offsets(),
-                                       (*static_cast<ConcreteOp *>(this)).offsets());
+      return ::mlir::getMixedStridesOrOffsets((*static_cast<ConcreteOp *>(this)).getStaticOffsets(),
+                                                (*static_cast<ConcreteOp *>(this)).getOffsets());
     }
+    /// Return a vector of all the static or dynamic sizes of the op.
     ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedSizes() {
-      return ::mlir::getMixedSizes((*static_cast<ConcreteOp *>(this)), (*static_cast<ConcreteOp *>(this)).static_sizes(), (*static_cast<ConcreteOp *>(this)).sizes());
+      return ::mlir::getMixedSizes((*static_cast<ConcreteOp *>(this)).getStaticSizes(), (*static_cast<ConcreteOp *>(this)).sizes());
     }
+    /// Return a vector of all the static or dynamic strides of the op.
     ::llvm::SmallVector<::mlir::OpFoldResult, 4> getMixedStrides() {
-      return ::mlir::getMixedStrides((*static_cast<ConcreteOp *>(this)), (*static_cast<ConcreteOp *>(this)).static_strides(),
-                                       (*static_cast<ConcreteOp *>(this)).strides());
+      return ::mlir::getMixedStridesOrOffsets((*static_cast<ConcreteOp *>(this)).getStaticStrides(),
+                                                (*static_cast<ConcreteOp *>(this)).getStrides());
     }
+    /// Return true if the offset `idx` is dynamic.
     bool isDynamicOffset(unsigned idx) {
       ::llvm::APInt v = *(static_offsets()
           .template getAsValueRange<::mlir::IntegerAttr>().begin() + idx);
         return ::mlir::ShapedType::isDynamicStrideOrOffset(v.getSExtValue());
     }
+    /// Return true if the size `idx` is dynamic.
     bool isDynamicSize(unsigned idx) {
       ::llvm::APInt v = *(static_sizes()
           .template getAsValueRange<::mlir::IntegerAttr>().begin() + idx);
         return ::mlir::ShapedType::isDynamic(v.getSExtValue());
     }
+    /// Return true if the stride `idx` is dynamic.
     bool isDynamicStride(unsigned idx) {
       ::llvm::APInt v = *(static_strides()
           .template getAsValueRange<::mlir::IntegerAttr>().begin() + idx);
         return ::mlir::ShapedType::isDynamicStrideOrOffset(v.getSExtValue());
     }
+    /// Assert the offset `idx` is a static constant and return its value.
     int64_t getStaticOffset(unsigned idx) {
       assert(!(*static_cast<ConcreteOp *>(this)).isDynamicOffset(idx) && "expected static offset");
         ::llvm::APInt v = *(static_offsets().
           template getAsValueRange<::mlir::IntegerAttr>().begin() + idx);
         return v.getSExtValue();
     }
+    /// Assert the size `idx` is a static constant and return its value.
     int64_t getStaticSize(unsigned idx) {
       assert(!(*static_cast<ConcreteOp *>(this)).isDynamicSize(idx) && "expected static size");
         ::llvm::APInt v = *(static_sizes().
           template getAsValueRange<::mlir::IntegerAttr>().begin() + idx);
         return v.getSExtValue();
     }
+    /// Assert the stride `idx` is a static constant and return its value.
     int64_t getStaticStride(unsigned idx) {
       assert(!(*static_cast<ConcreteOp *>(this)).isDynamicStride(idx) && "expected static stride");
         ::llvm::APInt v = *(static_strides().
           template getAsValueRange<::mlir::IntegerAttr>().begin() + idx);
         return v.getSExtValue();
     }
+    /// Assert the offset `idx` is dynamic and return the position of the
+    /// corresponding operand.
     unsigned getIndexOfDynamicOffset(unsigned idx) {
       assert((*static_cast<ConcreteOp *>(this)).isDynamicOffset(idx) && "expected dynamic offset");
         auto numDynamic = getNumDynamicEntriesUpToIdx(
@@ -281,6 +321,8 @@ namespace detail {
           idx);
         return (*static_cast<ConcreteOp *>(this)).getOffsetSizeAndStrideStartOperandIndex() + numDynamic;
     }
+    /// Assert the size `idx` is dynamic and return the position of the
+    /// corresponding operand.
     unsigned getIndexOfDynamicSize(unsigned idx) {
       assert((*static_cast<ConcreteOp *>(this)).isDynamicSize(idx) && "expected dynamic size");
         auto numDynamic = getNumDynamicEntriesUpToIdx(
@@ -288,6 +330,8 @@ namespace detail {
         return (*static_cast<ConcreteOp *>(this)).getOffsetSizeAndStrideStartOperandIndex() +
           offsets().size() + numDynamic;
     }
+    /// Assert the stride `idx` is dynamic and return the position of the
+    /// corresponding operand.
     unsigned getIndexOfDynamicStride(unsigned idx) {
       assert((*static_cast<ConcreteOp *>(this)).isDynamicStride(idx) && "expected dynamic stride");
         auto numDynamic = getNumDynamicEntriesUpToIdx(
@@ -297,6 +341,8 @@ namespace detail {
         return (*static_cast<ConcreteOp *>(this)).getOffsetSizeAndStrideStartOperandIndex() +
           offsets().size() + sizes().size() + numDynamic;
     }
+    /// Helper method to compute the number of dynamic entries of `attr`, up to
+    /// `idx` using `isDynamic` to determine whether an entry is dynamic.
     unsigned getNumDynamicEntriesUpToIdx(::mlir::ArrayAttr attr, ::llvm::function_ref<bool(int64_t)> isDynamic, unsigned idx) {
       return std::count_if(
           attr.getValue().begin(), attr.getValue().begin() + idx,
@@ -304,25 +350,33 @@ namespace detail {
             return isDynamic(attr.cast<::mlir::IntegerAttr>().getInt());
           });
     }
+    /// Assert the offset `idx` is dynamic and return its value.
     ::mlir::Value getDynamicOffset(unsigned idx) {
       return (*static_cast<ConcreteOp *>(this)).getOperand(getIndexOfDynamicOffset(idx));
     }
+    /// Assert the size `idx` is dynamic and return its value.
     ::mlir::Value getDynamicSize(unsigned idx) {
       return (*static_cast<ConcreteOp *>(this)).getOperand(getIndexOfDynamicSize(idx));
     }
+    /// Assert the stride `idx` is dynamic and return its value.
     ::mlir::Value getDynamicStride(unsigned idx) {
       return (*static_cast<ConcreteOp *>(this)).getOperand(getIndexOfDynamicStride(idx));
     }
+    /// Return true if all `other`'s offsets, sizes and strides are the same.
+    /// Takes a custom `cmp` comparison function on OpFoldResult to avoid taking
+    /// a dialect dependence.
     bool isSameAs(::mlir::OffsetSizeAndStrideOpInterface other, ::llvm::function_ref<bool(::mlir::OpFoldResult, ::mlir::OpFoldResult)> cmp) {
       return ::mlir::detail::sameOffsetsSizesAndStrides(
           ::mlir::cast<::mlir::OffsetSizeAndStrideOpInterface>(
             (*static_cast<ConcreteOp *>(this)).getOperation()), other, cmp);
     }
+    /// Return true if all strides are guaranteed to be 1.
     bool hasUnitStride() {
       return ::llvm::all_of(getMixedStrides(), [](::mlir::OpFoldResult ofr) {
           return ::mlir::getConstantIntValue(ofr) == static_cast<int64_t>(1);
         });
     }
+    /// Return true if all offsets are guaranteed to be 0.
     bool hasZeroOffset() {
       return ::llvm::all_of(getMixedOffsets(), [](::mlir::OpFoldResult ofr) {
           return ::mlir::getConstantIntValue(ofr) == static_cast<int64_t>(0);
@@ -552,41 +606,41 @@ bool detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::FallbackModel<Concre
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::OperandRange detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::offsets(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).offsets();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOffsets();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::OperandRange detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::sizes(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).sizes();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSizes();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::OperandRange detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::strides(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).strides();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStrides();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::ArrayAttr detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::static_offsets(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_offsets();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticOffsets();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::ArrayAttr detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::static_sizes(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_sizes();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticSizes();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::ArrayAttr detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::static_strides(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_strides();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticStrides();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedOffsets(::mlir::Operation *tablegen_opaque_val) const {
-return ::mlir::getMixedOffsets((llvm::cast<ConcreteOp>(tablegen_opaque_val)), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_offsets(),
-                                       (llvm::cast<ConcreteOp>(tablegen_opaque_val)).offsets());
+return ::mlir::getMixedStridesOrOffsets((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticOffsets(),
+                                                (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getOffsets());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedSizes(::mlir::Operation *tablegen_opaque_val) const {
-return ::mlir::getMixedSizes((llvm::cast<ConcreteOp>(tablegen_opaque_val)), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_sizes(), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).sizes());
+return ::mlir::getMixedSizes((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticSizes(), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).sizes());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::llvm::SmallVector<::mlir::OpFoldResult, 4> detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMixedStrides(::mlir::Operation *tablegen_opaque_val) const {
-return ::mlir::getMixedStrides((llvm::cast<ConcreteOp>(tablegen_opaque_val)), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).static_strides(),
-                                       (llvm::cast<ConcreteOp>(tablegen_opaque_val)).strides());
+return ::mlir::getMixedStridesOrOffsets((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStaticStrides(),
+                                                (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getStrides());
 }
 template<typename ConcreteModel, typename ConcreteOp>
 bool detail::OffsetSizeAndStrideOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::isDynamicOffset(::mlir::Operation *tablegen_opaque_val, unsigned idx) const {
@@ -719,6 +773,7 @@ struct ViewLikeOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct ViewLikeOpInterfaceTrait;
@@ -729,6 +784,7 @@ public:
   using ::mlir::OpInterface<ViewLikeOpInterface, detail::ViewLikeOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::ViewLikeOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the source buffer from which the view is created.
   ::mlir::Value getViewSource();
 };
 namespace detail {

@@ -8,7 +8,7 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbf16ps>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbssd>(opInst)) {
@@ -21,7 +21,7 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbssd>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbsud>(opInst)) {
@@ -34,7 +34,7 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbsud>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbusd>(opInst)) {
@@ -47,7 +47,7 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbusd>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbuud>(opInst)) {
@@ -60,7 +60,7 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tdpbuud>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::amx::x86_amx_tileloadd64>(opInst)) {
@@ -73,7 +73,7 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tileloadd64>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::amx::x86_amx_tilestored64>(opInst)) {
@@ -99,6 +99,6 @@ if (auto op = dyn_cast<::mlir::amx::x86_amx_tilezero>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }

@@ -33,6 +33,7 @@ struct PointerElementTypeInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteType>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteType;
     unsigned getSizeInBytes(::mlir::Type tablegen_opaque_val, const DataLayout &dataLayout) const;
   };
 };template <typename ConcreteType>
@@ -44,11 +45,13 @@ public:
   using ::mlir::TypeInterface<PointerElementTypeInterface, detail::PointerElementTypeInterfaceInterfaceTraits>::TypeInterface;
   template <typename ConcreteType>
   struct Trait : public detail::PointerElementTypeInterfaceTrait<ConcreteType> {};
+  /// Returns the size of the type in bytes.
   unsigned getSizeInBytes(const DataLayout & dataLayout) const;
 };
 namespace detail {
   template <typename ConcreteType>
   struct PointerElementTypeInterfaceTrait : public ::mlir::TypeInterface<PointerElementTypeInterface, detail::PointerElementTypeInterfaceInterfaceTraits>::Trait<ConcreteType> {
+    /// Returns the size of the type in bytes.
     unsigned getSizeInBytes(const DataLayout & dataLayout) const {
       return dataLayout.getTypeSize((*static_cast<const ConcreteType *>(this)));
     }

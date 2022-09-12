@@ -20,7 +20,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     ::mlir::AffineMap (*permutation_map)(const Concept *impl, ::mlir::Operation *);
     bool (*isBroadcastDim)(const Concept *impl, ::mlir::Operation *, unsigned);
     bool (*hasBroadcastDim)(const Concept *impl, ::mlir::Operation *);
-    ::mlir::Optional<::mlir::ArrayAttr> (*in_bounds)(const Concept *impl, ::mlir::Operation *);
+    ::llvm::Optional<::mlir::ArrayAttr> (*in_bounds)(const Concept *impl, ::mlir::Operation *);
     ::mlir::ShapedType (*getShapedType)(const Concept *impl, ::mlir::Operation *);
     ::mlir::VectorType (*getVectorType)(const Concept *impl, ::mlir::Operation *);
     ::mlir::VectorType (*getMaskType)(const Concept *impl, ::mlir::Operation *);
@@ -28,12 +28,13 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     unsigned (*getLeadingShapedRank)(const Concept *impl, ::mlir::Operation *);
     bool (*hasOutOfBoundsDim)(const Concept *impl, ::mlir::Operation *);
     void (*zipResultAndIndexing)(const Concept *impl, ::mlir::Operation *, ::llvm::function_ref<void(int64_t, int64_t)>);
+    SmallVector<int64_t> (*getTransferChunkAccessed)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
   public:
     using Interface = ::mlir::VectorTransferOpInterface;
-    Model() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing} {}
+    Model() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing, getTransferChunkAccessed} {}
 
     static inline ::mlir::StringRef getInBoundsAttrStrName();
     static inline ::mlir::StringRef getPermutationMapAttrStrName();
@@ -44,7 +45,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     static inline ::mlir::AffineMap permutation_map(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool hasBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::Optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::Optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ShapedType getShapedType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getVectorType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getMaskType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -52,12 +53,13 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     static inline unsigned getLeadingShapedRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasOutOfBoundsDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void zipResultAndIndexing(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::function_ref<void(int64_t, int64_t)> fun);
+    static inline SmallVector<int64_t> getTransferChunkAccessed(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::VectorTransferOpInterface;
-    FallbackModel() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing} {}
+    FallbackModel() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing, getTransferChunkAccessed} {}
 
     static inline ::mlir::StringRef getInBoundsAttrStrName();
     static inline ::mlir::StringRef getPermutationMapAttrStrName();
@@ -68,7 +70,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     static inline ::mlir::AffineMap permutation_map(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool hasBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::mlir::Optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::Optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ShapedType getShapedType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getVectorType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getMaskType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -76,10 +78,12 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     static inline unsigned getLeadingShapedRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool hasOutOfBoundsDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void zipResultAndIndexing(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::function_ref<void(int64_t, int64_t)> fun);
+    static inline SmallVector<int64_t> getTransferChunkAccessed(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     static ::mlir::StringRef getInBoundsAttrStrName();
     static ::mlir::StringRef getPermutationMapAttrStrName();
     bool isDimInBounds(::mlir::Operation *tablegen_opaque_val, unsigned dim) const;
@@ -92,6 +96,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     unsigned getLeadingShapedRank(::mlir::Operation *tablegen_opaque_val) const;
     bool hasOutOfBoundsDim(::mlir::Operation *tablegen_opaque_val) const;
     void zipResultAndIndexing(::mlir::Operation *tablegen_opaque_val, ::llvm::function_ref<void(int64_t, int64_t)> fun) const;
+    SmallVector<int64_t> getTransferChunkAccessed(::mlir::Operation *tablegen_opaque_val) const;
   };
 };template <typename ConcreteOp>
 struct VectorTransferOpInterfaceTrait;
@@ -102,44 +107,94 @@ public:
   using ::mlir::OpInterface<VectorTransferOpInterface, detail::VectorTransferOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::VectorTransferOpInterfaceTrait<ConcreteOp> {};
+  /// Return the `in_bounds` attribute name.
   ::mlir::StringRef getInBoundsAttrStrName();
+  /// Return the `permutation_map` attribute name.
   ::mlir::StringRef getPermutationMapAttrStrName();
+  /// Return `true` if dimension `dim` is in-bounds. Return `false`
+  ///                 otherwise.
   bool isDimInBounds(unsigned dim);
+  /// Return the memref or ranked tensor operand.
   ::mlir::Value source();
+  /// Return the vector operand or result.
   ::mlir::Value vector();
+  /// Return the indices operands.
   ::mlir::ValueRange indices();
+  /// Return the permutation map.
   ::mlir::AffineMap permutation_map();
+  /// Returns true if the specified dimension is a broadcast.
   bool isBroadcastDim(unsigned idx);
+  /// Returns true if at least one of the dimensions in the
+  ///                  permutation map is a broadcast.
   bool hasBroadcastDim();
-  ::mlir::Optional<::mlir::ArrayAttr> in_bounds();
+  /// Return the `in_bounds` boolean ArrayAttr.
+  ::llvm::Optional<::mlir::ArrayAttr> in_bounds();
+  /// Return the ShapedType.
   ::mlir::ShapedType getShapedType();
+  /// Return the VectorType.
   ::mlir::VectorType getVectorType();
+  /// Return the mask type if the op has a mask.
   ::mlir::VectorType getMaskType();
+  /// Return the number of dimensions that participate in the
+  ///                  permutation map.
   unsigned getTransferRank();
+  /// Return the number of leading shaped dimensions that do not
+  ///                  participate in the permutation map.
   unsigned getLeadingShapedRank();
+  /// Returns true if at least one of the dimensions may be
+  ///                  out-of-bounds.
   bool hasOutOfBoundsDim();
+  /// Helper function to account for the fact that `permutationMap` results and
+  /// `op.indices` sizes may not match and may not be aligned. The first
+  /// `getLeadingShapedRank()` indices may just be indexed and not
+  /// transferred from/into the vector.
+  /// For example:
+  /// ```
+  ///    vector.transfer %0[%i, %j, %k, %c0] :
+  ///      memref<?x?x?x?xf32>, vector<2x4xf32>
+  /// ```
+  /// with `permutation_map = (d0, d1, d2, d3) -> (d2, d3)`.
+  /// Provide a zip function to coiterate on 2 running indices: `resultIdx` and
+  /// `indicesIdx` which accounts for this misalignment.
   void zipResultAndIndexing(::llvm::function_ref<void(int64_t, int64_t)> fun);
+  /// Return an upper-bound shape accessed by the transfer op within the
+  /// tensor/memref operand.
+  /// For example:
+  /// ```
+  ///   vector.transfer %w0[%i, %j] {
+  ///     permutation_map = affine_map<(d0, d1) -> (d1, d0, 0)>} :
+  ///     tensor<?x?xf32>, vector<4x2x6xf32>
+  /// ```
+  /// returns a shape [2, 4].
+  SmallVector<int64_t> getTransferChunkAccessed();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct VectorTransferOpInterfaceTrait : public ::mlir::OpInterface<VectorTransferOpInterface, detail::VectorTransferOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the `in_bounds` attribute name.
     static ::mlir::StringRef getInBoundsAttrStrName() {
       return "in_bounds";
     }
+    /// Return the `permutation_map` attribute name.
     static ::mlir::StringRef getPermutationMapAttrStrName() {
       return "permutation_map";
     }
+    /// Return `true` if dimension `dim` is in-bounds. Return `false`
+    ///                 otherwise.
     bool isDimInBounds(unsigned dim) {
       return (*static_cast<ConcreteOp *>(this)).isBroadcastDim(dim)
             || ((*static_cast<ConcreteOp *>(this)).getInBounds()
                 && (*static_cast<ConcreteOp *>(this)).getInBounds()->template cast<::mlir::ArrayAttr>()[dim]
                                     .template cast<::mlir::BoolAttr>().getValue());
     }
+    /// Returns true if the specified dimension is a broadcast.
     bool isBroadcastDim(unsigned idx) {
       auto expr = (*static_cast<ConcreteOp *>(this)).getPermutationMap().getResult(idx);
         return expr.template isa<::mlir::AffineConstantExpr>() &&
                expr.template dyn_cast<::mlir::AffineConstantExpr>().getValue() == 0;
     }
+    /// Returns true if at least one of the dimensions in the
+    ///                  permutation map is a broadcast.
     bool hasBroadcastDim() {
       for (unsigned i = 0, rank = getTransferRank(); i < rank; ++i) {
           if ((*static_cast<ConcreteOp *>(this)).isBroadcastDim(i))
@@ -147,30 +202,51 @@ namespace detail {
         }
         return false;
     }
+    /// Return the ShapedType.
     ::mlir::ShapedType getShapedType() {
       return (*static_cast<ConcreteOp *>(this)).getSource().getType().template cast<::mlir::ShapedType>();
     }
+    /// Return the VectorType.
     ::mlir::VectorType getVectorType() {
       return (*static_cast<ConcreteOp *>(this)).getVector().getType().template dyn_cast<::mlir::VectorType>();
     }
+    /// Return the mask type if the op has a mask.
     ::mlir::VectorType getMaskType() {
       return (*static_cast<ConcreteOp *>(this)).getMask()
             ? ::mlir::vector::detail::transferMaskType(
                 (*static_cast<ConcreteOp *>(this)).getVectorType(), (*static_cast<ConcreteOp *>(this)).getPermutationMap())
             : ::mlir::VectorType();
     }
+    /// Return the number of dimensions that participate in the
+    ///                  permutation map.
     unsigned getTransferRank() {
       return (*static_cast<ConcreteOp *>(this)).getPermutationMap().getNumResults();
     }
+    /// Return the number of leading shaped dimensions that do not
+    ///                  participate in the permutation map.
     unsigned getLeadingShapedRank() {
       return (*static_cast<ConcreteOp *>(this)).getShapedType().getRank() - (*static_cast<ConcreteOp *>(this)).getTransferRank();
     }
+    /// Returns true if at least one of the dimensions may be
+    ///                  out-of-bounds.
     bool hasOutOfBoundsDim() {
       for (unsigned idx = 0, e = (*static_cast<ConcreteOp *>(this)).getTransferRank(); idx < e; ++idx)
           if (!(*static_cast<ConcreteOp *>(this)).isDimInBounds(idx))
             return true;
         return false;
     }
+    /// Helper function to account for the fact that `permutationMap` results and
+    /// `op.indices` sizes may not match and may not be aligned. The first
+    /// `getLeadingShapedRank()` indices may just be indexed and not
+    /// transferred from/into the vector.
+    /// For example:
+    /// ```
+    ///    vector.transfer %0[%i, %j, %k, %c0] :
+    ///      memref<?x?x?x?xf32>, vector<2x4xf32>
+    /// ```
+    /// with `permutation_map = (d0, d1, d2, d3) -> (d2, d3)`.
+    /// Provide a zip function to coiterate on 2 running indices: `resultIdx` and
+    /// `indicesIdx` which accounts for this misalignment.
     void zipResultAndIndexing(::llvm::function_ref<void(int64_t, int64_t)> fun) {
       for (int64_t resultIdx = 0,
                    indicesIdx = (*static_cast<ConcreteOp *>(this)).getLeadingShapedRank(),
@@ -178,6 +254,28 @@ namespace detail {
            resultIdx < eResult;
            ++resultIdx, ++indicesIdx)
         fun(resultIdx, indicesIdx);
+    }
+    /// Return an upper-bound shape accessed by the transfer op within the
+    /// tensor/memref operand.
+    /// For example:
+    /// ```
+    ///   vector.transfer %w0[%i, %j] {
+    ///     permutation_map = affine_map<(d0, d1) -> (d1, d0, 0)>} :
+    ///     tensor<?x?xf32>, vector<4x2x6xf32>
+    /// ```
+    /// returns a shape [2, 4].
+    SmallVector<int64_t> getTransferChunkAccessed() {
+      SmallVector<int64_t> dimSizes((*static_cast<ConcreteOp *>(this)).getPermutationMap().getNumDims(), 0);
+        for (auto vecDims : llvm::zip((*static_cast<ConcreteOp *>(this)).getPermutationMap().getResults(),
+                                      (*static_cast<ConcreteOp *>(this)).getVectorType().getShape())) {
+          AffineExpr dim = std::get<0>(vecDims);
+          int64_t size = std::get<1>(vecDims);
+          // Skip broadcast.
+          if (dim.isa<AffineConstantExpr>())
+            continue;
+          dimSizes[dim.cast<AffineDimExpr>().getPosition()] = size;
+        }
+        return dimSizes;
     }
   };
 }// namespace detail
@@ -218,7 +316,7 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::hasBro
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasBroadcastDim();
 }
 template<typename ConcreteOp>
-::mlir::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds();
 }
 template<typename ConcreteOp>
@@ -248,6 +346,10 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::hasOut
 template<typename ConcreteOp>
 void detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::zipResultAndIndexing(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::function_ref<void(int64_t, int64_t)> fun) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).zipResultAndIndexing(fun);
+}
+template<typename ConcreteOp>
+SmallVector<int64_t> detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::getTransferChunkAccessed(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getTransferChunkAccessed();
 }
 template<typename ConcreteOp>
 ::mlir::StringRef detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getInBoundsAttrStrName() {
@@ -286,7 +388,7 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>
   return static_cast<const ConcreteOp *>(impl)->hasBroadcastDim(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::mlir::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->in_bounds(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
@@ -316,6 +418,10 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>
 template<typename ConcreteOp>
 void detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::zipResultAndIndexing(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::function_ref<void(int64_t, int64_t)> fun) {
   return static_cast<const ConcreteOp *>(impl)->zipResultAndIndexing(tablegen_opaque_val, fun);
+}
+template<typename ConcreteOp>
+SmallVector<int64_t> detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getTransferChunkAccessed(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getTransferChunkAccessed(tablegen_opaque_val);
 }
 template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::StringRef detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getInBoundsAttrStrName() {
@@ -385,13 +491,27 @@ for (int64_t resultIdx = 0,
            ++resultIdx, ++indicesIdx)
         fun(resultIdx, indicesIdx);
 }
+template<typename ConcreteModel, typename ConcreteOp>
+SmallVector<int64_t> detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTransferChunkAccessed(::mlir::Operation *tablegen_opaque_val) const {
+SmallVector<int64_t> dimSizes((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap().getNumDims(), 0);
+        for (auto vecDims : llvm::zip((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap().getResults(),
+                                      (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVectorType().getShape())) {
+          AffineExpr dim = std::get<0>(vecDims);
+          int64_t size = std::get<1>(vecDims);
+          // Skip broadcast.
+          if (dim.isa<AffineConstantExpr>())
+            continue;
+          dimSizes[dim.cast<AffineDimExpr>().getPosition()] = size;
+        }
+        return dimSizes;
+}
 } // namespace mlir
 namespace mlir {
 class VectorUnrollOpInterface;
 namespace detail {
 struct VectorUnrollOpInterfaceInterfaceTraits {
   struct Concept {
-    ::mlir::Optional<::llvm::SmallVector<int64_t, 4>> (*getShapeForUnroll)(const Concept *impl, ::mlir::Operation *);
+    ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> (*getShapeForUnroll)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
@@ -399,7 +519,7 @@ struct VectorUnrollOpInterfaceInterfaceTraits {
     using Interface = ::mlir::VectorUnrollOpInterface;
     Model() : Concept{getShapeForUnroll} {}
 
-    static inline ::mlir::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
@@ -407,12 +527,13 @@ struct VectorUnrollOpInterfaceInterfaceTraits {
     using Interface = ::mlir::VectorUnrollOpInterface;
     FallbackModel() : Concept{getShapeForUnroll} {}
 
-    static inline ::mlir::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
-    ::mlir::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const;
+    using ConcreteEntity = ConcreteOp;
+    ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const;
   };
 };template <typename ConcreteOp>
 struct VectorUnrollOpInterfaceTrait;
@@ -423,12 +544,18 @@ public:
   using ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::VectorUnrollOpInterfaceTrait<ConcreteOp> {};
-  ::mlir::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll();
+  /// Return the shape ratio of unrolling to the target vector shape
+  /// `targetShape`. Return `None` if the op cannot be unrolled to the target
+  /// vector shape.
+  ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct VectorUnrollOpInterfaceTrait : public ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
-    ::mlir::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll() {
+    /// Return the shape ratio of unrolling to the target vector shape
+    /// `targetShape`. Return `None` if the op cannot be unrolled to the target
+    /// vector shape.
+    ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll() {
       assert((*static_cast<ConcreteOp *>(this))->getNumResults() == 1);
         auto vt = (*static_cast<ConcreteOp *>(this)).getResult().getType().
           template dyn_cast<::mlir::VectorType>();
@@ -440,15 +567,15 @@ namespace detail {
   };
 }// namespace detail
 template<typename ConcreteOp>
-::mlir::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::Model<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::Model<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getShapeForUnroll();
 }
 template<typename ConcreteOp>
-::mlir::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::llvm::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getShapeForUnroll(tablegen_opaque_val);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::mlir::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const {
+::llvm::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const {
 assert((llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumResults() == 1);
         auto vt = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResult().getType().
           template dyn_cast<::mlir::VectorType>();

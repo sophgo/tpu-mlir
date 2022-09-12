@@ -137,11 +137,10 @@ class preprocess(object):
             exit(1)
 
         self.input_name = Operation.name(input_op)
-        if 'preprocess' not in input_op.attributes:
-            self.resize_dims = self.net_input_dims
+        self.resize_dims = self.net_input_dims
+        attrs = input_op.attributes
+        if len(attrs) == 0:
             return
-
-        attrs =Operation.dictattr(input_op, 'preprocess')
         self.pixel_format = Operation.str(attrs['pixel_format'])
         self.channel_format = Operation.str(attrs['channel_format'])
         if self.channel_format == 'nhwc':

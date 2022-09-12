@@ -6,6 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
+/// Get fastmath flags
 ::mlir::LLVM::FastmathFlags mlir::LLVM::FastmathFlagsInterface::getFastmathFlags() {
       return getImpl()->getFastmathFlags(getImpl(), getOperation());
   }

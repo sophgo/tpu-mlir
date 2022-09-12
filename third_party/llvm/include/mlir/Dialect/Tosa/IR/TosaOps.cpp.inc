@@ -61,7 +61,6 @@ mlir::tosa::ReduceMaxOp,
 mlir::tosa::ReduceMinOp,
 mlir::tosa::ReduceProdOp,
 mlir::tosa::ReduceSumOp,
-mlir::tosa::ReluNOp,
 mlir::tosa::RescaleOp,
 mlir::tosa::ReshapeOp,
 mlir::tosa::ResizeOp,
@@ -125,11 +124,11 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps2(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps3(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && (((type.cast<::mlir::ShapedType>().getRank()
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && (((type.cast<::mlir::ShapedType>().getRank()
                          == 1)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 2)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 3)) || ((type.cast<::mlir::ShapedType>().getRank()
-                         == 4))))))) {
+                         == 4))))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 1D/2D/3D/4D tensor of number values, but got " << type;
   }
@@ -139,12 +138,12 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps3(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps4(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && (((type.cast<::mlir::ShapedType>().getRank()
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && (((type.cast<::mlir::ShapedType>().getRank()
                          == 0)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 1)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 2)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 3)) || ((type.cast<::mlir::ShapedType>().getRank()
-                         == 4))))))) {
+                         == 4))))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 0D/1D/2D/3D/4D tensor of number values, but got " << type;
   }
@@ -154,8 +153,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps4(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps5(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 4)))))) {
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 4)))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 4D tensor of number values, but got " << type;
   }
@@ -165,8 +164,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps5(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps6(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 1)))))) {
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 1)))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 1D tensor of number values, but got " << type;
   }
@@ -176,8 +175,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps6(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps7(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 5)))))) {
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 5)))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 5D tensor of number values, but got " << type;
   }
@@ -207,8 +206,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps9(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps10(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 2)))))) {
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 2)))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 2D tensor of number values, but got " << type;
   }
@@ -218,8 +217,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps10(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps11(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 3)))))) {
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 3)))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 3D tensor of number values, but got " << type;
   }
@@ -229,8 +228,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps11(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps12(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(32)); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 2))))) {
+  if (!((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 2)))) && ([](::mlir::Type elementType) { return (elementType.isSignlessInteger(32)); }(type.cast<::mlir::ShapedType>().getElementType())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 2D tensor of 32-bit signless integer values, but got " << type;
   }
@@ -260,8 +259,8 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps14(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps15(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
-                         == 0))))) {
+  if (!((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && ((type.cast<::mlir::ShapedType>().getRank()
+                         == 0)))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType())))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be 0D tensor of number values, but got " << type;
   }
@@ -271,13 +270,13 @@ static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps15(
 static ::mlir::LogicalResult __mlir_ods_local_type_constraint_TosaOps16(
     ::mlir::Operation *op, ::mlir::Type type, ::llvm::StringRef valueKind,
     unsigned valueIndex) {
-  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) && (((type.cast<::mlir::ShapedType>().hasRank())) && (((type.cast<::mlir::ShapedType>().getRank()
+  if (!((((type.isa<::mlir::UnrankedTensorType>())) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))) || ((((type.isa<::mlir::TensorType>())) && (((type.cast<::mlir::ShapedType>().hasRank())) && (((type.cast<::mlir::ShapedType>().getRank()
                          == 1)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 2)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 3)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 4)) || ((type.cast<::mlir::ShapedType>().getRank()
                          == 5)) || ((type.cast<::mlir::ShapedType>().getRank()
-                         == 6))))))) {
+                         == 6))))) && ([](::mlir::Type elementType) { return (((elementType.isSignlessInteger(1))) || ((elementType.isUnsignedInteger(8))) || (((elementType.isSignlessInteger(8))) || ((elementType.isSignlessInteger(16))) || ((elementType.isSignlessInteger(32))) || ((elementType.isSignlessInteger(48))) || ((elementType.isSignlessInteger(64))))) || ((((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 4))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 8))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 16))) || (((elementType.isa<mlir::quant::QuantizedType>())) && ((elementType.cast<mlir::quant::QuantizedType>().getStorageTypeIntegralWidth() == 32)))) || (((elementType.isF32())) || ((elementType.isF16())) || ((elementType.isBF16()))); }(type.cast<::mlir::ShapedType>().getElementType()))))) {
     return op->emitOpError(valueKind) << " #" << valueIndex
         << " must be unranked.tensor of number values or 1D/2D/3D/4D/5D/6D tensor of number values, but got " << type;
   }
@@ -494,7 +493,7 @@ std::pair<unsigned, unsigned> AbsOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AbsOpAdaptor::input1() {
+::mlir::Value AbsOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -516,11 +515,11 @@ std::pair<unsigned, unsigned> AbsOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AbsOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> AbsOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange AbsOp::input1Mutable() {
+::mlir::MutableOperandRange AbsOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -536,7 +535,7 @@ std::pair<unsigned, unsigned> AbsOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AbsOp::output() {
+::mlir::TypedValue<::mlir::TensorType> AbsOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -619,11 +618,11 @@ std::pair<unsigned, unsigned> AddOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AddOpAdaptor::input1() {
+::mlir::Value AddOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AddOpAdaptor::input2() {
+::mlir::Value AddOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -645,21 +644,21 @@ std::pair<unsigned, unsigned> AddOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AddOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> AddOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AddOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> AddOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange AddOp::input1Mutable() {
+::mlir::MutableOperandRange AddOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AddOp::input2Mutable() {
+::mlir::MutableOperandRange AddOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -675,7 +674,7 @@ std::pair<unsigned, unsigned> AddOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AddOp::output() {
+::mlir::TypedValue<::mlir::TensorType> AddOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -766,15 +765,15 @@ std::pair<unsigned, unsigned> ApplyScaleOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ApplyScaleOpAdaptor::value() {
+::mlir::Value ApplyScaleOpAdaptor::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ApplyScaleOpAdaptor::multiplier() {
+::mlir::Value ApplyScaleOpAdaptor::getMultiplier() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value ApplyScaleOpAdaptor::shift() {
+::mlir::Value ApplyScaleOpAdaptor::getShift() {
   return *getODSOperands(2).begin();
 }
 
@@ -782,14 +781,14 @@ std::pair<unsigned, unsigned> ApplyScaleOpAdaptor::getODSOperandIndexAndLength(u
   return odsAttrs;
 }
 
-::mlir::BoolAttr ApplyScaleOpAdaptor::double_roundAttr() {
+::mlir::BoolAttr ApplyScaleOpAdaptor::getDoubleRoundAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyScaleOp::double_roundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyScaleOp::getDoubleRoundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
 }
 
-bool ApplyScaleOpAdaptor::double_round() {
-  auto attr = double_roundAttr();
+bool ApplyScaleOpAdaptor::getDoubleRound() {
+  auto attr = getDoubleRoundAttr();
   return attr.getValue();
 }
 
@@ -800,7 +799,7 @@ bool ApplyScaleOpAdaptor::double_round() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.apply_scale' op ""requires attribute 'double_round'");
-    if (namedAttrIt->getName() == ApplyScaleOp::double_roundAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ApplyScaleOp::getDoubleRoundAttrName(*odsOpName)) {
       tblgen_double_round = namedAttrIt->getValue();
       break;
     }
@@ -822,31 +821,31 @@ std::pair<unsigned, unsigned> ApplyScaleOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ApplyScaleOp::value() {
+::mlir::Value ApplyScaleOp::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ApplyScaleOp::multiplier() {
+::mlir::Value ApplyScaleOp::getMultiplier() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value ApplyScaleOp::shift() {
+::mlir::Value ApplyScaleOp::getShift() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange ApplyScaleOp::valueMutable() {
+::mlir::MutableOperandRange ApplyScaleOp::getValueMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ApplyScaleOp::multiplierMutable() {
+::mlir::MutableOperandRange ApplyScaleOp::getMultiplierMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ApplyScaleOp::shiftMutable() {
+::mlir::MutableOperandRange ApplyScaleOp::getShiftMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -862,28 +861,28 @@ std::pair<unsigned, unsigned> ApplyScaleOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ApplyScaleOp::output() {
+::mlir::Value ApplyScaleOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::BoolAttr ApplyScaleOp::double_roundAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, double_roundAttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr ApplyScaleOp::getDoubleRoundAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getDoubleRoundAttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool ApplyScaleOp::double_round() {
-  auto attr = double_roundAttr();
+bool ApplyScaleOp::getDoubleRound() {
+  auto attr = getDoubleRoundAttr();
   return attr.getValue();
 }
 
-void ApplyScaleOp::double_roundAttr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(double_roundAttrName(), attr);
+void ApplyScaleOp::setDoubleRoundAttr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getDoubleRoundAttrName(), attr);
 }
 
 void ApplyScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value value, ::mlir::Value multiplier, ::mlir::Value shift, ::mlir::BoolAttr double_round) {
   odsState.addOperands(value);
   odsState.addOperands(multiplier);
   odsState.addOperands(shift);
-  odsState.addAttribute(double_roundAttrName(odsState.name), double_round);
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), double_round);
   odsState.addTypes(output);
 }
 
@@ -891,7 +890,7 @@ void ApplyScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(value);
   odsState.addOperands(multiplier);
   odsState.addOperands(shift);
-  odsState.addAttribute(double_roundAttrName(odsState.name), double_round);
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), double_round);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -900,7 +899,7 @@ void ApplyScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(value);
   odsState.addOperands(multiplier);
   odsState.addOperands(shift);
-  odsState.addAttribute(double_roundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
   odsState.addTypes(output);
 }
 
@@ -908,7 +907,7 @@ void ApplyScaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(value);
   odsState.addOperands(multiplier);
   odsState.addOperands(shift);
-  odsState.addAttribute(double_roundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -928,7 +927,7 @@ void ApplyScaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'double_round'");
-    if (namedAttrIt->getName() == double_roundAttrName()) {
+    if (namedAttrIt->getName() == getDoubleRoundAttrName()) {
       tblgen_double_round = namedAttrIt->getValue();
       break;
     }
@@ -1008,7 +1007,7 @@ std::pair<unsigned, unsigned> ArgMaxOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ArgMaxOpAdaptor::input() {
+::mlir::Value ArgMaxOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -1016,14 +1015,14 @@ std::pair<unsigned, unsigned> ArgMaxOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ArgMaxOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ArgMaxOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ArgMaxOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ArgMaxOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ArgMaxOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ArgMaxOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -1034,7 +1033,7 @@ uint64_t ArgMaxOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.argmax' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ArgMaxOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ArgMaxOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -1056,11 +1055,11 @@ std::pair<unsigned, unsigned> ArgMaxOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ArgMaxOp::input() {
+::mlir::Value ArgMaxOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ArgMaxOp::inputMutable() {
+::mlir::MutableOperandRange ArgMaxOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1076,45 +1075,45 @@ std::pair<unsigned, unsigned> ArgMaxOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ArgMaxOp::output() {
+::mlir::Value ArgMaxOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ArgMaxOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ArgMaxOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ArgMaxOp::axis() {
-  auto attr = axisAttr();
+uint64_t ArgMaxOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ArgMaxOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ArgMaxOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ArgMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ArgMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ArgMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ArgMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1134,7 +1133,7 @@ void ArgMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -1202,11 +1201,11 @@ std::pair<unsigned, unsigned> ArithmeticRightShiftOpAdaptor::getODSOperandIndexA
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ArithmeticRightShiftOpAdaptor::input1() {
+::mlir::Value ArithmeticRightShiftOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ArithmeticRightShiftOpAdaptor::input2() {
+::mlir::Value ArithmeticRightShiftOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -1214,14 +1213,14 @@ std::pair<unsigned, unsigned> ArithmeticRightShiftOpAdaptor::getODSOperandIndexA
   return odsAttrs;
 }
 
-::mlir::BoolAttr ArithmeticRightShiftOpAdaptor::roundAttr() {
+::mlir::BoolAttr ArithmeticRightShiftOpAdaptor::getRoundAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ArithmeticRightShiftOp::roundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ArithmeticRightShiftOp::getRoundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
 }
 
-bool ArithmeticRightShiftOpAdaptor::round() {
-  auto attr = roundAttr();
+bool ArithmeticRightShiftOpAdaptor::getRound() {
+  auto attr = getRoundAttr();
   return attr.getValue();
 }
 
@@ -1232,7 +1231,7 @@ bool ArithmeticRightShiftOpAdaptor::round() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.arithmetic_right_shift' op ""requires attribute 'round'");
-    if (namedAttrIt->getName() == ArithmeticRightShiftOp::roundAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ArithmeticRightShiftOp::getRoundAttrName(*odsOpName)) {
       tblgen_round = namedAttrIt->getValue();
       break;
     }
@@ -1254,21 +1253,21 @@ std::pair<unsigned, unsigned> ArithmeticRightShiftOp::getODSOperandIndexAndLengt
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ArithmeticRightShiftOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> ArithmeticRightShiftOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ArithmeticRightShiftOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> ArithmeticRightShiftOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange ArithmeticRightShiftOp::input1Mutable() {
+::mlir::MutableOperandRange ArithmeticRightShiftOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ArithmeticRightShiftOp::input2Mutable() {
+::mlir::MutableOperandRange ArithmeticRightShiftOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1284,34 +1283,34 @@ std::pair<unsigned, unsigned> ArithmeticRightShiftOp::getODSResultIndexAndLength
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ArithmeticRightShiftOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ArithmeticRightShiftOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::BoolAttr ArithmeticRightShiftOp::roundAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, roundAttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr ArithmeticRightShiftOp::getRoundAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getRoundAttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool ArithmeticRightShiftOp::round() {
-  auto attr = roundAttr();
+bool ArithmeticRightShiftOp::getRound() {
+  auto attr = getRoundAttr();
   return attr.getValue();
 }
 
-void ArithmeticRightShiftOp::roundAttr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(roundAttrName(), attr);
+void ArithmeticRightShiftOp::setRoundAttr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getRoundAttrName(), attr);
 }
 
 void ArithmeticRightShiftOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::Value input2, ::mlir::BoolAttr round) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(roundAttrName(odsState.name), round);
+  odsState.addAttribute(getRoundAttrName(odsState.name), round);
   odsState.addTypes(output);
 }
 
 void ArithmeticRightShiftOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2, ::mlir::BoolAttr round) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(roundAttrName(odsState.name), round);
+  odsState.addAttribute(getRoundAttrName(odsState.name), round);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1319,14 +1318,14 @@ void ArithmeticRightShiftOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::Operat
 void ArithmeticRightShiftOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::Value input2, bool round) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(roundAttrName(odsState.name), odsBuilder.getBoolAttr(round));
+  odsState.addAttribute(getRoundAttrName(odsState.name), odsBuilder.getBoolAttr(round));
   odsState.addTypes(output);
 }
 
 void ArithmeticRightShiftOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2, bool round) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(roundAttrName(odsState.name), odsBuilder.getBoolAttr(round));
+  odsState.addAttribute(getRoundAttrName(odsState.name), odsBuilder.getBoolAttr(round));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1346,7 +1345,7 @@ void ArithmeticRightShiftOp::build(::mlir::OpBuilder &, ::mlir::OperationState &
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'round'");
-    if (namedAttrIt->getName() == roundAttrName()) {
+    if (namedAttrIt->getName() == getRoundAttrName()) {
       tblgen_round = namedAttrIt->getValue();
       break;
     }
@@ -1420,7 +1419,7 @@ std::pair<unsigned, unsigned> AvgPool2dOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AvgPool2dOpAdaptor::input() {
+::mlir::Value AvgPool2dOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -1428,48 +1427,48 @@ std::pair<unsigned, unsigned> AvgPool2dOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::ArrayAttr AvgPool2dOpAdaptor::kernelAttr() {
+::mlir::ArrayAttr AvgPool2dOpAdaptor::getKernelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, AvgPool2dOp::kernelAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr AvgPool2dOpAdaptor::kernel() {
-  auto attr = kernelAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, AvgPool2dOp::getKernelAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr AvgPool2dOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, AvgPool2dOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr AvgPool2dOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr AvgPool2dOpAdaptor::getKernel() {
+  auto attr = getKernelAttr();
   return attr;
 }
 
-::mlir::ArrayAttr AvgPool2dOpAdaptor::padAttr() {
+::mlir::ArrayAttr AvgPool2dOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, AvgPool2dOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr AvgPool2dOpAdaptor::pad() {
-  auto attr = padAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, AvgPool2dOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, AvgPool2dOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
-    return attr;
+::mlir::ArrayAttr AvgPool2dOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> AvgPool2dOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr) : (::llvm::None);
+::mlir::ArrayAttr AvgPool2dOpAdaptor::getPadAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, AvgPool2dOp::getPadAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr AvgPool2dOpAdaptor::getPad() {
+  auto attr = getPadAttr();
+  return attr;
+}
+
+mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::getQuantizationInfoAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, AvgPool2dOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+  return attr;
+}
+
+::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> AvgPool2dOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr.cast<mlir::tosa::UnaryOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult AvgPool2dOpAdaptor::verify(::mlir::Location loc) {
@@ -1479,7 +1478,7 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'kernel'");
-    if (namedAttrIt->getName() == AvgPool2dOp::kernelAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AvgPool2dOp::getKernelAttrName(*odsOpName)) {
       tblgen_kernel = namedAttrIt->getValue();
       break;
     }
@@ -1489,7 +1488,7 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'pad'");
-    if (namedAttrIt->getName() == AvgPool2dOp::padAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AvgPool2dOp::getPadAttrName(*odsOpName)) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -1500,11 +1499,11 @@ mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOpAdaptor::quantization_infoAttr() 
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.avg_pool2d' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == AvgPool2dOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AvgPool2dOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == AvgPool2dOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == AvgPool2dOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -1534,11 +1533,11 @@ std::pair<unsigned, unsigned> AvgPool2dOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AvgPool2dOp::input() {
+::mlir::Value AvgPool2dOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange AvgPool2dOp::inputMutable() {
+::mlir::MutableOperandRange AvgPool2dOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1554,64 +1553,64 @@ std::pair<unsigned, unsigned> AvgPool2dOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AvgPool2dOp::output() {
+::mlir::Value AvgPool2dOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr AvgPool2dOp::kernelAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, kernelAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr AvgPool2dOp::getKernelAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getKernelAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr AvgPool2dOp::kernel() {
-  auto attr = kernelAttr();
+::mlir::ArrayAttr AvgPool2dOp::getKernel() {
+  auto attr = getKernelAttr();
   return attr;
 }
 
-::mlir::ArrayAttr AvgPool2dOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr AvgPool2dOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr AvgPool2dOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr AvgPool2dOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr AvgPool2dOp::padAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr AvgPool2dOp::getPadAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getPadAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr AvgPool2dOp::pad() {
-  auto attr = padAttr();
+::mlir::ArrayAttr AvgPool2dOp::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+mlir::tosa::UnaryOpQuantizationAttr AvgPool2dOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> AvgPool2dOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> AvgPool2dOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr.cast<mlir::tosa::UnaryOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void AvgPool2dOp::kernelAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(kernelAttrName(), attr);
+void AvgPool2dOp::setKernelAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getKernelAttrName(), attr);
 }
 
-void AvgPool2dOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
+void AvgPool2dOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void AvgPool2dOp::padAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(padAttrName(), attr);
+void AvgPool2dOp::setPadAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getPadAttrName(), attr);
 }
 
-void AvgPool2dOp::quantization_infoAttr(mlir::tosa::UnaryOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void AvgPool2dOp::setQuantizationInfoAttr(mlir::tosa::UnaryOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute AvgPool2dOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void AvgPool2dOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, ArrayAttr kernel, ArrayAttr stride, ArrayAttr pad) {
@@ -1622,22 +1621,22 @@ void AvgPool2dOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 void AvgPool2dOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::ArrayAttr kernel, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr pad, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info) {
   odsState.addOperands(input);
-  odsState.addAttribute(kernelAttrName(odsState.name), kernel);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
+  odsState.addAttribute(getKernelAttrName(odsState.name), kernel);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
 
 void AvgPool2dOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::ArrayAttr kernel, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr pad, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info) {
   odsState.addOperands(input);
-  odsState.addAttribute(kernelAttrName(odsState.name), kernel);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
+  odsState.addAttribute(getKernelAttrName(odsState.name), kernel);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -1658,7 +1657,7 @@ void AvgPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kernel'");
-    if (namedAttrIt->getName() == kernelAttrName()) {
+    if (namedAttrIt->getName() == getKernelAttrName()) {
       tblgen_kernel = namedAttrIt->getValue();
       break;
     }
@@ -1668,7 +1667,7 @@ void AvgPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
-    if (namedAttrIt->getName() == padAttrName()) {
+    if (namedAttrIt->getName() == getPadAttrName()) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -1679,11 +1678,11 @@ void AvgPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -1761,11 +1760,11 @@ std::pair<unsigned, unsigned> BitwiseAndOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseAndOpAdaptor::input1() {
+::mlir::Value BitwiseAndOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value BitwiseAndOpAdaptor::input2() {
+::mlir::Value BitwiseAndOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -1787,21 +1786,21 @@ std::pair<unsigned, unsigned> BitwiseAndOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseAndOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseAndOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value BitwiseAndOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseAndOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange BitwiseAndOp::input1Mutable() {
+::mlir::MutableOperandRange BitwiseAndOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange BitwiseAndOp::input2Mutable() {
+::mlir::MutableOperandRange BitwiseAndOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1817,7 +1816,7 @@ std::pair<unsigned, unsigned> BitwiseAndOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseAndOp::output() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseAndOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -1908,7 +1907,7 @@ std::pair<unsigned, unsigned> BitwiseNotOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseNotOpAdaptor::input1() {
+::mlir::Value BitwiseNotOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -1930,11 +1929,11 @@ std::pair<unsigned, unsigned> BitwiseNotOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseNotOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseNotOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange BitwiseNotOp::input1Mutable() {
+::mlir::MutableOperandRange BitwiseNotOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1950,7 +1949,7 @@ std::pair<unsigned, unsigned> BitwiseNotOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseNotOp::output() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseNotOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -2033,11 +2032,11 @@ std::pair<unsigned, unsigned> BitwiseOrOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseOrOpAdaptor::input1() {
+::mlir::Value BitwiseOrOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value BitwiseOrOpAdaptor::input2() {
+::mlir::Value BitwiseOrOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -2059,21 +2058,21 @@ std::pair<unsigned, unsigned> BitwiseOrOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseOrOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseOrOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value BitwiseOrOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseOrOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange BitwiseOrOp::input1Mutable() {
+::mlir::MutableOperandRange BitwiseOrOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange BitwiseOrOp::input2Mutable() {
+::mlir::MutableOperandRange BitwiseOrOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2089,7 +2088,7 @@ std::pair<unsigned, unsigned> BitwiseOrOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseOrOp::output() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseOrOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -2180,11 +2179,11 @@ std::pair<unsigned, unsigned> BitwiseXorOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseXorOpAdaptor::input1() {
+::mlir::Value BitwiseXorOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value BitwiseXorOpAdaptor::input2() {
+::mlir::Value BitwiseXorOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -2206,21 +2205,21 @@ std::pair<unsigned, unsigned> BitwiseXorOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseXorOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseXorOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value BitwiseXorOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseXorOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange BitwiseXorOp::input1Mutable() {
+::mlir::MutableOperandRange BitwiseXorOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange BitwiseXorOp::input2Mutable() {
+::mlir::MutableOperandRange BitwiseXorOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2236,7 +2235,7 @@ std::pair<unsigned, unsigned> BitwiseXorOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value BitwiseXorOp::output() {
+::mlir::TypedValue<::mlir::TensorType> BitwiseXorOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -2327,7 +2326,7 @@ std::pair<unsigned, unsigned> CastOpAdaptor::getODSOperandIndexAndLength(unsigne
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CastOpAdaptor::input() {
+::mlir::Value CastOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -2349,11 +2348,11 @@ std::pair<unsigned, unsigned> CastOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CastOp::input() {
+::mlir::TypedValue<::mlir::TensorType> CastOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange CastOp::inputMutable() {
+::mlir::MutableOperandRange CastOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2369,7 +2368,7 @@ std::pair<unsigned, unsigned> CastOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CastOp::output() {
+::mlir::TypedValue<::mlir::TensorType> CastOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -2452,7 +2451,7 @@ std::pair<unsigned, unsigned> CeilOpAdaptor::getODSOperandIndexAndLength(unsigne
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CeilOpAdaptor::input1() {
+::mlir::Value CeilOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -2474,11 +2473,11 @@ std::pair<unsigned, unsigned> CeilOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CeilOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> CeilOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange CeilOp::input1Mutable() {
+::mlir::MutableOperandRange CeilOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2494,7 +2493,7 @@ std::pair<unsigned, unsigned> CeilOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CeilOp::output() {
+::mlir::TypedValue<::mlir::TensorType> CeilOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -2577,7 +2576,7 @@ std::pair<unsigned, unsigned> ClampOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ClampOpAdaptor::input() {
+::mlir::Value ClampOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -2585,47 +2584,47 @@ std::pair<unsigned, unsigned> ClampOpAdaptor::getODSOperandIndexAndLength(unsign
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ClampOpAdaptor::min_intAttr() {
+::mlir::IntegerAttr ClampOpAdaptor::getMinIntAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, ClampOp::min_intAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, ClampOp::getMinIntAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ClampOpAdaptor::min_int() {
-  auto attr = min_intAttr();
+uint64_t ClampOpAdaptor::getMinInt() {
+  auto attr = getMinIntAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr ClampOpAdaptor::max_intAttr() {
+::mlir::IntegerAttr ClampOpAdaptor::getMaxIntAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, ClampOp::max_intAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, ClampOp::getMaxIntAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ClampOpAdaptor::max_int() {
-  auto attr = max_intAttr();
+uint64_t ClampOpAdaptor::getMaxInt() {
+  auto attr = getMaxIntAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::FloatAttr ClampOpAdaptor::min_fpAttr() {
+::mlir::FloatAttr ClampOpAdaptor::getMinFpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, ClampOp::min_fpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, ClampOp::getMinFpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+  return attr;
 }
 
-::llvm::APFloat ClampOpAdaptor::min_fp() {
-  auto attr = min_fpAttr();
+::llvm::APFloat ClampOpAdaptor::getMinFp() {
+  auto attr = getMinFpAttr();
   return attr.getValue();
 }
 
-::mlir::FloatAttr ClampOpAdaptor::max_fpAttr() {
+::mlir::FloatAttr ClampOpAdaptor::getMaxFpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, ClampOp::max_fpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, ClampOp::getMaxFpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
+  return attr;
 }
 
-::llvm::APFloat ClampOpAdaptor::max_fp() {
-  auto attr = max_fpAttr();
+::llvm::APFloat ClampOpAdaptor::getMaxFp() {
+  auto attr = getMaxFpAttr();
   return attr.getValue();
 }
 
@@ -2636,7 +2635,7 @@ uint64_t ClampOpAdaptor::max_int() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.clamp' op ""requires attribute 'max_fp'");
-    if (namedAttrIt->getName() == ClampOp::max_fpAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ClampOp::getMaxFpAttrName(*odsOpName)) {
       tblgen_max_fp = namedAttrIt->getValue();
       break;
     }
@@ -2646,7 +2645,7 @@ uint64_t ClampOpAdaptor::max_int() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.clamp' op ""requires attribute 'max_int'");
-    if (namedAttrIt->getName() == ClampOp::max_intAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ClampOp::getMaxIntAttrName(*odsOpName)) {
       tblgen_max_int = namedAttrIt->getValue();
       break;
     }
@@ -2656,7 +2655,7 @@ uint64_t ClampOpAdaptor::max_int() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.clamp' op ""requires attribute 'min_fp'");
-    if (namedAttrIt->getName() == ClampOp::min_fpAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ClampOp::getMinFpAttrName(*odsOpName)) {
       tblgen_min_fp = namedAttrIt->getValue();
       break;
     }
@@ -2666,7 +2665,7 @@ uint64_t ClampOpAdaptor::max_int() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.clamp' op ""requires attribute 'min_int'");
-    if (namedAttrIt->getName() == ClampOp::min_intAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ClampOp::getMinIntAttrName(*odsOpName)) {
       tblgen_min_int = namedAttrIt->getValue();
       break;
     }
@@ -2697,11 +2696,11 @@ std::pair<unsigned, unsigned> ClampOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ClampOp::input() {
+::mlir::TypedValue<::mlir::TensorType> ClampOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ClampOp::inputMutable() {
+::mlir::MutableOperandRange ClampOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2717,96 +2716,96 @@ std::pair<unsigned, unsigned> ClampOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ClampOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ClampOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ClampOp::min_intAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, min_intAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ClampOp::getMinIntAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, getMinIntAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ClampOp::min_int() {
-  auto attr = min_intAttr();
+uint64_t ClampOp::getMinInt() {
+  auto attr = getMinIntAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr ClampOp::max_intAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, max_intAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ClampOp::getMaxIntAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, getMaxIntAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ClampOp::max_int() {
-  auto attr = max_intAttr();
+uint64_t ClampOp::getMaxInt() {
+  auto attr = getMaxIntAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::FloatAttr ClampOp::min_fpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, min_fpAttrName()).cast<::mlir::FloatAttr>();
+::mlir::FloatAttr ClampOp::getMinFpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getMinFpAttrName()).cast<::mlir::FloatAttr>();
 }
 
-::llvm::APFloat ClampOp::min_fp() {
-  auto attr = min_fpAttr();
+::llvm::APFloat ClampOp::getMinFp() {
+  auto attr = getMinFpAttr();
   return attr.getValue();
 }
 
-::mlir::FloatAttr ClampOp::max_fpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, max_fpAttrName()).cast<::mlir::FloatAttr>();
+::mlir::FloatAttr ClampOp::getMaxFpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, getMaxFpAttrName()).cast<::mlir::FloatAttr>();
 }
 
-::llvm::APFloat ClampOp::max_fp() {
-  auto attr = max_fpAttr();
+::llvm::APFloat ClampOp::getMaxFp() {
+  auto attr = getMaxFpAttr();
   return attr.getValue();
 }
 
-void ClampOp::min_intAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(min_intAttrName(), attr);
+void ClampOp::setMinIntAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getMinIntAttrName(), attr);
 }
 
-void ClampOp::max_intAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(max_intAttrName(), attr);
+void ClampOp::setMaxIntAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getMaxIntAttrName(), attr);
 }
 
-void ClampOp::min_fpAttr(::mlir::FloatAttr attr) {
-  (*this)->setAttr(min_fpAttrName(), attr);
+void ClampOp::setMinFpAttr(::mlir::FloatAttr attr) {
+  (*this)->setAttr(getMinFpAttrName(), attr);
 }
 
-void ClampOp::max_fpAttr(::mlir::FloatAttr attr) {
-  (*this)->setAttr(max_fpAttrName(), attr);
+void ClampOp::setMaxFpAttr(::mlir::FloatAttr attr) {
+  (*this)->setAttr(getMaxFpAttrName(), attr);
 }
 
 void ClampOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr min_int, ::mlir::IntegerAttr max_int, ::mlir::FloatAttr min_fp, ::mlir::FloatAttr max_fp) {
   odsState.addOperands(input);
-  odsState.addAttribute(min_intAttrName(odsState.name), min_int);
-  odsState.addAttribute(max_intAttrName(odsState.name), max_int);
-  odsState.addAttribute(min_fpAttrName(odsState.name), min_fp);
-  odsState.addAttribute(max_fpAttrName(odsState.name), max_fp);
+  odsState.addAttribute(getMinIntAttrName(odsState.name), min_int);
+  odsState.addAttribute(getMaxIntAttrName(odsState.name), max_int);
+  odsState.addAttribute(getMinFpAttrName(odsState.name), min_fp);
+  odsState.addAttribute(getMaxFpAttrName(odsState.name), max_fp);
   odsState.addTypes(output);
 }
 
 void ClampOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr min_int, ::mlir::IntegerAttr max_int, ::mlir::FloatAttr min_fp, ::mlir::FloatAttr max_fp) {
   odsState.addOperands(input);
-  odsState.addAttribute(min_intAttrName(odsState.name), min_int);
-  odsState.addAttribute(max_intAttrName(odsState.name), max_int);
-  odsState.addAttribute(min_fpAttrName(odsState.name), min_fp);
-  odsState.addAttribute(max_fpAttrName(odsState.name), max_fp);
+  odsState.addAttribute(getMinIntAttrName(odsState.name), min_int);
+  odsState.addAttribute(getMaxIntAttrName(odsState.name), max_int);
+  odsState.addAttribute(getMinFpAttrName(odsState.name), min_fp);
+  odsState.addAttribute(getMaxFpAttrName(odsState.name), max_fp);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ClampOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t min_int, uint64_t max_int, ::llvm::APFloat min_fp, ::llvm::APFloat max_fp) {
   odsState.addOperands(input);
-  odsState.addAttribute(min_intAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), min_int));
-  odsState.addAttribute(max_intAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), max_int));
-  odsState.addAttribute(min_fpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), min_fp));
-  odsState.addAttribute(max_fpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max_fp));
+  odsState.addAttribute(getMinIntAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), min_int));
+  odsState.addAttribute(getMaxIntAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), max_int));
+  odsState.addAttribute(getMinFpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), min_fp));
+  odsState.addAttribute(getMaxFpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max_fp));
   odsState.addTypes(output);
 }
 
 void ClampOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t min_int, uint64_t max_int, ::llvm::APFloat min_fp, ::llvm::APFloat max_fp) {
   odsState.addOperands(input);
-  odsState.addAttribute(min_intAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), min_int));
-  odsState.addAttribute(max_intAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), max_int));
-  odsState.addAttribute(min_fpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), min_fp));
-  odsState.addAttribute(max_fpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max_fp));
+  odsState.addAttribute(getMinIntAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), min_int));
+  odsState.addAttribute(getMaxIntAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), max_int));
+  odsState.addAttribute(getMinFpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), min_fp));
+  odsState.addAttribute(getMaxFpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max_fp));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -2826,7 +2825,7 @@ void ClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'max_fp'");
-    if (namedAttrIt->getName() == max_fpAttrName()) {
+    if (namedAttrIt->getName() == getMaxFpAttrName()) {
       tblgen_max_fp = namedAttrIt->getValue();
       break;
     }
@@ -2836,7 +2835,7 @@ void ClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'max_int'");
-    if (namedAttrIt->getName() == max_intAttrName()) {
+    if (namedAttrIt->getName() == getMaxIntAttrName()) {
       tblgen_max_int = namedAttrIt->getValue();
       break;
     }
@@ -2846,7 +2845,7 @@ void ClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'min_fp'");
-    if (namedAttrIt->getName() == min_fpAttrName()) {
+    if (namedAttrIt->getName() == getMinFpAttrName()) {
       tblgen_min_fp = namedAttrIt->getValue();
       break;
     }
@@ -2856,7 +2855,7 @@ void ClampOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'min_int'");
-    if (namedAttrIt->getName() == min_intAttrName()) {
+    if (namedAttrIt->getName() == getMinIntAttrName()) {
       tblgen_min_int = namedAttrIt->getValue();
       break;
     }
@@ -2933,7 +2932,7 @@ std::pair<unsigned, unsigned> ClzOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ClzOpAdaptor::input1() {
+::mlir::Value ClzOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -2955,11 +2954,11 @@ std::pair<unsigned, unsigned> ClzOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ClzOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> ClzOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ClzOp::input1Mutable() {
+::mlir::MutableOperandRange ClzOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2975,7 +2974,7 @@ std::pair<unsigned, unsigned> ClzOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ClzOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ClzOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -3072,7 +3071,7 @@ std::pair<unsigned, unsigned> ConcatOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange ConcatOpAdaptor::input1() {
+::mlir::ValueRange ConcatOpAdaptor::getInput1() {
   return getODSOperands(0);
 }
 
@@ -3080,14 +3079,14 @@ std::pair<unsigned, unsigned> ConcatOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ConcatOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ConcatOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConcatOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConcatOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ConcatOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ConcatOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -3098,7 +3097,7 @@ uint64_t ConcatOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.concat' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ConcatOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ConcatOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -3134,11 +3133,11 @@ std::pair<unsigned, unsigned> ConcatOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range ConcatOp::input1() {
+::mlir::Operation::operand_range ConcatOp::getInput1() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange ConcatOp::input1Mutable() {
+::mlir::MutableOperandRange ConcatOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3154,45 +3153,45 @@ std::pair<unsigned, unsigned> ConcatOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ConcatOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ConcatOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ConcatOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ConcatOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ConcatOp::axis() {
-  auto attr = axisAttr();
+uint64_t ConcatOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ConcatOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ConcatOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::ValueRange input1, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input1);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange input1, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input1);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::ValueRange input1, uint64_t axis) {
   odsState.addOperands(input1);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ConcatOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange input1, uint64_t axis) {
   odsState.addOperands(input1);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -3211,7 +3210,7 @@ void ConcatOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -3283,14 +3282,14 @@ std::pair<unsigned, unsigned> ConstOpAdaptor::getODSOperandIndexAndLength(unsign
   return odsAttrs;
 }
 
-::mlir::ElementsAttr ConstOpAdaptor::valueAttr() {
+::mlir::ElementsAttr ConstOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstOp::valueAttrName(*odsOpName)).cast<::mlir::ElementsAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstOp::getValueAttrName(*odsOpName)).cast<::mlir::ElementsAttr>();
+  return attr;
 }
 
-::mlir::ElementsAttr ConstOpAdaptor::value() {
-  auto attr = valueAttr();
+::mlir::ElementsAttr ConstOpAdaptor::getValue() {
+  auto attr = getValueAttr();
   return attr;
 }
 
@@ -3301,7 +3300,7 @@ std::pair<unsigned, unsigned> ConstOpAdaptor::getODSOperandIndexAndLength(unsign
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.const' op ""requires attribute 'value'");
-    if (namedAttrIt->getName() == ConstOp::valueAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ConstOp::getValueAttrName(*odsOpName)) {
       tblgen_value = namedAttrIt->getValue();
       break;
     }
@@ -3333,30 +3332,30 @@ std::pair<unsigned, unsigned> ConstOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ConstOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ConstOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ElementsAttr ConstOp::valueAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, valueAttrName()).cast<::mlir::ElementsAttr>();
+::mlir::ElementsAttr ConstOp::getValueAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getValueAttrName()).cast<::mlir::ElementsAttr>();
 }
 
-::mlir::ElementsAttr ConstOp::value() {
-  auto attr = valueAttr();
+::mlir::ElementsAttr ConstOp::getValue() {
+  auto attr = getValueAttr();
   return attr;
 }
 
-void ConstOp::valueAttr(::mlir::ElementsAttr attr) {
-  (*this)->setAttr(valueAttrName(), attr);
+void ConstOp::setValueAttr(::mlir::ElementsAttr attr) {
+  (*this)->setAttr(getValueAttrName(), attr);
 }
 
 void ConstOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::ElementsAttr value) {
-  odsState.addAttribute(valueAttrName(odsState.name), value);
+  odsState.addAttribute(getValueAttrName(odsState.name), value);
   odsState.addTypes(output);
 }
 
 void ConstOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ElementsAttr value) {
-  odsState.addAttribute(valueAttrName(odsState.name), value);
+  odsState.addAttribute(getValueAttrName(odsState.name), value);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -3370,12 +3369,12 @@ void ConstOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
 }
 
 void ConstOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  auto attrName = valueAttrName(odsState.name);
+  auto attrName = getValueAttrName(odsState.name);
   for (auto attr : attributes) {
     if (attr.getName() != attrName) continue;
   odsState.addOperands(operands);
   odsState.addAttributes(attributes);
-    odsState.addTypes({attr.getValue().getType()});
+    odsState.addTypes({attr.getValue().cast<::mlir::TypedAttr>().getType()});
   }
 }
 
@@ -3386,7 +3385,7 @@ void ConstOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'value'");
-    if (namedAttrIt->getName() == valueAttrName()) {
+    if (namedAttrIt->getName() == getValueAttrName()) {
       tblgen_value = namedAttrIt->getValue();
       break;
     }
@@ -3445,15 +3444,15 @@ std::pair<unsigned, unsigned> Conv2DOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Conv2DOpAdaptor::input() {
+::mlir::Value Conv2DOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Conv2DOpAdaptor::weight() {
+::mlir::Value Conv2DOpAdaptor::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value Conv2DOpAdaptor::bias() {
+::mlir::Value Conv2DOpAdaptor::getBias() {
   return *getODSOperands(2).begin();
 }
 
@@ -3461,48 +3460,48 @@ std::pair<unsigned, unsigned> Conv2DOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-::mlir::ArrayAttr Conv2DOpAdaptor::padAttr() {
+::mlir::ArrayAttr Conv2DOpAdaptor::getPadAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, Conv2DOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr Conv2DOpAdaptor::pad() {
-  auto attr = padAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, Conv2DOp::getPadAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr Conv2DOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, Conv2DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr Conv2DOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr Conv2DOpAdaptor::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr Conv2DOpAdaptor::dilationAttr() {
+::mlir::ArrayAttr Conv2DOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, Conv2DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr Conv2DOpAdaptor::dilation() {
-  auto attr = dilationAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, Conv2DOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, Conv2DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-    return attr;
+::mlir::ArrayAttr Conv2DOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv2DOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::mlir::ArrayAttr Conv2DOpAdaptor::getDilationAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, Conv2DOp::getDilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr Conv2DOpAdaptor::getDilation() {
+  auto attr = getDilationAttr();
+  return attr;
+}
+
+mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::getQuantizationInfoAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, Conv2DOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return attr;
+}
+
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv2DOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult Conv2DOpAdaptor::verify(::mlir::Location loc) {
@@ -3512,7 +3511,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'dilation'");
-    if (namedAttrIt->getName() == Conv2DOp::dilationAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == Conv2DOp::getDilationAttrName(*odsOpName)) {
       tblgen_dilation = namedAttrIt->getValue();
       break;
     }
@@ -3522,7 +3521,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'pad'");
-    if (namedAttrIt->getName() == Conv2DOp::padAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == Conv2DOp::getPadAttrName(*odsOpName)) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -3533,11 +3532,11 @@ mlir::tosa::ConvOpQuantizationAttr Conv2DOpAdaptor::quantization_infoAttr() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv2d' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == Conv2DOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == Conv2DOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == Conv2DOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == Conv2DOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -3567,31 +3566,31 @@ std::pair<unsigned, unsigned> Conv2DOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Conv2DOp::input() {
+::mlir::Value Conv2DOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Conv2DOp::weight() {
+::mlir::Value Conv2DOp::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value Conv2DOp::bias() {
+::mlir::Value Conv2DOp::getBias() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange Conv2DOp::inputMutable() {
+::mlir::MutableOperandRange Conv2DOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Conv2DOp::weightMutable() {
+::mlir::MutableOperandRange Conv2DOp::getWeightMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Conv2DOp::biasMutable() {
+::mlir::MutableOperandRange Conv2DOp::getBiasMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3607,64 +3606,64 @@ std::pair<unsigned, unsigned> Conv2DOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Conv2DOp::output() {
+::mlir::Value Conv2DOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr Conv2DOp::padAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr Conv2DOp::getPadAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getPadAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr Conv2DOp::pad() {
-  auto attr = padAttr();
+::mlir::ArrayAttr Conv2DOp::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr Conv2DOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr Conv2DOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr Conv2DOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr Conv2DOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr Conv2DOp::dilationAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, dilationAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr Conv2DOp::getDilationAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getDilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr Conv2DOp::dilation() {
-  auto attr = dilationAttr();
+::mlir::ArrayAttr Conv2DOp::getDilation() {
+  auto attr = getDilationAttr();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr Conv2DOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+mlir::tosa::ConvOpQuantizationAttr Conv2DOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv2DOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv2DOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void Conv2DOp::padAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(padAttrName(), attr);
+void Conv2DOp::setPadAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getPadAttrName(), attr);
 }
 
-void Conv2DOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
+void Conv2DOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void Conv2DOp::dilationAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(dilationAttrName(), attr);
+void Conv2DOp::setDilationAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getDilationAttrName(), attr);
 }
 
-void Conv2DOp::quantization_infoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void Conv2DOp::setQuantizationInfoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute Conv2DOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void Conv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value weight, Value bias, ArrayAttr pad, ArrayAttr stride, ArrayAttr dilation) {
@@ -3678,11 +3677,11 @@ void Conv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(input);
   odsState.addOperands(weight);
   odsState.addOperands(bias);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getDilationAttrName(odsState.name), dilation);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
@@ -3691,11 +3690,11 @@ void Conv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(input);
   odsState.addOperands(weight);
   odsState.addOperands(bias);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getDilationAttrName(odsState.name), dilation);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -3716,7 +3715,7 @@ void Conv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
-    if (namedAttrIt->getName() == dilationAttrName()) {
+    if (namedAttrIt->getName() == getDilationAttrName()) {
       tblgen_dilation = namedAttrIt->getValue();
       break;
     }
@@ -3726,7 +3725,7 @@ void Conv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
-    if (namedAttrIt->getName() == padAttrName()) {
+    if (namedAttrIt->getName() == getPadAttrName()) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -3737,11 +3736,11 @@ void Conv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -3831,15 +3830,15 @@ std::pair<unsigned, unsigned> Conv3DOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Conv3DOpAdaptor::input() {
+::mlir::Value Conv3DOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Conv3DOpAdaptor::weight() {
+::mlir::Value Conv3DOpAdaptor::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value Conv3DOpAdaptor::bias() {
+::mlir::Value Conv3DOpAdaptor::getBias() {
   return *getODSOperands(2).begin();
 }
 
@@ -3847,48 +3846,48 @@ std::pair<unsigned, unsigned> Conv3DOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-::mlir::ArrayAttr Conv3DOpAdaptor::padAttr() {
+::mlir::ArrayAttr Conv3DOpAdaptor::getPadAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, Conv3DOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr Conv3DOpAdaptor::pad() {
-  auto attr = padAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, Conv3DOp::getPadAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr Conv3DOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, Conv3DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr Conv3DOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr Conv3DOpAdaptor::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr Conv3DOpAdaptor::dilationAttr() {
+::mlir::ArrayAttr Conv3DOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, Conv3DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr Conv3DOpAdaptor::dilation() {
-  auto attr = dilationAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, Conv3DOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, Conv3DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-    return attr;
+::mlir::ArrayAttr Conv3DOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv3DOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::mlir::ArrayAttr Conv3DOpAdaptor::getDilationAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, Conv3DOp::getDilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr Conv3DOpAdaptor::getDilation() {
+  auto attr = getDilationAttr();
+  return attr;
+}
+
+mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::getQuantizationInfoAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, Conv3DOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return attr;
+}
+
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv3DOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult Conv3DOpAdaptor::verify(::mlir::Location loc) {
@@ -3898,7 +3897,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'dilation'");
-    if (namedAttrIt->getName() == Conv3DOp::dilationAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == Conv3DOp::getDilationAttrName(*odsOpName)) {
       tblgen_dilation = namedAttrIt->getValue();
       break;
     }
@@ -3908,7 +3907,7 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'pad'");
-    if (namedAttrIt->getName() == Conv3DOp::padAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == Conv3DOp::getPadAttrName(*odsOpName)) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -3919,11 +3918,11 @@ mlir::tosa::ConvOpQuantizationAttr Conv3DOpAdaptor::quantization_infoAttr() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.conv3d' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == Conv3DOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == Conv3DOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == Conv3DOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == Conv3DOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -3953,31 +3952,31 @@ std::pair<unsigned, unsigned> Conv3DOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Conv3DOp::input() {
+::mlir::Value Conv3DOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Conv3DOp::weight() {
+::mlir::Value Conv3DOp::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value Conv3DOp::bias() {
+::mlir::Value Conv3DOp::getBias() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange Conv3DOp::inputMutable() {
+::mlir::MutableOperandRange Conv3DOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Conv3DOp::weightMutable() {
+::mlir::MutableOperandRange Conv3DOp::getWeightMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange Conv3DOp::biasMutable() {
+::mlir::MutableOperandRange Conv3DOp::getBiasMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -3993,64 +3992,64 @@ std::pair<unsigned, unsigned> Conv3DOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Conv3DOp::output() {
+::mlir::Value Conv3DOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr Conv3DOp::padAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr Conv3DOp::getPadAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getPadAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr Conv3DOp::pad() {
-  auto attr = padAttr();
+::mlir::ArrayAttr Conv3DOp::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr Conv3DOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr Conv3DOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr Conv3DOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr Conv3DOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr Conv3DOp::dilationAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, dilationAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr Conv3DOp::getDilationAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getDilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr Conv3DOp::dilation() {
-  auto attr = dilationAttr();
+::mlir::ArrayAttr Conv3DOp::getDilation() {
+  auto attr = getDilationAttr();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr Conv3DOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+mlir::tosa::ConvOpQuantizationAttr Conv3DOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv3DOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> Conv3DOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void Conv3DOp::padAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(padAttrName(), attr);
+void Conv3DOp::setPadAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getPadAttrName(), attr);
 }
 
-void Conv3DOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
+void Conv3DOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void Conv3DOp::dilationAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(dilationAttrName(), attr);
+void Conv3DOp::setDilationAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getDilationAttrName(), attr);
 }
 
-void Conv3DOp::quantization_infoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void Conv3DOp::setQuantizationInfoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute Conv3DOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void Conv3DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value weight, Value bias, ArrayAttr pad, ArrayAttr stride, ArrayAttr dilation) {
@@ -4064,11 +4063,11 @@ void Conv3DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(input);
   odsState.addOperands(weight);
   odsState.addOperands(bias);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getDilationAttrName(odsState.name), dilation);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
@@ -4077,11 +4076,11 @@ void Conv3DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(input);
   odsState.addOperands(weight);
   odsState.addOperands(bias);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getDilationAttrName(odsState.name), dilation);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -4102,7 +4101,7 @@ void Conv3DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
-    if (namedAttrIt->getName() == dilationAttrName()) {
+    if (namedAttrIt->getName() == getDilationAttrName()) {
       tblgen_dilation = namedAttrIt->getValue();
       break;
     }
@@ -4112,7 +4111,7 @@ void Conv3DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
-    if (namedAttrIt->getName() == padAttrName()) {
+    if (namedAttrIt->getName() == getPadAttrName()) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -4123,11 +4122,11 @@ void Conv3DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -4231,7 +4230,7 @@ std::pair<unsigned, unsigned> CustomOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange CustomOpAdaptor::inputs() {
+::mlir::ValueRange CustomOpAdaptor::getInputs() {
   return getODSOperands(0);
 }
 
@@ -4239,14 +4238,14 @@ std::pair<unsigned, unsigned> CustomOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-::mlir::StringAttr CustomOpAdaptor::identifierAttr() {
+::mlir::StringAttr CustomOpAdaptor::getIdentifierAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CustomOp::identifierAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CustomOp::getIdentifierAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+  return attr;
 }
 
-::llvm::StringRef CustomOpAdaptor::identifier() {
-  auto attr = identifierAttr();
+::llvm::StringRef CustomOpAdaptor::getIdentifier() {
+  auto attr = getIdentifierAttr();
   return attr.getValue();
 }
 
@@ -4257,7 +4256,7 @@ std::pair<unsigned, unsigned> CustomOpAdaptor::getODSOperandIndexAndLength(unsig
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.custom' op ""requires attribute 'identifier'");
-    if (namedAttrIt->getName() == CustomOp::identifierAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == CustomOp::getIdentifierAttrName(*odsOpName)) {
       tblgen_identifier = namedAttrIt->getValue();
       break;
     }
@@ -4293,11 +4292,11 @@ std::pair<unsigned, unsigned> CustomOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range CustomOp::inputs() {
+::mlir::Operation::operand_range CustomOp::getInputs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange CustomOp::inputsMutable() {
+::mlir::MutableOperandRange CustomOp::getInputsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4327,32 +4326,32 @@ std::pair<unsigned, unsigned> CustomOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::result_range CustomOp::outputs() {
+::mlir::Operation::result_range CustomOp::getOutputs() {
   return getODSResults(0);
 }
 
-::mlir::StringAttr CustomOp::identifierAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, identifierAttrName()).cast<::mlir::StringAttr>();
+::mlir::StringAttr CustomOp::getIdentifierAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getIdentifierAttrName()).cast<::mlir::StringAttr>();
 }
 
-::llvm::StringRef CustomOp::identifier() {
-  auto attr = identifierAttr();
+::llvm::StringRef CustomOp::getIdentifier() {
+  auto attr = getIdentifierAttr();
   return attr.getValue();
 }
 
-void CustomOp::identifierAttr(::mlir::StringAttr attr) {
-  (*this)->setAttr(identifierAttrName(), attr);
+void CustomOp::setIdentifierAttr(::mlir::StringAttr attr) {
+  (*this)->setAttr(getIdentifierAttrName(), attr);
 }
 
 void CustomOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange outputs, ::mlir::StringAttr identifier, ::mlir::ValueRange inputs) {
   odsState.addOperands(inputs);
-  odsState.addAttribute(identifierAttrName(odsState.name), identifier);
+  odsState.addAttribute(getIdentifierAttrName(odsState.name), identifier);
   odsState.addTypes(outputs);
 }
 
 void CustomOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange outputs, ::llvm::StringRef identifier, ::mlir::ValueRange inputs) {
   odsState.addOperands(inputs);
-  odsState.addAttribute(identifierAttrName(odsState.name), odsBuilder.getStringAttr(identifier));
+  odsState.addAttribute(getIdentifierAttrName(odsState.name), odsBuilder.getStringAttr(identifier));
   odsState.addTypes(outputs);
 }
 
@@ -4369,7 +4368,7 @@ void CustomOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'identifier'");
-    if (namedAttrIt->getName() == identifierAttrName()) {
+    if (namedAttrIt->getName() == getIdentifierAttrName()) {
       tblgen_identifier = namedAttrIt->getValue();
       break;
     }
@@ -4434,15 +4433,15 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOpAdaptor::getODSOperandIndexAndLen
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DepthwiseConv2DOpAdaptor::input() {
+::mlir::Value DepthwiseConv2DOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DepthwiseConv2DOpAdaptor::weight() {
+::mlir::Value DepthwiseConv2DOpAdaptor::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value DepthwiseConv2DOpAdaptor::bias() {
+::mlir::Value DepthwiseConv2DOpAdaptor::getBias() {
   return *getODSOperands(2).begin();
 }
 
@@ -4450,48 +4449,48 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOpAdaptor::getODSOperandIndexAndLen
   return odsAttrs;
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::padAttr() {
+::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::getPadAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, DepthwiseConv2DOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::pad() {
-  auto attr = padAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, DepthwiseConv2DOp::getPadAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, DepthwiseConv2DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::dilationAttr() {
+::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, DepthwiseConv2DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::dilation() {
-  auto attr = dilationAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, DepthwiseConv2DOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, DepthwiseConv2DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-    return attr;
+::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> DepthwiseConv2DOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::getDilationAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, DepthwiseConv2DOp::getDilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr DepthwiseConv2DOpAdaptor::getDilation() {
+  auto attr = getDilationAttr();
+  return attr;
+}
+
+mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::getQuantizationInfoAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, DepthwiseConv2DOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return attr;
+}
+
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> DepthwiseConv2DOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult DepthwiseConv2DOpAdaptor::verify(::mlir::Location loc) {
@@ -4501,7 +4500,7 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'dilation'");
-    if (namedAttrIt->getName() == DepthwiseConv2DOp::dilationAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == DepthwiseConv2DOp::getDilationAttrName(*odsOpName)) {
       tblgen_dilation = namedAttrIt->getValue();
       break;
     }
@@ -4511,7 +4510,7 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'pad'");
-    if (namedAttrIt->getName() == DepthwiseConv2DOp::padAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == DepthwiseConv2DOp::getPadAttrName(*odsOpName)) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -4522,11 +4521,11 @@ mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOpAdaptor::quantization_infoAt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.depthwise_conv2d' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == DepthwiseConv2DOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == DepthwiseConv2DOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == DepthwiseConv2DOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == DepthwiseConv2DOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -4556,31 +4555,31 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOp::getODSOperandIndexAndLength(uns
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DepthwiseConv2DOp::input() {
+::mlir::Value DepthwiseConv2DOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DepthwiseConv2DOp::weight() {
+::mlir::Value DepthwiseConv2DOp::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value DepthwiseConv2DOp::bias() {
+::mlir::Value DepthwiseConv2DOp::getBias() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange DepthwiseConv2DOp::inputMutable() {
+::mlir::MutableOperandRange DepthwiseConv2DOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange DepthwiseConv2DOp::weightMutable() {
+::mlir::MutableOperandRange DepthwiseConv2DOp::getWeightMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange DepthwiseConv2DOp::biasMutable() {
+::mlir::MutableOperandRange DepthwiseConv2DOp::getBiasMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4596,64 +4595,64 @@ std::pair<unsigned, unsigned> DepthwiseConv2DOp::getODSResultIndexAndLength(unsi
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DepthwiseConv2DOp::output() {
+::mlir::Value DepthwiseConv2DOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOp::padAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr DepthwiseConv2DOp::getPadAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getPadAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOp::pad() {
-  auto attr = padAttr();
+::mlir::ArrayAttr DepthwiseConv2DOp::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr DepthwiseConv2DOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr DepthwiseConv2DOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOp::dilationAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, dilationAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr DepthwiseConv2DOp::getDilationAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getDilationAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr DepthwiseConv2DOp::dilation() {
-  auto attr = dilationAttr();
+::mlir::ArrayAttr DepthwiseConv2DOp::getDilation() {
+  auto attr = getDilationAttr();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+mlir::tosa::ConvOpQuantizationAttr DepthwiseConv2DOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> DepthwiseConv2DOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> DepthwiseConv2DOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void DepthwiseConv2DOp::padAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(padAttrName(), attr);
+void DepthwiseConv2DOp::setPadAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getPadAttrName(), attr);
 }
 
-void DepthwiseConv2DOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
+void DepthwiseConv2DOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void DepthwiseConv2DOp::dilationAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(dilationAttrName(), attr);
+void DepthwiseConv2DOp::setDilationAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getDilationAttrName(), attr);
 }
 
-void DepthwiseConv2DOp::quantization_infoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void DepthwiseConv2DOp::setQuantizationInfoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute DepthwiseConv2DOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void DepthwiseConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value weight, Value bias, ArrayAttr pad, ArrayAttr stride, ArrayAttr dilation) {
@@ -4667,11 +4666,11 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSt
   odsState.addOperands(input);
   odsState.addOperands(weight);
   odsState.addOperands(bias);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getDilationAttrName(odsState.name), dilation);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
@@ -4680,11 +4679,11 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSt
   odsState.addOperands(input);
   odsState.addOperands(weight);
   odsState.addOperands(bias);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getDilationAttrName(odsState.name), dilation);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -4705,7 +4704,7 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'dilation'");
-    if (namedAttrIt->getName() == dilationAttrName()) {
+    if (namedAttrIt->getName() == getDilationAttrName()) {
       tblgen_dilation = namedAttrIt->getValue();
       break;
     }
@@ -4715,7 +4714,7 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
-    if (namedAttrIt->getName() == padAttrName()) {
+    if (namedAttrIt->getName() == getPadAttrName()) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -4726,11 +4725,11 @@ void DepthwiseConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -4820,11 +4819,11 @@ std::pair<unsigned, unsigned> DivOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DivOpAdaptor::input1() {
+::mlir::Value DivOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DivOpAdaptor::input2() {
+::mlir::Value DivOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -4846,21 +4845,21 @@ std::pair<unsigned, unsigned> DivOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DivOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> DivOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DivOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> DivOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange DivOp::input1Mutable() {
+::mlir::MutableOperandRange DivOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange DivOp::input2Mutable() {
+::mlir::MutableOperandRange DivOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -4876,7 +4875,7 @@ std::pair<unsigned, unsigned> DivOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DivOp::output() {
+::mlir::TypedValue<::mlir::TensorType> DivOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -4967,11 +4966,11 @@ std::pair<unsigned, unsigned> EqualOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EqualOpAdaptor::input1() {
+::mlir::Value EqualOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value EqualOpAdaptor::input2() {
+::mlir::Value EqualOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -4993,21 +4992,21 @@ std::pair<unsigned, unsigned> EqualOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EqualOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> EqualOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value EqualOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> EqualOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange EqualOp::input1Mutable() {
+::mlir::MutableOperandRange EqualOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange EqualOp::input2Mutable() {
+::mlir::MutableOperandRange EqualOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5023,7 +5022,7 @@ std::pair<unsigned, unsigned> EqualOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EqualOp::output() {
+::mlir::TypedValue<::mlir::TensorType> EqualOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -5031,6 +5030,20 @@ void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   odsState.addOperands(input1);
   odsState.addOperands(input2);
   odsState.addTypes(output);
+}
+
+void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value input1, ::mlir::Value input2) {
+  odsState.addOperands(input1);
+  odsState.addOperands(input2);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(EqualOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
 void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2) {
@@ -5046,6 +5059,23 @@ void EqualOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   odsState.addAttributes(attributes);
   assert(resultTypes.size() == 1u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 2u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(EqualOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult EqualOp::verifyInvariantsImpl() {
@@ -5114,7 +5144,7 @@ std::pair<unsigned, unsigned> ExpOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExpOpAdaptor::input1() {
+::mlir::Value ExpOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -5136,11 +5166,11 @@ std::pair<unsigned, unsigned> ExpOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExpOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> ExpOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ExpOp::input1Mutable() {
+::mlir::MutableOperandRange ExpOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5156,7 +5186,7 @@ std::pair<unsigned, unsigned> ExpOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExpOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ExpOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -5239,7 +5269,7 @@ std::pair<unsigned, unsigned> FloorOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FloorOpAdaptor::input1() {
+::mlir::Value FloorOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -5261,11 +5291,11 @@ std::pair<unsigned, unsigned> FloorOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FloorOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> FloorOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange FloorOp::input1Mutable() {
+::mlir::MutableOperandRange FloorOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5281,7 +5311,7 @@ std::pair<unsigned, unsigned> FloorOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FloorOp::output() {
+::mlir::TypedValue<::mlir::TensorType> FloorOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -5364,15 +5394,15 @@ std::pair<unsigned, unsigned> FullyConnectedOpAdaptor::getODSOperandIndexAndLeng
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FullyConnectedOpAdaptor::input() {
+::mlir::Value FullyConnectedOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value FullyConnectedOpAdaptor::weight() {
+::mlir::Value FullyConnectedOpAdaptor::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value FullyConnectedOpAdaptor::bias() {
+::mlir::Value FullyConnectedOpAdaptor::getBias() {
   return *getODSOperands(2).begin();
 }
 
@@ -5380,15 +5410,15 @@ std::pair<unsigned, unsigned> FullyConnectedOpAdaptor::getODSOperandIndexAndLeng
   return odsAttrs;
 }
 
-mlir::tosa::ConvOpQuantizationAttr FullyConnectedOpAdaptor::quantization_infoAttr() {
+mlir::tosa::ConvOpQuantizationAttr FullyConnectedOpAdaptor::getQuantizationInfoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, FullyConnectedOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, FullyConnectedOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> FullyConnectedOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> FullyConnectedOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult FullyConnectedOpAdaptor::verify(::mlir::Location loc) {
@@ -5399,7 +5429,7 @@ mlir::tosa::ConvOpQuantizationAttr FullyConnectedOpAdaptor::quantization_infoAtt
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == FullyConnectedOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == FullyConnectedOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -5420,31 +5450,31 @@ std::pair<unsigned, unsigned> FullyConnectedOp::getODSOperandIndexAndLength(unsi
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FullyConnectedOp::input() {
+::mlir::Value FullyConnectedOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value FullyConnectedOp::weight() {
+::mlir::Value FullyConnectedOp::getWeight() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value FullyConnectedOp::bias() {
+::mlir::Value FullyConnectedOp::getBias() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange FullyConnectedOp::inputMutable() {
+::mlir::MutableOperandRange FullyConnectedOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange FullyConnectedOp::weightMutable() {
+::mlir::MutableOperandRange FullyConnectedOp::getWeightMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange FullyConnectedOp::biasMutable() {
+::mlir::MutableOperandRange FullyConnectedOp::getBiasMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5460,25 +5490,25 @@ std::pair<unsigned, unsigned> FullyConnectedOp::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value FullyConnectedOp::output() {
+::mlir::Value FullyConnectedOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-mlir::tosa::ConvOpQuantizationAttr FullyConnectedOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+mlir::tosa::ConvOpQuantizationAttr FullyConnectedOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> FullyConnectedOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> FullyConnectedOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void FullyConnectedOp::quantization_infoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void FullyConnectedOp::setQuantizationInfoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute FullyConnectedOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void FullyConnectedOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value weight, Value bias) {
@@ -5492,7 +5522,7 @@ void FullyConnectedOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
   odsState.addOperands(weight);
   odsState.addOperands(bias);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
@@ -5502,7 +5532,7 @@ void FullyConnectedOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
   odsState.addOperands(weight);
   odsState.addOperands(bias);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -5524,7 +5554,7 @@ void FullyConnectedOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -5605,11 +5635,11 @@ std::pair<unsigned, unsigned> GatherOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GatherOpAdaptor::values() {
+::mlir::Value GatherOpAdaptor::getValues() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value GatherOpAdaptor::indices() {
+::mlir::Value GatherOpAdaptor::getIndices() {
   return *getODSOperands(1).begin();
 }
 
@@ -5631,21 +5661,21 @@ std::pair<unsigned, unsigned> GatherOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GatherOp::values() {
+::mlir::Value GatherOp::getValues() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value GatherOp::indices() {
+::mlir::TypedValue<::mlir::TensorType> GatherOp::getIndices() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange GatherOp::valuesMutable() {
+::mlir::MutableOperandRange GatherOp::getValuesMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange GatherOp::indicesMutable() {
+::mlir::MutableOperandRange GatherOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5661,7 +5691,7 @@ std::pair<unsigned, unsigned> GatherOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GatherOp::output() {
+::mlir::Value GatherOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -5752,11 +5782,11 @@ std::pair<unsigned, unsigned> GreaterEqualOpAdaptor::getODSOperandIndexAndLength
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GreaterEqualOpAdaptor::input1() {
+::mlir::Value GreaterEqualOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value GreaterEqualOpAdaptor::input2() {
+::mlir::Value GreaterEqualOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -5778,21 +5808,21 @@ std::pair<unsigned, unsigned> GreaterEqualOp::getODSOperandIndexAndLength(unsign
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GreaterEqualOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> GreaterEqualOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value GreaterEqualOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> GreaterEqualOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange GreaterEqualOp::input1Mutable() {
+::mlir::MutableOperandRange GreaterEqualOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange GreaterEqualOp::input2Mutable() {
+::mlir::MutableOperandRange GreaterEqualOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5808,7 +5838,7 @@ std::pair<unsigned, unsigned> GreaterEqualOp::getODSResultIndexAndLength(unsigne
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GreaterEqualOp::output() {
+::mlir::TypedValue<::mlir::TensorType> GreaterEqualOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -5899,11 +5929,11 @@ std::pair<unsigned, unsigned> GreaterOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GreaterOpAdaptor::input1() {
+::mlir::Value GreaterOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value GreaterOpAdaptor::input2() {
+::mlir::Value GreaterOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -5925,21 +5955,21 @@ std::pair<unsigned, unsigned> GreaterOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GreaterOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> GreaterOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value GreaterOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> GreaterOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange GreaterOp::input1Mutable() {
+::mlir::MutableOperandRange GreaterOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange GreaterOp::input2Mutable() {
+::mlir::MutableOperandRange GreaterOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -5955,7 +5985,7 @@ std::pair<unsigned, unsigned> GreaterOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value GreaterOp::output() {
+::mlir::TypedValue<::mlir::TensorType> GreaterOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -6046,7 +6076,7 @@ std::pair<unsigned, unsigned> IdentityOpAdaptor::getODSOperandIndexAndLength(uns
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IdentityOpAdaptor::input1() {
+::mlir::Value IdentityOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -6068,11 +6098,11 @@ std::pair<unsigned, unsigned> IdentityOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IdentityOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> IdentityOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange IdentityOp::input1Mutable() {
+::mlir::MutableOperandRange IdentityOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6088,7 +6118,7 @@ std::pair<unsigned, unsigned> IdentityOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IdentityOp::output() {
+::mlir::TypedValue<::mlir::TensorType> IdentityOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -6185,11 +6215,11 @@ std::pair<unsigned, unsigned> IfOpAdaptor::getODSOperandIndexAndLength(unsigned 
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IfOpAdaptor::cond() {
+::mlir::Value IfOpAdaptor::getCond() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange IfOpAdaptor::inputs() {
+::mlir::ValueRange IfOpAdaptor::getInputs() {
   return getODSOperands(1);
 }
 
@@ -6201,11 +6231,11 @@ std::pair<unsigned, unsigned> IfOpAdaptor::getODSOperandIndexAndLength(unsigned 
   return odsRegions;
 }
 
-::mlir::Region &IfOpAdaptor::then_branch() {
+::mlir::Region &IfOpAdaptor::getThenBranch() {
   return *odsRegions[0];
 }
 
-::mlir::Region &IfOpAdaptor::else_branch() {
+::mlir::Region &IfOpAdaptor::getElseBranch() {
   return *odsRegions[1];
 }
 
@@ -6237,21 +6267,21 @@ std::pair<unsigned, unsigned> IfOp::getODSOperandIndexAndLength(unsigned index) 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value IfOp::cond() {
+::mlir::TypedValue<::mlir::TensorType> IfOp::getCond() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range IfOp::inputs() {
+::mlir::Operation::operand_range IfOp::getInputs() {
   return getODSOperands(1);
 }
 
-::mlir::MutableOperandRange IfOp::condMutable() {
+::mlir::MutableOperandRange IfOp::getCondMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange IfOp::inputsMutable() {
+::mlir::MutableOperandRange IfOp::getInputsMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6281,15 +6311,15 @@ std::pair<unsigned, unsigned> IfOp::getODSResultIndexAndLength(unsigned index) {
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::result_range IfOp::output() {
+::mlir::Operation::result_range IfOp::getOutput() {
   return getODSResults(0);
 }
 
-::mlir::Region &IfOp::then_branch() {
+::mlir::Region &IfOp::getThenBranch() {
   return (*this)->getRegion(0);
 }
 
-::mlir::Region &IfOp::else_branch() {
+::mlir::Region &IfOp::getElseBranch() {
   return (*this)->getRegion(1);
 }
 
@@ -6384,7 +6414,7 @@ std::pair<unsigned, unsigned> LogOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogOpAdaptor::input1() {
+::mlir::Value LogOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -6406,11 +6436,11 @@ std::pair<unsigned, unsigned> LogOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange LogOp::input1Mutable() {
+::mlir::MutableOperandRange LogOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6426,7 +6456,7 @@ std::pair<unsigned, unsigned> LogOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogOp::output() {
+::mlir::TypedValue<::mlir::TensorType> LogOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -6509,11 +6539,11 @@ std::pair<unsigned, unsigned> LogicalAndOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalAndOpAdaptor::input1() {
+::mlir::Value LogicalAndOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalAndOpAdaptor::input2() {
+::mlir::Value LogicalAndOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -6535,21 +6565,21 @@ std::pair<unsigned, unsigned> LogicalAndOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalAndOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogicalAndOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalAndOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> LogicalAndOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange LogicalAndOp::input1Mutable() {
+::mlir::MutableOperandRange LogicalAndOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange LogicalAndOp::input2Mutable() {
+::mlir::MutableOperandRange LogicalAndOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6565,7 +6595,7 @@ std::pair<unsigned, unsigned> LogicalAndOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalAndOp::z() {
+::mlir::TypedValue<::mlir::TensorType> LogicalAndOp::getZ() {
   return *getODSResults(0).begin();
 }
 
@@ -6656,11 +6686,11 @@ std::pair<unsigned, unsigned> LogicalLeftShiftOpAdaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalLeftShiftOpAdaptor::input1() {
+::mlir::Value LogicalLeftShiftOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalLeftShiftOpAdaptor::input2() {
+::mlir::Value LogicalLeftShiftOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -6682,21 +6712,21 @@ std::pair<unsigned, unsigned> LogicalLeftShiftOp::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalLeftShiftOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogicalLeftShiftOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalLeftShiftOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> LogicalLeftShiftOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange LogicalLeftShiftOp::input1Mutable() {
+::mlir::MutableOperandRange LogicalLeftShiftOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange LogicalLeftShiftOp::input2Mutable() {
+::mlir::MutableOperandRange LogicalLeftShiftOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6712,7 +6742,7 @@ std::pair<unsigned, unsigned> LogicalLeftShiftOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalLeftShiftOp::output() {
+::mlir::TypedValue<::mlir::TensorType> LogicalLeftShiftOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -6803,7 +6833,7 @@ std::pair<unsigned, unsigned> LogicalNotOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalNotOpAdaptor::input1() {
+::mlir::Value LogicalNotOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -6825,11 +6855,11 @@ std::pair<unsigned, unsigned> LogicalNotOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalNotOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogicalNotOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange LogicalNotOp::input1Mutable() {
+::mlir::MutableOperandRange LogicalNotOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6845,13 +6875,26 @@ std::pair<unsigned, unsigned> LogicalNotOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalNotOp::output() {
+::mlir::TypedValue<::mlir::TensorType> LogicalNotOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
 void LogicalNotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1) {
   odsState.addOperands(input1);
   odsState.addTypes(output);
+}
+
+void LogicalNotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value input1) {
+  odsState.addOperands(input1);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(LogicalNotOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
 }
 
 void LogicalNotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1) {
@@ -6866,6 +6909,23 @@ void LogicalNotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addAttributes(attributes);
   assert(resultTypes.size() == 1u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void LogicalNotOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(LogicalNotOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
 }
 
 ::mlir::LogicalResult LogicalNotOp::verifyInvariantsImpl() {
@@ -6892,6 +6952,14 @@ void LogicalNotOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 ::mlir::LogicalResult LogicalNotOp::verifyInvariants() {
   return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult LogicalNotOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
 }
 
 void LogicalNotOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
@@ -6928,11 +6996,11 @@ std::pair<unsigned, unsigned> LogicalOrOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalOrOpAdaptor::input1() {
+::mlir::Value LogicalOrOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalOrOpAdaptor::input2() {
+::mlir::Value LogicalOrOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -6954,21 +7022,21 @@ std::pair<unsigned, unsigned> LogicalOrOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalOrOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogicalOrOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalOrOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> LogicalOrOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange LogicalOrOp::input1Mutable() {
+::mlir::MutableOperandRange LogicalOrOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange LogicalOrOp::input2Mutable() {
+::mlir::MutableOperandRange LogicalOrOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -6984,7 +7052,7 @@ std::pair<unsigned, unsigned> LogicalOrOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalOrOp::z() {
+::mlir::TypedValue<::mlir::TensorType> LogicalOrOp::getZ() {
   return *getODSResults(0).begin();
 }
 
@@ -7075,11 +7143,11 @@ std::pair<unsigned, unsigned> LogicalRightShiftOpAdaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalRightShiftOpAdaptor::input1() {
+::mlir::Value LogicalRightShiftOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalRightShiftOpAdaptor::input2() {
+::mlir::Value LogicalRightShiftOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -7101,21 +7169,21 @@ std::pair<unsigned, unsigned> LogicalRightShiftOp::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalRightShiftOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogicalRightShiftOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalRightShiftOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> LogicalRightShiftOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange LogicalRightShiftOp::input1Mutable() {
+::mlir::MutableOperandRange LogicalRightShiftOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange LogicalRightShiftOp::input2Mutable() {
+::mlir::MutableOperandRange LogicalRightShiftOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -7131,7 +7199,7 @@ std::pair<unsigned, unsigned> LogicalRightShiftOp::getODSResultIndexAndLength(un
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalRightShiftOp::output() {
+::mlir::TypedValue<::mlir::TensorType> LogicalRightShiftOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -7222,11 +7290,11 @@ std::pair<unsigned, unsigned> LogicalXorOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalXorOpAdaptor::input1() {
+::mlir::Value LogicalXorOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalXorOpAdaptor::input2() {
+::mlir::Value LogicalXorOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -7248,21 +7316,21 @@ std::pair<unsigned, unsigned> LogicalXorOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalXorOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> LogicalXorOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value LogicalXorOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> LogicalXorOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange LogicalXorOp::input1Mutable() {
+::mlir::MutableOperandRange LogicalXorOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange LogicalXorOp::input2Mutable() {
+::mlir::MutableOperandRange LogicalXorOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -7278,7 +7346,7 @@ std::pair<unsigned, unsigned> LogicalXorOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogicalXorOp::z() {
+::mlir::TypedValue<::mlir::TensorType> LogicalXorOp::getZ() {
   return *getODSResults(0).begin();
 }
 
@@ -7369,11 +7437,11 @@ std::pair<unsigned, unsigned> MatMulOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MatMulOpAdaptor::a() {
+::mlir::Value MatMulOpAdaptor::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MatMulOpAdaptor::b() {
+::mlir::Value MatMulOpAdaptor::getB() {
   return *getODSOperands(1).begin();
 }
 
@@ -7381,15 +7449,15 @@ std::pair<unsigned, unsigned> MatMulOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-mlir::tosa::MatMulOpQuantizationAttr MatMulOpAdaptor::quantization_infoAttr() {
+mlir::tosa::MatMulOpQuantizationAttr MatMulOpAdaptor::getQuantizationInfoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MatMulOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MatMulOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr> MatMulOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr> MatMulOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr>(attr.cast<mlir::tosa::MatMulOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult MatMulOpAdaptor::verify(::mlir::Location loc) {
@@ -7400,7 +7468,7 @@ mlir::tosa::MatMulOpQuantizationAttr MatMulOpAdaptor::quantization_infoAttr() {
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == MatMulOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == MatMulOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -7421,21 +7489,21 @@ std::pair<unsigned, unsigned> MatMulOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MatMulOp::a() {
+::mlir::Value MatMulOp::getA() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MatMulOp::b() {
+::mlir::Value MatMulOp::getB() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange MatMulOp::aMutable() {
+::mlir::MutableOperandRange MatMulOp::getAMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MatMulOp::bMutable() {
+::mlir::MutableOperandRange MatMulOp::getBMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -7451,25 +7519,25 @@ std::pair<unsigned, unsigned> MatMulOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MatMulOp::c() {
+::mlir::Value MatMulOp::getC() {
   return *getODSResults(0).begin();
 }
 
-mlir::tosa::MatMulOpQuantizationAttr MatMulOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
+mlir::tosa::MatMulOpQuantizationAttr MatMulOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::MatMulOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr> MatMulOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr> MatMulOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::MatMulOpQuantizationAttr>(attr.cast<mlir::tosa::MatMulOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void MatMulOp::quantization_infoAttr(mlir::tosa::MatMulOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void MatMulOp::setQuantizationInfoAttr(mlir::tosa::MatMulOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute MatMulOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void MatMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value a, Value b) {
@@ -7482,7 +7550,7 @@ void MatMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(a);
   odsState.addOperands(b);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(c);
 }
@@ -7491,7 +7559,7 @@ void MatMulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(a);
   odsState.addOperands(b);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -7513,7 +7581,7 @@ void MatMulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -7586,7 +7654,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaxPool2dOpAdaptor::input() {
+::mlir::Value MaxPool2dOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -7594,36 +7662,36 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::ArrayAttr MaxPool2dOpAdaptor::kernelAttr() {
+::mlir::ArrayAttr MaxPool2dOpAdaptor::getKernelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, MaxPool2dOp::kernelAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr MaxPool2dOpAdaptor::kernel() {
-  auto attr = kernelAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, MaxPool2dOp::getKernelAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr MaxPool2dOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, MaxPool2dOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr MaxPool2dOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr MaxPool2dOpAdaptor::getKernel() {
+  auto attr = getKernelAttr();
   return attr;
 }
 
-::mlir::ArrayAttr MaxPool2dOpAdaptor::padAttr() {
+::mlir::ArrayAttr MaxPool2dOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, MaxPool2dOp::padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, MaxPool2dOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
 }
 
-::mlir::ArrayAttr MaxPool2dOpAdaptor::pad() {
-  auto attr = padAttr();
+::mlir::ArrayAttr MaxPool2dOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
+  return attr;
+}
+
+::mlir::ArrayAttr MaxPool2dOpAdaptor::getPadAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, MaxPool2dOp::getPadAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr MaxPool2dOpAdaptor::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
@@ -7634,7 +7702,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'kernel'");
-    if (namedAttrIt->getName() == MaxPool2dOp::kernelAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MaxPool2dOp::getKernelAttrName(*odsOpName)) {
       tblgen_kernel = namedAttrIt->getValue();
       break;
     }
@@ -7644,7 +7712,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'pad'");
-    if (namedAttrIt->getName() == MaxPool2dOp::padAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MaxPool2dOp::getPadAttrName(*odsOpName)) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -7654,7 +7722,7 @@ std::pair<unsigned, unsigned> MaxPool2dOpAdaptor::getODSOperandIndexAndLength(un
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.max_pool2d' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == MaxPool2dOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MaxPool2dOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
@@ -7682,11 +7750,11 @@ std::pair<unsigned, unsigned> MaxPool2dOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaxPool2dOp::input() {
+::mlir::Value MaxPool2dOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange MaxPool2dOp::inputMutable() {
+::mlir::MutableOperandRange MaxPool2dOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -7702,62 +7770,62 @@ std::pair<unsigned, unsigned> MaxPool2dOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaxPool2dOp::output() {
+::mlir::Value MaxPool2dOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr MaxPool2dOp::kernelAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, kernelAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr MaxPool2dOp::getKernelAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getKernelAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr MaxPool2dOp::kernel() {
-  auto attr = kernelAttr();
+::mlir::ArrayAttr MaxPool2dOp::getKernel() {
+  auto attr = getKernelAttr();
   return attr;
 }
 
-::mlir::ArrayAttr MaxPool2dOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr MaxPool2dOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr MaxPool2dOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr MaxPool2dOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr MaxPool2dOp::padAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, padAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr MaxPool2dOp::getPadAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getPadAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr MaxPool2dOp::pad() {
-  auto attr = padAttr();
+::mlir::ArrayAttr MaxPool2dOp::getPad() {
+  auto attr = getPadAttr();
   return attr;
 }
 
-void MaxPool2dOp::kernelAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(kernelAttrName(), attr);
+void MaxPool2dOp::setKernelAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getKernelAttrName(), attr);
 }
 
-void MaxPool2dOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
+void MaxPool2dOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void MaxPool2dOp::padAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(padAttrName(), attr);
+void MaxPool2dOp::setPadAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getPadAttrName(), attr);
 }
 
 void MaxPool2dOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::ArrayAttr kernel, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr pad) {
   odsState.addOperands(input);
-  odsState.addAttribute(kernelAttrName(odsState.name), kernel);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
+  odsState.addAttribute(getKernelAttrName(odsState.name), kernel);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
   odsState.addTypes(output);
 }
 
 void MaxPool2dOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::ArrayAttr kernel, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr pad) {
   odsState.addOperands(input);
-  odsState.addAttribute(kernelAttrName(odsState.name), kernel);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(padAttrName(odsState.name), pad);
+  odsState.addAttribute(getKernelAttrName(odsState.name), kernel);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getPadAttrName(odsState.name), pad);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -7777,7 +7845,7 @@ void MaxPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'kernel'");
-    if (namedAttrIt->getName() == kernelAttrName()) {
+    if (namedAttrIt->getName() == getKernelAttrName()) {
       tblgen_kernel = namedAttrIt->getValue();
       break;
     }
@@ -7787,7 +7855,7 @@ void MaxPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'pad'");
-    if (namedAttrIt->getName() == padAttrName()) {
+    if (namedAttrIt->getName() == getPadAttrName()) {
       tblgen_pad = namedAttrIt->getValue();
       break;
     }
@@ -7797,7 +7865,7 @@ void MaxPool2dOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
@@ -7871,11 +7939,11 @@ std::pair<unsigned, unsigned> MaximumOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaximumOpAdaptor::input1() {
+::mlir::Value MaximumOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaximumOpAdaptor::input2() {
+::mlir::Value MaximumOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -7897,21 +7965,21 @@ std::pair<unsigned, unsigned> MaximumOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaximumOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> MaximumOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MaximumOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> MaximumOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange MaximumOp::input1Mutable() {
+::mlir::MutableOperandRange MaximumOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MaximumOp::input2Mutable() {
+::mlir::MutableOperandRange MaximumOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -7927,7 +7995,7 @@ std::pair<unsigned, unsigned> MaximumOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MaximumOp::output() {
+::mlir::TypedValue<::mlir::TensorType> MaximumOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -8018,11 +8086,11 @@ std::pair<unsigned, unsigned> MinimumOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MinimumOpAdaptor::input1() {
+::mlir::Value MinimumOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MinimumOpAdaptor::input2() {
+::mlir::Value MinimumOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -8044,21 +8112,21 @@ std::pair<unsigned, unsigned> MinimumOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MinimumOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> MinimumOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MinimumOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> MinimumOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange MinimumOp::input1Mutable() {
+::mlir::MutableOperandRange MinimumOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MinimumOp::input2Mutable() {
+::mlir::MutableOperandRange MinimumOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -8074,7 +8142,7 @@ std::pair<unsigned, unsigned> MinimumOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MinimumOp::output() {
+::mlir::TypedValue<::mlir::TensorType> MinimumOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -8165,11 +8233,11 @@ std::pair<unsigned, unsigned> MulOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MulOpAdaptor::input1() {
+::mlir::Value MulOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MulOpAdaptor::input2() {
+::mlir::Value MulOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -8177,14 +8245,14 @@ std::pair<unsigned, unsigned> MulOpAdaptor::getODSOperandIndexAndLength(unsigned
   return odsAttrs;
 }
 
-::mlir::IntegerAttr MulOpAdaptor::shiftAttr() {
+::mlir::IntegerAttr MulOpAdaptor::getShiftAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MulOp::shiftAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, MulOp::getShiftAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t MulOpAdaptor::shift() {
-  auto attr = shiftAttr();
+uint32_t MulOpAdaptor::getShift() {
+  auto attr = getShiftAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -8195,7 +8263,7 @@ uint32_t MulOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.mul' op ""requires attribute 'shift'");
-    if (namedAttrIt->getName() == MulOp::shiftAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == MulOp::getShiftAttrName(*odsOpName)) {
       tblgen_shift = namedAttrIt->getValue();
       break;
     }
@@ -8217,21 +8285,21 @@ std::pair<unsigned, unsigned> MulOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MulOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> MulOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MulOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> MulOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange MulOp::input1Mutable() {
+::mlir::MutableOperandRange MulOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange MulOp::input2Mutable() {
+::mlir::MutableOperandRange MulOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -8247,34 +8315,34 @@ std::pair<unsigned, unsigned> MulOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MulOp::output() {
+::mlir::TypedValue<::mlir::TensorType> MulOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr MulOp::shiftAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, shiftAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr MulOp::getShiftAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getShiftAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t MulOp::shift() {
-  auto attr = shiftAttr();
+uint32_t MulOp::getShift() {
+  auto attr = getShiftAttr();
   return attr.getValue().getZExtValue();
 }
 
-void MulOp::shiftAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(shiftAttrName(), attr);
+void MulOp::setShiftAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getShiftAttrName(), attr);
 }
 
 void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::Value input2, ::mlir::IntegerAttr shift) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
   odsState.addTypes(output);
 }
 
 void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2, ::mlir::IntegerAttr shift) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -8282,14 +8350,14 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
 void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::Value input2, uint32_t shift) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(shiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
+  odsState.addAttribute(getShiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
   odsState.addTypes(output);
 }
 
 void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::Value input2, uint32_t shift) {
   odsState.addOperands(input1);
   odsState.addOperands(input2);
-  odsState.addAttribute(shiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
+  odsState.addAttribute(getShiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -8309,7 +8377,7 @@ void MulOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'shift'");
-    if (namedAttrIt->getName() == shiftAttrName()) {
+    if (namedAttrIt->getName() == getShiftAttrName()) {
       tblgen_shift = namedAttrIt->getValue();
       break;
     }
@@ -8383,7 +8451,7 @@ std::pair<unsigned, unsigned> NegateOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NegateOpAdaptor::input1() {
+::mlir::Value NegateOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -8391,15 +8459,15 @@ std::pair<unsigned, unsigned> NegateOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-mlir::tosa::UnaryOpQuantizationAttr NegateOpAdaptor::quantization_infoAttr() {
+mlir::tosa::UnaryOpQuantizationAttr NegateOpAdaptor::getQuantizationInfoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, NegateOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, NegateOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> NegateOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> NegateOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr.cast<mlir::tosa::UnaryOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult NegateOpAdaptor::verify(::mlir::Location loc) {
@@ -8410,7 +8478,7 @@ mlir::tosa::UnaryOpQuantizationAttr NegateOpAdaptor::quantization_infoAttr() {
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == NegateOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == NegateOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -8431,11 +8499,11 @@ std::pair<unsigned, unsigned> NegateOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NegateOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> NegateOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange NegateOp::input1Mutable() {
+::mlir::MutableOperandRange NegateOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -8451,25 +8519,25 @@ std::pair<unsigned, unsigned> NegateOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NegateOp::output() {
+::mlir::TypedValue<::mlir::TensorType> NegateOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-mlir::tosa::UnaryOpQuantizationAttr NegateOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
+mlir::tosa::UnaryOpQuantizationAttr NegateOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::UnaryOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> NegateOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr> NegateOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::UnaryOpQuantizationAttr>(attr.cast<mlir::tosa::UnaryOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void NegateOp::quantization_infoAttr(mlir::tosa::UnaryOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void NegateOp::setQuantizationInfoAttr(mlir::tosa::UnaryOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute NegateOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void NegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input) {
@@ -8480,7 +8548,7 @@ void NegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 void NegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info) {
   odsState.addOperands(input1);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
@@ -8488,7 +8556,7 @@ void NegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 void NegateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, /*optional*/mlir::tosa::UnaryOpQuantizationAttr quantization_info) {
   odsState.addOperands(input1);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -8510,7 +8578,7 @@ void NegateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -8591,15 +8659,15 @@ std::pair<unsigned, unsigned> PadOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PadOpAdaptor::input1() {
+::mlir::Value PadOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value PadOpAdaptor::padding() {
+::mlir::Value PadOpAdaptor::getPadding() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value PadOpAdaptor::pad_const() {
+::mlir::Value PadOpAdaptor::getPadConst() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -8608,15 +8676,15 @@ std::pair<unsigned, unsigned> PadOpAdaptor::getODSOperandIndexAndLength(unsigned
   return odsAttrs;
 }
 
-mlir::tosa::PadOpQuantizationAttr PadOpAdaptor::quantization_infoAttr() {
+mlir::tosa::PadOpQuantizationAttr PadOpAdaptor::getQuantizationInfoAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, PadOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, PadOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::PadOpQuantizationAttr> PadOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::PadOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::PadOpQuantizationAttr> PadOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::PadOpQuantizationAttr>(attr.cast<mlir::tosa::PadOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult PadOpAdaptor::verify(::mlir::Location loc) {
@@ -8627,7 +8695,7 @@ mlir::tosa::PadOpQuantizationAttr PadOpAdaptor::quantization_infoAttr() {
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == PadOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == PadOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -8662,32 +8730,32 @@ std::pair<unsigned, unsigned> PadOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PadOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> PadOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value PadOp::padding() {
+::mlir::TypedValue<::mlir::TensorType> PadOp::getPadding() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value PadOp::pad_const() {
+::mlir::TypedValue<::mlir::TensorType> PadOp::getPadConst() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::MutableOperandRange PadOp::input1Mutable() {
+::mlir::MutableOperandRange PadOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange PadOp::paddingMutable() {
+::mlir::MutableOperandRange PadOp::getPaddingMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange PadOp::pad_constMutable() {
+::mlir::MutableOperandRange PadOp::getPadConstMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -8703,25 +8771,25 @@ std::pair<unsigned, unsigned> PadOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PadOp::output() {
+::mlir::TypedValue<::mlir::TensorType> PadOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-mlir::tosa::PadOpQuantizationAttr PadOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
+mlir::tosa::PadOpQuantizationAttr PadOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::PadOpQuantizationAttr>();
 }
 
-::llvm::Optional<mlir::tosa::PadOpQuantizationAttr> PadOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::PadOpQuantizationAttr>(attr) : (::llvm::None);
+::llvm::Optional<mlir::tosa::PadOpQuantizationAttr> PadOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::PadOpQuantizationAttr>(attr.cast<mlir::tosa::PadOpQuantizationAttr>()) : (::llvm::None);
 }
 
-void PadOp::quantization_infoAttr(mlir::tosa::PadOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void PadOp::setQuantizationInfoAttr(mlir::tosa::PadOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute PadOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
 void PadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value paddings) {
@@ -8742,7 +8810,7 @@ void PadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   if (pad_const)
     odsState.addOperands(pad_const);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
@@ -8753,7 +8821,7 @@ void PadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
   if (pad_const)
     odsState.addOperands(pad_const);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -8775,7 +8843,7 @@ void PadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir:
     if (namedAttrIt == namedAttrRange.end()) {
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
@@ -8859,11 +8927,11 @@ std::pair<unsigned, unsigned> PowOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PowOpAdaptor::input1() {
+::mlir::Value PowOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value PowOpAdaptor::input2() {
+::mlir::Value PowOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -8885,21 +8953,21 @@ std::pair<unsigned, unsigned> PowOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PowOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> PowOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value PowOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> PowOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange PowOp::input1Mutable() {
+::mlir::MutableOperandRange PowOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange PowOp::input2Mutable() {
+::mlir::MutableOperandRange PowOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -8915,7 +8983,7 @@ std::pair<unsigned, unsigned> PowOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PowOp::z() {
+::mlir::TypedValue<::mlir::TensorType> PowOp::getZ() {
   return *getODSResults(0).begin();
 }
 
@@ -9006,7 +9074,7 @@ std::pair<unsigned, unsigned> ReciprocalOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReciprocalOpAdaptor::input1() {
+::mlir::Value ReciprocalOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -9028,11 +9096,11 @@ std::pair<unsigned, unsigned> ReciprocalOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReciprocalOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> ReciprocalOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReciprocalOp::input1Mutable() {
+::mlir::MutableOperandRange ReciprocalOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -9048,7 +9116,7 @@ std::pair<unsigned, unsigned> ReciprocalOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReciprocalOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ReciprocalOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -9131,7 +9199,7 @@ std::pair<unsigned, unsigned> ReduceAllOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceAllOpAdaptor::input() {
+::mlir::Value ReduceAllOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -9139,14 +9207,14 @@ std::pair<unsigned, unsigned> ReduceAllOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReduceAllOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReduceAllOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceAllOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceAllOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReduceAllOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceAllOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -9157,7 +9225,7 @@ uint64_t ReduceAllOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_all' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReduceAllOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReduceAllOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9179,11 +9247,11 @@ std::pair<unsigned, unsigned> ReduceAllOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceAllOp::input() {
+::mlir::Value ReduceAllOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReduceAllOp::inputMutable() {
+::mlir::MutableOperandRange ReduceAllOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -9199,45 +9267,45 @@ std::pair<unsigned, unsigned> ReduceAllOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceAllOp::output() {
+::mlir::Value ReduceAllOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReduceAllOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReduceAllOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReduceAllOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceAllOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReduceAllOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReduceAllOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReduceAllOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReduceAllOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReduceAllOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReduceAllOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -9257,7 +9325,7 @@ void ReduceAllOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9325,7 +9393,7 @@ std::pair<unsigned, unsigned> ReduceAnyOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceAnyOpAdaptor::input() {
+::mlir::Value ReduceAnyOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -9333,14 +9401,14 @@ std::pair<unsigned, unsigned> ReduceAnyOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReduceAnyOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReduceAnyOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceAnyOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceAnyOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReduceAnyOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceAnyOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -9351,7 +9419,7 @@ uint64_t ReduceAnyOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_any' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReduceAnyOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReduceAnyOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9373,11 +9441,11 @@ std::pair<unsigned, unsigned> ReduceAnyOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceAnyOp::input() {
+::mlir::Value ReduceAnyOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReduceAnyOp::inputMutable() {
+::mlir::MutableOperandRange ReduceAnyOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -9393,45 +9461,45 @@ std::pair<unsigned, unsigned> ReduceAnyOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceAnyOp::output() {
+::mlir::Value ReduceAnyOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReduceAnyOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReduceAnyOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReduceAnyOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceAnyOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReduceAnyOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReduceAnyOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReduceAnyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReduceAnyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReduceAnyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReduceAnyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -9451,7 +9519,7 @@ void ReduceAnyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9519,7 +9587,7 @@ std::pair<unsigned, unsigned> ReduceMaxOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceMaxOpAdaptor::input() {
+::mlir::Value ReduceMaxOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -9527,14 +9595,14 @@ std::pair<unsigned, unsigned> ReduceMaxOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReduceMaxOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReduceMaxOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceMaxOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceMaxOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReduceMaxOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceMaxOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -9545,7 +9613,7 @@ uint64_t ReduceMaxOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_max' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReduceMaxOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReduceMaxOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9567,11 +9635,11 @@ std::pair<unsigned, unsigned> ReduceMaxOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceMaxOp::input() {
+::mlir::Value ReduceMaxOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReduceMaxOp::inputMutable() {
+::mlir::MutableOperandRange ReduceMaxOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -9587,45 +9655,45 @@ std::pair<unsigned, unsigned> ReduceMaxOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceMaxOp::output() {
+::mlir::Value ReduceMaxOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReduceMaxOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReduceMaxOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReduceMaxOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceMaxOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReduceMaxOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReduceMaxOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReduceMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReduceMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReduceMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReduceMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -9645,7 +9713,7 @@ void ReduceMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9713,7 +9781,7 @@ std::pair<unsigned, unsigned> ReduceMinOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceMinOpAdaptor::input() {
+::mlir::Value ReduceMinOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -9721,14 +9789,14 @@ std::pair<unsigned, unsigned> ReduceMinOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReduceMinOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReduceMinOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceMinOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceMinOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReduceMinOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceMinOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -9739,7 +9807,7 @@ uint64_t ReduceMinOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_min' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReduceMinOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReduceMinOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9761,11 +9829,11 @@ std::pair<unsigned, unsigned> ReduceMinOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceMinOp::input() {
+::mlir::Value ReduceMinOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReduceMinOp::inputMutable() {
+::mlir::MutableOperandRange ReduceMinOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -9781,45 +9849,45 @@ std::pair<unsigned, unsigned> ReduceMinOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceMinOp::output() {
+::mlir::Value ReduceMinOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReduceMinOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReduceMinOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReduceMinOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceMinOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReduceMinOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReduceMinOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReduceMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReduceMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReduceMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReduceMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -9839,7 +9907,7 @@ void ReduceMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9907,7 +9975,7 @@ std::pair<unsigned, unsigned> ReduceProdOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceProdOpAdaptor::input() {
+::mlir::Value ReduceProdOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -9915,14 +9983,14 @@ std::pair<unsigned, unsigned> ReduceProdOpAdaptor::getODSOperandIndexAndLength(u
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReduceProdOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReduceProdOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceProdOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceProdOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReduceProdOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceProdOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -9933,7 +10001,7 @@ uint64_t ReduceProdOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_prod' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReduceProdOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReduceProdOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -9955,11 +10023,11 @@ std::pair<unsigned, unsigned> ReduceProdOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceProdOp::input() {
+::mlir::Value ReduceProdOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReduceProdOp::inputMutable() {
+::mlir::MutableOperandRange ReduceProdOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -9975,45 +10043,45 @@ std::pair<unsigned, unsigned> ReduceProdOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceProdOp::output() {
+::mlir::Value ReduceProdOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReduceProdOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReduceProdOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReduceProdOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceProdOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReduceProdOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReduceProdOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReduceProdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReduceProdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReduceProdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReduceProdOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -10033,7 +10101,7 @@ void ReduceProdOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -10101,7 +10169,7 @@ std::pair<unsigned, unsigned> ReduceSumOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceSumOpAdaptor::input() {
+::mlir::Value ReduceSumOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -10109,14 +10177,14 @@ std::pair<unsigned, unsigned> ReduceSumOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReduceSumOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReduceSumOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceSumOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReduceSumOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReduceSumOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceSumOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -10127,7 +10195,7 @@ uint64_t ReduceSumOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reduce_sum' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReduceSumOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReduceSumOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -10149,11 +10217,11 @@ std::pair<unsigned, unsigned> ReduceSumOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceSumOp::input() {
+::mlir::Value ReduceSumOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReduceSumOp::inputMutable() {
+::mlir::MutableOperandRange ReduceSumOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -10169,45 +10237,45 @@ std::pair<unsigned, unsigned> ReduceSumOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReduceSumOp::output() {
+::mlir::Value ReduceSumOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReduceSumOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReduceSumOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReduceSumOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReduceSumOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReduceSumOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReduceSumOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReduceSumOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReduceSumOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReduceSumOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReduceSumOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -10227,7 +10295,7 @@ void ReduceSumOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -10272,254 +10340,6 @@ namespace mlir {
 namespace tosa {
 
 //===----------------------------------------------------------------------===//
-// mlir::tosa::ReluNOp definitions
-//===----------------------------------------------------------------------===//
-
-ReluNOpAdaptor::ReluNOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
-    odsOpName.emplace("tosa.reluN", odsAttrs.getContext());
-}
-
-ReluNOpAdaptor::ReluNOpAdaptor(ReluNOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-::mlir::ValueRange ReluNOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
-std::pair<unsigned, unsigned> ReluNOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::ValueRange ReluNOpAdaptor::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(odsOperands.begin(), valueRange.first),
-           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value ReluNOpAdaptor::input() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::DictionaryAttr ReluNOpAdaptor::getAttributes() {
-  return odsAttrs;
-}
-
-::mlir::IntegerAttr ReluNOpAdaptor::max_intAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ReluNOp::max_intAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
-}
-
-uint64_t ReluNOpAdaptor::max_int() {
-  auto attr = max_intAttr();
-  return attr.getValue().getZExtValue();
-}
-
-::mlir::FloatAttr ReluNOpAdaptor::max_fpAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ReluNOp::max_fpAttrName(*odsOpName)).cast<::mlir::FloatAttr>();
-    return attr;
-}
-
-::llvm::APFloat ReluNOpAdaptor::max_fp() {
-  auto attr = max_fpAttr();
-  return attr.getValue();
-}
-
-::mlir::LogicalResult ReluNOpAdaptor::verify(::mlir::Location loc) {
-  auto namedAttrRange = odsAttrs;
-  auto namedAttrIt = namedAttrRange.begin();
-  ::mlir::Attribute tblgen_max_fp;
-  while (true) {
-    if (namedAttrIt == namedAttrRange.end())
-      return emitError(loc, "'tosa.reluN' op ""requires attribute 'max_fp'");
-    if (namedAttrIt->getName() == ReluNOp::max_fpAttrName(*odsOpName)) {
-      tblgen_max_fp = namedAttrIt->getValue();
-      break;
-    }
-    ++namedAttrIt;
-  }
-  ::mlir::Attribute tblgen_max_int;
-  while (true) {
-    if (namedAttrIt == namedAttrRange.end())
-      return emitError(loc, "'tosa.reluN' op ""requires attribute 'max_int'");
-    if (namedAttrIt->getName() == ReluNOp::max_intAttrName(*odsOpName)) {
-      tblgen_max_int = namedAttrIt->getValue();
-      break;
-    }
-    ++namedAttrIt;
-  }
-
-  if (tblgen_max_int && !(((tblgen_max_int.isa<::mlir::IntegerAttr>())) && ((tblgen_max_int.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))))
-    return emitError(loc, "'tosa.reluN' op ""attribute 'max_int' failed to satisfy constraint: 64-bit signless integer attribute");
-
-  if (tblgen_max_fp && !(((tblgen_max_fp.isa<::mlir::FloatAttr>())) && ((tblgen_max_fp.cast<::mlir::FloatAttr>().getType().isF32()))))
-    return emitError(loc, "'tosa.reluN' op ""attribute 'max_fp' failed to satisfy constraint: 32-bit float attribute");
-  return ::mlir::success();
-}
-
-std::pair<unsigned, unsigned> ReluNOp::getODSOperandIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::operand_range ReluNOp::getODSOperands(unsigned index) {
-  auto valueRange = getODSOperandIndexAndLength(index);
-  return {std::next(getOperation()->operand_begin(), valueRange.first),
-           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value ReluNOp::input() {
-  return *getODSOperands(0).begin();
-}
-
-::mlir::MutableOperandRange ReluNOp::inputMutable() {
-  auto range = getODSOperandIndexAndLength(0);
-  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
-  return mutableRange;
-}
-
-std::pair<unsigned, unsigned> ReluNOp::getODSResultIndexAndLength(unsigned index) {
-  return {index, 1};
-}
-
-::mlir::Operation::result_range ReluNOp::getODSResults(unsigned index) {
-  auto valueRange = getODSResultIndexAndLength(index);
-  return {std::next(getOperation()->result_begin(), valueRange.first),
-           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
-}
-
-::mlir::Value ReluNOp::output() {
-  return *getODSResults(0).begin();
-}
-
-::mlir::IntegerAttr ReluNOp::max_intAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, max_intAttrName()).cast<::mlir::IntegerAttr>();
-}
-
-uint64_t ReluNOp::max_int() {
-  auto attr = max_intAttr();
-  return attr.getValue().getZExtValue();
-}
-
-::mlir::FloatAttr ReluNOp::max_fpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, max_fpAttrName()).cast<::mlir::FloatAttr>();
-}
-
-::llvm::APFloat ReluNOp::max_fp() {
-  auto attr = max_fpAttr();
-  return attr.getValue();
-}
-
-void ReluNOp::max_intAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(max_intAttrName(), attr);
-}
-
-void ReluNOp::max_fpAttr(::mlir::FloatAttr attr) {
-  (*this)->setAttr(max_fpAttrName(), attr);
-}
-
-void ReluNOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr max_int, ::mlir::FloatAttr max_fp) {
-  odsState.addOperands(input);
-  odsState.addAttribute(max_intAttrName(odsState.name), max_int);
-  odsState.addAttribute(max_fpAttrName(odsState.name), max_fp);
-  odsState.addTypes(output);
-}
-
-void ReluNOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr max_int, ::mlir::FloatAttr max_fp) {
-  odsState.addOperands(input);
-  odsState.addAttribute(max_intAttrName(odsState.name), max_int);
-  odsState.addAttribute(max_fpAttrName(odsState.name), max_fp);
-  assert(resultTypes.size() == 1u && "mismatched number of results");
-  odsState.addTypes(resultTypes);
-}
-
-void ReluNOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t max_int, ::llvm::APFloat max_fp) {
-  odsState.addOperands(input);
-  odsState.addAttribute(max_intAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), max_int));
-  odsState.addAttribute(max_fpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max_fp));
-  odsState.addTypes(output);
-}
-
-void ReluNOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t max_int, ::llvm::APFloat max_fp) {
-  odsState.addOperands(input);
-  odsState.addAttribute(max_intAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), max_int));
-  odsState.addAttribute(max_fpAttrName(odsState.name), odsBuilder.getFloatAttr(odsBuilder.getF32Type(), max_fp));
-  assert(resultTypes.size() == 1u && "mismatched number of results");
-  odsState.addTypes(resultTypes);
-}
-
-void ReluNOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
-  assert(operands.size() == 1u && "mismatched number of parameters");
-  odsState.addOperands(operands);
-  odsState.addAttributes(attributes);
-  assert(resultTypes.size() == 1u && "mismatched number of return types");
-  odsState.addTypes(resultTypes);
-}
-
-::mlir::LogicalResult ReluNOp::verifyInvariantsImpl() {
-  auto namedAttrRange = (*this)->getAttrs();
-  auto namedAttrIt = namedAttrRange.begin();
-  ::mlir::Attribute tblgen_max_fp;
-  while (true) {
-    if (namedAttrIt == namedAttrRange.end())
-      return emitOpError("requires attribute 'max_fp'");
-    if (namedAttrIt->getName() == max_fpAttrName()) {
-      tblgen_max_fp = namedAttrIt->getValue();
-      break;
-    }
-    ++namedAttrIt;
-  }
-  ::mlir::Attribute tblgen_max_int;
-  while (true) {
-    if (namedAttrIt == namedAttrRange.end())
-      return emitOpError("requires attribute 'max_int'");
-    if (namedAttrIt->getName() == max_intAttrName()) {
-      tblgen_max_int = namedAttrIt->getValue();
-      break;
-    }
-    ++namedAttrIt;
-  }
-
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps1(*this, tblgen_max_int, "max_int")))
-    return ::mlir::failure();
-
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps5(*this, tblgen_max_fp, "max_fp")))
-    return ::mlir::failure();
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSOperands(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_TosaOps0(*this, v.getType(), "operand", index++)))
-        return ::mlir::failure();
-    }
-  }
-  {
-    unsigned index = 0; (void)index;
-    auto valueGroup0 = getODSResults(0);
-
-    for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_TosaOps0(*this, v.getType(), "result", index++)))
-        return ::mlir::failure();
-    }
-  }
-  return ::mlir::success();
-}
-
-::mlir::LogicalResult ReluNOp::verifyInvariants() {
-  return verifyInvariantsImpl();
-}
-
-void ReluNOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
-}
-
-} // namespace tosa
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::tosa::ReluNOp)
-
-namespace mlir {
-namespace tosa {
-
-//===----------------------------------------------------------------------===//
 // mlir::tosa::RescaleOp definitions
 //===----------------------------------------------------------------------===//
 
@@ -10543,7 +10363,7 @@ std::pair<unsigned, unsigned> RescaleOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RescaleOpAdaptor::input() {
+::mlir::Value RescaleOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -10551,80 +10371,80 @@ std::pair<unsigned, unsigned> RescaleOpAdaptor::getODSOperandIndexAndLength(unsi
   return odsAttrs;
 }
 
-::mlir::IntegerAttr RescaleOpAdaptor::input_zpAttr() {
+::mlir::IntegerAttr RescaleOpAdaptor::getInputZpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, RescaleOp::input_zpAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
-}
-
-uint32_t RescaleOpAdaptor::input_zp() {
-  auto attr = input_zpAttr();
-  return attr.getValue().getZExtValue();
-}
-
-::mlir::IntegerAttr RescaleOpAdaptor::output_zpAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, RescaleOp::output_zpAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
-}
-
-uint32_t RescaleOpAdaptor::output_zp() {
-  auto attr = output_zpAttr();
-  return attr.getValue().getZExtValue();
-}
-
-::mlir::ArrayAttr RescaleOpAdaptor::multiplierAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, RescaleOp::multiplierAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr RescaleOpAdaptor::multiplier() {
-  auto attr = multiplierAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, RescaleOp::getInputZpAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr RescaleOpAdaptor::shiftAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, RescaleOp::shiftAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+uint32_t RescaleOpAdaptor::getInputZp() {
+  auto attr = getInputZpAttr();
+  return attr.getValue().getZExtValue();
 }
 
-::mlir::ArrayAttr RescaleOpAdaptor::shift() {
-  auto attr = shiftAttr();
+::mlir::IntegerAttr RescaleOpAdaptor::getOutputZpAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, RescaleOp::getOutputZpAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
   return attr;
 }
 
-::mlir::BoolAttr RescaleOpAdaptor::scale32Attr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, RescaleOp::scale32AttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+uint32_t RescaleOpAdaptor::getOutputZp() {
+  auto attr = getOutputZpAttr();
+  return attr.getValue().getZExtValue();
 }
 
-bool RescaleOpAdaptor::scale32() {
-  auto attr = scale32Attr();
+::mlir::ArrayAttr RescaleOpAdaptor::getMultiplierAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, RescaleOp::getMultiplierAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr RescaleOpAdaptor::getMultiplier() {
+  auto attr = getMultiplierAttr();
+  return attr;
+}
+
+::mlir::ArrayAttr RescaleOpAdaptor::getShiftAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, RescaleOp::getShiftAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr RescaleOpAdaptor::getShift() {
+  auto attr = getShiftAttr();
+  return attr;
+}
+
+::mlir::BoolAttr RescaleOpAdaptor::getScale32Attr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, RescaleOp::getScale32AttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
+}
+
+bool RescaleOpAdaptor::getScale32() {
+  auto attr = getScale32Attr();
   return attr.getValue();
 }
 
-::mlir::BoolAttr RescaleOpAdaptor::double_roundAttr() {
+::mlir::BoolAttr RescaleOpAdaptor::getDoubleRoundAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, RescaleOp::double_roundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, RescaleOp::getDoubleRoundAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
 }
 
-bool RescaleOpAdaptor::double_round() {
-  auto attr = double_roundAttr();
+bool RescaleOpAdaptor::getDoubleRound() {
+  auto attr = getDoubleRoundAttr();
   return attr.getValue();
 }
 
-::mlir::BoolAttr RescaleOpAdaptor::per_channelAttr() {
+::mlir::BoolAttr RescaleOpAdaptor::getPerChannelAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, RescaleOp::per_channelAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, RescaleOp::getPerChannelAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
 }
 
-bool RescaleOpAdaptor::per_channel() {
-  auto attr = per_channelAttr();
+bool RescaleOpAdaptor::getPerChannel() {
+  auto attr = getPerChannelAttr();
   return attr.getValue();
 }
 
@@ -10635,7 +10455,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'double_round'");
-    if (namedAttrIt->getName() == RescaleOp::double_roundAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getDoubleRoundAttrName(*odsOpName)) {
       tblgen_double_round = namedAttrIt->getValue();
       break;
     }
@@ -10645,7 +10465,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'input_zp'");
-    if (namedAttrIt->getName() == RescaleOp::input_zpAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getInputZpAttrName(*odsOpName)) {
       tblgen_input_zp = namedAttrIt->getValue();
       break;
     }
@@ -10655,7 +10475,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'multiplier'");
-    if (namedAttrIt->getName() == RescaleOp::multiplierAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getMultiplierAttrName(*odsOpName)) {
       tblgen_multiplier = namedAttrIt->getValue();
       break;
     }
@@ -10665,7 +10485,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'output_zp'");
-    if (namedAttrIt->getName() == RescaleOp::output_zpAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getOutputZpAttrName(*odsOpName)) {
       tblgen_output_zp = namedAttrIt->getValue();
       break;
     }
@@ -10675,7 +10495,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'per_channel'");
-    if (namedAttrIt->getName() == RescaleOp::per_channelAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getPerChannelAttrName(*odsOpName)) {
       tblgen_per_channel = namedAttrIt->getValue();
       break;
     }
@@ -10685,7 +10505,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'scale32'");
-    if (namedAttrIt->getName() == RescaleOp::scale32AttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getScale32AttrName(*odsOpName)) {
       tblgen_scale32 = namedAttrIt->getValue();
       break;
     }
@@ -10695,7 +10515,7 @@ bool RescaleOpAdaptor::per_channel() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.rescale' op ""requires attribute 'shift'");
-    if (namedAttrIt->getName() == RescaleOp::shiftAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == RescaleOp::getShiftAttrName(*odsOpName)) {
       tblgen_shift = namedAttrIt->getValue();
       break;
     }
@@ -10735,11 +10555,11 @@ std::pair<unsigned, unsigned> RescaleOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RescaleOp::input() {
+::mlir::TypedValue<::mlir::TensorType> RescaleOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange RescaleOp::inputMutable() {
+::mlir::MutableOperandRange RescaleOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -10755,147 +10575,147 @@ std::pair<unsigned, unsigned> RescaleOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RescaleOp::output() {
+::mlir::TypedValue<::mlir::TensorType> RescaleOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr RescaleOp::input_zpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, input_zpAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr RescaleOp::getInputZpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, getInputZpAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t RescaleOp::input_zp() {
-  auto attr = input_zpAttr();
+uint32_t RescaleOp::getInputZp() {
+  auto attr = getInputZpAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::IntegerAttr RescaleOp::output_zpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, output_zpAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr RescaleOp::getOutputZpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, getOutputZpAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t RescaleOp::output_zp() {
-  auto attr = output_zpAttr();
+uint32_t RescaleOp::getOutputZp() {
+  auto attr = getOutputZpAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::ArrayAttr RescaleOp::multiplierAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, multiplierAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr RescaleOp::getMultiplierAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, getMultiplierAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr RescaleOp::multiplier() {
-  auto attr = multiplierAttr();
+::mlir::ArrayAttr RescaleOp::getMultiplier() {
+  auto attr = getMultiplierAttr();
   return attr;
 }
 
-::mlir::ArrayAttr RescaleOp::shiftAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, shiftAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr RescaleOp::getShiftAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, getShiftAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr RescaleOp::shift() {
-  auto attr = shiftAttr();
+::mlir::ArrayAttr RescaleOp::getShift() {
+  auto attr = getShiftAttr();
   return attr;
 }
 
-::mlir::BoolAttr RescaleOp::scale32Attr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, scale32AttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr RescaleOp::getScale32Attr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, getScale32AttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool RescaleOp::scale32() {
-  auto attr = scale32Attr();
+bool RescaleOp::getScale32() {
+  auto attr = getScale32Attr();
   return attr.getValue();
 }
 
-::mlir::BoolAttr RescaleOp::double_roundAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, double_roundAttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr RescaleOp::getDoubleRoundAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, getDoubleRoundAttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool RescaleOp::double_round() {
-  auto attr = double_roundAttr();
+bool RescaleOp::getDoubleRound() {
+  auto attr = getDoubleRoundAttr();
   return attr.getValue();
 }
 
-::mlir::BoolAttr RescaleOp::per_channelAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, per_channelAttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr RescaleOp::getPerChannelAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, getPerChannelAttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool RescaleOp::per_channel() {
-  auto attr = per_channelAttr();
+bool RescaleOp::getPerChannel() {
+  auto attr = getPerChannelAttr();
   return attr.getValue();
 }
 
-void RescaleOp::input_zpAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(input_zpAttrName(), attr);
+void RescaleOp::setInputZpAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getInputZpAttrName(), attr);
 }
 
-void RescaleOp::output_zpAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(output_zpAttrName(), attr);
+void RescaleOp::setOutputZpAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getOutputZpAttrName(), attr);
 }
 
-void RescaleOp::multiplierAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(multiplierAttrName(), attr);
+void RescaleOp::setMultiplierAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getMultiplierAttrName(), attr);
 }
 
-void RescaleOp::shiftAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(shiftAttrName(), attr);
+void RescaleOp::setShiftAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getShiftAttrName(), attr);
 }
 
-void RescaleOp::scale32Attr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(scale32AttrName(), attr);
+void RescaleOp::setScale32Attr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getScale32AttrName(), attr);
 }
 
-void RescaleOp::double_roundAttr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(double_roundAttrName(), attr);
+void RescaleOp::setDoubleRoundAttr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getDoubleRoundAttrName(), attr);
 }
 
-void RescaleOp::per_channelAttr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(per_channelAttrName(), attr);
+void RescaleOp::setPerChannelAttr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getPerChannelAttrName(), attr);
 }
 
 void RescaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr input_zp, ::mlir::IntegerAttr output_zp, ::mlir::ArrayAttr multiplier, ::mlir::ArrayAttr shift, ::mlir::BoolAttr scale32, ::mlir::BoolAttr double_round, ::mlir::BoolAttr per_channel) {
   odsState.addOperands(input);
-  odsState.addAttribute(input_zpAttrName(odsState.name), input_zp);
-  odsState.addAttribute(output_zpAttrName(odsState.name), output_zp);
-  odsState.addAttribute(multiplierAttrName(odsState.name), multiplier);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
-  odsState.addAttribute(scale32AttrName(odsState.name), scale32);
-  odsState.addAttribute(double_roundAttrName(odsState.name), double_round);
-  odsState.addAttribute(per_channelAttrName(odsState.name), per_channel);
+  odsState.addAttribute(getInputZpAttrName(odsState.name), input_zp);
+  odsState.addAttribute(getOutputZpAttrName(odsState.name), output_zp);
+  odsState.addAttribute(getMultiplierAttrName(odsState.name), multiplier);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getScale32AttrName(odsState.name), scale32);
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), double_round);
+  odsState.addAttribute(getPerChannelAttrName(odsState.name), per_channel);
   odsState.addTypes(output);
 }
 
 void RescaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr input_zp, ::mlir::IntegerAttr output_zp, ::mlir::ArrayAttr multiplier, ::mlir::ArrayAttr shift, ::mlir::BoolAttr scale32, ::mlir::BoolAttr double_round, ::mlir::BoolAttr per_channel) {
   odsState.addOperands(input);
-  odsState.addAttribute(input_zpAttrName(odsState.name), input_zp);
-  odsState.addAttribute(output_zpAttrName(odsState.name), output_zp);
-  odsState.addAttribute(multiplierAttrName(odsState.name), multiplier);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
-  odsState.addAttribute(scale32AttrName(odsState.name), scale32);
-  odsState.addAttribute(double_roundAttrName(odsState.name), double_round);
-  odsState.addAttribute(per_channelAttrName(odsState.name), per_channel);
+  odsState.addAttribute(getInputZpAttrName(odsState.name), input_zp);
+  odsState.addAttribute(getOutputZpAttrName(odsState.name), output_zp);
+  odsState.addAttribute(getMultiplierAttrName(odsState.name), multiplier);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getScale32AttrName(odsState.name), scale32);
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), double_round);
+  odsState.addAttribute(getPerChannelAttrName(odsState.name), per_channel);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void RescaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint32_t input_zp, uint32_t output_zp, ::mlir::ArrayAttr multiplier, ::mlir::ArrayAttr shift, bool scale32, bool double_round, bool per_channel) {
   odsState.addOperands(input);
-  odsState.addAttribute(input_zpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), input_zp));
-  odsState.addAttribute(output_zpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), output_zp));
-  odsState.addAttribute(multiplierAttrName(odsState.name), multiplier);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
-  odsState.addAttribute(scale32AttrName(odsState.name), odsBuilder.getBoolAttr(scale32));
-  odsState.addAttribute(double_roundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
-  odsState.addAttribute(per_channelAttrName(odsState.name), odsBuilder.getBoolAttr(per_channel));
+  odsState.addAttribute(getInputZpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), input_zp));
+  odsState.addAttribute(getOutputZpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), output_zp));
+  odsState.addAttribute(getMultiplierAttrName(odsState.name), multiplier);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getScale32AttrName(odsState.name), odsBuilder.getBoolAttr(scale32));
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
+  odsState.addAttribute(getPerChannelAttrName(odsState.name), odsBuilder.getBoolAttr(per_channel));
   odsState.addTypes(output);
 }
 
 void RescaleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint32_t input_zp, uint32_t output_zp, ::mlir::ArrayAttr multiplier, ::mlir::ArrayAttr shift, bool scale32, bool double_round, bool per_channel) {
   odsState.addOperands(input);
-  odsState.addAttribute(input_zpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), input_zp));
-  odsState.addAttribute(output_zpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), output_zp));
-  odsState.addAttribute(multiplierAttrName(odsState.name), multiplier);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
-  odsState.addAttribute(scale32AttrName(odsState.name), odsBuilder.getBoolAttr(scale32));
-  odsState.addAttribute(double_roundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
-  odsState.addAttribute(per_channelAttrName(odsState.name), odsBuilder.getBoolAttr(per_channel));
+  odsState.addAttribute(getInputZpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), input_zp));
+  odsState.addAttribute(getOutputZpAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), output_zp));
+  odsState.addAttribute(getMultiplierAttrName(odsState.name), multiplier);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getScale32AttrName(odsState.name), odsBuilder.getBoolAttr(scale32));
+  odsState.addAttribute(getDoubleRoundAttrName(odsState.name), odsBuilder.getBoolAttr(double_round));
+  odsState.addAttribute(getPerChannelAttrName(odsState.name), odsBuilder.getBoolAttr(per_channel));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -10915,7 +10735,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'double_round'");
-    if (namedAttrIt->getName() == double_roundAttrName()) {
+    if (namedAttrIt->getName() == getDoubleRoundAttrName()) {
       tblgen_double_round = namedAttrIt->getValue();
       break;
     }
@@ -10925,7 +10745,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'input_zp'");
-    if (namedAttrIt->getName() == input_zpAttrName()) {
+    if (namedAttrIt->getName() == getInputZpAttrName()) {
       tblgen_input_zp = namedAttrIt->getValue();
       break;
     }
@@ -10935,7 +10755,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'multiplier'");
-    if (namedAttrIt->getName() == multiplierAttrName()) {
+    if (namedAttrIt->getName() == getMultiplierAttrName()) {
       tblgen_multiplier = namedAttrIt->getValue();
       break;
     }
@@ -10945,7 +10765,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'output_zp'");
-    if (namedAttrIt->getName() == output_zpAttrName()) {
+    if (namedAttrIt->getName() == getOutputZpAttrName()) {
       tblgen_output_zp = namedAttrIt->getValue();
       break;
     }
@@ -10955,7 +10775,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'per_channel'");
-    if (namedAttrIt->getName() == per_channelAttrName()) {
+    if (namedAttrIt->getName() == getPerChannelAttrName()) {
       tblgen_per_channel = namedAttrIt->getValue();
       break;
     }
@@ -10965,7 +10785,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'scale32'");
-    if (namedAttrIt->getName() == scale32AttrName()) {
+    if (namedAttrIt->getName() == getScale32AttrName()) {
       tblgen_scale32 = namedAttrIt->getValue();
       break;
     }
@@ -10975,7 +10795,7 @@ void RescaleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'shift'");
-    if (namedAttrIt->getName() == shiftAttrName()) {
+    if (namedAttrIt->getName() == getShiftAttrName()) {
       tblgen_shift = namedAttrIt->getValue();
       break;
     }
@@ -11061,7 +10881,7 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReshapeOpAdaptor::input1() {
+::mlir::Value ReshapeOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -11069,14 +10889,14 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
   return odsAttrs;
 }
 
-::mlir::ArrayAttr ReshapeOpAdaptor::new_shapeAttr() {
+::mlir::ArrayAttr ReshapeOpAdaptor::getNewShapeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReshapeOp::new_shapeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReshapeOp::getNewShapeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
 }
 
-::mlir::ArrayAttr ReshapeOpAdaptor::new_shape() {
-  auto attr = new_shapeAttr();
+::mlir::ArrayAttr ReshapeOpAdaptor::getNewShape() {
+  auto attr = getNewShapeAttr();
   return attr;
 }
 
@@ -11087,7 +10907,7 @@ std::pair<unsigned, unsigned> ReshapeOpAdaptor::getODSOperandIndexAndLength(unsi
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reshape' op ""requires attribute 'new_shape'");
-    if (namedAttrIt->getName() == ReshapeOp::new_shapeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReshapeOp::getNewShapeAttrName(*odsOpName)) {
       tblgen_new_shape = namedAttrIt->getValue();
       break;
     }
@@ -11109,11 +10929,11 @@ std::pair<unsigned, unsigned> ReshapeOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReshapeOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> ReshapeOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReshapeOp::input1Mutable() {
+::mlir::MutableOperandRange ReshapeOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -11129,32 +10949,32 @@ std::pair<unsigned, unsigned> ReshapeOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReshapeOp::output() {
+::mlir::TypedValue<::mlir::TensorType> ReshapeOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr ReshapeOp::new_shapeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, new_shapeAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr ReshapeOp::getNewShapeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getNewShapeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr ReshapeOp::new_shape() {
-  auto attr = new_shapeAttr();
+::mlir::ArrayAttr ReshapeOp::getNewShape() {
+  auto attr = getNewShapeAttr();
   return attr;
 }
 
-void ReshapeOp::new_shapeAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(new_shapeAttrName(), attr);
+void ReshapeOp::setNewShapeAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getNewShapeAttrName(), attr);
 }
 
 void ReshapeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::ArrayAttr new_shape) {
   odsState.addOperands(input1);
-  odsState.addAttribute(new_shapeAttrName(odsState.name), new_shape);
+  odsState.addAttribute(getNewShapeAttrName(odsState.name), new_shape);
   odsState.addTypes(output);
 }
 
 void ReshapeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::ArrayAttr new_shape) {
   odsState.addOperands(input1);
-  odsState.addAttribute(new_shapeAttrName(odsState.name), new_shape);
+  odsState.addAttribute(getNewShapeAttrName(odsState.name), new_shape);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -11174,7 +10994,7 @@ void ReshapeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'new_shape'");
-    if (namedAttrIt->getName() == new_shapeAttrName()) {
+    if (namedAttrIt->getName() == getNewShapeAttrName()) {
       tblgen_new_shape = namedAttrIt->getValue();
       break;
     }
@@ -11242,7 +11062,7 @@ std::pair<unsigned, unsigned> ResizeOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResizeOpAdaptor::input() {
+::mlir::Value ResizeOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -11250,80 +11070,80 @@ std::pair<unsigned, unsigned> ResizeOpAdaptor::getODSOperandIndexAndLength(unsig
   return odsAttrs;
 }
 
-::mlir::ArrayAttr ResizeOpAdaptor::output_sizeAttr() {
+::mlir::ArrayAttr ResizeOpAdaptor::getOutputSizeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, ResizeOp::output_sizeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr ResizeOpAdaptor::output_size() {
-  auto attr = output_sizeAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 3, ResizeOp::getOutputSizeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr ResizeOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, ResizeOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr ResizeOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr ResizeOpAdaptor::getOutputSize() {
+  auto attr = getOutputSizeAttr();
   return attr;
 }
 
-::mlir::ArrayAttr ResizeOpAdaptor::offsetAttr() {
+::mlir::ArrayAttr ResizeOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, ResizeOp::offsetAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr ResizeOpAdaptor::offset() {
-  auto attr = offsetAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 1, ResizeOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::IntegerAttr ResizeOpAdaptor::shiftAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, ResizeOp::shiftAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+::mlir::ArrayAttr ResizeOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
+  return attr;
 }
 
-uint32_t ResizeOpAdaptor::shift() {
-  auto attr = shiftAttr();
+::mlir::ArrayAttr ResizeOpAdaptor::getOffsetAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 5, ResizeOp::getOffsetAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr ResizeOpAdaptor::getOffset() {
+  auto attr = getOffsetAttr();
+  return attr;
+}
+
+::mlir::IntegerAttr ResizeOpAdaptor::getShiftAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 2, ResizeOp::getShiftAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
+}
+
+uint32_t ResizeOpAdaptor::getShift() {
+  auto attr = getShiftAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::ArrayAttr ResizeOpAdaptor::stride_fpAttr() {
+::mlir::ArrayAttr ResizeOpAdaptor::getStrideFpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, ResizeOp::stride_fpAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr ResizeOpAdaptor::stride_fp() {
-  auto attr = stride_fpAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 6, odsAttrs.end() - 0, ResizeOp::getStrideFpAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr ResizeOpAdaptor::offset_fpAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, ResizeOp::offset_fpAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr ResizeOpAdaptor::offset_fp() {
-  auto attr = offset_fpAttr();
+::mlir::ArrayAttr ResizeOpAdaptor::getStrideFp() {
+  auto attr = getStrideFpAttr();
   return attr;
 }
 
-::mlir::StringAttr ResizeOpAdaptor::modeAttr() {
+::mlir::ArrayAttr ResizeOpAdaptor::getOffsetFpAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, ResizeOp::modeAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 4, ResizeOp::getOffsetFpAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
 }
 
-::llvm::StringRef ResizeOpAdaptor::mode() {
-  auto attr = modeAttr();
+::mlir::ArrayAttr ResizeOpAdaptor::getOffsetFp() {
+  auto attr = getOffsetFpAttr();
+  return attr;
+}
+
+::mlir::StringAttr ResizeOpAdaptor::getModeAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 6, ResizeOp::getModeAttrName(*odsOpName)).cast<::mlir::StringAttr>();
+  return attr;
+}
+
+::llvm::StringRef ResizeOpAdaptor::getMode() {
+  auto attr = getModeAttr();
   return attr.getValue();
 }
 
@@ -11334,7 +11154,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'mode'");
-    if (namedAttrIt->getName() == ResizeOp::modeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getModeAttrName(*odsOpName)) {
       tblgen_mode = namedAttrIt->getValue();
       break;
     }
@@ -11344,7 +11164,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'offset'");
-    if (namedAttrIt->getName() == ResizeOp::offsetAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getOffsetAttrName(*odsOpName)) {
       tblgen_offset = namedAttrIt->getValue();
       break;
     }
@@ -11354,7 +11174,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'offset_fp'");
-    if (namedAttrIt->getName() == ResizeOp::offset_fpAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getOffsetFpAttrName(*odsOpName)) {
       tblgen_offset_fp = namedAttrIt->getValue();
       break;
     }
@@ -11364,7 +11184,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'output_size'");
-    if (namedAttrIt->getName() == ResizeOp::output_sizeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getOutputSizeAttrName(*odsOpName)) {
       tblgen_output_size = namedAttrIt->getValue();
       break;
     }
@@ -11374,7 +11194,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'shift'");
-    if (namedAttrIt->getName() == ResizeOp::shiftAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getShiftAttrName(*odsOpName)) {
       tblgen_shift = namedAttrIt->getValue();
       break;
     }
@@ -11384,7 +11204,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == ResizeOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
@@ -11394,7 +11214,7 @@ uint32_t ResizeOpAdaptor::shift() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.resize' op ""requires attribute 'stride_fp'");
-    if (namedAttrIt->getName() == ResizeOp::stride_fpAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ResizeOp::getStrideFpAttrName(*odsOpName)) {
       tblgen_stride_fp = namedAttrIt->getValue();
       break;
     }
@@ -11434,11 +11254,11 @@ std::pair<unsigned, unsigned> ResizeOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResizeOp::input() {
+::mlir::Value ResizeOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ResizeOp::inputMutable() {
+::mlir::MutableOperandRange ResizeOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -11454,147 +11274,147 @@ std::pair<unsigned, unsigned> ResizeOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResizeOp::output() {
+::mlir::Value ResizeOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr ResizeOp::output_sizeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, output_sizeAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr ResizeOp::getOutputSizeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 3, getOutputSizeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr ResizeOp::output_size() {
-  auto attr = output_sizeAttr();
+::mlir::ArrayAttr ResizeOp::getOutputSize() {
+  auto attr = getOutputSizeAttr();
   return attr;
 }
 
-::mlir::ArrayAttr ResizeOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr ResizeOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 1, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr ResizeOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr ResizeOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr ResizeOp::offsetAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, offsetAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr ResizeOp::getOffsetAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 5, getOffsetAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr ResizeOp::offset() {
-  auto attr = offsetAttr();
+::mlir::ArrayAttr ResizeOp::getOffset() {
+  auto attr = getOffsetAttr();
   return attr;
 }
 
-::mlir::IntegerAttr ResizeOp::shiftAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, shiftAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ResizeOp::getShiftAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 2, getShiftAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t ResizeOp::shift() {
-  auto attr = shiftAttr();
+uint32_t ResizeOp::getShift() {
+  auto attr = getShiftAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::ArrayAttr ResizeOp::stride_fpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, stride_fpAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr ResizeOp::getStrideFpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 6, (*this)->getAttrs().end() - 0, getStrideFpAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr ResizeOp::stride_fp() {
-  auto attr = stride_fpAttr();
+::mlir::ArrayAttr ResizeOp::getStrideFp() {
+  auto attr = getStrideFpAttr();
   return attr;
 }
 
-::mlir::ArrayAttr ResizeOp::offset_fpAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, offset_fpAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr ResizeOp::getOffsetFpAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 4, getOffsetFpAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr ResizeOp::offset_fp() {
-  auto attr = offset_fpAttr();
+::mlir::ArrayAttr ResizeOp::getOffsetFp() {
+  auto attr = getOffsetFpAttr();
   return attr;
 }
 
-::mlir::StringAttr ResizeOp::modeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, modeAttrName()).cast<::mlir::StringAttr>();
+::mlir::StringAttr ResizeOp::getModeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 6, getModeAttrName()).cast<::mlir::StringAttr>();
 }
 
-::llvm::StringRef ResizeOp::mode() {
-  auto attr = modeAttr();
+::llvm::StringRef ResizeOp::getMode() {
+  auto attr = getModeAttr();
   return attr.getValue();
 }
 
-void ResizeOp::output_sizeAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(output_sizeAttrName(), attr);
+void ResizeOp::setOutputSizeAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getOutputSizeAttrName(), attr);
 }
 
-void ResizeOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
+void ResizeOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void ResizeOp::offsetAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(offsetAttrName(), attr);
+void ResizeOp::setOffsetAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getOffsetAttrName(), attr);
 }
 
-void ResizeOp::shiftAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(shiftAttrName(), attr);
+void ResizeOp::setShiftAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getShiftAttrName(), attr);
 }
 
-void ResizeOp::stride_fpAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(stride_fpAttrName(), attr);
+void ResizeOp::setStrideFpAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideFpAttrName(), attr);
 }
 
-void ResizeOp::offset_fpAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(offset_fpAttrName(), attr);
+void ResizeOp::setOffsetFpAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getOffsetFpAttrName(), attr);
 }
 
-void ResizeOp::modeAttr(::mlir::StringAttr attr) {
-  (*this)->setAttr(modeAttrName(), attr);
+void ResizeOp::setModeAttr(::mlir::StringAttr attr) {
+  (*this)->setAttr(getModeAttrName(), attr);
 }
 
 void ResizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::ArrayAttr output_size, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr offset, ::mlir::IntegerAttr shift, ::mlir::ArrayAttr stride_fp, ::mlir::ArrayAttr offset_fp, ::mlir::StringAttr mode) {
   odsState.addOperands(input);
-  odsState.addAttribute(output_sizeAttrName(odsState.name), output_size);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(offsetAttrName(odsState.name), offset);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
-  odsState.addAttribute(stride_fpAttrName(odsState.name), stride_fp);
-  odsState.addAttribute(offset_fpAttrName(odsState.name), offset_fp);
-  odsState.addAttribute(modeAttrName(odsState.name), mode);
+  odsState.addAttribute(getOutputSizeAttrName(odsState.name), output_size);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getOffsetAttrName(odsState.name), offset);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getStrideFpAttrName(odsState.name), stride_fp);
+  odsState.addAttribute(getOffsetFpAttrName(odsState.name), offset_fp);
+  odsState.addAttribute(getModeAttrName(odsState.name), mode);
   odsState.addTypes(output);
 }
 
 void ResizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::ArrayAttr output_size, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr offset, ::mlir::IntegerAttr shift, ::mlir::ArrayAttr stride_fp, ::mlir::ArrayAttr offset_fp, ::mlir::StringAttr mode) {
   odsState.addOperands(input);
-  odsState.addAttribute(output_sizeAttrName(odsState.name), output_size);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(offsetAttrName(odsState.name), offset);
-  odsState.addAttribute(shiftAttrName(odsState.name), shift);
-  odsState.addAttribute(stride_fpAttrName(odsState.name), stride_fp);
-  odsState.addAttribute(offset_fpAttrName(odsState.name), offset_fp);
-  odsState.addAttribute(modeAttrName(odsState.name), mode);
+  odsState.addAttribute(getOutputSizeAttrName(odsState.name), output_size);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getOffsetAttrName(odsState.name), offset);
+  odsState.addAttribute(getShiftAttrName(odsState.name), shift);
+  odsState.addAttribute(getStrideFpAttrName(odsState.name), stride_fp);
+  odsState.addAttribute(getOffsetFpAttrName(odsState.name), offset_fp);
+  odsState.addAttribute(getModeAttrName(odsState.name), mode);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ResizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::ArrayAttr output_size, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr offset, uint32_t shift, ::mlir::ArrayAttr stride_fp, ::mlir::ArrayAttr offset_fp, ::llvm::StringRef mode) {
   odsState.addOperands(input);
-  odsState.addAttribute(output_sizeAttrName(odsState.name), output_size);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(offsetAttrName(odsState.name), offset);
-  odsState.addAttribute(shiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
-  odsState.addAttribute(stride_fpAttrName(odsState.name), stride_fp);
-  odsState.addAttribute(offset_fpAttrName(odsState.name), offset_fp);
-  odsState.addAttribute(modeAttrName(odsState.name), odsBuilder.getStringAttr(mode));
+  odsState.addAttribute(getOutputSizeAttrName(odsState.name), output_size);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getOffsetAttrName(odsState.name), offset);
+  odsState.addAttribute(getShiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
+  odsState.addAttribute(getStrideFpAttrName(odsState.name), stride_fp);
+  odsState.addAttribute(getOffsetFpAttrName(odsState.name), offset_fp);
+  odsState.addAttribute(getModeAttrName(odsState.name), odsBuilder.getStringAttr(mode));
   odsState.addTypes(output);
 }
 
 void ResizeOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::ArrayAttr output_size, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr offset, uint32_t shift, ::mlir::ArrayAttr stride_fp, ::mlir::ArrayAttr offset_fp, ::llvm::StringRef mode) {
   odsState.addOperands(input);
-  odsState.addAttribute(output_sizeAttrName(odsState.name), output_size);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(offsetAttrName(odsState.name), offset);
-  odsState.addAttribute(shiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
-  odsState.addAttribute(stride_fpAttrName(odsState.name), stride_fp);
-  odsState.addAttribute(offset_fpAttrName(odsState.name), offset_fp);
-  odsState.addAttribute(modeAttrName(odsState.name), odsBuilder.getStringAttr(mode));
+  odsState.addAttribute(getOutputSizeAttrName(odsState.name), output_size);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getOffsetAttrName(odsState.name), offset);
+  odsState.addAttribute(getShiftAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), shift));
+  odsState.addAttribute(getStrideFpAttrName(odsState.name), stride_fp);
+  odsState.addAttribute(getOffsetFpAttrName(odsState.name), offset_fp);
+  odsState.addAttribute(getModeAttrName(odsState.name), odsBuilder.getStringAttr(mode));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -11614,7 +11434,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'mode'");
-    if (namedAttrIt->getName() == modeAttrName()) {
+    if (namedAttrIt->getName() == getModeAttrName()) {
       tblgen_mode = namedAttrIt->getValue();
       break;
     }
@@ -11624,7 +11444,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'offset'");
-    if (namedAttrIt->getName() == offsetAttrName()) {
+    if (namedAttrIt->getName() == getOffsetAttrName()) {
       tblgen_offset = namedAttrIt->getValue();
       break;
     }
@@ -11634,7 +11454,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'offset_fp'");
-    if (namedAttrIt->getName() == offset_fpAttrName()) {
+    if (namedAttrIt->getName() == getOffsetFpAttrName()) {
       tblgen_offset_fp = namedAttrIt->getValue();
       break;
     }
@@ -11644,7 +11464,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'output_size'");
-    if (namedAttrIt->getName() == output_sizeAttrName()) {
+    if (namedAttrIt->getName() == getOutputSizeAttrName()) {
       tblgen_output_size = namedAttrIt->getValue();
       break;
     }
@@ -11654,7 +11474,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'shift'");
-    if (namedAttrIt->getName() == shiftAttrName()) {
+    if (namedAttrIt->getName() == getShiftAttrName()) {
       tblgen_shift = namedAttrIt->getValue();
       break;
     }
@@ -11664,7 +11484,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
@@ -11674,7 +11494,7 @@ void ResizeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride_fp'");
-    if (namedAttrIt->getName() == stride_fpAttrName()) {
+    if (namedAttrIt->getName() == getStrideFpAttrName()) {
       tblgen_stride_fp = namedAttrIt->getValue();
       break;
     }
@@ -11760,7 +11580,7 @@ std::pair<unsigned, unsigned> ReverseOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReverseOpAdaptor::input() {
+::mlir::Value ReverseOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -11768,14 +11588,14 @@ std::pair<unsigned, unsigned> ReverseOpAdaptor::getODSOperandIndexAndLength(unsi
   return odsAttrs;
 }
 
-::mlir::IntegerAttr ReverseOpAdaptor::axisAttr() {
+::mlir::IntegerAttr ReverseOpAdaptor::getAxisAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReverseOp::axisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReverseOp::getAxisAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint64_t ReverseOpAdaptor::axis() {
-  auto attr = axisAttr();
+uint64_t ReverseOpAdaptor::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
@@ -11786,7 +11606,7 @@ uint64_t ReverseOpAdaptor::axis() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.reverse' op ""requires attribute 'axis'");
-    if (namedAttrIt->getName() == ReverseOp::axisAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == ReverseOp::getAxisAttrName(*odsOpName)) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -11808,11 +11628,11 @@ std::pair<unsigned, unsigned> ReverseOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReverseOp::input() {
+::mlir::Value ReverseOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange ReverseOp::inputMutable() {
+::mlir::MutableOperandRange ReverseOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -11828,45 +11648,45 @@ std::pair<unsigned, unsigned> ReverseOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReverseOp::output() {
+::mlir::Value ReverseOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::IntegerAttr ReverseOp::axisAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, axisAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr ReverseOp::getAxisAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getAxisAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint64_t ReverseOp::axis() {
-  auto attr = axisAttr();
+uint64_t ReverseOp::getAxis() {
+  auto attr = getAxisAttr();
   return attr.getValue().getZExtValue();
 }
 
-void ReverseOp::axisAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(axisAttrName(), attr);
+void ReverseOp::setAxisAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getAxisAttrName(), attr);
 }
 
 void ReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   odsState.addTypes(output);
 }
 
 void ReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::IntegerAttr axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), axis);
+  odsState.addAttribute(getAxisAttrName(odsState.name), axis);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void ReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   odsState.addTypes(output);
 }
 
 void ReverseOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, uint64_t axis) {
   odsState.addOperands(input);
-  odsState.addAttribute(axisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
+  odsState.addAttribute(getAxisAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), axis));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -11886,7 +11706,7 @@ void ReverseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'axis'");
-    if (namedAttrIt->getName() == axisAttrName()) {
+    if (namedAttrIt->getName() == getAxisAttrName()) {
       tblgen_axis = namedAttrIt->getValue();
       break;
     }
@@ -11954,7 +11774,7 @@ std::pair<unsigned, unsigned> RsqrtOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOpAdaptor::input1() {
+::mlir::Value RsqrtOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -11976,11 +11796,11 @@ std::pair<unsigned, unsigned> RsqrtOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> RsqrtOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange RsqrtOp::input1Mutable() {
+::mlir::MutableOperandRange RsqrtOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -11996,7 +11816,7 @@ std::pair<unsigned, unsigned> RsqrtOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOp::output() {
+::mlir::TypedValue<::mlir::TensorType> RsqrtOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -12079,15 +11899,15 @@ std::pair<unsigned, unsigned> ScatterOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ScatterOpAdaptor::values_in() {
+::mlir::Value ScatterOpAdaptor::getValuesIn() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ScatterOpAdaptor::indices() {
+::mlir::Value ScatterOpAdaptor::getIndices() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value ScatterOpAdaptor::input() {
+::mlir::Value ScatterOpAdaptor::getInput() {
   return *getODSOperands(2).begin();
 }
 
@@ -12109,31 +11929,31 @@ std::pair<unsigned, unsigned> ScatterOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ScatterOp::values_in() {
+::mlir::Value ScatterOp::getValuesIn() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ScatterOp::indices() {
+::mlir::TypedValue<::mlir::TensorType> ScatterOp::getIndices() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value ScatterOp::input() {
+::mlir::Value ScatterOp::getInput() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange ScatterOp::values_inMutable() {
+::mlir::MutableOperandRange ScatterOp::getValuesInMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ScatterOp::indicesMutable() {
+::mlir::MutableOperandRange ScatterOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange ScatterOp::inputMutable() {
+::mlir::MutableOperandRange ScatterOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -12149,7 +11969,7 @@ std::pair<unsigned, unsigned> ScatterOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ScatterOp::values_out() {
+::mlir::Value ScatterOp::getValuesOut() {
   return *getODSResults(0).begin();
 }
 
@@ -12248,15 +12068,15 @@ std::pair<unsigned, unsigned> SelectOpAdaptor::getODSOperandIndexAndLength(unsig
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SelectOpAdaptor::pred() {
+::mlir::Value SelectOpAdaptor::getPred() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SelectOpAdaptor::on_true() {
+::mlir::Value SelectOpAdaptor::getOnTrue() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value SelectOpAdaptor::on_false() {
+::mlir::Value SelectOpAdaptor::getOnFalse() {
   return *getODSOperands(2).begin();
 }
 
@@ -12278,31 +12098,31 @@ std::pair<unsigned, unsigned> SelectOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SelectOp::pred() {
+::mlir::TypedValue<::mlir::TensorType> SelectOp::getPred() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SelectOp::on_true() {
+::mlir::TypedValue<::mlir::TensorType> SelectOp::getOnTrue() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value SelectOp::on_false() {
+::mlir::TypedValue<::mlir::TensorType> SelectOp::getOnFalse() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange SelectOp::predMutable() {
+::mlir::MutableOperandRange SelectOp::getPredMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SelectOp::on_trueMutable() {
+::mlir::MutableOperandRange SelectOp::getOnTrueMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SelectOp::on_falseMutable() {
+::mlir::MutableOperandRange SelectOp::getOnFalseMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -12318,7 +12138,7 @@ std::pair<unsigned, unsigned> SelectOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SelectOp::output() {
+::mlir::TypedValue<::mlir::TensorType> SelectOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -12421,7 +12241,7 @@ std::pair<unsigned, unsigned> SigmoidOpAdaptor::getODSOperandIndexAndLength(unsi
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SigmoidOpAdaptor::input() {
+::mlir::Value SigmoidOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -12443,11 +12263,11 @@ std::pair<unsigned, unsigned> SigmoidOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SigmoidOp::input() {
+::mlir::TypedValue<::mlir::TensorType> SigmoidOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange SigmoidOp::inputMutable() {
+::mlir::MutableOperandRange SigmoidOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -12463,7 +12283,7 @@ std::pair<unsigned, unsigned> SigmoidOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SigmoidOp::output() {
+::mlir::TypedValue<::mlir::TensorType> SigmoidOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -12546,7 +12366,7 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SliceOpAdaptor::input() {
+::mlir::Value SliceOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -12554,25 +12374,25 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
   return odsAttrs;
 }
 
-::mlir::ArrayAttr SliceOpAdaptor::startAttr() {
+::mlir::ArrayAttr SliceOpAdaptor::getStartAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SliceOp::startAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr SliceOpAdaptor::start() {
-  auto attr = startAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SliceOp::getStartAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr SliceOpAdaptor::sizeAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SliceOp::sizeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+::mlir::ArrayAttr SliceOpAdaptor::getStart() {
+  auto attr = getStartAttr();
+  return attr;
 }
 
-::mlir::ArrayAttr SliceOpAdaptor::size() {
-  auto attr = sizeAttr();
+::mlir::ArrayAttr SliceOpAdaptor::getSizeAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SliceOp::getSizeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::mlir::ArrayAttr SliceOpAdaptor::getSize() {
+  auto attr = getSizeAttr();
   return attr;
 }
 
@@ -12583,7 +12403,7 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.slice' op ""requires attribute 'size'");
-    if (namedAttrIt->getName() == SliceOp::sizeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == SliceOp::getSizeAttrName(*odsOpName)) {
       tblgen_size = namedAttrIt->getValue();
       break;
     }
@@ -12593,7 +12413,7 @@ std::pair<unsigned, unsigned> SliceOpAdaptor::getODSOperandIndexAndLength(unsign
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.slice' op ""requires attribute 'start'");
-    if (namedAttrIt->getName() == SliceOp::startAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == SliceOp::getStartAttrName(*odsOpName)) {
       tblgen_start = namedAttrIt->getValue();
       break;
     }
@@ -12618,11 +12438,11 @@ std::pair<unsigned, unsigned> SliceOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SliceOp::input() {
+::mlir::Value SliceOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange SliceOp::inputMutable() {
+::mlir::MutableOperandRange SliceOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -12638,47 +12458,47 @@ std::pair<unsigned, unsigned> SliceOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SliceOp::output() {
+::mlir::Value SliceOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr SliceOp::startAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, startAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr SliceOp::getStartAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getStartAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr SliceOp::start() {
-  auto attr = startAttr();
+::mlir::ArrayAttr SliceOp::getStart() {
+  auto attr = getStartAttr();
   return attr;
 }
 
-::mlir::ArrayAttr SliceOp::sizeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, sizeAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr SliceOp::getSizeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getSizeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr SliceOp::size() {
-  auto attr = sizeAttr();
+::mlir::ArrayAttr SliceOp::getSize() {
+  auto attr = getSizeAttr();
   return attr;
 }
 
-void SliceOp::startAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(startAttrName(), attr);
+void SliceOp::setStartAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStartAttrName(), attr);
 }
 
-void SliceOp::sizeAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(sizeAttrName(), attr);
+void SliceOp::setSizeAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getSizeAttrName(), attr);
 }
 
 void SliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::ArrayAttr start, ::mlir::ArrayAttr size) {
   odsState.addOperands(input);
-  odsState.addAttribute(startAttrName(odsState.name), start);
-  odsState.addAttribute(sizeAttrName(odsState.name), size);
+  odsState.addAttribute(getStartAttrName(odsState.name), start);
+  odsState.addAttribute(getSizeAttrName(odsState.name), size);
   odsState.addTypes(output);
 }
 
 void SliceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::ArrayAttr start, ::mlir::ArrayAttr size) {
   odsState.addOperands(input);
-  odsState.addAttribute(startAttrName(odsState.name), start);
-  odsState.addAttribute(sizeAttrName(odsState.name), size);
+  odsState.addAttribute(getStartAttrName(odsState.name), start);
+  odsState.addAttribute(getSizeAttrName(odsState.name), size);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -12698,7 +12518,7 @@ void SliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'size'");
-    if (namedAttrIt->getName() == sizeAttrName()) {
+    if (namedAttrIt->getName() == getSizeAttrName()) {
       tblgen_size = namedAttrIt->getValue();
       break;
     }
@@ -12708,7 +12528,7 @@ void SliceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'start'");
-    if (namedAttrIt->getName() == startAttrName()) {
+    if (namedAttrIt->getName() == getStartAttrName()) {
       tblgen_start = namedAttrIt->getValue();
       break;
     }
@@ -12779,11 +12599,11 @@ std::pair<unsigned, unsigned> SubOpAdaptor::getODSOperandIndexAndLength(unsigned
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SubOpAdaptor::input1() {
+::mlir::Value SubOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SubOpAdaptor::input2() {
+::mlir::Value SubOpAdaptor::getInput2() {
   return *getODSOperands(1).begin();
 }
 
@@ -12805,21 +12625,21 @@ std::pair<unsigned, unsigned> SubOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SubOp::input1() {
+::mlir::TypedValue<::mlir::TensorType> SubOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SubOp::input2() {
+::mlir::TypedValue<::mlir::TensorType> SubOp::getInput2() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange SubOp::input1Mutable() {
+::mlir::MutableOperandRange SubOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange SubOp::input2Mutable() {
+::mlir::MutableOperandRange SubOp::getInput2Mutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -12835,7 +12655,7 @@ std::pair<unsigned, unsigned> SubOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SubOp::output() {
+::mlir::TypedValue<::mlir::TensorType> SubOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -12926,11 +12746,11 @@ std::pair<unsigned, unsigned> TableOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TableOpAdaptor::input() {
+::mlir::Value TableOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TableOpAdaptor::table() {
+::mlir::Value TableOpAdaptor::getTable() {
   return *getODSOperands(1).begin();
 }
 
@@ -12952,21 +12772,21 @@ std::pair<unsigned, unsigned> TableOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TableOp::input() {
+::mlir::TypedValue<::mlir::TensorType> TableOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TableOp::table() {
+::mlir::Value TableOp::getTable() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange TableOp::inputMutable() {
+::mlir::MutableOperandRange TableOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TableOp::tableMutable() {
+::mlir::MutableOperandRange TableOp::getTableMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -12982,7 +12802,7 @@ std::pair<unsigned, unsigned> TableOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TableOp::output() {
+::mlir::TypedValue<::mlir::TensorType> TableOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -13073,7 +12893,7 @@ std::pair<unsigned, unsigned> TanhOpAdaptor::getODSOperandIndexAndLength(unsigne
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanhOpAdaptor::input() {
+::mlir::Value TanhOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
@@ -13095,11 +12915,11 @@ std::pair<unsigned, unsigned> TanhOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanhOp::input() {
+::mlir::TypedValue<::mlir::TensorType> TanhOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange TanhOp::inputMutable() {
+::mlir::MutableOperandRange TanhOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -13115,7 +12935,7 @@ std::pair<unsigned, unsigned> TanhOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanhOp::output() {
+::mlir::TypedValue<::mlir::TensorType> TanhOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -13198,7 +13018,7 @@ std::pair<unsigned, unsigned> TileOpAdaptor::getODSOperandIndexAndLength(unsigne
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileOpAdaptor::input1() {
+::mlir::Value TileOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
@@ -13206,14 +13026,14 @@ std::pair<unsigned, unsigned> TileOpAdaptor::getODSOperandIndexAndLength(unsigne
   return odsAttrs;
 }
 
-::mlir::ArrayAttr TileOpAdaptor::multiplesAttr() {
+::mlir::ArrayAttr TileOpAdaptor::getMultiplesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileOp::multiplesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TileOp::getMultiplesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
 }
 
-::mlir::ArrayAttr TileOpAdaptor::multiples() {
-  auto attr = multiplesAttr();
+::mlir::ArrayAttr TileOpAdaptor::getMultiples() {
+  auto attr = getMultiplesAttr();
   return attr;
 }
 
@@ -13224,7 +13044,7 @@ std::pair<unsigned, unsigned> TileOpAdaptor::getODSOperandIndexAndLength(unsigne
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.tile' op ""requires attribute 'multiples'");
-    if (namedAttrIt->getName() == TileOp::multiplesAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == TileOp::getMultiplesAttrName(*odsOpName)) {
       tblgen_multiples = namedAttrIt->getValue();
       break;
     }
@@ -13246,11 +13066,11 @@ std::pair<unsigned, unsigned> TileOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileOp::input1() {
+::mlir::Value TileOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::MutableOperandRange TileOp::input1Mutable() {
+::mlir::MutableOperandRange TileOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -13266,32 +13086,32 @@ std::pair<unsigned, unsigned> TileOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TileOp::output() {
+::mlir::Value TileOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr TileOp::multiplesAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, multiplesAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr TileOp::getMultiplesAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getMultiplesAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr TileOp::multiples() {
-  auto attr = multiplesAttr();
+::mlir::ArrayAttr TileOp::getMultiples() {
+  auto attr = getMultiplesAttr();
   return attr;
 }
 
-void TileOp::multiplesAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(multiplesAttrName(), attr);
+void TileOp::setMultiplesAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getMultiplesAttrName(), attr);
 }
 
 void TileOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input1, ::mlir::ArrayAttr multiples) {
   odsState.addOperands(input1);
-  odsState.addAttribute(multiplesAttrName(odsState.name), multiples);
+  odsState.addAttribute(getMultiplesAttrName(odsState.name), multiples);
   odsState.addTypes(output);
 }
 
 void TileOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input1, ::mlir::ArrayAttr multiples) {
   odsState.addOperands(input1);
-  odsState.addAttribute(multiplesAttrName(odsState.name), multiples);
+  odsState.addAttribute(getMultiplesAttrName(odsState.name), multiples);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -13311,7 +13131,7 @@ void TileOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'multiples'");
-    if (namedAttrIt->getName() == multiplesAttrName()) {
+    if (namedAttrIt->getName() == getMultiplesAttrName()) {
       tblgen_multiples = namedAttrIt->getValue();
       break;
     }
@@ -13379,15 +13199,15 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TransposeConv2DOpAdaptor::input() {
+::mlir::Value TransposeConv2DOpAdaptor::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TransposeConv2DOpAdaptor::filter() {
+::mlir::Value TransposeConv2DOpAdaptor::getFilter() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value TransposeConv2DOpAdaptor::bias() {
+::mlir::Value TransposeConv2DOpAdaptor::getBias() {
   return *getODSOperands(2).begin();
 }
 
@@ -13395,79 +13215,58 @@ std::pair<unsigned, unsigned> TransposeConv2DOpAdaptor::getODSOperandIndexAndLen
   return odsAttrs;
 }
 
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_padAttr() {
+::mlir::ArrayAttr TransposeConv2DOpAdaptor::getOutPadAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 2, TransposeConv2DOp::out_padAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_pad() {
-  auto attr = out_padAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, TransposeConv2DOp::getOutPadAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::strideAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 0, TransposeConv2DOp::strideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr TransposeConv2DOpAdaptor::getOutPad() {
+  auto attr = getOutPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::dilationAttr() {
+::mlir::ArrayAttr TransposeConv2DOpAdaptor::getStrideAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 3, TransposeConv2DOp::dilationAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::dilation() {
-  auto attr = dilationAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, TransposeConv2DOp::getStrideAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_shapeAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, TransposeConv2DOp::out_shapeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr TransposeConv2DOpAdaptor::out_shape() {
-  auto attr = out_shapeAttr();
+::mlir::ArrayAttr TransposeConv2DOpAdaptor::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAttr() {
+::mlir::ArrayAttr TransposeConv2DOpAdaptor::getOutShapeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 1, TransposeConv2DOp::quantization_infoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, TransposeConv2DOp::getOutShapeAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
+  return attr;
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> TransposeConv2DOpAdaptor::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+::mlir::ArrayAttr TransposeConv2DOpAdaptor::getOutShape() {
+  auto attr = getOutShapeAttr();
+  return attr;
+}
+
+mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::getQuantizationInfoAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 1, TransposeConv2DOp::getQuantizationInfoAttrName(*odsOpName)).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+  return attr;
+}
+
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> TransposeConv2DOpAdaptor::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
 ::mlir::LogicalResult TransposeConv2DOpAdaptor::verify(::mlir::Location loc) {
   auto namedAttrRange = odsAttrs;
   auto namedAttrIt = namedAttrRange.begin();
-  ::mlir::Attribute tblgen_dilation;
-  while (true) {
-    if (namedAttrIt == namedAttrRange.end())
-      return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'dilation'");
-    if (namedAttrIt->getName() == TransposeConv2DOp::dilationAttrName(*odsOpName)) {
-      tblgen_dilation = namedAttrIt->getValue();
-      break;
-    }
-    ++namedAttrIt;
-  }
   ::mlir::Attribute tblgen_out_pad;
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_pad'");
-    if (namedAttrIt->getName() == TransposeConv2DOp::out_padAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == TransposeConv2DOp::getOutPadAttrName(*odsOpName)) {
       tblgen_out_pad = namedAttrIt->getValue();
       break;
     }
@@ -13477,7 +13276,7 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'out_shape'");
-    if (namedAttrIt->getName() == TransposeConv2DOp::out_shapeAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == TransposeConv2DOp::getOutShapeAttrName(*odsOpName)) {
       tblgen_out_shape = namedAttrIt->getValue();
       break;
     }
@@ -13488,24 +13287,21 @@ mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOpAdaptor::quantization_infoAt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'tosa.transpose_conv2d' op ""requires attribute 'stride'");
-    if (namedAttrIt->getName() == TransposeConv2DOp::strideAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == TransposeConv2DOp::getStrideAttrName(*odsOpName)) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == TransposeConv2DOp::quantization_infoAttrName(*odsOpName)) {
+    else if (namedAttrIt->getName() == TransposeConv2DOp::getQuantizationInfoAttrName(*odsOpName)) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
   }
 
-  if (tblgen_out_pad && !((((tblgen_out_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_pad.cast<::mlir::ArrayAttr>().size() == 2))))
-    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
+  if (tblgen_out_pad && !((((tblgen_out_pad.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_pad.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_pad.cast<::mlir::ArrayAttr>().size() == 4))))
+    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_pad' failed to satisfy constraint: 64-bit integer array attribute with exactly 4 elements");
 
   if (tblgen_stride && !((((tblgen_stride.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_stride.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_stride.cast<::mlir::ArrayAttr>().size() == 2))))
     return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'stride' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
-
-  if (tblgen_dilation && !((((tblgen_dilation.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_dilation.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_dilation.cast<::mlir::ArrayAttr>().size() == 2))))
-    return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'dilation' failed to satisfy constraint: 64-bit integer array attribute with exactly 2 elements");
 
   if (tblgen_out_shape && !((((tblgen_out_shape.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_out_shape.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && (((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))); }))) && ((tblgen_out_shape.cast<::mlir::ArrayAttr>().size() <= 4))))
     return emitError(loc, "'tosa.transpose_conv2d' op ""attribute 'out_shape' failed to satisfy constraint: 64-bit integer array attribute with at least 4 elements");
@@ -13525,31 +13321,31 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSOperandIndexAndLength(uns
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TransposeConv2DOp::input() {
+::mlir::Value TransposeConv2DOp::getInput() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TransposeConv2DOp::filter() {
+::mlir::Value TransposeConv2DOp::getFilter() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Value TransposeConv2DOp::bias() {
+::mlir::Value TransposeConv2DOp::getBias() {
   return *getODSOperands(2).begin();
 }
 
-::mlir::MutableOperandRange TransposeConv2DOp::inputMutable() {
+::mlir::MutableOperandRange TransposeConv2DOp::getInputMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TransposeConv2DOp::filterMutable() {
+::mlir::MutableOperandRange TransposeConv2DOp::getFilterMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TransposeConv2DOp::biasMutable() {
+::mlir::MutableOperandRange TransposeConv2DOp::getBiasMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -13565,111 +13361,96 @@ std::pair<unsigned, unsigned> TransposeConv2DOp::getODSResultIndexAndLength(unsi
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TransposeConv2DOp::output() {
+::mlir::Value TransposeConv2DOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::out_padAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 2, out_padAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr TransposeConv2DOp::getOutPadAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getOutPadAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::out_pad() {
-  auto attr = out_padAttr();
+::mlir::ArrayAttr TransposeConv2DOp::getOutPad() {
+  auto attr = getOutPadAttr();
   return attr;
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::strideAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 0, strideAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr TransposeConv2DOp::getStrideAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getStrideAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::stride() {
-  auto attr = strideAttr();
+::mlir::ArrayAttr TransposeConv2DOp::getStride() {
+  auto attr = getStrideAttr();
   return attr;
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::dilationAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 3, dilationAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr TransposeConv2DOp::getOutShapeAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getOutShapeAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::dilation() {
-  auto attr = dilationAttr();
+::mlir::ArrayAttr TransposeConv2DOp::getOutShape() {
+  auto attr = getOutShapeAttr();
   return attr;
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::out_shapeAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, out_shapeAttrName()).cast<::mlir::ArrayAttr>();
+mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOp::getQuantizationInfoAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 1, getQuantizationInfoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
 }
 
-::mlir::ArrayAttr TransposeConv2DOp::out_shape() {
-  auto attr = out_shapeAttr();
-  return attr;
+::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> TransposeConv2DOp::getQuantizationInfo() {
+  auto attr = getQuantizationInfoAttr();
+  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr.cast<mlir::tosa::ConvOpQuantizationAttr>()) : (::llvm::None);
 }
 
-mlir::tosa::ConvOpQuantizationAttr TransposeConv2DOp::quantization_infoAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 1, quantization_infoAttrName()).dyn_cast_or_null<mlir::tosa::ConvOpQuantizationAttr>();
+void TransposeConv2DOp::setOutPadAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getOutPadAttrName(), attr);
 }
 
-::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr> TransposeConv2DOp::quantization_info() {
-  auto attr = quantization_infoAttr();
-  return attr ? ::llvm::Optional<mlir::tosa::ConvOpQuantizationAttr>(attr) : (::llvm::None);
+void TransposeConv2DOp::setStrideAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStrideAttrName(), attr);
 }
 
-void TransposeConv2DOp::out_padAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(out_padAttrName(), attr);
+void TransposeConv2DOp::setOutShapeAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getOutShapeAttrName(), attr);
 }
 
-void TransposeConv2DOp::strideAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(strideAttrName(), attr);
-}
-
-void TransposeConv2DOp::dilationAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(dilationAttrName(), attr);
-}
-
-void TransposeConv2DOp::out_shapeAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(out_shapeAttrName(), attr);
-}
-
-void TransposeConv2DOp::quantization_infoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
-  (*this)->setAttr(quantization_infoAttrName(), attr);
+void TransposeConv2DOp::setQuantizationInfoAttr(mlir::tosa::ConvOpQuantizationAttr attr) {
+  (*this)->setAttr(getQuantizationInfoAttrName(), attr);
 }
 
 ::mlir::Attribute TransposeConv2DOp::removeQuantization_infoAttr() {
-  return (*this)->removeAttr(quantization_infoAttrName());
+  return (*this)->removeAttr(getQuantizationInfoAttrName());
 }
 
-void TransposeConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value weight, Value bias, ArrayAttr outpad, ArrayAttr stride, ArrayAttr dilation, ArrayAttr outputShape) {
+void TransposeConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Type outputType, Value input, Value weight, Value bias, ArrayAttr outpad, ArrayAttr stride, ArrayAttr outputShape) {
     buildTransConvOpWithQuantInfo(odsBuilder, odsState, outputType,
                                   input, weight, bias,
-                                  outpad, stride, dilation,
+                                  outpad, stride,
                                   outputShape);
   
 }
 
-void TransposeConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::Value filter, ::mlir::Value bias, ::mlir::ArrayAttr out_pad, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr dilation, ::mlir::ArrayAttr out_shape, /*optional*/mlir::tosa::ConvOpQuantizationAttr quantization_info) {
+void TransposeConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input, ::mlir::Value filter, ::mlir::Value bias, ::mlir::ArrayAttr out_pad, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr out_shape, /*optional*/mlir::tosa::ConvOpQuantizationAttr quantization_info) {
   odsState.addOperands(input);
   odsState.addOperands(filter);
   odsState.addOperands(bias);
-  odsState.addAttribute(out_padAttrName(odsState.name), out_pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
-  odsState.addAttribute(out_shapeAttrName(odsState.name), out_shape);
+  odsState.addAttribute(getOutPadAttrName(odsState.name), out_pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getOutShapeAttrName(odsState.name), out_shape);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   odsState.addTypes(output);
 }
 
-void TransposeConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::Value filter, ::mlir::Value bias, ::mlir::ArrayAttr out_pad, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr dilation, ::mlir::ArrayAttr out_shape, /*optional*/mlir::tosa::ConvOpQuantizationAttr quantization_info) {
+void TransposeConv2DOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input, ::mlir::Value filter, ::mlir::Value bias, ::mlir::ArrayAttr out_pad, ::mlir::ArrayAttr stride, ::mlir::ArrayAttr out_shape, /*optional*/mlir::tosa::ConvOpQuantizationAttr quantization_info) {
   odsState.addOperands(input);
   odsState.addOperands(filter);
   odsState.addOperands(bias);
-  odsState.addAttribute(out_padAttrName(odsState.name), out_pad);
-  odsState.addAttribute(strideAttrName(odsState.name), stride);
-  odsState.addAttribute(dilationAttrName(odsState.name), dilation);
-  odsState.addAttribute(out_shapeAttrName(odsState.name), out_shape);
+  odsState.addAttribute(getOutPadAttrName(odsState.name), out_pad);
+  odsState.addAttribute(getStrideAttrName(odsState.name), stride);
+  odsState.addAttribute(getOutShapeAttrName(odsState.name), out_shape);
   if (quantization_info) {
-  odsState.addAttribute(quantization_infoAttrName(odsState.name), quantization_info);
+  odsState.addAttribute(getQuantizationInfoAttrName(odsState.name), quantization_info);
   }
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -13686,21 +13467,11 @@ void TransposeConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
 ::mlir::LogicalResult TransposeConv2DOp::verifyInvariantsImpl() {
   auto namedAttrRange = (*this)->getAttrs();
   auto namedAttrIt = namedAttrRange.begin();
-  ::mlir::Attribute tblgen_dilation;
-  while (true) {
-    if (namedAttrIt == namedAttrRange.end())
-      return emitOpError("requires attribute 'dilation'");
-    if (namedAttrIt->getName() == dilationAttrName()) {
-      tblgen_dilation = namedAttrIt->getValue();
-      break;
-    }
-    ++namedAttrIt;
-  }
   ::mlir::Attribute tblgen_out_pad;
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'out_pad'");
-    if (namedAttrIt->getName() == out_padAttrName()) {
+    if (namedAttrIt->getName() == getOutPadAttrName()) {
       tblgen_out_pad = namedAttrIt->getValue();
       break;
     }
@@ -13710,7 +13481,7 @@ void TransposeConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'out_shape'");
-    if (namedAttrIt->getName() == out_shapeAttrName()) {
+    if (namedAttrIt->getName() == getOutShapeAttrName()) {
       tblgen_out_shape = namedAttrIt->getValue();
       break;
     }
@@ -13721,23 +13492,20 @@ void TransposeConv2DOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'stride'");
-    if (namedAttrIt->getName() == strideAttrName()) {
+    if (namedAttrIt->getName() == getStrideAttrName()) {
       tblgen_stride = namedAttrIt->getValue();
       break;
     }
-    else if (namedAttrIt->getName() == quantization_infoAttrName()) {
+    else if (namedAttrIt->getName() == getQuantizationInfoAttrName()) {
       tblgen_quantization_info = namedAttrIt->getValue();
     }
     ++namedAttrIt;
   }
 
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_out_pad, "out_pad")))
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps3(*this, tblgen_out_pad, "out_pad")))
     return ::mlir::failure();
 
   if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_stride, "stride")))
-    return ::mlir::failure();
-
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps2(*this, tblgen_dilation, "dilation")))
     return ::mlir::failure();
 
   if (::mlir::failed(__mlir_ods_local_attr_constraint_TosaOps18(*this, tblgen_out_shape, "out_shape")))
@@ -13816,11 +13584,11 @@ std::pair<unsigned, unsigned> TransposeOpAdaptor::getODSOperandIndexAndLength(un
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TransposeOpAdaptor::input1() {
+::mlir::Value TransposeOpAdaptor::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TransposeOpAdaptor::perms() {
+::mlir::Value TransposeOpAdaptor::getPerms() {
   return *getODSOperands(1).begin();
 }
 
@@ -13842,21 +13610,21 @@ std::pair<unsigned, unsigned> TransposeOp::getODSOperandIndexAndLength(unsigned 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TransposeOp::input1() {
+::mlir::Value TransposeOp::getInput1() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value TransposeOp::perms() {
+::mlir::TypedValue<::mlir::TensorType> TransposeOp::getPerms() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::MutableOperandRange TransposeOp::input1Mutable() {
+::mlir::MutableOperandRange TransposeOp::getInput1Mutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange TransposeOp::permsMutable() {
+::mlir::MutableOperandRange TransposeOp::getPermsMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -13872,7 +13640,7 @@ std::pair<unsigned, unsigned> TransposeOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TransposeOp::output() {
+::mlir::Value TransposeOp::getOutput() {
   return *getODSResults(0).begin();
 }
 
@@ -13977,7 +13745,7 @@ std::pair<unsigned, unsigned> WhileOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange WhileOpAdaptor::inputs() {
+::mlir::ValueRange WhileOpAdaptor::getInputs() {
   return getODSOperands(0);
 }
 
@@ -13989,11 +13757,11 @@ std::pair<unsigned, unsigned> WhileOpAdaptor::getODSOperandIndexAndLength(unsign
   return odsRegions;
 }
 
-::mlir::Region &WhileOpAdaptor::cond() {
+::mlir::Region &WhileOpAdaptor::getCond() {
   return *odsRegions[0];
 }
 
-::mlir::Region &WhileOpAdaptor::body() {
+::mlir::Region &WhileOpAdaptor::getBody() {
   return *odsRegions[1];
 }
 
@@ -14025,11 +13793,11 @@ std::pair<unsigned, unsigned> WhileOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range WhileOp::inputs() {
+::mlir::Operation::operand_range WhileOp::getInputs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange WhileOp::inputsMutable() {
+::mlir::MutableOperandRange WhileOp::getInputsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -14059,15 +13827,15 @@ std::pair<unsigned, unsigned> WhileOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::result_range WhileOp::output() {
+::mlir::Operation::result_range WhileOp::getOutput() {
   return getODSResults(0);
 }
 
-::mlir::Region &WhileOp::cond() {
+::mlir::Region &WhileOp::getCond() {
   return (*this)->getRegion(0);
 }
 
-::mlir::Region &WhileOp::body() {
+::mlir::Region &WhileOp::getBody() {
   return (*this)->getRegion(1);
 }
 
@@ -14161,7 +13929,7 @@ std::pair<unsigned, unsigned> YieldOpAdaptor::getODSOperandIndexAndLength(unsign
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange YieldOpAdaptor::inputs() {
+::mlir::ValueRange YieldOpAdaptor::getInputs() {
   return getODSOperands(0);
 }
 
@@ -14197,11 +13965,11 @@ std::pair<unsigned, unsigned> YieldOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range YieldOp::inputs() {
+::mlir::Operation::operand_range YieldOp::getInputs() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange YieldOp::inputsMutable() {
+::mlir::MutableOperandRange YieldOp::getInputsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;

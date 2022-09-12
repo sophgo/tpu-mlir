@@ -406,16 +406,33 @@ enum class FastmathFlags : uint32_t {
 ::llvm::Optional<FastmathFlags> symbolizeFastmathFlags(uint32_t);
 std::string stringifyFastmathFlags(FastmathFlags);
 ::llvm::Optional<FastmathFlags> symbolizeFastmathFlags(::llvm::StringRef);
-inline FastmathFlags operator|(FastmathFlags lhs, FastmathFlags rhs) {
-  return static_cast<FastmathFlags>(static_cast<uint32_t>(lhs) | static_cast<uint32_t>(rhs));
+
+inline constexpr FastmathFlags operator|(FastmathFlags a, FastmathFlags b) {
+  return static_cast<FastmathFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
-inline FastmathFlags operator&(FastmathFlags lhs, FastmathFlags rhs) {
-  return static_cast<FastmathFlags>(static_cast<uint32_t>(lhs) & static_cast<uint32_t>(rhs));
+inline constexpr FastmathFlags operator&(FastmathFlags a, FastmathFlags b) {
+  return static_cast<FastmathFlags>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
 }
-inline bool bitEnumContains(FastmathFlags bits, FastmathFlags bit) {
+inline constexpr FastmathFlags operator^(FastmathFlags a, FastmathFlags b) {
+  return static_cast<FastmathFlags>(static_cast<uint32_t>(a) ^ static_cast<uint32_t>(b));
+}
+inline constexpr FastmathFlags operator~(FastmathFlags bits) {
+  // Ensure only bits that can be present in the enum are set
+  return static_cast<FastmathFlags>(~static_cast<uint32_t>(bits) & static_cast<uint32_t>(127u));
+}
+inline constexpr bool bitEnumContainsAll(FastmathFlags bits, FastmathFlags bit) {
+  return (bits & bit) == bit;
+}
+inline constexpr bool bitEnumContainsAny(FastmathFlags bits, FastmathFlags bit) {
   return (static_cast<uint32_t>(bits) & static_cast<uint32_t>(bit)) != 0;
 }
-
+inline constexpr FastmathFlags bitEnumClear(FastmathFlags bits, FastmathFlags bit) {
+  return bits & ~bit;
+}
+inline constexpr FastmathFlags bitEnumSet(FastmathFlags bits, FastmathFlags bit, /*optional*/bool value=true) {
+  return value ? (bits | bit) : bitEnumClear(bits, bit);
+}
+  
 inline std::string stringifyEnum(FastmathFlags enumValue) {
   return stringifyFastmathFlags(enumValue);
 }

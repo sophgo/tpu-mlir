@@ -9,9 +9,7 @@
 
 #pragma once
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 using namespace mlir;

@@ -23,12 +23,16 @@ struct SparseTensorEncodingAttrStorage;
 class SparseTensorEncodingAttr : public ::mlir::Attribute::AttrBase<SparseTensorEncodingAttr, ::mlir::Attribute, detail::SparseTensorEncodingAttrStorage, ::mlir::VerifiableTensorEncoding::Trait> {
 public:
   using Base::Base;
-  // Dimension level types that define sparse tensors:
-  //   Dense      - dimension is dense, every entry is stored
-  //   Compressed - dimension is sparse, only nonzeros are stored
-  //   Singleton  - dimension contains single coordinate, no siblings
+  // Dimension level types. By default, each type has the unique and
+  // ordered properties. Alternatives properties are indicated by
+  // Nu (not-unique) and No (not-ordered).
+  //
+  // TODO: separate type and property in encoding
+  //
   enum class DimLevelType {
-    Dense, Compressed, Singleton
+    Dense,
+    Compressed, CompressedNu, CompressedNo, CompressedNuNo,
+    Singleton, SingletonNu, SingletonNo, SingletonNuNo,
   };
   using Base::getChecked;
 public:

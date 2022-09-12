@@ -16,12 +16,16 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::ml_program::ExternAttr::getMnemonic()) {
-    value = ::mlir::ml_program::ExternAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::ml_program::ExternAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::ml_program::ExternAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -38,10 +42,10 @@ namespace ml_program {
 namespace detail {
 struct ExternAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::Type>;
-  ExternAttrStorage(::mlir::Type type) : ::mlir::AttributeStorage(type) {}
+  ExternAttrStorage(::mlir::Type type) : type(type) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
-    return (getType() == std::get<0>(tblgenKey));
+    return (type == std::get<0>(tblgenKey));
   }
 
   static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
@@ -53,6 +57,7 @@ struct ExternAttrStorage : public ::mlir::AttributeStorage {
     return new (allocator.allocate<ExternAttrStorage>()) ExternAttrStorage(type);
   }
 
+  ::mlir::Type type;
 };
 } // namespace detail
 ExternAttr ExternAttr::get(::mlir::MLIRContext *context, ::mlir::Type type) {
@@ -60,17 +65,29 @@ ExternAttr ExternAttr::get(::mlir::MLIRContext *context, ::mlir::Type type) {
 }
 
 ::mlir::Attribute ExternAttr::parse(::mlir::AsmParser &odsParser, ::mlir::Type odsType) {
+  ::mlir::Builder odsBuilder(odsParser.getContext());
+  ::mlir::FailureOr<::mlir::Type> _result_type;
   ::llvm::SMLoc odsLoc = odsParser.getCurrentLocation();
   (void) odsLoc;
+
+  if (odsType) {
+    if (auto reqType = odsType.dyn_cast<::mlir::Type>()) {
+      _result_type = reqType;
+    } else {
+      odsParser.emitError(odsLoc, "invalid kind of type specified");
+      return {};
+    }
+  }
   return ExternAttr::get(odsParser.getContext(),
-      odsType);
+      ::mlir::Type((_result_type.value_or(::mlir::NoneType::get(odsParser.getContext())))));
 }
 
 void ExternAttr::print(::mlir::AsmPrinter &odsPrinter) const {
+  ::mlir::Builder odsBuilder(getContext());
 }
 
 ::mlir::Type ExternAttr::getType() const {
-  return getImpl()->getType().cast<::mlir::Type>();
+  return getImpl()->type;
 }
 
 } // namespace ml_program
@@ -84,12 +101,10 @@ namespace ml_program {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

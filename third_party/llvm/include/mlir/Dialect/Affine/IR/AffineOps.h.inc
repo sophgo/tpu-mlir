@@ -12,6 +12,9 @@ namespace mlir {
 class AffineApplyOp;
 } // namespace mlir
 namespace mlir {
+class AffineDelinearizeIndexOp;
+} // namespace mlir
+namespace mlir {
 class AffineForOp;
 } // namespace mlir
 namespace mlir {
@@ -69,10 +72,10 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange mapOperands();
+  ::mlir::ValueRange getMapOperands();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::AffineMapAttr mapAttr();
-  ::mlir::AffineMap map();
+  ::mlir::AffineMapAttr getMapAttr();
+  ::mlir::AffineMap getMap();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -91,11 +94,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr mapAttrName() {
+  ::mlir::StringAttr getMapAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr mapAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMapAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -105,13 +108,13 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range mapOperands();
-  ::mlir::MutableOperandRange mapOperandsMutable();
+  ::mlir::Operation::operand_range getMapOperands();
+  ::mlir::MutableOperandRange getMapOperandsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::AffineMapAttr mapAttr();
-  ::mlir::AffineMap map();
-  void mapAttr(::mlir::AffineMapAttr attr);
+  ::mlir::AffineMapAttr getMapAttr();
+  ::mlir::AffineMap getMap();
+  void setMapAttr(::mlir::AffineMapAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap map, ValueRange mapOperands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ArrayRef<AffineExpr>  exprList, ValueRange mapOperands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMapAttr map, ::mlir::ValueRange mapOperands);
@@ -139,7 +142,7 @@ private:
 
 public:
   /// Returns the affine map to be applied by this operation.
-  AffineMap getAffineMap() { return map(); }
+  AffineMap getAffineMap() { return getMap(); }
 
   /// Returns the affine value map computed from this operation.
   AffineValueMap getAffineValueMap();
@@ -159,11 +162,71 @@ public:
   /// Returns true if the result of this operation is a symbol for all its
   /// uses in `region`.
   bool isValidSymbol(Region *region);
-
-  operand_range getMapOperands() { return getOperands(); }
 };
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineApplyOp)
+
+namespace mlir {
+
+//===----------------------------------------------------------------------===//
+// mlir::AffineDelinearizeIndexOp declarations
+//===----------------------------------------------------------------------===//
+
+class AffineDelinearizeIndexOpAdaptor {
+public:
+  AffineDelinearizeIndexOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  AffineDelinearizeIndexOpAdaptor(AffineDelinearizeIndexOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getLinearIndex();
+  ::mlir::ValueRange getBasis();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class AffineDelinearizeIndexOp : public ::mlir::Op<AffineDelinearizeIndexOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = AffineDelinearizeIndexOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("affine.delinearize_index");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::TypedValue<::mlir::IndexType> getLinearIndex();
+  ::mlir::Operation::operand_range getBasis();
+  ::mlir::MutableOperandRange getLinearIndexMutable();
+  ::mlir::MutableOperandRange getBasisMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Operation::result_range getMultiIndex();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value linear_index, ArrayRef<OpFoldResult> basis);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange multi_index, ::mlir::Value linear_index, ::mlir::ValueRange basis);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verify();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineDelinearizeIndexOp)
 
 namespace mlir {
 
@@ -182,7 +245,7 @@ public:
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
-  ::mlir::Region &region();
+  ::mlir::Region &getRegion();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -208,8 +271,8 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range results();
-  ::mlir::Region &region();
+  ::mlir::Operation::result_range getResults();
+  ::mlir::Region &getRegion();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, int64_t lowerBound, int64_t upperBound, int64_t step = 1, ValueRange iterArgs = llvm::None, function_ref<void(OpBuilder &, Location, Value, ValueRange)> bodyBuilder = nullptr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange lbOperands, AffineMap lbMap, ValueRange ubOperands, AffineMap ubMap, int64_t step = 1, ValueRange iterArgs = llvm::None, function_ref<void(OpBuilder &, Location, Value, ValueRange)> bodyBuilder = nullptr);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
@@ -220,20 +283,20 @@ public:
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
   ::mlir::Region &getLoopBody();
-  ::mlir::Optional<::mlir::Value> getSingleInductionVar();
-  ::mlir::Optional<::mlir::OpFoldResult> getSingleLowerBound();
-  ::mlir::Optional<::mlir::OpFoldResult> getSingleStep();
-  ::mlir::Optional<::mlir::OpFoldResult> getSingleUpperBound();
-  ::mlir::OperandRange getSuccessorEntryOperands(unsigned index);
-  void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
+  ::llvm::Optional<::mlir::Value> getSingleInductionVar();
+  ::llvm::Optional<::mlir::OpFoldResult> getSingleLowerBound();
+  ::llvm::Optional<::mlir::OpFoldResult> getSingleStep();
+  ::llvm::Optional<::mlir::OpFoldResult> getSingleUpperBound();
+  ::mlir::OperandRange getSuccessorEntryOperands(::llvm::Optional<unsigned> index);
+  void getSuccessorRegions(::llvm::Optional<unsigned> index, ::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
 public:
   /// Defining the function type we use for building the body of affine.for.
   using BodyBuilderFn =
       function_ref<void(OpBuilder &, Location, Value, ValueRange)>;
 
-  static StringRef getStepAttrName() { return "step"; }
-  static StringRef getLowerBoundAttrName() { return "lower_bound"; }
-  static StringRef getUpperBoundAttrName() { return "upper_bound"; }
+  static StringRef getStepAttrStrName() { return "step"; }
+  static StringRef getLowerBoundAttrStrName() { return "lower_bound"; }
+  static StringRef getUpperBoundAttrStrName() { return "upper_bound"; }
 
   BlockArgument getInductionVar() { return getBody()->getArgument(0); }
   Block::BlockArgListType getRegionIterArgs() {
@@ -264,18 +327,18 @@ public:
 
   /// Returns loop step.
   int64_t getStep() {
-    return (*this)->getAttr(getStepAttrName()).cast<IntegerAttr>().getInt();
+    return (*this)->getAttr(getStepAttrStrName()).cast<IntegerAttr>().getInt();
   }
 
   /// Returns affine map for the lower bound.
   AffineMap getLowerBoundMap() { return getLowerBoundMapAttr().getValue(); }
   AffineMapAttr getLowerBoundMapAttr() {
-    return (*this)->getAttr(getLowerBoundAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getLowerBoundAttrStrName()).cast<AffineMapAttr>();
   }
   /// Returns affine map for the upper bound. The upper bound is exclusive.
   AffineMap getUpperBoundMap() { return getUpperBoundMapAttr().getValue(); }
   AffineMapAttr getUpperBoundMapAttr() {
-    return (*this)->getAttr(getUpperBoundAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getUpperBoundAttrStrName()).cast<AffineMapAttr>();
   }
 
   /// Set lower bound. The new bound must have the same number of operands as
@@ -295,7 +358,7 @@ public:
   void setStep(int64_t step) {
     assert(step > 0 && "step has to be a positive integer constant");
     auto *context = getLowerBoundMap().getContext();
-    (*this)->setAttr(StringAttr::get(context, getStepAttrName()),
+    (*this)->setAttr(StringAttr::get(context, getStepAttrStrName()),
                      IntegerAttr::get(IndexType::get(context), step));
   }
 
@@ -353,8 +416,8 @@ public:
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::RegionRange getRegions();
-  ::mlir::Region &thenRegion();
-  ::mlir::Region &elseRegion();
+  ::mlir::Region &getThenRegion();
+  ::mlir::Region &getElseRegion();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -380,9 +443,9 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range results();
-  ::mlir::Region &thenRegion();
-  ::mlir::Region &elseRegion();
+  ::mlir::Operation::result_range getResults();
+  ::mlir::Region &getThenRegion();
+  ::mlir::Region &getElseRegion();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, IntegerSet set, ValueRange args, bool withElseRegion);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTypes, IntegerSet set, ValueRange args, bool withElseRegion);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
@@ -393,7 +456,7 @@ public:
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult fold(::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::OpFoldResult> &results);
 public:
-  static StringRef getConditionAttrName() { return "condition"; }
+  static StringRef getConditionAttrStrName() { return "condition"; }
 
   IntegerSet getIntegerSet();
   void setIntegerSet(IntegerSet newSet);
@@ -402,26 +465,26 @@ public:
   void setConditional(IntegerSet set, ValueRange operands);
 
   /// Returns true if an else block exists.
-  bool hasElse() { return !elseRegion().empty(); }
+  bool hasElse() { return !getElseRegion().empty(); }
 
   Block *getThenBlock() {
-    assert(!thenRegion().empty() && "Unexpected empty 'then' region.");
-    return &thenRegion().front();
+    assert(!getThenRegion().empty() && "Unexpected empty 'then' region.");
+    return &getThenRegion().front();
   }
 
   Block *getElseBlock() {
     assert(hasElse() && "Empty 'else' region.");
-    return &elseRegion().front();
+    return &getElseRegion().front();
   }
 
   OpBuilder getThenBodyBuilder() {
-    assert(!thenRegion().empty() && "Unexpected empty 'then' region.");
-    Block &body = thenRegion().front();
+    assert(!getThenRegion().empty() && "Unexpected empty 'then' region.");
+    Block &body = getThenRegion().front();
     return OpBuilder(&body, std::prev(body.end()));
   }
   OpBuilder getElseBodyBuilder() {
     assert(hasElse() && "No 'else' block");
-    Block &body = elseRegion().front();
+    Block &body = getElseRegion().front();
     return OpBuilder(&body, std::prev(body.end()));
   }
 };
@@ -443,8 +506,8 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::ValueRange indices();
+  ::mlir::Value getMemref();
+  ::mlir::ValueRange getIndices();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -469,13 +532,13 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::Operation::operand_range indices();
-  ::mlir::MutableOperandRange memrefMutable();
-  ::mlir::MutableOperandRange indicesMutable();
+  ::mlir::TypedValue<::mlir::MemRefType> getMemref();
+  ::mlir::Operation::operand_range getIndices();
+  ::mlir::MutableOperandRange getMemrefMutable();
+  ::mlir::MutableOperandRange getIndicesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::Value getResult();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap map, ValueRange operands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value memref, ValueRange indices = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value memref, AffineMap map, ValueRange mapOperands);
@@ -498,13 +561,10 @@ public:
 
   /// Returns the affine map used to index the memref for this operation.
   AffineMapAttr getAffineMapAttr() {
-    return (*this)->getAttr(getMapAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getMapAttrStrName()).cast<AffineMapAttr>();
   }
 
-  static StringRef getMapAttrName() { return "map"; }
-
-  // TODO: Remove once prefixing is flipped.
-  operand_range getIndices() { return indices(); }
+  static StringRef getMapAttrStrName() { return "map"; }
 };
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineLoadOp)
@@ -526,8 +586,8 @@ public:
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::ValueRange operands();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::AffineMapAttr mapAttr();
-  ::mlir::AffineMap map();
+  ::mlir::AffineMapAttr getMapAttr();
+  ::mlir::AffineMap getMap();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -546,11 +606,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr mapAttrName() {
+  ::mlir::StringAttr getMapAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr mapAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMapAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -564,9 +624,9 @@ public:
   ::mlir::MutableOperandRange operandsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::AffineMapAttr mapAttr();
-  ::mlir::AffineMap map();
-  void mapAttr(::mlir::AffineMapAttr attr);
+  ::mlir::AffineMapAttr getMapAttr();
+  ::mlir::AffineMap getMap();
+  void setMapAttr(::mlir::AffineMapAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap affineMap, ValueRange mapOperands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands);
@@ -592,15 +652,15 @@ private:
   }
 
 public:
-  static StringRef getMapAttrName() { return "map"; }
-  AffineMap getAffineMap() { return map(); }
+  static StringRef getMapAttrStrName() { return "map"; }
+  AffineMap getAffineMap() { return getMap(); }
   ValueRange getMapOperands() { return operands(); }
   ValueRange getDimOperands() {
     return OperandRange{operands().begin(),
-                      operands().begin() + map().getNumDims()};
+                      operands().begin() + getMap().getNumDims()};
   }
   ValueRange getSymbolOperands() {
-    return OperandRange{operands().begin() + map().getNumDims(),
+    return OperandRange{operands().begin() + getMap().getNumDims(),
                       operands().end()};
   }
 };
@@ -624,8 +684,8 @@ public:
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::ValueRange operands();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::AffineMapAttr mapAttr();
-  ::mlir::AffineMap map();
+  ::mlir::AffineMapAttr getMapAttr();
+  ::mlir::AffineMap getMap();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -644,11 +704,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr mapAttrName() {
+  ::mlir::StringAttr getMapAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr mapAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMapAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -662,9 +722,9 @@ public:
   ::mlir::MutableOperandRange operandsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::AffineMapAttr mapAttr();
-  ::mlir::AffineMap map();
-  void mapAttr(::mlir::AffineMapAttr attr);
+  ::mlir::AffineMapAttr getMapAttr();
+  ::mlir::AffineMap getMap();
+  void setMapAttr(::mlir::AffineMapAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap affineMap, ValueRange mapOperands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands);
@@ -690,15 +750,15 @@ private:
   }
 
 public:
-  static StringRef getMapAttrName() { return "map"; }
-  AffineMap getAffineMap() { return map(); }
+  static StringRef getMapAttrStrName() { return "map"; }
+  AffineMap getAffineMap() { return getMap(); }
   ValueRange getMapOperands() { return operands(); }
   ValueRange getDimOperands() {
     return OperandRange{operands().begin(),
-                      operands().begin() + map().getNumDims()};
+                      operands().begin() + getMap().getNumDims()};
   }
   ValueRange getSymbolOperands() {
-    return OperandRange{operands().begin() + map().getNumDims(),
+    return OperandRange{operands().begin() + getMap().getNumDims(),
                       operands().end()};
   }
 };
@@ -720,22 +780,22 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange mapOperands();
+  ::mlir::ValueRange getMapOperands();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::ArrayAttr reductionsAttr();
-  ::mlir::ArrayAttr reductions();
-  ::mlir::AffineMapAttr lowerBoundsMapAttr();
-  ::mlir::AffineMap lowerBoundsMap();
-  ::mlir::DenseIntElementsAttr lowerBoundsGroupsAttr();
-  ::mlir::DenseIntElementsAttr lowerBoundsGroups();
-  ::mlir::AffineMapAttr upperBoundsMapAttr();
-  ::mlir::AffineMap upperBoundsMap();
-  ::mlir::DenseIntElementsAttr upperBoundsGroupsAttr();
-  ::mlir::DenseIntElementsAttr upperBoundsGroups();
-  ::mlir::ArrayAttr stepsAttr();
-  ::mlir::ArrayAttr steps();
+  ::mlir::ArrayAttr getReductionsAttr();
+  ::mlir::ArrayAttr getReductions();
+  ::mlir::AffineMapAttr getLowerBoundsMapAttr();
+  ::mlir::AffineMap getLowerBoundsMap();
+  ::mlir::DenseIntElementsAttr getLowerBoundsGroupsAttr();
+  ::mlir::DenseIntElementsAttr getLowerBoundsGroups();
+  ::mlir::AffineMapAttr getUpperBoundsMapAttr();
+  ::mlir::AffineMap getUpperBoundsMap();
+  ::mlir::DenseIntElementsAttr getUpperBoundsGroupsAttr();
+  ::mlir::DenseIntElementsAttr getUpperBoundsGroups();
+  ::mlir::ArrayAttr getStepsAttr();
+  ::llvm::SmallVector<int64_t, 8> getSteps();
   ::mlir::RegionRange getRegions();
-  ::mlir::Region &region();
+  ::mlir::Region &getRegion();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -754,51 +814,51 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr lowerBoundsGroupsAttrName() {
+  ::mlir::StringAttr getLowerBoundsGroupsAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr lowerBoundsGroupsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLowerBoundsGroupsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr lowerBoundsMapAttrName() {
+  ::mlir::StringAttr getLowerBoundsMapAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr lowerBoundsMapAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLowerBoundsMapAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr reductionsAttrName() {
+  ::mlir::StringAttr getReductionsAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr reductionsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getReductionsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr stepsAttrName() {
+  ::mlir::StringAttr getStepsAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr stepsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getStepsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr upperBoundsGroupsAttrName() {
+  ::mlir::StringAttr getUpperBoundsGroupsAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr upperBoundsGroupsAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getUpperBoundsGroupsAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr upperBoundsMapAttrName() {
+  ::mlir::StringAttr getUpperBoundsMapAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr upperBoundsMapAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getUpperBoundsMapAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
@@ -808,34 +868,34 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range mapOperands();
-  ::mlir::MutableOperandRange mapOperandsMutable();
+  ::mlir::Operation::operand_range getMapOperands();
+  ::mlir::MutableOperandRange getMapOperandsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Operation::result_range results();
-  ::mlir::Region &region();
-  ::mlir::ArrayAttr reductionsAttr();
-  ::mlir::ArrayAttr reductions();
-  ::mlir::AffineMapAttr lowerBoundsMapAttr();
-  ::mlir::AffineMap lowerBoundsMap();
-  ::mlir::DenseIntElementsAttr lowerBoundsGroupsAttr();
-  ::mlir::DenseIntElementsAttr lowerBoundsGroups();
-  ::mlir::AffineMapAttr upperBoundsMapAttr();
-  ::mlir::AffineMap upperBoundsMap();
-  ::mlir::DenseIntElementsAttr upperBoundsGroupsAttr();
-  ::mlir::DenseIntElementsAttr upperBoundsGroups();
-  ::mlir::ArrayAttr stepsAttr();
-  ::mlir::ArrayAttr steps();
-  void reductionsAttr(::mlir::ArrayAttr attr);
-  void lowerBoundsMapAttr(::mlir::AffineMapAttr attr);
-  void lowerBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr);
-  void upperBoundsMapAttr(::mlir::AffineMapAttr attr);
-  void upperBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr);
-  void stepsAttr(::mlir::ArrayAttr attr);
+  ::mlir::Operation::result_range getResults();
+  ::mlir::Region &getRegion();
+  ::mlir::ArrayAttr getReductionsAttr();
+  ::mlir::ArrayAttr getReductions();
+  ::mlir::AffineMapAttr getLowerBoundsMapAttr();
+  ::mlir::AffineMap getLowerBoundsMap();
+  ::mlir::DenseIntElementsAttr getLowerBoundsGroupsAttr();
+  ::mlir::DenseIntElementsAttr getLowerBoundsGroups();
+  ::mlir::AffineMapAttr getUpperBoundsMapAttr();
+  ::mlir::AffineMap getUpperBoundsMap();
+  ::mlir::DenseIntElementsAttr getUpperBoundsGroupsAttr();
+  ::mlir::DenseIntElementsAttr getUpperBoundsGroups();
+  ::mlir::ArrayAttr getStepsAttr();
+  ::llvm::SmallVector<int64_t, 8> getSteps();
+  void setReductionsAttr(::mlir::ArrayAttr attr);
+  void setLowerBoundsMapAttr(::mlir::AffineMapAttr attr);
+  void setLowerBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr);
+  void setUpperBoundsMapAttr(::mlir::AffineMapAttr attr);
+  void setUpperBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr);
+  void setStepsAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTypes, ArrayRef<arith::AtomicRMWKind> reductions, ArrayRef<int64_t> ranges);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTypes, ArrayRef<arith::AtomicRMWKind> reductions, ArrayRef<AffineMap> lbMaps, ValueRange lbArgs, ArrayRef<AffineMap> ubMaps, ValueRange ubArgs, ArrayRef<int64_t> steps);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::ArrayAttr reductions, ::mlir::AffineMapAttr lowerBoundsMap, ::mlir::DenseIntElementsAttr lowerBoundsGroups, ::mlir::AffineMapAttr upperBoundsMap, ::mlir::DenseIntElementsAttr upperBoundsGroups, ::mlir::ArrayAttr steps, ::mlir::ValueRange mapOperands);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::ArrayAttr reductions, ::mlir::AffineMap lowerBoundsMap, ::mlir::DenseIntElementsAttr lowerBoundsGroups, ::mlir::AffineMap upperBoundsMap, ::mlir::DenseIntElementsAttr upperBoundsGroups, ::mlir::ArrayAttr steps, ::mlir::ValueRange mapOperands);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::ArrayAttr reductions, ::mlir::AffineMap lowerBoundsMap, ::mlir::DenseIntElementsAttr lowerBoundsGroups, ::mlir::AffineMap upperBoundsMap, ::mlir::DenseIntElementsAttr upperBoundsGroups, ::llvm::SmallVector<int64_t, 8> steps, ::mlir::ValueRange mapOperands);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
@@ -885,26 +945,25 @@ public:
   void setUpperBounds(ValueRange operands, AffineMap map);
   void setUpperBoundsMap(AffineMap map);
 
-  SmallVector<int64_t, 8> getSteps();
   void setSteps(ArrayRef<int64_t> newSteps);
 
   /// Returns attribute names to use in op construction. Not expected to be
   /// used directly.
-  static StringRef getReductionsAttrName() { return "reductions"; }
-  static StringRef getLowerBoundsMapAttrName() { return "lowerBoundsMap"; }
-  static StringRef getLowerBoundsGroupsAttrName() {
+  static StringRef getReductionsAttrStrName() { return "reductions"; }
+  static StringRef getLowerBoundsMapAttrStrName() { return "lowerBoundsMap"; }
+  static StringRef getLowerBoundsGroupsAttrStrName() {
     return "lowerBoundsGroups";
   }
-  static StringRef getUpperBoundsMapAttrName() { return "upperBoundsMap"; }
-  static StringRef getUpperBoundsGroupsAttrName() {
+  static StringRef getUpperBoundsMapAttrStrName() { return "upperBoundsMap"; }
+  static StringRef getUpperBoundsGroupsAttrStrName() {
     return "upperBoundsGroups";
   }
-  static StringRef getStepsAttrName() { return "steps"; }
+  static StringRef getStepsAttrStrName() { return "steps"; }
 
   /// Returns `true` if the loop bounds have min/max expressions.
   bool hasMinMaxBounds() {
-    return lowerBoundsMap().getNumResults() != getNumDims() ||
-           upperBoundsMap().getNumResults() != getNumDims();
+    return getLowerBoundsMap().getNumResults() != getNumDims() ||
+           getUpperBoundsMap().getNumResults() != getNumDims();
   }
 };
 } // namespace mlir
@@ -925,15 +984,15 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::ValueRange indices();
+  ::mlir::Value getMemref();
+  ::mlir::ValueRange getIndices();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::BoolAttr isWriteAttr();
-  bool isWrite();
-  ::mlir::IntegerAttr localityHintAttr();
-  uint32_t localityHint();
-  ::mlir::BoolAttr isDataCacheAttr();
-  bool isDataCache();
+  ::mlir::BoolAttr getIsWriteAttr();
+  bool getIsWrite();
+  ::mlir::IntegerAttr getLocalityHintAttr();
+  uint32_t getLocalityHint();
+  ::mlir::BoolAttr getIsDataCacheAttr();
+  bool getIsDataCache();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -952,27 +1011,27 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr isDataCacheAttrName() {
+  ::mlir::StringAttr getIsDataCacheAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr isDataCacheAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIsDataCacheAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr isWriteAttrName() {
+  ::mlir::StringAttr getIsWriteAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr isWriteAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIsWriteAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr localityHintAttrName() {
+  ::mlir::StringAttr getLocalityHintAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr localityHintAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLocalityHintAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
@@ -982,21 +1041,21 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::Operation::operand_range indices();
-  ::mlir::MutableOperandRange memrefMutable();
-  ::mlir::MutableOperandRange indicesMutable();
+  ::mlir::TypedValue<::mlir::MemRefType> getMemref();
+  ::mlir::Operation::operand_range getIndices();
+  ::mlir::MutableOperandRange getMemrefMutable();
+  ::mlir::MutableOperandRange getIndicesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::BoolAttr isWriteAttr();
-  bool isWrite();
-  ::mlir::IntegerAttr localityHintAttr();
-  uint32_t localityHint();
-  ::mlir::BoolAttr isDataCacheAttr();
-  bool isDataCache();
-  void isWriteAttr(::mlir::BoolAttr attr);
-  void localityHintAttr(::mlir::IntegerAttr attr);
-  void isDataCacheAttr(::mlir::BoolAttr attr);
+  ::mlir::BoolAttr getIsWriteAttr();
+  bool getIsWrite();
+  ::mlir::IntegerAttr getLocalityHintAttr();
+  uint32_t getLocalityHint();
+  ::mlir::BoolAttr getIsDataCacheAttr();
+  bool getIsDataCache();
+  void setIsWriteAttr(::mlir::BoolAttr attr);
+  void setLocalityHintAttr(::mlir::IntegerAttr attr);
+  void setIsDataCacheAttr(::mlir::BoolAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value memref, AffineMap map, ArrayRef<Value> mapOperands, bool isWrite, unsigned localityHint, bool isDataCache);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value memref, ::mlir::ValueRange indices, ::mlir::BoolAttr isWrite, ::mlir::IntegerAttr localityHint, ::mlir::BoolAttr isDataCache);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value memref, ::mlir::ValueRange indices, ::mlir::BoolAttr isWrite, ::mlir::IntegerAttr localityHint, ::mlir::BoolAttr isDataCache);
@@ -1022,21 +1081,21 @@ private:
 
 public:
   MemRefType getMemRefType() {
-    return memref().getType().cast<MemRefType>();
+    return getMemref().getType().cast<MemRefType>();
   }
 
   /// Returns the affine map used to index the memref for this operation.
   AffineMap getAffineMap() { return getAffineMapAttr().getValue(); }
   AffineMapAttr getAffineMapAttr() {
-    return (*this)->getAttr(getMapAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getMapAttrStrName()).cast<AffineMapAttr>();
   }
 
   /// Impelements the AffineMapAccessInterface.
   /// Returns the AffineMapAttr associated with 'memref'.
   NamedAttribute getAffineMapAttrForMemRef(Value mref) {
-    assert(mref == memref() &&
+    assert(mref == getMemref() &&
            "Expected mref argument to match memref operand");
-    return {StringAttr::get(getContext(), getMapAttrName()),
+    return {StringAttr::get(getContext(), getMapAttrStrName()),
       getAffineMapAttr()};
   }
 
@@ -1045,10 +1104,10 @@ public:
     return {operand_begin() + 1, operand_end()};
   }
 
-  static StringRef getMapAttrName() { return "map"; }
-  static StringRef getLocalityHintAttrName() { return "localityHint"; }
-  static StringRef getIsWriteAttrName() { return "isWrite"; }
-  static StringRef getIsDataCacheAttrName() { return "isDataCache"; }
+  static StringRef getMapAttrStrName() { return "map"; }
+  static StringRef getLocalityHintAttrStrName() { return "localityHint"; }
+  static StringRef getIsWriteAttrStrName() { return "isWrite"; }
+  static StringRef getIsDataCacheAttrStrName() { return "isDataCache"; }
 };
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffinePrefetchOp)
@@ -1068,9 +1127,9 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::Value memref();
-  ::mlir::ValueRange indices();
+  ::mlir::Value getValue();
+  ::mlir::Value getMemref();
+  ::mlir::ValueRange getIndices();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1095,12 +1154,12 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::Value memref();
-  ::mlir::Operation::operand_range indices();
-  ::mlir::MutableOperandRange valueMutable();
-  ::mlir::MutableOperandRange memrefMutable();
-  ::mlir::MutableOperandRange indicesMutable();
+  ::mlir::Value getValue();
+  ::mlir::TypedValue<::mlir::MemRefType> getMemref();
+  ::mlir::Operation::operand_range getIndices();
+  ::mlir::MutableOperandRange getValueMutable();
+  ::mlir::MutableOperandRange getMemrefMutable();
+  ::mlir::MutableOperandRange getIndicesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value valueToStore, Value memref, ValueRange indices);
@@ -1124,13 +1183,10 @@ public:
 
   /// Returns the affine map used to index the memref for this operation.
   AffineMapAttr getAffineMapAttr() {
-    return (*this)->getAttr(getMapAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getMapAttrStrName()).cast<AffineMapAttr>();
   }
 
-  static StringRef getMapAttrName() { return "map"; }
-
-  // TODO: Remove once prefixing is flipped.
-  operand_range getIndices() { return indices(); }
+  static StringRef getMapAttrStrName() { return "map"; }
 };
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(mlir::AffineStoreOp)
@@ -1150,8 +1206,8 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::ValueRange indices();
+  ::mlir::Value getMemref();
+  ::mlir::ValueRange getIndices();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1176,13 +1232,13 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::Operation::operand_range indices();
-  ::mlir::MutableOperandRange memrefMutable();
-  ::mlir::MutableOperandRange indicesMutable();
+  ::mlir::TypedValue<::mlir::MemRefType> getMemref();
+  ::mlir::Operation::operand_range getIndices();
+  ::mlir::MutableOperandRange getMemrefMutable();
+  ::mlir::MutableOperandRange getIndicesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::VectorType> getResult();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, VectorType resultType, AffineMap map, ValueRange operands);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, VectorType resultType, Value memref, ValueRange indices = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, VectorType resultType, Value memref, AffineMap map, ValueRange mapOperands);
@@ -1204,16 +1260,13 @@ public:
 
   /// Returns the affine map used to index the memref for this operation.
   AffineMapAttr getAffineMapAttr() {
-    return (*this)->getAttr(getMapAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getMapAttrStrName()).cast<AffineMapAttr>();
   }
 
-  static StringRef getMapAttrName() { return "map"; }
-
-  // TODO: Remove once prefixing is flipped.
-  operand_range getIndices() { return indices(); }
+  static StringRef getMapAttrStrName() { return "map"; }
 
   VectorType getVectorType() {
-    return result().getType().cast<VectorType>();
+    return getResult().getType().cast<VectorType>();
   }
 };
 } // namespace mlir
@@ -1234,9 +1287,9 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::Value memref();
-  ::mlir::ValueRange indices();
+  ::mlir::Value getValue();
+  ::mlir::Value getMemref();
+  ::mlir::ValueRange getIndices();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -1261,12 +1314,12 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value value();
-  ::mlir::Value memref();
-  ::mlir::Operation::operand_range indices();
-  ::mlir::MutableOperandRange valueMutable();
-  ::mlir::MutableOperandRange memrefMutable();
-  ::mlir::MutableOperandRange indicesMutable();
+  ::mlir::TypedValue<::mlir::VectorType> getValue();
+  ::mlir::TypedValue<::mlir::MemRefType> getMemref();
+  ::mlir::Operation::operand_range getIndices();
+  ::mlir::MutableOperandRange getValueMutable();
+  ::mlir::MutableOperandRange getMemrefMutable();
+  ::mlir::MutableOperandRange getIndicesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value valueToStore, Value memref, ValueRange indices);
@@ -1289,16 +1342,13 @@ public:
 
   /// Returns the affine map used to index the memref for this operation.
   AffineMapAttr getAffineMapAttr() {
-    return (*this)->getAttr(getMapAttrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getMapAttrStrName()).cast<AffineMapAttr>();
   }
 
-  static StringRef getMapAttrName() { return "map"; }
-
-  // TODO: Remove once prefixing is flipped.
-  operand_range getIndices() { return indices(); }
+  static StringRef getMapAttrStrName() { return "map"; }
 
   VectorType getVectorType() {
-    return value().getType().cast<VectorType>();
+    return getValue().getType().cast<VectorType>();
   }
 };
 } // namespace mlir

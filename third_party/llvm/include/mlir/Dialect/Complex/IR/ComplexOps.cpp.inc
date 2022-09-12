@@ -11,7 +11,9 @@
 
 ::mlir::complex::AbsOp,
 ::mlir::complex::AddOp,
+::mlir::complex::AngleOp,
 ::mlir::complex::Atan2Op,
+::mlir::complex::ConjOp,
 ::mlir::complex::ConstantOp,
 ::mlir::complex::CosOp,
 ::mlir::complex::CreateOp,
@@ -136,7 +138,7 @@ std::pair<unsigned, unsigned> AbsOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AbsOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> AbsOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -156,7 +158,7 @@ std::pair<unsigned, unsigned> AbsOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AbsOp::getResult() {
+::mlir::TypedValue<::mlir::FloatType> AbsOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -315,11 +317,11 @@ std::pair<unsigned, unsigned> AddOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AddOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> AddOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AddOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> AddOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -345,7 +347,7 @@ std::pair<unsigned, unsigned> AddOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AddOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> AddOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -472,9 +474,9 @@ void AddOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -503,6 +505,181 @@ void AddOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstan
 } // namespace complex
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::AddOp)
+
+namespace mlir {
+namespace complex {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::complex::AngleOp definitions
+//===----------------------------------------------------------------------===//
+
+AngleOpAdaptor::AngleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("complex.angle", odsAttrs.getContext());
+}
+
+AngleOpAdaptor::AngleOpAdaptor(AngleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange AngleOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> AngleOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange AngleOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AngleOpAdaptor::getComplex() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr AngleOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult AngleOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> AngleOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range AngleOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::ComplexType> AngleOp::getComplex() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange AngleOp::getComplexMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> AngleOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range AngleOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::FloatType> AngleOp::getResult() {
+  return *getODSResults(0).begin();
+}
+
+void AngleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value complex) {
+  odsState.addOperands(complex);
+  odsState.addTypes(result);
+}
+
+void AngleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value complex) {
+  odsState.addOperands(complex);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void AngleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult AngleOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ComplexOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ComplexOps1(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  if (!((std::equal_to<>()((*this->getODSOperands(0).begin()).getType().cast<ComplexType>().getElementType(), (*this->getODSResults(0).begin()).getType()))))
+    return emitOpError("failed to verify that complex element type matches result type");
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AngleOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::ParseResult AngleOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  (void)complexOperandsLoc;
+  ::mlir::Type complexRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
+
+  complexOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(complexRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::ComplexType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    complexRawTypes[0] = type;
+  }
+  for (::mlir::Type type : complexTypes) {
+    (void)type;
+    if (!(((type.isa<::mlir::ComplexType>())) && ((type.cast<::mlir::ComplexType>().getElementType().isa<::mlir::FloatType>())))) {
+      return parser.emitError(parser.getNameLoc()) << "'complex' must be complex type with floating-point elements, but got " << type;
+    }
+  }
+  result.addTypes(complexTypes[0].cast<ComplexType>().getElementType());
+  if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AngleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getComplex();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getComplex().getType();
+    if (auto validType = type.dyn_cast<::mlir::ComplexType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void AngleOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace complex
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::AngleOp)
 
 namespace mlir {
 namespace complex {
@@ -557,11 +734,11 @@ std::pair<unsigned, unsigned> Atan2Op::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Atan2Op::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> Atan2Op::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value Atan2Op::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> Atan2Op::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -587,7 +764,7 @@ std::pair<unsigned, unsigned> Atan2Op::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Atan2Op::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> Atan2Op::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -714,9 +891,9 @@ void Atan2Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -745,6 +922,211 @@ void Atan2Op::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInst
 } // namespace complex
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::Atan2Op)
+
+namespace mlir {
+namespace complex {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::complex::ConjOp definitions
+//===----------------------------------------------------------------------===//
+
+ConjOpAdaptor::ConjOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("complex.conj", odsAttrs.getContext());
+}
+
+ConjOpAdaptor::ConjOpAdaptor(ConjOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange ConjOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> ConjOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::ValueRange ConjOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value ConjOpAdaptor::getComplex() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::DictionaryAttr ConjOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult ConjOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> ConjOp::getODSOperandIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::operand_range ConjOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::ComplexType> ConjOp::getComplex() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::MutableOperandRange ConjOp::getComplexMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> ConjOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range ConjOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::ComplexType> ConjOp::getResult() {
+  return *getODSResults(0).begin();
+}
+
+void ConjOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value complex) {
+  odsState.addOperands(complex);
+  odsState.addTypes(result);
+}
+
+void ConjOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value complex) {
+  odsState.addOperands(complex);
+
+        ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+        if (::mlir::succeeded(ConjOp::inferReturnTypes(odsBuilder.getContext(),
+                      odsState.location, odsState.operands,
+                      odsState.attributes.getDictionary(odsState.getContext()),
+                      /*regions=*/{}, inferredReturnTypes)))
+          odsState.addTypes(inferredReturnTypes);
+        else
+          ::llvm::report_fatal_error("Failed to infer result type(s).");
+}
+
+void ConjOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value complex) {
+  odsState.addOperands(complex);
+  assert(resultTypes.size() == 1u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void ConjOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  assert(resultTypes.size() == 1u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+void ConjOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() == 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+
+  ::llvm::SmallVector<::mlir::Type, 2> inferredReturnTypes;
+  if (::mlir::succeeded(ConjOp::inferReturnTypes(odsBuilder.getContext(),
+          odsState.location, operands,
+          odsState.attributes.getDictionary(odsState.getContext()),
+          odsState.regions, inferredReturnTypes))) {
+    assert(inferredReturnTypes.size() == 1u && "mismatched number of return types");
+    odsState.addTypes(inferredReturnTypes);
+  } else {
+    ::llvm::report_fatal_error("Failed to infer result type(s).");
+  }
+}
+
+::mlir::LogicalResult ConjOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ComplexOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_ComplexOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult ConjOp::verifyInvariants() {
+  return verifyInvariantsImpl();
+}
+
+::mlir::LogicalResult ConjOp::inferReturnTypes(::mlir::MLIRContext *context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>&inferredReturnTypes) {
+  inferredReturnTypes.resize(1);
+  ::mlir::Builder odsBuilder(context);
+  ::mlir::Type odsInferredType0 = operands[0].getType();
+  inferredReturnTypes[0] = odsInferredType0;
+  return ::mlir::success();
+}
+
+::mlir::ParseResult ConjOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand complexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> complexOperands(complexRawOperands);  ::llvm::SMLoc complexOperandsLoc;
+  (void)complexOperandsLoc;
+  ::mlir::Type complexRawTypes[1];
+  ::llvm::ArrayRef<::mlir::Type> complexTypes(complexRawTypes);
+
+  complexOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(complexRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::ComplexType type;
+    if (parser.parseCustomTypeWithFallback(type))
+      return ::mlir::failure();
+    complexRawTypes[0] = type;
+  }
+  result.addTypes(complexTypes[0]);
+  if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void ConjOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getComplex();
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  {
+    auto type = getComplex().getType();
+    if (auto validType = type.dyn_cast<::mlir::ComplexType>())
+      _odsPrinter.printStrippedAttrOrType(validType);
+   else
+     _odsPrinter << type;
+  }
+}
+
+void ConjOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace complex
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::complex::ConjOp)
 
 namespace mlir {
 namespace complex {
@@ -780,7 +1162,7 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::ArrayAttr ConstantOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantOp::getValueAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::ArrayAttr ConstantOpAdaptor::getValue() {
@@ -827,7 +1209,7 @@ std::pair<unsigned, unsigned> ConstantOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ConstantOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> ConstantOp::getComplex() {
   return *getODSResults(0).begin();
 }
 
@@ -992,7 +1374,7 @@ std::pair<unsigned, unsigned> CosOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CosOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> CosOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -1012,7 +1394,7 @@ std::pair<unsigned, unsigned> CosOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CosOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> CosOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -1120,7 +1502,7 @@ void CosOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -1201,11 +1583,11 @@ std::pair<unsigned, unsigned> CreateOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CreateOp::getReal() {
+::mlir::TypedValue<::mlir::FloatType> CreateOp::getReal() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value CreateOp::getImaginary() {
+::mlir::TypedValue<::mlir::FloatType> CreateOp::getImaginary() {
   return *getODSOperands(1).begin();
 }
 
@@ -1231,7 +1613,7 @@ std::pair<unsigned, unsigned> CreateOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CreateOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> CreateOp::getComplex() {
   return *getODSResults(0).begin();
 }
 
@@ -1281,7 +1663,7 @@ void CreateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {real, imaginary} have same type");
   if (!((std::equal_to<>()((*this->getODSResults(0).begin()).getType().cast<ComplexType>().getElementType(), (*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that complex element type matches real operand type");
@@ -1416,11 +1798,11 @@ std::pair<unsigned, unsigned> DivOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DivOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> DivOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value DivOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> DivOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -1446,7 +1828,7 @@ std::pair<unsigned, unsigned> DivOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value DivOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> DivOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -1573,9 +1955,9 @@ void DivOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1658,11 +2040,11 @@ std::pair<unsigned, unsigned> EqualOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EqualOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> EqualOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value EqualOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> EqualOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -1688,7 +2070,7 @@ std::pair<unsigned, unsigned> EqualOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EqualOp::getResult() {
+::mlir::TypedValue<::mlir::IntegerType> EqualOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -1769,7 +2151,7 @@ void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {lhs, rhs} have same type");
   return ::mlir::success();
 }
@@ -1820,7 +2202,7 @@ void EqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
   result.addTypes(odsBuildableType0);
   if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, lhsTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, lhsTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1899,7 +2281,7 @@ std::pair<unsigned, unsigned> ExpOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExpOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> ExpOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -1919,7 +2301,7 @@ std::pair<unsigned, unsigned> ExpOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ExpOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> ExpOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2027,7 +2409,7 @@ void ExpOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -2104,7 +2486,7 @@ std::pair<unsigned, unsigned> Expm1Op::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Expm1Op::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> Expm1Op::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -2124,7 +2506,7 @@ std::pair<unsigned, unsigned> Expm1Op::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Expm1Op::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> Expm1Op::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2232,7 +2614,7 @@ void Expm1Op::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -2309,7 +2691,7 @@ std::pair<unsigned, unsigned> ImOp::getODSOperandIndexAndLength(unsigned index) 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ImOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> ImOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -2329,7 +2711,7 @@ std::pair<unsigned, unsigned> ImOp::getODSResultIndexAndLength(unsigned index) {
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ImOp::getImaginary() {
+::mlir::TypedValue<::mlir::FloatType> ImOp::getImaginary() {
   return *getODSResults(0).begin();
 }
 
@@ -2484,7 +2866,7 @@ std::pair<unsigned, unsigned> Log1pOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Log1pOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> Log1pOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -2504,7 +2886,7 @@ std::pair<unsigned, unsigned> Log1pOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value Log1pOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> Log1pOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2612,7 +2994,7 @@ void Log1pOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -2689,7 +3071,7 @@ std::pair<unsigned, unsigned> LogOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> LogOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -2709,7 +3091,7 @@ std::pair<unsigned, unsigned> LogOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value LogOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> LogOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2817,7 +3199,7 @@ void LogOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -2898,11 +3280,11 @@ std::pair<unsigned, unsigned> MulOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MulOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> MulOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value MulOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> MulOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -2928,7 +3310,7 @@ std::pair<unsigned, unsigned> MulOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value MulOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> MulOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -3055,9 +3437,9 @@ void MulOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3136,7 +3518,7 @@ std::pair<unsigned, unsigned> NegOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NegOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> NegOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -3156,7 +3538,7 @@ std::pair<unsigned, unsigned> NegOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NegOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> NegOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -3264,7 +3646,7 @@ void NegOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -3345,11 +3727,11 @@ std::pair<unsigned, unsigned> NotEqualOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NotEqualOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> NotEqualOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value NotEqualOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> NotEqualOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -3375,7 +3757,7 @@ std::pair<unsigned, unsigned> NotEqualOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value NotEqualOp::getResult() {
+::mlir::TypedValue<::mlir::IntegerType> NotEqualOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -3456,7 +3838,7 @@ void NotEqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {lhs, rhs} have same type");
   return ::mlir::success();
 }
@@ -3507,7 +3889,7 @@ void NotEqualOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   result.addTypes(odsBuildableType0);
   if (parser.resolveOperands(lhsOperands, lhsTypes, lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, lhsTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, lhsTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3590,11 +3972,11 @@ std::pair<unsigned, unsigned> PowOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PowOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> PowOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value PowOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> PowOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -3620,7 +4002,7 @@ std::pair<unsigned, unsigned> PowOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value PowOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> PowOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -3747,9 +4129,9 @@ void PowOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3828,7 +4210,7 @@ std::pair<unsigned, unsigned> ReOp::getODSOperandIndexAndLength(unsigned index) 
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> ReOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -3848,7 +4230,7 @@ std::pair<unsigned, unsigned> ReOp::getODSResultIndexAndLength(unsigned index) {
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReOp::getReal() {
+::mlir::TypedValue<::mlir::FloatType> ReOp::getReal() {
   return *getODSResults(0).begin();
 }
 
@@ -4003,7 +4385,7 @@ std::pair<unsigned, unsigned> RsqrtOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> RsqrtOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -4023,7 +4405,7 @@ std::pair<unsigned, unsigned> RsqrtOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value RsqrtOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> RsqrtOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4131,7 +4513,7 @@ void RsqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSt
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -4208,7 +4590,7 @@ std::pair<unsigned, unsigned> SignOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SignOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> SignOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -4228,7 +4610,7 @@ std::pair<unsigned, unsigned> SignOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SignOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> SignOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4336,7 +4718,7 @@ void SignOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -4413,7 +4795,7 @@ std::pair<unsigned, unsigned> SinOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SinOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> SinOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -4433,7 +4815,7 @@ std::pair<unsigned, unsigned> SinOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SinOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> SinOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4541,7 +4923,7 @@ void SinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -4618,7 +5000,7 @@ std::pair<unsigned, unsigned> SqrtOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SqrtOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> SqrtOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -4638,7 +5020,7 @@ std::pair<unsigned, unsigned> SqrtOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SqrtOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> SqrtOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4746,7 +5128,7 @@ void SqrtOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -4827,11 +5209,11 @@ std::pair<unsigned, unsigned> SubOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SubOp::getLhs() {
+::mlir::TypedValue<::mlir::ComplexType> SubOp::getLhs() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value SubOp::getRhs() {
+::mlir::TypedValue<::mlir::ComplexType> SubOp::getRhs() {
   return *getODSOperands(1).begin();
 }
 
@@ -4857,7 +5239,7 @@ std::pair<unsigned, unsigned> SubOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SubOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> SubOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -4984,9 +5366,9 @@ void SubOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
     resultRawTypes[0] = type;
   }
   result.addTypes(resultTypes);
-  if (parser.resolveOperands(lhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(lhsOperands, resultTypes[0], lhsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(rhsOperands, resultTypes[0], result.operands))
+  if (parser.resolveOperands(rhsOperands, resultTypes[0], rhsOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -5065,7 +5447,7 @@ std::pair<unsigned, unsigned> TanOp::getODSOperandIndexAndLength(unsigned index)
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> TanOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -5085,7 +5467,7 @@ std::pair<unsigned, unsigned> TanOp::getODSResultIndexAndLength(unsigned index) 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> TanOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -5193,7 +5575,7 @@ void TanOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsStat
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
@@ -5270,7 +5652,7 @@ std::pair<unsigned, unsigned> TanhOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanhOp::getComplex() {
+::mlir::TypedValue<::mlir::ComplexType> TanhOp::getComplex() {
   return *getODSOperands(0).begin();
 }
 
@@ -5290,7 +5672,7 @@ std::pair<unsigned, unsigned> TanhOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TanhOp::getResult() {
+::mlir::TypedValue<::mlir::ComplexType> TanhOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -5398,7 +5780,7 @@ void TanhOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
       return ::mlir::failure();
     complexRawTypes[0] = type;
   }
-  result.addTypes(complexTypes);
+  result.addTypes(complexTypes[0]);
   if (parser.resolveOperands(complexOperands, complexTypes, complexOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();

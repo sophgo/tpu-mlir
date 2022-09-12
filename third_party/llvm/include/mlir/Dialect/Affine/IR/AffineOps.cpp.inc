@@ -10,6 +10,7 @@
 #undef GET_OP_LIST
 
 mlir::AffineApplyOp,
+mlir::AffineDelinearizeIndexOp,
 mlir::AffineForOp,
 mlir::AffineIfOp,
 mlir::AffineLoadOp,
@@ -189,7 +190,7 @@ std::pair<unsigned, unsigned> AffineApplyOpAdaptor::getODSOperandIndexAndLength(
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange AffineApplyOpAdaptor::mapOperands() {
+::mlir::ValueRange AffineApplyOpAdaptor::getMapOperands() {
   return getODSOperands(0);
 }
 
@@ -197,14 +198,14 @@ std::pair<unsigned, unsigned> AffineApplyOpAdaptor::getODSOperandIndexAndLength(
   return odsAttrs;
 }
 
-::mlir::AffineMapAttr AffineApplyOpAdaptor::mapAttr() {
+::mlir::AffineMapAttr AffineApplyOpAdaptor::getMapAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AffineApplyOp::mapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AffineApplyOp::getMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+  return attr;
 }
 
-::mlir::AffineMap AffineApplyOpAdaptor::map() {
-  auto attr = mapAttr();
+::mlir::AffineMap AffineApplyOpAdaptor::getMap() {
+  auto attr = getMapAttr();
   return attr.getValue();
 }
 
@@ -215,7 +216,7 @@ std::pair<unsigned, unsigned> AffineApplyOpAdaptor::getODSOperandIndexAndLength(
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.apply' op ""requires attribute 'map'");
-    if (namedAttrIt->getName() == AffineApplyOp::mapAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineApplyOp::getMapAttrName(*odsOpName)) {
       tblgen_map = namedAttrIt->getValue();
       break;
     }
@@ -251,11 +252,11 @@ std::pair<unsigned, unsigned> AffineApplyOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range AffineApplyOp::mapOperands() {
+::mlir::Operation::operand_range AffineApplyOp::getMapOperands() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange AffineApplyOp::mapOperandsMutable() {
+::mlir::MutableOperandRange AffineApplyOp::getMapOperandsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -271,17 +272,17 @@ std::pair<unsigned, unsigned> AffineApplyOp::getODSResultIndexAndLength(unsigned
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::AffineMapAttr AffineApplyOp::mapAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, mapAttrName()).cast<::mlir::AffineMapAttr>();
+::mlir::AffineMapAttr AffineApplyOp::getMapAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
-::mlir::AffineMap AffineApplyOp::map() {
-  auto attr = mapAttr();
+::mlir::AffineMap AffineApplyOp::getMap() {
+  auto attr = getMapAttr();
   return attr.getValue();
 }
 
-void AffineApplyOp::mapAttr(::mlir::AffineMapAttr attr) {
-  (*this)->setAttr(mapAttrName(), attr);
+void AffineApplyOp::setMapAttr(::mlir::AffineMapAttr attr) {
+  (*this)->setAttr(getMapAttrName(), attr);
 }
 
 void AffineApplyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap map, ValueRange mapOperands) {
@@ -297,26 +298,26 @@ void AffineApplyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
 
 void AffineApplyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMapAttr map, ::mlir::ValueRange mapOperands) {
   odsState.addOperands(mapOperands);
-  odsState.addAttribute(mapAttrName(odsState.name), map);
+  odsState.addAttribute(getMapAttrName(odsState.name), map);
   odsState.addTypes(resultType0);
 }
 
 void AffineApplyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMapAttr map, ::mlir::ValueRange mapOperands) {
   odsState.addOperands(mapOperands);
-  odsState.addAttribute(mapAttrName(odsState.name), map);
+  odsState.addAttribute(getMapAttrName(odsState.name), map);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void AffineApplyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMap map, ::mlir::ValueRange mapOperands) {
   odsState.addOperands(mapOperands);
-  odsState.addAttribute(mapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
+  odsState.addAttribute(getMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
   odsState.addTypes(resultType0);
 }
 
 void AffineApplyOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMap map, ::mlir::ValueRange mapOperands) {
   odsState.addOperands(mapOperands);
-  odsState.addAttribute(mapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
+  odsState.addAttribute(getMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -335,7 +336,7 @@ void AffineApplyOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'map'");
-    if (namedAttrIt->getName() == mapAttrName()) {
+    if (namedAttrIt->getName() == getMapAttrName()) {
       tblgen_map = namedAttrIt->getValue();
       break;
     }
@@ -376,6 +377,239 @@ void AffineApplyOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::Effe
 
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineApplyOp)
+
+namespace mlir {
+
+//===----------------------------------------------------------------------===//
+// mlir::AffineDelinearizeIndexOp definitions
+//===----------------------------------------------------------------------===//
+
+AffineDelinearizeIndexOpAdaptor::AffineDelinearizeIndexOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("affine.delinearize_index", odsAttrs.getContext());
+}
+
+AffineDelinearizeIndexOpAdaptor::AffineDelinearizeIndexOpAdaptor(AffineDelinearizeIndexOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange AffineDelinearizeIndexOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> AffineDelinearizeIndexOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {false, true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (odsOperands.size() - 1) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::ValueRange AffineDelinearizeIndexOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Value AffineDelinearizeIndexOpAdaptor::getLinearIndex() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::ValueRange AffineDelinearizeIndexOpAdaptor::getBasis() {
+  return getODSOperands(1);
+}
+
+::mlir::DictionaryAttr AffineDelinearizeIndexOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::LogicalResult AffineDelinearizeIndexOpAdaptor::verify(::mlir::Location loc) {
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> AffineDelinearizeIndexOp::getODSOperandIndexAndLength(unsigned index) {
+  bool isVariadic[] = {false, true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumOperands() - 1) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::operand_range AffineDelinearizeIndexOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::TypedValue<::mlir::IndexType> AffineDelinearizeIndexOp::getLinearIndex() {
+  return *getODSOperands(0).begin();
+}
+
+::mlir::Operation::operand_range AffineDelinearizeIndexOp::getBasis() {
+  return getODSOperands(1);
+}
+
+::mlir::MutableOperandRange AffineDelinearizeIndexOp::getLinearIndexMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange AffineDelinearizeIndexOp::getBasisMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> AffineDelinearizeIndexOp::getODSResultIndexAndLength(unsigned index) {
+  bool isVariadic[] = {true};
+  int prevVariadicCount = 0;
+  for (unsigned i = 0; i < index; ++i)
+    if (isVariadic[i]) ++prevVariadicCount;
+
+  // Calculate how many dynamic values a static variadic operand corresponds to.
+  // This assumes all static variadic operands have the same dynamic value count.
+  int variadicSize = (getOperation()->getNumResults() - 0) / 1;
+  // `index` passed in as the parameter is the static index which counts each
+  // operand (variadic or not) as size 1. So here for each previous static variadic
+  // operand, we need to offset by (variadicSize - 1) to get where the dynamic
+  // value pack for this static operand starts.
+  int start = index + (variadicSize - 1) * prevVariadicCount;
+  int size = isVariadic[index] ? variadicSize : 1;
+  return {start, size};
+}
+
+::mlir::Operation::result_range AffineDelinearizeIndexOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::result_range AffineDelinearizeIndexOp::getMultiIndex() {
+  return getODSResults(0);
+}
+
+void AffineDelinearizeIndexOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange multi_index, ::mlir::Value linear_index, ::mlir::ValueRange basis) {
+  odsState.addOperands(linear_index);
+  odsState.addOperands(basis);
+  odsState.addTypes(multi_index);
+}
+
+void AffineDelinearizeIndexOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  assert(operands.size() >= 1u && "mismatched number of parameters");
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult AffineDelinearizeIndexOp::verifyInvariantsImpl() {
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_AffineOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_AffineOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSResults(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_AffineOps0(*this, v.getType(), "result", index++)))
+        return ::mlir::failure();
+    }
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult AffineDelinearizeIndexOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult AffineDelinearizeIndexOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::mlir::OpAsmParser::UnresolvedOperand linear_indexRawOperands[1];
+  ::llvm::ArrayRef<::mlir::OpAsmParser::UnresolvedOperand> linear_indexOperands(linear_indexRawOperands);  ::llvm::SMLoc linear_indexOperandsLoc;
+  (void)linear_indexOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> basisOperands;
+  ::llvm::SMLoc basisOperandsLoc;
+  (void)basisOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> multi_indexTypes;
+
+  linear_indexOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperand(linear_indexRawOperands[0]))
+    return ::mlir::failure();
+  if (parser.parseKeyword("into"))
+    return ::mlir::failure();
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  basisOperandsLoc = parser.getCurrentLocation();
+  if (parser.parseOperandList(basisOperands))
+    return ::mlir::failure();
+  if (parser.parseRParen())
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  if (parser.parseTypeList(multi_indexTypes))
+    return ::mlir::failure();
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIndexType();
+  result.addTypes(multi_indexTypes);
+  if (parser.resolveOperands(linear_indexOperands, odsBuildableType0, linear_indexOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(basisOperands, odsBuildableType0, basisOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void AffineDelinearizeIndexOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ';
+  _odsPrinter << getLinearIndex();
+  _odsPrinter << ' ' << "into";
+  _odsPrinter << ' ';
+  _odsPrinter << "(";
+  _odsPrinter << getBasis();
+  _odsPrinter << ")";
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter << getMultiIndex().getTypes();
+}
+
+void AffineDelinearizeIndexOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(mlir::AffineDelinearizeIndexOp)
 
 namespace mlir {
 
@@ -425,7 +659,7 @@ std::pair<unsigned, unsigned> AffineForOpAdaptor::getODSOperandIndexAndLength(un
   return odsRegions;
 }
 
-::mlir::Region &AffineForOpAdaptor::region() {
+::mlir::Region &AffineForOpAdaptor::getRegion() {
   return *odsRegions[0];
 }
 
@@ -481,11 +715,11 @@ std::pair<unsigned, unsigned> AffineForOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::result_range AffineForOp::results() {
+::mlir::Operation::result_range AffineForOp::getResults() {
   return getODSResults(0);
 }
 
-::mlir::Region &AffineForOp::region() {
+::mlir::Region &AffineForOp::getRegion() {
   return (*this)->getRegion(0);
 }
 
@@ -573,11 +807,11 @@ std::pair<unsigned, unsigned> AffineIfOpAdaptor::getODSOperandIndexAndLength(uns
   return odsRegions;
 }
 
-::mlir::Region &AffineIfOpAdaptor::thenRegion() {
+::mlir::Region &AffineIfOpAdaptor::getThenRegion() {
   return *odsRegions[0];
 }
 
-::mlir::Region &AffineIfOpAdaptor::elseRegion() {
+::mlir::Region &AffineIfOpAdaptor::getElseRegion() {
   return *odsRegions[1];
 }
 
@@ -633,15 +867,15 @@ std::pair<unsigned, unsigned> AffineIfOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::result_range AffineIfOp::results() {
+::mlir::Operation::result_range AffineIfOp::getResults() {
   return getODSResults(0);
 }
 
-::mlir::Region &AffineIfOp::thenRegion() {
+::mlir::Region &AffineIfOp::getThenRegion() {
   return (*this)->getRegion(0);
 }
 
-::mlir::Region &AffineIfOp::elseRegion() {
+::mlir::Region &AffineIfOp::getElseRegion() {
   return (*this)->getRegion(1);
 }
 
@@ -727,11 +961,11 @@ std::pair<unsigned, unsigned> AffineLoadOpAdaptor::getODSOperandIndexAndLength(u
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineLoadOpAdaptor::memref() {
+::mlir::Value AffineLoadOpAdaptor::getMemref() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange AffineLoadOpAdaptor::indices() {
+::mlir::ValueRange AffineLoadOpAdaptor::getIndices() {
   return getODSOperands(1);
 }
 
@@ -767,21 +1001,21 @@ std::pair<unsigned, unsigned> AffineLoadOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineLoadOp::memref() {
+::mlir::TypedValue<::mlir::MemRefType> AffineLoadOp::getMemref() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range AffineLoadOp::indices() {
+::mlir::Operation::operand_range AffineLoadOp::getIndices() {
   return getODSOperands(1);
 }
 
-::mlir::MutableOperandRange AffineLoadOp::memrefMutable() {
+::mlir::MutableOperandRange AffineLoadOp::getMemrefMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffineLoadOp::indicesMutable() {
+::mlir::MutableOperandRange AffineLoadOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -797,7 +1031,7 @@ std::pair<unsigned, unsigned> AffineLoadOp::getODSResultIndexAndLength(unsigned 
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineLoadOp::result() {
+::mlir::Value AffineLoadOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -912,14 +1146,14 @@ std::pair<unsigned, unsigned> AffineMaxOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::AffineMapAttr AffineMaxOpAdaptor::mapAttr() {
+::mlir::AffineMapAttr AffineMaxOpAdaptor::getMapAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AffineMaxOp::mapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AffineMaxOp::getMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+  return attr;
 }
 
-::mlir::AffineMap AffineMaxOpAdaptor::map() {
-  auto attr = mapAttr();
+::mlir::AffineMap AffineMaxOpAdaptor::getMap() {
+  auto attr = getMapAttr();
   return attr.getValue();
 }
 
@@ -930,7 +1164,7 @@ std::pair<unsigned, unsigned> AffineMaxOpAdaptor::getODSOperandIndexAndLength(un
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.max' op ""requires attribute 'map'");
-    if (namedAttrIt->getName() == AffineMaxOp::mapAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineMaxOp::getMapAttrName(*odsOpName)) {
       tblgen_map = namedAttrIt->getValue();
       break;
     }
@@ -986,17 +1220,17 @@ std::pair<unsigned, unsigned> AffineMaxOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::AffineMapAttr AffineMaxOp::mapAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, mapAttrName()).cast<::mlir::AffineMapAttr>();
+::mlir::AffineMapAttr AffineMaxOp::getMapAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
-::mlir::AffineMap AffineMaxOp::map() {
-  auto attr = mapAttr();
+::mlir::AffineMap AffineMaxOp::getMap() {
+  auto attr = getMapAttr();
   return attr.getValue();
 }
 
-void AffineMaxOp::mapAttr(::mlir::AffineMapAttr attr) {
-  (*this)->setAttr(mapAttrName(), attr);
+void AffineMaxOp::setMapAttr(::mlir::AffineMapAttr attr) {
+  (*this)->setAttr(getMapAttrName(), attr);
 }
 
 void AffineMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap affineMap, ValueRange mapOperands) {
@@ -1006,26 +1240,26 @@ void AffineMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 void AffineMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), map);
+  odsState.addAttribute(getMapAttrName(odsState.name), map);
   odsState.addTypes(resultType0);
 }
 
 void AffineMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), map);
+  odsState.addAttribute(getMapAttrName(odsState.name), map);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void AffineMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMap map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
+  odsState.addAttribute(getMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
   odsState.addTypes(resultType0);
 }
 
 void AffineMaxOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMap map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
+  odsState.addAttribute(getMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1044,7 +1278,7 @@ void AffineMaxOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'map'");
-    if (namedAttrIt->getName() == mapAttrName()) {
+    if (namedAttrIt->getName() == getMapAttrName()) {
       tblgen_map = namedAttrIt->getValue();
       break;
     }
@@ -1134,14 +1368,14 @@ std::pair<unsigned, unsigned> AffineMinOpAdaptor::getODSOperandIndexAndLength(un
   return odsAttrs;
 }
 
-::mlir::AffineMapAttr AffineMinOpAdaptor::mapAttr() {
+::mlir::AffineMapAttr AffineMinOpAdaptor::getMapAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AffineMinOp::mapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AffineMinOp::getMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+  return attr;
 }
 
-::mlir::AffineMap AffineMinOpAdaptor::map() {
-  auto attr = mapAttr();
+::mlir::AffineMap AffineMinOpAdaptor::getMap() {
+  auto attr = getMapAttr();
   return attr.getValue();
 }
 
@@ -1152,7 +1386,7 @@ std::pair<unsigned, unsigned> AffineMinOpAdaptor::getODSOperandIndexAndLength(un
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.min' op ""requires attribute 'map'");
-    if (namedAttrIt->getName() == AffineMinOp::mapAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineMinOp::getMapAttrName(*odsOpName)) {
       tblgen_map = namedAttrIt->getValue();
       break;
     }
@@ -1208,17 +1442,17 @@ std::pair<unsigned, unsigned> AffineMinOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::AffineMapAttr AffineMinOp::mapAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, mapAttrName()).cast<::mlir::AffineMapAttr>();
+::mlir::AffineMapAttr AffineMinOp::getMapAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
-::mlir::AffineMap AffineMinOp::map() {
-  auto attr = mapAttr();
+::mlir::AffineMap AffineMinOp::getMap() {
+  auto attr = getMapAttr();
   return attr.getValue();
 }
 
-void AffineMinOp::mapAttr(::mlir::AffineMapAttr attr) {
-  (*this)->setAttr(mapAttrName(), attr);
+void AffineMinOp::setMapAttr(::mlir::AffineMapAttr attr) {
+  (*this)->setAttr(getMapAttrName(), attr);
 }
 
 void AffineMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, AffineMap affineMap, ValueRange mapOperands) {
@@ -1228,26 +1462,26 @@ void AffineMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
 
 void AffineMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), map);
+  odsState.addAttribute(getMapAttrName(odsState.name), map);
   odsState.addTypes(resultType0);
 }
 
 void AffineMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMapAttr map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), map);
+  odsState.addAttribute(getMapAttrName(odsState.name), map);
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
 
 void AffineMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type resultType0, ::mlir::AffineMap map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
+  odsState.addAttribute(getMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
   odsState.addTypes(resultType0);
 }
 
 void AffineMinOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::AffineMap map, ::mlir::ValueRange operands) {
   odsState.addOperands(operands);
-  odsState.addAttribute(mapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
+  odsState.addAttribute(getMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(map));
   assert(resultTypes.size() == 1u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -1266,7 +1500,7 @@ void AffineMinOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'map'");
-    if (namedAttrIt->getName() == mapAttrName()) {
+    if (namedAttrIt->getName() == getMapAttrName()) {
       tblgen_map = namedAttrIt->getValue();
       break;
     }
@@ -1348,7 +1582,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::ValueRange AffineParallelOpAdaptor::mapOperands() {
+::mlir::ValueRange AffineParallelOpAdaptor::getMapOperands() {
   return getODSOperands(0);
 }
 
@@ -1356,77 +1590,79 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   return odsAttrs;
 }
 
-::mlir::ArrayAttr AffineParallelOpAdaptor::reductionsAttr() {
+::mlir::ArrayAttr AffineParallelOpAdaptor::getReductionsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 3, AffineParallelOp::reductionsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
-}
-
-::mlir::ArrayAttr AffineParallelOpAdaptor::reductions() {
-  auto attr = reductionsAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 3, AffineParallelOp::getReductionsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
 }
 
-::mlir::AffineMapAttr AffineParallelOpAdaptor::lowerBoundsMapAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 4, AffineParallelOp::lowerBoundsMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
-    return attr;
+::mlir::ArrayAttr AffineParallelOpAdaptor::getReductions() {
+  auto attr = getReductionsAttr();
+  return attr;
 }
 
-::mlir::AffineMap AffineParallelOpAdaptor::lowerBoundsMap() {
-  auto attr = lowerBoundsMapAttr();
+::mlir::AffineMapAttr AffineParallelOpAdaptor::getLowerBoundsMapAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 4, AffineParallelOp::getLowerBoundsMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+  return attr;
+}
+
+::mlir::AffineMap AffineParallelOpAdaptor::getLowerBoundsMap() {
+  auto attr = getLowerBoundsMapAttr();
   return attr.getValue();
 }
 
-::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::lowerBoundsGroupsAttr() {
+::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::getLowerBoundsGroupsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 5, AffineParallelOp::lowerBoundsGroupsAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-    return attr;
-}
-
-::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::lowerBoundsGroups() {
-  auto attr = lowerBoundsGroupsAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 5, AffineParallelOp::getLowerBoundsGroupsAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
   return attr;
 }
 
-::mlir::AffineMapAttr AffineParallelOpAdaptor::upperBoundsMapAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 0, AffineParallelOp::upperBoundsMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
-    return attr;
+::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::getLowerBoundsGroups() {
+  auto attr = getLowerBoundsGroupsAttr();
+  return attr;
 }
 
-::mlir::AffineMap AffineParallelOpAdaptor::upperBoundsMap() {
-  auto attr = upperBoundsMapAttr();
+::mlir::AffineMapAttr AffineParallelOpAdaptor::getUpperBoundsMapAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 5, odsAttrs.end() - 0, AffineParallelOp::getUpperBoundsMapAttrName(*odsOpName)).cast<::mlir::AffineMapAttr>();
+  return attr;
+}
+
+::mlir::AffineMap AffineParallelOpAdaptor::getUpperBoundsMap() {
+  auto attr = getUpperBoundsMapAttr();
   return attr.getValue();
 }
 
-::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::upperBoundsGroupsAttr() {
+::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::getUpperBoundsGroupsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 1, AffineParallelOp::upperBoundsGroupsAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-    return attr;
-}
-
-::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::upperBoundsGroups() {
-  auto attr = upperBoundsGroupsAttr();
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 4, odsAttrs.end() - 1, AffineParallelOp::getUpperBoundsGroupsAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
   return attr;
 }
 
-::mlir::ArrayAttr AffineParallelOpAdaptor::stepsAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 2, AffineParallelOp::stepsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+::mlir::DenseIntElementsAttr AffineParallelOpAdaptor::getUpperBoundsGroups() {
+  auto attr = getUpperBoundsGroupsAttr();
+  return attr;
 }
 
-::mlir::ArrayAttr AffineParallelOpAdaptor::steps() {
-  auto attr = stepsAttr();
+::mlir::ArrayAttr AffineParallelOpAdaptor::getStepsAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 3, odsAttrs.end() - 2, AffineParallelOp::getStepsAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
   return attr;
+}
+
+::llvm::SmallVector<int64_t, 8> AffineParallelOpAdaptor::getSteps() {
+  auto attr = getStepsAttr();
+  return llvm::to_vector<4>(
+      llvm::map_range(attr.getAsRange<mlir::IntegerAttr>(),
+      [](IntegerAttr attr) { return attr.getInt(); }));;
 }
 
 ::mlir::RegionRange AffineParallelOpAdaptor::getRegions() {
   return odsRegions;
 }
 
-::mlir::Region &AffineParallelOpAdaptor::region() {
+::mlir::Region &AffineParallelOpAdaptor::getRegion() {
   return *odsRegions[0];
 }
 
@@ -1437,7 +1673,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.parallel' op ""requires attribute 'lowerBoundsGroups'");
-    if (namedAttrIt->getName() == AffineParallelOp::lowerBoundsGroupsAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineParallelOp::getLowerBoundsGroupsAttrName(*odsOpName)) {
       tblgen_lowerBoundsGroups = namedAttrIt->getValue();
       break;
     }
@@ -1447,7 +1683,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.parallel' op ""requires attribute 'lowerBoundsMap'");
-    if (namedAttrIt->getName() == AffineParallelOp::lowerBoundsMapAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineParallelOp::getLowerBoundsMapAttrName(*odsOpName)) {
       tblgen_lowerBoundsMap = namedAttrIt->getValue();
       break;
     }
@@ -1457,7 +1693,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.parallel' op ""requires attribute 'reductions'");
-    if (namedAttrIt->getName() == AffineParallelOp::reductionsAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineParallelOp::getReductionsAttrName(*odsOpName)) {
       tblgen_reductions = namedAttrIt->getValue();
       break;
     }
@@ -1467,7 +1703,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.parallel' op ""requires attribute 'steps'");
-    if (namedAttrIt->getName() == AffineParallelOp::stepsAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineParallelOp::getStepsAttrName(*odsOpName)) {
       tblgen_steps = namedAttrIt->getValue();
       break;
     }
@@ -1477,7 +1713,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.parallel' op ""requires attribute 'upperBoundsGroups'");
-    if (namedAttrIt->getName() == AffineParallelOp::upperBoundsGroupsAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineParallelOp::getUpperBoundsGroupsAttrName(*odsOpName)) {
       tblgen_upperBoundsGroups = namedAttrIt->getValue();
       break;
     }
@@ -1487,7 +1723,7 @@ std::pair<unsigned, unsigned> AffineParallelOpAdaptor::getODSOperandIndexAndLeng
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.parallel' op ""requires attribute 'upperBoundsMap'");
-    if (namedAttrIt->getName() == AffineParallelOp::upperBoundsMapAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffineParallelOp::getUpperBoundsMapAttrName(*odsOpName)) {
       tblgen_upperBoundsMap = namedAttrIt->getValue();
       break;
     }
@@ -1538,11 +1774,11 @@ std::pair<unsigned, unsigned> AffineParallelOp::getODSOperandIndexAndLength(unsi
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::operand_range AffineParallelOp::mapOperands() {
+::mlir::Operation::operand_range AffineParallelOp::getMapOperands() {
   return getODSOperands(0);
 }
 
-::mlir::MutableOperandRange AffineParallelOp::mapOperandsMutable() {
+::mlir::MutableOperandRange AffineParallelOp::getMapOperandsMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1572,112 +1808,114 @@ std::pair<unsigned, unsigned> AffineParallelOp::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Operation::result_range AffineParallelOp::results() {
+::mlir::Operation::result_range AffineParallelOp::getResults() {
   return getODSResults(0);
 }
 
-::mlir::Region &AffineParallelOp::region() {
+::mlir::Region &AffineParallelOp::getRegion() {
   return (*this)->getRegion(0);
 }
 
-::mlir::ArrayAttr AffineParallelOp::reductionsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 3, reductionsAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr AffineParallelOp::getReductionsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 3, getReductionsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr AffineParallelOp::reductions() {
-  auto attr = reductionsAttr();
+::mlir::ArrayAttr AffineParallelOp::getReductions() {
+  auto attr = getReductionsAttr();
   return attr;
 }
 
-::mlir::AffineMapAttr AffineParallelOp::lowerBoundsMapAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 4, lowerBoundsMapAttrName()).cast<::mlir::AffineMapAttr>();
+::mlir::AffineMapAttr AffineParallelOp::getLowerBoundsMapAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 4, getLowerBoundsMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
-::mlir::AffineMap AffineParallelOp::lowerBoundsMap() {
-  auto attr = lowerBoundsMapAttr();
+::mlir::AffineMap AffineParallelOp::getLowerBoundsMap() {
+  auto attr = getLowerBoundsMapAttr();
   return attr.getValue();
 }
 
-::mlir::DenseIntElementsAttr AffineParallelOp::lowerBoundsGroupsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 5, lowerBoundsGroupsAttrName()).cast<::mlir::DenseIntElementsAttr>();
+::mlir::DenseIntElementsAttr AffineParallelOp::getLowerBoundsGroupsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 5, getLowerBoundsGroupsAttrName()).cast<::mlir::DenseIntElementsAttr>();
 }
 
-::mlir::DenseIntElementsAttr AffineParallelOp::lowerBoundsGroups() {
-  auto attr = lowerBoundsGroupsAttr();
+::mlir::DenseIntElementsAttr AffineParallelOp::getLowerBoundsGroups() {
+  auto attr = getLowerBoundsGroupsAttr();
   return attr;
 }
 
-::mlir::AffineMapAttr AffineParallelOp::upperBoundsMapAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 0, upperBoundsMapAttrName()).cast<::mlir::AffineMapAttr>();
+::mlir::AffineMapAttr AffineParallelOp::getUpperBoundsMapAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 5, (*this)->getAttrs().end() - 0, getUpperBoundsMapAttrName()).cast<::mlir::AffineMapAttr>();
 }
 
-::mlir::AffineMap AffineParallelOp::upperBoundsMap() {
-  auto attr = upperBoundsMapAttr();
+::mlir::AffineMap AffineParallelOp::getUpperBoundsMap() {
+  auto attr = getUpperBoundsMapAttr();
   return attr.getValue();
 }
 
-::mlir::DenseIntElementsAttr AffineParallelOp::upperBoundsGroupsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 1, upperBoundsGroupsAttrName()).cast<::mlir::DenseIntElementsAttr>();
+::mlir::DenseIntElementsAttr AffineParallelOp::getUpperBoundsGroupsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 4, (*this)->getAttrs().end() - 1, getUpperBoundsGroupsAttrName()).cast<::mlir::DenseIntElementsAttr>();
 }
 
-::mlir::DenseIntElementsAttr AffineParallelOp::upperBoundsGroups() {
-  auto attr = upperBoundsGroupsAttr();
+::mlir::DenseIntElementsAttr AffineParallelOp::getUpperBoundsGroups() {
+  auto attr = getUpperBoundsGroupsAttr();
   return attr;
 }
 
-::mlir::ArrayAttr AffineParallelOp::stepsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 2, stepsAttrName()).cast<::mlir::ArrayAttr>();
+::mlir::ArrayAttr AffineParallelOp::getStepsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 3, (*this)->getAttrs().end() - 2, getStepsAttrName()).cast<::mlir::ArrayAttr>();
 }
 
-::mlir::ArrayAttr AffineParallelOp::steps() {
-  auto attr = stepsAttr();
-  return attr;
+::llvm::SmallVector<int64_t, 8> AffineParallelOp::getSteps() {
+  auto attr = getStepsAttr();
+  return llvm::to_vector<4>(
+      llvm::map_range(attr.getAsRange<mlir::IntegerAttr>(),
+      [](IntegerAttr attr) { return attr.getInt(); }));;
 }
 
-void AffineParallelOp::reductionsAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(reductionsAttrName(), attr);
+void AffineParallelOp::setReductionsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getReductionsAttrName(), attr);
 }
 
-void AffineParallelOp::lowerBoundsMapAttr(::mlir::AffineMapAttr attr) {
-  (*this)->setAttr(lowerBoundsMapAttrName(), attr);
+void AffineParallelOp::setLowerBoundsMapAttr(::mlir::AffineMapAttr attr) {
+  (*this)->setAttr(getLowerBoundsMapAttrName(), attr);
 }
 
-void AffineParallelOp::lowerBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr) {
-  (*this)->setAttr(lowerBoundsGroupsAttrName(), attr);
+void AffineParallelOp::setLowerBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr) {
+  (*this)->setAttr(getLowerBoundsGroupsAttrName(), attr);
 }
 
-void AffineParallelOp::upperBoundsMapAttr(::mlir::AffineMapAttr attr) {
-  (*this)->setAttr(upperBoundsMapAttrName(), attr);
+void AffineParallelOp::setUpperBoundsMapAttr(::mlir::AffineMapAttr attr) {
+  (*this)->setAttr(getUpperBoundsMapAttrName(), attr);
 }
 
-void AffineParallelOp::upperBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr) {
-  (*this)->setAttr(upperBoundsGroupsAttrName(), attr);
+void AffineParallelOp::setUpperBoundsGroupsAttr(::mlir::DenseIntElementsAttr attr) {
+  (*this)->setAttr(getUpperBoundsGroupsAttrName(), attr);
 }
 
-void AffineParallelOp::stepsAttr(::mlir::ArrayAttr attr) {
-  (*this)->setAttr(stepsAttrName(), attr);
+void AffineParallelOp::setStepsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(getStepsAttrName(), attr);
 }
 
 void AffineParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::ArrayAttr reductions, ::mlir::AffineMapAttr lowerBoundsMap, ::mlir::DenseIntElementsAttr lowerBoundsGroups, ::mlir::AffineMapAttr upperBoundsMap, ::mlir::DenseIntElementsAttr upperBoundsGroups, ::mlir::ArrayAttr steps, ::mlir::ValueRange mapOperands) {
   odsState.addOperands(mapOperands);
-  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
-  odsState.addAttribute(lowerBoundsMapAttrName(odsState.name), lowerBoundsMap);
-  odsState.addAttribute(lowerBoundsGroupsAttrName(odsState.name), lowerBoundsGroups);
-  odsState.addAttribute(upperBoundsMapAttrName(odsState.name), upperBoundsMap);
-  odsState.addAttribute(upperBoundsGroupsAttrName(odsState.name), upperBoundsGroups);
-  odsState.addAttribute(stepsAttrName(odsState.name), steps);
+  odsState.addAttribute(getReductionsAttrName(odsState.name), reductions);
+  odsState.addAttribute(getLowerBoundsMapAttrName(odsState.name), lowerBoundsMap);
+  odsState.addAttribute(getLowerBoundsGroupsAttrName(odsState.name), lowerBoundsGroups);
+  odsState.addAttribute(getUpperBoundsMapAttrName(odsState.name), upperBoundsMap);
+  odsState.addAttribute(getUpperBoundsGroupsAttrName(odsState.name), upperBoundsGroups);
+  odsState.addAttribute(getStepsAttrName(odsState.name), steps);
   (void)odsState.addRegion();
   odsState.addTypes(results);
 }
 
-void AffineParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::ArrayAttr reductions, ::mlir::AffineMap lowerBoundsMap, ::mlir::DenseIntElementsAttr lowerBoundsGroups, ::mlir::AffineMap upperBoundsMap, ::mlir::DenseIntElementsAttr upperBoundsGroups, ::mlir::ArrayAttr steps, ::mlir::ValueRange mapOperands) {
+void AffineParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, ::mlir::ArrayAttr reductions, ::mlir::AffineMap lowerBoundsMap, ::mlir::DenseIntElementsAttr lowerBoundsGroups, ::mlir::AffineMap upperBoundsMap, ::mlir::DenseIntElementsAttr upperBoundsGroups, ::llvm::SmallVector<int64_t, 8> steps, ::mlir::ValueRange mapOperands) {
   odsState.addOperands(mapOperands);
-  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
-  odsState.addAttribute(lowerBoundsMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(lowerBoundsMap));
-  odsState.addAttribute(lowerBoundsGroupsAttrName(odsState.name), lowerBoundsGroups);
-  odsState.addAttribute(upperBoundsMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(upperBoundsMap));
-  odsState.addAttribute(upperBoundsGroupsAttrName(odsState.name), upperBoundsGroups);
-  odsState.addAttribute(stepsAttrName(odsState.name), steps);
+  odsState.addAttribute(getReductionsAttrName(odsState.name), reductions);
+  odsState.addAttribute(getLowerBoundsMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(lowerBoundsMap));
+  odsState.addAttribute(getLowerBoundsGroupsAttrName(odsState.name), lowerBoundsGroups);
+  odsState.addAttribute(getUpperBoundsMapAttrName(odsState.name), ::mlir::AffineMapAttr::get(upperBoundsMap));
+  odsState.addAttribute(getUpperBoundsGroupsAttrName(odsState.name), upperBoundsGroups);
+  odsState.addAttribute(getStepsAttrName(odsState.name), odsBuilder.getI64ArrayAttr(steps));
   (void)odsState.addRegion();
   odsState.addTypes(results);
 }
@@ -1697,7 +1935,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'lowerBoundsGroups'");
-    if (namedAttrIt->getName() == lowerBoundsGroupsAttrName()) {
+    if (namedAttrIt->getName() == getLowerBoundsGroupsAttrName()) {
       tblgen_lowerBoundsGroups = namedAttrIt->getValue();
       break;
     }
@@ -1707,7 +1945,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'lowerBoundsMap'");
-    if (namedAttrIt->getName() == lowerBoundsMapAttrName()) {
+    if (namedAttrIt->getName() == getLowerBoundsMapAttrName()) {
       tblgen_lowerBoundsMap = namedAttrIt->getValue();
       break;
     }
@@ -1717,7 +1955,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'reductions'");
-    if (namedAttrIt->getName() == reductionsAttrName()) {
+    if (namedAttrIt->getName() == getReductionsAttrName()) {
       tblgen_reductions = namedAttrIt->getValue();
       break;
     }
@@ -1727,7 +1965,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'steps'");
-    if (namedAttrIt->getName() == stepsAttrName()) {
+    if (namedAttrIt->getName() == getStepsAttrName()) {
       tblgen_steps = namedAttrIt->getValue();
       break;
     }
@@ -1737,7 +1975,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'upperBoundsGroups'");
-    if (namedAttrIt->getName() == upperBoundsGroupsAttrName()) {
+    if (namedAttrIt->getName() == getUpperBoundsGroupsAttrName()) {
       tblgen_upperBoundsGroups = namedAttrIt->getValue();
       break;
     }
@@ -1747,7 +1985,7 @@ void AffineParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'upperBoundsMap'");
-    if (namedAttrIt->getName() == upperBoundsMapAttrName()) {
+    if (namedAttrIt->getName() == getUpperBoundsMapAttrName()) {
       tblgen_upperBoundsMap = namedAttrIt->getValue();
       break;
     }
@@ -1848,11 +2086,11 @@ std::pair<unsigned, unsigned> AffinePrefetchOpAdaptor::getODSOperandIndexAndLeng
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffinePrefetchOpAdaptor::memref() {
+::mlir::Value AffinePrefetchOpAdaptor::getMemref() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange AffinePrefetchOpAdaptor::indices() {
+::mlir::ValueRange AffinePrefetchOpAdaptor::getIndices() {
   return getODSOperands(1);
 }
 
@@ -1860,36 +2098,36 @@ std::pair<unsigned, unsigned> AffinePrefetchOpAdaptor::getODSOperandIndexAndLeng
   return odsAttrs;
 }
 
-::mlir::BoolAttr AffinePrefetchOpAdaptor::isWriteAttr() {
+::mlir::BoolAttr AffinePrefetchOpAdaptor::getIsWriteAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, AffinePrefetchOp::isWriteAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, AffinePrefetchOp::getIsWriteAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
 }
 
-bool AffinePrefetchOpAdaptor::isWrite() {
-  auto attr = isWriteAttr();
+bool AffinePrefetchOpAdaptor::getIsWrite() {
+  auto attr = getIsWriteAttr();
   return attr.getValue();
 }
 
-::mlir::IntegerAttr AffinePrefetchOpAdaptor::localityHintAttr() {
+::mlir::IntegerAttr AffinePrefetchOpAdaptor::getLocalityHintAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, AffinePrefetchOp::localityHintAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, AffinePrefetchOp::getLocalityHintAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
+  return attr;
 }
 
-uint32_t AffinePrefetchOpAdaptor::localityHint() {
-  auto attr = localityHintAttr();
+uint32_t AffinePrefetchOpAdaptor::getLocalityHint() {
+  auto attr = getLocalityHintAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::BoolAttr AffinePrefetchOpAdaptor::isDataCacheAttr() {
+::mlir::BoolAttr AffinePrefetchOpAdaptor::getIsDataCacheAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, AffinePrefetchOp::isDataCacheAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 2, AffinePrefetchOp::getIsDataCacheAttrName(*odsOpName)).cast<::mlir::BoolAttr>();
+  return attr;
 }
 
-bool AffinePrefetchOpAdaptor::isDataCache() {
-  auto attr = isDataCacheAttr();
+bool AffinePrefetchOpAdaptor::getIsDataCache() {
+  auto attr = getIsDataCacheAttr();
   return attr.getValue();
 }
 
@@ -1900,7 +2138,7 @@ bool AffinePrefetchOpAdaptor::isDataCache() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.prefetch' op ""requires attribute 'isDataCache'");
-    if (namedAttrIt->getName() == AffinePrefetchOp::isDataCacheAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffinePrefetchOp::getIsDataCacheAttrName(*odsOpName)) {
       tblgen_isDataCache = namedAttrIt->getValue();
       break;
     }
@@ -1910,7 +2148,7 @@ bool AffinePrefetchOpAdaptor::isDataCache() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.prefetch' op ""requires attribute 'isWrite'");
-    if (namedAttrIt->getName() == AffinePrefetchOp::isWriteAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffinePrefetchOp::getIsWriteAttrName(*odsOpName)) {
       tblgen_isWrite = namedAttrIt->getValue();
       break;
     }
@@ -1920,7 +2158,7 @@ bool AffinePrefetchOpAdaptor::isDataCache() {
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'affine.prefetch' op ""requires attribute 'localityHint'");
-    if (namedAttrIt->getName() == AffinePrefetchOp::localityHintAttrName(*odsOpName)) {
+    if (namedAttrIt->getName() == AffinePrefetchOp::getLocalityHintAttrName(*odsOpName)) {
       tblgen_localityHint = namedAttrIt->getValue();
       break;
     }
@@ -1962,21 +2200,21 @@ std::pair<unsigned, unsigned> AffinePrefetchOp::getODSOperandIndexAndLength(unsi
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffinePrefetchOp::memref() {
+::mlir::TypedValue<::mlir::MemRefType> AffinePrefetchOp::getMemref() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range AffinePrefetchOp::indices() {
+::mlir::Operation::operand_range AffinePrefetchOp::getIndices() {
   return getODSOperands(1);
 }
 
-::mlir::MutableOperandRange AffinePrefetchOp::memrefMutable() {
+::mlir::MutableOperandRange AffinePrefetchOp::getMemrefMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffinePrefetchOp::indicesMutable() {
+::mlir::MutableOperandRange AffinePrefetchOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -1992,43 +2230,43 @@ std::pair<unsigned, unsigned> AffinePrefetchOp::getODSResultIndexAndLength(unsig
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::BoolAttr AffinePrefetchOp::isWriteAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, isWriteAttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr AffinePrefetchOp::getIsWriteAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 1, getIsWriteAttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool AffinePrefetchOp::isWrite() {
-  auto attr = isWriteAttr();
+bool AffinePrefetchOp::getIsWrite() {
+  auto attr = getIsWriteAttr();
   return attr.getValue();
 }
 
-::mlir::IntegerAttr AffinePrefetchOp::localityHintAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, localityHintAttrName()).cast<::mlir::IntegerAttr>();
+::mlir::IntegerAttr AffinePrefetchOp::getLocalityHintAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 2, (*this)->getAttrs().end() - 0, getLocalityHintAttrName()).cast<::mlir::IntegerAttr>();
 }
 
-uint32_t AffinePrefetchOp::localityHint() {
-  auto attr = localityHintAttr();
+uint32_t AffinePrefetchOp::getLocalityHint() {
+  auto attr = getLocalityHintAttr();
   return attr.getValue().getZExtValue();
 }
 
-::mlir::BoolAttr AffinePrefetchOp::isDataCacheAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, isDataCacheAttrName()).cast<::mlir::BoolAttr>();
+::mlir::BoolAttr AffinePrefetchOp::getIsDataCacheAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 2, getIsDataCacheAttrName()).cast<::mlir::BoolAttr>();
 }
 
-bool AffinePrefetchOp::isDataCache() {
-  auto attr = isDataCacheAttr();
+bool AffinePrefetchOp::getIsDataCache() {
+  auto attr = getIsDataCacheAttr();
   return attr.getValue();
 }
 
-void AffinePrefetchOp::isWriteAttr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(isWriteAttrName(), attr);
+void AffinePrefetchOp::setIsWriteAttr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getIsWriteAttrName(), attr);
 }
 
-void AffinePrefetchOp::localityHintAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(localityHintAttrName(), attr);
+void AffinePrefetchOp::setLocalityHintAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(getLocalityHintAttrName(), attr);
 }
 
-void AffinePrefetchOp::isDataCacheAttr(::mlir::BoolAttr attr) {
-  (*this)->setAttr(isDataCacheAttrName(), attr);
+void AffinePrefetchOp::setIsDataCacheAttr(::mlir::BoolAttr attr) {
+  (*this)->setAttr(getIsDataCacheAttrName(), attr);
 }
 
 void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value memref, AffineMap map, ArrayRef<Value> mapOperands, bool isWrite, unsigned localityHint, bool isDataCache) {
@@ -2038,28 +2276,28 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
       auto isWriteAttr = odsBuilder.getBoolAttr(isWrite);
       auto isDataCacheAttr = odsBuilder.getBoolAttr(isDataCache);
       odsState.addOperands(memref);
-      odsState.addAttribute(getMapAttrName(), AffineMapAttr::get(map));
+      odsState.addAttribute(getMapAttrStrName(), AffineMapAttr::get(map));
       odsState.addOperands(mapOperands);
-      odsState.addAttribute(getLocalityHintAttrName(), localityHintAttr);
-      odsState.addAttribute(getIsWriteAttrName(), isWriteAttr);
-      odsState.addAttribute(getIsDataCacheAttrName(), isDataCacheAttr);
+      odsState.addAttribute(getLocalityHintAttrStrName(), localityHintAttr);
+      odsState.addAttribute(getIsWriteAttrStrName(), isWriteAttr);
+      odsState.addAttribute(getIsDataCacheAttrStrName(), isDataCacheAttr);
     
 }
 
 void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value memref, ::mlir::ValueRange indices, ::mlir::BoolAttr isWrite, ::mlir::IntegerAttr localityHint, ::mlir::BoolAttr isDataCache) {
   odsState.addOperands(memref);
   odsState.addOperands(indices);
-  odsState.addAttribute(isWriteAttrName(odsState.name), isWrite);
-  odsState.addAttribute(localityHintAttrName(odsState.name), localityHint);
-  odsState.addAttribute(isDataCacheAttrName(odsState.name), isDataCache);
+  odsState.addAttribute(getIsWriteAttrName(odsState.name), isWrite);
+  odsState.addAttribute(getLocalityHintAttrName(odsState.name), localityHint);
+  odsState.addAttribute(getIsDataCacheAttrName(odsState.name), isDataCache);
 }
 
 void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value memref, ::mlir::ValueRange indices, ::mlir::BoolAttr isWrite, ::mlir::IntegerAttr localityHint, ::mlir::BoolAttr isDataCache) {
   odsState.addOperands(memref);
   odsState.addOperands(indices);
-  odsState.addAttribute(isWriteAttrName(odsState.name), isWrite);
-  odsState.addAttribute(localityHintAttrName(odsState.name), localityHint);
-  odsState.addAttribute(isDataCacheAttrName(odsState.name), isDataCache);
+  odsState.addAttribute(getIsWriteAttrName(odsState.name), isWrite);
+  odsState.addAttribute(getLocalityHintAttrName(odsState.name), localityHint);
+  odsState.addAttribute(getIsDataCacheAttrName(odsState.name), isDataCache);
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -2067,17 +2305,17 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationSta
 void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value memref, ::mlir::ValueRange indices, bool isWrite, uint32_t localityHint, bool isDataCache) {
   odsState.addOperands(memref);
   odsState.addOperands(indices);
-  odsState.addAttribute(isWriteAttrName(odsState.name), odsBuilder.getBoolAttr(isWrite));
-  odsState.addAttribute(localityHintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), localityHint));
-  odsState.addAttribute(isDataCacheAttrName(odsState.name), odsBuilder.getBoolAttr(isDataCache));
+  odsState.addAttribute(getIsWriteAttrName(odsState.name), odsBuilder.getBoolAttr(isWrite));
+  odsState.addAttribute(getLocalityHintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), localityHint));
+  odsState.addAttribute(getIsDataCacheAttrName(odsState.name), odsBuilder.getBoolAttr(isDataCache));
 }
 
 void AffinePrefetchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value memref, ::mlir::ValueRange indices, bool isWrite, uint32_t localityHint, bool isDataCache) {
   odsState.addOperands(memref);
   odsState.addOperands(indices);
-  odsState.addAttribute(isWriteAttrName(odsState.name), odsBuilder.getBoolAttr(isWrite));
-  odsState.addAttribute(localityHintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), localityHint));
-  odsState.addAttribute(isDataCacheAttrName(odsState.name), odsBuilder.getBoolAttr(isDataCache));
+  odsState.addAttribute(getIsWriteAttrName(odsState.name), odsBuilder.getBoolAttr(isWrite));
+  odsState.addAttribute(getLocalityHintAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(32), localityHint));
+  odsState.addAttribute(getIsDataCacheAttrName(odsState.name), odsBuilder.getBoolAttr(isDataCache));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -2097,7 +2335,7 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'isDataCache'");
-    if (namedAttrIt->getName() == isDataCacheAttrName()) {
+    if (namedAttrIt->getName() == getIsDataCacheAttrName()) {
       tblgen_isDataCache = namedAttrIt->getValue();
       break;
     }
@@ -2107,7 +2345,7 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'isWrite'");
-    if (namedAttrIt->getName() == isWriteAttrName()) {
+    if (namedAttrIt->getName() == getIsWriteAttrName()) {
       tblgen_isWrite = namedAttrIt->getValue();
       break;
     }
@@ -2117,7 +2355,7 @@ void AffinePrefetchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSta
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'localityHint'");
-    if (namedAttrIt->getName() == localityHintAttrName()) {
+    if (namedAttrIt->getName() == getLocalityHintAttrName()) {
       tblgen_localityHint = namedAttrIt->getValue();
       break;
     }
@@ -2199,15 +2437,15 @@ std::pair<unsigned, unsigned> AffineStoreOpAdaptor::getODSOperandIndexAndLength(
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineStoreOpAdaptor::value() {
+::mlir::Value AffineStoreOpAdaptor::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AffineStoreOpAdaptor::memref() {
+::mlir::Value AffineStoreOpAdaptor::getMemref() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::ValueRange AffineStoreOpAdaptor::indices() {
+::mlir::ValueRange AffineStoreOpAdaptor::getIndices() {
   return getODSOperands(2);
 }
 
@@ -2243,31 +2481,31 @@ std::pair<unsigned, unsigned> AffineStoreOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineStoreOp::value() {
+::mlir::Value AffineStoreOp::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AffineStoreOp::memref() {
+::mlir::TypedValue<::mlir::MemRefType> AffineStoreOp::getMemref() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Operation::operand_range AffineStoreOp::indices() {
+::mlir::Operation::operand_range AffineStoreOp::getIndices() {
   return getODSOperands(2);
 }
 
-::mlir::MutableOperandRange AffineStoreOp::valueMutable() {
+::mlir::MutableOperandRange AffineStoreOp::getValueMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffineStoreOp::memrefMutable() {
+::mlir::MutableOperandRange AffineStoreOp::getMemrefMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffineStoreOp::indicesMutable() {
+::mlir::MutableOperandRange AffineStoreOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2362,11 +2600,11 @@ std::pair<unsigned, unsigned> AffineVectorLoadOpAdaptor::getODSOperandIndexAndLe
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineVectorLoadOpAdaptor::memref() {
+::mlir::Value AffineVectorLoadOpAdaptor::getMemref() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::ValueRange AffineVectorLoadOpAdaptor::indices() {
+::mlir::ValueRange AffineVectorLoadOpAdaptor::getIndices() {
   return getODSOperands(1);
 }
 
@@ -2402,21 +2640,21 @@ std::pair<unsigned, unsigned> AffineVectorLoadOp::getODSOperandIndexAndLength(un
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineVectorLoadOp::memref() {
+::mlir::TypedValue<::mlir::MemRefType> AffineVectorLoadOp::getMemref() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Operation::operand_range AffineVectorLoadOp::indices() {
+::mlir::Operation::operand_range AffineVectorLoadOp::getIndices() {
   return getODSOperands(1);
 }
 
-::mlir::MutableOperandRange AffineVectorLoadOp::memrefMutable() {
+::mlir::MutableOperandRange AffineVectorLoadOp::getMemrefMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffineVectorLoadOp::indicesMutable() {
+::mlir::MutableOperandRange AffineVectorLoadOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
@@ -2432,7 +2670,7 @@ std::pair<unsigned, unsigned> AffineVectorLoadOp::getODSResultIndexAndLength(uns
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineVectorLoadOp::result() {
+::mlir::TypedValue<::mlir::VectorType> AffineVectorLoadOp::getResult() {
   return *getODSResults(0).begin();
 }
 
@@ -2539,15 +2777,15 @@ std::pair<unsigned, unsigned> AffineVectorStoreOpAdaptor::getODSOperandIndexAndL
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineVectorStoreOpAdaptor::value() {
+::mlir::Value AffineVectorStoreOpAdaptor::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AffineVectorStoreOpAdaptor::memref() {
+::mlir::Value AffineVectorStoreOpAdaptor::getMemref() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::ValueRange AffineVectorStoreOpAdaptor::indices() {
+::mlir::ValueRange AffineVectorStoreOpAdaptor::getIndices() {
   return getODSOperands(2);
 }
 
@@ -2583,31 +2821,31 @@ std::pair<unsigned, unsigned> AffineVectorStoreOp::getODSOperandIndexAndLength(u
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AffineVectorStoreOp::value() {
+::mlir::TypedValue<::mlir::VectorType> AffineVectorStoreOp::getValue() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AffineVectorStoreOp::memref() {
+::mlir::TypedValue<::mlir::MemRefType> AffineVectorStoreOp::getMemref() {
   return *getODSOperands(1).begin();
 }
 
-::mlir::Operation::operand_range AffineVectorStoreOp::indices() {
+::mlir::Operation::operand_range AffineVectorStoreOp::getIndices() {
   return getODSOperands(2);
 }
 
-::mlir::MutableOperandRange AffineVectorStoreOp::valueMutable() {
+::mlir::MutableOperandRange AffineVectorStoreOp::getValueMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffineVectorStoreOp::memrefMutable() {
+::mlir::MutableOperandRange AffineVectorStoreOp::getMemrefMutable() {
   auto range = getODSOperandIndexAndLength(1);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;
 }
 
-::mlir::MutableOperandRange AffineVectorStoreOp::indicesMutable() {
+::mlir::MutableOperandRange AffineVectorStoreOp::getIndicesMutable() {
   auto range = getODSOperandIndexAndLength(2);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second);
   return mutableRange;

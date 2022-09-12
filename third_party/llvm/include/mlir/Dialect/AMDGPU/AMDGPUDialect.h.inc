@@ -19,6 +19,14 @@ public:
   static constexpr ::llvm::StringLiteral getDialectNamespace() {
     return ::llvm::StringLiteral("amdgpu");
   }
+
+  /// Parse an attribute registered to this dialect.
+  ::mlir::Attribute parseAttribute(::mlir::DialectAsmParser &parser,
+                                   ::mlir::Type type) const override;
+
+  /// Print an attribute registered to this dialect.
+  void printAttribute(::mlir::Attribute attr,
+                      ::mlir::DialectAsmPrinter &os) const override;
 };
 } // namespace amdgpu
 } // namespace mlir

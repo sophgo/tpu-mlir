@@ -39,11 +39,6 @@ Serializer::processOp<::mlir::spirv::AccessChainOp>(::mlir::spirv::AccessChainOp
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::AssumeTrueKHROp>(::mlir::spirv::AssumeTrueKHROp op) {
-  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpAssumeTrueKHR));
-}
-
-template <> LogicalResult
 Serializer::processOp<::mlir::spirv::AtomicAndOp>(::mlir::spirv::AtomicAndOp op) {
   SmallVector<uint32_t, 4> operands;
   SmallVector<StringRef, 2> elidedAttrs;
@@ -67,13 +62,13 @@ Serializer::processOp<::mlir::spirv::AtomicAndOp>(::mlir::spirv::AtomicAndOp op)
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -122,19 +117,19 @@ Serializer::processOp<::mlir::spirv::AtomicCompareExchangeOp>(::mlir::spirv::Ato
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("equal_semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("equal_semantics");
   }
   {
     if (auto attr = op->getAttr("unequal_semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("unequal_semantics");
   }
@@ -192,19 +187,19 @@ Serializer::processOp<::mlir::spirv::AtomicCompareExchangeWeakOp>(::mlir::spirv:
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("equal_semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("equal_semantics");
   }
   {
     if (auto attr = op->getAttr("unequal_semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("unequal_semantics");
   }
@@ -262,13 +257,13 @@ Serializer::processOp<::mlir::spirv::AtomicExchangeOp>(::mlir::spirv::AtomicExch
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -283,61 +278,6 @@ Serializer::processOp<::mlir::spirv::AtomicExchangeOp>(::mlir::spirv::AtomicExch
   }
   (void)emitDebugLine(functionBody, op.getLoc());
   (void)encodeInstructionInto(functionBody, spirv::Opcode::OpAtomicExchange, operands);
-  for (auto attr : op->getAttrs()) {
-    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
-    }
-    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
-      return failure();
-    }
-  }
-  return success();
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::AtomicFAddEXTOp>(::mlir::spirv::AtomicFAddEXTOp op) {
-  SmallVector<uint32_t, 4> operands;
-  SmallVector<StringRef, 2> elidedAttrs;
-  uint32_t resultID = 0;
-  uint32_t resultTypeID = 0;
-  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
-    return failure();
-  }
-  operands.push_back(resultTypeID);
-  resultID = getNextID();
-  valueIDMap[op.getResult()] = resultID;
-  operands.push_back(resultID);
-  {
-    for (auto arg : op.getODSOperands(0)) {
-      auto argID = getValueID(arg);
-      if (!argID) {
-        return emitError(op.getLoc(), "operand #0 has a use before def");
-      }
-      operands.push_back(argID);
-    }
-  }
-  {
-    if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
-    }
-    elidedAttrs.push_back("memory_scope");
-  }
-  {
-    if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
-    }
-    elidedAttrs.push_back("semantics");
-  }
-  {
-    for (auto arg : op.getODSOperands(1)) {
-      auto argID = getValueID(arg);
-      if (!argID) {
-        return emitError(op.getLoc(), "operand #1 has a use before def");
-      }
-      operands.push_back(argID);
-    }
-  }
-  (void)emitDebugLine(functionBody, op.getLoc());
-  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpAtomicFAddEXT, operands);
   for (auto attr : op->getAttrs()) {
     if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
     }
@@ -372,13 +312,13 @@ Serializer::processOp<::mlir::spirv::AtomicIAddOp>(::mlir::spirv::AtomicIAddOp o
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -422,11 +362,11 @@ Serializer::processOp<::mlir::spirv::AtomicIDecrementOp>(::mlir::spirv::AtomicID
     operands.push_back(id);
   }
   if (auto attr = op->getAttr("memory_scope")) {
-    operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
   }
   elidedAttrs.push_back("memory_scope");
   if (auto attr = op->getAttr("semantics")) {
-    operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
   }
   elidedAttrs.push_back("semantics");
   (void)emitDebugLine(functionBody, op.getLoc());
@@ -460,11 +400,11 @@ Serializer::processOp<::mlir::spirv::AtomicIIncrementOp>(::mlir::spirv::AtomicII
     operands.push_back(id);
   }
   if (auto attr = op->getAttr("memory_scope")) {
-    operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
   }
   elidedAttrs.push_back("memory_scope");
   if (auto attr = op->getAttr("semantics")) {
-    operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
   }
   elidedAttrs.push_back("semantics");
   (void)emitDebugLine(functionBody, op.getLoc());
@@ -503,13 +443,13 @@ Serializer::processOp<::mlir::spirv::AtomicISubOp>(::mlir::spirv::AtomicISubOp o
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -558,13 +498,13 @@ Serializer::processOp<::mlir::spirv::AtomicOrOp>(::mlir::spirv::AtomicOrOp op) {
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -613,13 +553,13 @@ Serializer::processOp<::mlir::spirv::AtomicSMaxOp>(::mlir::spirv::AtomicSMaxOp o
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -668,13 +608,13 @@ Serializer::processOp<::mlir::spirv::AtomicSMinOp>(::mlir::spirv::AtomicSMinOp o
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -723,13 +663,13 @@ Serializer::processOp<::mlir::spirv::AtomicUMaxOp>(::mlir::spirv::AtomicUMaxOp o
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -778,13 +718,13 @@ Serializer::processOp<::mlir::spirv::AtomicUMinOp>(::mlir::spirv::AtomicUMinOp o
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -833,13 +773,13 @@ Serializer::processOp<::mlir::spirv::AtomicXorOp>(::mlir::spirv::AtomicXorOp op)
   }
   {
     if (auto attr = op->getAttr("memory_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("memory_scope");
   }
   {
     if (auto attr = op->getAttr("semantics")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
     }
     elidedAttrs.push_back("semantics");
   }
@@ -907,6 +847,81 @@ Serializer::processOp<::mlir::spirv::BitwiseOrOp>(::mlir::spirv::BitwiseOrOp op)
 template <> LogicalResult
 Serializer::processOp<::mlir::spirv::BitwiseXorOp>(::mlir::spirv::BitwiseXorOp op) {
   return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpBitwiseXor));
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLCeilOp>(::mlir::spirv::CLCeilOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 12);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLCosOp>(::mlir::spirv::CLCosOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 14);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLErfOp>(::mlir::spirv::CLErfOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 18);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLExpOp>(::mlir::spirv::CLExpOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 19);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLFAbsOp>(::mlir::spirv::CLFAbsOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 23);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLFloorOp>(::mlir::spirv::CLFloorOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 25);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLFmaOp>(::mlir::spirv::CLFmaOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 26);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLLogOp>(::mlir::spirv::CLLogOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 37);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLPowOp>(::mlir::spirv::CLPowOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 48);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLRoundOp>(::mlir::spirv::CLRoundOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 55);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLRsqrtOp>(::mlir::spirv::CLRsqrtOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 56);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLSAbsOp>(::mlir::spirv::CLSAbsOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 141);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLSinOp>(::mlir::spirv::CLSinOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 57);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLSqrtOp>(::mlir::spirv::CLSqrtOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 61);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::CLTanhOp>(::mlir::spirv::CLTanhOp op) {
+  return processOpWithoutGrammarAttr(op, "OpenCL.std", 63);
 }
 
 template <> LogicalResult
@@ -1012,6 +1027,27 @@ Serializer::processOp<::mlir::spirv::CompositeInsertOp>(::mlir::spirv::Composite
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::ControlBarrierOp>(::mlir::spirv::ControlBarrierOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  if (auto attr = op->getAttr("execution_scope")) {
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+  }
+  elidedAttrs.push_back("execution_scope");
+  if (auto attr = op->getAttr("memory_scope")) {
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+  }
+  elidedAttrs.push_back("memory_scope");
+  if (auto attr = op->getAttr("memory_semantics")) {
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
+  }
+  elidedAttrs.push_back("memory_semantics");
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpControlBarrier, operands);
+  return success();
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::ConvertFToSOp>(::mlir::spirv::ConvertFToSOp op) {
   return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpConvertFToS));
 }
@@ -1032,7 +1068,7 @@ Serializer::processOp<::mlir::spirv::ConvertUToFOp>(::mlir::spirv::ConvertUToFOp
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::CooperativeMatrixLengthNVOp>(::mlir::spirv::CooperativeMatrixLengthNVOp op) {
+Serializer::processOp<::mlir::spirv::EXTAtomicFAddOp>(::mlir::spirv::EXTAtomicFAddOp op) {
   SmallVector<uint32_t, 4> operands;
   SmallVector<StringRef, 2> elidedAttrs;
   uint32_t resultID = 0;
@@ -1044,12 +1080,38 @@ Serializer::processOp<::mlir::spirv::CooperativeMatrixLengthNVOp>(::mlir::spirv:
   resultID = getNextID();
   valueIDMap[op.getResult()] = resultID;
   operands.push_back(resultID);
-  if (auto attr = op->getAttr("type")) {
-    operands.push_back(static_cast<uint32_t>(getTypeID(attr.cast<TypeAttr>().getValue())));
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
   }
-  elidedAttrs.push_back("type");
+  {
+    if (auto attr = op->getAttr("memory_scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("memory_scope");
+  }
+  {
+    if (auto attr = op->getAttr("semantics")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("semantics");
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
   (void)emitDebugLine(functionBody, op.getLoc());
-  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpCooperativeMatrixLengthNV, operands);
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpAtomicFAddEXT, operands);
   for (auto attr : op->getAttrs()) {
     if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
     }
@@ -1057,63 +1119,6 @@ Serializer::processOp<::mlir::spirv::CooperativeMatrixLengthNVOp>(::mlir::spirv:
       return failure();
     }
   }
-  return success();
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::CooperativeMatrixLoadNVOp>(::mlir::spirv::CooperativeMatrixLoadNVOp op) {
-  SmallVector<uint32_t, 4> operands;
-  SmallVector<StringRef, 2> elidedAttrs;
-  uint32_t resultID = 0;
-  uint32_t resultTypeID = 0;
-  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
-    return failure();
-  }
-  operands.push_back(resultTypeID);
-  resultID = getNextID();
-  valueIDMap[op.getResult()] = resultID;
-  operands.push_back(resultID);
-  for (Value operand : op->getOperands()) {
-    auto id = getValueID(operand);
-    assert(id && "use before def!");
-    operands.push_back(id);
-  }
-  if (auto attr = op->getAttr("memory_access")) {
-    operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
-  }
-  elidedAttrs.push_back("memory_access");
-  (void)emitDebugLine(functionBody, op.getLoc());
-  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpCooperativeMatrixLoadNV, operands);
-  for (auto attr : op->getAttrs()) {
-    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
-    }
-    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
-      return failure();
-    }
-  }
-  return success();
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::CooperativeMatrixMulAddNVOp>(::mlir::spirv::CooperativeMatrixMulAddNVOp op) {
-  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpCooperativeMatrixMulAddNV));
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::CooperativeMatrixStoreNVOp>(::mlir::spirv::CooperativeMatrixStoreNVOp op) {
-  SmallVector<uint32_t, 4> operands;
-  SmallVector<StringRef, 2> elidedAttrs;
-  for (Value operand : op->getOperands()) {
-    auto id = getValueID(operand);
-    assert(id && "use before def!");
-    operands.push_back(id);
-  }
-  if (auto attr = op->getAttr("memory_access")) {
-    operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
-  }
-  elidedAttrs.push_back("memory_access");
-  (void)emitDebugLine(functionBody, op.getLoc());
-  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpCooperativeMatrixStoreNV, operands);
   return success();
 }
 
@@ -1218,172 +1223,177 @@ Serializer::processOp<::mlir::spirv::FUnordNotEqualOp>(::mlir::spirv::FUnordNotE
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLAcosOp>(::mlir::spirv::GLSLAcosOp op) {
+Serializer::processOp<::mlir::spirv::GLAcosOp>(::mlir::spirv::GLAcosOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 17);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLAsinOp>(::mlir::spirv::GLSLAsinOp op) {
+Serializer::processOp<::mlir::spirv::GLAsinOp>(::mlir::spirv::GLAsinOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 16);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLAtanOp>(::mlir::spirv::GLSLAtanOp op) {
+Serializer::processOp<::mlir::spirv::GLAtanOp>(::mlir::spirv::GLAtanOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 18);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLCeilOp>(::mlir::spirv::GLSLCeilOp op) {
+Serializer::processOp<::mlir::spirv::GLCeilOp>(::mlir::spirv::GLCeilOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 9);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLCosOp>(::mlir::spirv::GLSLCosOp op) {
+Serializer::processOp<::mlir::spirv::GLCosOp>(::mlir::spirv::GLCosOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 14);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLCoshOp>(::mlir::spirv::GLSLCoshOp op) {
+Serializer::processOp<::mlir::spirv::GLCoshOp>(::mlir::spirv::GLCoshOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 20);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLExpOp>(::mlir::spirv::GLSLExpOp op) {
+Serializer::processOp<::mlir::spirv::GLExpOp>(::mlir::spirv::GLExpOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 27);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFAbsOp>(::mlir::spirv::GLSLFAbsOp op) {
+Serializer::processOp<::mlir::spirv::GLFAbsOp>(::mlir::spirv::GLFAbsOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 4);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFClampOp>(::mlir::spirv::GLSLFClampOp op) {
+Serializer::processOp<::mlir::spirv::GLFClampOp>(::mlir::spirv::GLFClampOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 43);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFMaxOp>(::mlir::spirv::GLSLFMaxOp op) {
+Serializer::processOp<::mlir::spirv::GLFMaxOp>(::mlir::spirv::GLFMaxOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 40);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFMinOp>(::mlir::spirv::GLSLFMinOp op) {
+Serializer::processOp<::mlir::spirv::GLFMinOp>(::mlir::spirv::GLFMinOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 37);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFMixOp>(::mlir::spirv::GLSLFMixOp op) {
+Serializer::processOp<::mlir::spirv::GLFMixOp>(::mlir::spirv::GLFMixOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 46);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFSignOp>(::mlir::spirv::GLSLFSignOp op) {
+Serializer::processOp<::mlir::spirv::GLFSignOp>(::mlir::spirv::GLFSignOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 6);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFloorOp>(::mlir::spirv::GLSLFloorOp op) {
+Serializer::processOp<::mlir::spirv::GLFindUMsbOp>(::mlir::spirv::GLFindUMsbOp op) {
+  return processOpWithoutGrammarAttr(op, "GLSL.std.450", 75);
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::GLFloorOp>(::mlir::spirv::GLFloorOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 8);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFmaOp>(::mlir::spirv::GLSLFmaOp op) {
+Serializer::processOp<::mlir::spirv::GLFmaOp>(::mlir::spirv::GLFmaOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 50);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLFrexpStructOp>(::mlir::spirv::GLSLFrexpStructOp op) {
+Serializer::processOp<::mlir::spirv::GLFrexpStructOp>(::mlir::spirv::GLFrexpStructOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 52);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLInverseSqrtOp>(::mlir::spirv::GLSLInverseSqrtOp op) {
+Serializer::processOp<::mlir::spirv::GLInverseSqrtOp>(::mlir::spirv::GLInverseSqrtOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 32);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLLdexpOp>(::mlir::spirv::GLSLLdexpOp op) {
+Serializer::processOp<::mlir::spirv::GLLdexpOp>(::mlir::spirv::GLLdexpOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 53);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLLogOp>(::mlir::spirv::GLSLLogOp op) {
+Serializer::processOp<::mlir::spirv::GLLogOp>(::mlir::spirv::GLLogOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 28);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLPowOp>(::mlir::spirv::GLSLPowOp op) {
+Serializer::processOp<::mlir::spirv::GLPowOp>(::mlir::spirv::GLPowOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 26);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLRoundOp>(::mlir::spirv::GLSLRoundOp op) {
+Serializer::processOp<::mlir::spirv::GLRoundOp>(::mlir::spirv::GLRoundOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 1);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSAbsOp>(::mlir::spirv::GLSLSAbsOp op) {
+Serializer::processOp<::mlir::spirv::GLSAbsOp>(::mlir::spirv::GLSAbsOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 5);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSClampOp>(::mlir::spirv::GLSLSClampOp op) {
+Serializer::processOp<::mlir::spirv::GLSClampOp>(::mlir::spirv::GLSClampOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 45);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSMaxOp>(::mlir::spirv::GLSLSMaxOp op) {
+Serializer::processOp<::mlir::spirv::GLSMaxOp>(::mlir::spirv::GLSMaxOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 42);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSMinOp>(::mlir::spirv::GLSLSMinOp op) {
+Serializer::processOp<::mlir::spirv::GLSMinOp>(::mlir::spirv::GLSMinOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 39);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSSignOp>(::mlir::spirv::GLSLSSignOp op) {
+Serializer::processOp<::mlir::spirv::GLSSignOp>(::mlir::spirv::GLSSignOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 7);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSinOp>(::mlir::spirv::GLSLSinOp op) {
+Serializer::processOp<::mlir::spirv::GLSinOp>(::mlir::spirv::GLSinOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 13);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSinhOp>(::mlir::spirv::GLSLSinhOp op) {
+Serializer::processOp<::mlir::spirv::GLSinhOp>(::mlir::spirv::GLSinhOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 19);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLSqrtOp>(::mlir::spirv::GLSLSqrtOp op) {
+Serializer::processOp<::mlir::spirv::GLSqrtOp>(::mlir::spirv::GLSqrtOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 31);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLTanOp>(::mlir::spirv::GLSLTanOp op) {
+Serializer::processOp<::mlir::spirv::GLTanOp>(::mlir::spirv::GLTanOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 15);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLTanhOp>(::mlir::spirv::GLSLTanhOp op) {
+Serializer::processOp<::mlir::spirv::GLTanhOp>(::mlir::spirv::GLTanhOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 21);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLUClampOp>(::mlir::spirv::GLSLUClampOp op) {
+Serializer::processOp<::mlir::spirv::GLUClampOp>(::mlir::spirv::GLUClampOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 44);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLUMaxOp>(::mlir::spirv::GLSLUMaxOp op) {
+Serializer::processOp<::mlir::spirv::GLUMaxOp>(::mlir::spirv::GLUMaxOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 41);
 }
 
 template <> LogicalResult
-Serializer::processOp<::mlir::spirv::GLSLUMinOp>(::mlir::spirv::GLSLUMinOp op) {
+Serializer::processOp<::mlir::spirv::GLUMinOp>(::mlir::spirv::GLUMinOp op) {
   return processOpWithoutGrammarAttr(op, "GLSL.std.450", 38);
 }
 
@@ -1402,7 +1412,7 @@ Serializer::processOp<::mlir::spirv::GroupBroadcastOp>(::mlir::spirv::GroupBroad
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
@@ -1451,7 +1461,7 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformBallotOp>(::mlir::spirv::Gro
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
@@ -1491,7 +1501,7 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformBroadcastOp>(::mlir::spirv::
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
@@ -1539,7 +1549,7 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformElectOp>(::mlir::spirv::Grou
   valueIDMap[op.getResult()] = resultID;
   operands.push_back(resultID);
   if (auto attr = op->getAttr("execution_scope")) {
-    operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
   }
   elidedAttrs.push_back("execution_scope");
   (void)emitDebugLine(functionBody, op.getLoc());
@@ -1569,13 +1579,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformFAddOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1624,13 +1634,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformFMaxOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1679,13 +1689,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformFMinOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1734,13 +1744,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformFMulOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1789,13 +1799,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformIAddOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1844,13 +1854,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformIMulOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1899,13 +1909,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformSMaxOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1954,13 +1964,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformSMinOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -1995,6 +2005,202 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformSMinOp>(::mlir::spirv::Group
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::GroupNonUniformShuffleDownOp>(::mlir::spirv::GroupNonUniformShuffleDownOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  {
+    if (auto attr = op->getAttr("execution_scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("execution_scope");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpGroupNonUniformShuffleDown, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::GroupNonUniformShuffleOp>(::mlir::spirv::GroupNonUniformShuffleOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  {
+    if (auto attr = op->getAttr("execution_scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("execution_scope");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpGroupNonUniformShuffle, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::GroupNonUniformShuffleUpOp>(::mlir::spirv::GroupNonUniformShuffleUpOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  {
+    if (auto attr = op->getAttr("execution_scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("execution_scope");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpGroupNonUniformShuffleUp, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::GroupNonUniformShuffleXorOp>(::mlir::spirv::GroupNonUniformShuffleXorOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  {
+    if (auto attr = op->getAttr("execution_scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("execution_scope");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpGroupNonUniformShuffleXor, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::GroupNonUniformUMaxOp>(::mlir::spirv::GroupNonUniformUMaxOp op) {
   SmallVector<uint32_t, 4> operands;
   SmallVector<StringRef, 2> elidedAttrs;
@@ -2009,13 +2215,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformUMaxOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -2064,13 +2270,13 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformUMinOp>(::mlir::spirv::Group
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("execution_scope")) {
-      operands.push_back(prepareConstantInt(op.getLoc(), attr.cast<IntegerAttr>()));
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
     }
     elidedAttrs.push_back("execution_scope");
   }
   {
     if (auto attr = op->getAttr("group_operation")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::GroupOperationAttr>().getValue()));
     }
     elidedAttrs.push_back("group_operation");
   }
@@ -2105,6 +2311,11 @@ Serializer::processOp<::mlir::spirv::GroupNonUniformUMinOp>(::mlir::spirv::Group
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::IAddCarryOp>(::mlir::spirv::IAddCarryOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpIAddCarry));
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::IAddOp>(::mlir::spirv::IAddOp op) {
   return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpIAdd));
 }
@@ -2120,8 +2331,237 @@ Serializer::processOp<::mlir::spirv::IMulOp>(::mlir::spirv::IMulOp op) {
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::INTELJointMatrixLoadOp>(::mlir::spirv::INTELJointMatrixLoadOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  {
+    if (auto attr = op->getAttr("scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("scope");
+  }
+  {
+    if (auto attr = op->getAttr("layout")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MatrixLayoutAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("layout");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    if (auto attr = op->getAttr("memory_access")) {
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemoryAccessAttr>().getValue()));
+    }
+    elidedAttrs.push_back("memory_access");
+  }
+  {
+    if (auto attr = op->getAttr("alignment")) {
+      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+    }
+    elidedAttrs.push_back("alignment");
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpJointMatrixLoadINTEL, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::INTELJointMatrixMadOp>(::mlir::spirv::INTELJointMatrixMadOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  {
+    if (auto attr = op->getAttr("scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("scope");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(2)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #2 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpJointMatrixMadINTEL, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::INTELJointMatrixStoreOp>(::mlir::spirv::INTELJointMatrixStoreOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  {
+    if (auto attr = op->getAttr("scope")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("scope");
+  }
+  {
+    if (auto attr = op->getAttr("layout")) {
+      operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MatrixLayoutAttr>().getValue()))));
+    }
+    elidedAttrs.push_back("layout");
+  }
+  {
+    for (auto arg : op.getODSOperands(0)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #0 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(1)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #1 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    for (auto arg : op.getODSOperands(2)) {
+      auto argID = getValueID(arg);
+      if (!argID) {
+        return emitError(op.getLoc(), "operand #2 has a use before def");
+      }
+      operands.push_back(argID);
+    }
+  }
+  {
+    if (auto attr = op->getAttr("memory_access")) {
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemoryAccessAttr>().getValue()));
+    }
+    elidedAttrs.push_back("memory_access");
+  }
+  {
+    if (auto attr = op->getAttr("alignment")) {
+      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+    }
+    elidedAttrs.push_back("alignment");
+  }
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpJointMatrixStoreINTEL, operands);
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::INTELJointMatrixWorkItemLengthOp>(::mlir::spirv::INTELJointMatrixWorkItemLengthOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  if (auto attr = op->getAttr("type")) {
+    operands.push_back(static_cast<uint32_t>(getTypeID(attr.cast<TypeAttr>().getValue())));
+  }
+  elidedAttrs.push_back("type");
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpJointMatrixWorkItemLengthINTEL, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::INTELSubgroupBlockReadOp>(::mlir::spirv::INTELSubgroupBlockReadOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpSubgroupBlockReadINTEL));
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::INTELSubgroupBlockWriteOp>(::mlir::spirv::INTELSubgroupBlockWriteOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpSubgroupBlockWriteINTEL));
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::INotEqualOp>(::mlir::spirv::INotEqualOp op) {
   return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpINotEqual));
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::ISubBorrowOp>(::mlir::spirv::ISubBorrowOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpISubBorrow));
 }
 
 template <> LogicalResult
@@ -2171,7 +2611,7 @@ Serializer::processOp<::mlir::spirv::ImageDrefGatherOp>(::mlir::spirv::ImageDref
   }
   {
     if (auto attr = op->getAttr("imageoperands")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::ImageOperandsAttr>().getValue()));
     }
     elidedAttrs.push_back("imageoperands");
   }
@@ -2247,6 +2687,16 @@ Serializer::processOp<::mlir::spirv::IsNanOp>(::mlir::spirv::IsNanOp op) {
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::KHRAssumeTrueOp>(::mlir::spirv::KHRAssumeTrueOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpAssumeTrueKHR));
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::KHRSubgroupBallotOp>(::mlir::spirv::KHRSubgroupBallotOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpSubgroupBallotKHR));
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::LoadOp>(::mlir::spirv::LoadOp op) {
   SmallVector<uint32_t, 4> operands;
   SmallVector<StringRef, 2> elidedAttrs;
@@ -2265,7 +2715,7 @@ Serializer::processOp<::mlir::spirv::LoadOp>(::mlir::spirv::LoadOp op) {
     operands.push_back(id);
   }
   if (auto attr = op->getAttr("memory_access")) {
-    operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+    operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemoryAccessAttr>().getValue()));
   }
   elidedAttrs.push_back("memory_access");
   if (auto attr = op->getAttr("alignment")) {
@@ -2320,78 +2770,111 @@ Serializer::processOp<::mlir::spirv::MatrixTimesScalarOp>(::mlir::spirv::MatrixT
 }
 
 template <> LogicalResult
+Serializer::processOp<::mlir::spirv::MemoryBarrierOp>(::mlir::spirv::MemoryBarrierOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  if (auto attr = op->getAttr("memory_scope")) {
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::ScopeAttr>().getValue()))));
+  }
+  elidedAttrs.push_back("memory_scope");
+  if (auto attr = op->getAttr("memory_semantics")) {
+    operands.push_back(prepareConstantInt(op.getLoc(), Builder(op).getI32IntegerAttr(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemorySemanticsAttr>().getValue()))));
+  }
+  elidedAttrs.push_back("memory_semantics");
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpMemoryBarrier, operands);
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::NVCooperativeMatrixLengthOp>(::mlir::spirv::NVCooperativeMatrixLengthOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  if (auto attr = op->getAttr("type")) {
+    operands.push_back(static_cast<uint32_t>(getTypeID(attr.cast<TypeAttr>().getValue())));
+  }
+  elidedAttrs.push_back("type");
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpCooperativeMatrixLengthNV, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::NVCooperativeMatrixLoadOp>(::mlir::spirv::NVCooperativeMatrixLoadOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  uint32_t resultID = 0;
+  uint32_t resultTypeID = 0;
+  if (failed(processType(op.getLoc(), op.getType(), resultTypeID))) {
+    return failure();
+  }
+  operands.push_back(resultTypeID);
+  resultID = getNextID();
+  valueIDMap[op.getResult()] = resultID;
+  operands.push_back(resultID);
+  for (Value operand : op->getOperands()) {
+    auto id = getValueID(operand);
+    assert(id && "use before def!");
+    operands.push_back(id);
+  }
+  if (auto attr = op->getAttr("memory_access")) {
+    operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemoryAccessAttr>().getValue()));
+  }
+  elidedAttrs.push_back("memory_access");
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpCooperativeMatrixLoadNV, operands);
+  for (auto attr : op->getAttrs()) {
+    if (llvm::is_contained(elidedAttrs, attr.getName())) {      continue;
+    }
+    if (failed(processDecoration(op.getLoc(), resultID, attr))) {
+      return failure();
+    }
+  }
+  return success();
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::NVCooperativeMatrixMulAddOp>(::mlir::spirv::NVCooperativeMatrixMulAddOp op) {
+  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpCooperativeMatrixMulAddNV));
+}
+
+template <> LogicalResult
+Serializer::processOp<::mlir::spirv::NVCooperativeMatrixStoreOp>(::mlir::spirv::NVCooperativeMatrixStoreOp op) {
+  SmallVector<uint32_t, 4> operands;
+  SmallVector<StringRef, 2> elidedAttrs;
+  for (Value operand : op->getOperands()) {
+    auto id = getValueID(operand);
+    assert(id && "use before def!");
+    operands.push_back(id);
+  }
+  if (auto attr = op->getAttr("memory_access")) {
+    operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemoryAccessAttr>().getValue()));
+  }
+  elidedAttrs.push_back("memory_access");
+  (void)emitDebugLine(functionBody, op.getLoc());
+  (void)encodeInstructionInto(functionBody, spirv::Opcode::OpCooperativeMatrixStoreNV, operands);
+  return success();
+}
+
+template <> LogicalResult
 Serializer::processOp<::mlir::spirv::NotOp>(::mlir::spirv::NotOp op) {
   return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpNot));
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLCeilOp>(::mlir::spirv::OCLCeilOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 12);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLCosOp>(::mlir::spirv::OCLCosOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 14);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLErfOp>(::mlir::spirv::OCLErfOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 18);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLExpOp>(::mlir::spirv::OCLExpOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 19);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLFAbsOp>(::mlir::spirv::OCLFAbsOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 23);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLFloorOp>(::mlir::spirv::OCLFloorOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 25);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLFmaOp>(::mlir::spirv::OCLFmaOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 26);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLLogOp>(::mlir::spirv::OCLLogOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 37);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLPowOp>(::mlir::spirv::OCLPowOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 48);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLRsqrtOp>(::mlir::spirv::OCLRsqrtOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 56);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLSAbsOp>(::mlir::spirv::OCLSAbsOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 141);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLSinOp>(::mlir::spirv::OCLSinOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 57);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLSqrtOp>(::mlir::spirv::OCLSqrtOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 61);
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::OCLTanhOp>(::mlir::spirv::OCLTanhOp op) {
-  return processOpWithoutGrammarAttr(op, "OpenCL.std", 63);
 }
 
 template <> LogicalResult
@@ -2514,7 +2997,7 @@ Serializer::processOp<::mlir::spirv::StoreOp>(::mlir::spirv::StoreOp op) {
     operands.push_back(id);
   }
   if (auto attr = op->getAttr("memory_access")) {
-    operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+    operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::MemoryAccessAttr>().getValue()));
   }
   elidedAttrs.push_back("memory_access");
   if (auto attr = op->getAttr("alignment")) {
@@ -2524,21 +3007,6 @@ Serializer::processOp<::mlir::spirv::StoreOp>(::mlir::spirv::StoreOp op) {
   (void)emitDebugLine(functionBody, op.getLoc());
   (void)encodeInstructionInto(functionBody, spirv::Opcode::OpStore, operands);
   return success();
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::SubgroupBallotKHROp>(::mlir::spirv::SubgroupBallotKHROp op) {
-  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpSubgroupBallotKHR));
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::SubgroupBlockReadINTELOp>(::mlir::spirv::SubgroupBlockReadINTELOp op) {
-  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpSubgroupBlockReadINTEL));
-}
-
-template <> LogicalResult
-Serializer::processOp<::mlir::spirv::SubgroupBlockWriteINTELOp>(::mlir::spirv::SubgroupBlockWriteINTELOp op) {
-  return processOpWithoutGrammarAttr(op, "", static_cast<uint32_t>(spirv::Opcode::OpSubgroupBlockWriteINTEL));
 }
 
 template <> LogicalResult
@@ -2606,7 +3074,7 @@ Serializer::processOp<::mlir::spirv::VariableOp>(::mlir::spirv::VariableOp op) {
   operands.push_back(resultID);
   {
     if (auto attr = op->getAttr("storage_class")) {
-      operands.push_back(static_cast<uint32_t>(attr.cast<IntegerAttr>().getValue().getZExtValue()));
+      operands.push_back(static_cast<uint32_t>(attr.cast<::mlir::spirv::StorageClassAttr>().getValue()));
     }
     elidedAttrs.push_back("storage_class");
   }
@@ -2686,9 +3154,6 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::AccessChainOp>(op)) {
     return processOp(cast<::mlir::spirv::AccessChainOp>(op));
   }
-  if (isa<::mlir::spirv::AssumeTrueKHROp>(op)) {
-    return processOp(cast<::mlir::spirv::AssumeTrueKHROp>(op));
-  }
   if (isa<::mlir::spirv::AtomicAndOp>(op)) {
     return processOp(cast<::mlir::spirv::AtomicAndOp>(op));
   }
@@ -2700,9 +3165,6 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   }
   if (isa<::mlir::spirv::AtomicExchangeOp>(op)) {
     return processOp(cast<::mlir::spirv::AtomicExchangeOp>(op));
-  }
-  if (isa<::mlir::spirv::AtomicFAddEXTOp>(op)) {
-    return processOp(cast<::mlir::spirv::AtomicFAddEXTOp>(op));
   }
   if (isa<::mlir::spirv::AtomicIAddOp>(op)) {
     return processOp(cast<::mlir::spirv::AtomicIAddOp>(op));
@@ -2767,6 +3229,51 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::BranchOp>(op)) {
     return processOp(cast<::mlir::spirv::BranchOp>(op));
   }
+  if (isa<::mlir::spirv::CLCeilOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLCeilOp>(op));
+  }
+  if (isa<::mlir::spirv::CLCosOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLCosOp>(op));
+  }
+  if (isa<::mlir::spirv::CLErfOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLErfOp>(op));
+  }
+  if (isa<::mlir::spirv::CLExpOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLExpOp>(op));
+  }
+  if (isa<::mlir::spirv::CLFAbsOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLFAbsOp>(op));
+  }
+  if (isa<::mlir::spirv::CLFloorOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLFloorOp>(op));
+  }
+  if (isa<::mlir::spirv::CLFmaOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLFmaOp>(op));
+  }
+  if (isa<::mlir::spirv::CLLogOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLLogOp>(op));
+  }
+  if (isa<::mlir::spirv::CLPowOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLPowOp>(op));
+  }
+  if (isa<::mlir::spirv::CLRoundOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLRoundOp>(op));
+  }
+  if (isa<::mlir::spirv::CLRsqrtOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLRsqrtOp>(op));
+  }
+  if (isa<::mlir::spirv::CLSAbsOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLSAbsOp>(op));
+  }
+  if (isa<::mlir::spirv::CLSinOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLSinOp>(op));
+  }
+  if (isa<::mlir::spirv::CLSqrtOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLSqrtOp>(op));
+  }
+  if (isa<::mlir::spirv::CLTanhOp>(op)) {
+    return processOp(cast<::mlir::spirv::CLTanhOp>(op));
+  }
   if (isa<::mlir::spirv::CompositeConstructOp>(op)) {
     return processOp(cast<::mlir::spirv::CompositeConstructOp>(op));
   }
@@ -2791,20 +3298,11 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::ConvertUToFOp>(op)) {
     return processOp(cast<::mlir::spirv::ConvertUToFOp>(op));
   }
-  if (isa<::mlir::spirv::CooperativeMatrixLengthNVOp>(op)) {
-    return processOp(cast<::mlir::spirv::CooperativeMatrixLengthNVOp>(op));
-  }
-  if (isa<::mlir::spirv::CooperativeMatrixLoadNVOp>(op)) {
-    return processOp(cast<::mlir::spirv::CooperativeMatrixLoadNVOp>(op));
-  }
-  if (isa<::mlir::spirv::CooperativeMatrixMulAddNVOp>(op)) {
-    return processOp(cast<::mlir::spirv::CooperativeMatrixMulAddNVOp>(op));
-  }
-  if (isa<::mlir::spirv::CooperativeMatrixStoreNVOp>(op)) {
-    return processOp(cast<::mlir::spirv::CooperativeMatrixStoreNVOp>(op));
-  }
   if (isa<::mlir::spirv::CopyMemoryOp>(op)) {
     return processOp(cast<::mlir::spirv::CopyMemoryOp>(op));
+  }
+  if (isa<::mlir::spirv::EXTAtomicFAddOp>(op)) {
+    return processOp(cast<::mlir::spirv::EXTAtomicFAddOp>(op));
   }
   if (isa<::mlir::spirv::EntryPointOp>(op)) {
     return processOp(cast<::mlir::spirv::EntryPointOp>(op));
@@ -2875,107 +3373,110 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::FunctionCallOp>(op)) {
     return processOp(cast<::mlir::spirv::FunctionCallOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLAcosOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLAcosOp>(op));
+  if (isa<::mlir::spirv::GLAcosOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLAcosOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLAsinOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLAsinOp>(op));
+  if (isa<::mlir::spirv::GLAsinOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLAsinOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLAtanOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLAtanOp>(op));
+  if (isa<::mlir::spirv::GLAtanOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLAtanOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLCeilOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLCeilOp>(op));
+  if (isa<::mlir::spirv::GLCeilOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLCeilOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLCosOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLCosOp>(op));
+  if (isa<::mlir::spirv::GLCosOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLCosOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLCoshOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLCoshOp>(op));
+  if (isa<::mlir::spirv::GLCoshOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLCoshOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLExpOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLExpOp>(op));
+  if (isa<::mlir::spirv::GLExpOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLExpOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFAbsOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFAbsOp>(op));
+  if (isa<::mlir::spirv::GLFAbsOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFAbsOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFClampOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFClampOp>(op));
+  if (isa<::mlir::spirv::GLFClampOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFClampOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFMaxOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFMaxOp>(op));
+  if (isa<::mlir::spirv::GLFMaxOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFMaxOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFMinOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFMinOp>(op));
+  if (isa<::mlir::spirv::GLFMinOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFMinOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFMixOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFMixOp>(op));
+  if (isa<::mlir::spirv::GLFMixOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFMixOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFSignOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFSignOp>(op));
+  if (isa<::mlir::spirv::GLFSignOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFSignOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFloorOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFloorOp>(op));
+  if (isa<::mlir::spirv::GLFindUMsbOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFindUMsbOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFmaOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFmaOp>(op));
+  if (isa<::mlir::spirv::GLFloorOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFloorOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLFrexpStructOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLFrexpStructOp>(op));
+  if (isa<::mlir::spirv::GLFmaOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFmaOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLInverseSqrtOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLInverseSqrtOp>(op));
+  if (isa<::mlir::spirv::GLFrexpStructOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLFrexpStructOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLLdexpOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLLdexpOp>(op));
+  if (isa<::mlir::spirv::GLInverseSqrtOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLInverseSqrtOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLLogOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLLogOp>(op));
+  if (isa<::mlir::spirv::GLLdexpOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLLdexpOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLPowOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLPowOp>(op));
+  if (isa<::mlir::spirv::GLLogOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLLogOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLRoundOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLRoundOp>(op));
+  if (isa<::mlir::spirv::GLPowOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLPowOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSAbsOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSAbsOp>(op));
+  if (isa<::mlir::spirv::GLRoundOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLRoundOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSClampOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSClampOp>(op));
+  if (isa<::mlir::spirv::GLSAbsOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSAbsOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSMaxOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSMaxOp>(op));
+  if (isa<::mlir::spirv::GLSClampOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSClampOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSMinOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSMinOp>(op));
+  if (isa<::mlir::spirv::GLSMaxOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSMaxOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSSignOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSSignOp>(op));
+  if (isa<::mlir::spirv::GLSMinOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSMinOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSinOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSinOp>(op));
+  if (isa<::mlir::spirv::GLSSignOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSSignOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSinhOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSinhOp>(op));
+  if (isa<::mlir::spirv::GLSinOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSinOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLSqrtOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLSqrtOp>(op));
+  if (isa<::mlir::spirv::GLSinhOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSinhOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLTanOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLTanOp>(op));
+  if (isa<::mlir::spirv::GLSqrtOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLSqrtOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLTanhOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLTanhOp>(op));
+  if (isa<::mlir::spirv::GLTanOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLTanOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLUClampOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLUClampOp>(op));
+  if (isa<::mlir::spirv::GLTanhOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLTanhOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLUMaxOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLUMaxOp>(op));
+  if (isa<::mlir::spirv::GLUClampOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLUClampOp>(op));
   }
-  if (isa<::mlir::spirv::GLSLUMinOp>(op)) {
-    return processOp(cast<::mlir::spirv::GLSLUMinOp>(op));
+  if (isa<::mlir::spirv::GLUMaxOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLUMaxOp>(op));
+  }
+  if (isa<::mlir::spirv::GLUMinOp>(op)) {
+    return processOp(cast<::mlir::spirv::GLUMinOp>(op));
   }
   if (isa<::mlir::spirv::GroupBroadcastOp>(op)) {
     return processOp(cast<::mlir::spirv::GroupBroadcastOp>(op));
@@ -3013,11 +3514,26 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::GroupNonUniformSMinOp>(op)) {
     return processOp(cast<::mlir::spirv::GroupNonUniformSMinOp>(op));
   }
+  if (isa<::mlir::spirv::GroupNonUniformShuffleDownOp>(op)) {
+    return processOp(cast<::mlir::spirv::GroupNonUniformShuffleDownOp>(op));
+  }
+  if (isa<::mlir::spirv::GroupNonUniformShuffleOp>(op)) {
+    return processOp(cast<::mlir::spirv::GroupNonUniformShuffleOp>(op));
+  }
+  if (isa<::mlir::spirv::GroupNonUniformShuffleUpOp>(op)) {
+    return processOp(cast<::mlir::spirv::GroupNonUniformShuffleUpOp>(op));
+  }
+  if (isa<::mlir::spirv::GroupNonUniformShuffleXorOp>(op)) {
+    return processOp(cast<::mlir::spirv::GroupNonUniformShuffleXorOp>(op));
+  }
   if (isa<::mlir::spirv::GroupNonUniformUMaxOp>(op)) {
     return processOp(cast<::mlir::spirv::GroupNonUniformUMaxOp>(op));
   }
   if (isa<::mlir::spirv::GroupNonUniformUMinOp>(op)) {
     return processOp(cast<::mlir::spirv::GroupNonUniformUMinOp>(op));
+  }
+  if (isa<::mlir::spirv::IAddCarryOp>(op)) {
+    return processOp(cast<::mlir::spirv::IAddCarryOp>(op));
   }
   if (isa<::mlir::spirv::IAddOp>(op)) {
     return processOp(cast<::mlir::spirv::IAddOp>(op));
@@ -3028,8 +3544,29 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::IMulOp>(op)) {
     return processOp(cast<::mlir::spirv::IMulOp>(op));
   }
+  if (isa<::mlir::spirv::INTELJointMatrixLoadOp>(op)) {
+    return processOp(cast<::mlir::spirv::INTELJointMatrixLoadOp>(op));
+  }
+  if (isa<::mlir::spirv::INTELJointMatrixMadOp>(op)) {
+    return processOp(cast<::mlir::spirv::INTELJointMatrixMadOp>(op));
+  }
+  if (isa<::mlir::spirv::INTELJointMatrixStoreOp>(op)) {
+    return processOp(cast<::mlir::spirv::INTELJointMatrixStoreOp>(op));
+  }
+  if (isa<::mlir::spirv::INTELJointMatrixWorkItemLengthOp>(op)) {
+    return processOp(cast<::mlir::spirv::INTELJointMatrixWorkItemLengthOp>(op));
+  }
+  if (isa<::mlir::spirv::INTELSubgroupBlockReadOp>(op)) {
+    return processOp(cast<::mlir::spirv::INTELSubgroupBlockReadOp>(op));
+  }
+  if (isa<::mlir::spirv::INTELSubgroupBlockWriteOp>(op)) {
+    return processOp(cast<::mlir::spirv::INTELSubgroupBlockWriteOp>(op));
+  }
   if (isa<::mlir::spirv::INotEqualOp>(op)) {
     return processOp(cast<::mlir::spirv::INotEqualOp>(op));
+  }
+  if (isa<::mlir::spirv::ISubBorrowOp>(op)) {
+    return processOp(cast<::mlir::spirv::ISubBorrowOp>(op));
   }
   if (isa<::mlir::spirv::ISubOp>(op)) {
     return processOp(cast<::mlir::spirv::ISubOp>(op));
@@ -3051,6 +3588,12 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   }
   if (isa<::mlir::spirv::IsNanOp>(op)) {
     return processOp(cast<::mlir::spirv::IsNanOp>(op));
+  }
+  if (isa<::mlir::spirv::KHRAssumeTrueOp>(op)) {
+    return processOp(cast<::mlir::spirv::KHRAssumeTrueOp>(op));
+  }
+  if (isa<::mlir::spirv::KHRSubgroupBallotOp>(op)) {
+    return processOp(cast<::mlir::spirv::KHRSubgroupBallotOp>(op));
   }
   if (isa<::mlir::spirv::LoadOp>(op)) {
     return processOp(cast<::mlir::spirv::LoadOp>(op));
@@ -3079,50 +3622,20 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   if (isa<::mlir::spirv::MemoryBarrierOp>(op)) {
     return processOp(cast<::mlir::spirv::MemoryBarrierOp>(op));
   }
+  if (isa<::mlir::spirv::NVCooperativeMatrixLengthOp>(op)) {
+    return processOp(cast<::mlir::spirv::NVCooperativeMatrixLengthOp>(op));
+  }
+  if (isa<::mlir::spirv::NVCooperativeMatrixLoadOp>(op)) {
+    return processOp(cast<::mlir::spirv::NVCooperativeMatrixLoadOp>(op));
+  }
+  if (isa<::mlir::spirv::NVCooperativeMatrixMulAddOp>(op)) {
+    return processOp(cast<::mlir::spirv::NVCooperativeMatrixMulAddOp>(op));
+  }
+  if (isa<::mlir::spirv::NVCooperativeMatrixStoreOp>(op)) {
+    return processOp(cast<::mlir::spirv::NVCooperativeMatrixStoreOp>(op));
+  }
   if (isa<::mlir::spirv::NotOp>(op)) {
     return processOp(cast<::mlir::spirv::NotOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLCeilOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLCeilOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLCosOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLCosOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLErfOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLErfOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLExpOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLExpOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLFAbsOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLFAbsOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLFloorOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLFloorOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLFmaOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLFmaOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLLogOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLLogOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLPowOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLPowOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLRsqrtOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLRsqrtOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLSAbsOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLSAbsOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLSinOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLSinOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLSqrtOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLSqrtOp>(op));
-  }
-  if (isa<::mlir::spirv::OCLTanhOp>(op)) {
-    return processOp(cast<::mlir::spirv::OCLTanhOp>(op));
   }
   if (isa<::mlir::spirv::OrderedOp>(op)) {
     return processOp(cast<::mlir::spirv::OrderedOp>(op));
@@ -3177,15 +3690,6 @@ LogicalResult Serializer::dispatchToAutogenSerialization(Operation *op) {
   }
   if (isa<::mlir::spirv::StoreOp>(op)) {
     return processOp(cast<::mlir::spirv::StoreOp>(op));
-  }
-  if (isa<::mlir::spirv::SubgroupBallotKHROp>(op)) {
-    return processOp(cast<::mlir::spirv::SubgroupBallotKHROp>(op));
-  }
-  if (isa<::mlir::spirv::SubgroupBlockReadINTELOp>(op)) {
-    return processOp(cast<::mlir::spirv::SubgroupBlockReadINTELOp>(op));
-  }
-  if (isa<::mlir::spirv::SubgroupBlockWriteINTELOp>(op)) {
-    return processOp(cast<::mlir::spirv::SubgroupBlockWriteINTELOp>(op));
   }
   if (isa<::mlir::spirv::TransposeOp>(op)) {
     return processOp(cast<::mlir::spirv::TransposeOp>(op));
@@ -3294,11 +3798,6 @@ Deserializer::processOp<::mlir::spirv::AccessChainOp>(ArrayRef<uint32_t> words) 
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::AssumeTrueKHROp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.AssumeTrueKHR", false, 1);
-}
-
-template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::AtomicAndOp>(ArrayRef<uint32_t> words) {
   SmallVector<Type, 1> resultTypes;
   size_t wordIndex = 0; (void)wordIndex;
@@ -3329,10 +3828,10 @@ Deserializer::processOp<::mlir::spirv::AtomicAndOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3390,13 +3889,13 @@ Deserializer::processOp<::mlir::spirv::AtomicCompareExchangeOp>(ArrayRef<uint32_
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("equal_semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("equal_semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("unequal_semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("unequal_semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3462,13 +3961,13 @@ Deserializer::processOp<::mlir::spirv::AtomicCompareExchangeWeakOp>(ArrayRef<uin
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("equal_semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("equal_semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("unequal_semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("unequal_semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3534,10 +4033,10 @@ Deserializer::processOp<::mlir::spirv::AtomicExchangeOp>(ArrayRef<uint32_t> word
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3557,67 +4056,6 @@ Deserializer::processOp<::mlir::spirv::AtomicExchangeOp>(ArrayRef<uint32_t> word
   }
   Location loc = createFileLineColLoc(opBuilder);
   auto op = opBuilder.create<::mlir::spirv::AtomicExchangeOp>(loc, resultTypes, operands, attributes); (void)op;
-  valueMap[valueID] = op.getResult();
-
-  if (op.hasTrait<OpTrait::IsTerminator>())
-    (void)clearDebugLine();
-  return success();
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::AtomicFAddEXTOp>(ArrayRef<uint32_t> words) {
-  SmallVector<Type, 1> resultTypes;
-  size_t wordIndex = 0; (void)wordIndex;
-  uint32_t valueID = 0; (void)valueID;
-  {
-    if (wordIndex >= words.size()) {
-      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::AtomicFAddEXTOp");
-    }
-    auto ty = getType(words[wordIndex]);
-    if (!ty) {
-      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
-    }
-    resultTypes.push_back(ty);
-    wordIndex++;
-    if (wordIndex >= words.size()) {
-      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::AtomicFAddEXTOp");
-    }
-  }
-  valueID = words[wordIndex++];
-  SmallVector<Value, 4> operands;
-  SmallVector<NamedAttribute, 4> attributes;
-  if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
-  }
-  if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
-  }
-  if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
-  }
-  if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
-  }
-  if (wordIndex != words.size()) {
-    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::AtomicFAddEXTOp, only ") << wordIndex << " of " << words.size() << " processed";
-  }
-
-  if (decorations.count(valueID)) {
-    auto attrs = decorations[valueID].getAttrs();
-    attributes.append(attrs.begin(), attrs.end());
-  }
-  Location loc = createFileLineColLoc(opBuilder);
-  auto op = opBuilder.create<::mlir::spirv::AtomicFAddEXTOp>(loc, resultTypes, operands, attributes); (void)op;
   valueMap[valueID] = op.getResult();
 
   if (op.hasTrait<OpTrait::IsTerminator>())
@@ -3656,10 +4094,10 @@ Deserializer::processOp<::mlir::spirv::AtomicIAddOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3717,10 +4155,10 @@ Deserializer::processOp<::mlir::spirv::AtomicIDecrementOp>(ArrayRef<uint32_t> wo
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex != words.size()) {
     return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::AtomicIDecrementOp, only ") << wordIndex << " of " << words.size() << " processed";
@@ -3770,10 +4208,10 @@ Deserializer::processOp<::mlir::spirv::AtomicIIncrementOp>(ArrayRef<uint32_t> wo
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex != words.size()) {
     return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::AtomicIIncrementOp, only ") << wordIndex << " of " << words.size() << " processed";
@@ -3823,10 +4261,10 @@ Deserializer::processOp<::mlir::spirv::AtomicISubOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3884,10 +4322,10 @@ Deserializer::processOp<::mlir::spirv::AtomicOrOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -3945,10 +4383,10 @@ Deserializer::processOp<::mlir::spirv::AtomicSMaxOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4006,10 +4444,10 @@ Deserializer::processOp<::mlir::spirv::AtomicSMinOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4067,10 +4505,10 @@ Deserializer::processOp<::mlir::spirv::AtomicUMaxOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4128,10 +4566,10 @@ Deserializer::processOp<::mlir::spirv::AtomicUMinOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4189,10 +4627,10 @@ Deserializer::processOp<::mlir::spirv::AtomicXorOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("semantics", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4262,6 +4700,81 @@ Deserializer::processOp<::mlir::spirv::BitwiseOrOp>(ArrayRef<uint32_t> words) {
 template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::BitwiseXorOp>(ArrayRef<uint32_t> words) {
   return processOpWithoutGrammarAttr(words, "spv.BitwiseXor", true, 2);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLCeilOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.ceil", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLCosOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.cos", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLErfOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.erf", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLExpOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.exp", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLFAbsOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.fabs", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLFloorOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.floor", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLFmaOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.fma", true, 3);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLLogOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.log", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLPowOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.pow", true, 2);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLRoundOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.round", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLRsqrtOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.rsqrt", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLSAbsOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.s_abs", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLSinOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.sin", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLSqrtOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.sqrt", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::CLTanhOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.CL.tanh", true, 1);
 }
 
 template <> LogicalResult
@@ -4427,6 +4940,33 @@ Deserializer::processOp<::mlir::spirv::CompositeInsertOp>(ArrayRef<uint32_t> wor
 }
 
 template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::ControlBarrierOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("memory_semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::ControlBarrierOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::ControlBarrierOp>(loc, resultTypes, operands, attributes); (void)op;
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::ConvertFToSOp>(ArrayRef<uint32_t> words) {
   return processOpWithoutGrammarAttr(words, "spv.ConvertFToS", true, 1);
 }
@@ -4447,13 +4987,13 @@ Deserializer::processOp<::mlir::spirv::ConvertUToFOp>(ArrayRef<uint32_t> words) 
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::CooperativeMatrixLengthNVOp>(ArrayRef<uint32_t> words) {
+Deserializer::processOp<::mlir::spirv::EXTAtomicFAddOp>(ArrayRef<uint32_t> words) {
   SmallVector<Type, 1> resultTypes;
   size_t wordIndex = 0; (void)wordIndex;
   uint32_t valueID = 0; (void)valueID;
   {
     if (wordIndex >= words.size()) {
-      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::CooperativeMatrixLengthNVOp");
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::EXTAtomicFAddOp");
     }
     auto ty = getType(words[wordIndex]);
     if (!ty) {
@@ -4462,49 +5002,7 @@ Deserializer::processOp<::mlir::spirv::CooperativeMatrixLengthNVOp>(ArrayRef<uin
     resultTypes.push_back(ty);
     wordIndex++;
     if (wordIndex >= words.size()) {
-      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::CooperativeMatrixLengthNVOp");
-    }
-  }
-  valueID = words[wordIndex++];
-  SmallVector<Value, 4> operands;
-  SmallVector<NamedAttribute, 4> attributes;
-  if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("type", TypeAttr::get(getType(words[wordIndex++]))));
-  }
-  if (wordIndex != words.size()) {
-    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::CooperativeMatrixLengthNVOp, only ") << wordIndex << " of " << words.size() << " processed";
-  }
-
-  if (decorations.count(valueID)) {
-    auto attrs = decorations[valueID].getAttrs();
-    attributes.append(attrs.begin(), attrs.end());
-  }
-  Location loc = createFileLineColLoc(opBuilder);
-  auto op = opBuilder.create<::mlir::spirv::CooperativeMatrixLengthNVOp>(loc, resultTypes, operands, attributes); (void)op;
-  valueMap[valueID] = op.getResult();
-
-  if (op.hasTrait<OpTrait::IsTerminator>())
-    (void)clearDebugLine();
-  return success();
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::CooperativeMatrixLoadNVOp>(ArrayRef<uint32_t> words) {
-  SmallVector<Type, 1> resultTypes;
-  size_t wordIndex = 0; (void)wordIndex;
-  uint32_t valueID = 0; (void)valueID;
-  {
-    if (wordIndex >= words.size()) {
-      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::CooperativeMatrixLoadNVOp");
-    }
-    auto ty = getType(words[wordIndex]);
-    if (!ty) {
-      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
-    }
-    resultTypes.push_back(ty);
-    wordIndex++;
-    if (wordIndex >= words.size()) {
-      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::CooperativeMatrixLoadNVOp");
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::EXTAtomicFAddOp");
     }
   }
   valueID = words[wordIndex++];
@@ -4519,12 +5017,10 @@ Deserializer::processOp<::mlir::spirv::CooperativeMatrixLoadNVOp>(ArrayRef<uint3
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4533,12 +5029,9 @@ Deserializer::processOp<::mlir::spirv::CooperativeMatrixLoadNVOp>(ArrayRef<uint3
     }
     operands.push_back(arg);
     wordIndex++;
-  }
-  if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getI32IntegerAttr(words[wordIndex++])));
   }
   if (wordIndex != words.size()) {
-    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::CooperativeMatrixLoadNVOp, only ") << wordIndex << " of " << words.size() << " processed";
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::EXTAtomicFAddOp, only ") << wordIndex << " of " << words.size() << " processed";
   }
 
   if (decorations.count(valueID)) {
@@ -4546,67 +5039,9 @@ Deserializer::processOp<::mlir::spirv::CooperativeMatrixLoadNVOp>(ArrayRef<uint3
     attributes.append(attrs.begin(), attrs.end());
   }
   Location loc = createFileLineColLoc(opBuilder);
-  auto op = opBuilder.create<::mlir::spirv::CooperativeMatrixLoadNVOp>(loc, resultTypes, operands, attributes); (void)op;
+  auto op = opBuilder.create<::mlir::spirv::EXTAtomicFAddOp>(loc, resultTypes, operands, attributes); (void)op;
   valueMap[valueID] = op.getResult();
 
-  if (op.hasTrait<OpTrait::IsTerminator>())
-    (void)clearDebugLine();
-  return success();
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::CooperativeMatrixMulAddNVOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.CooperativeMatrixMulAddNV", true, 3);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::CooperativeMatrixStoreNVOp>(ArrayRef<uint32_t> words) {
-  SmallVector<Type, 1> resultTypes;
-  size_t wordIndex = 0; (void)wordIndex;
-  uint32_t valueID = 0; (void)valueID;
-  SmallVector<Value, 4> operands;
-  SmallVector<NamedAttribute, 4> attributes;
-  if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
-  }
-  if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
-  }
-  if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
-  }
-  if (wordIndex < words.size()) {
-    auto arg = getValue(words[wordIndex]);
-    if (!arg) {
-      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
-    }
-    operands.push_back(arg);
-    wordIndex++;
-  }
-  if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getI32IntegerAttr(words[wordIndex++])));
-  }
-  if (wordIndex != words.size()) {
-    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::CooperativeMatrixStoreNVOp, only ") << wordIndex << " of " << words.size() << " processed";
-  }
-
-  Location loc = createFileLineColLoc(opBuilder);
-  auto op = opBuilder.create<::mlir::spirv::CooperativeMatrixStoreNVOp>(loc, resultTypes, operands, attributes); (void)op;
   if (op.hasTrait<OpTrait::IsTerminator>())
     (void)clearDebugLine();
   return success();
@@ -4713,173 +5148,178 @@ Deserializer::processOp<::mlir::spirv::FUnordNotEqualOp>(ArrayRef<uint32_t> word
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLAcosOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Acos", true, 1);
+Deserializer::processOp<::mlir::spirv::GLAcosOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Acos", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLAsinOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Asin", true, 1);
+Deserializer::processOp<::mlir::spirv::GLAsinOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Asin", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLAtanOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Atan", true, 1);
+Deserializer::processOp<::mlir::spirv::GLAtanOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Atan", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLCeilOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Ceil", true, 1);
+Deserializer::processOp<::mlir::spirv::GLCeilOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Ceil", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLCosOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Cos", true, 1);
+Deserializer::processOp<::mlir::spirv::GLCosOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Cos", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLCoshOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Cosh", true, 1);
+Deserializer::processOp<::mlir::spirv::GLCoshOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Cosh", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLExpOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Exp", true, 1);
+Deserializer::processOp<::mlir::spirv::GLExpOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Exp", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFAbsOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FAbs", true, 1);
+Deserializer::processOp<::mlir::spirv::GLFAbsOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FAbs", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFClampOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FClamp", true, 3);
+Deserializer::processOp<::mlir::spirv::GLFClampOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FClamp", true, 3);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFMaxOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FMax", true, 2);
+Deserializer::processOp<::mlir::spirv::GLFMaxOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FMax", true, 2);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFMinOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FMin", true, 2);
+Deserializer::processOp<::mlir::spirv::GLFMinOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FMin", true, 2);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFMixOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FMix", true, 3);
+Deserializer::processOp<::mlir::spirv::GLFMixOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FMix", true, 3);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFSignOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FSign", true, 1);
+Deserializer::processOp<::mlir::spirv::GLFSignOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FSign", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFloorOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Floor", true, 1);
+Deserializer::processOp<::mlir::spirv::GLFindUMsbOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FindUMsb", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFmaOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Fma", true, 3);
+Deserializer::processOp<::mlir::spirv::GLFloorOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Floor", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLFrexpStructOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.FrexpStruct", true, 1);
+Deserializer::processOp<::mlir::spirv::GLFmaOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Fma", true, 3);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLInverseSqrtOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.InverseSqrt", true, 1);
+Deserializer::processOp<::mlir::spirv::GLFrexpStructOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.FrexpStruct", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLLdexpOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Ldexp", true, 2);
+Deserializer::processOp<::mlir::spirv::GLInverseSqrtOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.InverseSqrt", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLLogOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Log", true, 1);
+Deserializer::processOp<::mlir::spirv::GLLdexpOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Ldexp", true, 2);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLPowOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Pow", true, 2);
+Deserializer::processOp<::mlir::spirv::GLLogOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Log", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLRoundOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Round", true, 1);
+Deserializer::processOp<::mlir::spirv::GLPowOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Pow", true, 2);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSAbsOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.SAbs", true, 1);
+Deserializer::processOp<::mlir::spirv::GLRoundOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Round", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSClampOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.SClamp", true, 3);
+Deserializer::processOp<::mlir::spirv::GLSAbsOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.SAbs", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSMaxOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.SMax", true, 2);
+Deserializer::processOp<::mlir::spirv::GLSClampOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.SClamp", true, 3);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSMinOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.SMin", true, 2);
+Deserializer::processOp<::mlir::spirv::GLSMaxOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.SMax", true, 2);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSSignOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.SSign", true, 1);
+Deserializer::processOp<::mlir::spirv::GLSMinOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.SMin", true, 2);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSinOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Sin", true, 1);
+Deserializer::processOp<::mlir::spirv::GLSSignOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.SSign", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSinhOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Sinh", true, 1);
+Deserializer::processOp<::mlir::spirv::GLSinOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Sin", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLSqrtOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Sqrt", true, 1);
+Deserializer::processOp<::mlir::spirv::GLSinhOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Sinh", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLTanOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Tan", true, 1);
+Deserializer::processOp<::mlir::spirv::GLSqrtOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Sqrt", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLTanhOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.Tanh", true, 1);
+Deserializer::processOp<::mlir::spirv::GLTanOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Tan", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLUClampOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.UClamp", true, 3);
+Deserializer::processOp<::mlir::spirv::GLTanhOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.Tanh", true, 1);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLUMaxOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.UMax", true, 2);
+Deserializer::processOp<::mlir::spirv::GLUClampOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.UClamp", true, 3);
 }
 
 template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::GLSLUMinOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.GLSL.UMin", true, 2);
+Deserializer::processOp<::mlir::spirv::GLUMaxOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.UMax", true, 2);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::GLUMinOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.GL.UMin", true, 2);
 }
 
 template <> LogicalResult
@@ -4905,7 +5345,7 @@ Deserializer::processOp<::mlir::spirv::GroupBroadcastOp>(ArrayRef<uint32_t> word
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -4963,7 +5403,7 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformBallotOp>(ArrayRef<uint32_
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5013,7 +5453,7 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformBroadcastOp>(ArrayRef<uint
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5071,7 +5511,7 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformElectOp>(ArrayRef<uint32_t
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex != words.size()) {
     return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::GroupNonUniformElectOp, only ") << wordIndex << " of " << words.size() << " processed";
@@ -5113,10 +5553,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformFAddOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5173,10 +5613,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformFMaxOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5233,10 +5673,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformFMinOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5293,10 +5733,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformFMulOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5353,10 +5793,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformIAddOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5413,10 +5853,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformIMulOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5473,10 +5913,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformSMaxOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5533,10 +5973,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformSMinOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5571,6 +6011,238 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformSMinOp>(ArrayRef<uint32_t>
 }
 
 template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::GroupNonUniformShuffleDownOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleDownOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleDownOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::GroupNonUniformShuffleDownOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::GroupNonUniformShuffleDownOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::GroupNonUniformShuffleOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::GroupNonUniformShuffleOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::GroupNonUniformShuffleOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::GroupNonUniformShuffleUpOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleUpOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleUpOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::GroupNonUniformShuffleUpOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::GroupNonUniformShuffleUpOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::GroupNonUniformShuffleXorOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleXorOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::GroupNonUniformShuffleXorOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::GroupNonUniformShuffleXorOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::GroupNonUniformShuffleXorOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::GroupNonUniformUMaxOp>(ArrayRef<uint32_t> words) {
   SmallVector<Type, 1> resultTypes;
   size_t wordIndex = 0; (void)wordIndex;
@@ -5593,10 +6265,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformUMaxOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5653,10 +6325,10 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformUMinOp>(ArrayRef<uint32_t>
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("execution_scope", getConstantInt(words[wordIndex++])));
+    attributes.push_back(opBuilder.getNamedAttr("execution_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("group_operation", opBuilder.getAttr<::mlir::spirv::GroupOperationAttr>(static_cast<::mlir::spirv::GroupOperation>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     auto arg = getValue(words[wordIndex]);
@@ -5691,6 +6363,11 @@ Deserializer::processOp<::mlir::spirv::GroupNonUniformUMinOp>(ArrayRef<uint32_t>
 }
 
 template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::IAddCarryOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.IAddCarry", true, 2);
+}
+
+template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::IAddOp>(ArrayRef<uint32_t> words) {
   return processOpWithoutGrammarAttr(words, "spv.IAdd", true, 2);
 }
@@ -5706,8 +6383,252 @@ Deserializer::processOp<::mlir::spirv::IMulOp>(ArrayRef<uint32_t> words) {
 }
 
 template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::INTELJointMatrixLoadOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::INTELJointMatrixLoadOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::INTELJointMatrixLoadOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("layout", opBuilder.getAttr<::mlir::spirv::MatrixLayoutAttr>(static_cast<::mlir::spirv::MatrixLayout>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+      attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getAttr<::mlir::spirv::MemoryAccessAttr>(static_cast<::mlir::spirv::MemoryAccess>(words[wordIndex++]))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("alignment", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::INTELJointMatrixLoadOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::INTELJointMatrixLoadOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::INTELJointMatrixMadOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::INTELJointMatrixMadOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::INTELJointMatrixMadOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::INTELJointMatrixMadOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::INTELJointMatrixMadOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::INTELJointMatrixStoreOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("layout", opBuilder.getAttr<::mlir::spirv::MatrixLayoutAttr>(static_cast<::mlir::spirv::MatrixLayout>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+      attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getAttr<::mlir::spirv::MemoryAccessAttr>(static_cast<::mlir::spirv::MemoryAccess>(words[wordIndex++]))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("alignment", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::INTELJointMatrixStoreOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::INTELJointMatrixStoreOp>(loc, resultTypes, operands, attributes); (void)op;
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::INTELJointMatrixWorkItemLengthOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::INTELJointMatrixWorkItemLengthOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::INTELJointMatrixWorkItemLengthOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("type", TypeAttr::get(getType(words[wordIndex++]))));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::INTELJointMatrixWorkItemLengthOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::INTELJointMatrixWorkItemLengthOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::INTELSubgroupBlockReadOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.INTEL.SubgroupBlockRead", true, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::INTELSubgroupBlockWriteOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.INTEL.SubgroupBlockWrite", false, 2);
+}
+
+template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::INotEqualOp>(ArrayRef<uint32_t> words) {
   return processOpWithoutGrammarAttr(words, "spv.INotEqual", true, 2);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::ISubBorrowOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.ISubBorrow", true, 2);
 }
 
 template <> LogicalResult
@@ -5762,7 +6683,7 @@ Deserializer::processOp<::mlir::spirv::ImageDrefGatherOp>(ArrayRef<uint32_t> wor
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("imageoperands", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("imageoperands", opBuilder.getAttr<::mlir::spirv::ImageOperandsAttr>(static_cast<::mlir::spirv::ImageOperands>(words[wordIndex++]))));
   }
   for (; wordIndex < words.size(); ++wordIndex) {
     auto arg = getValue(words[wordIndex]);
@@ -5871,6 +6792,16 @@ Deserializer::processOp<::mlir::spirv::IsNanOp>(ArrayRef<uint32_t> words) {
 }
 
 template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::KHRAssumeTrueOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.KHR.AssumeTrue", false, 1);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::KHRSubgroupBallotOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.KHR.SubgroupBallot", true, 1);
+}
+
+template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::LoadOp>(ArrayRef<uint32_t> words) {
   SmallVector<Type, 1> resultTypes;
   size_t wordIndex = 0; (void)wordIndex;
@@ -5901,7 +6832,7 @@ Deserializer::processOp<::mlir::spirv::LoadOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getAttr<::mlir::spirv::MemoryAccessAttr>(static_cast<::mlir::spirv::MemoryAccess>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     attributes.push_back(opBuilder.getNamedAttr("alignment", opBuilder.getI32IntegerAttr(words[wordIndex++])));
@@ -5959,78 +6890,198 @@ Deserializer::processOp<::mlir::spirv::MatrixTimesScalarOp>(ArrayRef<uint32_t> w
 }
 
 template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::MemoryBarrierOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("memory_scope", opBuilder.getAttr<::mlir::spirv::ScopeAttr>(static_cast<::mlir::spirv::Scope>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("memory_semantics", opBuilder.getAttr<::mlir::spirv::MemorySemanticsAttr>(static_cast<::mlir::spirv::MemorySemantics>(getConstantInt(words[wordIndex++]).getValue().getZExtValue()))));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::MemoryBarrierOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::MemoryBarrierOp>(loc, resultTypes, operands, attributes); (void)op;
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::NVCooperativeMatrixLengthOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::NVCooperativeMatrixLengthOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::NVCooperativeMatrixLengthOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    attributes.push_back(opBuilder.getNamedAttr("type", TypeAttr::get(getType(words[wordIndex++]))));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::NVCooperativeMatrixLengthOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::NVCooperativeMatrixLengthOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::NVCooperativeMatrixLoadOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  {
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result type <id> while deserializing ::mlir::spirv::NVCooperativeMatrixLoadOp");
+    }
+    auto ty = getType(words[wordIndex]);
+    if (!ty) {
+      return emitError(unknownLoc, "unknown type result <id> : ") << words[wordIndex];
+    }
+    resultTypes.push_back(ty);
+    wordIndex++;
+    if (wordIndex >= words.size()) {
+      return emitError(unknownLoc, "expected result <id> while deserializing ::mlir::spirv::NVCooperativeMatrixLoadOp");
+    }
+  }
+  valueID = words[wordIndex++];
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+      attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getAttr<::mlir::spirv::MemoryAccessAttr>(static_cast<::mlir::spirv::MemoryAccess>(words[wordIndex++]))));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::NVCooperativeMatrixLoadOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  if (decorations.count(valueID)) {
+    auto attrs = decorations[valueID].getAttrs();
+    attributes.append(attrs.begin(), attrs.end());
+  }
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::NVCooperativeMatrixLoadOp>(loc, resultTypes, operands, attributes); (void)op;
+  valueMap[valueID] = op.getResult();
+
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::NVCooperativeMatrixMulAddOp>(ArrayRef<uint32_t> words) {
+  return processOpWithoutGrammarAttr(words, "spv.NV.CooperativeMatrixMulAdd", true, 3);
+}
+
+template <> LogicalResult
+Deserializer::processOp<::mlir::spirv::NVCooperativeMatrixStoreOp>(ArrayRef<uint32_t> words) {
+  SmallVector<Type, 1> resultTypes;
+  size_t wordIndex = 0; (void)wordIndex;
+  uint32_t valueID = 0; (void)valueID;
+  SmallVector<Value, 4> operands;
+  SmallVector<NamedAttribute, 4> attributes;
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+    auto arg = getValue(words[wordIndex]);
+    if (!arg) {
+      return emitError(unknownLoc, "unknown result <id> : ") << words[wordIndex];
+    }
+    operands.push_back(arg);
+    wordIndex++;
+  }
+  if (wordIndex < words.size()) {
+      attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getAttr<::mlir::spirv::MemoryAccessAttr>(static_cast<::mlir::spirv::MemoryAccess>(words[wordIndex++]))));
+  }
+  if (wordIndex != words.size()) {
+    return emitError(unknownLoc, "found more operands than expected when deserializing ::mlir::spirv::NVCooperativeMatrixStoreOp, only ") << wordIndex << " of " << words.size() << " processed";
+  }
+
+  Location loc = createFileLineColLoc(opBuilder);
+  auto op = opBuilder.create<::mlir::spirv::NVCooperativeMatrixStoreOp>(loc, resultTypes, operands, attributes); (void)op;
+  if (op.hasTrait<OpTrait::IsTerminator>())
+    (void)clearDebugLine();
+  return success();
+}
+
+template <> LogicalResult
 Deserializer::processOp<::mlir::spirv::NotOp>(ArrayRef<uint32_t> words) {
   return processOpWithoutGrammarAttr(words, "spv.Not", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLCeilOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.ceil", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLCosOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.cos", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLErfOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.erf", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLExpOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.exp", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLFAbsOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.fabs", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLFloorOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.floor", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLFmaOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.fma", true, 3);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLLogOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.log", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLPowOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.pow", true, 2);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLRsqrtOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.rsqrt", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLSAbsOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.s_abs", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLSinOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.sin", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLSqrtOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.sqrt", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::OCLTanhOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.OCL.tanh", true, 1);
 }
 
 template <> LogicalResult
@@ -6199,7 +7250,7 @@ Deserializer::processOp<::mlir::spirv::StoreOp>(ArrayRef<uint32_t> words) {
     wordIndex++;
   }
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("memory_access", opBuilder.getAttr<::mlir::spirv::MemoryAccessAttr>(static_cast<::mlir::spirv::MemoryAccess>(words[wordIndex++]))));
   }
   if (wordIndex < words.size()) {
     attributes.push_back(opBuilder.getNamedAttr("alignment", opBuilder.getI32IntegerAttr(words[wordIndex++])));
@@ -6213,21 +7264,6 @@ Deserializer::processOp<::mlir::spirv::StoreOp>(ArrayRef<uint32_t> words) {
   if (op.hasTrait<OpTrait::IsTerminator>())
     (void)clearDebugLine();
   return success();
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::SubgroupBallotKHROp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.SubgroupBallotKHR", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::SubgroupBlockReadINTELOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.SubgroupBlockReadINTEL", true, 1);
-}
-
-template <> LogicalResult
-Deserializer::processOp<::mlir::spirv::SubgroupBlockWriteINTELOp>(ArrayRef<uint32_t> words) {
-  return processOpWithoutGrammarAttr(words, "spv.SubgroupBlockWriteINTEL", false, 2);
 }
 
 template <> LogicalResult
@@ -6303,7 +7339,7 @@ Deserializer::processOp<::mlir::spirv::VariableOp>(ArrayRef<uint32_t> words) {
   SmallVector<Value, 4> operands;
   SmallVector<NamedAttribute, 4> attributes;
   if (wordIndex < words.size()) {
-    attributes.push_back(opBuilder.getNamedAttr("storage_class", opBuilder.getI32IntegerAttr(words[wordIndex++])));
+      attributes.push_back(opBuilder.getNamedAttr("storage_class", opBuilder.getAttr<::mlir::spirv::StorageClassAttr>(static_cast<::mlir::spirv::StorageClass>(words[wordIndex++]))));
   }
   for (; wordIndex < words.size(); ++wordIndex) {
     auto arg = getValue(words[wordIndex]);
@@ -6410,8 +7446,6 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
   switch (opcode) {
   case spirv::Opcode::OpAccessChain:
     return processOp<::mlir::spirv::AccessChainOp>(words);
-  case spirv::Opcode::OpAssumeTrueKHR:
-    return processOp<::mlir::spirv::AssumeTrueKHROp>(words);
   case spirv::Opcode::OpAtomicAnd:
     return processOp<::mlir::spirv::AtomicAndOp>(words);
   case spirv::Opcode::OpAtomicCompareExchange:
@@ -6420,8 +7454,6 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::AtomicCompareExchangeWeakOp>(words);
   case spirv::Opcode::OpAtomicExchange:
     return processOp<::mlir::spirv::AtomicExchangeOp>(words);
-  case spirv::Opcode::OpAtomicFAddEXT:
-    return processOp<::mlir::spirv::AtomicFAddEXTOp>(words);
   case spirv::Opcode::OpAtomicIAdd:
     return processOp<::mlir::spirv::AtomicIAddOp>(words);
   case spirv::Opcode::OpAtomicIDecrement:
@@ -6480,16 +7512,10 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::ConvertSToFOp>(words);
   case spirv::Opcode::OpConvertUToF:
     return processOp<::mlir::spirv::ConvertUToFOp>(words);
-  case spirv::Opcode::OpCooperativeMatrixLengthNV:
-    return processOp<::mlir::spirv::CooperativeMatrixLengthNVOp>(words);
-  case spirv::Opcode::OpCooperativeMatrixLoadNV:
-    return processOp<::mlir::spirv::CooperativeMatrixLoadNVOp>(words);
-  case spirv::Opcode::OpCooperativeMatrixMulAddNV:
-    return processOp<::mlir::spirv::CooperativeMatrixMulAddNVOp>(words);
-  case spirv::Opcode::OpCooperativeMatrixStoreNV:
-    return processOp<::mlir::spirv::CooperativeMatrixStoreNVOp>(words);
   case spirv::Opcode::OpCopyMemory:
     return processOp<::mlir::spirv::CopyMemoryOp>(words);
+  case spirv::Opcode::OpAtomicFAddEXT:
+    return processOp<::mlir::spirv::EXTAtomicFAddOp>(words);
   case spirv::Opcode::OpEntryPoint:
     return processOp<::mlir::spirv::EntryPointOp>(words);
   case spirv::Opcode::OpExecutionMode:
@@ -6560,18 +7586,42 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::GroupNonUniformSMaxOp>(words);
   case spirv::Opcode::OpGroupNonUniformSMin:
     return processOp<::mlir::spirv::GroupNonUniformSMinOp>(words);
+  case spirv::Opcode::OpGroupNonUniformShuffleDown:
+    return processOp<::mlir::spirv::GroupNonUniformShuffleDownOp>(words);
+  case spirv::Opcode::OpGroupNonUniformShuffle:
+    return processOp<::mlir::spirv::GroupNonUniformShuffleOp>(words);
+  case spirv::Opcode::OpGroupNonUniformShuffleUp:
+    return processOp<::mlir::spirv::GroupNonUniformShuffleUpOp>(words);
+  case spirv::Opcode::OpGroupNonUniformShuffleXor:
+    return processOp<::mlir::spirv::GroupNonUniformShuffleXorOp>(words);
   case spirv::Opcode::OpGroupNonUniformUMax:
     return processOp<::mlir::spirv::GroupNonUniformUMaxOp>(words);
   case spirv::Opcode::OpGroupNonUniformUMin:
     return processOp<::mlir::spirv::GroupNonUniformUMinOp>(words);
+  case spirv::Opcode::OpIAddCarry:
+    return processOp<::mlir::spirv::IAddCarryOp>(words);
   case spirv::Opcode::OpIAdd:
     return processOp<::mlir::spirv::IAddOp>(words);
   case spirv::Opcode::OpIEqual:
     return processOp<::mlir::spirv::IEqualOp>(words);
   case spirv::Opcode::OpIMul:
     return processOp<::mlir::spirv::IMulOp>(words);
+  case spirv::Opcode::OpJointMatrixLoadINTEL:
+    return processOp<::mlir::spirv::INTELJointMatrixLoadOp>(words);
+  case spirv::Opcode::OpJointMatrixMadINTEL:
+    return processOp<::mlir::spirv::INTELJointMatrixMadOp>(words);
+  case spirv::Opcode::OpJointMatrixStoreINTEL:
+    return processOp<::mlir::spirv::INTELJointMatrixStoreOp>(words);
+  case spirv::Opcode::OpJointMatrixWorkItemLengthINTEL:
+    return processOp<::mlir::spirv::INTELJointMatrixWorkItemLengthOp>(words);
+  case spirv::Opcode::OpSubgroupBlockReadINTEL:
+    return processOp<::mlir::spirv::INTELSubgroupBlockReadOp>(words);
+  case spirv::Opcode::OpSubgroupBlockWriteINTEL:
+    return processOp<::mlir::spirv::INTELSubgroupBlockWriteOp>(words);
   case spirv::Opcode::OpINotEqual:
     return processOp<::mlir::spirv::INotEqualOp>(words);
+  case spirv::Opcode::OpISubBorrow:
+    return processOp<::mlir::spirv::ISubBorrowOp>(words);
   case spirv::Opcode::OpISub:
     return processOp<::mlir::spirv::ISubOp>(words);
   case spirv::Opcode::OpImageDrefGather:
@@ -6586,6 +7636,10 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::IsInfOp>(words);
   case spirv::Opcode::OpIsNan:
     return processOp<::mlir::spirv::IsNanOp>(words);
+  case spirv::Opcode::OpAssumeTrueKHR:
+    return processOp<::mlir::spirv::KHRAssumeTrueOp>(words);
+  case spirv::Opcode::OpSubgroupBallotKHR:
+    return processOp<::mlir::spirv::KHRSubgroupBallotOp>(words);
   case spirv::Opcode::OpLoad:
     return processOp<::mlir::spirv::LoadOp>(words);
   case spirv::Opcode::OpLogicalAnd:
@@ -6604,6 +7658,14 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::MatrixTimesScalarOp>(words);
   case spirv::Opcode::OpMemoryBarrier:
     return processOp<::mlir::spirv::MemoryBarrierOp>(words);
+  case spirv::Opcode::OpCooperativeMatrixLengthNV:
+    return processOp<::mlir::spirv::NVCooperativeMatrixLengthOp>(words);
+  case spirv::Opcode::OpCooperativeMatrixLoadNV:
+    return processOp<::mlir::spirv::NVCooperativeMatrixLoadOp>(words);
+  case spirv::Opcode::OpCooperativeMatrixMulAddNV:
+    return processOp<::mlir::spirv::NVCooperativeMatrixMulAddOp>(words);
+  case spirv::Opcode::OpCooperativeMatrixStoreNV:
+    return processOp<::mlir::spirv::NVCooperativeMatrixStoreOp>(words);
   case spirv::Opcode::OpNot:
     return processOp<::mlir::spirv::NotOp>(words);
   case spirv::Opcode::OpOrdered:
@@ -6642,12 +7704,6 @@ LogicalResult spirv::Deserializer::dispatchToAutogenDeserialization(spirv::Opcod
     return processOp<::mlir::spirv::ShiftRightLogicalOp>(words);
   case spirv::Opcode::OpStore:
     return processOp<::mlir::spirv::StoreOp>(words);
-  case spirv::Opcode::OpSubgroupBallotKHR:
-    return processOp<::mlir::spirv::SubgroupBallotKHROp>(words);
-  case spirv::Opcode::OpSubgroupBlockReadINTEL:
-    return processOp<::mlir::spirv::SubgroupBlockReadINTELOp>(words);
-  case spirv::Opcode::OpSubgroupBlockWriteINTEL:
-    return processOp<::mlir::spirv::SubgroupBlockWriteINTELOp>(words);
   case spirv::Opcode::OpTranspose:
     return processOp<::mlir::spirv::TransposeOp>(words);
   case spirv::Opcode::OpUConvert:
@@ -6692,73 +7748,75 @@ LogicalResult spirv::Deserializer::dispatchToExtensionSetAutogenDeserialization(
   if (extensionSetName == "GLSL.std.450") {
     switch (instructionID) {
     case 17:
-      return processOp<::mlir::spirv::GLSLAcosOp>(words);
+      return processOp<::mlir::spirv::GLAcosOp>(words);
     case 16:
-      return processOp<::mlir::spirv::GLSLAsinOp>(words);
+      return processOp<::mlir::spirv::GLAsinOp>(words);
     case 18:
-      return processOp<::mlir::spirv::GLSLAtanOp>(words);
+      return processOp<::mlir::spirv::GLAtanOp>(words);
     case 9:
-      return processOp<::mlir::spirv::GLSLCeilOp>(words);
+      return processOp<::mlir::spirv::GLCeilOp>(words);
     case 14:
-      return processOp<::mlir::spirv::GLSLCosOp>(words);
+      return processOp<::mlir::spirv::GLCosOp>(words);
     case 20:
-      return processOp<::mlir::spirv::GLSLCoshOp>(words);
+      return processOp<::mlir::spirv::GLCoshOp>(words);
     case 27:
-      return processOp<::mlir::spirv::GLSLExpOp>(words);
+      return processOp<::mlir::spirv::GLExpOp>(words);
     case 4:
-      return processOp<::mlir::spirv::GLSLFAbsOp>(words);
+      return processOp<::mlir::spirv::GLFAbsOp>(words);
     case 43:
-      return processOp<::mlir::spirv::GLSLFClampOp>(words);
+      return processOp<::mlir::spirv::GLFClampOp>(words);
     case 40:
-      return processOp<::mlir::spirv::GLSLFMaxOp>(words);
+      return processOp<::mlir::spirv::GLFMaxOp>(words);
     case 37:
-      return processOp<::mlir::spirv::GLSLFMinOp>(words);
+      return processOp<::mlir::spirv::GLFMinOp>(words);
     case 46:
-      return processOp<::mlir::spirv::GLSLFMixOp>(words);
+      return processOp<::mlir::spirv::GLFMixOp>(words);
     case 6:
-      return processOp<::mlir::spirv::GLSLFSignOp>(words);
+      return processOp<::mlir::spirv::GLFSignOp>(words);
+    case 75:
+      return processOp<::mlir::spirv::GLFindUMsbOp>(words);
     case 8:
-      return processOp<::mlir::spirv::GLSLFloorOp>(words);
+      return processOp<::mlir::spirv::GLFloorOp>(words);
     case 50:
-      return processOp<::mlir::spirv::GLSLFmaOp>(words);
+      return processOp<::mlir::spirv::GLFmaOp>(words);
     case 52:
-      return processOp<::mlir::spirv::GLSLFrexpStructOp>(words);
+      return processOp<::mlir::spirv::GLFrexpStructOp>(words);
     case 32:
-      return processOp<::mlir::spirv::GLSLInverseSqrtOp>(words);
+      return processOp<::mlir::spirv::GLInverseSqrtOp>(words);
     case 53:
-      return processOp<::mlir::spirv::GLSLLdexpOp>(words);
+      return processOp<::mlir::spirv::GLLdexpOp>(words);
     case 28:
-      return processOp<::mlir::spirv::GLSLLogOp>(words);
+      return processOp<::mlir::spirv::GLLogOp>(words);
     case 26:
-      return processOp<::mlir::spirv::GLSLPowOp>(words);
+      return processOp<::mlir::spirv::GLPowOp>(words);
     case 1:
-      return processOp<::mlir::spirv::GLSLRoundOp>(words);
+      return processOp<::mlir::spirv::GLRoundOp>(words);
     case 5:
-      return processOp<::mlir::spirv::GLSLSAbsOp>(words);
+      return processOp<::mlir::spirv::GLSAbsOp>(words);
     case 45:
-      return processOp<::mlir::spirv::GLSLSClampOp>(words);
+      return processOp<::mlir::spirv::GLSClampOp>(words);
     case 42:
-      return processOp<::mlir::spirv::GLSLSMaxOp>(words);
+      return processOp<::mlir::spirv::GLSMaxOp>(words);
     case 39:
-      return processOp<::mlir::spirv::GLSLSMinOp>(words);
+      return processOp<::mlir::spirv::GLSMinOp>(words);
     case 7:
-      return processOp<::mlir::spirv::GLSLSSignOp>(words);
+      return processOp<::mlir::spirv::GLSSignOp>(words);
     case 13:
-      return processOp<::mlir::spirv::GLSLSinOp>(words);
+      return processOp<::mlir::spirv::GLSinOp>(words);
     case 19:
-      return processOp<::mlir::spirv::GLSLSinhOp>(words);
+      return processOp<::mlir::spirv::GLSinhOp>(words);
     case 31:
-      return processOp<::mlir::spirv::GLSLSqrtOp>(words);
+      return processOp<::mlir::spirv::GLSqrtOp>(words);
     case 15:
-      return processOp<::mlir::spirv::GLSLTanOp>(words);
+      return processOp<::mlir::spirv::GLTanOp>(words);
     case 21:
-      return processOp<::mlir::spirv::GLSLTanhOp>(words);
+      return processOp<::mlir::spirv::GLTanhOp>(words);
     case 44:
-      return processOp<::mlir::spirv::GLSLUClampOp>(words);
+      return processOp<::mlir::spirv::GLUClampOp>(words);
     case 41:
-      return processOp<::mlir::spirv::GLSLUMaxOp>(words);
+      return processOp<::mlir::spirv::GLUMaxOp>(words);
     case 38:
-      return processOp<::mlir::spirv::GLSLUMinOp>(words);
+      return processOp<::mlir::spirv::GLUMinOp>(words);
     default:
       return emitError(unknownLoc, "unhandled deserializations of ") << instructionID << " from extension set " << extensionSetName;
     }
@@ -6766,33 +7824,35 @@ LogicalResult spirv::Deserializer::dispatchToExtensionSetAutogenDeserialization(
   if (extensionSetName == "OpenCL.std") {
     switch (instructionID) {
     case 12:
-      return processOp<::mlir::spirv::OCLCeilOp>(words);
+      return processOp<::mlir::spirv::CLCeilOp>(words);
     case 14:
-      return processOp<::mlir::spirv::OCLCosOp>(words);
+      return processOp<::mlir::spirv::CLCosOp>(words);
     case 18:
-      return processOp<::mlir::spirv::OCLErfOp>(words);
+      return processOp<::mlir::spirv::CLErfOp>(words);
     case 19:
-      return processOp<::mlir::spirv::OCLExpOp>(words);
+      return processOp<::mlir::spirv::CLExpOp>(words);
     case 23:
-      return processOp<::mlir::spirv::OCLFAbsOp>(words);
+      return processOp<::mlir::spirv::CLFAbsOp>(words);
     case 25:
-      return processOp<::mlir::spirv::OCLFloorOp>(words);
+      return processOp<::mlir::spirv::CLFloorOp>(words);
     case 26:
-      return processOp<::mlir::spirv::OCLFmaOp>(words);
+      return processOp<::mlir::spirv::CLFmaOp>(words);
     case 37:
-      return processOp<::mlir::spirv::OCLLogOp>(words);
+      return processOp<::mlir::spirv::CLLogOp>(words);
     case 48:
-      return processOp<::mlir::spirv::OCLPowOp>(words);
+      return processOp<::mlir::spirv::CLPowOp>(words);
+    case 55:
+      return processOp<::mlir::spirv::CLRoundOp>(words);
     case 56:
-      return processOp<::mlir::spirv::OCLRsqrtOp>(words);
+      return processOp<::mlir::spirv::CLRsqrtOp>(words);
     case 141:
-      return processOp<::mlir::spirv::OCLSAbsOp>(words);
+      return processOp<::mlir::spirv::CLSAbsOp>(words);
     case 57:
-      return processOp<::mlir::spirv::OCLSinOp>(words);
+      return processOp<::mlir::spirv::CLSinOp>(words);
     case 61:
-      return processOp<::mlir::spirv::OCLSqrtOp>(words);
+      return processOp<::mlir::spirv::CLSqrtOp>(words);
     case 63:
-      return processOp<::mlir::spirv::OCLTanhOp>(words);
+      return processOp<::mlir::spirv::CLTanhOp>(words);
     default:
       return emitError(unknownLoc, "unhandled deserializations of ") << instructionID << " from extension set " << extensionSetName;
     }

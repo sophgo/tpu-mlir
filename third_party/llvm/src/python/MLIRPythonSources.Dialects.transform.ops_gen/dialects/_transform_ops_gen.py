@@ -21,6 +21,71 @@ class _Dialect(_ods_ir.Dialect):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class AlternativesOp(_ods_ir.OpView):
+  OPERATION_NAME = "transform.alternatives"
+
+  _ODS_REGIONS = (0, False)
+
+  def __init__(self, results_, num_alternatives, *, scope=None, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    if scope is not None: operands.append(_get_op_result_or_value(scope))
+    results.extend(results_)
+    _ods_successors = None
+    regions = 0 + num_alternatives
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def scope(self):
+    return None if len(self.operation.operands) < 1 else self.operation.operands[0]
+
+  @builtins.property
+  def results_(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def alternatives(self):
+    return self.regions[0:]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class ForeachOp(_ods_ir.OpView):
+  OPERATION_NAME = "transform.foreach"
+
+  _ODS_REGIONS = (1, True)
+
+  def __init__(self, results_, target, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.append(_get_op_result_or_value(target))
+    results.extend(results_)
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def target(self):
+    return self.operation.operands[0]
+
+  @builtins.property
+  def results_(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def body(self):
+    return self.regions[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class GetClosestIsolatedParentOp(_ods_ir.OpView):
   OPERATION_NAME = "transform.get_closest_isolated_parent"
 
@@ -44,6 +109,51 @@ class GetClosestIsolatedParentOp(_ods_ir.OpView):
 
   @builtins.property
   def parent(self):
+    return self.operation.results[0]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
+class MergeHandlesOp(_ods_ir.OpView):
+  OPERATION_NAME = "transform.merge_handles"
+
+  _ODS_REGIONS = (0, True)
+
+  def __init__(self, result, handles, *, deduplicate=None, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.extend(_get_op_results_or_values(handles))
+    if bool(deduplicate): attributes["deduplicate"] = _ods_ir.UnitAttr.get(
+      _ods_get_default_loc_context(loc))
+    results.append(result)
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def handles(self):
+    _ods_variadic_group_length = len(self.operation.operands) - 1 + 1
+    return self.operation.operands[0:0 + _ods_variadic_group_length]
+
+  @builtins.property
+  def deduplicate(self):
+    return "deduplicate" in self.operation.attributes
+
+  @deduplicate.setter
+  def deduplicate(self, value):
+    if bool(value):
+      self.operation.attributes["deduplicate"] = _ods_ir.UnitAttr.get()
+    elif "deduplicate" in self.operation.attributes:
+      del self.operation.attributes["deduplicate"]
+
+  @deduplicate.deleter
+  def deduplicate(self):
+    del self.operation.attributes["deduplicate"]
+
+  @builtins.property
+  def result(self):
     return self.operation.results[0]
 
 @_ods_cext.register_operation(_Dialect)
@@ -76,17 +186,52 @@ class PDLMatchOp(_ods_ir.OpView):
 
 @_ods_cext.register_operation(_Dialect)
 @_ods_extend_opview_class(_ods_ext_module)
+class ReplicateOp(_ods_ir.OpView):
+  OPERATION_NAME = "transform.replicate"
+
+  _ODS_REGIONS = (0, True)
+
+  def __init__(self, replicated, pattern, handles, *, loc=None, ip=None):
+    operands = []
+    results = []
+    attributes = {}
+    regions = None
+    operands.append(_get_op_result_or_value(pattern))
+    operands.extend(_get_op_results_or_values(handles))
+    results.extend(replicated)
+    _ods_successors = None
+    super().__init__(self.build_generic(
+      attributes=attributes, results=results, operands=operands,
+      successors=_ods_successors, regions=regions, loc=loc, ip=ip))
+
+  @builtins.property
+  def pattern(self):
+    return self.operation.operands[0]
+
+  @builtins.property
+  def handles(self):
+    _ods_variadic_group_length = len(self.operation.operands) - 2 + 1
+    return self.operation.operands[1:1 + _ods_variadic_group_length]
+
+  @builtins.property
+  def replicated(self):
+    _ods_variadic_group_length = len(self.operation.results) - 1 + 1
+    return self.operation.results[0:0 + _ods_variadic_group_length]
+
+@_ods_cext.register_operation(_Dialect)
+@_ods_extend_opview_class(_ods_ext_module)
 class SequenceOp(_ods_ir.OpView):
   OPERATION_NAME = "transform.sequence"
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, results_, *, root=None, loc=None, ip=None):
+  def __init__(self, results_, failure_propagation_mode, *, root=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
     regions = None
     if root is not None: operands.append(_get_op_result_or_value(root))
+    attributes["failure_propagation_mode"] = failure_propagation_mode
     results.extend(results_)
     _ods_successors = None
     super().__init__(self.build_generic(

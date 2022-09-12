@@ -32,6 +32,7 @@ struct MemoryEffectOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct MemoryEffectOpInterfaceTrait;
@@ -42,6 +43,7 @@ public:
   using ::mlir::OpInterface<MemoryEffectOpInterface, detail::MemoryEffectOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::MemoryEffectOpInterfaceTrait<ConcreteOp> {};
+  /// Collects all of the operation's effects into `effects`.
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects);
 
     /// Collect all of the effect instances that correspond to the given

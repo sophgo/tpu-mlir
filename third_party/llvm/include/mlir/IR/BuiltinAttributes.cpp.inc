@@ -11,19 +11,21 @@
 
 ::mlir::AffineMapAttr,
 ::mlir::ArrayAttr,
+::mlir::DenseArrayAttr,
 ::mlir::DenseIntOrFPElementsAttr,
+::mlir::DenseResourceElementsAttr,
 ::mlir::DenseStringElementsAttr,
 ::mlir::DictionaryAttr,
 ::mlir::FloatAttr,
 ::mlir::IntegerAttr,
 ::mlir::IntegerSetAttr,
 ::mlir::OpaqueAttr,
-::mlir::OpaqueElementsAttr,
 ::mlir::SparseElementsAttr,
 ::mlir::StringAttr,
 ::mlir::SymbolRefAttr,
 ::mlir::TypeAttr,
-::mlir::UnitAttr
+::mlir::UnitAttr,
+::mlir::StridedLayoutAttr
 
 #endif  // GET_ATTRDEF_LIST
 
@@ -34,7 +36,7 @@ namespace mlir {
 namespace detail {
 struct AffineMapAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<AffineMap>;
-  AffineMapAttrStorage(AffineMap value) : ::mlir::AttributeStorage(IndexType::get(value.getContext())), value(value) {}
+  AffineMapAttrStorage(AffineMap value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -66,7 +68,7 @@ namespace mlir {
 namespace detail {
 struct ArrayAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<Attribute>>;
-  ArrayAttrStorage(::llvm::ArrayRef<Attribute> value) : ::mlir::AttributeStorage(), value(value) {}
+  ArrayAttrStorage(::llvm::ArrayRef<Attribute> value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -96,8 +98,100 @@ ArrayAttr ArrayAttr::get(::mlir::MLIRContext *context, ::llvm::ArrayRef<Attribut
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::ArrayAttr)
 namespace mlir {
+namespace detail {
+struct DenseArrayAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<RankedTensorType, ::llvm::ArrayRef<char>>;
+  DenseArrayAttrStorage(RankedTensorType type, ::llvm::ArrayRef<char> rawData) : type(type), rawData(rawData) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (type == std::get<0>(tblgenKey)) && (rawData == std::get<1>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey), std::get<1>(tblgenKey));
+  }
+
+  static DenseArrayAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto type = std::get<0>(tblgenKey);
+    auto rawData = std::get<1>(tblgenKey);
+
+        if (!rawData.empty()) {
+          auto *alloc = static_cast<char *>(
+              allocator.allocate(rawData.size(), alignof(uint64_t)));
+          std::uninitialized_copy(rawData.begin(), rawData.end(), alloc);
+          rawData = ArrayRef<char>(alloc, rawData.size());
+        }
+
+    return new (allocator.allocate<DenseArrayAttrStorage>()) DenseArrayAttrStorage(type, rawData);
+  }
+
+  RankedTensorType type;
+  ::llvm::ArrayRef<char> rawData;
+};
+} // namespace detail
+DenseArrayAttr DenseArrayAttr::get(::mlir::MLIRContext *context, RankedTensorType type, ::llvm::ArrayRef<char> rawData) {
+  return Base::get(context, type, rawData);
+}
+
+DenseArrayAttr DenseArrayAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, RankedTensorType type, ::llvm::ArrayRef<char> rawData) {
+  return Base::getChecked(emitError, context, type, rawData);
+}
+
+DenseArrayAttr DenseArrayAttr::get(RankedTensorType type, ArrayRef<char> rawData) {
+  return Base::get(type.getContext(), type, rawData);
+}
+
+DenseArrayAttr DenseArrayAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, RankedTensorType type, ArrayRef<char> rawData) {
+  return Base::getChecked(emitError, type.getContext(), type, rawData);
+}
+
+RankedTensorType DenseArrayAttr::getType() const {
+  return getImpl()->type;
+}
+
+::llvm::ArrayRef<char> DenseArrayAttr::getRawData() const {
+  return getImpl()->rawData;
+}
+
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseArrayAttr)
+namespace mlir {
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseIntOrFPElementsAttr)
+namespace mlir {
+namespace detail {
+struct DenseResourceElementsAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<ShapedType, DenseResourceElementsHandle>;
+  DenseResourceElementsAttrStorage(ShapedType type, DenseResourceElementsHandle rawHandle) : type(type), rawHandle(rawHandle) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (type == std::get<0>(tblgenKey)) && (rawHandle == std::get<1>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey), std::get<1>(tblgenKey));
+  }
+
+  static DenseResourceElementsAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto type = std::get<0>(tblgenKey);
+    auto rawHandle = std::get<1>(tblgenKey);
+    return new (allocator.allocate<DenseResourceElementsAttrStorage>()) DenseResourceElementsAttrStorage(type, rawHandle);
+  }
+
+  ShapedType type;
+  DenseResourceElementsHandle rawHandle;
+};
+} // namespace detail
+ShapedType DenseResourceElementsAttr::getType() const {
+  return getImpl()->type;
+}
+
+DenseResourceElementsHandle DenseResourceElementsAttr::getRawHandle() const {
+  return getImpl()->rawHandle;
+}
+
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::DenseResourceElementsAttr)
 namespace mlir {
 DenseStringElementsAttr DenseStringElementsAttr::get(ShapedType type, ArrayRef<StringRef> values) {
   return Base::get(type.getContext(), type, values,
@@ -110,7 +204,7 @@ namespace mlir {
 namespace detail {
 struct DictionaryAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<NamedAttribute>>;
-  DictionaryAttrStorage(::llvm::ArrayRef<NamedAttribute> value) : ::mlir::AttributeStorage(), value(value) {}
+  DictionaryAttrStorage(::llvm::ArrayRef<NamedAttribute> value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -139,10 +233,10 @@ namespace mlir {
 namespace detail {
 struct FloatAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::Type, ::llvm::APFloat>;
-  FloatAttrStorage(::mlir::Type type, ::llvm::APFloat value) : ::mlir::AttributeStorage(type), value(value) {}
+  FloatAttrStorage(::mlir::Type type, ::llvm::APFloat value) : type(type), value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
-    return (getType() == std::get<0>(tblgenKey)) && (value.bitwiseIsEqual(std::get<1>(tblgenKey)));
+    return (type == std::get<0>(tblgenKey)) && (value.bitwiseIsEqual(std::get<1>(tblgenKey)));
   }
 
   static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
@@ -155,6 +249,7 @@ struct FloatAttrStorage : public ::mlir::AttributeStorage {
     return new (allocator.allocate<FloatAttrStorage>()) FloatAttrStorage(type, value);
   }
 
+  ::mlir::Type type;
   ::llvm::APFloat value;
 };
 } // namespace detail
@@ -191,7 +286,7 @@ FloatAttr FloatAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic(
 }
 
 ::mlir::Type FloatAttr::getType() const {
-  return getImpl()->getType().cast<::mlir::Type>();
+  return getImpl()->type;
 }
 
 ::llvm::APFloat FloatAttr::getValue() const {
@@ -204,10 +299,10 @@ namespace mlir {
 namespace detail {
 struct IntegerAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::mlir::Type, APInt>;
-  IntegerAttrStorage(::mlir::Type type, APInt value) : ::mlir::AttributeStorage(type), value(value) {}
+  IntegerAttrStorage(::mlir::Type type, APInt value) : type(type), value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
-    return (getType() == std::get<0>(tblgenKey)) && (value == std::get<1>(tblgenKey));
+    return (type == std::get<0>(tblgenKey)) && (value == std::get<1>(tblgenKey));
   }
 
   static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
@@ -220,6 +315,7 @@ struct IntegerAttrStorage : public ::mlir::AttributeStorage {
     return new (allocator.allocate<IntegerAttrStorage>()) IntegerAttrStorage(type, value);
   }
 
+  ::mlir::Type type;
   APInt value;
 };
 } // namespace detail
@@ -274,7 +370,7 @@ IntegerAttr IntegerAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnos
 }
 
 ::mlir::Type IntegerAttr::getType() const {
-  return getImpl()->getType().cast<::mlir::Type>();
+  return getImpl()->type;
 }
 
 APInt IntegerAttr::getValue() const {
@@ -287,7 +383,7 @@ namespace mlir {
 namespace detail {
 struct IntegerSetAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<IntegerSet>;
-  IntegerSetAttrStorage(IntegerSet value) : ::mlir::AttributeStorage(), value(value) {}
+  IntegerSetAttrStorage(IntegerSet value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -319,10 +415,10 @@ namespace mlir {
 namespace detail {
 struct OpaqueAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<StringAttr, ::llvm::StringRef, ::mlir::Type>;
-  OpaqueAttrStorage(StringAttr dialectNamespace, ::llvm::StringRef attrData, ::mlir::Type type) : ::mlir::AttributeStorage(type), dialectNamespace(dialectNamespace), attrData(attrData) {}
+  OpaqueAttrStorage(StringAttr dialectNamespace, ::llvm::StringRef attrData, ::mlir::Type type) : dialectNamespace(dialectNamespace), attrData(attrData), type(type) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
-    return (dialectNamespace == std::get<0>(tblgenKey)) && (attrData == std::get<1>(tblgenKey)) && (getType() == std::get<2>(tblgenKey));
+    return (dialectNamespace == std::get<0>(tblgenKey)) && (attrData == std::get<1>(tblgenKey)) && (type == std::get<2>(tblgenKey));
   }
 
   static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
@@ -339,6 +435,7 @@ struct OpaqueAttrStorage : public ::mlir::AttributeStorage {
 
   StringAttr dialectNamespace;
   ::llvm::StringRef attrData;
+  ::mlir::Type type;
 };
 } // namespace detail
 OpaqueAttr OpaqueAttr::get(StringAttr dialect, StringRef attrData, Type type) {
@@ -358,79 +455,19 @@ StringAttr OpaqueAttr::getDialectNamespace() const {
 }
 
 ::mlir::Type OpaqueAttr::getType() const {
-  return getImpl()->getType().cast<::mlir::Type>();
+  return getImpl()->type;
 }
 
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueAttr)
 namespace mlir {
 namespace detail {
-struct OpaqueElementsAttrStorage : public ::mlir::AttributeStorage {
-  using KeyTy = std::tuple<StringAttr, ::llvm::StringRef, ShapedType>;
-  OpaqueElementsAttrStorage(StringAttr dialect, ::llvm::StringRef value, ShapedType type) : ::mlir::AttributeStorage(type), dialect(dialect), value(value) {}
-
-  bool operator==(const KeyTy &tblgenKey) const {
-    return (dialect == std::get<0>(tblgenKey)) && (value == std::get<1>(tblgenKey)) && (getType() == std::get<2>(tblgenKey));
-  }
-
-  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
-    return ::llvm::hash_combine(std::get<0>(tblgenKey), std::get<1>(tblgenKey), std::get<2>(tblgenKey));
-  }
-
-  static OpaqueElementsAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
-    auto dialect = std::get<0>(tblgenKey);
-    auto value = std::get<1>(tblgenKey);
-    auto type = std::get<2>(tblgenKey);
-    value = allocator.copyInto(value);
-    return new (allocator.allocate<OpaqueElementsAttrStorage>()) OpaqueElementsAttrStorage(dialect, value, type);
-  }
-
-  StringAttr dialect;
-  ::llvm::StringRef value;
-};
-} // namespace detail
-OpaqueElementsAttr OpaqueElementsAttr::get(StringAttr dialect, ShapedType type, StringRef value) {
-  return Base::get(dialect.getContext(), dialect, value, type);
-}
-
-OpaqueElementsAttr OpaqueElementsAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, StringAttr dialect, ShapedType type, StringRef value) {
-  return Base::getChecked(emitError, dialect.getContext(), dialect, value, type);
-}
-
-OpaqueElementsAttr OpaqueElementsAttr::get(Dialect *dialect, ShapedType type, StringRef value) {
-  MLIRContext *ctxt = dialect->getContext();
-  StringAttr dialectName = StringAttr::get(ctxt, dialect->getNamespace());
-  return Base::get(ctxt, dialectName, value, type);
-}
-
-OpaqueElementsAttr OpaqueElementsAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Dialect *dialect, ShapedType type, StringRef value) {
-  MLIRContext *ctxt = dialect->getContext();
-  StringAttr dialectName = StringAttr::get(ctxt, dialect->getNamespace());
-  return Base::getChecked(emitError, ctxt, dialectName, value, type);
-}
-
-StringAttr OpaqueElementsAttr::getDialect() const {
-  return getImpl()->dialect;
-}
-
-::llvm::StringRef OpaqueElementsAttr::getValue() const {
-  return getImpl()->value;
-}
-
-ShapedType OpaqueElementsAttr::getType() const {
-  return getImpl()->getType().cast<ShapedType>();
-}
-
-} // namespace mlir
-MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::OpaqueElementsAttr)
-namespace mlir {
-namespace detail {
 struct SparseElementsAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<ShapedType, DenseIntElementsAttr, DenseElementsAttr>;
-  SparseElementsAttrStorage(ShapedType type, DenseIntElementsAttr indices, DenseElementsAttr values) : ::mlir::AttributeStorage(type), indices(indices), values(values) {}
+  SparseElementsAttrStorage(ShapedType type, DenseIntElementsAttr indices, DenseElementsAttr values) : type(type), indices(indices), values(values) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
-    return (getType() == std::get<0>(tblgenKey)) && (indices == std::get<1>(tblgenKey)) && (values == std::get<2>(tblgenKey));
+    return (type == std::get<0>(tblgenKey)) && (indices == std::get<1>(tblgenKey)) && (values == std::get<2>(tblgenKey));
   }
 
   static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
@@ -444,6 +481,7 @@ struct SparseElementsAttrStorage : public ::mlir::AttributeStorage {
     return new (allocator.allocate<SparseElementsAttrStorage>()) SparseElementsAttrStorage(type, indices, values);
   }
 
+  ShapedType type;
   DenseIntElementsAttr indices;
   DenseElementsAttr values;
 };
@@ -469,7 +507,7 @@ SparseElementsAttr SparseElementsAttr::getChecked(::llvm::function_ref<::mlir::I
 }
 
 ShapedType SparseElementsAttr::getType() const {
-  return getImpl()->getType().cast<ShapedType>();
+  return getImpl()->type;
 }
 
 DenseIntElementsAttr SparseElementsAttr::getIndices() const {
@@ -489,7 +527,7 @@ namespace mlir {
 namespace detail {
 struct SymbolRefAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<StringAttr, ::llvm::ArrayRef<FlatSymbolRefAttr>>;
-  SymbolRefAttrStorage(StringAttr rootReference, ::llvm::ArrayRef<FlatSymbolRefAttr> nestedReferences) : ::mlir::AttributeStorage(), rootReference(rootReference), nestedReferences(nestedReferences) {}
+  SymbolRefAttrStorage(StringAttr rootReference, ::llvm::ArrayRef<FlatSymbolRefAttr> nestedReferences) : rootReference(rootReference), nestedReferences(nestedReferences) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (rootReference == std::get<0>(tblgenKey)) && (nestedReferences == std::get<1>(tblgenKey));
@@ -528,7 +566,7 @@ namespace mlir {
 namespace detail {
 struct TypeAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<Type>;
-  TypeAttrStorage(Type value) : ::mlir::AttributeStorage(), value(value) {}
+  TypeAttrStorage(Type value) : value(value) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (value == std::get<0>(tblgenKey));
@@ -559,6 +597,49 @@ MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::TypeAttr)
 namespace mlir {
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::UnitAttr)
+namespace mlir {
+namespace detail {
+struct StridedLayoutAttrStorage : public ::mlir::AttributeStorage {
+  using KeyTy = std::tuple<int64_t, ::llvm::ArrayRef<int64_t>>;
+  StridedLayoutAttrStorage(int64_t offset, ::llvm::ArrayRef<int64_t> strides) : offset(offset), strides(strides) {}
+
+  bool operator==(const KeyTy &tblgenKey) const {
+    return (offset == std::get<0>(tblgenKey)) && (strides == std::get<1>(tblgenKey));
+  }
+
+  static ::llvm::hash_code hashKey(const KeyTy &tblgenKey) {
+    return ::llvm::hash_combine(std::get<0>(tblgenKey), std::get<1>(tblgenKey));
+  }
+
+  static StridedLayoutAttrStorage *construct(::mlir::AttributeStorageAllocator &allocator, const KeyTy &tblgenKey) {
+    auto offset = std::get<0>(tblgenKey);
+    auto strides = std::get<1>(tblgenKey);
+    strides = allocator.copyInto(strides);
+    return new (allocator.allocate<StridedLayoutAttrStorage>()) StridedLayoutAttrStorage(offset, strides);
+  }
+
+  int64_t offset;
+  ::llvm::ArrayRef<int64_t> strides;
+};
+} // namespace detail
+StridedLayoutAttr StridedLayoutAttr::get(::mlir::MLIRContext *context, int64_t offset, ::llvm::ArrayRef<int64_t> strides) {
+  return Base::get(context, offset, strides);
+}
+
+StridedLayoutAttr StridedLayoutAttr::getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, int64_t offset, ::llvm::ArrayRef<int64_t> strides) {
+  return Base::getChecked(emitError, context, offset, strides);
+}
+
+int64_t StridedLayoutAttr::getOffset() const {
+  return getImpl()->offset;
+}
+
+::llvm::ArrayRef<int64_t> StridedLayoutAttr::getStrides() const {
+  return getImpl()->strides;
+}
+
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::StridedLayoutAttr)
 
 #endif  // GET_ATTRDEF_CLASSES
 

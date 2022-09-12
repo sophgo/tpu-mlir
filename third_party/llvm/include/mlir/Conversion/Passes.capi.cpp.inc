@@ -11,7 +11,7 @@ MlirPass mlirCreateConversionConvertAMDGPUToROCDL() {
   return wrap(mlir::createConvertAMDGPUToROCDLPass().release());
 }
 void mlirRegisterConversionConvertAMDGPUToROCDL() {
-  registerConvertAMDGPUToROCDLPass();
+  registerConvertAMDGPUToROCDL();
 }
 
 
@@ -19,7 +19,7 @@ MlirPass mlirCreateConversionConvertAffineForToGPU() {
   return wrap(mlir::createAffineForToGPUPass().release());
 }
 void mlirRegisterConversionConvertAffineForToGPU() {
-  registerConvertAffineForToGPUPass();
+  registerConvertAffineForToGPU();
 }
 
 
@@ -27,7 +27,7 @@ MlirPass mlirCreateConversionConvertAffineToStandard() {
   return wrap(mlir::createLowerAffinePass().release());
 }
 void mlirRegisterConversionConvertAffineToStandard() {
-  registerConvertAffineToStandardPass();
+  registerConvertAffineToStandard();
 }
 
 
@@ -35,7 +35,7 @@ MlirPass mlirCreateConversionConvertArithmeticToLLVM() {
   return wrap(mlir::arith::createConvertArithmeticToLLVMPass().release());
 }
 void mlirRegisterConversionConvertArithmeticToLLVM() {
-  registerConvertArithmeticToLLVMPass();
+  registerConvertArithmeticToLLVM();
 }
 
 
@@ -43,7 +43,7 @@ MlirPass mlirCreateConversionConvertArithmeticToSPIRV() {
   return wrap(mlir::arith::createConvertArithmeticToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertArithmeticToSPIRV() {
-  registerConvertArithmeticToSPIRVPass();
+  registerConvertArithmeticToSPIRV();
 }
 
 
@@ -51,7 +51,7 @@ MlirPass mlirCreateConversionConvertArmNeon2dToIntr() {
   return wrap(mlir::createConvertArmNeon2dToIntrPass().release());
 }
 void mlirRegisterConversionConvertArmNeon2dToIntr() {
-  registerConvertArmNeon2dToIntrPass();
+  registerConvertArmNeon2dToIntr();
 }
 
 
@@ -59,7 +59,7 @@ MlirPass mlirCreateConversionConvertAsyncToLLVM() {
   return wrap(mlir::createConvertAsyncToLLVMPass().release());
 }
 void mlirRegisterConversionConvertAsyncToLLVM() {
-  registerConvertAsyncToLLVMPass();
+  registerConvertAsyncToLLVM();
 }
 
 
@@ -67,7 +67,7 @@ MlirPass mlirCreateConversionConvertBufferizationToMemRef() {
   return wrap(mlir::createBufferizationToMemRefPass().release());
 }
 void mlirRegisterConversionConvertBufferizationToMemRef() {
-  registerConvertBufferizationToMemRefPass();
+  registerConvertBufferizationToMemRef();
 }
 
 
@@ -75,7 +75,7 @@ MlirPass mlirCreateConversionConvertComplexToLLVM() {
   return wrap(mlir::createConvertComplexToLLVMPass().release());
 }
 void mlirRegisterConversionConvertComplexToLLVM() {
-  registerConvertComplexToLLVMPass();
+  registerConvertComplexToLLVM();
 }
 
 
@@ -83,7 +83,7 @@ MlirPass mlirCreateConversionConvertComplexToLibm() {
   return wrap(mlir::createConvertComplexToLibmPass().release());
 }
 void mlirRegisterConversionConvertComplexToLibm() {
-  registerConvertComplexToLibmPass();
+  registerConvertComplexToLibm();
 }
 
 
@@ -91,7 +91,7 @@ MlirPass mlirCreateConversionConvertComplexToStandard() {
   return wrap(mlir::createConvertComplexToStandardPass().release());
 }
 void mlirRegisterConversionConvertComplexToStandard() {
-  registerConvertComplexToStandardPass();
+  registerConvertComplexToStandard();
 }
 
 
@@ -99,7 +99,7 @@ MlirPass mlirCreateConversionConvertControlFlowToLLVM() {
   return wrap(mlir::cf::createConvertControlFlowToLLVMPass().release());
 }
 void mlirRegisterConversionConvertControlFlowToLLVM() {
-  registerConvertControlFlowToLLVMPass();
+  registerConvertControlFlowToLLVM();
 }
 
 
@@ -107,7 +107,7 @@ MlirPass mlirCreateConversionConvertControlFlowToSPIRV() {
   return wrap(mlir::createConvertControlFlowToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertControlFlowToSPIRV() {
-  registerConvertControlFlowToSPIRVPass();
+  registerConvertControlFlowToSPIRV();
 }
 
 
@@ -115,7 +115,7 @@ MlirPass mlirCreateConversionConvertFuncToLLVM() {
   return wrap(mlir::createConvertFuncToLLVMPass().release());
 }
 void mlirRegisterConversionConvertFuncToLLVM() {
-  registerConvertFuncToLLVMPass();
+  registerConvertFuncToLLVM();
 }
 
 
@@ -123,7 +123,7 @@ MlirPass mlirCreateConversionConvertFuncToSPIRV() {
   return wrap(mlir::createConvertFuncToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertFuncToSPIRV() {
-  registerConvertFuncToSPIRVPass();
+  registerConvertFuncToSPIRV();
 }
 
 
@@ -131,7 +131,7 @@ MlirPass mlirCreateConversionConvertGPUToSPIRV() {
   return wrap(mlir::createConvertGPUToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertGPUToSPIRV() {
-  registerConvertGPUToSPIRVPass();
+  registerConvertGPUToSPIRV();
 }
 
 
@@ -139,7 +139,7 @@ MlirPass mlirCreateConversionConvertGpuLaunchFuncToVulkanLaunchFunc() {
   return wrap(mlir::createConvertGpuLaunchFuncToVulkanLaunchFuncPass().release());
 }
 void mlirRegisterConversionConvertGpuLaunchFuncToVulkanLaunchFunc() {
-  registerConvertGpuLaunchFuncToVulkanLaunchFuncPass();
+  registerConvertGpuLaunchFuncToVulkanLaunchFunc();
 }
 
 
@@ -147,7 +147,7 @@ MlirPass mlirCreateConversionConvertGpuOpsToNVVMOps() {
   return wrap(mlir::createLowerGpuOpsToNVVMOpsPass().release());
 }
 void mlirRegisterConversionConvertGpuOpsToNVVMOps() {
-  registerConvertGpuOpsToNVVMOpsPass();
+  registerConvertGpuOpsToNVVMOps();
 }
 
 
@@ -155,7 +155,7 @@ MlirPass mlirCreateConversionConvertGpuOpsToROCDLOps() {
   return wrap(mlir::createLowerGpuOpsToROCDLOpsPass().release());
 }
 void mlirRegisterConversionConvertGpuOpsToROCDLOps() {
-  registerConvertGpuOpsToROCDLOpsPass();
+  registerConvertGpuOpsToROCDLOps();
 }
 
 
@@ -163,7 +163,7 @@ MlirPass mlirCreateConversionConvertLinalgToLLVM() {
   return wrap(mlir::createConvertLinalgToLLVMPass().release());
 }
 void mlirRegisterConversionConvertLinalgToLLVM() {
-  registerConvertLinalgToLLVMPass();
+  registerConvertLinalgToLLVM();
 }
 
 
@@ -171,7 +171,7 @@ MlirPass mlirCreateConversionConvertLinalgToSPIRV() {
   return wrap(mlir::createLinalgToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertLinalgToSPIRV() {
-  registerConvertLinalgToSPIRVPass();
+  registerConvertLinalgToSPIRV();
 }
 
 
@@ -179,7 +179,15 @@ MlirPass mlirCreateConversionConvertLinalgToStandard() {
   return wrap(mlir::createConvertLinalgToStandardPass().release());
 }
 void mlirRegisterConversionConvertLinalgToStandard() {
-  registerConvertLinalgToStandardPass();
+  registerConvertLinalgToStandard();
+}
+
+
+MlirPass mlirCreateConversionConvertMathToFuncs() {
+  return wrap(mlir::createConvertMathToFuncsPass().release());
+}
+void mlirRegisterConversionConvertMathToFuncs() {
+  registerConvertMathToFuncs();
 }
 
 
@@ -187,7 +195,7 @@ MlirPass mlirCreateConversionConvertMathToLLVM() {
   return wrap(mlir::createConvertMathToLLVMPass().release());
 }
 void mlirRegisterConversionConvertMathToLLVM() {
-  registerConvertMathToLLVMPass();
+  registerConvertMathToLLVM();
 }
 
 
@@ -195,7 +203,7 @@ MlirPass mlirCreateConversionConvertMathToLibm() {
   return wrap(mlir::createConvertMathToLibmPass().release());
 }
 void mlirRegisterConversionConvertMathToLibm() {
-  registerConvertMathToLibmPass();
+  registerConvertMathToLibm();
 }
 
 
@@ -203,7 +211,7 @@ MlirPass mlirCreateConversionConvertMathToSPIRV() {
   return wrap(mlir::createConvertMathToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertMathToSPIRV() {
-  registerConvertMathToSPIRVPass();
+  registerConvertMathToSPIRV();
 }
 
 
@@ -211,7 +219,7 @@ MlirPass mlirCreateConversionConvertMemRefToLLVM() {
   return wrap(mlir::createMemRefToLLVMPass().release());
 }
 void mlirRegisterConversionConvertMemRefToLLVM() {
-  registerConvertMemRefToLLVMPass();
+  registerConvertMemRefToLLVM();
 }
 
 
@@ -219,7 +227,7 @@ MlirPass mlirCreateConversionConvertMemRefToSPIRV() {
   return wrap(mlir::createConvertMemRefToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertMemRefToSPIRV() {
-  registerConvertMemRefToSPIRVPass();
+  registerConvertMemRefToSPIRV();
 }
 
 
@@ -227,7 +235,7 @@ MlirPass mlirCreateConversionConvertNVGPUToNVVM() {
   return wrap(mlir::createConvertNVGPUToNVVMPass().release());
 }
 void mlirRegisterConversionConvertNVGPUToNVVM() {
-  registerConvertNVGPUToNVVMPass();
+  registerConvertNVGPUToNVVM();
 }
 
 
@@ -235,7 +243,7 @@ MlirPass mlirCreateConversionConvertOpenACCToLLVM() {
   return wrap(mlir::createConvertOpenACCToLLVMPass().release());
 }
 void mlirRegisterConversionConvertOpenACCToLLVM() {
-  registerConvertOpenACCToLLVMPass();
+  registerConvertOpenACCToLLVM();
 }
 
 
@@ -243,7 +251,7 @@ MlirPass mlirCreateConversionConvertOpenACCToSCF() {
   return wrap(mlir::createConvertOpenACCToSCFPass().release());
 }
 void mlirRegisterConversionConvertOpenACCToSCF() {
-  registerConvertOpenACCToSCFPass();
+  registerConvertOpenACCToSCF();
 }
 
 
@@ -251,7 +259,7 @@ MlirPass mlirCreateConversionConvertOpenMPToLLVM() {
   return wrap(mlir::createConvertOpenMPToLLVMPass().release());
 }
 void mlirRegisterConversionConvertOpenMPToLLVM() {
-  registerConvertOpenMPToLLVMPass();
+  registerConvertOpenMPToLLVM();
 }
 
 
@@ -259,7 +267,7 @@ MlirPass mlirCreateConversionConvertPDLToPDLInterp() {
   return wrap(mlir::createPDLToPDLInterpPass().release());
 }
 void mlirRegisterConversionConvertPDLToPDLInterp() {
-  registerConvertPDLToPDLInterpPass();
+  registerConvertPDLToPDLInterp();
 }
 
 
@@ -267,7 +275,7 @@ MlirPass mlirCreateConversionConvertParallelLoopToGpu() {
   return wrap(mlir::createParallelLoopToGpuPass().release());
 }
 void mlirRegisterConversionConvertParallelLoopToGpu() {
-  registerConvertParallelLoopToGpuPass();
+  registerConvertParallelLoopToGpu();
 }
 
 
@@ -275,7 +283,7 @@ MlirPass mlirCreateConversionConvertSCFToOpenMP() {
   return wrap(mlir::createConvertSCFToOpenMPPass().release());
 }
 void mlirRegisterConversionConvertSCFToOpenMP() {
-  registerConvertSCFToOpenMPPass();
+  registerConvertSCFToOpenMP();
 }
 
 
@@ -283,7 +291,7 @@ MlirPass mlirCreateConversionConvertSPIRVToLLVM() {
   return wrap(mlir::createConvertSPIRVToLLVMPass().release());
 }
 void mlirRegisterConversionConvertSPIRVToLLVM() {
-  registerConvertSPIRVToLLVMPass();
+  registerConvertSPIRVToLLVM();
 }
 
 
@@ -291,7 +299,7 @@ MlirPass mlirCreateConversionConvertShapeConstraints() {
   return wrap(mlir::createConvertShapeConstraintsPass().release());
 }
 void mlirRegisterConversionConvertShapeConstraints() {
-  registerConvertShapeConstraintsPass();
+  registerConvertShapeConstraints();
 }
 
 
@@ -299,7 +307,7 @@ MlirPass mlirCreateConversionConvertShapeToStandard() {
   return wrap(mlir::createConvertShapeToStandardPass().release());
 }
 void mlirRegisterConversionConvertShapeToStandard() {
-  registerConvertShapeToStandardPass();
+  registerConvertShapeToStandard();
 }
 
 
@@ -307,7 +315,7 @@ MlirPass mlirCreateConversionConvertTensorToLinalg() {
   return wrap(mlir::createConvertTensorToLinalgPass().release());
 }
 void mlirRegisterConversionConvertTensorToLinalg() {
-  registerConvertTensorToLinalgPass();
+  registerConvertTensorToLinalg();
 }
 
 
@@ -315,7 +323,7 @@ MlirPass mlirCreateConversionConvertTensorToSPIRV() {
   return wrap(mlir::createConvertTensorToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertTensorToSPIRV() {
-  registerConvertTensorToSPIRVPass();
+  registerConvertTensorToSPIRV();
 }
 
 
@@ -323,7 +331,7 @@ MlirPass mlirCreateConversionConvertVectorToGPU() {
   return wrap(mlir::createConvertVectorToGPUPass().release());
 }
 void mlirRegisterConversionConvertVectorToGPU() {
-  registerConvertVectorToGPUPass();
+  registerConvertVectorToGPU();
 }
 
 
@@ -331,15 +339,7 @@ MlirPass mlirCreateConversionConvertVectorToLLVM() {
   return wrap(mlir::createConvertVectorToLLVMPass().release());
 }
 void mlirRegisterConversionConvertVectorToLLVM() {
-  registerConvertVectorToLLVMPass();
-}
-
-
-MlirPass mlirCreateConversionConvertVectorToROCDL() {
-  return wrap(mlir::createConvertVectorToROCDLPass().release());
-}
-void mlirRegisterConversionConvertVectorToROCDL() {
-  registerConvertVectorToROCDLPass();
+  registerConvertVectorToLLVM();
 }
 
 
@@ -347,7 +347,7 @@ MlirPass mlirCreateConversionConvertVectorToSCF() {
   return wrap(mlir::createConvertVectorToSCFPass().release());
 }
 void mlirRegisterConversionConvertVectorToSCF() {
-  registerConvertVectorToSCFPass();
+  registerConvertVectorToSCF();
 }
 
 
@@ -355,7 +355,7 @@ MlirPass mlirCreateConversionConvertVectorToSPIRV() {
   return wrap(mlir::createConvertVectorToSPIRVPass().release());
 }
 void mlirRegisterConversionConvertVectorToSPIRV() {
-  registerConvertVectorToSPIRVPass();
+  registerConvertVectorToSPIRV();
 }
 
 
@@ -363,7 +363,7 @@ MlirPass mlirCreateConversionConvertVulkanLaunchFuncToVulkanCalls() {
   return wrap(mlir::createConvertVulkanLaunchFuncToVulkanCallsPass().release());
 }
 void mlirRegisterConversionConvertVulkanLaunchFuncToVulkanCalls() {
-  registerConvertVulkanLaunchFuncToVulkanCallsPass();
+  registerConvertVulkanLaunchFuncToVulkanCalls();
 }
 
 
@@ -371,7 +371,7 @@ MlirPass mlirCreateConversionGpuToLLVMConversionPass() {
   return wrap(mlir::createGpuToLLVMConversionPass().release());
 }
 void mlirRegisterConversionGpuToLLVMConversionPass() {
-  registerGpuToLLVMConversionPassPass();
+  registerGpuToLLVMConversionPass();
 }
 
 
@@ -379,7 +379,15 @@ MlirPass mlirCreateConversionLowerHostCodeToLLVM() {
   return wrap(mlir::createLowerHostCodeToLLVMPass().release());
 }
 void mlirRegisterConversionLowerHostCodeToLLVM() {
-  registerLowerHostCodeToLLVMPass();
+  registerLowerHostCodeToLLVM();
+}
+
+
+MlirPass mlirCreateConversionMapMemRefStorageClass() {
+  return wrap(mlir::createMapMemRefStorageClassPass().release());
+}
+void mlirRegisterConversionMapMemRefStorageClass() {
+  registerMapMemRefStorageClass();
 }
 
 
@@ -387,7 +395,7 @@ MlirPass mlirCreateConversionReconcileUnrealizedCasts() {
   return wrap(mlir::createReconcileUnrealizedCastsPass().release());
 }
 void mlirRegisterConversionReconcileUnrealizedCasts() {
-  registerReconcileUnrealizedCastsPass();
+  registerReconcileUnrealizedCasts();
 }
 
 
@@ -395,7 +403,7 @@ MlirPass mlirCreateConversionSCFToControlFlow() {
   return wrap(mlir::createConvertSCFToCFPass().release());
 }
 void mlirRegisterConversionSCFToControlFlow() {
-  registerSCFToControlFlowPass();
+  registerSCFToControlFlow();
 }
 
 
@@ -403,7 +411,7 @@ MlirPass mlirCreateConversionSCFToSPIRV() {
   return wrap(mlir::createConvertSCFToSPIRVPass().release());
 }
 void mlirRegisterConversionSCFToSPIRV() {
-  registerSCFToSPIRVPass();
+  registerSCFToSPIRV();
 }
 
 
@@ -411,7 +419,7 @@ MlirPass mlirCreateConversionTosaToArith() {
   return wrap(tosa::createTosaToArith().release());
 }
 void mlirRegisterConversionTosaToArith() {
-  registerTosaToArithPass();
+  registerTosaToArith();
 }
 
 
@@ -419,7 +427,7 @@ MlirPass mlirCreateConversionTosaToLinalg() {
   return wrap(tosa::createTosaToLinalg().release());
 }
 void mlirRegisterConversionTosaToLinalg() {
-  registerTosaToLinalgPass();
+  registerTosaToLinalg();
 }
 
 
@@ -427,7 +435,7 @@ MlirPass mlirCreateConversionTosaToLinalgNamed() {
   return wrap(tosa::createTosaToLinalgNamed().release());
 }
 void mlirRegisterConversionTosaToLinalgNamed() {
-  registerTosaToLinalgNamedPass();
+  registerTosaToLinalgNamed();
 }
 
 
@@ -435,7 +443,7 @@ MlirPass mlirCreateConversionTosaToSCF() {
   return wrap(tosa::createTosaToSCF().release());
 }
 void mlirRegisterConversionTosaToSCF() {
-  registerTosaToSCFPass();
+  registerTosaToSCF();
 }
 
 
@@ -443,6 +451,6 @@ MlirPass mlirCreateConversionTosaToTensor() {
   return wrap(tosa::createTosaToTensor().release());
 }
 void mlirRegisterConversionTosaToTensor() {
-  registerTosaToTensorPass();
+  registerTosaToTensor();
 }
 

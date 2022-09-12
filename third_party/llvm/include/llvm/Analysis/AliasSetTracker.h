@@ -37,6 +37,7 @@ class AliasSetTracker;
 class AnyMemSetInst;
 class AnyMemTransferInst;
 class BasicBlock;
+class BatchAAResults;
 class LoadInst;
 class raw_ostream;
 class StoreInst;
@@ -221,10 +222,6 @@ public:
   // track of the list's exact size.
   unsigned size() { return SetSize; }
 
-  /// If this alias set is known to contain a single instruction and *only* a
-  /// single unique instruction, return it.  Otherwise, return nullptr.
-  Instruction* getUniqueInstruction();
-
   void print(raw_ostream &OS) const;
   void dump() const;
 
@@ -315,7 +312,7 @@ public:
   /// set return the appropriate AliasResult. Otherwise return NoAlias.
   AliasResult aliasesPointer(const Value *Ptr, LocationSize Size,
                              const AAMDNodes &AAInfo, AAResults &AA) const;
-  bool aliasesUnknownInst(const Instruction *Inst, AAResults &AA) const;
+  bool aliasesUnknownInst(const Instruction *Inst, BatchAAResults &AA) const;
 };
 
 inline raw_ostream& operator<<(raw_ostream &OS, const AliasSet &AS) {

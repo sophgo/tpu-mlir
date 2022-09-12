@@ -8,7 +8,7 @@ if (auto op = dyn_cast<::mlir::x86vector::DotIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::MaskCompressIntrOp>(opInst)) {
@@ -21,7 +21,7 @@ if (auto op = dyn_cast<::mlir::x86vector::MaskCompressIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::MaskRndScalePDIntrOp>(opInst)) {
@@ -34,7 +34,7 @@ if (auto op = dyn_cast<::mlir::x86vector::MaskRndScalePDIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::MaskRndScalePSIntrOp>(opInst)) {
@@ -47,7 +47,7 @@ if (auto op = dyn_cast<::mlir::x86vector::MaskRndScalePSIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::MaskScaleFPDIntrOp>(opInst)) {
@@ -60,7 +60,7 @@ if (auto op = dyn_cast<::mlir::x86vector::MaskScaleFPDIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::MaskScaleFPSIntrOp>(opInst)) {
@@ -73,7 +73,7 @@ if (auto op = dyn_cast<::mlir::x86vector::MaskScaleFPSIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::RsqrtIntrOp>(opInst)) {
@@ -86,7 +86,7 @@ if (auto op = dyn_cast<::mlir::x86vector::RsqrtIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::Vp2IntersectDIntrOp>(opInst)) {
@@ -99,7 +99,7 @@ if (auto op = dyn_cast<::mlir::x86vector::Vp2IntersectDIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::x86vector::Vp2IntersectQIntrOp>(opInst)) {
@@ -112,6 +112,6 @@ if (auto op = dyn_cast<::mlir::x86vector::Vp2IntersectQIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }

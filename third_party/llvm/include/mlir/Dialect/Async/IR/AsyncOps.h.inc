@@ -191,12 +191,12 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Value operand();
-  ::mlir::Value group();
+  ::mlir::TypedValue<::mlir::async::GroupType> group();
   ::mlir::MutableOperandRange operandMutable();
   ::mlir::MutableOperandRange groupMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value rank();
+  ::mlir::TypedValue<::mlir::IndexType> rank();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type rank, ::mlir::Value operand, ::mlir::Value group);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand, ::mlir::Value group);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand, ::mlir::Value group);
@@ -254,7 +254,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operand();
+  ::mlir::TypedValue<::mlir::async::GroupType> operand();
   ::mlir::MutableOperandRange operandMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -374,11 +374,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value id();
+  ::mlir::TypedValue<::mlir::async::CoroIdType> id();
   ::mlir::MutableOperandRange idMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value handle();
+  ::mlir::TypedValue<::mlir::async::CoroHandleType> handle();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type handle, ::mlir::Value id);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value id);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value id);
@@ -436,7 +436,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value handle();
+  ::mlir::TypedValue<::mlir::async::CoroHandleType> handle();
   ::mlir::MutableOperandRange handleMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -495,8 +495,8 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value id();
-  ::mlir::Value handle();
+  ::mlir::TypedValue<::mlir::async::CoroIdType> id();
+  ::mlir::TypedValue<::mlir::async::CoroHandleType> handle();
   ::mlir::MutableOperandRange idMutable();
   ::mlir::MutableOperandRange handleMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
@@ -556,7 +556,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value id();
+  ::mlir::TypedValue<::mlir::async::CoroIdType> id();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type id);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
@@ -614,11 +614,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value handle();
+  ::mlir::TypedValue<::mlir::async::CoroHandleType> handle();
   ::mlir::MutableOperandRange handleMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value state();
+  ::mlir::TypedValue<::mlir::async::CoroStateType> state();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type state, ::mlir::Value handle);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value handle);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value handle);
@@ -676,7 +676,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value state();
+  ::mlir::TypedValue<::mlir::async::CoroStateType> state();
   ::mlir::MutableOperandRange stateMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -737,11 +737,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value size();
+  ::mlir::TypedValue<::mlir::IndexType> size();
   ::mlir::MutableOperandRange sizeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::async::GroupType> result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value size);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value size);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value size);
@@ -821,7 +821,7 @@ public:
   ::mlir::MutableOperandRange operandsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value token();
+  ::mlir::TypedValue<::mlir::async::TokenType> token();
   ::mlir::Operation::result_range results();
   ::mlir::Region &body();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, TypeRange resultTypes, ValueRange dependencies, ValueRange operands, function_ref<void(OpBuilder &, Location, ValueRange)> bodyBuilder = nullptr);
@@ -830,8 +830,8 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verifyRegions();
-  ::mlir::OperandRange getSuccessorEntryOperands(unsigned index);
-  void getSuccessorRegions(::mlir::Optional<unsigned> index, ::mlir::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
+  ::mlir::OperandRange getSuccessorEntryOperands(::llvm::Optional<unsigned> index);
+  void getSuccessorRegions(::llvm::Optional<unsigned> index, ::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> &regions);
   bool areTypesCompatible(::mlir::Type lhs, ::mlir::Type rhs);
 private:
   ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
@@ -979,12 +979,12 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Value operand();
-  ::mlir::Value group();
+  ::mlir::TypedValue<::mlir::async::GroupType> group();
   ::mlir::MutableOperandRange operandMutable();
   ::mlir::MutableOperandRange groupMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value rank();
+  ::mlir::TypedValue<::mlir::IndexType> rank();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type rank, ::mlir::Value operand, ::mlir::Value group);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand, ::mlir::Value group);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand, ::mlir::Value group);
@@ -1044,7 +1044,7 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Value operand();
-  ::mlir::Value handle();
+  ::mlir::TypedValue<::mlir::async::CoroHandleType> handle();
   ::mlir::MutableOperandRange operandMutable();
   ::mlir::MutableOperandRange handleMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
@@ -1161,11 +1161,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value size();
+  ::mlir::TypedValue<::mlir::IndexType> size();
   ::mlir::MutableOperandRange sizeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::async::GroupType> result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value size);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value size);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value size);
@@ -1367,7 +1367,7 @@ public:
   ::mlir::MutableOperandRange operandMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value is_error();
+  ::mlir::TypedValue<::mlir::IntegerType> is_error();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type is_error, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value operand);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operand);
@@ -1425,7 +1425,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value storage();
+  ::mlir::TypedValue<::mlir::async::ValueType> storage();
   ::mlir::MutableOperandRange storageMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -1485,7 +1485,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::IndexType> result();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
@@ -1543,7 +1543,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value handle();
+  ::mlir::TypedValue<::mlir::async::CoroHandleType> handle();
   ::mlir::MutableOperandRange handleMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -1719,7 +1719,7 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Value value();
-  ::mlir::Value storage();
+  ::mlir::TypedValue<::mlir::async::ValueType> storage();
   ::mlir::MutableOperandRange valueMutable();
   ::mlir::MutableOperandRange storageMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
@@ -1787,7 +1787,7 @@ public:
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
-  ::mlir::MutableOperandRange getMutableSuccessorOperands(::mlir::Optional<unsigned> index);
+  ::mlir::MutableOperandRange getMutableSuccessorOperands(::llvm::Optional<unsigned> index);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);

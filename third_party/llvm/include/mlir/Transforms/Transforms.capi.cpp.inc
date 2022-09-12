@@ -11,7 +11,7 @@ MlirPass mlirCreateTransformsCSE() {
   return wrap(mlir::createCSEPass().release());
 }
 void mlirRegisterTransformsCSE() {
-  registerCSEPass();
+  registerCSE();
 }
 
 
@@ -19,7 +19,7 @@ MlirPass mlirCreateTransformsCanonicalizer() {
   return wrap(mlir::createCanonicalizerPass().release());
 }
 void mlirRegisterTransformsCanonicalizer() {
-  registerCanonicalizerPass();
+  registerCanonicalizer();
 }
 
 
@@ -27,7 +27,7 @@ MlirPass mlirCreateTransformsControlFlowSink() {
   return wrap(::mlir::createControlFlowSinkPass().release());
 }
 void mlirRegisterTransformsControlFlowSink() {
-  registerControlFlowSinkPass();
+  registerControlFlowSink();
 }
 
 
@@ -35,7 +35,7 @@ MlirPass mlirCreateTransformsInliner() {
   return wrap(mlir::createInlinerPass().release());
 }
 void mlirRegisterTransformsInliner() {
-  registerInlinerPass();
+  registerInliner();
 }
 
 
@@ -43,7 +43,7 @@ MlirPass mlirCreateTransformsLocationSnapshot() {
   return wrap(mlir::createLocationSnapshotPass().release());
 }
 void mlirRegisterTransformsLocationSnapshot() {
-  registerLocationSnapshotPass();
+  registerLocationSnapshot();
 }
 
 
@@ -51,7 +51,7 @@ MlirPass mlirCreateTransformsLoopInvariantCodeMotion() {
   return wrap(mlir::createLoopInvariantCodeMotionPass().release());
 }
 void mlirRegisterTransformsLoopInvariantCodeMotion() {
-  registerLoopInvariantCodeMotionPass();
+  registerLoopInvariantCodeMotion();
 }
 
 
@@ -59,7 +59,7 @@ MlirPass mlirCreateTransformsPrintOpStats() {
   return wrap(mlir::createPrintOpStatsPass().release());
 }
 void mlirRegisterTransformsPrintOpStats() {
-  registerPrintOpStatsPass();
+  registerPrintOpStats();
 }
 
 
@@ -67,7 +67,7 @@ MlirPass mlirCreateTransformsSCCP() {
   return wrap(mlir::createSCCPPass().release());
 }
 void mlirRegisterTransformsSCCP() {
-  registerSCCPPass();
+  registerSCCP();
 }
 
 
@@ -75,7 +75,7 @@ MlirPass mlirCreateTransformsStripDebugInfo() {
   return wrap(mlir::createStripDebugInfoPass().release());
 }
 void mlirRegisterTransformsStripDebugInfo() {
-  registerStripDebugInfoPass();
+  registerStripDebugInfo();
 }
 
 
@@ -83,7 +83,7 @@ MlirPass mlirCreateTransformsSymbolDCE() {
   return wrap(mlir::createSymbolDCEPass().release());
 }
 void mlirRegisterTransformsSymbolDCE() {
-  registerSymbolDCEPass();
+  registerSymbolDCE();
 }
 
 
@@ -91,7 +91,7 @@ MlirPass mlirCreateTransformsSymbolPrivatize() {
   return wrap(mlir::createSymbolPrivatizePass().release());
 }
 void mlirRegisterTransformsSymbolPrivatize() {
-  registerSymbolPrivatizePass();
+  registerSymbolPrivatize();
 }
 
 
@@ -99,7 +99,7 @@ MlirPass mlirCreateTransformsTopologicalSort() {
   return wrap(mlir::createTopologicalSortPass().release());
 }
 void mlirRegisterTransformsTopologicalSort() {
-  registerTopologicalSortPass();
+  registerTopologicalSort();
 }
 
 
@@ -107,6 +107,6 @@ MlirPass mlirCreateTransformsViewOpGraph() {
   return wrap(mlir::createPrintOpGraphPass().release());
 }
 void mlirRegisterTransformsViewOpGraph() {
-  registerViewOpGraphPass();
+  registerViewOpGraph();
 }
 

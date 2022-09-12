@@ -5,6 +5,7 @@ pushd bin/
 for file in `ls !(mlir-tblgen)`; do echo "" > $file; done
 popd
 
+rm -rf need
 mkdir need
 pushd lib/
 need_list=(
@@ -16,22 +17,26 @@ need_list=(
   "libLLVMSupport.a"
   "libLLVMDemangle.a"
   "libLLVMBitstreamReader.a"
+  "libMLIRBytecodeReader.a"
+  "libMLIRBytecodeWriter.a"
+  "libMLIRArithmeticDialect.a"
+  "libMLIRAsmParser.a"
+  "libMLIRPDLDialect.a"
+  "libMLIRPDLInterpDialect.a"
   "libMLIRAnalysis.a"
-  "libMLIRArithmetic.a"
   "libMLIRCallInterfaces.a"
-  "libMLIRControlFlow.a"
   "libMLIRCopyOpInterface.a"
   "libMLIRDataLayoutInterfaces.a"
-  "libMLIRViewLikeInterface.a"
-  "libMLIRFunc.a"
-  "libMLIRIR.a"
+  "libMLIRControlFlowDialect.a"
   "libMLIRControlFlowInterfaces.a"
+  "libMLIRViewLikeInterface.a"
+  "libMLIRFuncDialect.a"
+  "libMLIRIR.a"
   "libMLIRDialect.a"
   "libMLIRLoopLikeInterface.a"
   "libMLIRInferTypeOpInterface.a"
   "libMLIROptLib.a"
-  "libMLIRQuant.a"
-  "libMLIRQuantTransforms.a"
+  "libMLIRQuantDialect.a"
   "libMLIRQuantUtils.a"
   "libMLIRParser.a"
   "libMLIRPass.a"
@@ -48,7 +53,11 @@ need_list=(
 
 for file in ${need_list[@]}
 do
-  mv $file ../need/
+  if [ -e $file ]; then
+    mv $file ../need/
+  else
+    echo "[Error] $file not exist"
+  fi
 done
 for file in `ls`; do echo "" > $file; done
 mv ../need/* .

@@ -113,12 +113,12 @@ void tpu::AvgPool2DOp::codegen_global_bm1684x() {
   if (Quant::isUniformQuantized(input())) {
     spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
     if (spec.avg_pooling_quant_mode == 0) {
-      spec.multiplier = multiplier().getValue();
-      spec.rshiftbits = rshift().getValue();
+      spec.multiplier = multiplier().value();
+      spec.rshiftbits = rshift().value();
     } else if (spec.avg_pooling_quant_mode == 2) {
       spec.merge_requant = true;
-      spec.rq_scale = scale().getValue().convertToDouble();
-      spec.rq_offset = offset().getValue().convertToDouble();
+      spec.rq_scale = scale().value().convertToDouble();
+      spec.rq_offset = offset().value().convertToDouble();
     }
     BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
                                          sizeof(spec), input_spec->data(),
@@ -220,14 +220,14 @@ void tpu::AvgPool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   common.is_avg_pooling = true;
   common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
   if (common.avg_pooling_quant_mode == 0) {
-    common.multiplier = multiplier().hasValue() ? multiplier().getValue() : -1;
-    common.rshiftbits = rshift().hasValue() ? rshift().getValue() : -1;
+    common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
+    common.rshiftbits = rshift().has_value() ? rshift().value() : -1;
   } else if (common.avg_pooling_quant_mode == 2) {
     common.merge_requant = true;
     common.rq_scale =
-        scale().hasValue() ? (scale().getValue().convertToDouble()) : -1.;
+        scale().has_value() ? (scale().value().convertToDouble()) : -1.;
     common.rq_offset =
-        offset().hasValue() ? (offset().getValue().convertToDouble()) : -1.;
+        offset().has_value() ? (offset().value().convertToDouble()) : -1.;
   }
 
   local_sec_info_t sec_info;

@@ -30,6 +30,8 @@
 ::mlir::omp::SimdLoopOp,
 ::mlir::omp::SingleOp,
 ::mlir::omp::TargetOp,
+::mlir::omp::TaskGroupOp,
+::mlir::omp::TaskLoopOp,
 ::mlir::omp::TaskOp,
 ::mlir::omp::TaskwaitOp,
 ::mlir::omp::TaskyieldOp,
@@ -211,6 +213,15 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps10(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps11(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
+  if (attr && !((((attr.isa<::mlir::IntegerAttr>())) && ((attr.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((attr.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive())))) {
+    return op->emitOpError("attribute '") << attrName
+        << "' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive";
+  }
+  return ::mlir::success();
+}
+
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps12(
+    ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseScheduleKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
         << "' failed to satisfy constraint: ScheduleKind Clause";
@@ -218,7 +229,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps11(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps12(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps13(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ScheduleModifierAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -227,7 +238,7 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps12(
   return ::mlir::success();
 }
 
-static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps13(
+static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_OpenMPOps14(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
   if (attr && !((attr.isa<::mlir::omp::ClauseOrderKindAttr>()))) {
     return op->emitOpError("attribute '") << attrName
@@ -295,7 +306,7 @@ std::pair<unsigned, unsigned> AtomicCaptureOpAdaptor::getODSOperandIndexAndLengt
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicCaptureOp::hint_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
     if (!attr)
       attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-    return attr;
+  return attr;
 }
 
 uint64_t AtomicCaptureOpAdaptor::hint_val() {
@@ -308,7 +319,7 @@ uint64_t AtomicCaptureOpAdaptor::hint_val() {
 ::mlir::omp::ClauseMemoryOrderKindAttr AtomicCaptureOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicCaptureOp::memory_order_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicCaptureOpAdaptor::memory_order_val() {
@@ -402,11 +413,15 @@ void AtomicCaptureOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAtt
   (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
+::mlir::Attribute AtomicCaptureOp::removeHint_valAttr() {
+  return (*this)->removeAttr(hint_valAttrName());
+}
+
 ::mlir::Attribute AtomicCaptureOp::removeMemory_order_valAttr() {
   return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
   }
@@ -416,7 +431,7 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   (void)odsState.addRegion();
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
   }
@@ -428,7 +443,7 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   odsState.addTypes(resultTypes);
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
@@ -436,7 +451,7 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationStat
   (void)odsState.addRegion();
 }
 
-void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicCaptureOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
   if (memory_order_val) {
   odsState.addAttribute(memory_order_valAttrName(odsState.name), memory_order_val);
@@ -454,6 +469,11 @@ void AtomicCaptureOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
     (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void AtomicCaptureOp::populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes) {
+  auto attrNames = opName.getAttributeNames();
+  ::mlir::Builder odsBuilder(attrNames.front().getContext());
 }
 
 ::mlir::LogicalResult AtomicCaptureOp::verifyInvariantsImpl() {
@@ -533,7 +553,8 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
   {
     if (parseSynchronizationHint(parser, hint_valAttr))
       return ::mlir::failure();
-    result.addAttribute("hint_val", hint_valAttr);
+    if (hint_valAttr)
+      result.addAttribute("hint_val", hint_valAttr);
   }
   if (parser.parseRParen())
     return ::mlir::failure();
@@ -629,7 +650,7 @@ std::pair<unsigned, unsigned> AtomicReadOpAdaptor::getODSOperandIndexAndLength(u
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicReadOp::hint_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
     if (!attr)
       attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-    return attr;
+  return attr;
 }
 
 uint64_t AtomicReadOpAdaptor::hint_val() {
@@ -642,7 +663,7 @@ uint64_t AtomicReadOpAdaptor::hint_val() {
 ::mlir::omp::ClauseMemoryOrderKindAttr AtomicReadOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicReadOp::memory_order_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicReadOpAdaptor::memory_order_val() {
@@ -686,11 +707,11 @@ std::pair<unsigned, unsigned> AtomicReadOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AtomicReadOp::x() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> AtomicReadOp::x() {
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value AtomicReadOp::v() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> AtomicReadOp::v() {
   return *getODSOperands(1).begin();
 }
 
@@ -744,11 +765,15 @@ void AtomicReadOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr a
   (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
+::mlir::Attribute AtomicReadOp::removeHint_valAttr() {
+  return (*this)->removeAttr(hint_valAttrName());
+}
+
 ::mlir::Attribute AtomicReadOp::removeMemory_order_valAttr() {
   return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
   if (hint_val) {
@@ -759,7 +784,7 @@ void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   }
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
   if (hint_val) {
@@ -772,7 +797,7 @@ void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addTypes(resultTypes);
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::Value v, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
@@ -781,7 +806,7 @@ void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   }
 }
 
-void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicReadOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::Value v, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addOperands(v);
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
@@ -798,6 +823,11 @@ void AtomicReadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   odsState.addAttributes(attributes);
   assert(resultTypes.size() == 0u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void AtomicReadOp::populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes) {
+  auto attrNames = opName.getAttributeNames();
+  ::mlir::Builder odsBuilder(attrNames.front().getContext());
 }
 
 ::mlir::LogicalResult AtomicReadOp::verifyInvariantsImpl() {
@@ -838,7 +868,7 @@ void AtomicReadOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({(*this->getODSOperands(0).begin()).getType(), (*this->getODSOperands(1).begin()).getType()})))))
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSOperands(1).begin()).getType()) && ((*this->getODSOperands(1).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
     return emitOpError("failed to verify that all of {x, v} have same type");
   return ::mlir::success();
 }
@@ -904,7 +934,8 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
   {
     if (parseSynchronizationHint(parser, hint_valAttr))
       return ::mlir::failure();
-    result.addAttribute("hint_val", hint_valAttr);
+    if (hint_valAttr)
+      result.addAttribute("hint_val", hint_valAttr);
   }
   if (parser.parseRParen())
     return ::mlir::failure();
@@ -925,7 +956,7 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
     return ::mlir::failure();
   if (parser.resolveOperands(xOperands, xTypes, xOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(vOperands, xTypes[0], result.operands))
+  if (parser.resolveOperands(vOperands, xTypes[0], vOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1005,7 +1036,7 @@ std::pair<unsigned, unsigned> AtomicUpdateOpAdaptor::getODSOperandIndexAndLength
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicUpdateOp::hint_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
     if (!attr)
       attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-    return attr;
+  return attr;
 }
 
 uint64_t AtomicUpdateOpAdaptor::hint_val() {
@@ -1018,7 +1049,7 @@ uint64_t AtomicUpdateOpAdaptor::hint_val() {
 ::mlir::omp::ClauseMemoryOrderKindAttr AtomicUpdateOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicUpdateOp::memory_order_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicUpdateOpAdaptor::memory_order_val() {
@@ -1070,7 +1101,7 @@ std::pair<unsigned, unsigned> AtomicUpdateOp::getODSOperandIndexAndLength(unsign
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AtomicUpdateOp::x() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> AtomicUpdateOp::x() {
   return *getODSOperands(0).begin();
 }
 
@@ -1122,11 +1153,15 @@ void AtomicUpdateOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr
   (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
+::mlir::Attribute AtomicUpdateOp::removeHint_valAttr() {
+  return (*this)->removeAttr(hint_valAttrName());
+}
+
 ::mlir::Attribute AtomicUpdateOp::removeMemory_order_valAttr() {
   return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
@@ -1137,7 +1172,7 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   (void)odsState.addRegion();
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   if (hint_val) {
   odsState.addAttribute(hint_valAttrName(odsState.name), hint_val);
@@ -1150,7 +1185,7 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   odsState.addTypes(resultTypes);
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value x, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
   if (memory_order_val) {
@@ -1159,7 +1194,7 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState
   (void)odsState.addRegion();
 }
 
-void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicUpdateOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value x, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(x);
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
   if (memory_order_val) {
@@ -1178,6 +1213,11 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
     (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void AtomicUpdateOp::populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes) {
+  auto attrNames = opName.getAttributeNames();
+  ::mlir::Builder odsBuilder(attrNames.front().getContext());
 }
 
 ::mlir::LogicalResult AtomicUpdateOp::verifyInvariantsImpl() {
@@ -1228,6 +1268,10 @@ void AtomicUpdateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   return ::mlir::failure();
 }
 
+void AtomicUpdateOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context) {
+  results.add(canonicalize);
+}
+
 ::mlir::ParseResult AtomicUpdateOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
   ::mlir::omp::ClauseMemoryOrderKindAttr memory_order_valAttr;
   ::mlir::IntegerAttr hint_valAttr;
@@ -1271,7 +1315,8 @@ if (succeeded(parser.parseOptionalKeyword("memory_order"))) {
   {
     if (parseSynchronizationHint(parser, hint_valAttr))
       return ::mlir::failure();
-    result.addAttribute("hint_val", hint_valAttr);
+    if (hint_valAttr)
+      result.addAttribute("hint_val", hint_valAttr);
   }
   if (parser.parseRParen())
     return ::mlir::failure();
@@ -1345,6 +1390,13 @@ void AtomicUpdateOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"memory_order_val", "hint_val"});
 }
 
+void AtomicUpdateOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+  for (::mlir::Value value : getODSOperands(0))
+    effects.emplace_back(::mlir::MemoryEffects::Read::get(), value, ::mlir::SideEffects::DefaultResource::get());
+  for (::mlir::Value value : getODSOperands(0))
+    effects.emplace_back(::mlir::MemoryEffects::Write::get(), value, ::mlir::SideEffects::DefaultResource::get());
+}
+
 } // namespace omp
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::AtomicUpdateOp)
@@ -1393,7 +1445,7 @@ std::pair<unsigned, unsigned> AtomicWriteOpAdaptor::getODSOperandIndexAndLength(
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicWriteOp::hint_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
     if (!attr)
       attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-    return attr;
+  return attr;
 }
 
 uint64_t AtomicWriteOpAdaptor::hint_val() {
@@ -1406,7 +1458,7 @@ uint64_t AtomicWriteOpAdaptor::hint_val() {
 ::mlir::omp::ClauseMemoryOrderKindAttr AtomicWriteOpAdaptor::memory_order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AtomicWriteOp::memory_order_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseMemoryOrderKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseMemoryOrderKind> AtomicWriteOpAdaptor::memory_order_val() {
@@ -1450,7 +1502,7 @@ std::pair<unsigned, unsigned> AtomicWriteOp::getODSOperandIndexAndLength(unsigne
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AtomicWriteOp::address() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> AtomicWriteOp::address() {
   return *getODSOperands(0).begin();
 }
 
@@ -1508,11 +1560,15 @@ void AtomicWriteOp::memory_order_valAttr(::mlir::omp::ClauseMemoryOrderKindAttr 
   (*this)->setAttr(memory_order_valAttrName(), attr);
 }
 
+::mlir::Attribute AtomicWriteOp::removeHint_valAttr() {
+  return (*this)->removeAttr(hint_valAttrName());
+}
+
 ::mlir::Attribute AtomicWriteOp::removeMemory_order_valAttr() {
   return (*this)->removeAttr(memory_order_valAttrName());
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
   if (hint_val) {
@@ -1523,7 +1579,7 @@ void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   }
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, ::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, /*optional*/::mlir::IntegerAttr hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
   if (hint_val) {
@@ -1536,7 +1592,7 @@ void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   odsState.addTypes(resultTypes);
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value address, ::mlir::Value value, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
@@ -1545,7 +1601,7 @@ void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState 
   }
 }
 
-void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
+void AtomicWriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value address, ::mlir::Value value, /*optional*/uint64_t hint_val, /*optional*/::mlir::omp::ClauseMemoryOrderKindAttr memory_order_val) {
   odsState.addOperands(address);
   odsState.addOperands(value);
   odsState.addAttribute(hint_valAttrName(odsState.name), odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), hint_val));
@@ -1562,6 +1618,11 @@ void AtomicWriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
   odsState.addAttributes(attributes);
   assert(resultTypes.size() == 0u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void AtomicWriteOp::populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes) {
+  auto attrNames = opName.getAttributeNames();
+  ::mlir::Builder odsBuilder(attrNames.front().getContext());
 }
 
 ::mlir::LogicalResult AtomicWriteOp::verifyInvariantsImpl() {
@@ -1650,7 +1711,8 @@ if (succeeded(parser.parseOptionalKeyword("hint"))) {
   {
     if (parseSynchronizationHint(parser, hint_valAttr))
       return ::mlir::failure();
-    result.addAttribute("hint_val", hint_valAttr);
+    if (hint_valAttr)
+      result.addAttribute("hint_val", hint_valAttr);
   }
   if (parser.parseRParen())
     return ::mlir::failure();
@@ -1893,7 +1955,7 @@ std::pair<unsigned, unsigned> CancelOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::omp::ClauseCancellationConstructTypeAttr CancelOpAdaptor::cancellation_construct_type_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CancelOp::cancellation_construct_type_valAttrName(*odsOpName)).cast<::mlir::omp::ClauseCancellationConstructTypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::omp::ClauseCancellationConstructType CancelOpAdaptor::cancellation_construct_type_val() {
@@ -1944,7 +2006,7 @@ std::pair<unsigned, unsigned> CancelOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CancelOp::if_expr() {
+::mlir::TypedValue<::mlir::IntegerType> CancelOp::if_expr() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -2077,7 +2139,7 @@ void CancelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       if_exprOperands.push_back(operand);
@@ -2089,7 +2151,7 @@ void CancelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, if_exprOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2147,7 +2209,7 @@ std::pair<unsigned, unsigned> CancellationPointOpAdaptor::getODSOperandIndexAndL
 ::mlir::omp::ClauseCancellationConstructTypeAttr CancellationPointOpAdaptor::cancellation_construct_type_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CancellationPointOp::cancellation_construct_type_valAttrName(*odsOpName)).cast<::mlir::omp::ClauseCancellationConstructTypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::omp::ClauseCancellationConstructType CancellationPointOpAdaptor::cancellation_construct_type_val() {
@@ -2324,7 +2386,7 @@ std::pair<unsigned, unsigned> CriticalDeclareOpAdaptor::getODSOperandIndexAndLen
 ::mlir::StringAttr CriticalDeclareOpAdaptor::sym_nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CriticalDeclareOp::sym_nameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef CriticalDeclareOpAdaptor::sym_name() {
@@ -2335,15 +2397,11 @@ std::pair<unsigned, unsigned> CriticalDeclareOpAdaptor::getODSOperandIndexAndLen
 ::mlir::IntegerAttr CriticalDeclareOpAdaptor::hint_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, CriticalDeclareOp::hint_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    if (!attr)
-      attr = ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0);
-    return attr;
+  return attr;
 }
 
 uint64_t CriticalDeclareOpAdaptor::hint_val() {
   auto attr = hint_valAttr();
-    if (!attr)
-      return ::mlir::Builder(odsAttrs.getContext()).getIntegerAttr(::mlir::Builder(odsAttrs.getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
@@ -2408,8 +2466,6 @@ std::pair<unsigned, unsigned> CriticalDeclareOp::getODSResultIndexAndLength(unsi
 
 uint64_t CriticalDeclareOp::hint_val() {
   auto attr = hint_valAttr();
-    if (!attr)
-      return ::mlir::Builder((*this)->getContext()).getIntegerAttr(::mlir::Builder((*this)->getContext()).getIntegerType(64), 0).getValue().getZExtValue();
   return attr.getValue().getZExtValue();
 }
 
@@ -2455,6 +2511,14 @@ void CriticalDeclareOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
   odsState.addAttributes(attributes);
   assert(resultTypes.size() == 0u && "mismatched number of return types");
   odsState.addTypes(resultTypes);
+}
+
+void CriticalDeclareOp::populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes) {
+  auto attrNames = opName.getAttributeNames();
+  ::mlir::Builder odsBuilder(attrNames.front().getContext());
+  if (!attributes.get(attrNames[0])) {
+     attributes.append(attrNames[0], odsBuilder.getIntegerAttr(odsBuilder.getIntegerType(64), 0));
+  }
 }
 
 ::mlir::LogicalResult CriticalDeclareOp::verifyInvariantsImpl() {
@@ -2574,7 +2638,7 @@ std::pair<unsigned, unsigned> CriticalOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::FlatSymbolRefAttr CriticalOpAdaptor::nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CriticalOp::nameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::FlatSymbolRefAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > CriticalOpAdaptor::name() {
@@ -2856,7 +2920,7 @@ void FlushOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
     auto valueGroup0 = getODSOperands(0);
 
     for (auto v : valueGroup0) {
-      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps0(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
   }
@@ -3083,7 +3147,7 @@ std::pair<unsigned, unsigned> OrderedOpAdaptor::getODSOperandIndexAndLength(unsi
 ::mlir::omp::ClauseDependAttr OrderedOpAdaptor::depend_type_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, OrderedOp::depend_type_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseDependAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseDepend> OrderedOpAdaptor::depend_type_val() {
@@ -3094,7 +3158,7 @@ std::pair<unsigned, unsigned> OrderedOpAdaptor::getODSOperandIndexAndLength(unsi
 ::mlir::IntegerAttr OrderedOpAdaptor::num_loops_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, OrderedOp::num_loops_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<uint64_t> OrderedOpAdaptor::num_loops_val() {
@@ -3366,7 +3430,7 @@ std::pair<unsigned, unsigned> OrderedRegionOpAdaptor::getODSOperandIndexAndLengt
 ::mlir::UnitAttr OrderedRegionOpAdaptor::simdAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, OrderedRegionOp::simdAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool OrderedRegionOpAdaptor::simd() {
@@ -3562,16 +3626,12 @@ ParallelOpAdaptor::ParallelOpAdaptor(ParallelOp op) : odsOperands(op->getOperand
 
 std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ParallelOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ParallelOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange ParallelOpAdaptor::getODSOperands(unsigned index) {
@@ -3609,7 +3669,7 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::ArrayAttr ParallelOpAdaptor::reductionsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > ParallelOpAdaptor::reductions() {
@@ -3620,7 +3680,7 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::omp::ClauseProcBindKindAttr ParallelOpAdaptor::proc_bind_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ParallelOp::proc_bind_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseProcBindKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseProcBindKind> ParallelOpAdaptor::proc_bind_val() {
@@ -3665,9 +3725,8 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 5)
       return emitError(loc, "'omp.parallel' op ""'operand_segment_sizes' attribute for specifying operand segments must have 5 "
                 "elements, but got ") << numElements;
@@ -3682,16 +3741,12 @@ std::pair<unsigned, unsigned> ParallelOpAdaptor::getODSOperandIndexAndLength(uns
 }
 
 std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range ParallelOp::getODSOperands(unsigned index) {
@@ -3700,7 +3755,7 @@ std::pair<unsigned, unsigned> ParallelOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ParallelOp::if_expr_var() {
+::mlir::TypedValue<::mlir::IntegerType> ParallelOp::if_expr_var() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -3808,7 +3863,7 @@ void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
   odsState.addOperands(reduction_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), static_cast<int32_t>(reduction_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), static_cast<int32_t>(reduction_vars.size())}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -3826,7 +3881,7 @@ void ParallelOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
   odsState.addOperands(reduction_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), static_cast<int32_t>(reduction_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr_var ? 1 : 0), (num_threads_var ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), static_cast<int32_t>(reduction_vars.size())}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -3876,9 +3931,8 @@ void ParallelOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 5)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 5 "
                 "elements, but got ") << numElements;
@@ -4013,7 +4067,7 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       if_expr_varOperands.push_back(operand);
@@ -4026,7 +4080,7 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       if_expr_varTypes.push_back(optionalType);
@@ -4050,7 +4104,7 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       num_threads_varOperands.push_back(operand);
@@ -4063,7 +4117,7 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       num_threads_varTypes.push_back(optionalType);
@@ -4117,7 +4171,7 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(if_expr_varOperands.size()), static_cast<int32_t>(num_threads_varOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(if_expr_varOperands.size()), static_cast<int32_t>(num_threads_varOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size())}));
   if (parser.resolveOperands(if_expr_varOperands, if_expr_varTypes, if_expr_varOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(num_threads_varOperands, num_threads_varTypes, num_threads_varOperandsLoc, result.operands))
@@ -4214,7 +4268,7 @@ std::pair<unsigned, unsigned> ReductionDeclareOpAdaptor::getODSOperandIndexAndLe
 ::mlir::StringAttr ReductionDeclareOpAdaptor::sym_nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, ReductionDeclareOp::sym_nameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef ReductionDeclareOpAdaptor::sym_name() {
@@ -4225,7 +4279,7 @@ std::pair<unsigned, unsigned> ReductionDeclareOpAdaptor::getODSOperandIndexAndLe
 ::mlir::TypeAttr ReductionDeclareOpAdaptor::typeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, ReductionDeclareOp::typeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::Type ReductionDeclareOpAdaptor::type() {
@@ -4552,7 +4606,7 @@ std::pair<unsigned, unsigned> ReductionOp::getODSOperandIndexAndLength(unsigned 
   return *getODSOperands(0).begin();
 }
 
-::mlir::Value ReductionOp::accumulator() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> ReductionOp::accumulator() {
   return *getODSOperands(1).begin();
 }
 
@@ -4832,16 +4886,12 @@ SectionsOpAdaptor::SectionsOpAdaptor(SectionsOp op) : odsOperands(op->getOperand
 
 std::pair<unsigned, unsigned> SectionsOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SectionsOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SectionsOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange SectionsOpAdaptor::getODSOperands(unsigned index) {
@@ -4869,7 +4919,7 @@ std::pair<unsigned, unsigned> SectionsOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::ArrayAttr SectionsOpAdaptor::reductionsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SectionsOp::reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > SectionsOpAdaptor::reductions() {
@@ -4880,7 +4930,7 @@ std::pair<unsigned, unsigned> SectionsOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::UnitAttr SectionsOpAdaptor::nowaitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SectionsOp::nowaitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool SectionsOpAdaptor::nowait() {
@@ -4925,9 +4975,8 @@ bool SectionsOpAdaptor::nowait() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'omp.sections' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -4942,16 +4991,12 @@ bool SectionsOpAdaptor::nowait() {
 }
 
 std::pair<unsigned, unsigned> SectionsOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range SectionsOp::getODSOperands(unsigned index) {
@@ -5042,7 +5087,7 @@ void SectionsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(reduction_vars);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -5056,7 +5101,7 @@ void SectionsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(reduction_vars);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -5072,7 +5117,7 @@ void SectionsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(reduction_vars);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -5086,7 +5131,7 @@ void SectionsOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &od
   odsState.addOperands(reduction_vars);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -5136,9 +5181,8 @@ void SectionsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -5261,7 +5305,7 @@ if (succeeded(parser.parseOptionalKeyword("reduction"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
   if (parser.resolveOperands(reduction_varsOperands, reduction_varsTypes, reduction_varsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
@@ -5316,16 +5360,12 @@ SimdLoopOpAdaptor::SimdLoopOpAdaptor(SimdLoopOp op) : odsOperands(op->getOperand
 
 std::pair<unsigned, unsigned> SimdLoopOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SimdLoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SimdLoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange SimdLoopOpAdaptor::getODSOperands(unsigned index) {
@@ -5346,8 +5386,46 @@ std::pair<unsigned, unsigned> SimdLoopOpAdaptor::getODSOperandIndexAndLength(uns
   return getODSOperands(2);
 }
 
+::mlir::Value SimdLoopOpAdaptor::if_expr() {
+  auto operands = getODSOperands(3);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
 ::mlir::DictionaryAttr SimdLoopOpAdaptor::getAttributes() {
   return odsAttrs;
+}
+
+::mlir::IntegerAttr SimdLoopOpAdaptor::simdlenAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SimdLoopOp::simdlenAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
+  return attr;
+}
+
+::llvm::Optional<uint64_t> SimdLoopOpAdaptor::simdlen() {
+  auto attr = simdlenAttr();
+  return attr ? ::llvm::Optional<uint64_t>(attr.getValue().getZExtValue()) : (::llvm::None);
+}
+
+::mlir::IntegerAttr SimdLoopOpAdaptor::safelenAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SimdLoopOp::safelenAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
+  return attr;
+}
+
+::llvm::Optional<uint64_t> SimdLoopOpAdaptor::safelen() {
+  auto attr = safelenAttr();
+  return attr ? ::llvm::Optional<uint64_t>(attr.getValue().getZExtValue()) : (::llvm::None);
+}
+
+::mlir::UnitAttr SimdLoopOpAdaptor::inclusiveAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SimdLoopOp::inclusiveAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool SimdLoopOpAdaptor::inclusive() {
+  auto attr = inclusiveAttr();
+  return attr != nullptr;
 }
 
 ::mlir::RegionRange SimdLoopOpAdaptor::getRegions() {
@@ -5362,6 +5440,7 @@ std::pair<unsigned, unsigned> SimdLoopOpAdaptor::getODSOperandIndexAndLength(uns
   auto namedAttrRange = odsAttrs;
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_inclusive;
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitError(loc, "'omp.simdloop' op ""requires attribute 'operand_segment_sizes'");
@@ -5369,31 +5448,52 @@ std::pair<unsigned, unsigned> SimdLoopOpAdaptor::getODSOperandIndexAndLength(uns
       tblgen_operand_segment_sizes = namedAttrIt->getValue();
       break;
     }
+    else if (namedAttrIt->getName() == SimdLoopOp::inclusiveAttrName(*odsOpName)) {
+      tblgen_inclusive = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_safelen;
+  ::mlir::Attribute tblgen_simdlen;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == SimdLoopOp::safelenAttrName(*odsOpName)) {
+      tblgen_safelen = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == SimdLoopOp::simdlenAttrName(*odsOpName)) {
+      tblgen_simdlen = namedAttrIt->getValue();
+    }
     ++namedAttrIt;
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
-    if (numElements != 3)
-      return emitError(loc, "'omp.simdloop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
+    if (numElements != 4)
+      return emitError(loc, "'omp.simdloop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    return ::mlir::success();
+
+  if (tblgen_simdlen && !((((tblgen_simdlen.isa<::mlir::IntegerAttr>())) && ((tblgen_simdlen.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_simdlen.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive()))))
+    return emitError(loc, "'omp.simdloop' op ""attribute 'simdlen' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive");
+
+  if (tblgen_safelen && !((((tblgen_safelen.isa<::mlir::IntegerAttr>())) && ((tblgen_safelen.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_safelen.cast<::mlir::IntegerAttr>().getValue().isStrictlyPositive()))))
+    return emitError(loc, "'omp.simdloop' op ""attribute 'safelen' failed to satisfy constraint: 64-bit signless integer attribute whose value is positive");
+
+  if (tblgen_inclusive && !((tblgen_inclusive.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'omp.simdloop' op ""attribute 'inclusive' failed to satisfy constraint: unit attribute");
+  return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> SimdLoopOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range SimdLoopOp::getODSOperands(unsigned index) {
@@ -5414,6 +5514,11 @@ std::pair<unsigned, unsigned> SimdLoopOp::getODSOperandIndexAndLength(unsigned i
   return getODSOperands(2);
 }
 
+::mlir::TypedValue<::mlir::IntegerType> SimdLoopOp::if_expr() {
+  auto operands = getODSOperands(3);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
 ::mlir::MutableOperandRange SimdLoopOp::lowerBoundMutable() {
   auto range = getODSOperandIndexAndLength(0);
   auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
@@ -5432,6 +5537,12 @@ std::pair<unsigned, unsigned> SimdLoopOp::getODSOperandIndexAndLength(unsigned i
   return mutableRange;
 }
 
+::mlir::MutableOperandRange SimdLoopOp::if_exprMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
 std::pair<unsigned, unsigned> SimdLoopOp::getODSResultIndexAndLength(unsigned index) {
   return {index, 1};
 }
@@ -5446,19 +5557,132 @@ std::pair<unsigned, unsigned> SimdLoopOp::getODSResultIndexAndLength(unsigned in
   return (*this)->getRegion(0);
 }
 
-void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step) {
+::mlir::IntegerAttr SimdLoopOp::simdlenAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, simdlenAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+}
+
+::llvm::Optional<uint64_t> SimdLoopOp::simdlen() {
+  auto attr = simdlenAttr();
+  return attr ? ::llvm::Optional<uint64_t>(attr.getValue().getZExtValue()) : (::llvm::None);
+}
+
+::mlir::IntegerAttr SimdLoopOp::safelenAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, safelenAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
+}
+
+::llvm::Optional<uint64_t> SimdLoopOp::safelen() {
+  auto attr = safelenAttr();
+  return attr ? ::llvm::Optional<uint64_t>(attr.getValue().getZExtValue()) : (::llvm::None);
+}
+
+::mlir::UnitAttr SimdLoopOp::inclusiveAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, inclusiveAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool SimdLoopOp::inclusive() {
+  auto attr = inclusiveAttr();
+  return attr != nullptr;
+}
+
+void SimdLoopOp::simdlenAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(simdlenAttrName(), attr);
+}
+
+void SimdLoopOp::safelenAttr(::mlir::IntegerAttr attr) {
+  (*this)->setAttr(safelenAttrName(), attr);
+}
+
+void SimdLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(inclusiveAttrName(), attr);
+}
+
+::mlir::Attribute SimdLoopOp::removeSimdlenAttr() {
+  return (*this)->removeAttr(simdlenAttrName());
+}
+
+::mlir::Attribute SimdLoopOp::removeSafelenAttr() {
+  return (*this)->removeAttr(safelenAttrName());
+}
+
+::mlir::Attribute SimdLoopOp::removeInclusiveAttr() {
+  return (*this)->removeAttr(inclusiveAttrName());
+}
+
+void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::IntegerAttr simdlen, /*optional*/::mlir::IntegerAttr safelen, /*optional*/::mlir::UnitAttr inclusive) {
   odsState.addOperands(lowerBound);
   odsState.addOperands(upperBound);
   odsState.addOperands(step);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size())}));
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0)}));
+  if (simdlen) {
+  odsState.addAttribute(simdlenAttrName(odsState.name), simdlen);
+  }
+  if (safelen) {
+  odsState.addAttribute(safelenAttrName(odsState.name), safelen);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), inclusive);
+  }
   (void)odsState.addRegion();
 }
 
-void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step) {
+void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::IntegerAttr simdlen, /*optional*/::mlir::IntegerAttr safelen, /*optional*/::mlir::UnitAttr inclusive) {
   odsState.addOperands(lowerBound);
   odsState.addOperands(upperBound);
   odsState.addOperands(step);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size())}));
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0)}));
+  if (simdlen) {
+  odsState.addAttribute(simdlenAttrName(odsState.name), simdlen);
+  }
+  if (safelen) {
+  odsState.addAttribute(safelenAttrName(odsState.name), safelen);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), inclusive);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::IntegerAttr simdlen, /*optional*/::mlir::IntegerAttr safelen, /*optional*/bool inclusive) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0)}));
+  if (simdlen) {
+  odsState.addAttribute(simdlenAttrName(odsState.name), simdlen);
+  }
+  if (safelen) {
+  odsState.addAttribute(safelenAttrName(odsState.name), safelen);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+}
+
+void SimdLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::IntegerAttr simdlen, /*optional*/::mlir::IntegerAttr safelen, /*optional*/bool inclusive) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0)}));
+  if (simdlen) {
+  odsState.addAttribute(simdlenAttrName(odsState.name), simdlen);
+  }
+  if (safelen) {
+  odsState.addAttribute(safelenAttrName(odsState.name), safelen);
+  }
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
   (void)odsState.addRegion();
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
@@ -5477,6 +5701,7 @@ void SimdLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   auto namedAttrRange = (*this)->getAttrs();
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_inclusive;
   while (true) {
     if (namedAttrIt == namedAttrRange.end())
       return emitOpError("requires attribute 'operand_segment_sizes'");
@@ -5484,18 +5709,43 @@ void SimdLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       tblgen_operand_segment_sizes = namedAttrIt->getValue();
       break;
     }
+    else if (namedAttrIt->getName() == inclusiveAttrName()) {
+      tblgen_inclusive = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_safelen;
+  ::mlir::Attribute tblgen_simdlen;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == safelenAttrName()) {
+      tblgen_safelen = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == simdlenAttrName()) {
+      tblgen_simdlen = namedAttrIt->getValue();
+    }
     ++namedAttrIt;
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
-    if (numElements != 3)
-      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
+    if (numElements != 4)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 4 "
                 "elements, but got ") << numElements;
   }
-    {
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps11(*this, tblgen_simdlen, "simdlen")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps11(*this, tblgen_safelen, "safelen")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_inclusive, "inclusive")))
+    return ::mlir::failure();
+  {
     unsigned index = 0; (void)index;
     auto valueGroup0 = getODSOperands(0);
 
@@ -5515,8 +5765,19 @@ void SimdLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
       if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
         return ::mlir::failure();
     }
+    auto valueGroup3 = getODSOperands(3);
+
+    if (valueGroup3.size() > 1) {
+      return emitOpError("operand group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup3.size();
+    }
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({this->getODSOperands(0).getType(), this->getODSOperands(1).getType(), this->getODSOperands(2).getType()})))))
+  if (!(((this->getODSOperands(0).getType()) == (this->getODSOperands(1).getType()) && (this->getODSOperands(1).getType()) == (this->getODSOperands(2).getType()) && (this->getODSOperands(2).getType()) == (this->getODSOperands(0).getType()))))
     return emitOpError("failed to verify that all of {lowerBound, upperBound, step} have same type");
   {
     unsigned index = 0; (void)index;
@@ -5532,6 +5793,148 @@ void SimdLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
     return ::mlir::success();
   return ::mlir::failure();
+}
+
+::mlir::ParseResult SimdLoopOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> if_exprOperands;
+  ::llvm::SMLoc if_exprOperandsLoc;
+  (void)if_exprOperandsLoc;
+  ::mlir::IntegerAttr simdlenAttr;
+  ::mlir::IntegerAttr safelenAttr;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> lowerBoundOperands;
+  ::llvm::SMLoc lowerBoundOperandsLoc;
+  (void)lowerBoundOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> upperBoundOperands;
+  ::llvm::SMLoc upperBoundOperandsLoc;
+  (void)upperBoundOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stepOperands;
+  ::llvm::SMLoc stepOperandsLoc;
+  (void)stepOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> stepTypes;
+  ::mlir::UnitAttr inclusiveAttr;
+  bool ifClause = false;
+  bool simdlenClause = false;
+  bool safelenClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("if"))) {
+
+  if (ifClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`if` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  ifClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    if_exprOperandsLoc = parser.getCurrentLocation();
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalOperand(operand);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      if_exprOperands.push_back(operand);
+    }
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("simdlen"))) {
+
+  if (simdlenClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`simdlen` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  simdlenClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    ::mlir::OptionalParseResult parseResult =
+      parser.parseOptionalAttribute(simdlenAttr, parser.getBuilder().getIntegerType(64), "simdlen", result.attributes);
+    if (parseResult.has_value() && failed(*parseResult))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("safelen"))) {
+
+  if (safelenClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`safelen` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  safelenClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    ::mlir::OptionalParseResult parseResult =
+      parser.parseOptionalAttribute(safelenAttr, parser.getBuilder().getIntegerType(64), "safelen", result.attributes);
+    if (parseResult.has_value() && failed(*parseResult))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+  if (parser.parseKeyword("for"))
+    return ::mlir::failure();
+  {
+    lowerBoundOperandsLoc = parser.getCurrentLocation();
+    upperBoundOperandsLoc = parser.getCurrentLocation();
+    stepOperandsLoc = parser.getCurrentLocation();
+    if (parseLoopControl(parser, *regionRegion, lowerBoundOperands, upperBoundOperands, stepOperands, stepTypes, inclusiveAttr))
+      return ::mlir::failure();
+    if (inclusiveAttr)
+      result.addAttribute("inclusive", inclusiveAttr);
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(lowerBoundOperands.size()), static_cast<int32_t>(upperBoundOperands.size()), static_cast<int32_t>(stepOperands.size()), static_cast<int32_t>(if_exprOperands.size())}));
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
+  if (parser.resolveOperands(lowerBoundOperands, stepTypes, lowerBoundOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(upperBoundOperands, stepTypes, upperBoundOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(stepOperands, stepTypes, stepOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, if_exprOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void SimdLoopOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if (false || if_expr()) {
+  _odsPrinter << ' ' << "if";
+  _odsPrinter << "(";
+  if (::mlir::Value value = if_expr())
+    _odsPrinter << value;
+  _odsPrinter << ")";
+  }
+  if (false || simdlenAttr()) {
+  _odsPrinter << ' ' << "simdlen";
+  _odsPrinter << "(";
+  _odsPrinter.printAttributeWithoutType(simdlenAttr());
+  _odsPrinter << ")";
+  }
+  if (false || safelenAttr()) {
+  _odsPrinter << ' ' << "safelen";
+  _odsPrinter << "(";
+  _odsPrinter.printAttributeWithoutType(safelenAttr());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ' << "for";
+  _odsPrinter << ' ';
+  printLoopControl(_odsPrinter, *this, region(), lowerBound(), upperBound(), step(), step().getTypes(), inclusiveAttr());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "simdlen", "safelen", "inclusive"});
 }
 
 } // namespace omp
@@ -5557,16 +5960,12 @@ SingleOpAdaptor::SingleOpAdaptor(SingleOp op) : odsOperands(op->getOperands()), 
 
 std::pair<unsigned, unsigned> SingleOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SingleOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, SingleOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange SingleOpAdaptor::getODSOperands(unsigned index) {
@@ -5590,7 +5989,7 @@ std::pair<unsigned, unsigned> SingleOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::UnitAttr SingleOpAdaptor::nowaitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SingleOp::nowaitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool SingleOpAdaptor::nowait() {
@@ -5625,9 +6024,8 @@ bool SingleOpAdaptor::nowait() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 2)
       return emitError(loc, "'omp.single' op ""'operand_segment_sizes' attribute for specifying operand segments must have 2 "
                 "elements, but got ") << numElements;
@@ -5639,16 +6037,12 @@ bool SingleOpAdaptor::nowait() {
 }
 
 std::pair<unsigned, unsigned> SingleOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range SingleOp::getODSOperands(unsigned index) {
@@ -5711,7 +6105,7 @@ void SingleOp::nowaitAttr(::mlir::UnitAttr attr) {
 void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::UnitAttr nowait) {
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
   }
@@ -5721,7 +6115,7 @@ void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::UnitAttr nowait) {
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
   }
@@ -5733,7 +6127,7 @@ void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/bool nowait) {
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -5743,7 +6137,7 @@ void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
 void SingleOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/bool nowait) {
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -5780,9 +6174,8 @@ void SingleOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 2)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 2 "
                 "elements, but got ") << numElements;
@@ -5871,7 +6264,7 @@ if (succeeded(parser.parseOptionalKeyword("allocate"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
   if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(allocators_varsOperands, allocators_varsTypes, allocators_varsOperandsLoc, result.operands))
@@ -5918,16 +6311,12 @@ TargetOpAdaptor::TargetOpAdaptor(TargetOp op) : odsOperands(op->getOperands()), 
 
 std::pair<unsigned, unsigned> TargetOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TargetOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TargetOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange TargetOpAdaptor::getODSOperands(unsigned index) {
@@ -5958,7 +6347,7 @@ std::pair<unsigned, unsigned> TargetOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::UnitAttr TargetOpAdaptor::nowaitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TargetOp::nowaitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool TargetOpAdaptor::nowait() {
@@ -5993,9 +6382,8 @@ bool TargetOpAdaptor::nowait() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'omp.target' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -6007,16 +6395,12 @@ bool TargetOpAdaptor::nowait() {
 }
 
 std::pair<unsigned, unsigned> TargetOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range TargetOp::getODSOperands(unsigned index) {
@@ -6025,17 +6409,17 @@ std::pair<unsigned, unsigned> TargetOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TargetOp::if_expr() {
+::mlir::TypedValue<::mlir::IntegerType> TargetOp::if_expr() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value TargetOp::device() {
+::mlir::TypedValue<::mlir::IntegerType> TargetOp::device() {
   auto operands = getODSOperands(1);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value TargetOp::thread_limit() {
+::mlir::TypedValue<::mlir::IntegerType> TargetOp::thread_limit() {
   auto operands = getODSOperands(2);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -6096,7 +6480,7 @@ void TargetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     odsState.addOperands(device);
   if (thread_limit)
     odsState.addOperands(thread_limit);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
   }
@@ -6110,7 +6494,7 @@ void TargetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     odsState.addOperands(device);
   if (thread_limit)
     odsState.addOperands(thread_limit);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
   }
@@ -6126,7 +6510,7 @@ void TargetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     odsState.addOperands(device);
   if (thread_limit)
     odsState.addOperands(thread_limit);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -6140,7 +6524,7 @@ void TargetOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     odsState.addOperands(device);
   if (thread_limit)
     odsState.addOperands(thread_limit);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (device ? 1 : 0), (thread_limit ? 1 : 0)}));
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -6177,9 +6561,8 @@ void TargetOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -6271,7 +6654,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       if_exprOperands.push_back(operand);
@@ -6295,7 +6678,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       deviceOperands.push_back(operand);
@@ -6308,7 +6691,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       deviceTypes.push_back(optionalType);
@@ -6332,7 +6715,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       thread_limitOperands.push_back(operand);
@@ -6345,7 +6728,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::Type optionalType;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalType(optionalType);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       thread_limitTypes.push_back(optionalType);
@@ -6372,9 +6755,9 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(if_exprOperands.size()), static_cast<int32_t>(deviceOperands.size()), static_cast<int32_t>(thread_limitOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(if_exprOperands.size()), static_cast<int32_t>(deviceOperands.size()), static_cast<int32_t>(thread_limitOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, if_exprOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(deviceOperands, deviceTypes, deviceOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -6428,6 +6811,1674 @@ namespace mlir {
 namespace omp {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::omp::TaskGroupOp definitions
+//===----------------------------------------------------------------------===//
+
+TaskGroupOpAdaptor::TaskGroupOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("omp.taskgroup", odsAttrs.getContext());
+}
+
+TaskGroupOpAdaptor::TaskGroupOpAdaptor(TaskGroupOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange TaskGroupOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> TaskGroupOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  assert(odsAttrs && "missing segment size attribute for op");
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TaskGroupOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
+}
+
+::mlir::ValueRange TaskGroupOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange TaskGroupOpAdaptor::task_reduction_vars() {
+  return getODSOperands(0);
+}
+
+::mlir::ValueRange TaskGroupOpAdaptor::allocate_vars() {
+  return getODSOperands(1);
+}
+
+::mlir::ValueRange TaskGroupOpAdaptor::allocators_vars() {
+  return getODSOperands(2);
+}
+
+::mlir::DictionaryAttr TaskGroupOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::ArrayAttr TaskGroupOpAdaptor::task_reductionsAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, TaskGroupOp::task_reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > TaskGroupOpAdaptor::task_reductions() {
+  auto attr = task_reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
+::mlir::RegionRange TaskGroupOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &TaskGroupOpAdaptor::region() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult TaskGroupOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'omp.taskgroup' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == TaskGroupOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_task_reductions;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == TaskGroupOp::task_reductionsAttrName(*odsOpName)) {
+      tblgen_task_reductions = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
+    if (numElements != 3)
+      return emitError(loc, "'omp.taskgroup' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
+                "elements, but got ") << numElements;
+  }
+
+  if (tblgen_task_reductions && !(((tblgen_task_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_task_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
+    return emitError(loc, "'omp.taskgroup' op ""attribute 'task_reductions' failed to satisfy constraint: symbol ref array attribute");
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> TaskGroupOp::getODSOperandIndexAndLength(unsigned index) {
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
+}
+
+::mlir::Operation::operand_range TaskGroupOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range TaskGroupOp::task_reduction_vars() {
+  return getODSOperands(0);
+}
+
+::mlir::Operation::operand_range TaskGroupOp::allocate_vars() {
+  return getODSOperands(1);
+}
+
+::mlir::Operation::operand_range TaskGroupOp::allocators_vars() {
+  return getODSOperands(2);
+}
+
+::mlir::MutableOperandRange TaskGroupOp::task_reduction_varsMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskGroupOp::allocate_varsMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskGroupOp::allocators_varsMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> TaskGroupOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range TaskGroupOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Region &TaskGroupOp::region() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::ArrayAttr TaskGroupOp::task_reductionsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, task_reductionsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > TaskGroupOp::task_reductions() {
+  auto attr = task_reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
+void TaskGroupOp::task_reductionsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(task_reductionsAttrName(), attr);
+}
+
+::mlir::Attribute TaskGroupOp::removeTask_reductionsAttr() {
+  return (*this)->removeAttr(task_reductionsAttrName());
+}
+
+void TaskGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange task_reduction_vars, /*optional*/::mlir::ArrayAttr task_reductions, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars) {
+  odsState.addOperands(task_reduction_vars);
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(task_reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  if (task_reductions) {
+  odsState.addAttribute(task_reductionsAttrName(odsState.name), task_reductions);
+  }
+  (void)odsState.addRegion();
+}
+
+void TaskGroupOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange task_reduction_vars, /*optional*/::mlir::ArrayAttr task_reductions, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars) {
+  odsState.addOperands(task_reduction_vars);
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(task_reduction_vars.size()), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  if (task_reductions) {
+  odsState.addAttribute(task_reductionsAttrName(odsState.name), task_reductions);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void TaskGroupOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult TaskGroupOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_task_reductions;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == task_reductionsAttrName()) {
+      tblgen_task_reductions = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
+    if (numElements != 3)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
+                "elements, but got ") << numElements;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_task_reductions, "task_reductions")))
+    return ::mlir::failure();
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult TaskGroupOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult TaskGroupOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> task_reduction_varsOperands;
+  ::llvm::SMLoc task_reduction_varsOperandsLoc;
+  (void)task_reduction_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> task_reduction_varsTypes;
+  ::mlir::ArrayAttr task_reductionsAttr;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocate_varsOperands;
+  ::llvm::SMLoc allocate_varsOperandsLoc;
+  (void)allocate_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> allocate_varsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocators_varsOperands;
+  ::llvm::SMLoc allocators_varsOperandsLoc;
+  (void)allocators_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> allocators_varsTypes;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  bool task_reductionClause = false;
+  bool allocateClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("task_reduction"))) {
+
+  if (task_reductionClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`task_reduction` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  task_reductionClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    task_reduction_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseReductionVarList(parser, task_reduction_varsOperands, task_reduction_varsTypes, task_reductionsAttr))
+      return ::mlir::failure();
+    if (task_reductionsAttr)
+      result.addAttribute("task_reductions", task_reductionsAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("allocate"))) {
+
+  if (allocateClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`allocate` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  allocateClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    allocate_varsOperandsLoc = parser.getCurrentLocation();
+    allocators_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseAllocateAndAllocator(parser, allocate_varsOperands, allocate_varsTypes, allocators_varsOperands, allocators_varsTypes))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else  {
+    break;
+  }
+}
+
+  if (parser.parseRegion(*regionRegion))
+    return ::mlir::failure();
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(task_reduction_varsOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  if (parser.resolveOperands(task_reduction_varsOperands, task_reduction_varsTypes, task_reduction_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocators_varsOperands, allocators_varsTypes, allocators_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void TaskGroupOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if (false || task_reduction_vars().size() || task_reductionsAttr()) {
+  _odsPrinter << ' ' << "task_reduction";
+  _odsPrinter << "(";
+  printReductionVarList(_odsPrinter, *this, task_reduction_vars(), task_reduction_vars().getTypes(), task_reductionsAttr());
+  _odsPrinter << ")";
+  }
+  if (false || allocate_vars().size() || allocators_vars().size()) {
+  _odsPrinter << ' ' << "allocate";
+  _odsPrinter << "(";
+  printAllocateAndAllocator(_odsPrinter, *this, allocate_vars(), allocate_vars().getTypes(), allocators_vars(), allocators_vars().getTypes());
+  _odsPrinter << ")";
+  }
+  _odsPrinter << ' ';
+  _odsPrinter.printRegion(region());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "task_reductions"});
+}
+
+} // namespace omp
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TaskGroupOp)
+
+namespace mlir {
+namespace omp {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::omp::TaskLoopOp definitions
+//===----------------------------------------------------------------------===//
+
+TaskLoopOpAdaptor::TaskLoopOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs, ::mlir::RegionRange regions) : odsOperands(values), odsAttrs(attrs), odsRegions(regions) {  if (odsAttrs)
+    odsOpName.emplace("omp.taskloop", odsAttrs.getContext());
+}
+
+TaskLoopOpAdaptor::TaskLoopOpAdaptor(TaskLoopOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
+
+::mlir::ValueRange TaskLoopOpAdaptor::getOperands() {
+  return odsOperands;
+}
+
+std::pair<unsigned, unsigned> TaskLoopOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
+  assert(odsAttrs && "missing segment size attribute for op");
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TaskLoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(odsOperands.begin(), valueRange.first),
+           std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::lowerBound() {
+  return getODSOperands(0);
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::upperBound() {
+  return getODSOperands(1);
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::step() {
+  return getODSOperands(2);
+}
+
+::mlir::Value TaskLoopOpAdaptor::if_expr() {
+  auto operands = getODSOperands(3);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::Value TaskLoopOpAdaptor::final_expr() {
+  auto operands = getODSOperands(4);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::in_reduction_vars() {
+  return getODSOperands(5);
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::reduction_vars() {
+  return getODSOperands(6);
+}
+
+::mlir::Value TaskLoopOpAdaptor::priority() {
+  auto operands = getODSOperands(7);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::allocate_vars() {
+  return getODSOperands(8);
+}
+
+::mlir::ValueRange TaskLoopOpAdaptor::allocators_vars() {
+  return getODSOperands(9);
+}
+
+::mlir::Value TaskLoopOpAdaptor::grain_size() {
+  auto operands = getODSOperands(10);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::Value TaskLoopOpAdaptor::num_tasks() {
+  auto operands = getODSOperands(11);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::DictionaryAttr TaskLoopOpAdaptor::getAttributes() {
+  return odsAttrs;
+}
+
+::mlir::UnitAttr TaskLoopOpAdaptor::inclusiveAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TaskLoopOp::inclusiveAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool TaskLoopOpAdaptor::inclusive() {
+  auto attr = inclusiveAttr();
+  return attr != nullptr;
+}
+
+::mlir::UnitAttr TaskLoopOpAdaptor::untiedAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, TaskLoopOp::untiedAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool TaskLoopOpAdaptor::untied() {
+  auto attr = untiedAttr();
+  return attr != nullptr;
+}
+
+::mlir::UnitAttr TaskLoopOpAdaptor::mergeableAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TaskLoopOp::mergeableAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool TaskLoopOpAdaptor::mergeable() {
+  auto attr = mergeableAttr();
+  return attr != nullptr;
+}
+
+::mlir::ArrayAttr TaskLoopOpAdaptor::in_reductionsAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TaskLoopOp::in_reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > TaskLoopOpAdaptor::in_reductions() {
+  auto attr = in_reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
+::mlir::ArrayAttr TaskLoopOpAdaptor::reductionsAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, TaskLoopOp::reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
+  return attr;
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > TaskLoopOpAdaptor::reductions() {
+  auto attr = reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
+::mlir::UnitAttr TaskLoopOpAdaptor::nogroupAttr() {
+  assert(odsAttrs && "no attributes when constructing adapter");
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TaskLoopOp::nogroupAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
+  return attr;
+}
+
+bool TaskLoopOpAdaptor::nogroup() {
+  auto attr = nogroupAttr();
+  return attr != nullptr;
+}
+
+::mlir::RegionRange TaskLoopOpAdaptor::getRegions() {
+  return odsRegions;
+}
+
+::mlir::Region &TaskLoopOpAdaptor::region() {
+  return *odsRegions[0];
+}
+
+::mlir::LogicalResult TaskLoopOpAdaptor::verify(::mlir::Location loc) {
+  auto namedAttrRange = odsAttrs;
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_in_reductions;
+  ::mlir::Attribute tblgen_inclusive;
+  ::mlir::Attribute tblgen_mergeable;
+  ::mlir::Attribute tblgen_nogroup;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitError(loc, "'omp.taskloop' op ""requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == TaskLoopOp::operand_segment_sizesAttrName(*odsOpName)) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == TaskLoopOp::in_reductionsAttrName(*odsOpName)) {
+      tblgen_in_reductions = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == TaskLoopOp::inclusiveAttrName(*odsOpName)) {
+      tblgen_inclusive = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == TaskLoopOp::mergeableAttrName(*odsOpName)) {
+      tblgen_mergeable = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == TaskLoopOp::nogroupAttrName(*odsOpName)) {
+      tblgen_nogroup = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reductions;
+  ::mlir::Attribute tblgen_untied;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == TaskLoopOp::reductionsAttrName(*odsOpName)) {
+      tblgen_reductions = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == TaskLoopOp::untiedAttrName(*odsOpName)) {
+      tblgen_untied = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
+    if (numElements != 12)
+      return emitError(loc, "'omp.taskloop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 12 "
+                "elements, but got ") << numElements;
+  }
+
+  if (tblgen_inclusive && !((tblgen_inclusive.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'omp.taskloop' op ""attribute 'inclusive' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_untied && !((tblgen_untied.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'omp.taskloop' op ""attribute 'untied' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_mergeable && !((tblgen_mergeable.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'omp.taskloop' op ""attribute 'mergeable' failed to satisfy constraint: unit attribute");
+
+  if (tblgen_in_reductions && !(((tblgen_in_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_in_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
+    return emitError(loc, "'omp.taskloop' op ""attribute 'in_reductions' failed to satisfy constraint: symbol ref array attribute");
+
+  if (tblgen_reductions && !(((tblgen_reductions.isa<::mlir::ArrayAttr>())) && (::llvm::all_of(tblgen_reductions.cast<::mlir::ArrayAttr>(), [&](::mlir::Attribute attr) { return attr && ((attr.isa<::mlir::SymbolRefAttr>())); }))))
+    return emitError(loc, "'omp.taskloop' op ""attribute 'reductions' failed to satisfy constraint: symbol ref array attribute");
+
+  if (tblgen_nogroup && !((tblgen_nogroup.isa<::mlir::UnitAttr>())))
+    return emitError(loc, "'omp.taskloop' op ""attribute 'nogroup' failed to satisfy constraint: unit attribute");
+  return ::mlir::success();
+}
+
+std::pair<unsigned, unsigned> TaskLoopOp::getODSOperandIndexAndLength(unsigned index) {
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
+
+  unsigned start = 0;
+  for (unsigned i = 0; i < index; ++i)
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
+}
+
+::mlir::Operation::operand_range TaskLoopOp::getODSOperands(unsigned index) {
+  auto valueRange = getODSOperandIndexAndLength(index);
+  return {std::next(getOperation()->operand_begin(), valueRange.first),
+           std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Operation::operand_range TaskLoopOp::lowerBound() {
+  return getODSOperands(0);
+}
+
+::mlir::Operation::operand_range TaskLoopOp::upperBound() {
+  return getODSOperands(1);
+}
+
+::mlir::Operation::operand_range TaskLoopOp::step() {
+  return getODSOperands(2);
+}
+
+::mlir::TypedValue<::mlir::IntegerType> TaskLoopOp::if_expr() {
+  auto operands = getODSOperands(3);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::TypedValue<::mlir::IntegerType> TaskLoopOp::final_expr() {
+  auto operands = getODSOperands(4);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::Operation::operand_range TaskLoopOp::in_reduction_vars() {
+  return getODSOperands(5);
+}
+
+::mlir::Operation::operand_range TaskLoopOp::reduction_vars() {
+  return getODSOperands(6);
+}
+
+::mlir::Value TaskLoopOp::priority() {
+  auto operands = getODSOperands(7);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::Operation::operand_range TaskLoopOp::allocate_vars() {
+  return getODSOperands(8);
+}
+
+::mlir::Operation::operand_range TaskLoopOp::allocators_vars() {
+  return getODSOperands(9);
+}
+
+::mlir::Value TaskLoopOp::grain_size() {
+  auto operands = getODSOperands(10);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::Value TaskLoopOp::num_tasks() {
+  auto operands = getODSOperands(11);
+  return operands.empty() ? ::mlir::Value() : *operands.begin();
+}
+
+::mlir::MutableOperandRange TaskLoopOp::lowerBoundMutable() {
+  auto range = getODSOperandIndexAndLength(0);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(0u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::upperBoundMutable() {
+  auto range = getODSOperandIndexAndLength(1);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(1u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::stepMutable() {
+  auto range = getODSOperandIndexAndLength(2);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(2u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::if_exprMutable() {
+  auto range = getODSOperandIndexAndLength(3);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(3u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::final_exprMutable() {
+  auto range = getODSOperandIndexAndLength(4);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(4u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::in_reduction_varsMutable() {
+  auto range = getODSOperandIndexAndLength(5);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(5u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::reduction_varsMutable() {
+  auto range = getODSOperandIndexAndLength(6);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(6u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::priorityMutable() {
+  auto range = getODSOperandIndexAndLength(7);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(7u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::allocate_varsMutable() {
+  auto range = getODSOperandIndexAndLength(8);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(8u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::allocators_varsMutable() {
+  auto range = getODSOperandIndexAndLength(9);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(9u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::grain_sizeMutable() {
+  auto range = getODSOperandIndexAndLength(10);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(10u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+::mlir::MutableOperandRange TaskLoopOp::num_tasksMutable() {
+  auto range = getODSOperandIndexAndLength(11);
+  auto mutableRange = ::mlir::MutableOperandRange(getOperation(), range.first, range.second, ::mlir::MutableOperandRange::OperandSegment(11u, *::mlir::impl::getNamedAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName())));
+  return mutableRange;
+}
+
+std::pair<unsigned, unsigned> TaskLoopOp::getODSResultIndexAndLength(unsigned index) {
+  return {index, 1};
+}
+
+::mlir::Operation::result_range TaskLoopOp::getODSResults(unsigned index) {
+  auto valueRange = getODSResultIndexAndLength(index);
+  return {std::next(getOperation()->result_begin(), valueRange.first),
+           std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::Region &TaskLoopOp::region() {
+  return (*this)->getRegion(0);
+}
+
+::mlir::UnitAttr TaskLoopOp::inclusiveAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, inclusiveAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool TaskLoopOp::inclusive() {
+  auto attr = inclusiveAttr();
+  return attr != nullptr;
+}
+
+::mlir::UnitAttr TaskLoopOp::untiedAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, untiedAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool TaskLoopOp::untied() {
+  auto attr = untiedAttr();
+  return attr != nullptr;
+}
+
+::mlir::UnitAttr TaskLoopOp::mergeableAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, mergeableAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool TaskLoopOp::mergeable() {
+  auto attr = mergeableAttr();
+  return attr != nullptr;
+}
+
+::mlir::ArrayAttr TaskLoopOp::in_reductionsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, in_reductionsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > TaskLoopOp::in_reductions() {
+  auto attr = in_reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
+::mlir::ArrayAttr TaskLoopOp::reductionsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, reductionsAttrName()).dyn_cast_or_null<::mlir::ArrayAttr>();
+}
+
+::llvm::Optional< ::mlir::ArrayAttr > TaskLoopOp::reductions() {
+  auto attr = reductionsAttr();
+  return attr ? ::llvm::Optional< ::mlir::ArrayAttr >(attr) : (::llvm::None);
+}
+
+::mlir::UnitAttr TaskLoopOp::nogroupAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, nogroupAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
+}
+
+bool TaskLoopOp::nogroup() {
+  auto attr = nogroupAttr();
+  return attr != nullptr;
+}
+
+void TaskLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(inclusiveAttrName(), attr);
+}
+
+void TaskLoopOp::untiedAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(untiedAttrName(), attr);
+}
+
+void TaskLoopOp::mergeableAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(mergeableAttrName(), attr);
+}
+
+void TaskLoopOp::in_reductionsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(in_reductionsAttrName(), attr);
+}
+
+void TaskLoopOp::reductionsAttr(::mlir::ArrayAttr attr) {
+  (*this)->setAttr(reductionsAttrName(), attr);
+}
+
+void TaskLoopOp::nogroupAttr(::mlir::UnitAttr attr) {
+  (*this)->setAttr(nogroupAttrName(), attr);
+}
+
+::mlir::Attribute TaskLoopOp::removeInclusiveAttr() {
+  return (*this)->removeAttr(inclusiveAttrName());
+}
+
+::mlir::Attribute TaskLoopOp::removeUntiedAttr() {
+  return (*this)->removeAttr(untiedAttrName());
+}
+
+::mlir::Attribute TaskLoopOp::removeMergeableAttr() {
+  return (*this)->removeAttr(mergeableAttrName());
+}
+
+::mlir::Attribute TaskLoopOp::removeIn_reductionsAttr() {
+  return (*this)->removeAttr(in_reductionsAttrName());
+}
+
+::mlir::Attribute TaskLoopOp::removeReductionsAttr() {
+  return (*this)->removeAttr(reductionsAttrName());
+}
+
+::mlir::Attribute TaskLoopOp::removeNogroupAttr() {
+  return (*this)->removeAttr(nogroupAttrName());
+}
+
+void TaskLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/::mlir::UnitAttr inclusive, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::Value final_expr, /*optional*/::mlir::UnitAttr untied, /*optional*/::mlir::UnitAttr mergeable, ::mlir::ValueRange in_reduction_vars, /*optional*/::mlir::ArrayAttr in_reductions, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::Value priority, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::Value grain_size, /*optional*/::mlir::Value num_tasks, /*optional*/::mlir::UnitAttr nogroup) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  if (final_expr)
+    odsState.addOperands(final_expr);
+  odsState.addOperands(in_reduction_vars);
+  odsState.addOperands(reduction_vars);
+  if (priority)
+    odsState.addOperands(priority);
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  if (grain_size)
+    odsState.addOperands(grain_size);
+  if (num_tasks)
+    odsState.addOperands(num_tasks);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), static_cast<int32_t>(reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), (grain_size ? 1 : 0), (num_tasks ? 1 : 0)}));
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), inclusive);
+  }
+  if (untied) {
+  odsState.addAttribute(untiedAttrName(odsState.name), untied);
+  }
+  if (mergeable) {
+  odsState.addAttribute(mergeableAttrName(odsState.name), mergeable);
+  }
+  if (in_reductions) {
+  odsState.addAttribute(in_reductionsAttrName(odsState.name), in_reductions);
+  }
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (nogroup) {
+  odsState.addAttribute(nogroupAttrName(odsState.name), nogroup);
+  }
+  (void)odsState.addRegion();
+}
+
+void TaskLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/::mlir::UnitAttr inclusive, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::Value final_expr, /*optional*/::mlir::UnitAttr untied, /*optional*/::mlir::UnitAttr mergeable, ::mlir::ValueRange in_reduction_vars, /*optional*/::mlir::ArrayAttr in_reductions, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::Value priority, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::Value grain_size, /*optional*/::mlir::Value num_tasks, /*optional*/::mlir::UnitAttr nogroup) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  if (final_expr)
+    odsState.addOperands(final_expr);
+  odsState.addOperands(in_reduction_vars);
+  odsState.addOperands(reduction_vars);
+  if (priority)
+    odsState.addOperands(priority);
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  if (grain_size)
+    odsState.addOperands(grain_size);
+  if (num_tasks)
+    odsState.addOperands(num_tasks);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), static_cast<int32_t>(reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), (grain_size ? 1 : 0), (num_tasks ? 1 : 0)}));
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), inclusive);
+  }
+  if (untied) {
+  odsState.addAttribute(untiedAttrName(odsState.name), untied);
+  }
+  if (mergeable) {
+  odsState.addAttribute(mergeableAttrName(odsState.name), mergeable);
+  }
+  if (in_reductions) {
+  odsState.addAttribute(in_reductionsAttrName(odsState.name), in_reductions);
+  }
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (nogroup) {
+  odsState.addAttribute(nogroupAttrName(odsState.name), nogroup);
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void TaskLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/bool inclusive, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::Value final_expr, /*optional*/bool untied, /*optional*/bool mergeable, ::mlir::ValueRange in_reduction_vars, /*optional*/::mlir::ArrayAttr in_reductions, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::Value priority, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::Value grain_size, /*optional*/::mlir::Value num_tasks, /*optional*/bool nogroup) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  if (final_expr)
+    odsState.addOperands(final_expr);
+  odsState.addOperands(in_reduction_vars);
+  odsState.addOperands(reduction_vars);
+  if (priority)
+    odsState.addOperands(priority);
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  if (grain_size)
+    odsState.addOperands(grain_size);
+  if (num_tasks)
+    odsState.addOperands(num_tasks);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), static_cast<int32_t>(reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), (grain_size ? 1 : 0), (num_tasks ? 1 : 0)}));
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (untied) {
+  odsState.addAttribute(untiedAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (mergeable) {
+  odsState.addAttribute(mergeableAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (in_reductions) {
+  odsState.addAttribute(in_reductionsAttrName(odsState.name), in_reductions);
+  }
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (nogroup) {
+  odsState.addAttribute(nogroupAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+}
+
+void TaskLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, /*optional*/bool inclusive, /*optional*/::mlir::Value if_expr, /*optional*/::mlir::Value final_expr, /*optional*/bool untied, /*optional*/bool mergeable, ::mlir::ValueRange in_reduction_vars, /*optional*/::mlir::ArrayAttr in_reductions, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::Value priority, ::mlir::ValueRange allocate_vars, ::mlir::ValueRange allocators_vars, /*optional*/::mlir::Value grain_size, /*optional*/::mlir::Value num_tasks, /*optional*/bool nogroup) {
+  odsState.addOperands(lowerBound);
+  odsState.addOperands(upperBound);
+  odsState.addOperands(step);
+  if (if_expr)
+    odsState.addOperands(if_expr);
+  if (final_expr)
+    odsState.addOperands(final_expr);
+  odsState.addOperands(in_reduction_vars);
+  odsState.addOperands(reduction_vars);
+  if (priority)
+    odsState.addOperands(priority);
+  odsState.addOperands(allocate_vars);
+  odsState.addOperands(allocators_vars);
+  if (grain_size)
+    odsState.addOperands(grain_size);
+  if (num_tasks)
+    odsState.addOperands(num_tasks);
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), (if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), static_cast<int32_t>(reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size()), (grain_size ? 1 : 0), (num_tasks ? 1 : 0)}));
+  if (inclusive) {
+  odsState.addAttribute(inclusiveAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (untied) {
+  odsState.addAttribute(untiedAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (mergeable) {
+  odsState.addAttribute(mergeableAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  if (in_reductions) {
+  odsState.addAttribute(in_reductionsAttrName(odsState.name), in_reductions);
+  }
+  if (reductions) {
+  odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
+  }
+  if (nogroup) {
+  odsState.addAttribute(nogroupAttrName(odsState.name), odsBuilder.getUnitAttr());
+  }
+  (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of results");
+  odsState.addTypes(resultTypes);
+}
+
+void TaskLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes) {
+  odsState.addOperands(operands);
+  odsState.addAttributes(attributes);
+  for (unsigned i = 0; i != 1; ++i)
+    (void)odsState.addRegion();
+  assert(resultTypes.size() == 0u && "mismatched number of return types");
+  odsState.addTypes(resultTypes);
+}
+
+::mlir::LogicalResult TaskLoopOp::verifyInvariantsImpl() {
+  auto namedAttrRange = (*this)->getAttrs();
+  auto namedAttrIt = namedAttrRange.begin();
+  ::mlir::Attribute tblgen_operand_segment_sizes;
+  ::mlir::Attribute tblgen_in_reductions;
+  ::mlir::Attribute tblgen_inclusive;
+  ::mlir::Attribute tblgen_mergeable;
+  ::mlir::Attribute tblgen_nogroup;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end())
+      return emitOpError("requires attribute 'operand_segment_sizes'");
+    if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
+      tblgen_operand_segment_sizes = namedAttrIt->getValue();
+      break;
+    }
+    else if (namedAttrIt->getName() == in_reductionsAttrName()) {
+      tblgen_in_reductions = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == inclusiveAttrName()) {
+      tblgen_inclusive = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == mergeableAttrName()) {
+      tblgen_mergeable = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == nogroupAttrName()) {
+      tblgen_nogroup = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+  ::mlir::Attribute tblgen_reductions;
+  ::mlir::Attribute tblgen_untied;
+  while (true) {
+    if (namedAttrIt == namedAttrRange.end()) {
+      break;
+    }
+    else if (namedAttrIt->getName() == reductionsAttrName()) {
+      tblgen_reductions = namedAttrIt->getValue();
+    }
+    else if (namedAttrIt->getName() == untiedAttrName()) {
+      tblgen_untied = namedAttrIt->getValue();
+    }
+    ++namedAttrIt;
+  }
+
+  {
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
+    if (numElements != 12)
+      return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 12 "
+                "elements, but got ") << numElements;
+  }
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_inclusive, "inclusive")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_untied, "untied")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_mergeable, "mergeable")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_in_reductions, "in_reductions")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_reductions, "reductions")))
+    return ::mlir::failure();
+
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_nogroup, "nogroup")))
+    return ::mlir::failure();
+  {
+    unsigned index = 0; (void)index;
+    auto valueGroup0 = getODSOperands(0);
+
+    for (auto v : valueGroup0) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup1 = getODSOperands(1);
+
+    for (auto v : valueGroup1) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup2 = getODSOperands(2);
+
+    for (auto v : valueGroup2) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup3 = getODSOperands(3);
+
+    if (valueGroup3.size() > 1) {
+      return emitOpError("operand group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup3.size();
+    }
+
+    for (auto v : valueGroup3) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup4 = getODSOperands(4);
+
+    if (valueGroup4.size() > 1) {
+      return emitOpError("operand group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup4.size();
+    }
+
+    for (auto v : valueGroup4) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps2(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup5 = getODSOperands(5);
+
+    for (auto v : valueGroup5) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup6 = getODSOperands(6);
+
+    for (auto v : valueGroup6) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps0(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup7 = getODSOperands(7);
+
+    if (valueGroup7.size() > 1) {
+      return emitOpError("operand group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup7.size();
+    }
+
+    for (auto v : valueGroup7) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup8 = getODSOperands(8);
+
+    for (auto v : valueGroup8) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup9 = getODSOperands(9);
+
+    for (auto v : valueGroup9) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps1(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup10 = getODSOperands(10);
+
+    if (valueGroup10.size() > 1) {
+      return emitOpError("operand group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup10.size();
+    }
+
+    for (auto v : valueGroup10) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+    auto valueGroup11 = getODSOperands(11);
+
+    if (valueGroup11.size() > 1) {
+      return emitOpError("operand group starting at #") << index
+          << " requires 0 or 1 element, but found " << valueGroup11.size();
+    }
+
+    for (auto v : valueGroup11) {
+      if (::mlir::failed(__mlir_ods_local_type_constraint_OpenMPOps3(*this, v.getType(), "operand", index++)))
+        return ::mlir::failure();
+    }
+  }
+  if (!(((this->getODSOperands(0).getType()) == (this->getODSOperands(1).getType()) && (this->getODSOperands(1).getType()) == (this->getODSOperands(2).getType()) && (this->getODSOperands(2).getType()) == (this->getODSOperands(0).getType()))))
+    return emitOpError("failed to verify that all of {lowerBound, upperBound, step} have same type");
+  {
+    unsigned index = 0; (void)index;
+
+    for (auto &region : ::llvm::makeMutableArrayRef((*this)->getRegion(0)))
+      if (::mlir::failed(__mlir_ods_local_region_constraint_OpenMPOps1(*this, region, "region", index++)))
+        return ::mlir::failure();
+  }
+  return ::mlir::success();
+}
+
+::mlir::LogicalResult TaskLoopOp::verifyInvariants() {
+  if(::mlir::succeeded(verifyInvariantsImpl()) && ::mlir::succeeded(verify()))
+    return ::mlir::success();
+  return ::mlir::failure();
+}
+
+::mlir::ParseResult TaskLoopOp::parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result) {
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> if_exprOperands;
+  ::llvm::SMLoc if_exprOperandsLoc;
+  (void)if_exprOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> final_exprOperands;
+  ::llvm::SMLoc final_exprOperandsLoc;
+  (void)final_exprOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> in_reduction_varsOperands;
+  ::llvm::SMLoc in_reduction_varsOperandsLoc;
+  (void)in_reduction_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> in_reduction_varsTypes;
+  ::mlir::ArrayAttr in_reductionsAttr;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> reduction_varsOperands;
+  ::llvm::SMLoc reduction_varsOperandsLoc;
+  (void)reduction_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> reduction_varsTypes;
+  ::mlir::ArrayAttr reductionsAttr;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> priorityOperands;
+  ::llvm::SMLoc priorityOperandsLoc;
+  (void)priorityOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> priorityTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocate_varsOperands;
+  ::llvm::SMLoc allocate_varsOperandsLoc;
+  (void)allocate_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> allocate_varsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> allocators_varsOperands;
+  ::llvm::SMLoc allocators_varsOperandsLoc;
+  (void)allocators_varsOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> allocators_varsTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> grain_sizeOperands;
+  ::llvm::SMLoc grain_sizeOperandsLoc;
+  (void)grain_sizeOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> grain_sizeTypes;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> num_tasksOperands;
+  ::llvm::SMLoc num_tasksOperandsLoc;
+  (void)num_tasksOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> num_tasksTypes;
+  std::unique_ptr<::mlir::Region> regionRegion = std::make_unique<::mlir::Region>();
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> lowerBoundOperands;
+  ::llvm::SMLoc lowerBoundOperandsLoc;
+  (void)lowerBoundOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> upperBoundOperands;
+  ::llvm::SMLoc upperBoundOperandsLoc;
+  (void)upperBoundOperandsLoc;
+  ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> stepOperands;
+  ::llvm::SMLoc stepOperandsLoc;
+  (void)stepOperandsLoc;
+  ::llvm::SmallVector<::mlir::Type, 1> stepTypes;
+  ::mlir::UnitAttr inclusiveAttr;
+  bool ifClause = false;
+  bool finalClause = false;
+  bool untiedClause = false;
+  bool mergeableClause = false;
+  bool in_reductionClause = false;
+  bool reductionClause = false;
+  bool priorityClause = false;
+  bool allocateClause = false;
+  bool grain_sizeClause = false;
+  bool num_tasksClause = false;
+  bool nogroupClause = false;
+  while(true) {
+if (succeeded(parser.parseOptionalKeyword("if"))) {
+
+  if (ifClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`if` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  ifClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    if_exprOperandsLoc = parser.getCurrentLocation();
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalOperand(operand);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      if_exprOperands.push_back(operand);
+    }
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("final"))) {
+
+  if (finalClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`final` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  finalClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    final_exprOperandsLoc = parser.getCurrentLocation();
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalOperand(operand);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      final_exprOperands.push_back(operand);
+    }
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("untied"))) {
+
+  if (untiedClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`untied` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  untiedClause = true;
+  result.addAttribute("untied", UnitAttr::get(parser.getContext()));
+    } else if (succeeded(parser.parseOptionalKeyword("mergeable"))) {
+
+  if (mergeableClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`mergeable` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  mergeableClause = true;
+  result.addAttribute("mergeable", UnitAttr::get(parser.getContext()));
+    } else if (succeeded(parser.parseOptionalKeyword("in_reduction"))) {
+
+  if (in_reductionClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`in_reduction` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  in_reductionClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    in_reduction_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseReductionVarList(parser, in_reduction_varsOperands, in_reduction_varsTypes, in_reductionsAttr))
+      return ::mlir::failure();
+    if (in_reductionsAttr)
+      result.addAttribute("in_reductions", in_reductionsAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("reduction"))) {
+
+  if (reductionClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`reduction` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  reductionClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    reduction_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseReductionVarList(parser, reduction_varsOperands, reduction_varsTypes, reductionsAttr))
+      return ::mlir::failure();
+    if (reductionsAttr)
+      result.addAttribute("reductions", reductionsAttr);
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("priority"))) {
+
+  if (priorityClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`priority` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  priorityClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    priorityOperandsLoc = parser.getCurrentLocation();
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalOperand(operand);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      priorityOperands.push_back(operand);
+    }
+  }
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type optionalType;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalType(optionalType);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      priorityTypes.push_back(optionalType);
+    }
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("allocate"))) {
+
+  if (allocateClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`allocate` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  allocateClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+  {
+    allocate_varsOperandsLoc = parser.getCurrentLocation();
+    allocators_varsOperandsLoc = parser.getCurrentLocation();
+    if (parseAllocateAndAllocator(parser, allocate_varsOperands, allocate_varsTypes, allocators_varsOperands, allocators_varsTypes))
+      return ::mlir::failure();
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("grain_size"))) {
+
+  if (grain_sizeClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`grain_size` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  grain_sizeClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    grain_sizeOperandsLoc = parser.getCurrentLocation();
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalOperand(operand);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      grain_sizeOperands.push_back(operand);
+    }
+  }
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type optionalType;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalType(optionalType);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      grain_sizeTypes.push_back(optionalType);
+    }
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("num_tasks"))) {
+
+  if (num_tasksClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`num_tasks` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  num_tasksClause = true;
+  if (parser.parseLParen())
+    return ::mlir::failure();
+
+  {
+    num_tasksOperandsLoc = parser.getCurrentLocation();
+    ::mlir::OpAsmParser::UnresolvedOperand operand;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalOperand(operand);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      num_tasksOperands.push_back(operand);
+    }
+  }
+  if (parser.parseColon())
+    return ::mlir::failure();
+
+  {
+    ::mlir::Type optionalType;
+    ::mlir::OptionalParseResult parseResult =
+                                    parser.parseOptionalType(optionalType);
+    if (parseResult.has_value()) {
+      if (failed(*parseResult))
+        return ::mlir::failure();
+      num_tasksTypes.push_back(optionalType);
+    }
+  }
+  if (parser.parseRParen())
+    return ::mlir::failure();
+    } else if (succeeded(parser.parseOptionalKeyword("nogroup"))) {
+
+  if (nogroupClause) {
+    return parser.emitError(parser.getNameLoc())
+          << "`nogroup` clause can appear at most once in the expansion of the "
+             "oilist directive";
+  }
+  nogroupClause = true;
+  result.addAttribute("nogroup", UnitAttr::get(parser.getContext()));
+    } else  {
+    break;
+  }
+}
+  if (parser.parseKeyword("for"))
+    return ::mlir::failure();
+  {
+    lowerBoundOperandsLoc = parser.getCurrentLocation();
+    upperBoundOperandsLoc = parser.getCurrentLocation();
+    stepOperandsLoc = parser.getCurrentLocation();
+    if (parseLoopControl(parser, *regionRegion, lowerBoundOperands, upperBoundOperands, stepOperands, stepTypes, inclusiveAttr))
+      return ::mlir::failure();
+    if (inclusiveAttr)
+      result.addAttribute("inclusive", inclusiveAttr);
+  }
+  if (parser.parseOptionalAttrDict(result.attributes))
+    return ::mlir::failure();
+  result.addRegion(std::move(regionRegion));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(lowerBoundOperands.size()), static_cast<int32_t>(upperBoundOperands.size()), static_cast<int32_t>(stepOperands.size()), static_cast<int32_t>(if_exprOperands.size()), static_cast<int32_t>(final_exprOperands.size()), static_cast<int32_t>(in_reduction_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(priorityOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size()), static_cast<int32_t>(grain_sizeOperands.size()), static_cast<int32_t>(num_tasksOperands.size())}));
+  ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
+  if (parser.resolveOperands(lowerBoundOperands, stepTypes, lowerBoundOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(upperBoundOperands, stepTypes, upperBoundOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(stepOperands, stepTypes, stepOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, if_exprOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(final_exprOperands, odsBuildableType0, final_exprOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(in_reduction_varsOperands, in_reduction_varsTypes, in_reduction_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(reduction_varsOperands, reduction_varsTypes, reduction_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(priorityOperands, priorityTypes, priorityOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(allocators_varsOperands, allocators_varsTypes, allocators_varsOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(grain_sizeOperands, grain_sizeTypes, grain_sizeOperandsLoc, result.operands))
+    return ::mlir::failure();
+  if (parser.resolveOperands(num_tasksOperands, num_tasksTypes, num_tasksOperandsLoc, result.operands))
+    return ::mlir::failure();
+  return ::mlir::success();
+}
+
+void TaskLoopOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
+  _odsPrinter << ' ' << " ";
+  if (false || if_expr()) {
+  _odsPrinter << ' ' << "if";
+  _odsPrinter << "(";
+  if (::mlir::Value value = if_expr())
+    _odsPrinter << value;
+  _odsPrinter << ")";
+  }
+  if (false || final_expr()) {
+  _odsPrinter << ' ' << "final";
+  _odsPrinter << "(";
+  if (::mlir::Value value = final_expr())
+    _odsPrinter << value;
+  _odsPrinter << ")";
+  }
+  if (false || untiedAttr()) {
+  _odsPrinter << ' ' << "untied";
+  }
+  if (false || mergeableAttr()) {
+  _odsPrinter << ' ' << "mergeable";
+  }
+  if (false || in_reduction_vars().size() || in_reductionsAttr()) {
+  _odsPrinter << ' ' << "in_reduction";
+  _odsPrinter << "(";
+  printReductionVarList(_odsPrinter, *this, in_reduction_vars(), in_reduction_vars().getTypes(), in_reductionsAttr());
+  _odsPrinter << ")";
+  }
+  if (false || reduction_vars().size() || reductionsAttr()) {
+  _odsPrinter << ' ' << "reduction";
+  _odsPrinter << "(";
+  printReductionVarList(_odsPrinter, *this, reduction_vars(), reduction_vars().getTypes(), reductionsAttr());
+  _odsPrinter << ")";
+  }
+  if (false || priority()) {
+  _odsPrinter << ' ' << "priority";
+  _odsPrinter << "(";
+  if (::mlir::Value value = priority())
+    _odsPrinter << value;
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter << (priority() ? ::llvm::ArrayRef<::mlir::Type>(priority().getType()) : ::llvm::ArrayRef<::mlir::Type>());
+  _odsPrinter << ")";
+  }
+  if (false || allocate_vars().size() || allocators_vars().size()) {
+  _odsPrinter << ' ' << "allocate";
+  _odsPrinter << "(";
+  printAllocateAndAllocator(_odsPrinter, *this, allocate_vars(), allocate_vars().getTypes(), allocators_vars(), allocators_vars().getTypes());
+  _odsPrinter << ")";
+  }
+  if (false || grain_size()) {
+  _odsPrinter << ' ' << "grain_size";
+  _odsPrinter << "(";
+  if (::mlir::Value value = grain_size())
+    _odsPrinter << value;
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter << (grain_size() ? ::llvm::ArrayRef<::mlir::Type>(grain_size().getType()) : ::llvm::ArrayRef<::mlir::Type>());
+  _odsPrinter << ")";
+  }
+  if (false || num_tasks()) {
+  _odsPrinter << ' ' << "num_tasks";
+  _odsPrinter << "(";
+  if (::mlir::Value value = num_tasks())
+    _odsPrinter << value;
+  _odsPrinter << ' ' << ":";
+  _odsPrinter << ' ';
+  _odsPrinter << (num_tasks() ? ::llvm::ArrayRef<::mlir::Type>(num_tasks().getType()) : ::llvm::ArrayRef<::mlir::Type>());
+  _odsPrinter << ")";
+  }
+  if (false || nogroupAttr()) {
+  _odsPrinter << ' ' << "nogroup";
+  }
+  _odsPrinter << ' ' << "for";
+  _odsPrinter << ' ';
+  printLoopControl(_odsPrinter, *this, region(), lowerBound(), upperBound(), step(), step().getTypes(), inclusiveAttr());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "untied", "mergeable", "in_reductions", "reductions", "nogroup", "inclusive"});
+}
+
+} // namespace omp
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TaskLoopOp)
+
+namespace mlir {
+namespace omp {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::omp::TaskOp definitions
 //===----------------------------------------------------------------------===//
 
@@ -6443,16 +8494,12 @@ TaskOpAdaptor::TaskOpAdaptor(TaskOp op) : odsOperands(op->getOperands()), odsAtt
 
 std::pair<unsigned, unsigned> TaskOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TaskOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TaskOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange TaskOpAdaptor::getODSOperands(unsigned index) {
@@ -6495,7 +8542,7 @@ std::pair<unsigned, unsigned> TaskOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::UnitAttr TaskOpAdaptor::untiedAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, TaskOp::untiedAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool TaskOpAdaptor::untied() {
@@ -6506,7 +8553,7 @@ bool TaskOpAdaptor::untied() {
 ::mlir::UnitAttr TaskOpAdaptor::mergeableAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TaskOp::mergeableAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool TaskOpAdaptor::mergeable() {
@@ -6517,7 +8564,7 @@ bool TaskOpAdaptor::mergeable() {
 ::mlir::ArrayAttr TaskOpAdaptor::in_reductionsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, TaskOp::in_reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > TaskOpAdaptor::in_reductions() {
@@ -6566,9 +8613,8 @@ bool TaskOpAdaptor::mergeable() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 6)
       return emitError(loc, "'omp.task' op ""'operand_segment_sizes' attribute for specifying operand segments must have 6 "
                 "elements, but got ") << numElements;
@@ -6586,16 +8632,12 @@ bool TaskOpAdaptor::mergeable() {
 }
 
 std::pair<unsigned, unsigned> TaskOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range TaskOp::getODSOperands(unsigned index) {
@@ -6604,12 +8646,12 @@ std::pair<unsigned, unsigned> TaskOp::getODSOperandIndexAndLength(unsigned index
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TaskOp::if_expr() {
+::mlir::TypedValue<::mlir::IntegerType> TaskOp::if_expr() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
 
-::mlir::Value TaskOp::final_expr() {
+::mlir::TypedValue<::mlir::IntegerType> TaskOp::final_expr() {
   auto operands = getODSOperands(1);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -6618,7 +8660,7 @@ std::pair<unsigned, unsigned> TaskOp::getODSOperandIndexAndLength(unsigned index
   return getODSOperands(2);
 }
 
-::mlir::Value TaskOp::priority() {
+::mlir::TypedValue<::mlir::IntegerType> TaskOp::priority() {
   auto operands = getODSOperands(3);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -6742,7 +8784,7 @@ void TaskOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(priority);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (untied) {
   odsState.addAttribute(untiedAttrName(odsState.name), untied);
   }
@@ -6765,7 +8807,7 @@ void TaskOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(priority);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (untied) {
   odsState.addAttribute(untiedAttrName(odsState.name), untied);
   }
@@ -6790,7 +8832,7 @@ void TaskOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(priority);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (untied) {
   odsState.addAttribute(untiedAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -6813,7 +8855,7 @@ void TaskOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsSta
     odsState.addOperands(priority);
   odsState.addOperands(allocate_vars);
   odsState.addOperands(allocators_vars);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(if_expr ? 1 : 0), (final_expr ? 1 : 0), static_cast<int32_t>(in_reduction_vars.size()), (priority ? 1 : 0), static_cast<int32_t>(allocate_vars.size()), static_cast<int32_t>(allocators_vars.size())}));
   if (untied) {
   odsState.addAttribute(untiedAttrName(odsState.name), odsBuilder.getUnitAttr());
   }
@@ -6870,9 +8912,8 @@ void TaskOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 6)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 6 "
                 "elements, but got ") << numElements;
@@ -7004,7 +9045,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       if_exprOperands.push_back(operand);
@@ -7028,7 +9069,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       final_exprOperands.push_back(operand);
@@ -7089,7 +9130,7 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       priorityOperands.push_back(operand);
@@ -7125,16 +9166,16 @@ if (succeeded(parser.parseOptionalKeyword("if"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(if_exprOperands.size()), static_cast<int32_t>(final_exprOperands.size()), static_cast<int32_t>(in_reduction_varsOperands.size()), static_cast<int32_t>(priorityOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(if_exprOperands.size()), static_cast<int32_t>(final_exprOperands.size()), static_cast<int32_t>(in_reduction_varsOperands.size()), static_cast<int32_t>(priorityOperands.size()), static_cast<int32_t>(allocate_varsOperands.size()), static_cast<int32_t>(allocators_varsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getIntegerType(32);
-  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(if_exprOperands, odsBuildableType0, if_exprOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(final_exprOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(final_exprOperands, odsBuildableType0, final_exprOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(in_reduction_varsOperands, in_reduction_varsTypes, in_reduction_varsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(priorityOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(priorityOperands, odsBuildableType1, priorityOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(allocate_varsOperands, allocate_varsTypes, allocate_varsOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -7468,6 +9509,9 @@ void TerminatorOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
 }
 
+void TerminatorOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {
+}
+
 } // namespace omp
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::omp::TerminatorOp)
@@ -7521,7 +9565,7 @@ std::pair<unsigned, unsigned> ThreadprivateOp::getODSOperandIndexAndLength(unsig
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadprivateOp::sym_addr() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> ThreadprivateOp::sym_addr() {
   return *getODSOperands(0).begin();
 }
 
@@ -7541,7 +9585,7 @@ std::pair<unsigned, unsigned> ThreadprivateOp::getODSResultIndexAndLength(unsign
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ThreadprivateOp::tls_addr() {
+::mlir::TypedValue<::mlir::omp::PointerLikeType> ThreadprivateOp::tls_addr() {
   return *getODSResults(0).begin();
 }
 
@@ -7583,6 +9627,8 @@ void ThreadprivateOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsStat
         return ::mlir::failure();
     }
   }
+  if (!((((*this->getODSOperands(0).begin()).getType()) == ((*this->getODSResults(0).begin()).getType()) && ((*this->getODSResults(0).begin()).getType()) == ((*this->getODSOperands(0).begin()).getType()))))
+    return emitOpError("failed to verify that all of {sym_addr, tls_addr} have same type");
   return ::mlir::success();
 }
 
@@ -7675,16 +9721,12 @@ WsLoopOpAdaptor::WsLoopOpAdaptor(WsLoopOp op) : odsOperands(op->getOperands()), 
 
 std::pair<unsigned, unsigned> WsLoopOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, WsLoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, WsLoopOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange WsLoopOpAdaptor::getODSOperands(unsigned index) {
@@ -7729,7 +9771,7 @@ std::pair<unsigned, unsigned> WsLoopOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::ArrayAttr WsLoopOpAdaptor::reductionsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, WsLoopOp::reductionsAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > WsLoopOpAdaptor::reductions() {
@@ -7740,7 +9782,7 @@ std::pair<unsigned, unsigned> WsLoopOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::omp::ClauseScheduleKindAttr WsLoopOpAdaptor::schedule_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, WsLoopOp::schedule_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseScheduleKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseScheduleKind> WsLoopOpAdaptor::schedule_val() {
@@ -7751,7 +9793,7 @@ std::pair<unsigned, unsigned> WsLoopOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::omp::ScheduleModifierAttr WsLoopOpAdaptor::schedule_modifierAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, WsLoopOp::schedule_modifierAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ScheduleModifierAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ScheduleModifier> WsLoopOpAdaptor::schedule_modifier() {
@@ -7762,7 +9804,7 @@ std::pair<unsigned, unsigned> WsLoopOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::UnitAttr WsLoopOpAdaptor::simd_modifierAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, WsLoopOp::simd_modifierAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool WsLoopOpAdaptor::simd_modifier() {
@@ -7770,21 +9812,10 @@ bool WsLoopOpAdaptor::simd_modifier() {
   return attr != nullptr;
 }
 
-::mlir::IntegerAttr WsLoopOpAdaptor::collapse_valAttr() {
-  assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, WsLoopOp::collapse_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    return attr;
-}
-
-::llvm::Optional<uint64_t> WsLoopOpAdaptor::collapse_val() {
-  auto attr = collapse_valAttr();
-  return attr ? ::llvm::Optional<uint64_t>(attr.getValue().getZExtValue()) : (::llvm::None);
-}
-
 ::mlir::UnitAttr WsLoopOpAdaptor::nowaitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, WsLoopOp::nowaitAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool WsLoopOpAdaptor::nowait() {
@@ -7795,7 +9826,7 @@ bool WsLoopOpAdaptor::nowait() {
 ::mlir::IntegerAttr WsLoopOpAdaptor::ordered_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, WsLoopOp::ordered_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<uint64_t> WsLoopOpAdaptor::ordered_val() {
@@ -7806,7 +9837,7 @@ bool WsLoopOpAdaptor::nowait() {
 ::mlir::omp::ClauseOrderKindAttr WsLoopOpAdaptor::order_valAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, WsLoopOp::order_valAttrName(*odsOpName)).dyn_cast_or_null<::mlir::omp::ClauseOrderKindAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::omp::ClauseOrderKind> WsLoopOpAdaptor::order_val() {
@@ -7817,7 +9848,7 @@ bool WsLoopOpAdaptor::nowait() {
 ::mlir::UnitAttr WsLoopOpAdaptor::inclusiveAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, WsLoopOp::inclusiveAttrName(*odsOpName)).dyn_cast_or_null<::mlir::UnitAttr>();
-    return attr;
+  return attr;
 }
 
 bool WsLoopOpAdaptor::inclusive() {
@@ -7837,7 +9868,6 @@ bool WsLoopOpAdaptor::inclusive() {
   auto namedAttrRange = odsAttrs;
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_operand_segment_sizes;
-  ::mlir::Attribute tblgen_collapse_val;
   ::mlir::Attribute tblgen_inclusive;
   ::mlir::Attribute tblgen_nowait;
   while (true) {
@@ -7846,9 +9876,6 @@ bool WsLoopOpAdaptor::inclusive() {
     if (namedAttrIt->getName() == WsLoopOp::operand_segment_sizesAttrName(*odsOpName)) {
       tblgen_operand_segment_sizes = namedAttrIt->getValue();
       break;
-    }
-    else if (namedAttrIt->getName() == WsLoopOp::collapse_valAttrName(*odsOpName)) {
-      tblgen_collapse_val = namedAttrIt->getValue();
     }
     else if (namedAttrIt->getName() == WsLoopOp::inclusiveAttrName(*odsOpName)) {
       tblgen_inclusive = namedAttrIt->getValue();
@@ -7890,9 +9917,8 @@ bool WsLoopOpAdaptor::inclusive() {
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitError(loc, "'omp.wsloop' op ""'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -7910,9 +9936,6 @@ bool WsLoopOpAdaptor::inclusive() {
   if (tblgen_simd_modifier && !((tblgen_simd_modifier.isa<::mlir::UnitAttr>())))
     return emitError(loc, "'omp.wsloop' op ""attribute 'simd_modifier' failed to satisfy constraint: unit attribute");
 
-  if (tblgen_collapse_val && !((((tblgen_collapse_val.isa<::mlir::IntegerAttr>())) && ((tblgen_collapse_val.cast<::mlir::IntegerAttr>().getType().isSignlessInteger(64)))) && ((tblgen_collapse_val.cast<::mlir::IntegerAttr>().getInt() >= 0))))
-    return emitError(loc, "'omp.wsloop' op ""attribute 'collapse_val' failed to satisfy constraint: 64-bit signless integer attribute whose minimum value is 0");
-
   if (tblgen_nowait && !((tblgen_nowait.isa<::mlir::UnitAttr>())))
     return emitError(loc, "'omp.wsloop' op ""attribute 'nowait' failed to satisfy constraint: unit attribute");
 
@@ -7928,16 +9951,12 @@ bool WsLoopOpAdaptor::inclusive() {
 }
 
 std::pair<unsigned, unsigned> WsLoopOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range WsLoopOp::getODSOperands(unsigned index) {
@@ -8067,15 +10086,6 @@ bool WsLoopOp::simd_modifier() {
   return attr != nullptr;
 }
 
-::mlir::IntegerAttr WsLoopOp::collapse_valAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, collapse_valAttrName()).dyn_cast_or_null<::mlir::IntegerAttr>();
-}
-
-::llvm::Optional<uint64_t> WsLoopOp::collapse_val() {
-  auto attr = collapse_valAttr();
-  return attr ? ::llvm::Optional<uint64_t>(attr.getValue().getZExtValue()) : (::llvm::None);
-}
-
 ::mlir::UnitAttr WsLoopOp::nowaitAttr() {
   return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, nowaitAttrName()).dyn_cast_or_null<::mlir::UnitAttr>();
 }
@@ -8128,10 +10138,6 @@ void WsLoopOp::simd_modifierAttr(::mlir::UnitAttr attr) {
   (*this)->setAttr(simd_modifierAttrName(), attr);
 }
 
-void WsLoopOp::collapse_valAttr(::mlir::IntegerAttr attr) {
-  (*this)->setAttr(collapse_valAttrName(), attr);
-}
-
 void WsLoopOp::nowaitAttr(::mlir::UnitAttr attr) {
   (*this)->setAttr(nowaitAttrName(), attr);
 }
@@ -8164,10 +10170,6 @@ void WsLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
   return (*this)->removeAttr(simd_modifierAttrName());
 }
 
-::mlir::Attribute WsLoopOp::removeCollapse_valAttr() {
-  return (*this)->removeAttr(collapse_valAttrName());
-}
-
 ::mlir::Attribute WsLoopOp::removeNowaitAttr() {
   return (*this)->removeAttr(nowaitAttrName());
 }
@@ -8184,7 +10186,7 @@ void WsLoopOp::inclusiveAttr(::mlir::UnitAttr attr) {
   return (*this)->removeAttr(inclusiveAttrName());
 }
 
-void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/::mlir::UnitAttr simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/::mlir::UnitAttr nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/::mlir::UnitAttr inclusive) {
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/::mlir::UnitAttr simd_modifier, /*optional*/::mlir::UnitAttr nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/::mlir::UnitAttr inclusive) {
   odsState.addOperands(lowerBound);
   odsState.addOperands(upperBound);
   odsState.addOperands(step);
@@ -8193,7 +10195,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(reduction_vars);
   if (schedule_chunk_var)
     odsState.addOperands(schedule_chunk_var);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -8205,9 +10207,6 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   }
   if (simd_modifier) {
   odsState.addAttribute(simd_modifierAttrName(odsState.name), simd_modifier);
-  }
-  if (collapse_val) {
-  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
   }
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
@@ -8224,7 +10223,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   (void)odsState.addRegion();
 }
 
-void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/::mlir::UnitAttr simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/::mlir::UnitAttr nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/::mlir::UnitAttr inclusive) {
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/::mlir::UnitAttr simd_modifier, /*optional*/::mlir::UnitAttr nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/::mlir::UnitAttr inclusive) {
   odsState.addOperands(lowerBound);
   odsState.addOperands(upperBound);
   odsState.addOperands(step);
@@ -8233,7 +10232,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(reduction_vars);
   if (schedule_chunk_var)
     odsState.addOperands(schedule_chunk_var);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -8245,9 +10244,6 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   }
   if (simd_modifier) {
   odsState.addAttribute(simd_modifierAttrName(odsState.name), simd_modifier);
-  }
-  if (collapse_val) {
-  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
   }
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), nowait);
@@ -8266,7 +10262,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addTypes(resultTypes);
 }
 
-void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive) {
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive) {
   odsState.addOperands(lowerBound);
   odsState.addOperands(upperBound);
   odsState.addOperands(step);
@@ -8275,7 +10271,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(reduction_vars);
   if (schedule_chunk_var)
     odsState.addOperands(schedule_chunk_var);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -8287,9 +10283,6 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   }
   if (simd_modifier) {
   odsState.addAttribute(simd_modifierAttrName(odsState.name), odsBuilder.getUnitAttr());
-  }
-  if (collapse_val) {
-  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
   }
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
@@ -8306,7 +10299,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   (void)odsState.addRegion();
 }
 
-void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/::mlir::IntegerAttr collapse_val, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive) {
+void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange lowerBound, ::mlir::ValueRange upperBound, ::mlir::ValueRange step, ::mlir::ValueRange linear_vars, ::mlir::ValueRange linear_step_vars, ::mlir::ValueRange reduction_vars, /*optional*/::mlir::ArrayAttr reductions, /*optional*/::mlir::omp::ClauseScheduleKindAttr schedule_val, /*optional*/::mlir::Value schedule_chunk_var, /*optional*/::mlir::omp::ScheduleModifierAttr schedule_modifier, /*optional*/bool simd_modifier, /*optional*/bool nowait, /*optional*/::mlir::IntegerAttr ordered_val, /*optional*/::mlir::omp::ClauseOrderKindAttr order_val, /*optional*/bool inclusive) {
   odsState.addOperands(lowerBound);
   odsState.addOperands(upperBound);
   odsState.addOperands(step);
@@ -8315,7 +10308,7 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   odsState.addOperands(reduction_vars);
   if (schedule_chunk_var)
     odsState.addOperands(schedule_chunk_var);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(lowerBound.size()), static_cast<int32_t>(upperBound.size()), static_cast<int32_t>(step.size()), static_cast<int32_t>(linear_vars.size()), static_cast<int32_t>(linear_step_vars.size()), static_cast<int32_t>(reduction_vars.size()), (schedule_chunk_var ? 1 : 0)}));
   if (reductions) {
   odsState.addAttribute(reductionsAttrName(odsState.name), reductions);
   }
@@ -8327,9 +10320,6 @@ void WsLoopOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
   }
   if (simd_modifier) {
   odsState.addAttribute(simd_modifierAttrName(odsState.name), odsBuilder.getUnitAttr());
-  }
-  if (collapse_val) {
-  odsState.addAttribute(collapse_valAttrName(odsState.name), collapse_val);
   }
   if (nowait) {
   odsState.addAttribute(nowaitAttrName(odsState.name), odsBuilder.getUnitAttr());
@@ -8361,7 +10351,6 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   auto namedAttrRange = (*this)->getAttrs();
   auto namedAttrIt = namedAttrRange.begin();
   ::mlir::Attribute tblgen_operand_segment_sizes;
-  ::mlir::Attribute tblgen_collapse_val;
   ::mlir::Attribute tblgen_inclusive;
   ::mlir::Attribute tblgen_nowait;
   while (true) {
@@ -8370,9 +10359,6 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     if (namedAttrIt->getName() == operand_segment_sizesAttrName()) {
       tblgen_operand_segment_sizes = namedAttrIt->getValue();
       break;
-    }
-    else if (namedAttrIt->getName() == collapse_valAttrName()) {
-      tblgen_collapse_val = namedAttrIt->getValue();
     }
     else if (namedAttrIt->getName() == inclusiveAttrName()) {
       tblgen_inclusive = namedAttrIt->getValue();
@@ -8414,9 +10400,8 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 7)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 7 "
                 "elements, but got ") << numElements;
@@ -8425,16 +10410,13 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps8(*this, tblgen_reductions, "reductions")))
     return ::mlir::failure();
 
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps11(*this, tblgen_schedule_val, "schedule_val")))
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps12(*this, tblgen_schedule_val, "schedule_val")))
     return ::mlir::failure();
 
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps12(*this, tblgen_schedule_modifier, "schedule_modifier")))
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps13(*this, tblgen_schedule_modifier, "schedule_modifier")))
     return ::mlir::failure();
 
   if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_simd_modifier, "simd_modifier")))
-    return ::mlir::failure();
-
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_collapse_val, "collapse_val")))
     return ::mlir::failure();
 
   if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_nowait, "nowait")))
@@ -8443,7 +10425,7 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps6(*this, tblgen_ordered_val, "ordered_val")))
     return ::mlir::failure();
 
-  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps13(*this, tblgen_order_val, "order_val")))
+  if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps14(*this, tblgen_order_val, "order_val")))
     return ::mlir::failure();
 
   if (::mlir::failed(__mlir_ods_local_attr_constraint_OpenMPOps7(*this, tblgen_inclusive, "inclusive")))
@@ -8498,7 +10480,7 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
         return ::mlir::failure();
     }
   }
-  if (!((::llvm::is_splat(::llvm::makeArrayRef({this->getODSOperands(0).getType(), this->getODSOperands(1).getType(), this->getODSOperands(2).getType()})))))
+  if (!(((this->getODSOperands(0).getType()) == (this->getODSOperands(1).getType()) && (this->getODSOperands(1).getType()) == (this->getODSOperands(2).getType()) && (this->getODSOperands(2).getType()) == (this->getODSOperands(0).getType()))))
     return emitOpError("failed to verify that all of {lowerBound, upperBound, step} have same type");
   {
     unsigned index = 0; (void)index;
@@ -8531,7 +10513,6 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   ::llvm::SMLoc schedule_chunk_varOperandsLoc;
   (void)schedule_chunk_varOperandsLoc;
   ::llvm::SmallVector<::mlir::Type, 1> schedule_chunk_varTypes;
-  ::mlir::IntegerAttr collapse_valAttr;
   ::mlir::IntegerAttr ordered_valAttr;
   ::mlir::omp::ClauseOrderKindAttr order_valAttr;
   ::llvm::SmallVector<::mlir::OpAsmParser::UnresolvedOperand, 4> reduction_varsOperands;
@@ -8553,7 +10534,6 @@ void WsLoopOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   ::mlir::UnitAttr inclusiveAttr;
   bool linearClause = false;
   bool scheduleClause = false;
-  bool collapseClause = false;
   bool nowaitClause = false;
   bool orderedClause = false;
   bool orderClause = false;
@@ -8599,29 +10579,10 @@ if (succeeded(parser.parseOptionalKeyword("linear"))) {
       result.addAttribute("schedule_modifier", schedule_modifierAttr);
     if (simd_modifierAttr)
       result.addAttribute("simd_modifier", simd_modifierAttr);
-    if (schedule_chunk_varOperand.hasValue())
+    if (schedule_chunk_varOperand.has_value())
       schedule_chunk_varOperands.push_back(*schedule_chunk_varOperand);
     if (schedule_chunk_varType)
       schedule_chunk_varTypes.push_back(schedule_chunk_varType);
-  }
-  if (parser.parseRParen())
-    return ::mlir::failure();
-    } else if (succeeded(parser.parseOptionalKeyword("collapse"))) {
-
-  if (collapseClause) {
-    return parser.emitError(parser.getNameLoc())
-          << "`collapse` clause can appear at most once in the expansion of the "
-             "oilist directive";
-  }
-  collapseClause = true;
-  if (parser.parseLParen())
-    return ::mlir::failure();
-
-  {
-    ::mlir::OptionalParseResult parseResult =
-      parser.parseOptionalAttribute(collapse_valAttr, parser.getBuilder().getIntegerType(64), "collapse_val", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
-      return ::mlir::failure();
   }
   if (parser.parseRParen())
     return ::mlir::failure();
@@ -8648,7 +10609,7 @@ if (succeeded(parser.parseOptionalKeyword("linear"))) {
   {
     ::mlir::OptionalParseResult parseResult =
       parser.parseOptionalAttribute(ordered_valAttr, parser.getBuilder().getIntegerType(64), "ordered_val", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
+    if (parseResult.has_value() && failed(*parseResult))
       return ::mlir::failure();
   }
   if (parser.parseRParen())
@@ -8700,7 +10661,7 @@ if (succeeded(parser.parseOptionalKeyword("linear"))) {
     lowerBoundOperandsLoc = parser.getCurrentLocation();
     upperBoundOperandsLoc = parser.getCurrentLocation();
     stepOperandsLoc = parser.getCurrentLocation();
-    if (parseWsLoopControl(parser, *regionRegion, lowerBoundOperands, upperBoundOperands, stepOperands, stepTypes, inclusiveAttr))
+    if (parseLoopControl(parser, *regionRegion, lowerBoundOperands, upperBoundOperands, stepOperands, stepTypes, inclusiveAttr))
       return ::mlir::failure();
     if (inclusiveAttr)
       result.addAttribute("inclusive", inclusiveAttr);
@@ -8708,7 +10669,7 @@ if (succeeded(parser.parseOptionalKeyword("linear"))) {
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(regionRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(lowerBoundOperands.size()), static_cast<int32_t>(upperBoundOperands.size()), static_cast<int32_t>(stepOperands.size()), static_cast<int32_t>(linear_varsOperands.size()), static_cast<int32_t>(linear_step_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(schedule_chunk_varOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(lowerBoundOperands.size()), static_cast<int32_t>(upperBoundOperands.size()), static_cast<int32_t>(stepOperands.size()), static_cast<int32_t>(linear_varsOperands.size()), static_cast<int32_t>(linear_step_varsOperands.size()), static_cast<int32_t>(reduction_varsOperands.size()), static_cast<int32_t>(schedule_chunk_varOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(32);
   if (parser.resolveOperands(lowerBoundOperands, stepTypes, lowerBoundOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -8718,7 +10679,7 @@ if (succeeded(parser.parseOptionalKeyword("linear"))) {
     return ::mlir::failure();
   if (parser.resolveOperands(linear_varsOperands, linear_varsTypes, linear_varsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(linear_step_varsOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(linear_step_varsOperands, odsBuildableType0, linear_step_varsOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(reduction_varsOperands, reduction_varsTypes, reduction_varsOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -8739,12 +10700,6 @@ void WsLoopOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "schedule";
   _odsPrinter << "(";
   printScheduleClause(_odsPrinter, *this, schedule_valAttr(), schedule_modifierAttr(), simd_modifierAttr(), schedule_chunk_var(), (schedule_chunk_var() ? schedule_chunk_var().getType() : Type()));
-  _odsPrinter << ")";
-  }
-  if (false || collapse_valAttr()) {
-  _odsPrinter << ' ' << "collapse";
-  _odsPrinter << "(";
-  _odsPrinter.printAttributeWithoutType(collapse_valAttr());
   _odsPrinter << ")";
   }
   if (false || nowaitAttr()) {
@@ -8770,8 +10725,8 @@ void WsLoopOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   }
   _odsPrinter << ' ' << "for";
   _odsPrinter << ' ';
-  printWsLoopControl(_odsPrinter, *this, region(), lowerBound(), upperBound(), step(), step().getTypes(), inclusiveAttr());
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "schedule_val", "schedule_modifier", "simd_modifier", "collapse_val", "nowait", "ordered_val", "order_val", "reductions", "inclusive"});
+  printLoopControl(_odsPrinter, *this, region(), lowerBound(), upperBound(), step(), step().getTypes(), inclusiveAttr());
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "schedule_val", "schedule_modifier", "simd_modifier", "nowait", "ordered_val", "order_val", "reductions", "inclusive"});
 }
 
 } // namespace omp
