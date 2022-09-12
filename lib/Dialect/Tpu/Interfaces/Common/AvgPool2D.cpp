@@ -86,8 +86,8 @@ LogicalResult tpu::AvgPool2DOp::inference(InferenceParameter &p) {
     auto module = Module::getModuleOp(getOperation());
 
     if (Module::getAsymmetric(module) == false) {
-      auto multi = multiplier().getValue();
-      auto rs = rshift().getValue();
+      auto multi = multiplier().value();
+      auto rs = rshift().value();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] = applyMultiplierAndRShift(
@@ -100,8 +100,8 @@ LogicalResult tpu::AvgPool2DOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] = p.outputs[0][i] * pooling->kh * pooling->kw *
-                              scale().getValue().convertToDouble() +
-                          offset().getValue().convertToDouble();
+                              scale().value().convertToDouble() +
+                          offset().value().convertToDouble();
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
                               ? Quant::to_uint8(p.outputs[0][i])
                               : Quant::to_int8(p.outputs[0][i]);

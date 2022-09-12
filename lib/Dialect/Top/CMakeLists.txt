@@ -15,21 +15,19 @@ add_mlir_library(TPUMLIRTop
   ${PROJECT_SOURCE_DIR}/include/tpu_mlir/Dialect/Top
 
   DEPENDS
+  MLIRTopAttrGen
   MLIRTopOpsIncGen
   MLIRTopPassIncGen
-  MLIRTopAttrGen
   MLIRInferenceInterfaceIncGen
   MLIRLoweringInterfaceIncGen
-
-  LINK_COMPONENTS
-  Core
 
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRPass
   MLIRSupport
-  MLIRFunc
-  MLIRQuant
+  MLIRParser
+  MLIRFuncDialect
+  MLIRQuantDialect
   MLIRRewrite
   MLIRTransforms
   MLIRSideEffectInterfaces

@@ -5,7 +5,7 @@ set(LLVM_LINK_COMPONENTS
   )
 
 set(LIBS
-  MLIRFunc
+  MLIRFuncDialect
   MLIROptLib
   TPUMLIRInitAll
   )

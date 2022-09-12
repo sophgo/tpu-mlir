@@ -10,7 +10,7 @@
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/FakeQuantSupport.h"
-#include "mlir/Dialect/Quant/QuantizeUtils.h"
+
 #include "float.h"
 #include <map>
 using namespace llvm;

@@ -13,21 +13,56 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TOP_OPS
-#define TOP_OPS
+#ifndef TPU_MLIR_TOP_OPS
+#define TPU_MLIR_TOP_OPS
 
+include "mlir/IR/AttrTypeBase.td"
+include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "tpu_mlir/Dialect/Top/IR/TopAttr.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/LoweringInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Traits/Traits.td"
-include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.td"
 
+// =============================================================================
+//
+// Defines TOP Dialect.
+//
+//===----------------------------------------------------------------------===//
+
+def Top_Dialect : Dialect {
+  let name = "top";
+  let summary = "A topdialect for the TPU_MLIR specification";
+  let cppNamespace = "::tpu_mlir::top";
+  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
+  let extraClassDeclaration = [{
+  void loadWeightFile(llvm::StringRef file) {
+    wFile = std::make_unique<mlir::TensorFile>(file, false);
+  }
+  std::unique_ptr<mlir::TensorFile> wFile;
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// TOP Attributes.
+//===----------------------------------------------------------------------===//
+
+class Top_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
+    : AttrDef<Top_Dialect, attrName, traits> {
+  let mnemonic = attrMnemonic;
+}
+
+//===----------------------------------------------------------------------===//
+// TOP Types.
+//===----------------------------------------------------------------------===//
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
+
+//===----------------------------------------------------------------------===//
+// TOP Op Definition.
+//===----------------------------------------------------------------------===//
 
 class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
     Op<Top_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
@@ -81,7 +116,15 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let arguments = (
     ins AnyTensor:$input,
-    OptionalAttr<Top_PreprocessParamAttr>:$preprocess
+    // preprocess for input
+    OptionalAttr<StrAttr>:$pixel_format,
+    OptionalAttr<StrAttr>:$channel_format,
+    OptionalAttr<I64ArrayAttr>:$resize_dims,
+    OptionalAttr<BoolAttr>:$keep_aspect_ratio,
+    OptionalAttr<I64Attr>:$pad_value,
+    OptionalAttr<StrAttr>:$pad_type,
+    OptionalAttr<F64ArrayAttr>:$scale,
+    OptionalAttr<F64ArrayAttr>:$mean
   );
 
   let results = (outs AnyTensor:$output);

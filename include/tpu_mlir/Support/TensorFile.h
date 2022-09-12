@@ -16,7 +16,7 @@
 
 #include "cnpy.h"
 #include "mlir/Support/LogicalResult.h"
-#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/Support/raw_ostream.h"

@@ -61,7 +61,7 @@ FlatBufferBuilder &ModelGen::Builder()
 
 ModelGen::~ModelGen()
 {
-  builder_.ReleaseBufferPointer();
+  builder_.Release();
 }
 
 Binary ModelGen::WriteBinary(size_t size, uint8_t *data)

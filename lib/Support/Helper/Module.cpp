@@ -154,9 +154,8 @@ std::string Module::genWeightFileName(ModuleOp module) {
   auto state = getState(module);
   auto chip = getChip(module);
   auto old_name = getWeightFile(module);
-  std::string file_name = name.lower() + std::string("_") +
-                                 state.lower() + std::string("_") +
-                                 chip.lower();
+  std::string file_name = name.lower() + std::string("_") + state.lower() +
+                          std::string("_") + chip.lower();
   if (std::string(chip) != "ALL") {
     auto mode = getMode(module);
     std::string sym = "";
@@ -220,8 +219,8 @@ std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
 std::shared_ptr<std::vector<int64_t>>
 Module::getI64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
                     int64_t default_value) {
-  if (arrayAttr.hasValue()) {
-    auto arr = getI64Array(arrayAttr.getValue());
+  if (arrayAttr.has_value()) {
+    auto arr = getI64Array(arrayAttr.value());
     assert(arr->size() == num_elem);
     return std::move(arr);
   }
@@ -240,8 +239,8 @@ std::shared_ptr<std::vector<double>> Module::getF64Array(ArrayAttr arrayAttr) {
 std::shared_ptr<std::vector<double>>
 Module::getF64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
                     double default_value) {
-  if (arrayAttr.hasValue()) {
-    auto arr = getF64Array(arrayAttr.getValue());
+  if (arrayAttr.has_value()) {
+    auto arr = getF64Array(arrayAttr.value());
     assert(arr->size() == num_elem);
     return std::move(arr);
   }
