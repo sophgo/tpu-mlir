@@ -318,17 +318,7 @@ class OnnxConverter(BaseConverter):
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(_name, idx, **{})
             else:
-                preprocess_hint = {
-                    'mean': self.preprocess_args['mean'],
-                    'scale': self.preprocess_args['scale'],
-                    'pixel_format': self.preprocess_args["pixel_format"],
-                    'channel_format': self.preprocess_args["channel_format"],
-                    'pad_type': self.preprocess_args["pad_type"],
-                    'resize_dims': self.preprocess_args['resize_dims'],
-                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],
-                    'pad_value': self.preprocess_args["pad_value"]
-                }
-                input_op = self.mlir.create_input_op(_name, idx, **preprocess_hint)
+                input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(node):
