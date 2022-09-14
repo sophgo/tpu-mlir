@@ -180,7 +180,7 @@ class CaffeConverter(BaseConverter):
                 if out in self.select_outputs:
                     self.output_names.append(out)
 
-        assert(len(self.select_outputs) == len(self.output_names))
+        assert (len(self.select_outputs) == len(self.output_names))
         # add return op
         return_op = list()
         # Set output
@@ -306,7 +306,8 @@ class CaffeConverter(BaseConverter):
             input_shape1 = self.getShape(layer.bottom[1])
             if len(input_shape1) < len(input_shape):
                 output_shape1 = list(input_shape1) + [1] * (len(input_shape) - len(input_shape1))
-                op1 = self.mlir.create_reshape_op([op1], output_shape1, **{'name': layer.bottom[1] + "_reshape"})
+                op1 = self.mlir.create_reshape_op([op1], output_shape1,
+                                                  **{'name': layer.bottom[1] + "_reshape"})
             new_op = self.mlir.create_mul_op([in_op, op1], output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
         else:
@@ -353,7 +354,8 @@ class CaffeConverter(BaseConverter):
                 strides[0] = p.stride_h
             if p.HasField('stride_w'):
                 strides[1] = p.stride_w
-            pads = set_caffe_pad(input_shape, output_shape, kernel_shape, strides) # if not p.HasField('pad') else [p.pad] * 4
+            pads = set_caffe_pad(input_shape, output_shape, kernel_shape,
+                                 strides)  # if not p.HasField('pad') else [p.pad] * 4
         else:
             pads = [0] * 4
             strides = [1] * 2
@@ -599,8 +601,14 @@ class CaffeConverter(BaseConverter):
         output_shape[1] = int(input_shape[1] * stride * stride)
         output_shape[2] = int(input_shape[2] / stride)
         output_shape[3] = int(input_shape[3] / stride)
-        attrs = {'name': layer.name}
-        new_op = self.mlir.create_reorg_op([in_op], output_shape, **attrs)
+        attrs = {
+            "block_h": stride,
+            "block_w": stride,
+            "is_CRD": False,
+            "is_inversed": True,
+            'name': layer.name
+        }
+        new_op = self.mlir.create_depth2space_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
     def convert_reshape_op(self, layer):
