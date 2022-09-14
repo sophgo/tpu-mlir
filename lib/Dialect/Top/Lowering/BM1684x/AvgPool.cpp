@@ -49,19 +49,22 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
     attrs.push_back(
         builder.getNamedAttr("offset", builder.getF64FloatAttr(offset_factor)));
   }
+  attrs.push_back(builder.getNamedAttr(
+      "pool_mode", tpu::PoolModeAttr::get(getContext(), tpu::PoolMode::Avg)));
 
   builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   if (kernel_size == 1) {
-    auto newOp = builder.create<tpu::AvgPool1DOp>(getLoc(), newType,
+    auto newOp = builder.create<tpu::Pool1DOp>(getLoc(), newType,
                                                   ValueRange{input()}, attrs);
     return newOp.output();
   } else if (kernel_size == 2) {
-    auto newOp = builder.create<tpu::AvgPool2DOp>(getLoc(), newType,
+    auto newOp = builder.create<tpu::Pool2DOp>(getLoc(), newType,
                                                   ValueRange{input()}, attrs);
     return newOp.output();
+
   } else {
-    auto newOp = builder.create<tpu::AvgPool3DOp>(getLoc(), newType,
+    auto newOp = builder.create<tpu::Pool3DOp>(getLoc(), newType,
                                                   ValueRange{input()}, attrs);
     return newOp.output();
   }
@@ -70,12 +73,15 @@ Value top::AvgPoolOp::lowering_int8_bm1684x(bool asymmetric) {
 Value top::AvgPoolOp::lowering_f32_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
-    newValue = lowering_common_float<tpu::AvgPool3DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool3DOp>(getOperation());
   } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_float<tpu::AvgPool2DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool2DOp>(getOperation());
   } else {
-    newValue = lowering_common_float<tpu::AvgPool1DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool1DOp>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   return newValue;
 }
 
@@ -83,14 +89,17 @@ Value top::AvgPoolOp::lowering_bf16_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
     newValue =
-        lowering_common_float<tpu::AvgPool3DOp, BFloat16Type>(getOperation());
+        lowering_common_float<tpu::Pool3DOp, BFloat16Type>(getOperation());
   } else if (kernel_shape().size() == 2) {
     newValue =
-        lowering_common_float<tpu::AvgPool2DOp, BFloat16Type>(getOperation());
+        lowering_common_float<tpu::Pool2DOp, BFloat16Type>(getOperation());
   } else {
     newValue =
-        lowering_common_float<tpu::AvgPool1DOp, BFloat16Type>(getOperation());
+        lowering_common_float<tpu::Pool1DOp, BFloat16Type>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   return newValue;
 }
 
@@ -98,14 +107,17 @@ Value top::AvgPoolOp::lowering_f16_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
     newValue =
-        lowering_common_float<tpu::AvgPool3DOp, Float16Type>(getOperation());
+        lowering_common_float<tpu::Pool3DOp, Float16Type>(getOperation());
   } else if (kernel_shape().size() == 2) {
     newValue =
-        lowering_common_float<tpu::AvgPool2DOp, Float16Type>(getOperation());
+        lowering_common_float<tpu::Pool2DOp, Float16Type>(getOperation());
   } else {
     newValue =
-        lowering_common_float<tpu::AvgPool1DOp, Float16Type>(getOperation());
+        lowering_common_float<tpu::Pool1DOp, Float16Type>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   return newValue;
 }
 
@@ -135,19 +147,18 @@ Value top::AvgPoolOp::lowering_quant_bm1684x() {
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset_factor)));
 
   builder.setInsertionPointAfter(op);
+  Operation* newOp;
   if (kernel_size == 1) {
-    auto newOp = builder.create<tpu::AvgPool1DOp>(getLoc(), output().getType(),
+    newOp = builder.create<tpu::Pool1DOp>(getLoc(), output().getType(),
                                                   ValueRange{input()}, attrs);
-    return newOp.output();
   } else if (kernel_size == 2) {
-    auto newOp = builder.create<tpu::AvgPool2DOp>(getLoc(), output().getType(),
+    newOp = builder.create<tpu::Pool2DOp>(getLoc(), output().getType(),
                                                   ValueRange{input()}, attrs);
-    return newOp.output();
   } else {
-    auto newOp = builder.create<tpu::AvgPool3DOp>(getLoc(), output().getType(),
+    newOp = builder.create<tpu::Pool3DOp>(getLoc(), output().getType(),
                                                   ValueRange{input()}, attrs);
-    return newOp.output();
   }
-  llvm_unreachable("can't be here");
-  return nullptr;
+  newOp->setAttr("pool_mode",
+                 tpu::PoolModeAttr::get(getContext(), tpu::PoolMode::Avg));
+  return newOp->getResult(0);
 }

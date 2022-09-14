@@ -20,23 +20,29 @@ using namespace tpu_mlir::helper;
 Value top::MaxPoolOp::lowering_int8_bm1684() {
   Value newValue;
   if (kernel_shape().size() == 3) {
-    newValue = lowering_common_int8<tpu::MaxPool3DOp>(getOperation());
+    newValue = lowering_common_int8<tpu::Pool3DOp>(getOperation());
   } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_int8<tpu::MaxPool2DOp>(getOperation());
+    newValue = lowering_common_int8<tpu::Pool2DOp>(getOperation());
   } else {
-    newValue = lowering_common_int8<tpu::MaxPool1DOp>(getOperation());
+    newValue = lowering_common_int8<tpu::Pool1DOp>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }
 
 Value top::MaxPoolOp::lowering_f32_bm1684() {
   Value newValue;
   if (kernel_shape().size() == 3) {
-    newValue = lowering_common_float<tpu::MaxPool3DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool3DOp>(getOperation());
   } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_float<tpu::MaxPool2DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool2DOp>(getOperation());
   } else {
-    newValue = lowering_common_float<tpu::MaxPool1DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool1DOp>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }

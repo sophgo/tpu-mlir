@@ -90,6 +90,17 @@ def Tpu_RequantMode: I32EnumAttr<"RequantMode",
 }
 def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
 
+def Tpu_PooolMode: I32EnumAttr<"PoolMode",
+    "pooling mode supported by PoolOp",
+    [
+      I32EnumAttrCase<"Avg", 0>,
+      I32EnumAttrCase<"Max", 1>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_PooolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PooolMode, "pool_mode">;
+
 //===----------------------------------------------------------------------===//
 // Tpu Types.
 //===----------------------------------------------------------------------===//
@@ -189,11 +200,18 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     I64ArrayAttr:$kernel_shape,
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
+    Tpu_PooolModeAttr:$pool_mode,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    /// symmetric quantize param
+    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
+    /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
   );
 
   let results = (outs AnyTensor:$output);
@@ -202,65 +220,9 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_MaxPool1DOp:Tpu_PoolOp<"MaxPool1D">;
-def Tpu_AvgPool1DOp:Tpu_PoolOp<"AvgPool1D"> {
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$kernel_shape,
-    I64ArrayAttr:$strides,
-    I64ArrayAttr:$pads,
-    DefaultValuedAttr<I64Attr, "0">:$pad_value,
-    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    /// symmetric quantize param
-    OptionalAttr<I64Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
-    /// asymmetric quantize param
-    OptionalAttr<F64Attr>:$scale,
-    OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
-  );
-}
-
-def Tpu_MaxPool2DOp:Tpu_PoolOp<"MaxPool2D">;
-def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool2D"> {
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$kernel_shape,
-    I64ArrayAttr:$strides,
-    I64ArrayAttr:$pads,
-    DefaultValuedAttr<I64Attr, "0">:$pad_value,
-    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    /// symmetric quantize param
-    OptionalAttr<I64Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
-    /// asymmetric quantize param
-    OptionalAttr<F64Attr>:$scale,
-    OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
-  );
-}
-
-def Tpu_MaxPool3DOp:Tpu_PoolOp<"MaxPool3D">;
-def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$kernel_shape,
-    I64ArrayAttr:$strides,
-    I64ArrayAttr:$pads,
-    DefaultValuedAttr<I64Attr, "0">:$pad_value,
-    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    /// quantize param
-    OptionalAttr<F64Attr>:$scale,
-    OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
-  );
-}
+def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
+def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
+def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
 
 def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
