@@ -494,6 +494,7 @@ protected:
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::SliceOp>,
+                 ForwardCalibartion<top::TileOp>,
                  ForwardCalibartion<top::PadOp>,
                  ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::PermuteOp>,
