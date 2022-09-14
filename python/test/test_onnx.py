@@ -770,8 +770,8 @@ class ONNX_IR_TESTER(object):
 
     def test_ReduceMean(self):
         test_case = 'ReduceMean'
-        input_shape = [1, 1024, 7, 7]
-        output_shape = [1, 1024]
+        input_shape = [2, 200, 7, 7]
+        output_shape = [2, 1, 1, 7]
         input_data = np.random.randn(*input_shape).astype(np.float32)
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
@@ -781,8 +781,8 @@ class ONNX_IR_TESTER(object):
             test_case,
             inputs=['input'],
             outputs=['output'],
-            axes=[2, 3],
-            keepdims=0,
+            axes=[1,2],
+            keepdims=1,
         )
 
         graph_def = helper.make_graph([reducemean_def], test_case, [input], [output])
