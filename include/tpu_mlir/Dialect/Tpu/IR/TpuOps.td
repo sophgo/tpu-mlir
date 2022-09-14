@@ -90,7 +90,7 @@ def Tpu_RequantMode: I32EnumAttr<"RequantMode",
 }
 def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
 
-def Tpu_PooolMode: I32EnumAttr<"PoolMode",
+def Tpu_PoolMode: I32EnumAttr<"PoolMode",
     "pooling mode supported by PoolOp",
     [
       I32EnumAttrCase<"Avg", 0>,
@@ -99,7 +99,7 @@ def Tpu_PooolMode: I32EnumAttr<"PoolMode",
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
 }
-def Tpu_PooolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PooolMode, "pool_mode">;
+def Tpu_PoolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PoolMode, "pool_mode">;
 
 //===----------------------------------------------------------------------===//
 // Tpu Types.
@@ -200,7 +200,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     I64ArrayAttr:$kernel_shape,
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
-    Tpu_PooolModeAttr:$pool_mode,
+    Tpu_PoolModeAttr:$pool_mode,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
