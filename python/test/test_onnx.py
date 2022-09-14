@@ -33,9 +33,9 @@ class ONNX_IR_TESTER(object):
             "AvgPool3D": self.test_AvgPool3D,
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
+            #"BroadcastMulConst": self.test_BroadcastMulConst,
             "Concat": self.test_Concat,
             "Conv1d": self.test_Conv1d,
-            "BroadcastMulConst": self.test_BroadcastMulConst,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "ConvTranspose2D": self.test_ConvTranspose,
@@ -65,7 +65,7 @@ class ONNX_IR_TESTER(object):
             #############################
             # Torch Test Case, Alphabetically
             #############################
-            "LayerGroup": self.test_LayerGroup,
+            #"LayerGroup": self.test_LayerGroup,
             "Lg": self.test_Lg,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
@@ -184,36 +184,39 @@ class ONNX_IR_TESTER(object):
     def torch_and_onnx_compare(self, input_data: dict, onnx_file: str, origin_output):
         onnx_outs = self.simple_onnx_inference(input_data, onnx_file)
         num_outputs = len(onnx_outs)
-        assert (len(origin_output) == num_outputs)
-        for i in range(num_outputs):
-            np.testing.assert_allclose(origin_output[i].data.numpy().flatten(),
-                                       onnx_outs[i].flatten(),
-                                       rtol=1e-5,
-                                       atol=1e-01)
+        if isinstance(origin_output, tuple):
+            assert (len(origin_output) == num_outputs)
+            for i in range(num_outputs):
+                np.testing.assert_allclose(origin_output[i].data.numpy().flatten(),
+                            onnx_outs[i].flatten(), rtol=1e-5, atol=1e-01)
+        else:
+            np.testing.assert_allclose(origin_output.data.numpy().flatten(),
+                    onnx_outs[0].flatten(), rtol=1e-5, atol=1e-01)
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model, model_name: str):
+    def torch_and_test(self, inputs, torch_model:nn.Module, model_name: str):
         origin_output = torch_model(inputs)
         onnx_file = model_name + ".onnx"
         in_names = []
+        in_data = {}
         if isinstance(inputs, tuple):
-            for i in range(len(inputs)):
-                in_names.append("in_{}".format(i))
+            for idx,input in enumerate(inputs):
+                name = "in_{}".format(idx)
+                in_names.append(name)
+                in_data[name] = input.data.numpy().astype(np.float32)
         else:
-            in_names = ["in_0"]
+            in_names.append('in_0')
+            in_data['in_0'] = inputs.data.numpy().astype(np.float32)
+
         torch.onnx.export(torch_model,
                           inputs,
                           onnx_file,
                           export_params=True,
-                          opset_version=11,
                           verbose=True,
                           input_names=in_names)
-
         onnx_model = onnx.load(onnx_file)
-        input_data = {onnx_model.graph.node[0].input[0]: inputs.data.numpy().astype(np.float32)}
-
-        self.torch_and_onnx_compare(input_data, onnx_file, origin_output)
-        self.onnx_and_test(input_data, onnx_model.graph, model_name)
+        self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
+        self.onnx_and_test(in_data, onnx_model.graph, model_name)
 
     def onnx_and_test(self, input_data: dict, graph_def, model_name: str):
         onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
@@ -789,7 +792,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test({'input': input_data}, graph_def, test_case)
 
     def test_LayerGroup(self):
-        model_name = "layer_group"
+        model_name = "LayerGroup"
 
         class Model(nn.Module):
 
@@ -804,9 +807,8 @@ class ONNX_IR_TESTER(object):
                 y2 = y0 + y1
                 return y0, y2
 
-        shape = (2, 3, 100, 100)
-        input_data = torch.randn(*shape)
-        self.torch_and_test(input_data, Model(), model_name)
+        x = torch.randn(4, 3, 100, 100).float()
+        self.torch_and_test(x, Model(), model_name)
 
     def test_Add(self):
         test_case = 'Add'

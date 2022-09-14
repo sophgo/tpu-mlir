@@ -14,7 +14,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("to be supported for Softmax int8 quantize lowering");
+  return lowering_f32_bm1684x();
 }
 
 Value top::SoftmaxOp::lowering_f32_bm1684x() {

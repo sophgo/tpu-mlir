@@ -54,7 +54,7 @@ Value top::MulOp::lowering_int8_bm1684x(bool asymmetric) {
         builder.create<tpu::MulOp>(op->getLoc(), newType, operands, attrs);
     return newOp.output();
   } else {
-    llvm_unreachable("MulOp asymmetric use FP32");
+    return lowering_f32_bm1684x();
   }
 }
 

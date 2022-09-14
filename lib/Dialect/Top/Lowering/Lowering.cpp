@@ -113,7 +113,8 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     attrs.push_back(builder.getNamedAttr(
-        "quant_mode", tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
+        "quant_mode",
+        tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                   ValueRange{in}, attrs);
@@ -508,8 +509,6 @@ protected:
   }
 
   void lowering_process() {
-    // adjust special type
-    mainFunc_.walk([&](Operation *op) { quant_for_special(op); });
     // lowering
     RewritePatternSet patterns(ctx_);
     patterns.add<LoweringPattern>(ctx_, mode_, quantize_map);
@@ -563,17 +562,6 @@ protected:
     } else {
       auto cast = do_cast(v, Module::getStorageType(to), false);
       op->setOperand(opd_idx, cast);
-    }
-  }
-
-  void quant_for_special(Operation *op) {
-    if (chip_ == Module::Chip::BM1684x) {
-      if (mode_ == Quant::Type::INT8) {
-        if (isa<top::AddOp, top::LeakyReluOp, top::MulOp, top::SoftmaxOp,
-                top::DivOp, top::LSTMOp>(op)) {
-          quantize_map[op] = Quant::Type::F32;
-        }
-      }
     }
   }
 
