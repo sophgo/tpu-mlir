@@ -19,6 +19,7 @@ import onnxruntime
 import numpy as np
 from utils.pad_setting import get_TF_SAME_Padding, set_auto_pad
 import copy
+
 onnx_attr_translator = {
     "axis": lambda x: int(x),
     "axes": lambda x: [int(a) for a in x],
@@ -119,6 +120,7 @@ class OnnxConverter(BaseConverter):
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
+            "Expand": lambda node: self.convert_expand_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Gather": lambda node: self.convert_gather_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
@@ -127,6 +129,7 @@ class OnnxConverter(BaseConverter):
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
             "LSTM": lambda node: self.convert_lstm_op(node),
+            "MatMul": lambda node: self.convert_gemm_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
@@ -476,7 +479,7 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_gemm_op(self, onnx_node):
-        assert (onnx_node.op_type == "Gemm")
+        assert (onnx_node.op_type == "Gemm" or onnx_node.op_type == 'MatMul')
         #(M, K) * (K, N) => (M, N)
         op = self.getOperand(onnx_node.inputs[0])
         alpha = onnx_node.attrs.get('alpha', 1)
@@ -1232,3 +1235,29 @@ class OnnxConverter(BaseConverter):
 
         new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_expand_op(self, onnx_node):
+        assert(onnx_node.op_type == 'Expand')
+        in0 = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        input_shape = self.getShape(onnx_node.inputs[0])
+        if len(output_shape) != len(input_shape):
+            raise RuntimeError("Not support different shape_dims yet.")
+
+        # tile one axis each time to avoid gmem buffer
+        out_shape = copy.deepcopy(input_shape)
+        count = sum([input_shape[i] != output_shape[i] for i in range(len(output_shape))])
+        for i in range(len(output_shape)-1, 0, -1):
+            if output_shape[i] != input_shape[i]:
+                p = {
+                    'name': '{}_{}_axis{}'.format(onnx_node.name, onnx_node.op_type, i),
+                }
+                out_shape[i] = output_shape[i]
+                new_op = self.mlir.create_tile_op([in0], out_shape, **p)
+                in0 = new_op
+                count -= 1
+                if (count == 0):
+                    self.addOperand(onnx_node.name, new_op)
+                else:
+                    self.addOperand(onnx_node.name + str(i), new_op)
+

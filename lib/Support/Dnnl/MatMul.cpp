@@ -68,31 +68,24 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   }
 
   auto prim_bias_memory = memory();
-  if (bias != nullptr) {
-    auto bias_float_memory =
-        memory({{bias_dims}, memory::data_type::f32, memory::format_tag::abc},
-               eng, bias);
-    prim_bias_memory = bias_float_memory;
-    if (matmul_pd.bias_desc() != bias_float_memory.get_desc()) {
-      prim_bias_memory = memory(matmul_pd.bias_desc(), eng);
-      net.push_back(reorder(bias_float_memory, prim_bias_memory));
-      net_args.push_back({{DNNL_ARG_FROM, bias_float_memory},
-                          {DNNL_ARG_TO, prim_bias_memory}});
-    }
+  bias0 = std::make_shared<std::vector<float>>(dst_dims[2], 0);
+  auto bias_float_memory =
+      memory({{bias_dims}, memory::data_type::f32, memory::format_tag::abc},
+             eng, bias != nullptr ? bias : bias0->data());
+  prim_bias_memory = bias_float_memory;
+  if (matmul_pd.bias_desc() != bias_float_memory.get_desc()) {
+    prim_bias_memory = memory(matmul_pd.bias_desc(), eng);
+    net.push_back(reorder(bias_float_memory, prim_bias_memory));
+    net_args.push_back({{DNNL_ARG_FROM, bias_float_memory},
+                        {DNNL_ARG_TO, prim_bias_memory}});
   }
 
   auto prim_dst_memory = memory(matmul_pd.dst_desc(), eng);
   net.push_back(matmul(matmul_pd));
-  if (bias != nullptr) {
-    net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
-                        {DNNL_ARG_WEIGHTS, prim_weights_memory},
-                        {DNNL_ARG_BIAS, prim_bias_memory},
-                        {DNNL_ARG_DST, prim_dst_memory}});
-  } else {
-    net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
-                        {DNNL_ARG_WEIGHTS, prim_weights_memory},
-                        {DNNL_ARG_DST, prim_dst_memory}});
-  }
+  net_args.push_back({{DNNL_ARG_SRC, prim_src_memory},
+                      {DNNL_ARG_WEIGHTS, prim_weights_memory},
+                      {DNNL_ARG_BIAS, prim_bias_memory},
+                      {DNNL_ARG_DST, prim_dst_memory}});
 
   // reorder or copy the output
   auto dst_memory =

@@ -1,7 +1,7 @@
 ## nntoolchain
 
 2022-09-8:
-build from nntoolchain 77c18464f15e735580bf73c67a78d78d3f715cd2
-build from TPU1686     0ed8e49edc9981f62322e0014ac46e951d2bb30a
+build from nntoolchain fe70e6d8f7ca6ea420900ec566ad0b5f3eaa3e1b
+build from TPU1686     1d66e331ec623f9fcecc8cb06c2f485689d342ac
 
 
