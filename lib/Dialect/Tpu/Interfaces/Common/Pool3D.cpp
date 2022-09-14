@@ -18,7 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-void tpu::AvgPool3DOp::parseParam(void *param) {
+void tpu::Pool3DOp::parseParam(void *param) {
   pool_attr_t *p = (pool_attr_t *)param;
   memset(p, 0, sizeof(pool_attr_t));
   assert(kernel_shape().size() == 3);
@@ -55,7 +55,7 @@ void tpu::AvgPool3DOp::parseParam(void *param) {
   p->count_include_pad = count_include_pad();
 }
 
-LogicalResult tpu::AvgPool3DOp::init(InferenceParameter &p) {
+LogicalResult tpu::Pool3DOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
   pool_attr_t attrs;
   parseParam(&attrs);
@@ -65,13 +65,13 @@ LogicalResult tpu::AvgPool3DOp::init(InferenceParameter &p) {
   if (dtype.isa<quant::UniformQuantizedType>()) {
     izp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
   }
-
-  pooling->setup(p.inputs[0], p.outputs[0], attrs, true, izp);
+  bool is_avg_pooling = pool_mode() == tpu::PoolMode::Avg;
+  pooling->setup(p.inputs[0], p.outputs[0], attrs, is_avg_pooling, izp);
   p.handle = (void *)pooling;
   return success();
 }
 
-void tpu::AvgPool3DOp::deinit(InferenceParameter &p) {
+void tpu::Pool3DOp::deinit(InferenceParameter &p) {
   if (p.handle != nullptr) {
     auto pooling = (Pooling *)p.handle;
     delete pooling;
@@ -80,12 +80,23 @@ void tpu::AvgPool3DOp::deinit(InferenceParameter &p) {
   return;
 }
 
-LogicalResult tpu::AvgPool3DOp::inference(InferenceParameter &p) {
+LogicalResult tpu::Pool3DOp::inference(InferenceParameter &p) {
   if (p.handle == nullptr) {
     return failure();
   }
   auto pooling = (Pooling *)p.handle;
   pooling->run();
+
+  if (pool_mode() == tpu::PoolMode::Max) {
+    if (do_relu()) {
+      auto limit = relu_limit().convertToDouble();
+      function_relu(p.outputs[0], p.outputs[0],
+                    Module::getNumElements(output()), limit,
+                    Module::getStorageType(output()));
+    }
+    return success();
+  }
+
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
   if (out_type.isInteger(8)) {
@@ -113,7 +124,7 @@ LogicalResult tpu::AvgPool3DOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::AvgPool3DOp::LocalGenSupport() {
+LogicalResult tpu::Pool3DOp::LocalGenSupport() {
   pool_attr_t attrs;
   parseParam(&attrs);
   if (attrs.sd > 15 || attrs.sh > 15 || attrs.sw > 15) {
@@ -123,7 +134,7 @@ LogicalResult tpu::AvgPool3DOp::LocalGenSupport() {
   return failure();
 }
 
-LogicalResult tpu::AvgPool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+LogicalResult tpu::Pool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                           int64_t out_idx, int64_t out_slice) {
   pool_attr_t attrs;
   parseParam(&attrs);

@@ -20,23 +20,29 @@ using namespace tpu_mlir::helper;
 Value top::AvgPoolOp::lowering_int8_bm1684() {
   Value newValue;
   if (kernel_shape().size() == 3) {
-    newValue = lowering_common_int8<tpu::AvgPool3DOp>(getOperation());
+    newValue = lowering_common_int8<tpu::Pool3DOp>(getOperation());
   } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_int8<tpu::AvgPool2DOp>(getOperation());
+    newValue = lowering_common_int8<tpu::Pool2DOp>(getOperation());
   } else {
-    newValue = lowering_common_int8<tpu::AvgPool1DOp>(getOperation());
+    newValue = lowering_common_int8<tpu::Pool1DOp>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   return newValue;
 }
 
 Value top::AvgPoolOp::lowering_f32_bm1684() {
   Value newValue;
   if (kernel_shape().size() == 3) {
-    newValue = lowering_common_float<tpu::AvgPool3DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool3DOp>(getOperation());
   } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_float<tpu::AvgPool2DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool2DOp>(getOperation());
   } else {
-    newValue = lowering_common_float<tpu::AvgPool1DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool1DOp>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   return newValue;
 }

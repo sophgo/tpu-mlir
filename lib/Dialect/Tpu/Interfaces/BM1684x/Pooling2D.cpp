@@ -86,21 +86,8 @@ static void SpecAssign(const pool_attr_t &attrs, pooling_common_spec_t &spec) {
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::MaxPool2DOp::codegen_global_bm1684x() {
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  pooling_common_spec_t spec = {0};
-  pool_attr_t attrs;
-  parseParam(&attrs);
-  SpecAssign(attrs, spec);
-  spec.is_avg_pooling = false;
-  BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
-}
 
-void tpu::AvgPool2DOp::codegen_global_bm1684x() {
+void tpu::Pool2DOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto module = Module::getModuleOp(op);
   auto input_spec = BM1684x::get_input_spec(op);
@@ -109,98 +96,56 @@ void tpu::AvgPool2DOp::codegen_global_bm1684x() {
   parseParam(&attrs);
   pooling_common_spec_t spec = {0};
   SpecAssign(attrs, spec);
-  spec.is_avg_pooling = true;
-  if (Quant::isUniformQuantized(input())) {
-    spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
-    if (spec.avg_pooling_quant_mode == 0) {
-      spec.multiplier = multiplier().value();
-      spec.rshiftbits = rshift().value();
-    } else if (spec.avg_pooling_quant_mode == 2) {
-      spec.merge_requant = true;
-      spec.rq_scale = scale().value().convertToDouble();
-      spec.rq_offset = offset().value().convertToDouble();
+  if (pool_mode() == tpu::PoolMode::Avg) {
+    spec.is_avg_pooling = true;
+    if (Quant::isUniformQuantized(input())) {
+      spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+      if (spec.avg_pooling_quant_mode == 0) {
+        spec.multiplier = multiplier().value();
+        spec.rshiftbits = rshift().value();
+      } else if (spec.avg_pooling_quant_mode == 2) {
+        spec.merge_requant = true;
+        spec.rq_scale = scale().value().convertToDouble();
+        spec.rq_offset = offset().value().convertToDouble();
+      }
     }
-    BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                         sizeof(spec), input_spec->data(),
-                                         output_spec->data());
-  } else {
-    BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
-                                         sizeof(spec), input_spec->data(),
-                                         output_spec->data());
   }
+  BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // =========================================
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::AvgPool2DOp::getBufferSize_bm1684x(
+int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  int64_t size = 0;
-  auto module = Module::getModuleOp(getOperation());
-  if (Module::getAsymmetric(module)) {
-    auto kernel = Module::getI64Array(kernel_shape());
-    int64_t dtype_bytes =
-        kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
-    int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
-    int64_t npu_num = BM1684x::instance().get_npu_num();
+  switch (pool_mode()) {
+  case tpu::PoolMode::Max:
+    return 0;
+  case tpu::PoolMode::Avg:
+    int64_t size = 0;
+    auto module = Module::getModuleOp(getOperation());
+    if (Module::getAsymmetric(module)) {
+      auto kernel = Module::getI64Array(kernel_shape());
+      int64_t dtype_bytes =
+          kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
+      int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
+      int64_t npu_num = BM1684x::instance().get_npu_num();
 
-    int64_t N, C, H, W;
-    Module::getNCHW(input(), N, C, H, W);
-    size = align_up(out_hslice * W, eu_num) * ceiling_func(C, npu_num) *
-           dtype_bytes;
+      int64_t N, C, H, W;
+      Module::getNCHW(input(), N, C, H, W);
+      size = align_up(out_hslice * W, eu_num) * ceiling_func(C, npu_num) *
+             dtype_bytes;
+    }
+    return size;
   }
-  return size;
+  llvm_unreachable("unimplemented Pooling.");
 }
 
-int64_t tpu::MaxPool2DOp::getBufferSize_bm1684x(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  return 0;
-}
-
-void tpu::MaxPool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
-
-  pool_attr_t attrs;
-  parseParam(&attrs);
-  pooling_local_spec_t spec = {0};
-  auto &common = spec.common;
-  SpecAssign(attrs, common);
-  common.is_avg_pooling = false;
-  common.pad_h_t = (in_gi.h_idx == 0 ? attrs.pad_h : 0);
-  common.pad_h_b =
-      (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
-
-  local_sec_info_t sec_info;
-  memset(&sec_info, 0, sizeof(sec_info));
-  sec_info.n_slice = in_gi.n_slice;
-  sec_info.h_slice = in_gi.h_slice;
-  sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attrs.ih);
-  // to be compatible with nntoolchain
-  if (sec_info.is_h_split) {
-    sec_info.h_idx = h_step == 0 ? -attrs.pad_h : in_gi.h_idx;
-    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
-                                          : sec_info.h_slice;
-    sec_info.h_slice = sec_info.h_slice + common.pad_h_b;
-  }
-  sec_info.w_slice = attrs.iw;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = attrs.ow;
-  BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
-                                      sizeof(spec), &sec_info,
-                                      input_spec->data(), output_spec->data());
-}
-
-void tpu::AvgPool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
   auto module = Module::getModuleOp(op);
   auto input_spec = BM1684x::get_input_spec(op);
@@ -217,17 +162,20 @@ void tpu::AvgPool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   common.pad_h_t = (in_gi.h_idx == 0 ? attrs.pad_h : 0);
   common.pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
-  common.is_avg_pooling = true;
-  common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
-  if (common.avg_pooling_quant_mode == 0) {
-    common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
-    common.rshiftbits = rshift().has_value() ? rshift().value() : -1;
-  } else if (common.avg_pooling_quant_mode == 2) {
-    common.merge_requant = true;
-    common.rq_scale =
-        scale().has_value() ? (scale().value().convertToDouble()) : -1.;
-    common.rq_offset =
-        offset().has_value() ? (offset().value().convertToDouble()) : -1.;
+
+  if (pool_mode() == tpu::PoolMode::Avg) {
+    common.is_avg_pooling = true;
+    common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+    if (common.avg_pooling_quant_mode == 0) {
+      common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
+      common.rshiftbits = rshift().has_value() ? rshift().value() : -1;
+    } else if (common.avg_pooling_quant_mode == 2) {
+      common.merge_requant = true;
+      common.rq_scale =
+          scale().has_value() ? (scale().value().convertToDouble()) : -1.;
+      common.rq_offset =
+          offset().has_value() ? (offset().value().convertToDouble()) : -1.;
+    }
   }
 
   local_sec_info_t sec_info;

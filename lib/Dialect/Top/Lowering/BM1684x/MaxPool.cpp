@@ -17,26 +17,32 @@ Value top::MaxPoolOp::lowering_int8_bm1684x(bool asymmetric) {
   Value newValue;
   if (kernel_shape().size() == 3) {
     newValue =
-        lowering_common_int8<tpu::MaxPool3DOp>(getOperation(), asymmetric);
+        lowering_common_int8<tpu::Pool3DOp>(getOperation(), asymmetric);
   } else if (kernel_shape().size() == 2) {
     newValue =
-        lowering_common_int8<tpu::MaxPool2DOp>(getOperation(), asymmetric);
+        lowering_common_int8<tpu::Pool2DOp>(getOperation(), asymmetric);
   } else {
     newValue =
-        lowering_common_int8<tpu::MaxPool1DOp>(getOperation(), asymmetric);
+        lowering_common_int8<tpu::Pool1DOp>(getOperation(), asymmetric);
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }
 
 Value top::MaxPoolOp::lowering_f32_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
-    newValue = lowering_common_float<tpu::MaxPool3DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool3DOp>(getOperation());
   } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_float<tpu::MaxPool2DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool2DOp>(getOperation());
   } else {
-    newValue = lowering_common_float<tpu::MaxPool1DOp>(getOperation());
+    newValue = lowering_common_float<tpu::Pool1DOp>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }
 
@@ -44,14 +50,17 @@ Value top::MaxPoolOp::lowering_bf16_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
     newValue =
-        lowering_common_float<tpu::MaxPool3DOp, BFloat16Type>(getOperation());
+        lowering_common_float<tpu::Pool3DOp, BFloat16Type>(getOperation());
   } else if (kernel_shape().size() == 2) {
     newValue =
-        lowering_common_float<tpu::MaxPool2DOp, BFloat16Type>(getOperation());
+        lowering_common_float<tpu::Pool2DOp, BFloat16Type>(getOperation());
   } else {
     newValue =
-        lowering_common_float<tpu::MaxPool1DOp, BFloat16Type>(getOperation());
+        lowering_common_float<tpu::Pool1DOp, BFloat16Type>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }
 
@@ -59,14 +68,17 @@ Value top::MaxPoolOp::lowering_f16_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
     newValue =
-        lowering_common_float<tpu::MaxPool3DOp, Float16Type>(getOperation());
+        lowering_common_float<tpu::Pool3DOp, Float16Type>(getOperation());
   } else if (kernel_shape().size() == 2) {
     newValue =
-        lowering_common_float<tpu::MaxPool2DOp, Float16Type>(getOperation());
+        lowering_common_float<tpu::Pool2DOp, Float16Type>(getOperation());
   } else {
     newValue =
-        lowering_common_float<tpu::MaxPool1DOp, Float16Type>(getOperation());
+        lowering_common_float<tpu::Pool1DOp, Float16Type>(getOperation());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }
 
@@ -74,14 +86,17 @@ Value top::MaxPoolOp::lowering_quant_bm1684x() {
   Value newValue;
   if (kernel_shape().size() == 3) {
     newValue =
-        lowering_common<tpu::MaxPool3DOp>(getOperation(), output().getType());
+        lowering_common<tpu::Pool3DOp>(getOperation(), output().getType());
   } else if (kernel_shape().size() == 2) {
     newValue =
-        lowering_common<tpu::MaxPool2DOp>(getOperation(), output().getType());
+        lowering_common<tpu::Pool2DOp>(getOperation(), output().getType());
 
   } else {
     newValue =
-        lowering_common<tpu::MaxPool1DOp>(getOperation(), output().getType());
+        lowering_common<tpu::Pool1DOp>(getOperation(), output().getType());
   }
+  auto op = newValue.getDefiningOp();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   return newValue;
 }
