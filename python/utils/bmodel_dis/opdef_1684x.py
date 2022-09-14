@@ -497,10 +497,10 @@ class pord_op(bdc_base):
         0: "pord.depthwise",
         1: "pord.avgpooling",
         2: "pord.depthwiserelu",
-        3: "pord.maxpooling",
-        4: "pord.roiDepthwise",
-        5: "pord.roiavgpooling",
-        6: "pord.roimaxpooling",
+        4: "pord.maxpooling",
+        5: "pord.roiDepthwise",
+        6: "pord.roiavgpooling",
+        7: "pord.roimaxpooling",
     }
     description = "depthwise or pooling"
 
