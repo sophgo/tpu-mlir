@@ -866,4 +866,16 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_TileOp:Tpu_Op<"Tile", [DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "Tile operation";
+  let description = [{
+    Returns a tensor with the same type as the input, with a new shape
+    specified by the shape argument.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
