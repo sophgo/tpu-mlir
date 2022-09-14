@@ -38,6 +38,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   }
 
   int channel = input_shape[axis_];
+  bool has_table = !table().getType().isa<NoneType>();
   if (out_type.isa<FloatType>()) {
     float max_arr[inner_dim];
     float sum_arr[inner_dim];
@@ -83,6 +84,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     }
   } else if (Quant::isUniformQuantized(input(),
                                        output())) { // for quant softmax
+    assert(has_table == true);
     auto exp_table = p.inputs[1];
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();

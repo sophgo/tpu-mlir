@@ -54,7 +54,7 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
         builder.create<tpu::AddOp>(op->getLoc(), newType, operands, attrs);
     return newOp.output();
   } else {
-    llvm_unreachable("AddOp asymmetric use f32");
+    return lowering_f32_bm1684x();
   }
 }
 

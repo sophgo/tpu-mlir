@@ -34,8 +34,7 @@ Value top::LeakyReluOp::lowering_int8_bm1684x(bool asymmetric) {
                                                   Value(input), attrs);
     return newOp;
   } else {
-    llvm_unreachable(
-        "to be supported for LeakyRelu asymmetric quantize lowering");
+    return lowering_f32_bm1684x();
   }
   return nullptr;
 }

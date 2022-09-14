@@ -19,8 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 Value top::LSTMOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("LSTMOp unsupported");
-  return nullptr;
+  return lowering_f32_bm1684x();
 }
 
 Value top::LSTMOp::lowering_f32_bm1684x() {
