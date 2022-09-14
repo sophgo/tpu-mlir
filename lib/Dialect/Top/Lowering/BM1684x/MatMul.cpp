@@ -46,7 +46,7 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
   } else if (in_zp) {
-    bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
+    bias_int32 = std::make_shared<std::vector<int32_t>>(N);
   }
 
   for (int j = 0; j < N; j++) {
@@ -58,7 +58,7 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
     if (with_bias) {
       bias_int32->data()[j] =
           std::round(bias_fp32->at(j) / (w_scale * in_scale) - bias_w_xz);
-    } else {
+    } else if (in_zp) {
       bias_int32->data()[j] = -bias_w_xz;
     }
   }

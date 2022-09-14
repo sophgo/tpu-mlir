@@ -701,4 +701,17 @@ def Top_GatherOp: Top_Op<"Gather"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_TileOp: Top_Op<"Tile"> {
+  let summary = "Tile operator";
+  let description = [{
+    Perform Tile operation on the given tensor.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTenor:$output);
+  let hasCanonicalizer = 1;
+}
 #endif // Top_OPS

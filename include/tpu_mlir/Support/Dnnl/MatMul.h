@@ -26,5 +26,6 @@ private:
   stream engine_stream;
   std::vector<primitive> net;
   std::vector<std::unordered_map<int, memory>> net_args;
+  std::shared_ptr<std::vector<float>> bias0;
 };
 } // namespace tpu_mlir

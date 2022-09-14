@@ -191,6 +191,7 @@ typedef enum {
 
 typedef struct active_common_spec {
   int active_type;
+  float coeffs[MAX_SHAPE_DIMS];
 } active_common_spec_t;
 
 typedef struct active_global_spec {
