@@ -51,7 +51,8 @@ class ONNX_IR_TESTER(object):
             "MaxPool3D": self.test_MaxPool3D,
             "Mul": self.test_Mul,
             "MulConst": self.test_MulConst,
-            #"Pad": self.test_Pad,
+            "Pad0": self.test_Pad0, # zero pad
+            "Pad1": self.test_Pad1, # pad val
             "Resize": self.test_Resize,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
@@ -258,7 +259,7 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        pool_def = onnx.helper.make_node(
+        pool_def = helper.make_node(
             'AveragePool',
             inputs=['input'],
             outputs=['output'],
@@ -275,7 +276,7 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        pool_def = onnx.helper.make_node(
+        pool_def = helper.make_node(
             'AveragePool',
             inputs=['input'],
             outputs=['pool_output'],
@@ -306,7 +307,7 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        pool_def = onnx.helper.make_node(
+        pool_def = helper.make_node(
             'MaxPool',
             inputs=['input'],
             outputs=['output'],
@@ -580,14 +581,14 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([log_def], case_name, [input], [output])
         self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Pad(self, case_name):
+    def test_Pad0(self, case_name):
         input_shape = [3, 8, 32, 32]
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        pad_val = onnx.helper.make_tensor(name='pads',
+        pad_val = helper.make_tensor(name='pads',
                                           data_type=onnx.TensorProto.INT64,
                                           dims=pads.shape,
                                           vals=pads.flatten())
@@ -595,6 +596,27 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([pad_def],
                                       case_name, [input], [output],
                                       initializer=[pad_val])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_Pad1(self, case_name):
+        input_shape = [3, 8, 32, 32]
+        output_shape = [3, 8, 44, 46]
+        pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        pad_shape = helper.make_tensor(name='pads',
+                                          data_type=onnx.TensorProto.INT64,
+                                          dims=pads.shape,
+                                          vals=pads.flatten())
+        pad_val = helper.make_tensor(name='pad_val',
+                                     data_type=onnx.TensorProto.FLOAT,
+                                     dims=[],
+                                     vals=[0.6])
+        pad_def = helper.make_node("Pad", ['input', 'pads', 'pad_val'], outputs=['output'], mode='constant')
+        graph_def = helper.make_graph([pad_def],
+                                      case_name, [input], [output],
+                                      initializer=[pad_shape, pad_val])
         self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_Div(self, case_name):
@@ -835,7 +857,7 @@ class ONNX_IR_TESTER(object):
                                            dims=[],
                                            vals=[seq_length])
 
-        node_def = onnx.helper.make_node(
+        node_def = helper.make_node(
             "LSTM",
             inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
             outputs=['output'],
@@ -919,7 +941,7 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.INT64, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        token_data = onnx.helper.make_tensor(
+        token_data = helper.make_tensor(
             name='tokens',
             data_type=onnx.TensorProto.FLOAT,
             dims=token_shape,

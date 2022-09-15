@@ -839,6 +839,12 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
+
+        # get pad mode
+        mode = onnx_node.attrs.get("mode", "constant")
+        if isinstance(mode, bytes):
+            mode = mode.decode("utf-8")
+        assert (mode == "constant")  # only support constant now
         pads = list(self.getWeight(onnx_node.inputs[1]))
         if pads == None:
             raise RuntimeError("No paddings value")
@@ -846,9 +852,17 @@ class OnnxConverter(BaseConverter):
             raise RuntimeError(
                 "pads number is two times as same as input shape ({} v.s 2 * {})".format(
                     len(pads), len(input_shape)))
+        # opset 11, value from second input
+        val = 0.0
+        if len(onnx_node.inputs) > 2:
+            val = self.getWeight(onnx_node.inputs[2])
+        else:
+            val = onnx_node.attrs.get("value", 0.0)
+
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'paddings': pads,
+            'val': val,
         }
 
         new_op = self.mlir.create_pad_op([op], output_shape, **p)
@@ -1003,7 +1017,7 @@ class OnnxConverter(BaseConverter):
         axes = onnx_node.attrs['axes']
         keepdims = onnx_node.attrs['keepdims']
         reduce_n = reduce_c = reduce_h = reduce_w = 0
-        stride = [1,1]
+        stride = [1, 1]
         for i in range(len(axes)):
             axes[i] = axes[i] if axes[i] >= 0 else axes[i] + num_dims
             if axes[i] == 0:
@@ -1016,6 +1030,7 @@ class OnnxConverter(BaseConverter):
                 reduce_w = 1
 
         op = self.getOperand(onnx_node.inputs[0])
+        # yapf: disable
         #if reducemean the h, w, or h & w, replace it with avgpool
         if (onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_w and reduce_h):
             onnx_node.op_type = "GlobalAveragePool"
@@ -1032,7 +1047,7 @@ class OnnxConverter(BaseConverter):
         elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_w:
             onnx_node.op_type = "GlobalAveragePool"
             num_dims = len(input_shape) - 2
-            kernel_shape = [1,1]
+            kernel_shape = [1, 1]
             kernel_shape[1] = input_shape[3]
             name = "reduce_w"
             p = {
@@ -1046,8 +1061,8 @@ class OnnxConverter(BaseConverter):
         elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_h:
             onnx_node.op_type = "GlobalAveragePool"
             num_dims = len(input_shape) - 2
-            kernel_shape = [1,1]
-            kernel_shape[0] =  input_shape[2]
+            kernel_shape = [1, 1]
+            kernel_shape[0] = input_shape[2]
             name = "reduce_h"
             p = {
                 'name': "{}_{}".format(name if (reduce_n or reduce_c) else onnx_node.name, onnx_node.op_type),
@@ -1057,7 +1072,7 @@ class OnnxConverter(BaseConverter):
                 'count_include_pad': True,
                 'do_relu': False,
             }
-
+        # yapf: enable
         new_out_shape = copy.deepcopy(input_shape)
         if reduce_w:
             new_out_shape[3] = 1
@@ -1074,8 +1089,8 @@ class OnnxConverter(BaseConverter):
         if reduce_c:
             #tranpose the c/w firstly
             onnx_node.op_type = "Transpose"
-            name ="transpose_c"
-            transpose_perm = [0,3,2,1]
+            name = "transpose_c"
+            transpose_perm = [0, 3, 2, 1]
             assert (len(new_out_shape) == len(transpose_perm))
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
             tranpose_new_output_shape[1] = new_out_shape[3]
@@ -1091,7 +1106,7 @@ class OnnxConverter(BaseConverter):
             op = new_op
             onnx_node.op_type = "GlobalAveragePool"
             num_dims = len(tranpose_new_output_shape) - 2
-            kernel_shape = [1,1]
+            kernel_shape = [1, 1]
             kernel_shape[1] = tranpose_new_output_shape[3]
             new_out_shape = copy.deepcopy(tranpose_new_output_shape)
             new_out_shape[3] = 1
@@ -1108,7 +1123,7 @@ class OnnxConverter(BaseConverter):
             op = new_op
 
             #tranpose w/c again
-            transpose_perm = [0,3,2,1]
+            transpose_perm = [0, 3, 2, 1]
             assert (len(new_out_shape) == len(transpose_perm))
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
             tranpose_new_output_shape[1] = new_out_shape[3]
@@ -1126,8 +1141,8 @@ class OnnxConverter(BaseConverter):
         if reduce_n:
             #tranpose the n/w firstly
             onnx_node.op_type = "Transpose"
-            name ="transpose_n"
-            transpose_perm = [3,1,2,0]
+            name = "transpose_n"
+            transpose_perm = [3, 1, 2, 0]
             new_out_shape = copy.deepcopy(input_shape)
             if reduce_w:
                 new_out_shape[3] = 1
@@ -1150,7 +1165,7 @@ class OnnxConverter(BaseConverter):
             op = new_op
             onnx_node.op_type = "GlobalAveragePool"
             num_dims = len(tranpose_new_output_shape) - 2
-            kernel_shape = [1,1]
+            kernel_shape = [1, 1]
             kernel_shape[1] = tranpose_new_output_shape[3]
             new_out_shape = copy.deepcopy(tranpose_new_output_shape)
             new_out_shape[3] = 1
@@ -1167,7 +1182,7 @@ class OnnxConverter(BaseConverter):
             op = new_op
 
             #tranpose w/c again
-            transpose_perm = [3,1,2,0]
+            transpose_perm = [3, 1, 2, 0]
             assert (len(new_out_shape) == len(transpose_perm))
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
             tranpose_new_output_shape[0] = new_out_shape[3]
@@ -1222,22 +1237,19 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_gather_op(self, onnx_node):
-        assert(onnx_node.op_type == "Gather")
+        assert (onnx_node.op_type == "Gather")
         in0 = self.getOperand(onnx_node.inputs[0])
         in1 = self.getWeight(onnx_node.inputs[1])
         indices = self.getWeightOp(onnx_node.inputs[1])
         output_shape = self.getShape(onnx_node.name)
         axis = onnx_node.attrs.get('axis')
-        p = {
-            'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type),
-            'axis': axis
-        }
+        p = {'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type), 'axis': axis}
 
         new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_expand_op(self, onnx_node):
-        assert(onnx_node.op_type == 'Expand')
+        assert (onnx_node.op_type == 'Expand')
         in0 = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         input_shape = self.getShape(onnx_node.inputs[0])
@@ -1247,7 +1259,7 @@ class OnnxConverter(BaseConverter):
         # tile one axis each time to avoid gmem buffer
         out_shape = copy.deepcopy(input_shape)
         count = sum([input_shape[i] != output_shape[i] for i in range(len(output_shape))])
-        for i in range(len(output_shape)-1, 0, -1):
+        for i in range(len(output_shape) - 1, 0, -1):
             if output_shape[i] != input_shape[i]:
                 p = {
                     'name': '{}_{}_axis{}'.format(onnx_node.name, onnx_node.op_type, i),
@@ -1260,4 +1272,3 @@ class OnnxConverter(BaseConverter):
                     self.addOperand(onnx_node.name, new_op)
                 else:
                     self.addOperand(onnx_node.name + str(i), new_op)
-

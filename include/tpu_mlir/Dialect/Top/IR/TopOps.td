@@ -409,7 +409,8 @@ def Top_PadOp:Top_Op<"Pad"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$paddings
+    I64ArrayAttr:$paddings,
+    DefaultValuedAttr<F64Attr, "0.0">:$val
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
