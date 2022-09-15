@@ -65,7 +65,7 @@ class ONNX_IR_TESTER(object):
             #############################
             # Torch Test Case, Alphabetically
             #############################
-            #"LayerGroup": self.test_LayerGroup,
+            "LayerGroup": self.test_LayerGroup,
             "Lg": self.test_Lg,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
@@ -807,7 +807,7 @@ class ONNX_IR_TESTER(object):
                 y2 = y0 + y1
                 return y0, y2
 
-        x = torch.randn(4, 3, 100, 100).float()
+        x = torch.randn(1, 3, 50, 50).float()
         self.torch_and_test(x, Model(), model_name)
 
     def test_Add(self):

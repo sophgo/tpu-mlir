@@ -58,6 +58,10 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
   if (use_3ic_optimize) {
     // Now only support broadcast using BDC when it is a local layer.
     use_3ic_optimize |= 0x10;
+    if (!input().hasOneUse()) {
+      // Need a buffer for broadcast input
+      use_3ic_optimize |= 0x20;
+    }
   }
 
   if (attr.is_dw == false) {
@@ -349,6 +353,11 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   if (p.is_dw) {
     sz += int32_size;
     sz += oc_per_npu * p.kh * p.kw;
+  }
+
+  if (use_3ic_optimize() & 0x20) {
+    // used for broadcast input
+    sz += in_lmem_bytes;
   }
   int use_3ic = (use_3ic_optimize() & 0x3);
   if (use_3ic == 1) { // merge kh to ic
