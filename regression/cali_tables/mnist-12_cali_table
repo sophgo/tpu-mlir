@@ -1,0 +1,13 @@
+# genetated time: 2022-09-15 17:24:24.045162
+# histogram number: 2048
+# sample number: 10
+# tune number: 5
+###
+# op_name    threshold    min    max
+Input3 1.0000000 0.0000000 1.0000000
+ReLU32_Output_0_Relu 3.2525501 0.0000000 3.2525501
+Pooling66_Output_0_MaxPool 3.2525501 0.0000000 3.2525501
+ReLU114_Output_0_Relu 8.6067562 0.0000000 8.6067562
+Pooling160_Output_0_MaxPool 8.6067562 0.0000000 8.6067562
+Pooling160_Output_0_reshape0_Reshape 8.6067562 0.0000000 8.6067562
+Plus214_Output_0_Gemm 24.6600075 -18.4520416 24.6600075
