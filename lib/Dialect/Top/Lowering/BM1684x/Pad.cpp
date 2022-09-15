@@ -14,7 +14,23 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::PadOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::PadOp>(getOperation(), asymmetric);
+  auto op = getOperation();
+  OpBuilder builder(op);
+  int64_t in_zp;
+  double in_scale;
+  Quant::getScaleAndZeroPoint(input(), in_scale, in_zp, asymmetric);
+
+  std::vector<NamedAttribute> attrs;
+  auto val_ = val().convertToDouble();
+  val_ = std::round(val_ / in_scale + in_zp);
+  attrs.push_back(builder.getNamedAttr("paddings", paddingsAttr()));
+  attrs.push_back(builder.getNamedAttr("val", builder.getF64FloatAttr(val_)));
+
+  builder.setInsertionPointAfter(op);
+  auto newType = Quant::getQuantInt8Type(output(), asymmetric);
+  auto newOp = builder.create<tpu::PadOp>(op->getLoc(), newType,
+                                          op->getOperands(), attrs);
+  return newOp.output();
 }
 
 Value top::PadOp::lowering_f32_bm1684x() {
