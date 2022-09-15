@@ -727,13 +727,18 @@ class dma_base:
         attribute = ""
         if self.attribute:
             attribute = f" {{{self.attribute}}}"
-        actions = {"G->R": "load", "R->G": "store", "R->R": "transfer"}
+        actions = {
+            "G->R": "load",
+            "R->G": "store",
+            "R->R": "copy",
+            "G->G": "copy",
+        }
         action = actions[opd_str[0][1] + "->" + res_str[0][1]]
         return (
             f"{', '.join(res_str)}, %D{self.cmd_id} = \"{self.op_name}.{action}\""
             + f"({', '.join(opd_str)}, %B{self.cmd_id_dep})"
             + attribute
-            + f" : ({opd_shape_t[0]}, none) -> ({res_shape_t[0]}, none)"
+            + f" : ({', '.join(opd_shape_t)}, none) -> ({res_shape_t[0]}, none)"
         )
 
 
@@ -844,7 +849,29 @@ class sdma_sys(dma_base):
 @registry_dma("DMA_gather")
 class dma_gather(dma_base):
     opcode = 7
+    op_name = "gdma.gather"
     description = "DMA gather"
+
+    def set_elt(self):
+        results = (
+            ("dst_start_addr_h8", "dst_start_addr_l32"),
+            ("dst_csize", "dst_hsize", "dst_wsize"),
+            ("dst_cstride", "dst_hstride"),
+            "src_data_format",
+        )
+        operands = (
+            ("src_start_addr_h8", "src_start_addr_l32"),
+            (f"src_{x}size" for x in "chw"),
+            ("src_cstride", "src_hstride"),
+            "src_data_format",
+            ("index_start_addr_h8", "index_start_addr_l32"),
+            (f"index_{x}size" for x in "ch"),
+            ("index_cstride", "index_hstride"),
+            "src_data_format",
+        )
+        self.results = self.memref(results)
+        self.operands = self.memref(operands)
+        self.attribute = None
 
 
 @registry_dma("DMA_scatter")

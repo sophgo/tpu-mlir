@@ -35,7 +35,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             data = round_away_from_zero(inputs[i.name] * i.qscale + i.qzero_point)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8)
         else:
-            raise ValueError("unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
+            raise ValueError(f"unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
@@ -77,7 +77,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_keys = []
         model = onnx.load(onnx_file)
         no_list = [
-            "Cast", "Shape", "Unsqueeze", "Gather", "Split", "Constant", "GRU", "Sqrt",
+            "Cast", "Shape", "Unsqueeze", "Split", "Constant", "GRU", "Sqrt",
             "ReduceMean", "Pow", "Sub", "Dropout", "Loop", "TopK"
         ]
 

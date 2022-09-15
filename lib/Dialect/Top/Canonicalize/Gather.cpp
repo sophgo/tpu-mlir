@@ -24,9 +24,13 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
 
   LogicalResult matchAndRewrite(GatherOp op,
                                 PatternRewriter &rewriter) const override {
+    std::shared_ptr<std::vector<float>> inds_f32;
 
-    auto inds = cast<WeightOp>(op.indices().getDefiningOp());
-    auto inds_f32 = inds.read<float>();
+    if (auto inds = dyn_cast<WeightOp>(op.indices().getDefiningOp()))
+      inds_f32 = inds.read<float>();
+    else
+      return failure();
+
     auto inds_shape = Module::getShape(op.indices());
     auto inds_elems = Module::getNumElements(op.indices());
     auto ax = op.axis();

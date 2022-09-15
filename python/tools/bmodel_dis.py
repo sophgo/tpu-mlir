@@ -203,4 +203,4 @@ if __name__ == "__main__":
         fmt_cmd = ["\n    " + str(x) for x in cmd.all]
         fmt_cmd = "".join(fmt_cmd) + "\n"
         fun_name = "graph" + "".join((str(x) for x in idx))
-        print(f'func.func @"{fun_name}"() {{{fmt_cmd}}}')
+        print(f"func.func @{fun_name}() {{{fmt_cmd}}}")
