@@ -929,4 +929,20 @@ def Tpu_TileOp:Tpu_Op<"Tile", [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_GatherOp: Tpu_Op<"Gather"> {
+  let summary = "Gather operator";
+  let description = [{
+    Perform Gather operation on the given axis.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+
+    DefaultValuedAttr<I64Attr, "0">:$axis
+  );
+
+  let results = (outs AnyTenor:$output);
+}
+
 #endif // TPU_OPS

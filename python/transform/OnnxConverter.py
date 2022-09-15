@@ -1238,13 +1238,25 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_gather_op(self, onnx_node):
-        assert (onnx_node.op_type == "Gather")
-        in0 = self.getOperand(onnx_node.inputs[0])
-        in1 = self.getWeight(onnx_node.inputs[1])
-        indices = self.getWeightOp(onnx_node.inputs[1])
+        assert(onnx_node.op_type == "Gather")
+
+        def getOp(name):
+            if name in self.operands:
+                return self.getOperand(name)
+            if name in self.tensors:
+                return self.getWeightOp(name)
+            raise Exception(KeyError(f"unregistered varivale: {name}"))
+
+        in0 = getOp(onnx_node.inputs[0])
+        indices = getOp(onnx_node.inputs[1])
         output_shape = self.getShape(onnx_node.name)
         axis = onnx_node.attrs.get('axis')
-        p = {'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type), 'axis': axis}
+        if axis is None:
+            axis = 0
+        p = {
+            'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type),
+            'axis': axis
+        }
 
         new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)

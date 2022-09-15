@@ -19,8 +19,7 @@ Value top::GatherOp::lowering_int8_bm1684x(bool asymmetric) {
 }
 
 Value top::GatherOp::lowering_f32_bm1684x() {
-  llvm_unreachable("GatherOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::GatherOp>(getOperation());
 }
 
 Value top::GatherOp::lowering_bf16_bm1684x() {
