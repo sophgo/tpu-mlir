@@ -159,7 +159,7 @@ class ONNX_IR_TESTER(object):
         if quant_mode == "int8":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
         npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
-        npz_compare([tpu_npz, model_npz, "--tolerance", "0.99,0.9", "-v"])
+        npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.85", "-v"])
 
         msg = quant_mode.upper()
         if quant_mode == "int8":
