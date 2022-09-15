@@ -12,6 +12,7 @@ model_list_basic=(
   "densenet121-12"
   "efficientnet"
   "inception_v3"
+  "mnist-12"
   "mobilenet_v2"
   "mobilenet_v2_cf"
   "mobilenet_v2_tf"
