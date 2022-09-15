@@ -881,6 +881,14 @@ void GroupOps::adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs,
 
 void GroupOps::check_group_lmem(group_lmem_t &group_lmem,
                                 int64_t timestep_num) {
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type != LMEM_OPERATION) {
+      llvm::errs() << "==== id = " << linfo.id << ", ";
+      linfo.value.print(llvm::errs());
+      llvm::errs() << ": start_ts = " << linfo.start_timestep
+                   << ", end_ts = " << linfo.end_timestep << "\n";
+    }
+  }
   std::list<std::pair<addr_pair_t, int64_t>> ts_lmems; // ((addr, size), id)
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     ts_lmems.clear();
