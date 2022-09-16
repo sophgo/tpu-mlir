@@ -407,7 +407,29 @@ MulConstOp
 
 PermuteOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    改变tensor布局，变化tensor数据维度的顺序，将输入的tensor按照order给定的顺序重新布局
+
+:输入:
+    - inputs: tensor数组，任意类型的tensor
+
+
+:属性:
+    - order: 指定重新布局tensor的顺序
+
+
+:输出:
+    - output: 输出tensor，按order的顺序重新布局后的tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %2 = "top.Permute"(%1) {order = [0, 1, 3, 4, 2]} : (tensor<4x3x85x20x20xf32>) -> tensor<4x3x20x20x85xf32> loc("output_Transpose")
+
+
 
 ReluOp
 ^^^^^^^^^^^^^^^
@@ -463,19 +485,121 @@ ScaleOp
 
 SigmoidOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    激活函数，将tensor中元素映射到特定区间，默认映射到[0，1]，计算方法为:
+    
+    .. math::
+        Y = \frac{scale}{1 + e^{-X}} + bias 
+
+:输入:
+    - inputs: tensor数组，任意类型的tensor
+
+
+:属性:
+    - scale: 倍数，默认是1
+    - bias: 偏置，默认是0
+
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %2 = "top.Sigmoid"(%1) {bias = 0.000000e+00 : f64, scale = 1.000000e+00 : f64} : (tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32> loc("output_Sigmoid")
+
+
 
 SiLUOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    激活函数，:math:`Y = \frac{X}{1 + e^{-X}}` 或 :math:`Y = X * Sigmoid(X)`
+
+:输入:
+    - input: tensor数组，任意类型的tensor
+
+
+:属性:
+    无
+
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+        %1 = "top.SiLU"(%0) : (tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32> loc("output_Mul")
+
+
 
 SliceOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述: tensor切片，将输入的tensor的各个维度，根据offset和steps数组中的偏移和步长进行切片，生成新的tesnor
+    
+
+:输入:
+    - input: tensor数组，任意类型的tensor
+
+
+:属性:
+    - offset: 存储切片偏移的数组，offset数组的索引和输入tensor的维度索引对应
+    - steps: 存储切片步长的数组，steps数组的索引和输入tensor维度索引对应
+
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+        %1 = "top.Slice"(%0) {offset = [2, 10, 10, 12], steps = [1, 2, 2, 3]} : (tensor<5x116x64x64xf32>) -> tensor<3x16x16x8xf32> loc("output_Slice")
+
+
+
 
 SoftmaxOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    对输入tensor，在指定axis的维度上计算归一化指数值，计算的方法如下：
+
+    .. math::
+        \sigma(Z)_i = \frac{e^{\beta{Z_i}}}{\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}}
+    其中， :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` ，在axis维度上做指数值求和，j从0到K-1，K是输入tensor在axis维度上的尺寸。 
+
+    例如：输入tensor的尺寸为 :math:`（N, C, W, H）`,在axis=1的通道上计算Softmax，计算方法为：
+
+    .. math::
+        Y_{n,i,w,h} = \frac{e^{\beta{X_{n,i,w,h}}}}{\sum_{j=0}^{C-1}{e^{\beta{X_{n,j,w,h}}}}}
+:输入:
+    - input: tensor数组，任意类型的tensor
+
+
+:属性:
+    - axis: 维度索引，用于指定对输入tensor执行Softmax对应的维度，axis可以取值[-r， r-1], r 为输入tensor维度的数量, 当axis为负数时，表示倒序维度
+    - beta: tflite模型中对输入的缩放系数，非tflite模型无效，默认值为1.0
+
+
+:输出:
+    - output: 输出tensor，在指定维度做归一化指数值后的tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %1 = "top.Softmax"(%0) {axis = 1 : i64} : (tensor<1x1000x1x1xf32>) -> tensor<1x1000x1x1xf32> loc("output_Softmax")
+
 
 SqueezeOp
 ^^^^^^^^^^^^^^^
