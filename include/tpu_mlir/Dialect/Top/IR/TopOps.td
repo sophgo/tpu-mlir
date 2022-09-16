@@ -320,7 +320,7 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
     if inversed, [n, c, h, w] => [n, c * block_h * block_w, h / block_h, w / block_w];
 
     if DCR(depth-column-row), channel ordered by block_h * block_w * c;
-    else CRD(column-row-depth), chennel ordered by c * block_h * block_w;
+    else CRD(column-row-depth), channel ordered by c * block_h * block_w;
   }];
 
   let arguments = (
@@ -338,7 +338,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
   let summary = "Mul operator";
 
   let description = [{
-    Elementwise mul of input1 and input2. input1 and input2 are tensors.
+    Elementwise multiplication of input1 and input2. input1 and input2 are tensors.
   }];
 
   let arguments = (ins
