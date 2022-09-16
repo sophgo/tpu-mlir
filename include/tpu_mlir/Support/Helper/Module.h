@@ -63,6 +63,7 @@ struct Module {
   static int64_t getNumElements(Value v);
   static Type getStorageType(Value v); // storage type
   static Type getStorageType(Type type);
+  static Type getElementType(Value v);
   static llvm::ArrayRef<int64_t> getShape(Value v);
   static inline FuncOp getMainFuncOp(ModuleOp module) {
     return getFuncOp(module, "main");

@@ -20,13 +20,14 @@ using namespace mlir;
 
 void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                                int64_t &N, bool &with_bias, bool &relu,
-                               double &limit) {
+                               double &limit, int64_t &zp) {
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto r_s = right().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
   with_bias = !bias().getType().isa<mlir::NoneType>();
   relu = do_relu();
   limit = relu_limit().convertToDouble();
+  zp = right_zp();
   auto r_dims = r_s.size();
   auto i_dims = i_s.size();
   N = r_s[r_dims - 1];
@@ -45,13 +46,13 @@ void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
 
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
-  int64_t batch, M, K, N;
+  int64_t batch, M, K, N, zp;
   bool relu, with_bias;
   double limit;
-  parseParam(batch, M, K, N, with_bias, relu, limit);
+  parseParam(batch, M, K, N, with_bias, relu, limit, zp);
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, relu, limit);
+                K, N, relu, limit, zp);
   p.handle = (void *)matmul;
   return success();
 }

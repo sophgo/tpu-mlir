@@ -48,10 +48,10 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          p.outputs[0][offset] =
-              zero_point + MultiplyByQuantizedMultiplier(
+          int v = zero_point + MultiplyByQuantizedMultiplier(
                                (int32_t)(p.inputs[0][offset]),
                                (int32_t)multi, (int32_t)shift_val);
+          p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }
@@ -65,10 +65,10 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          p.outputs[0][offset] =
-              zero_point + MultiplyByQuantizedMultiplier(
+          int v = zero_point + MultiplyByQuantizedMultiplier(
                                (int32_t)(p.inputs[0][offset]),
                                (int32_t)multi, (int32_t)shift_val);
+          p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }
@@ -81,9 +81,9 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          p.outputs[0][offset] =
-              zero_point + applyMultiplierAndRShift(
+          int v = zero_point + applyMultiplierAndRShift(
                                (p.inputs[0][offset] - zp_x), multi, rshift_val);
+          p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }

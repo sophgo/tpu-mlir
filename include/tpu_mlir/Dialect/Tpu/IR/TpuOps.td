@@ -247,6 +247,28 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_AddConstOp: Tpu_Op<"AddConst", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "add const operator";
+
+  let description = [{
+    Elementwise add of input1 and input2. Input2 is constant.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    // quant param
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "mul operator";
@@ -348,6 +370,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -356,7 +379,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit);
+      double &relu_limit, int64_t &zp);
   }];
 }
 
@@ -449,6 +472,37 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
 def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$quant,
+    Tpu_RequantModeAttr:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_RequantFpOp:Tpu_Op<"RequantFp",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "requant float operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$scale,
+    DefaultValuedAttr<F64Attr, "0.0">:$offset,
+    Tpu_RequantModeAttr:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "requant float operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
   }];

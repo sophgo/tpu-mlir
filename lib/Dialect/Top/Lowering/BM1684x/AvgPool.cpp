@@ -122,6 +122,15 @@ Value top::AvgPoolOp::lowering_f16_bm1684x() {
 }
 
 Value top::AvgPoolOp::lowering_quant_bm1684x() {
+#if 0
+  Builder builder(getContext());
+  auto in0_f32 = do_cast(input(), builder.getF32Type(), false);
+  auto op = getOperation();
+  op->setOperand(0, in0_f32);
+  auto type = output().getType();
+  auto v = lowering_common_float<tpu::AvgPool2DOp>(op);
+  return do_cast(v, type, true);
+#else
   if (false == Quant::isUniformQuantized(input(), output())) {
     llvm_unreachable("input output should be quantized");
   }
@@ -161,4 +170,5 @@ Value top::AvgPoolOp::lowering_quant_bm1684x() {
   newOp->setAttr("pool_mode",
                  tpu::PoolModeAttr::get(getContext(), tpu::PoolMode::Avg));
   return newOp->getResult(0);
+#endif
 }

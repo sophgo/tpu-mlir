@@ -93,4 +93,18 @@ void tensor_sub_zp(float* tensor_after_zp, float* src, int64_t length, float zer
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
               int k, int n, bool transpose);
 
+static inline int32_t saturate(int32_t input, mlir::Type stype) {
+  int32_t output;
+  if (stype.isUnsignedInteger(8))
+    output = input > 255 ? 255 : input < 0 ? 0 : input;
+  else if (stype.isSignedInteger(8))
+    output = input > 127 ? 127 : input < -128 ? -128 : input;
+  else if (stype.isUnsignedInteger(16))
+    output = input > 65535 ? 65535 : input < 0 ? 0 : input;
+  else if (stype.isSignedInteger(16))
+    output = input > 32767 ? 32767 : input < -32768 ? -32768 : input;
+  else
+    output = input;
+  return output;
+}
 } // namespace tpu_mlir

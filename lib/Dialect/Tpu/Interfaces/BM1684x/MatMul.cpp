@@ -44,10 +44,10 @@ typedef struct fc_global_spec {
 #endif
 
 void tpu::MatMulOp::codegen_global_bm1684x() {
-  int64_t batch, M, K, N;
+  int64_t batch, M, K, N, right_zp;
   bool with_bias, relu;
   double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit);
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp);
   assert(batch == 1);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
@@ -61,7 +61,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.rshift = 0;
     spec.is_asymmetric = 1;
     spec.rzp_is_const = 1;
-    spec.rzp_const_val = 0;
+    spec.rzp_const_val = right_zp;
     spec.requant_mode = static_cast<int>(quant_mode());
     spec.mul_val = multiplier();
     spec.shift_val = -rshift();

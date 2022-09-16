@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/DnnlUtils.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace dnnl;
 using tag = memory::format_tag;
@@ -20,16 +21,26 @@ MatMul::MatMul() {
   engine_stream = dnnl::stream(eng);
 }
 
+void MatMul::right_init(float *right, int64_t right_zp, int64_t len) {
+  p_right = right;
+  if (right_zp != 0 ) {
+    right_after_zp = std::make_shared<std::vector<float>>(len);
+    p_right = right_after_zp->data();
+    tensor_sub_zp(right_after_zp->data(), right, len, right_zp);
+  }
+}
+
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, double relu_limit) {
+                   bool do_relu, double relu_limit, int64_t right_zp) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
   memory::dims weights_dims = {batch, K, N};
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch, M, N};
-
+  int64_t weight_len = batch * K * N;
+  right_init(right, right_zp, weight_len);
   net.clear();
   net_args.clear();
   auto src_md = memory::desc(src_dims, memory::data_type::f32, tag::abc);
@@ -58,7 +69,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
 
   auto weights_float_memory =
       memory({{weights_dims}, memory::data_type::f32, memory::format_tag::abc},
-             eng, right);
+             eng, p_right);
   auto prim_weights_memory = weights_float_memory;
   if (matmul_pd.weights_desc() != weights_float_memory.get_desc()) {
     prim_weights_memory = memory(matmul_pd.weights_desc(), eng);
