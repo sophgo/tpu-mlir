@@ -243,7 +243,7 @@ class OnnxConverter(BaseConverter):
         self.input_shapes = self.get_input_shapes(self.model)
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
-            self.model = model_simplified
+            self.model = onnx.shape_inference.infer_shapes(model_simplified)
         if output_names:
             self.select_output(output_names)
         # add all weight
