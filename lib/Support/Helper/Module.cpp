@@ -270,6 +270,15 @@ Type Module::getStorageType(Type type) {
 
 Type Module::getStorageType(Value v) { return getStorageType(v.getType()); }
 
+Type Module::getElementType(Value v) {
+  auto type = v.getType();
+  if (type.isa<RankedTensorType>()) {
+    auto rtype = v.getType().cast<RankedTensorType>();
+    return rtype.getElementType();
+  }
+  return type;
+}
+
 static void getNCHW_align_right(llvm::ArrayRef<int64_t> &shape, int64_t &n,
                                 int64_t &c, int64_t &h, int64_t &w) {
   int num_dims = shape.size();

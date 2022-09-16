@@ -45,6 +45,17 @@ def _compute_pad(stride, dilation, input_size, filter, padding):
     pad = [i for i in padding_before] + [i for i in padding_after]
     return pad
 
+def _axis_transpose(op, axis):
+    in_dim = len(op.inputs[0].shape)
+    if in_dim == 4:
+        if axis == 0:
+            return 0
+        elif axis == 3:
+            return 1
+        else:
+            return axis + 1
+    else:
+        return axis
 
 class TFLiteReader:
     """
@@ -264,6 +275,7 @@ class TFLiteConverter(BaseConverter):
             "DEQUANTIZE": lambda _: ("top.Cast", {}),
             "QUANTIZE": lambda _: ("top.Cast", {}),
             "RESHAPE": lambda _: ("top.Reshape", {}),
+            "CONCATENATION": self.concat_op,
         }
         input_types=[]
         for x in self.graph.inputs:
@@ -597,6 +609,20 @@ class TFLiteConverter(BaseConverter):
         return "top.Softmax", {
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], 1),
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
+        }
+
+    def concat_op(self, op):
+        from .tflite.ConcatenationOptions import ConcatenationOptions
+        op_options = op.builtin_options
+        param = ConcatenationOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        axis = _axis_transpose(op, param.Axis())
+        fused_active = param.FusedActivationFunction()
+        if fused_active not in [0, 1]:
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
+        return "top.Concat", {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
+            "do_relu": BoolAttr.get(fused_active == 1),
         }
 
     def convert_subgraph(self, subgraph):

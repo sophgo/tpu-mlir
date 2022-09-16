@@ -170,6 +170,7 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
       input_qtype.getScale() * right_qtype.getScale() / output_qtype.getScale();
   int64_t multiplier, shift;
   QuantizeMultiplier(real_multiplier, &multiplier, &shift);
+  int32_t right_zero_point = right_qtype.getZeroPoint();
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
@@ -194,6 +195,9 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
+  if (right_zero_point)
+    attrs.push_back(
+        builder.getNamedAttr("right_zp", builder.getI64IntegerAttr(right_zero_point)));
   attrs.push_back(builder.getNamedAttr("multiplier",
                                        builder.getI64IntegerAttr(multiplier)));
   attrs.push_back(
