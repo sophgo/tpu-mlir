@@ -70,7 +70,34 @@ AvgPoolOp
 
 Depth2SpaceOp
 ^^^^^^^^^^^^^^^
-(待补充)
+
+:简述:
+    深度转空间操作，:math:`Y = Depth2Space(X)`
+
+:输入:
+    - inputs: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - block_h：tensor 高度改变的参数，i64类型
+    - block_w：tensor 宽度改变的参数，i64类型
+    - is_CRD：column-row-depth，如果true，则数据沿深度方向的排布按照HWC，否则为CHW，bool类型
+    - is_inversed：如果true，那么结果的形状为： :math:`[n, c * block_h * block_w, h / block_h, w / block_w]`,
+                    否则结果的形状为：:math:`[n, c / (block_h * block_w), h * block_h, w * block_w]`
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %2 = "top.Depth2Space"(%0) {block_h = 2, block_w = 2, is_CRD = true, is_inversed = false} : (tensor<1x8x2x3xf32>) -> tensor<1x2x4x6xf32> loc("add")
+
 
 BatchNormOp
 ^^^^^^^^^^^^^^^
@@ -217,7 +244,33 @@ DeconvOp
 
 DivOp
 ^^^^^^^^^^^^^^^
-(待补充)
+
+:简述:
+    除法操作，:math:`Y = X_0 / X_1`
+
+:输入:
+    - inputs: tensor数组，对应2个或多个输入tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - do_relu: 结果是否做Relu，默认为False
+    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - multiplier: 量化用的乘数，默认为1
+    - rshift: 量化用的右移，默认为0
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %2 = "top.Div"(%0, %1) {do_relu = false, relu_limit = -1.0, multiplier = 1, rshift = 0} : (tensor<1x3x27x27xf32>, tensor<1x3x27x27xf32>) -> tensor<1x3x27x27xf32> loc("div")
+
 
 InputOp
 ^^^^^^^^^^^^^^^
@@ -264,15 +317,93 @@ MaxPoolOp
 
 MatMulOp
 ^^^^^^^^^^^^^^^
-(待补充)
+
+:简述:
+    二维矩阵乘法操作，:math:`C = A * B`
+
+:输入:
+    - input: tensor: m*k 大小的矩阵
+    - right: tensor: k*n 大小的矩阵
+
+:输出:
+    - output: tensor m*n 大小的矩阵
+
+:属性:
+    - bias: 偏差，量化的时候会根据bias计算 bias_scale，可以为空
+    - do_relu: 结果是否做Relu，默认为False
+    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %2 = "top.MatMul"(%0, %1) {do_relu = false, relu_limit = -1.0} : (tensor<3x4xf32>, tensor<4x5xf32>) -> tensor<3x5xf32> loc("matmul")
+
 
 MulOp
 ^^^^^^^^^^^^^^^
-(待补充)
+
+:简述:
+    乘法操作，:math:`Y = X_0 * X_1`
+
+:输入:
+    - inputs: tensor数组，对应2个或多个输入tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - do_relu: 结果是否做Relu，默认为False
+    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - multiplier: 量化用的乘数，默认为1
+    - rshift: 量化用的右移，默认为0
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %2 = "top.Mul"(%0, %1) {do_relu = false, relu_limit = -1.0, multiplier = 1, rshift = 0} : (tensor<1x3x27x27xf32>, tensor<1x3x27x27xf32>) -> tensor<1x3x27x27xf32> loc("mul")
+
 
 MulConstOp
 ^^^^^^^^^^^^^^^
-(待补充)
+
+:简述:
+    和常数做乘法操作，:math:`Y = X * Const_Val`
+
+:输入:
+    - inputs: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - const_val: f64类型的常量
+    - do_relu: 结果是否做Relu，默认为False
+    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %1 = arith.constant 4.7 : f64
+      %2 = "top.MulConst"(%0) {do_relu = false, relu_limit = -1.0} : (tensor<1x3x27x27xf64>, %1) -> tensor<1x3x27x27xf64> loc("mulconst")
+
 
 PermuteOp
 ^^^^^^^^^^^^^^^
