@@ -152,17 +152,19 @@ Add
 AvgPool
 ~~~~~~~~~~~~
 
-平均池化的表达式可以简写为： :math:`Y_i = \frac{\sum_{j=0}^{k_hk_w}{(X_j)}}{k_h*k_w}`
+平均池化的表达式可以简写为： :math:`Y_i = \frac{\sum_{j=0}^{k}{(X_j)}}{k}, 其中k = kh \times kw`
 
 代入int8量化公式，推导如下：
 
 .. math::
 
-   float:\quad & Y_i = \frac{\sum_{j=0}^{k_hk_w}{(X_j)}}{k_h*k_w} \\
-   step0:\quad & => S_y(y_i - Z_y) = \frac{S_x\sum_{j=0}^{k_hk_w}(x_j-Z_x)}{k_h*k_w}\\
-   step1:\quad & => y_i = \frac{S_x}{S_yk_hk_w}\sum_{j=0}^{k_hk_w}(x_j-Z_x) + Z_y \\
-   step2:\quad & => y_i = \sum_{j=0}^{k_hk_w}(x_j-Z_x) * M_{i32} >> rshift_{i8} + Z_y
+   float:\quad & Y_i = \frac{\sum_{j=0}^{k}{(X_j)}}{k} \\
+   step0:\quad & => S_y(y_i - Z_y) = \frac{S_x\sum_{j=0}^{k}(x_j-Z_x)}{k}\\
+   step1:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j-Z_x) + Z_y \\
+   step2:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j) - (Z_y - \frac{S_x}{S_y}Z_x) \\
+   step3:\quad & => y_i = (Scale_{f32}\sum_{j=0}^{k}(x_j) - Offset_{f32})_{i8} \\
+               & 其中Scale_{f32} = \frac{S_x}{S_yk}，Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
 
-这里Multiplier可以用32位，也可以用8位；对于对称量化，Zx和Zy为0
+
 
 
