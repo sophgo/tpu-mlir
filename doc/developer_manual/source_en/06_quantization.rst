@@ -152,17 +152,17 @@ The asymmetric method is to first de-quantize into the float, do the addition an
 AvgPool
 ~~~~~~~~~~~~
 
-The expression of average pooling can be abbreviated as: :math:`Y_i = \frac{\sum_{j=0}^{k_hk_w}{(X_j)}}{k_h*k_w}`.
+The expression of average pooling can be abbreviated as: :math:`Y_i = \frac{\sum_{j=0}^{k}{(X_j)}}{k}, 其中k = kh \times kw`.
 
 Substitute it into the int8 quantization formula, the derivation is as follows:
 
 .. math::
 
-   float:\quad & Y_i = \frac{\sum_{j=0}^{k_hk_w}{(X_j)}}{k_h*k_w} \\
-   step0:\quad & => S_y(y_i - Z_y) = \frac{S_x\sum_{j=0}^{k_hk_w}(x_j-Z_x)}{k_h*k_w}\\
-   step1:\quad & => y_i = \frac{S_x}{S_yk_hk_w}\sum_{j=0}^{k_hk_w}(x_j-Z_x) + Z_y \\
-   step2:\quad & => y_i = \sum_{j=0}^{k_hk_w}(x_j-Z_x) * M_{i32} >> rshift_{i8} + Z_y
-
-Here Multiplier can use 32 bits or 8 bits for symmetric quantization (both Zx and Zy are 0).
+   float:\quad & Y_i = \frac{\sum_{j=0}^{k}{(X_j)}}{k} \\
+   step0:\quad & => S_y(y_i - Z_y) = \frac{S_x\sum_{j=0}^{k}(x_j-Z_x)}{k}\\
+   step1:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j-Z_x) + Z_y \\
+   step2:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j) - (Z_y - \frac{S_x}{S_y}Z_x) \\
+   step3:\quad & => y_i = (Scale_{f32}\sum_{j=0}^{k}(x_j) - Offset_{f32})_{i8} \\
+               & 其中Scale_{f32} = \frac{S_x}{S_yk}，Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
 
 
