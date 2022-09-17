@@ -54,14 +54,15 @@ class CaffeConverter(BaseConverter):
             'Deconvolution': lambda layer: self.convert_deconvolution_op(layer),
             'DetectionOutput': lambda layer: self.convert_detection_output_op(layer),
             'Dropout': lambda layer: self.convert_dropout_op(layer),
-            'DummyData': lambda layer: self.convert_dummydata_op(layer),
+            'DummyData': lambda layer: self.convert_nothing(layer),
             'Embed': lambda layer: self.convert_embed_op(layer),
             'Eltwise': lambda layer: self.convert_eltwise_op(layer),
             'Flatten': lambda layer: self.convert_flatten_op(layer),
             'FrcnDetection': lambda layer: self.convert_frcn_detection_op(layer),
             'InnerProduct': lambda layer: self.convert_inner_product_op(layer),
-            'Input': lambda layer: self.convert_input_op(layer),
+            'Input': lambda layer: self.convert_nothing(layer),
             'Interp': lambda layer: self.convert_interp_op(layer),
+            'ImageData': lambda layer: self.convert_nothing(layer),
             'LRN': lambda layer: self.convert_lrn_op(layer),
             'LSTM': lambda layer: self.convert_lstm_op(layer),
             'Lstm': lambda layer: self.convert_lstm_jun_op(layer),
@@ -84,7 +85,7 @@ class CaffeConverter(BaseConverter):
             'Scale': lambda layer: self.convert_scale_op(layer),
             'ShuffleChannel': lambda layer: self.convert_shufflechannel_op(layer),
             'Sigmoid': lambda layer: self.convert_sigmoid_op(layer),
-            'Silence': lambda layer: self.convert_silence_op(layer),
+            'Silence': lambda layer: self.convert_nothing(layer),
             'Slice': lambda layer: self.convert_slice_op(layer),
             'Softmax': lambda layer: self.convert_softmax_op(layer),
             'Split': lambda layer: self.convert_split_op(layer),
@@ -512,9 +513,9 @@ class CaffeConverter(BaseConverter):
         op = self.getOperand(layer.bottom[0])
         self.addOperand(layer.top[0], op)
 
-    def convert_dummydata_op(self, layer):
-        assert (self.layerType(layer) == 'DummyData')
+    def convert_nothing(self, layer):
         # do nothing
+        pass
 
     def convert_embed_op(self, layer):
         assert (self.layerType(layer) == 'Embed')
@@ -527,10 +528,6 @@ class CaffeConverter(BaseConverter):
     def convert_frcn_detection_op(self, layer):
         assert (self.layerType(layer) == 'FrcnDetection')
         raise RuntimeError("not implemented")
-
-    def convert_input_op(self, layer):
-        assert (self.layerType(layer) == 'Input')
-        # do nothing
 
     def convert_interp_op(self, layer):
         assert (self.layerType(layer) == 'Interp')
@@ -639,10 +636,6 @@ class CaffeConverter(BaseConverter):
         attrs = {'scale': 1, 'bias': 0, 'name': layer.name}
         new_op = self.mlir.create_sigmoid_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
-
-    def convert_silence_op(self, layer):
-        assert (self.layerType(layer) == 'Silence')
-        # do nothing now
 
     def convert_slice_op(self, layer):
         assert (self.layerType(layer) == 'Slice')

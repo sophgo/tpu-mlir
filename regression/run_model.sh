@@ -42,10 +42,17 @@ else
 fi
 
 model_data_opt=
-if [ x$model_data != x ] && [ -f $model_data ]; then
-  model_data_opt="--model_data ${model_data}"
+# caffemodel
+if echo ${model_path} | grep -q -E '\.prototxt$'; then
+  if [ x$model_data != x ] && [ -f $model_data ]; then
+    model_data_opt="--model_data ${model_data}"
+  else
+    echo "Error: no caffemodel"
+    exit 1
+  fi
 fi
 
+# tflite model
 if echo ${model_path} | grep -q -E '\.tflite$'; then
   do_cali=0
   do_f32=0
