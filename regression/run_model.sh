@@ -17,8 +17,8 @@ if [ ! -f $cfg_file ]; then
 fi
 
 do_f32=1
-do_f16=0
-do_bf16=0
+do_f16=1
+do_bf16=1
 do_cali=1
 do_symmetric=1
 do_asymmetric=1
@@ -49,6 +49,8 @@ fi
 if echo ${model_path} | grep -q -E '\.tflite$'; then
   do_cali=0
   do_f32=0
+  do_f16=0
+  do_bf16=0
   do_symmetric=0
   do_asymmetric=1
 fi
@@ -142,7 +144,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
-  --tolerance 0.98,0.98 \
+  --tolerance 0.95,0.90 \
   --model ${model_name}_bm1684x_f16.bmodel
 fi
 
@@ -153,7 +155,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
-  --tolerance 0.98,0.70 \
+  --tolerance 0.95,0.90 \
   --model ${model_name}_bm1684x_bf16.bmodel
 fi
 #########################

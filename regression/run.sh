@@ -53,6 +53,7 @@ export -f run_onnx_op
 run_all()
 {
   echo "" > fail.log
+  echo "" > result.log
   echo "run_onnx_op" > cmd.txt
   for net in ${model_list_basic[@]}
   do
