@@ -40,10 +40,10 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   int channel = input_shape[axis_];
   bool has_table = !table().getType().isa<NoneType>();
   if (out_type.isa<FloatType>()) {
-    float max_arr[inner_dim];
-    float sum_arr[inner_dim];
-    float ex_arr[channel * inner_dim];
-    float sub_arr[channel * inner_dim];
+    std::vector<float>max_arr(inner_dim);
+    std::vector<float>sum_arr(inner_dim);
+    std::vector<float>ex_arr(channel * inner_dim);
+    std::vector<float>sub_arr(channel * inner_dim);
 
     auto bottom_data = p.inputs[0];
     auto top_data = p.outputs[0];
@@ -51,7 +51,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     for (int i = 0; i < outer_dim; ++i) {
       // find max value accross channel
       int c_offset = i * channel * inner_dim;
-      memcpy(max_arr, bottom_data + c_offset, inner_dim * sizeof(float));
+      memcpy(max_arr.data(), bottom_data + c_offset, inner_dim * sizeof(float));
       for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
         for (int k = 0; k < inner_dim; k++) {
           if (max_arr[k] < bottom_data[c_offset + k])
@@ -61,7 +61,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
 
       // calculate exp(x)
       c_offset = i * channel * inner_dim;
-      memset(sum_arr, 0, inner_dim * sizeof(float));
+      memset(sum_arr.data(), 0, inner_dim * sizeof(float));
       for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
         for (int k = 0; k < inner_dim; k++) {
           sub_arr[j * inner_dim + k] = bottom_data[c_offset + k] - max_arr[k];
