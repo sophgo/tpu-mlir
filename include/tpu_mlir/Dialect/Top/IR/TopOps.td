@@ -709,7 +709,9 @@ def Top_TileOp: Top_Op<"Tile"> {
   }];
 
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$tile
   );
 
   let results = (outs AnyTenor:$output);

@@ -142,6 +142,7 @@ class OnnxConverter(BaseConverter):
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Split": lambda node: self.convert_split_op(node),
+            "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
         }
@@ -1261,14 +1262,41 @@ class OnnxConverter(BaseConverter):
         count = sum([input_shape[i] != output_shape[i] for i in range(len(output_shape))])
         for i in range(len(output_shape) - 1, 0, -1):
             if output_shape[i] != input_shape[i]:
-                p = {
-                    'name': '{}_{}_axis{}'.format(onnx_node.name, onnx_node.op_type, i),
-                }
+                p = {'axis': i, 'tile': output_shape[i] // input_shape[i]}
+                if count == 1:
+                    p['name'] = '{}_{}'.format(onnx_node.name, onnx_node.op_type)
+                else:
+                    p['name'] = '{}_{}_{}'.format(onnx_node.name, onnx_node.op_type, i)
                 out_shape[i] = output_shape[i]
                 new_op = self.mlir.create_tile_op([in0], out_shape, **p)
                 in0 = new_op
                 count -= 1
-                if (count == 0):
-                    self.addOperand(onnx_node.name, new_op)
-                else:
-                    self.addOperand(onnx_node.name + str(i), new_op)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_tile_op(self, onnx_node):
+        assert (onnx_node.op_type == "Tile")
+        in0_op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        tile_data = self.getWeight(onnx_node.inputs[1])
+        if np.prod(tile_data) == 1:
+            self.addOperand(onnx_node.name, in0_op)
+            return
+        last_shape = list(input_shape)
+        last_op = in0_op
+        last_i = 0
+        last_name = ""
+        for i in range(tile_data.size):
+            last_i = tile_data.size - i - 1
+            if tile_data[last_i] != 1:
+                break
+        for i in range(last_i + 1):
+            if tile_data[i] == 1:
+                continue
+            attr = {'axis': i, 'tile': int(tile_data[i])}
+            last_name = onnx_node.name
+            if i != last_i:
+                last_name += "_{}".format(i)
+            attr['name'] = "{}_{}".format(last_name, onnx_node.op_type)
+            last_shape[i] = int(last_shape[i] * tile_data[i])
+            last_op = self.mlir.create_tile_op([last_op], last_shape, **attr)
+        self.addOperand(onnx_node.name, last_op)

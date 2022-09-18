@@ -1,5 +1,5 @@
 add_mlir_dialect(TpuOps tpu)
-add_mlir_doc(TpuOps TpuOps ./ -gen-op-doc)
+#add_mlir_doc(TpuOps TpuOps ./ -gen-op-doc)
 
 set(LLVM_TARGET_DEFINITIONS TpuOps.td)
 mlir_tablegen(TpuEnum.h.inc -gen-enum-decls)

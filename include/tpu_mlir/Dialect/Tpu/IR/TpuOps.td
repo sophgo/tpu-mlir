@@ -890,7 +890,9 @@ def Tpu_TileOp:Tpu_Op<"Tile", [DeclareOpInterfaceMethods<LocalGenInterface>]> {
     specified by the shape argument.
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$tile
   );
   let results = (outs AnyTensor:$output);
 }
