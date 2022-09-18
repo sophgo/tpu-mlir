@@ -485,6 +485,8 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
             'name': StringAttr.get(kargs['name']),
+            'axis':  IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'tile':  IntegerAttr.get(self.mlir_type['INT64'], kargs['tile']),
         }
         return self.buildOp(Top.TileOp, operands, [output_type], **param)
 

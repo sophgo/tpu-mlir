@@ -41,18 +41,20 @@ class ONNX_IR_TESTER(object):
             "ConvTranspose2D": self.test_ConvTranspose,
             "Clip": self.test_Clip,
             "Div": self.test_Div,
+            "Expand": self.test_Expand,
             #"Gather": self.test_Gather,
             "GatherToSlice": self.test_GatherToSlice,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
+            "LayerGroup2": self.test_LayerGroup2,
             #"LSTM": self.test_LSTM,
             "MaxPool1D": self.test_MaxPool1D,
             "MaxPool2D": self.test_MaxPool2D,
             "MaxPool3D": self.test_MaxPool3D,
             "Mul": self.test_Mul,
             "MulConst": self.test_MulConst,
-            "Pad0": self.test_Pad0, # zero pad
-            "Pad1": self.test_Pad1, # pad val
+            "Pad0": self.test_Pad0,  # zero pad
+            "Pad1": self.test_Pad1,  # pad val
             "Resize": self.test_Resize,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
@@ -62,12 +64,12 @@ class ONNX_IR_TESTER(object):
             "Slice": self.test_Slice,
             "Split": self.test_Split,
             "Scale": self.test_Scale,
+            "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
             #############################
             # Torch Test Case, Alphabetically
             #############################
             "LayerGroup": self.test_LayerGroup,
-            "LayerGroup2": self.test_LayerGroup2,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
         #self.quant_modes = ["f16", "bf16"]  # add later
@@ -589,9 +591,9 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         pad_val = helper.make_tensor(name='pads',
-                                          data_type=onnx.TensorProto.INT64,
-                                          dims=pads.shape,
-                                          vals=pads.flatten())
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pads.shape,
+                                     vals=pads.flatten())
         pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='constant')
         graph_def = helper.make_graph([pad_def],
                                       case_name, [input], [output],
@@ -606,14 +608,16 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         pad_shape = helper.make_tensor(name='pads',
-                                          data_type=onnx.TensorProto.INT64,
-                                          dims=pads.shape,
-                                          vals=pads.flatten())
+                                       data_type=onnx.TensorProto.INT64,
+                                       dims=pads.shape,
+                                       vals=pads.flatten())
         pad_val = helper.make_tensor(name='pad_val',
                                      data_type=onnx.TensorProto.FLOAT,
                                      dims=[],
                                      vals=[0.6])
-        pad_def = helper.make_node("Pad", ['input', 'pads', 'pad_val'], outputs=['output'], mode='constant')
+        pad_def = helper.make_node("Pad", ['input', 'pads', 'pad_val'],
+                                   outputs=['output'],
+                                   mode='constant')
         graph_def = helper.make_graph([pad_def],
                                       case_name, [input], [output],
                                       initializer=[pad_shape, pad_val])
@@ -958,6 +962,55 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[token_data])
         self.onnx_and_test(input_data, graph_def)
+
+    def test_Tile(self, case_name):
+        input_shape = [1, 4, 6, 8]
+        output_shape = [1, 24, 24, 16]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        tiles = helper.make_tensor(
+            name='tiles',
+            data_type=onnx.TensorProto.INT64,
+            dims=[4],
+            vals=np.array([1, 6, 4, 2]),
+        )
+        tile_node = helper.make_node(
+            'Tile',
+            ['input', 'tiles'],
+            ['output'],
+        )
+        graph_def = helper.make_graph([tile_node],
+                                      case_name, [input], [output],
+                                      initializer=[tiles])
+        input_data = {'input': np.random.rand(*input_shape).astype(np.float32)}
+        self.onnx_and_test(input_data, graph_def)
+
+    def test_Expand(self, case_name):
+        input_shape = [1, 3, 1, 16]
+        output_shape = [1, 3, 16, 16]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        shape_def = helper.make_tensor(
+            name='new_shape',
+            data_type=onnx.TensorProto.INT64,
+            dims=[len(output_shape)],
+            vals=np.array(output_shape, dtype=np.int64),
+        )
+        expand_node = helper.make_node(
+            'Expand',  # node name
+            ['input', 'new_shape'],  # inputs
+            ['output'],  # outputs
+        )
+
+        graph_def = helper.make_graph([expand_node],
+                                      case_name, [input], [output],
+                                      initializer=[shape_def])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_GatherToSlice(self, case_name):
         input_shape = {"input": [1, 32, 27, 27], "indices": [5]}

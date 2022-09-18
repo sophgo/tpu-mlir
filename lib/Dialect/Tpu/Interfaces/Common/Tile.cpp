@@ -24,46 +24,23 @@ LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   auto out_shape = Module::getShape(output());
   auto in_shape = Module::getShape(input());
-  auto in_dims = in_shape.size();
-  assert(in_dims == out_shape.size());
-
-  int tile_count = 0;
-  SmallVector<int64_t> tile_coeff(in_dims);
-  for (size_t i = 0; i < in_dims; ++i) {
-    tile_coeff[i] = out_shape[i] / in_shape[i];
-    if (tile_coeff[i] != 1) {
-      tile_count++;
+  auto axis_ = axis();
+  int tile_ = tile();
+  auto outer_count = std::accumulate(in_shape.begin(), in_shape.begin() + axis_,
+                                     1, std::multiplies<int64_t>());
+  auto inner_count = std::accumulate(in_shape.begin() + axis_, in_shape.end(),
+                                     1, std::multiplies<int64_t>());
+  auto input = p.inputs[0];
+  auto output = p.outputs[0];
+#pragma omp parallel for schedule(static, omp_schedule(outer_count))
+  for (int out = 0; out < outer_count; ++out) {
+    auto start = input + out * inner_count;
+    auto end = start + inner_count;
+    for (int t = 0; t < tile_; ++t) {
+      std::copy(start, end,
+                output + out * tile_ * inner_count + t * inner_count);
     }
   }
-
-  float *buf = new float[num_elem];
-  float *real_in = p.inputs[0];
-  float *real_out_arr[2] = {buf, p.outputs[0]};
-  int index = tile_count & 0x1;
-  float *real_out = real_out_arr[index];
-  int64_t high = Module::getNumElements(input());
-  int64_t low = 1;
-  for (int i = in_dims - 1; i >=0; --i) {
-    if (tile_coeff[i] == 1) {
-      continue;
-    }
-    high /= in_shape[i];
-    low  *= in_shape[i];
-
-    for (int64_t j = 0; j < high; ++j) {
-      const float *in_j = real_in + j * low;
-      float *out_j = real_out + j * tile_coeff[i] * low;
-      for (int64_t k = 0; k < tile_coeff[i]; ++k) {
-        memcpy(out_j + k * low, in_j, low * sizeof(float));
-      }
-    }
-
-    low *= tile_coeff[i];
-    real_in = real_out;
-    index = !index;
-    real_out = real_out_arr[index];
-  }
-
-  delete[] buf;
+  return success();
   return success();
 }
