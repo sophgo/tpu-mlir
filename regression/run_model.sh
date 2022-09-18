@@ -4,6 +4,7 @@ set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 model_name=$1
+full_test=$2
 if [ x$1 == x ]; then
   echo "Error: $0 model_name"
   exit 1
@@ -16,13 +17,21 @@ if [ ! -f $cfg_file ]; then
   exit 1
 fi
 
-do_f32=1
-do_f16=1
-do_bf16=1
-do_cali=1
-do_symmetric=1
-do_asymmetric=1
-
+if [ x${full_test} == x0 ]; then
+  do_f32=1
+  do_f16=0
+  do_bf16=0
+  do_cali=1
+  do_symmetric=1
+  do_asymmetric=1
+else
+  do_f32=1
+  do_f16=1
+  do_bf16=1
+  do_cali=1
+  do_symmetric=1
+  do_asymmetric=1
+fi
 
 source ${cfg_file}
 
@@ -151,7 +160,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
-  --tolerance 0.95,0.90 \
+  --tolerance 0.95,0.85 \
   --model ${model_name}_bm1684x_f16.bmodel
 fi
 
@@ -162,7 +171,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
-  --tolerance 0.95,0.90 \
+  --tolerance 0.95,0.85 \
   --model ${model_name}_bm1684x_bf16.bmodel
 fi
 #########################

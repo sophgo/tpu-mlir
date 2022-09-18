@@ -21,7 +21,7 @@ run_regression_net()
 {
   local net=$1
   echo "======= test $net ====="
-  $REGRESSION_PATH/run_model.sh $net > $net.log 2>&1 | true
+  $REGRESSION_PATH/run_model.sh $net 0 > $net.log 2>&1 | true
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
     echo "$net regression FAILED" >> result.log
     cat $net.log >> fail.log
