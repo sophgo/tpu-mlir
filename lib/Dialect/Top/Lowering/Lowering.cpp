@@ -403,10 +403,11 @@ struct ForwardQuantType : public OpRewritePattern<TyOp> {
   }
 };
 
-struct BackwardConcat : public OpRewritePattern<top::ConcatOp> {
-  using OpRewritePattern<top::ConcatOp>::OpRewritePattern;
+template <typename TyOp>
+struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(top::ConcatOp op,
+  LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
     // TODO: need to be more clever
     for (auto in : op.inputs()) {
@@ -429,9 +430,9 @@ struct BackwardConcat : public OpRewritePattern<top::ConcatOp> {
     }
     auto out_qtype = Quant::getCalibratedType(out);
 
-    for (auto in : op.inputs()) {
-      auto in_shape = in.getType().cast<RankedTensorType>().getShape();
-      auto new_type = RankedTensorType::get(in_shape, out_qtype);
+    for (Value in : op.inputs()) {
+      auto in_type = in.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
       in.setType(new_type);
     }
     return success();
@@ -533,7 +534,10 @@ protected:
       return;
     }
     RewritePatternSet patterns(ctx_);
-    patterns.add<BackwardConcat>(ctx_);
+    patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
+                 BackwardMutiInSingleOut<top::MinOp>,
+                 BackwardMutiInSingleOut<top::MaxOp>
+                >(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,
