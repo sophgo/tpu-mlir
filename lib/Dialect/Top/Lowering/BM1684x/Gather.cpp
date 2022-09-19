@@ -14,8 +14,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 Value top::GatherOp::lowering_int8_bm1684x(bool asymmetric) {
-  llvm_unreachable("GatherOp to be supported");
-  return nullptr;
+  return lowering_common_float<tpu::GatherOp>(getOperation());
 }
 
 Value top::GatherOp::lowering_f32_bm1684x() {
