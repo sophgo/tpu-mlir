@@ -86,10 +86,12 @@ public:
           auto value = op->getResult(0);
           auto &info = calibration_map[name];
           auto type = value.getType().cast<RankedTensorType>();
-          auto quant_type = quant::CalibratedQuantizedType::get(
-              type.getElementType(), info.min, info.max);
-          auto new_type = RankedTensorType::get(type.getShape(), quant_type);
-          value.setType(new_type);
+          if (type.getElementType().isIntOrIndex() == false) {
+            auto quant_type = quant::CalibratedQuantizedType::get(
+                type.getElementType(), info.min, info.max);
+            auto new_type = RankedTensorType::get(type.getShape(), quant_type);
+            value.setType(new_type);
+          }
         }
       });
     }

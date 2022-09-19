@@ -42,7 +42,7 @@ class ONNX_IR_TESTER(object):
             "Clip": self.test_Clip,
             "Div": self.test_Div,
             "Expand": self.test_Expand,
-            #"Gather": self.test_Gather,
+            "Gather": self.test_Gather,
             "GatherToSlice": self.test_GatherToSlice,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
@@ -98,7 +98,10 @@ class ONNX_IR_TESTER(object):
         onnx_model = "{}_opt.onnx".format(model_name)
         input_npz = "{}_in_fp32.npz".format(model_name)
         for name in input_data:
-            input_data[name] = input_data[name].astype(np.float32)
+            if input_data[name].dtype in [np.int64, np.int32]:
+                input_data[name] = input_data[name].astype(np.int32)
+            else:
+                input_data[name] = input_data[name].astype(np.float32)
         np.savez(input_npz, **input_data)
         # top mlir outputs will be inferenced first in case the quant mode is int8
         onnx_outs = onnx_inference(input_data, onnx_model, True)
@@ -940,9 +943,13 @@ class ONNX_IR_TESTER(object):
         token_shape = [total_tokens, 256]
         input_shape = [1, 13]
         output_shape = [1, 13, 256]
-        input_data = {"input": np.random.randint(0, total_tokens, input_shape).astype(np.int64)}
+        input_data = {
+            "input1": np.random.randint(0, total_tokens, input_shape).astype(np.int64),
+            "input2": np.random.rand(*output_shape).astype(np.float32)
+        }
 
-        input = helper.make_tensor_value_info('input', TensorProto.INT64, input_shape)
+        input1 = helper.make_tensor_value_info('input1', TensorProto.INT64, input_shape)
+        input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, output_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
         token_data = helper.make_tensor(
@@ -954,12 +961,18 @@ class ONNX_IR_TESTER(object):
 
         gather_node = helper.make_node(
             'Gather',  # node name
-            ['tokens', 'input'],  # inputs
-            ['output'],  # outputs
+            ['tokens', 'input1'],  # inputs
+            ['x1'],  # outputs
         )
 
-        graph_def = helper.make_graph([gather_node],
-                                      case_name, [input], [output],
+        add_node = helper.make_node(
+            'Add',
+            ['x1', 'input2'],
+            ['output'],
+        )
+
+        graph_def = helper.make_graph([gather_node, add_node],
+                                      case_name, [input1, input2], [output],
                                       initializer=[token_data])
         self.onnx_and_test(input_data, graph_def)
 

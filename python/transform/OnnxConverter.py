@@ -224,6 +224,15 @@ class OnnxConverter(BaseConverter):
         input_names = [ipt.name for ipt in self.get_inputs(model)]
         return input_names
 
+    def get_input_types(self, model: onnx.ModelProto):
+        input_types = []
+        for input in self.get_inputs(model):
+            if input.type.tensor_type.elem_type in [onnx.TensorProto.INT64, onnx.TensorProto.INT32]:
+                input_types.append('INT32')
+            else:
+                input_types.append('F32')
+        return input_types
+
     def get_shape_from_value_info_proto(self, v: onnx.ValueInfoProto):
         return [dim.dim_value for dim in v.type.tensor_type.shape.dim]
 
@@ -242,6 +251,7 @@ class OnnxConverter(BaseConverter):
         self.num_input = len(self.input_names)
         self.model_shape_infer(input_shapes)
         self.input_shapes = self.get_input_shapes(self.model)
+        self.input_types = self.get_input_types(self.model)
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
             self.model = onnx.shape_inference.infer_shapes(model_simplified)
@@ -306,7 +316,7 @@ class OnnxConverter(BaseConverter):
         for _name in self.output_names:
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
+        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, self.input_types)
         self.weight_file = self.mlir.weight_file
 
     def generate_mlir(self, mlir_file: str):
@@ -1238,7 +1248,7 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_gather_op(self, onnx_node):
-        assert(onnx_node.op_type == "Gather")
+        assert (onnx_node.op_type == "Gather")
 
         def getOp(name):
             if name in self.operands:
@@ -1253,10 +1263,7 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs.get('axis')
         if axis is None:
             axis = 0
-        p = {
-            'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type),
-            'axis': axis
-        }
+        p = {'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type), 'axis': axis}
 
         new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
