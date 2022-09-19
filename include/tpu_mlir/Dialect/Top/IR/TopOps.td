@@ -292,23 +292,6 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
-def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
-  let summary = "add operator";
-
-  let description = [{
-    Elementwise addition of input1 and input2. Axis of size 1 will be broadcast,
-    as necessary.
-  }];
-
-  let arguments = (ins
-    Variadic<AnyTensor>:$inputs,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<F64ArrayAttr>:$coeff
-  );
-
-  let results = (outs AnyTensor:$output);
-}
 
 def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
 
@@ -334,6 +317,24 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
+  let summary = "add operator";
+
+  let description = [{
+    Elementwise addition of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
   let summary = "Mul operator";
 
@@ -352,6 +353,34 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
 
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_MinOp: Top_Op<"Min"> {
+  let summary = "min operator";
+
+  let description = [{
+    Element-wise min of each of the input tensors. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_MaxOp: Top_Op<"Max"> {
+  let summary = "max operator";
+
+  let description = [{
+    Element-wise max of each of the input tensors. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {

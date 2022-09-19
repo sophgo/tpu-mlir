@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "Binary_param.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
@@ -21,16 +21,6 @@ using namespace tpu_mlir::backend;
 extern "C" {
 #endif
 
-typedef struct binary_common_spec {
-    int32_t binary_type;
-    int32_t if_relu;
-    float relu_limit;
-    int32_t scale_A;
-    int32_t scale_B;
-    int32_t rshift_A;
-    int32_t rshift_B;
-} binary_common_spec_t ;
-
 #ifdef __cplusplus
 }
 #endif
@@ -44,11 +34,11 @@ void tpu::DivOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
-  binary_common_spec_t spec;
-  memset(&spec, 0, sizeof(binary_common_spec_t));
+  bcbinary_common_spec_t spec;
+  memset(&spec, 0, sizeof(bcbinary_common_spec_t));
   spec.binary_type = BM_BINARY_DIV;
   spec.if_relu = (int)do_relu();
-  spec.relu_limit = relu_limit().convertToDouble();
+  spec.relu_upper_limit = relu_limit().convertToDouble();
   spec.scale_A = 1;
   spec.scale_B = 1;
   spec.rshift_A = 0;

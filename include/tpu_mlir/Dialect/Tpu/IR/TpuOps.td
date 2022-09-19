@@ -290,6 +290,38 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_MaxOp: Tpu_Op<"Max", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "max operator";
+
+  let description = [{
+    Elementwise max of input1 and input2. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MinOp: Tpu_Op<"Min", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "min operator";
+
+  let description = [{
+    Elementwise min of input1 and input2. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "mul const operator";
