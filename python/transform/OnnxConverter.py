@@ -145,6 +145,8 @@ class OnnxConverter(BaseConverter):
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
+            "Max": lambda node: self.convert_max_op(node),
+            "Min": lambda node: self.convert_min_op(node),
         }
 
     def __del__(self):
@@ -1319,3 +1321,21 @@ class OnnxConverter(BaseConverter):
             last_shape[i] = int(last_shape[i] * tile_data[i])
             last_op = self.mlir.create_tile_op([last_op], last_shape, **attr)
         self.addOperand(onnx_node.name, last_op)
+
+    def convert_max_op(self, onnx_node):
+        assert (onnx_node.op_type == "Max")
+        output_shape = self.getShape(onnx_node.name)
+        num_dims = len(output_shape)
+        operands = [self.getOperand(x) for x in onnx_node.inputs]
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_max_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_min_op(self, onnx_node):
+        assert (onnx_node.op_type == "Min")
+        output_shape = self.getShape(onnx_node.name)
+        num_dims = len(output_shape)
+        operands = [self.getOperand(x) for x in onnx_node.inputs]
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_min_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
