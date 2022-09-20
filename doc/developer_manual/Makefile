@@ -2,7 +2,7 @@
 
 # module_name === project in conf.py, use \_ instead of _ if module name contains _
 module_name = TPU-MLIR
-output_file_prefix = tpu-mlir_developer_manual
+output_file_prefix = tpu-mlir_technical_manual
 
 SOURCEDIR_en     = source_en
 pdf_name_en      = $(output_file_prefix)_en.pdf

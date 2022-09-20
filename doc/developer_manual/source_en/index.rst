@@ -1,4 +1,4 @@
-TPU-MLIR Development Reference Manual
+TPU-MLIR Technical Reference Manual
 =====================================
 
 .. figure:: ../assets/sophon.png

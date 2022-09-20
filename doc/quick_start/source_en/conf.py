@@ -114,7 +114,7 @@ html_static_path = ['../assets']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "TPU-MLIR Quick Start Manual"
+htmlhelp_basename = "TPU-MLIR Quick Start"
 
 
 # 图片和表格自动编号
