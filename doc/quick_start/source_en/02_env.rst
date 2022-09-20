@@ -24,6 +24,7 @@ If you are using docker for the first time, you can execute the following comman
    $ sudo usermod -aG docker $USER
    $ newgrp docker
 
+.. _docker container_setup:
 
 Make sure the installation package is in the current directory, and then create a container in the current directory as follows:
 

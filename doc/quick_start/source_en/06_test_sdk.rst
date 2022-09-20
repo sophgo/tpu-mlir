@@ -109,7 +109,7 @@ Execute the following command to run all test samples:
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --mlir --full
 
-This process takes a long time (estimated 1 to 2 hours), so please be patient. The following models are compiled:
+The following models are compiled:
 
 ::
 
@@ -169,13 +169,12 @@ In addition, you need to add read permissions to the images in the dataset direc
 
 .. code-block:: console
 
-   chmod -R +r path/to/sophon/model-zoo/dataset
+   chmod -R +r path/to/model-zoo/dataset
 
 Install the client on the SOC device and mount the shared directory:
 
 .. code-block:: console
 
-   $ mkdir sophon
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
