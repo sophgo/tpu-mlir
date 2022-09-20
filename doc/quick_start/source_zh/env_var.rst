@@ -1,3 +1,7 @@
+以下操作需要在Docker容器中。关于Docker的使用，请参考
+:ref:`启动Docker Container <docker container_setup>` 。
+
+
 .. code-block:: console
    :linenos:
 

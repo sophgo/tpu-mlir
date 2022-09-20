@@ -25,8 +25,9 @@
    $ newgrp docker
 
 
-确保安装包在当前目录，然后在当前目录创建容器如下：
+.. _docker container_setup:
 
+确保安装包在当前目录，然后在当前目录创建容器如下：
 
 .. code-block:: console
 

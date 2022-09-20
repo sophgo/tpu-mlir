@@ -114,7 +114,7 @@ wheel安装包。例如：tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。�
    $ cd ../model-zoo
    $ python3 -m tpu_perf.build --mlir --full
 
-该过程耗时较久（预计在1~2小时），请耐心等待。此时会编译以下模型：
+此时会编译以下模型：
 
 ::
 
@@ -179,13 +179,12 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 .. code-block:: console
 
-   chmod -R +r path/to/sophon/model-zoo/dataset
+   chmod -R +r path/to/model-zoo/dataset
 
 在 SOC 设备上安装客户端并挂载该共享目录：
 
 .. code-block:: console
 
-   $ mkdir sophon
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 

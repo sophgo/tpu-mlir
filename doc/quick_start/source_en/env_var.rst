@@ -1,3 +1,6 @@
+The following operations need to be in a Docker container. For the use of
+Docker, please refer to :ref:`Setup Docker Container <docker container_setup>`.
+
 .. code-block:: console
    :linenos:
 
