@@ -66,6 +66,8 @@ class ONNX_IR_TESTER(object):
             "Scale": self.test_Scale,
             "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
+            "Max": self.test_Max,
+            "Min": self.test_Min,
             #############################
             # Torch Test Case, Alphabetically
             #############################
@@ -1045,6 +1047,35 @@ class ONNX_IR_TESTER(object):
                                       initializer=[indices])
         self.onnx_and_test(input_data, graph_def)
 
+    def test_Max(self, case_name):
+        input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
+        output_shape = [1, 85, 32, 8]
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        max_def = helper.make_node(case_name, inputs=list(input_shape.keys()), outputs=["output"])
+
+        graph_def = helper.make_graph([max_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
+
+    def test_Min(self, case_name):
+        input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
+        output_shape = [1, 85, 32, 8]
+        input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
+
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+
+        min_def = helper.make_node(case_name, inputs=list(input_shape.keys()), outputs=["output"])
+
+        graph_def = helper.make_graph([min_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
