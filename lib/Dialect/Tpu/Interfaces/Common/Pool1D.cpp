@@ -42,6 +42,7 @@ void tpu::Pool1DOp::parseParam(void *param) {
   p->pad_h_after = pad->at(1);
   p->pad_value = pad_value();
   p->do_relu = do_relu();
+  p->relu_limit = relu_limit().convertToDouble();
   p->is_global = p->ih == p->kh && p->iw == p->kw && p->oh == 1 && p->ow == 1;
   p->count_include_pad = count_include_pad();
 }

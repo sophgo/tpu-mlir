@@ -37,5 +37,5 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684(
 }
 
 void tpu::Pool1DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }

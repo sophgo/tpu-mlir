@@ -82,7 +82,7 @@ struct Module {
   static inline llvm::StringRef getName(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::NAME).getValue();
   }
-  static llvm::StringRef getName(Operation *op);
+  static llvm::StringRef getName(Operation *op, int index = 0);
   static llvm::StringRef getName(Value v);
   static void getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
                                std::vector<Value> &outputs);

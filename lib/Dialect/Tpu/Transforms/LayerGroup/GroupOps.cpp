@@ -89,7 +89,8 @@ bool GroupOps::need_bcast(Value opd) {
 
 int64_t GroupOps::use_3ic(Value opd) {
   for (auto use_op : opd.getUsers()) {
-    if (isa<tpu::GroupOp>(*use_op)) continue;
+    if (isa<tpu::GroupOp>(*use_op))
+      continue;
     if (auto cast_op = dyn_cast<tpu::Conv2DOp>(*use_op)) {
       if (opd == cast_op.input()) {
         return cast_op.use_3ic_optimize();
@@ -135,13 +136,14 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
       id++;
     }
 
-    auto out = op->getResult(0);
-    lmem_info_t li(LMEM_OPERATION, id, out, op);
+    lmem_info_t li(LMEM_OPERATION, id, op->getResult(0), op);
     lmems->emplace_back(li);
     id++;
-    lmem_info_t li_out(LMEM_ACTIVATION, id, out, op);
-    lmems->emplace_back(li_out);
-    id++;
+    for (auto out : op->getResults()) {
+      lmem_info_t li_out(LMEM_ACTIVATION, id, out, op);
+      lmems->emplace_back(li_out);
+      id++;
+    }
   }
   // mark output
   for (auto &linfo : *lmems) {
@@ -355,6 +357,7 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
 
   current_op = nullptr;
   llvm::SmallVector<Value, 8> stores;
+  llvm::SmallVector<Location, 8> locs;
   int64_t id = 0;
   for (auto &linfo : *group_lmem) {
     if (linfo.type == LMEM_OPERATION) {
@@ -369,13 +372,15 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
       CreateLoadOp(linfo, ops, id);
       id++;
     } else if (linfo.is_output) {
-      auto op = CreateStoreOp(linfo, id);
-      stores.push_back(op->getResult(0));
+      auto storeOp = CreateStoreOp(linfo, id);
+      stores.push_back(storeOp.output());
+      locs.push_back(storeOp.getLoc());
       id++;
     }
   }
+  auto group_loc = builder.getFusedLoc(locs);
   builder.setInsertionPointAfter(current_op);
-  builder.create<tpu::YieldOp>(func.getLoc(), stores);
+  builder.create<tpu::YieldOp>(group_loc, stores);
 
   // update flow attribute
   std::vector<int64_t> flow;
@@ -416,6 +421,7 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
   }
 
   groupOp->setAttr("flow", builder.getI64ArrayAttr(flow));
+  groupOp->setLoc(group_loc);
 }
 
 void GroupOps::UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo,
@@ -447,8 +453,8 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
         builder.getNamedAttr("do_bcast", builder.getBoolAttr(true)));
   }
   if (auto use_3ic_optimize = use_3ic(input)) {
-    attrs.push_back(
-        builder.getNamedAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize)));
+    attrs.push_back(builder.getNamedAttr(
+        "use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize)));
   }
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, id, linfo.stage)));
@@ -474,11 +480,10 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
 StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo, int64_t id) {
   auto builder = OpBuilder(ctx);
   auto output = linfo.value;
-  auto outputOp = output.getDefiningOp();
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   operands.push_back(output);
-  std::string name = "store_" + Module::getName(outputOp).str();
+  std::string name = Module::getName(output).str();
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, id, linfo.stage)));
   builder.setInsertionPointAfter(current_op);
@@ -493,7 +498,7 @@ LayerGroupAttr GroupOps::getLgParam(lmem_info_t &linfo, int64_t id,
                                     int64_t stage, int64_t buffer_addr,
                                     int64_t buffer_size) {
   auto builder = OpBuilder(ctx);
-  auto si = linfo.slice_info;
+  auto &si = linfo.slice_info;
   std::vector<int64_t> h_idxs;
   std::vector<int64_t> h_slices;
   std::vector<int64_t> n_idxs;
