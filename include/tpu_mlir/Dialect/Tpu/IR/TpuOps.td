@@ -945,4 +945,17 @@ def Top_GatherOp: Tpu_Op<"Gather"> {
   let results = (outs AnyTenor:$output);
 }
 
+def Tpu_AbsOp : Tpu_Op<"Abs",
+    [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>, InOutSameShape]> {
+  let summary = " Abs operator";
+  let description = [{
+     Absolute takes one input data (Tensor) and produces one output data (Tensor) where the absolute is, y = abs(x), is applied to the tensor elementwise.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

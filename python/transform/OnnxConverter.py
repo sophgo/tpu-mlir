@@ -147,6 +147,7 @@ class OnnxConverter(BaseConverter):
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Max": lambda node: self.convert_max_op(node),
             "Min": lambda node: self.convert_min_op(node),
+            "Abs": lambda node: self.convert_abs_op(node),
         }
 
     def __del__(self):
@@ -1338,4 +1339,12 @@ class OnnxConverter(BaseConverter):
         operands = [self.getOperand(x) for x in onnx_node.inputs]
         p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_min_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_abs_op(self, onnx_node):
+        assert (onnx_node.op_type == "Abs")
+        operand = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_abs_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)

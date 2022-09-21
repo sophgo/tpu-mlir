@@ -40,6 +40,7 @@ class Top:
     TileOp = 'top.Tile'
     MaxOp = 'top.Max'
     MinOp = 'top.Min'
+    AbsOp = 'top.Abs'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -505,6 +506,12 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': StringAttr.get(kargs['name'])}
         return self.buildOp(Top.MinOp, operands, [output_type], **param)
+
+    def create_abs_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': StringAttr.get(kargs['name'])}
+        return self.buildOp(Top.AbsOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

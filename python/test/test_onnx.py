@@ -68,6 +68,7 @@ class ONNX_IR_TESTER(object):
             "Transpose": self.test_Transpose,
             "Max": self.test_Max,
             "Min": self.test_Min,
+            "Abs": self.test_Abs,
             #############################
             # Torch Test Case, Alphabetically
             #############################
@@ -1076,6 +1077,22 @@ class ONNX_IR_TESTER(object):
 
         graph_def = helper.make_graph([min_def], case_name, inputs, [output])
         self.onnx_and_test(input_data, graph_def)
+
+    def test_Abs(self, case_name):
+        input_shape = [1, 16, 64, 64]
+        output_shape = [1, 16, 64, 64]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        abs_def = helper.make_node(
+            case_name,
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([abs_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
