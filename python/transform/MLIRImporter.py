@@ -7,6 +7,7 @@
 
 from mlir.ir import *
 
+
 class Top:
     WeightOp = 'top.Weight'
     InputOp = 'top.Input'
@@ -20,6 +21,7 @@ class Top:
     MulConstOp = 'top.MulConst'
     MatMulOp = 'top.MatMul'
     MaxPoolOp = 'top.MaxPool'
+    MaxPoolWithMaskOp = 'top.MaxPoolWithMask'
     PermuteOp = 'top.Permute'
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
@@ -41,6 +43,7 @@ class Top:
     MaxOp = 'top.Max'
     MinOp = 'top.Min'
     AbsOp = 'top.Abs'
+
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -133,24 +136,35 @@ class MLIRImporter(object):
         else:
             raise RuntimeError("No support {}".format(_type))
 
-    def buildOp(self, op_type, operands, output_types, **kargs):
+    def buildOp(self, op_type, operands, output_types: list, **kargs):
         """
             op_type: String
             inputOpreands: List[pybind.op]
             output_types: List[pybind.op]
             kargs: Dict
         """
-        loc = Location.fused([Location.name(kargs["name"].value)])
+        num_output = len(output_types)
+        if num_output == 1:
+            loc = Location.fused([Location.name(kargs['name'])])
+        else:
+            assert (isinstance(kargs["name"], list))
+            assert (num_output == len(kargs["name"]))
+            loc = Location.fused([Location.name(n) for n in kargs["name"]])
         del kargs["name"]
         op = Operation.create(
             op_type,
             results=output_types,
             operands=operands,
-            loc = loc,
+            loc=loc,
             attributes=kargs,
         )
         self.insert_point.insert(op)
-        return op.results[0]
+
+        assert (num_output == len(output_types))
+        if num_output > 1:
+            return tuple(op.results)
+        else:
+            return op.result
 
     def create_input_op(self, name, index, **kargs):
         assert (index < len(self.func_args))
@@ -160,7 +174,8 @@ class MLIRImporter(object):
         if 'mean' in kargs:
             param['mean'] = ArrayAttr.get([FloatAttr.get_f64(x) for x in kargs['mean']])
         if 'resize_dims' in kargs:
-            param['resize_dims'] = ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in kargs['resize_dims']])
+            param['resize_dims'] = ArrayAttr.get(
+                [IntegerAttr.get(self.mlir_type['INT64'], x) for x in kargs['resize_dims']])
         if 'keep_aspect_ratio' in kargs:
             param['keep_aspect_ratio'] = BoolAttr.get(kargs['keep_aspect_ratio'])
         if 'pad_type' in kargs:
@@ -186,11 +201,9 @@ class MLIRImporter(object):
                 raise RuntimeError("{} weight conflict".format(name))
             return _op
         tensor_type = RankedTensorType.get(output_shape, self.mlir_type[data_type])
-        op = Operation.create(
-            Top.WeightOp,
-            results=[tensor_type],
-            loc=Location.fused([Location.name(name)])
-        )
+        op = Operation.create(Top.WeightOp,
+                              results=[tensor_type],
+                              loc=Location.fused([Location.name(name)]))
         self.insert_point.insert(op)
         result = op.results[0]
         self.load_weight[name] = (result, output_shape, data_type)
@@ -200,7 +213,7 @@ class MLIRImporter(object):
         if len(operands) < 2:
             raise RuntimeError("input operand must great than 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         if "coeff" in kargs:
             param['coeff'] = self.ArrayAttr(kargs['coeff'], 'F64')
         return self.buildOp(Top.AddOp, operands, [output_type], **param)
@@ -209,13 +222,13 @@ class MLIRImporter(object):
         if len(operands) < 2:
             raise RuntimeError("input operand must great than 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.MulOp, operands, [output_type], **param)
 
     def create_mul_const_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'const_val': FloatAttr.get_f64(kargs['const_val']),
             'do_relu': BoolAttr.get(False)
         }
@@ -231,7 +244,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
 
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
             'strides': self.ArrayAttr(kargs['strides']),
             'pads': self.ArrayAttr(kargs['pads']),
@@ -243,7 +256,7 @@ class MLIRImporter(object):
     def create_batchnorm_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'epsilon': FloatAttr.get_f64(kargs['epsilon']),
         }
         return self.buildOp(Top.BatchNormOp, operands, [output_type], **param)
@@ -251,7 +264,7 @@ class MLIRImporter(object):
     def create_concat_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
         }
         return self.buildOp(Top.ConcatOp, operands, [output_type], **param)
@@ -266,7 +279,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
 
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
             'strides': self.ArrayAttr(kargs['strides']),
             'dilations': self.ArrayAttr(kargs['dilations']),
@@ -281,7 +294,7 @@ class MLIRImporter(object):
     def create_depth2space_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         p = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             "block_h": IntegerAttr.get(self.mlir_type['INT64'], kargs['block_h']),
             "block_w": IntegerAttr.get(self.mlir_type['INT64'], kargs['block_w']),
             "is_CRD": BoolAttr.get(kargs['is_CRD']),
@@ -299,7 +312,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
 
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'alpha': FloatAttr.get_f64(kargs['alpha']),
         }
         return self.buildOp(Top.LeakyReluOp, operands, [output_type], **param)
@@ -314,7 +327,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
 
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
             'strides': self.ArrayAttr(kargs['strides']),
             'pads': self.ArrayAttr(kargs['pads']),
@@ -322,11 +335,29 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.MaxPoolOp, operands, [output_type], **param)
 
+    def create_maxpool_with_mask_op(self, operands, output_shape, **kargs):
+        """
+            operands: List[pybind.op]
+            output_tensorshape: List[int] output tensor type
+            attrs: Dict, about op attrs
+        """
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+
+        param = {
+            'name': kargs['name'],
+            'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
+            'strides': self.ArrayAttr(kargs['strides']),
+            'pads': self.ArrayAttr(kargs['pads']),
+            'do_relu': BoolAttr.get(kargs['do_relu']),
+        }
+        return self.buildOp(Top.MaxPoolWithMaskOp, operands, [output_type, output_type], **param)
+
     def create_permute_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'order': self.ArrayAttr(kargs['order']),
         }
         return self.buildOp(Top.PermuteOp, operands, [output_type], **param)
@@ -336,7 +367,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
 
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'do_relu': BoolAttr.get(kargs['do_relu']),
         }
         return self.buildOp(Top.MatMulOp, operands, [output_type], **param)
@@ -344,7 +375,7 @@ class MLIRImporter(object):
     def create_relu_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
         }
         if 'relu_limit' in kargs:
             param['relu_limit'] = FloatAttr.get_f64(kargs['relu_limit'])
@@ -357,14 +388,13 @@ class MLIRImporter(object):
 
     def create_reshape_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        reshape_name = StringAttr.get(kargs['name'])
-        return self.buildOp(Top.ReshapeOp, operands, [output_type], name=reshape_name)
+        return self.buildOp(Top.ReshapeOp, operands, [output_type], name=kargs['name'])
 
     def create_slice_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'offset': self.ArrayAttr(kargs['offset']),
             'steps': self.ArrayAttr(kargs['steps']),
         }
@@ -374,7 +404,7 @@ class MLIRImporter(object):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'scale': FloatAttr.get_f64(kargs['scale']),
             'bias': FloatAttr.get_f64(kargs['bias']),
         }
@@ -383,7 +413,7 @@ class MLIRImporter(object):
     def create_upsample_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'scale_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_h']),
             'scale_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_w']),
         }
@@ -392,7 +422,7 @@ class MLIRImporter(object):
     def create_softmax_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
         }
         return self.buildOp(Top.SoftmaxOp, operands, [output_type], **param)
@@ -400,14 +430,14 @@ class MLIRImporter(object):
     def create_log_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
         }
         return self.buildOp(Top.LogOp, operands, [output_type], **param)
 
     def create_pad_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'paddings': self.ArrayAttr(kargs['paddings']),
             'val': FloatAttr.get_f64(kargs['val']),
             'mode': IntegerAttr.get(self.mlir_type['INT64'], kargs['mode'])
@@ -418,13 +448,13 @@ class MLIRImporter(object):
         if len(operands) != 2:
             raise RuntimeError("input operand must be 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.DivOp, operands, [output_type], **param)
 
     def create_squeeze_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'axes': self.ArrayAttr(kargs['axes']),
         }
         return self.buildOp(Top.SqueezeOp, operands, [output_type], **param)
@@ -432,7 +462,7 @@ class MLIRImporter(object):
     def create_clip_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'min': FloatAttr.get_f64(kargs['min']),
             'max': FloatAttr.get_f64(kargs['max']),
         }
@@ -448,7 +478,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
 
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
             'strides': self.ArrayAttr(kargs['strides']),
             # 'dilations': self.ArrayAttr(kargs['dilations']),
@@ -464,13 +494,13 @@ class MLIRImporter(object):
         if len(operands) < 3:
             raise RuntimeError("input operand must equal to 3")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name']), 'do_relu': BoolAttr.get(False)}
+        param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.ScaleOp, operands, [output_type], **param)
 
     def create_lstm_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'have_bias': BoolAttr.get(kargs['have_bias']),
             'bidirectional': BoolAttr.get(kargs['bidirectional']),
             'batch_first': BoolAttr.get(kargs['batch_first']),
@@ -480,7 +510,7 @@ class MLIRImporter(object):
     def create_gather_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
+            'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
         }
         return self.buildOp(Top.GatherOp, operands, [output_type], **param)
@@ -488,9 +518,9 @@ class MLIRImporter(object):
     def create_tile_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': StringAttr.get(kargs['name']),
-            'axis':  IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
-            'tile':  IntegerAttr.get(self.mlir_type['INT64'], kargs['tile']),
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'tile': IntegerAttr.get(self.mlir_type['INT64'], kargs['tile']),
         }
         return self.buildOp(Top.TileOp, operands, [output_type], **param)
 
@@ -498,20 +528,20 @@ class MLIRImporter(object):
         if len(operands) != 2:
             raise RuntimeError("input operand must equal 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name'])}
+        param = {'name': kargs['name']}
         return self.buildOp(Top.MaxOp, operands, [output_type], **param)
 
     def create_min_op(self, operands, output_shape, **kargs):
         if len(operands) != 2:
             raise RuntimeError("input operand must equal 2")
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name'])}
+        param = {'name': kargs['name']}
         return self.buildOp(Top.MinOp, operands, [output_type], **param)
 
     def create_abs_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': StringAttr.get(kargs['name'])}
+        param = {'name': kargs['name']}
         return self.buildOp(Top.AbsOp, operands, [output_type], **param)
 
     def print_module(self):

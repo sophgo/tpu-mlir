@@ -7,20 +7,20 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../Lowering.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
+using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
-using namespace mlir;
 
-Operation* tpu::GroupOp::getRefOp(Value v) {
-  auto result = v.cast<OpResult>();
-  auto &op = body().front().back();
-  auto yieldOp = dyn_cast<tpu::YieldOp>(op);
-  assert(yieldOp);
-  auto storeOp = yieldOp.getOperand(result.getResultNumber()).getDefiningOp<tpu::StoreOp>();
-  return storeOp.input().getDefiningOp();
+void top::MaxPoolWithMaskOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
+  llvm_unreachable("Not Implemented");
+}
+
+void top::MaxPoolWithMaskOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  llvm_unreachable("Not Implemented");
 }

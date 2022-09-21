@@ -48,7 +48,7 @@ void tpu::DeconvOp::weight_reorder_int8_bm1684() {
 }
 
 void tpu::DeconvOp::codegen_global_bm1684() {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
@@ -61,5 +61,5 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 }
 
 void tpu::DeconvOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }

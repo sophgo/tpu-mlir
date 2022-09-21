@@ -20,11 +20,11 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::Conv3DOp::weight_reorder_int8_bm1684() {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }
 
 void tpu::Conv3DOp::codegen_global_bm1684() {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::Conv3DOp::getBufferSize_bm1684(
@@ -35,5 +35,5 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684(
 }
 
 void tpu::Conv3DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }

@@ -28,5 +28,5 @@ int64_t tpu::RequantFpAxisOp::getBufferSize_bm1684(
 }
 
 void tpu::RequantFpAxisOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("support later");
+  llvm_unreachable("Not Implemented");
 }

@@ -151,11 +151,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   for (auto v : values) {
-    auto op = v.getDefiningOp();
-    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
-      op = gOp.getRefOp(v);
-    }
-    auto op_name = Module::getName(op).str();
+    auto v_name = Module::getName(v).str();
     auto type = Module::getStorageType(v);
     auto shape = Module::getShape(v);
     auto typeBytes = type.getIntOrFloatBitWidth() / 8;
@@ -167,7 +163,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
       gmem_stmode = STORE_MODE_2N;
     }
     // shape info
-    auto name = builder.CreateString(op_name);
+    auto name = builder.CreateString(v_name);
     auto stage_shape = CreateShapeVector(shape);
     bmodel::TensorBuilder tb(builder);
     tb.add_name(name);

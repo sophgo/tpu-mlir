@@ -292,6 +292,11 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
+def Top_MaxPoolWithMaskOp:Top_PoolOp<"MaxPoolWithMask"> {
+  let results = (outs
+    AnyTensor:$output,
+    AnyTensor:$mask);
+}
 
 def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
 

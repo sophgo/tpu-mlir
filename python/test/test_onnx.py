@@ -231,10 +231,10 @@ class ONNX_IR_TESTER(object):
                           input_names=in_names)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
-        self.onnx_and_test(in_data, onnx_model.graph)
+        self.onnx_and_test(in_data, onnx_model.graph, model_name)
 
-    def onnx_and_test(self, input_data: dict, graph_def):
-        model_name = graph_def.name
+    def onnx_and_test(self, input_data: dict, graph_def, name:str=""):
+        model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
         # test onnx and mlir outputs
         counter = 0

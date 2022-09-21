@@ -366,12 +366,19 @@ func::CallOp Module::getCallOp(ModuleOp module, FuncOp func) {
   return call;
 }
 
-StringRef Module::getName(Operation *op) {
+StringRef Module::getName(Operation *op, int index) {
   if (auto module = dyn_cast<ModuleOp>(op)) {
     return getName(module);
   }
   if (auto loc = op->getLoc().dyn_cast<mlir::NameLoc>()) {
     return loc.getName();
+  }
+  if (auto loc = op->getLoc().dyn_cast<mlir::FusedLoc>()) {
+    auto locs = loc.getLocations();
+    assert(index < locs.size());
+    if (auto name_loc = locs[index].dyn_cast<mlir::NameLoc>()) {
+      return name_loc.getName();
+    }
   }
   op->print(llvm::errs(), OpPrintingFlags().useLocalScope().enableDebugInfo());
   llvm::errs() << "\n";
@@ -383,7 +390,12 @@ StringRef Module::getName(Value v) {
   if (auto loc = v.getLoc().dyn_cast<mlir::NameLoc>()) {
     return loc.getName();
   } else if (auto op = v.getDefiningOp()) {
-    return Module::getName(op);
+    if (op->getNumResults() == 1) {
+      return Module::getName(op);
+    } else {
+      auto r = v.cast<OpResult>();
+      return Module::getName(op, r.getResultNumber());
+    }
   }
   v.dump();
   llvm_unreachable("No name info");

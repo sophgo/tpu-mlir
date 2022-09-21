@@ -69,14 +69,15 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
         inputs.push_back(v);
       }
     }
-    auto v = op->getResult(0);
-    if (find(outputs.begin(), outputs.end(), v) != outputs.end()) {
-      continue;
-    }
-    for (auto use : v.getUsers()) {
-      if (find(ops.begin(), ops.end(), use) == ops.end()) {
-        outputs.push_back(v);
-        break;
+    for (auto v: op->getResults()) {
+      if (find(outputs.begin(), outputs.end(), v) != outputs.end()) {
+        continue;
+      }
+      for (auto use : v.getUsers()) {
+        if (find(ops.begin(), ops.end(), use) == ops.end()) {
+          outputs.push_back(v);
+          break;
+        }
       }
     }
   }

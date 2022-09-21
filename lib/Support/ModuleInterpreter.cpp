@@ -61,20 +61,21 @@ void ModuleInterpreter::allocate_resources() {
           output_names.push_back(name);
         }
       } else {
-        auto result = op->getResult(0);
-        auto type = result.getType().cast<RankedTensorType>();
-        auto count = type.getNumElements();
-        auto name = Module::getName(op).str();
-        value_map[name] = result;
-        if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
-          mem_map[name] = wOp.read_as_float();
-          all_weight_names.push_back(name);
-        } else {
-          mem_map[name] = std::make_shared<std::vector<float>>(count);
-          all_tensor_names.push_back(name);
-        }
-        if (isa<top::InputOp>(op)) {
-          input_names.push_back(name);
+        for (auto result : op->getResults()) {
+          auto type = result.getType().cast<RankedTensorType>();
+          auto count = type.getNumElements();
+          auto name = Module::getName(result).str();
+          value_map[name] = result;
+          if (auto wOp = llvm::dyn_cast<top::WeightOp>(op)) {
+            mem_map[name] = wOp.read_as_float();
+            all_weight_names.push_back(name);
+          } else {
+            mem_map[name] = std::make_shared<std::vector<float>>(count);
+            all_tensor_names.push_back(name);
+          }
+          if (isa<top::InputOp>(op)) {
+            input_names.push_back(name);
+          }
         }
       }
     });
@@ -91,7 +92,10 @@ void ModuleInterpreter::allocate_resources() {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
         auto name = Module::getName(op).str();
         auto param = std::make_shared<InferenceParameter>();
-        param->outputs.push_back(mem_map[name]->data());
+        for (auto result: op->getResults()) {
+          auto o_name = Module::getName(result).str();
+          param->outputs.push_back(mem_map[o_name]->data());
+        }
         for (auto input : op->getOperands()) {
           if (input.getType().isa<NoneType>()) {
             param->inputs.push_back(nullptr);

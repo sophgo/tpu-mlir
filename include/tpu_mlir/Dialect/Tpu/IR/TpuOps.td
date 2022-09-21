@@ -224,6 +224,33 @@ def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
 def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
 def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
 
+def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
+  [SupportFuseRelu,
+   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>]> {
+  let summary = "max pool with operator";
+
+  let description = [{
+    This performs an  max pooling over the given input tensor. A sliding
+    window of size given by <kernel size> is passed over the input tensor.
+    get output tensor and mask tensor
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$kernel_shape,
+    I64ArrayAttr:$strides,
+    I64ArrayAttr:$pads,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
+  );
+
+  let results = (outs AnyTensor:$output, AnyTensor:$mask);
+  let extraClassDeclaration = [{
+    void parseParam(void *param);
+  }];
+}
+
 def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "add operator";
@@ -595,9 +622,6 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   );
   let results = (outs Variadic<AnyTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
-  let extraClassDeclaration = [{
-    mlir::Operation* getRefOp(Value v);
-  }];
 }
 
 def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,

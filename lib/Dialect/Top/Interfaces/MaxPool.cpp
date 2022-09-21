@@ -77,6 +77,7 @@ void top::MaxPoolOp::parseParam(void *param) {
   }
   p->pad_value = pad_value();
   p->do_relu = do_relu();
+  p->relu_limit = relu_limit().convertToDouble();
   p->is_global = p->id == p->kd && p->ih == p->kh && p->iw == p->kw &&
                  p->od == 1 && p->oh == 1 && p->ow == 1;
   p->count_include_pad = count_include_pad();

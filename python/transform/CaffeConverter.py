@@ -180,7 +180,6 @@ class CaffeConverter(BaseConverter):
             for out in layer.top:
                 if out in self.select_outputs:
                     self.output_names.append(out)
-
         assert (len(self.select_outputs) == len(self.output_names))
         # add return op
         return_op = list()
@@ -369,12 +368,23 @@ class CaffeConverter(BaseConverter):
             'do_relu': False,
         }
         if method == 0:  # MAX
-            new_op = self.mlir.create_maxpool_op([op], output_shape, **attrs)
+            if len(layer.top) == 1:
+                new_op = self.mlir.create_maxpool_op([op], output_shape, **attrs)
+                self.addOperand(layer.top[0], new_op)
+                return
+            else:
+                attrs['name'] = [layer.top[0], layer.top[1]]
+                new_op, mask_op = self.mlir.create_maxpool_with_mask_op([op], output_shape, **attrs)
+                self.addOperand(layer.top[0], new_op)
+                self.addOperand(layer.top[1], mask_op)
+                return
         elif method == 1:  # AVE
             new_op = self.mlir.create_avgpool_op([op], output_shape, **attrs)
+            self.addOperand(layer.top[0], new_op)
+            return
         else:
             raise RuntimeError("Method {} not support".format(method))
-        self.addOperand(layer.top[0], new_op)
+
 
     def convert_eltwise_op(self, layer):
         assert (layer.type == "Eltwise")
