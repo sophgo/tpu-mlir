@@ -424,7 +424,6 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
       double &relu_limit);
   }];
-  let hasCanonicalizer = 1;
 }
 
 def Top_PadOp:Top_Op<"Pad"> {
