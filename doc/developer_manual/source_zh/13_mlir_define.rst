@@ -487,9 +487,9 @@ SigmoidOp
 ^^^^^^^^^^^^^^^
 :简述:
     激活函数，将tensor中元素映射到特定区间，默认映射到[0，1]，计算方法为:
-    
+
     .. math::
-        Y = \frac{scale}{1 + e^{-X}} + bias 
+        Y = \frac{scale}{1 + e^{-X}} + bias
 
 :输入:
     - inputs: tensor数组，任意类型的tensor
@@ -542,7 +542,7 @@ SiLUOp
 SliceOp
 ^^^^^^^^^^^^^^^
 :简述: tensor切片，将输入的tensor的各个维度，根据offset和steps数组中的偏移和步长进行切片，生成新的tesnor
-    
+
 
 :输入:
     - input: tensor数组，任意类型的tensor
@@ -574,7 +574,8 @@ SoftmaxOp
 
     .. math::
         \sigma(Z)_i = \frac{e^{\beta{Z_i}}}{\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}}
-    其中， :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` ，在axis维度上做指数值求和，j从0到K-1，K是输入tensor在axis维度上的尺寸。 
+
+    其中， :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` ，在axis维度上做指数值求和，j从0到K-1，K是输入tensor在axis维度上的尺寸。
 
     例如：输入tensor的尺寸为 :math:`（N, C, W, H）`,在axis=1的通道上计算Softmax，计算方法为：
 
