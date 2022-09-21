@@ -1,4 +1,4 @@
-TPU-MLIR Quick Start Manual
+TPU-MLIR Quick Start
 ===========================
 
 | **Release Record**
