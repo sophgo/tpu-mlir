@@ -745,4 +745,16 @@ def Top_TileOp: Top_Op<"Tile"> {
   let results = (outs AnyTenor:$output);
   let hasCanonicalizer = 1;
 }
+
+def Top_AbsOp : Top_Op<"Abs", [InOutSameShape]> {
+  let summary = " Abs operator";
+  let description = [{
+     Absolute takes one input data (Tensor) and produces one output data (Tensor) where the absolute is, y = abs(x), is applied to the tensor elementwise.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // Top_OPS
