@@ -495,7 +495,6 @@ class OnnxConverter(BaseConverter):
     def convert_gemm_op(self, onnx_node):
         assert (onnx_node.op_type == "Gemm" or onnx_node.op_type == 'MatMul')
         #(M, K) * (K, N) => (M, N)
-        op = self.getOperand(onnx_node.inputs[0])
         alpha = onnx_node.attrs.get('alpha', 1)
         beta = onnx_node.attrs.get('beta', 1)
         trans_a = onnx_node.attrs.get('transA', 0)
@@ -503,8 +502,18 @@ class OnnxConverter(BaseConverter):
         # TODO:support more situations
         assert (trans_a == 0)
         operands = list()
-        operands.append(op)
+        A = onnx_node.inputs[0]
         B = onnx_node.inputs[1]
+        in_op = self.getOperand(A)
+        in_shape = self.getShape(A)
+        b_shape = self.getShape(B)
+        if len(b_shape) == 2 and len(in_shape) > 2:
+            # [1,1024,1,1]*[1024,1000] => [1,1024]*[1024,1000]
+            new_dim = int(np.prod(in_shape[1:]))
+            in_op = self.mlir.create_reshape_op([in_op], [in_shape[0], new_dim],
+                                                **{'name': A + "_reshape"})
+        operands.append(in_op)
+
         assert (self.isWeight(B))
         if trans_b == 1 or alpha != 1:
             _tensor = self.getWeight(B)
@@ -1089,9 +1098,15 @@ class OnnxConverter(BaseConverter):
         # yapf: enable
         new_out_shape = copy.deepcopy(input_shape)
         if reduce_w:
-            new_out_shape[3] = 1
+            if keepdims:
+                new_out_shape[3] = 1
+            else:
+                new_out_shape.pop()
         if reduce_h:
-            new_out_shape[2] = 1
+            if keepdims:
+                new_out_shape[2] = 1
+            else:
+                new_out_shape.pop()
 
         #reduce h、w or h & w firstly
         if (reduce_w or reduce_h):

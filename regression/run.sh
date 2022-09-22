@@ -13,6 +13,7 @@ model_list_basic=(
   "mobilenet_v2_cf"
   "resnet50_tf"
   "resnet50_v2"
+  "shufflenet_v2"
 # object detection
   "yolov5s"
 )
