@@ -206,7 +206,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     /// symmetric quantize param
-    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<SI32Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
     /// asymmetric quantize param
     OptionalAttr<F64Attr>:$scale,
@@ -261,7 +261,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst", [SupportFuseRelu, InOutSameShape,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -282,7 +282,7 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -336,7 +336,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -400,7 +400,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
@@ -494,7 +494,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$multiplier,
+    SI32Attr:$multiplier,
     I64Attr:$rshift,
     Tpu_RequantModeAttr:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
@@ -556,7 +556,7 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$multiplier,
+    SI32Attr:$multiplier,
     I64Attr:$shift,
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
@@ -658,7 +658,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
     AnyTenor:$input,
     OptionalAttr<F64Attr>:$alpha,
     // quantize param
-    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<SI32Attr>:$multiplier,
     OptionalAttr<I64Attr>:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -691,7 +691,7 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift",[
 
   let arguments = (
     ins AnyTensor:$input,
-    I64Attr:$multiplier,
+    SI32Attr:$multiplier,
     I64Attr:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -777,7 +777,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -930,7 +930,7 @@ def Tpu_TileOp:Tpu_Op<"Tile", [DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_GatherOp: Tpu_Op<"Gather"> {
+def Tpu_GatherOp: Tpu_Op<"Gather"> {
   let summary = "Gather operator";
   let description = [{
     Perform Gather operation on the given axis.
@@ -950,7 +950,7 @@ def Tpu_AbsOp : Tpu_Op<"Abs",
     [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>, InOutSameShape]> {
   let summary = " Abs operator";
   let description = [{
-     Absolute takes one input data (Tensor) and produces one output data (Tensor) where the absolute is, y = abs(x), is applied to the tensor elementwise.
+     y = abs(x)
   }];
   let arguments = (ins
     AnyTensor:$input

@@ -23,11 +23,12 @@ void tpu::MulShiftOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   auto sType = Module::getStorageType(output());
+  bool isUnsignInt = sType.isUnsignedInteger(8);
+
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
-    auto v = applyMultiplierAndRShift(p.inputs[0][i], multiplier(), rshift());
-    p.outputs[0][i] =
-        sType.isUnsignedInteger(8) ? Quant::to_uint8(v) : Quant::to_int8(v);
+    auto v = applyMultiplierAndRShift(p.inputs[0][i], (int64_t)multiplier(), rshift());
+    p.outputs[0][i] = isUnsignInt ? Quant::to_uint8(v) : Quant::to_int8(v);
   }
   return success();
 }

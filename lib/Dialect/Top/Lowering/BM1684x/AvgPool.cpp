@@ -37,8 +37,9 @@ void top::AvgPoolOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
     double scale = in_scale / (out_scale * kh * kw);
     int multiplier, rshift;
     get_scale_and_shift(scale, multiplier, rshift, 8);
+
     attrs.push_back(rewriter.getNamedAttr(
-        "multiplier", rewriter.getI64IntegerAttr(multiplier)));
+        "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
         rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
   } else {

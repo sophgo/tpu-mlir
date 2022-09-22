@@ -148,6 +148,7 @@ class OnnxConverter(BaseConverter):
             "Max": lambda node: self.convert_max_op(node),
             "Min": lambda node: self.convert_min_op(node),
             "Abs": lambda node: self.convert_abs_op(node),
+            "Neg": lambda node: self.convert_neg_op(node),
         }
 
     def __del__(self):
@@ -1363,3 +1364,12 @@ class OnnxConverter(BaseConverter):
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_abs_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_neg_op(self, onnx_node):
+        assert (onnx_node.op_type == "Neg")
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        operand = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': name, 'const_val': -1.0}
+        mul_const_op = self.mlir.create_mul_const_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, mul_const_op)

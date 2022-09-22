@@ -99,7 +99,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     std::vector<NamedAttribute> attrs;
     auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
     attrs.push_back(builder.getNamedAttr(
-        "multiplier", builder.getI64IntegerAttr(multiplier)));
+        "multiplier", builder.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     auto in_type = in.getType().cast<RankedTensorType>();
@@ -112,7 +112,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     std::vector<NamedAttribute> attrs;
     auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
     attrs.push_back(builder.getNamedAttr(
-        "multiplier", builder.getI64IntegerAttr(multiplier)));
+        "multiplier", builder.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     attrs.push_back(builder.getNamedAttr(
@@ -255,7 +255,7 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
   builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("multiplier",
-                                       builder.getI64IntegerAttr(multiplier)));
+                                       builder.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       builder.getNamedAttr("shift", builder.getI64IntegerAttr(shift)));
   if (mode == tpu::DequantMode::TFlite) {
@@ -287,7 +287,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
   builder.setInsertionPointAfterValue(input);
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("multiplier",
-                                       builder.getI64IntegerAttr(multiplier)));
+                                       builder.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       builder.getNamedAttr("rshift", builder.getI64IntegerAttr(-shift)));
   attrs.push_back(
