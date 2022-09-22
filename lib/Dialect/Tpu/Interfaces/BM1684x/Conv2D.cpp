@@ -55,13 +55,15 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
   } else {
     use_3ic_optimize = 0;
   }
-  if (use_3ic_optimize) {
-    // Now only support broadcast using BDC when it is a local layer.
+
+  auto pre_op = input().getDefiningOp();
+  if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
+    // broadcast input using BDC rather than GDMA
     use_3ic_optimize |= 0x10;
-    if (!input().hasOneUse()) {
-      // Need a buffer for broadcast input
-      use_3ic_optimize |= 0x20;
-    }
+  }
+  if (use_3ic_optimize && !input().hasOneUse()) {
+    // broadcast input using BDC to a buffer
+    use_3ic_optimize |= 0x30;
   }
 
   if (attr.is_dw == false) {

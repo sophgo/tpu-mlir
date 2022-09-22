@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#include "llvm/Support/DynamicLibrary.h"
 #include "mlir/IR/Builders.h"
+#include "llvm/Support/DynamicLibrary.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -218,27 +218,27 @@ typedef struct {
 } active_param_t;
 
 typedef enum {
-  BINARY_ADD          = 0,
-  BINARY_SUB          = 1,
-  BINARY_MUL          = 2,
-  BINARY_DIV          = 3,
-  BINARY_MAX          = 4,
-  BINARY_MIN          = 10000,
-  BINARY_GT           = 10001,
-  BINARY_GE           = 10002,
-  BINARY_LT           = 10003,
-  BINARY_LE           = 10004,
-  BINARY_EQ           = 10005,
-  BINARY_NE           = 10006,
+  BINARY_ADD = 0,
+  BINARY_SUB = 1,
+  BINARY_MUL = 2,
+  BINARY_DIV = 3,
+  BINARY_MAX = 4,
+  BINARY_MIN = 10000,
+  BINARY_GT = 10001,
+  BINARY_GE = 10002,
+  BINARY_LT = 10003,
+  BINARY_LE = 10004,
+  BINARY_EQ = 10005,
+  BINARY_NE = 10006,
   BINARY_SQUARED_DIFF = 10007,
-  BINARY_FLOOR_MOD    = 10008,
-  BINARY_FLOOR_DIV    = 10009,
-  BINARY_LOGIC_AND    = 10010,
-  BINARY_LOGIC_OR     = 10011,
-  BINARY_LOGIC_XOR    = 10012,
-  BINARY_BIT_AND      = 10013,
-  BINARY_BIT_OR       = 10014,
-  BINARY_BIT_XOR      = 10015,
+  BINARY_FLOOR_MOD = 10008,
+  BINARY_FLOOR_DIV = 10009,
+  BINARY_LOGIC_AND = 10010,
+  BINARY_LOGIC_OR = 10011,
+  BINARY_LOGIC_XOR = 10012,
+  BINARY_BIT_AND = 10013,
+  BINARY_BIT_OR = 10014,
+  BINARY_BIT_XOR = 10015,
 } binary_type_t;
 
 typedef struct {
@@ -262,22 +262,22 @@ typedef struct {
 } requant_int_param_t;
 
 typedef struct {
-    uint64_t input_addr;
-    uint64_t output_addr;
-    uint64_t dequant_addr;
-    uint32_t buffer_local_addr;
-    int n;
-    int c;
-    int h;
-    int w;
-    bool is_perchannel;
-    int scale_val;
-    int shift_val;
-    int offset_val;
-    int mode;
-    int lshift;
-    DATA_TYPE_T input_dtype;
-    DATA_TYPE_T output_dtype;
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t dequant_addr;
+  uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  bool is_perchannel;
+  int scale_val;
+  int shift_val;
+  int offset_val;
+  int mode;
+  int lshift;
+  DATA_TYPE_T input_dtype;
+  DATA_TYPE_T output_dtype;
 } dequant_int_param_t;
 
 #ifdef __cplusplus
@@ -313,6 +313,13 @@ typedef void (*tensor_compact_move_gen_cmd)(
     int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
     int src_N, int src_C, int src_H, int src_W, int src_format, int direction,
     int transpose, CMD_ID_NODE *pid_node);
+
+typedef void (*tensor_broadcast_move_gen_cmd)(
+    uint64_t src_addr, int src_local_idx, int dst_lmem_start_addr,
+    int dst_local_idx, int src_N, int src_H, int src_W, int dst_C,
+    uint32_t src_N_stride, uint32_t src_H_stride, uint32_t dst_N_stride,
+    uint32_t dst_H_stride, int data_format, int stride_enable, int direction,
+    CMD_ID_NODE *pid_node);
 
 typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
@@ -357,6 +364,7 @@ public:
   forbid_atomic_cmodel_assert dl_forbid_atomic_cmodel_assert;
   tensor_stride_move_gen_cmd dl_tensor_stride_move_gen_cmd;
   tensor_compact_move_gen_cmd dl_tensor_compact_move_gen_cmd;
+  tensor_broadcast_move_gen_cmd dl_tensor_broadcast_move_gen_cmd;
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;

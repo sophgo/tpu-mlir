@@ -87,6 +87,18 @@ bool GroupOps::need_bcast(Value opd) {
   return false;
 }
 
+int64_t GroupOps::use_3ic(Value opd) {
+  for (auto use_op : opd.getUsers()) {
+    if (isa<tpu::GroupOp>(*use_op)) continue;
+    if (auto cast_op = dyn_cast<tpu::Conv2DOp>(*use_op)) {
+      if (opd == cast_op.input()) {
+        return cast_op.use_3ic_optimize();
+      }
+    }
+  }
+  return 0;
+}
+
 // assign id for all Value and Op
 // mark input and output
 group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
@@ -433,6 +445,10 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   if (need_bcast(input)) {
     attrs.push_back(
         builder.getNamedAttr("do_bcast", builder.getBoolAttr(true)));
+  }
+  if (auto use_3ic_optimize = use_3ic(input)) {
+    attrs.push_back(
+        builder.getNamedAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize)));
   }
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, id, linfo.stage)));

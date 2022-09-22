@@ -468,6 +468,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
   let arguments = (ins
     AnyTensor:$input,
     DefaultValuedAttr<BoolAttr, "false">:$do_bcast,
+    DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
   let results = (outs AnyTensor:$output);
