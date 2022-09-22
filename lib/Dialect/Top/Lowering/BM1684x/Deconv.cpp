@@ -13,12 +13,12 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::DeconvOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                          bool asymmetric) {
   deconv_attr_t param;
   parseParam(&param);
   auto op = getOperation();
-  OpBuilder builder(op);
-  builder.setInsertionPointAfter(op);
+  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(input());
   // in/out scale/zp
@@ -81,7 +81,7 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
 
   auto filter_type = filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
-                                        builder.getIntegerType(8, fsign));
+                                        rewriter.getIntegerType(8, fsign));
   if (fsign) {
     auto new_filter = WeightOp::create(op, "filter_i8", *filter_i8, new_type);
     operands.push_back(new_filter);
@@ -91,7 +91,7 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
   }
   if (param.with_bias) {
     auto new_type =
-        RankedTensorType::get({1, param.oc, 1, 1}, builder.getI32Type());
+        RankedTensorType::get({1, param.oc, 1, 1}, rewriter.getI32Type());
     auto new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
@@ -103,13 +103,13 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
     attrs.push_back(attr);
   }
   std::string deconv_name = Module::getName(op).str() + "_i32";
-  auto name = builder.getStringAttr(deconv_name);
-  attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(param.with_bias)));
+  auto name = rewriter.getStringAttr(deconv_name);
+  attrs.push_back(rewriter.getNamedAttr("with_bias",
+                                        rewriter.getBoolAttr(param.with_bias)));
   auto deconvType = RankedTensorType::get(
-      {param.n, param.oc, param.oh, param.ow}, builder.getI32Type());
-  auto deconvOp = builder.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
-                                                operands, attrs);
+      {param.n, param.oc, param.oh, param.ow}, rewriter.getI32Type());
+  auto deconvOp = rewriter.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
+                                                 operands, attrs);
 
   auto rqType = Quant::getQuantInt8Type(output(), asymmetric);
 
@@ -126,28 +126,26 @@ Value top::DeconvOp::lowering_int8_bm1684x(bool asymmetric) {
     quant_int32->data()[3 * c + 2] = out_zp;
   }
   auto new_quant_type =
-      RankedTensorType::get({1, param.oc, 1, 3}, builder.getI32Type());
+      RankedTensorType::get({1, param.oc, 1, 3}, rewriter.getI32Type());
   auto new_quant =
       WeightOp::create(deconvOp, "quant_int32", *quant_int32, new_quant_type);
 
   attrs.clear();
   auto ctx = op->getContext();
-  attrs.push_back(builder.getNamedAttr(
+  attrs.push_back(rewriter.getNamedAttr(
       "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
   operands.clear();
   operands.push_back(deconvOp.output());
   operands.push_back(new_quant);
-  builder.setInsertionPointAfter(deconvOp);
-  auto rqOp =
-      builder.create<tpu::RequantIntAxisOp>(op->getLoc(), rqType, operands, attrs);
-  return rqOp.output();
+  rewriter.setInsertionPointAfter(deconvOp);
+  auto rqOp = rewriter.create<tpu::RequantIntAxisOp>(op->getLoc(), rqType,
+                                                     operands, attrs);
+  rewriter.replaceOp(op, {rqOp.output()});
 }
 
-Value top::DeconvOp::lowering_f32_bm1684x() {
+void top::DeconvOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
   auto ctx = getContext();
-  OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
@@ -159,18 +157,15 @@ Value top::DeconvOp::lowering_f32_bm1684x() {
   }
   bool with_bias = !bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
 
-  auto newOp = builder.create<tpu::DeconvOp>(op->getLoc(), output().getType(),
-                                             operands, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, output().getType(), operands,
+                                             attrs);
 }
 
-Value top::DeconvOp::lowering_f16_bm1684x() {
+void top::DeconvOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
   auto ctx = getContext();
-  OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
@@ -183,20 +178,16 @@ Value top::DeconvOp::lowering_f16_bm1684x() {
   }
   bool with_bias = !bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
-      RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
-  auto newOp =
-      builder.create<tpu::DeconvOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+      RankedTensorType::get(tensor_type.getShape(), rewriter.getF16Type());
+  rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
 }
 
-Value top::DeconvOp::lowering_bf16_bm1684x() {
+void top::DeconvOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
   auto ctx = getContext();
-  OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
@@ -209,15 +200,13 @@ Value top::DeconvOp::lowering_bf16_bm1684x() {
   }
   bool with_bias = !bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(with_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
-      RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
-  auto newOp =
-      builder.create<tpu::DeconvOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
 }
 
-Value top::DeconvOp::lowering_quant_bm1684x() {
+void top::DeconvOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("Not support now");
 }

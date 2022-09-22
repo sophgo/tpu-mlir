@@ -10,6 +10,7 @@
 #pragma once
 
 #include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/PatternMatch.h"
 
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/LoweringInterface.h.inc"

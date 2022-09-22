@@ -20,51 +20,51 @@ def LoweringInterface : OpInterface<"LoweringInterface"> {
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_int8_bm1684",
-        /*args=*/(ins)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_f32_bm1684",
-        /*args=*/(ins)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_int8_bm1684x",
-        /*args=*/(ins "bool":$asymmetric)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter,"bool":$asymmetric)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_quant_bm1684x",
-        /*args=*/(ins)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_f32_bm1684x",
-        /*args=*/(ins)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_f16_bm1684x",
-        /*args=*/(ins)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter)
       >,
       InterfaceMethod<
         /*desc=*/[{
         }],
-        /*retType=*/"mlir::Value",
+        /*retType=*/"void",
         /*methodName=*/"lowering_bf16_bm1684x",
-        /*args=*/(ins)
+        /*args=*/(ins "mlir::PatternRewriter&":$rewriter)
       >,
       ];
 

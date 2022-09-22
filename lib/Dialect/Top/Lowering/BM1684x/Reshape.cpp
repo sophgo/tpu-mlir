@@ -13,22 +13,23 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ReshapeOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::ReshapeOp>(getOperation(), asymmetric);
+void top::ReshapeOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                           bool asymmetric) {
+  lowering_common_int8<tpu::ReshapeOp>(rewriter, getOperation(), asymmetric);
 }
 
-Value top::ReshapeOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::ReshapeOp>(getOperation());
+void top::ReshapeOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ReshapeOp>(rewriter, getOperation());
 }
 
-Value top::ReshapeOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::ReshapeOp, BFloat16Type>(getOperation());
+void top::ReshapeOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ReshapeOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::ReshapeOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::ReshapeOp, Float16Type>(getOperation());
+void top::ReshapeOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ReshapeOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::ReshapeOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::ReshapeOp>(getOperation(), output().getType());
+void top::ReshapeOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_common<tpu::ReshapeOp>(rewriter, getOperation(), output().getType());
 }

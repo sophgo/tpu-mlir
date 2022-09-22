@@ -13,22 +13,23 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::SqueezeOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::SqueezeOp>(getOperation(), asymmetric);
+void top::SqueezeOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                           bool asymmetric) {
+  lowering_common_int8<tpu::SqueezeOp>(rewriter, getOperation(), asymmetric);
 }
 
-Value top::SqueezeOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::SqueezeOp>(getOperation());
+void top::SqueezeOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SqueezeOp>(rewriter, getOperation());
 }
 
-Value top::SqueezeOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::SqueezeOp, BFloat16Type>(getOperation());
+void top::SqueezeOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SqueezeOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::SqueezeOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::SqueezeOp, Float16Type>(getOperation());
+void top::SqueezeOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SqueezeOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::SqueezeOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::SqueezeOp>(getOperation(), output().getType());
+void top::SqueezeOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_common<tpu::SqueezeOp>(rewriter, getOperation(), output().getType());
 }

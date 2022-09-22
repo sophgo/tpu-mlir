@@ -17,9 +17,8 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::AddOp::lowering_int8_bm1684() {
+void top::AddOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   auto op = getOperation();
-  OpBuilder builder(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   std::vector<int64_t> rshift_v(nInputs);
@@ -47,17 +46,15 @@ Value top::AddOp::lowering_int8_bm1684() {
     multiplier_v[i] = (double)multiplier_int8;
   }
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-  attrs.push_back(builder.getNamedAttr("multipliers",
-                                       builder.getI64ArrayAttr(multiplier_v)));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", do_reluAttr()));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
-      builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
+      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
   auto newType = Quant::getQuantInt8Type(output());
-  auto newOp =
-      builder.create<tpu::AddOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
 }
 
-Value top::AddOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::AddOp>(getOperation());
+void top::AddOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::AddOp>(rewriter, getOperation());
 }

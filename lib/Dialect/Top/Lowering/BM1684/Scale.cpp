@@ -17,11 +17,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ScaleOp::lowering_int8_bm1684() {
+void top::ScaleOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("ScaleOp to be supported");
-  return nullptr;
 }
 
-Value top::ScaleOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::ScaleOp>(getOperation());
+void top::ScaleOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ScaleOp>(rewriter, getOperation());
 }

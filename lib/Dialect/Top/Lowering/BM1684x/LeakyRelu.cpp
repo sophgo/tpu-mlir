@@ -13,46 +13,44 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::LeakyReluOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::LeakyReluOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                             bool asymmetric) {
   if (!asymmetric) {
     auto op = getOperation();
-    OpBuilder builder(op);
     Value input = op->getOperand(0);
 
     int multiplier, rshift;
     get_scale_and_shift(alpha().convertToDouble(), multiplier, rshift, 8);
 
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr(
-        "multiplier", builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "multiplier", rewriter.getI64IntegerAttr(multiplier)));
     attrs.push_back(
-        builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+        rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
 
-    builder.setInsertionPointAfter(op);
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp = builder.create<tpu::LeakyReluOp>(op->getLoc(), newType,
-                                                  Value(input), attrs);
-    return newOp;
+    rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType, Value(input),
+                                                  attrs);
   } else {
-    return lowering_f32_bm1684x();
+    lowering_f32_bm1684x(rewriter);
   }
-  return nullptr;
 }
 
-Value top::LeakyReluOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::LeakyReluOp, Float32Type>(getOperation());
-  return nullptr;
+void top::LeakyReluOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::LeakyReluOp, Float32Type>(rewriter,
+                                                       getOperation());
 }
 
-Value top::LeakyReluOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::LeakyReluOp, BFloat16Type>(getOperation());
+void top::LeakyReluOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::LeakyReluOp, BFloat16Type>(rewriter,
+                                                        getOperation());
 }
 
-Value top::LeakyReluOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::LeakyReluOp, Float16Type>(getOperation());
+void top::LeakyReluOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::LeakyReluOp, Float16Type>(rewriter,
+                                                       getOperation());
 }
 
-Value top::LeakyReluOp::lowering_quant_bm1684x() {
+void top::LeakyReluOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("Not supported now");
-  return nullptr;
 }

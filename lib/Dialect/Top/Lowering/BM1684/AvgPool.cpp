@@ -17,32 +17,28 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::AvgPoolOp::lowering_int8_bm1684() {
-  Value newValue;
-  if (kernel_shape().size() == 3) {
-    newValue = lowering_common_int8<tpu::Pool3DOp>(getOperation());
-  } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_int8<tpu::Pool2DOp>(getOperation());
-  } else {
-    newValue = lowering_common_int8<tpu::Pool1DOp>(getOperation());
-  }
-  auto op = newValue.getDefiningOp();
+void top::AvgPoolOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
+  auto op = getOperation();
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
-  return newValue;
+  if (kernel_shape().size() == 3) {
+    lowering_common_int8<tpu::Pool3DOp>(rewriter, op);
+  } else if (kernel_shape().size() == 2) {
+    lowering_common_int8<tpu::Pool2DOp>(rewriter, op);
+  } else {
+    lowering_common_int8<tpu::Pool1DOp>(rewriter, op);
+  }
 }
 
-Value top::AvgPoolOp::lowering_f32_bm1684() {
-  Value newValue;
-  if (kernel_shape().size() == 3) {
-    newValue = lowering_common_float<tpu::Pool3DOp>(getOperation());
-  } else if (kernel_shape().size() == 2) {
-    newValue = lowering_common_float<tpu::Pool2DOp>(getOperation());
-  } else {
-    newValue = lowering_common_float<tpu::Pool1DOp>(getOperation());
-  }
-  auto op = newValue.getDefiningOp();
+void top::AvgPoolOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  auto op = getOperation();
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
-  return newValue;
+  if (kernel_shape().size() == 3) {
+    lowering_common_float<tpu::Pool3DOp>(rewriter, op);
+  } else if (kernel_shape().size() == 2) {
+    lowering_common_float<tpu::Pool2DOp>(rewriter, op);
+  } else {
+    lowering_common_float<tpu::Pool1DOp>(rewriter, op);
+  }
 }

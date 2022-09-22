@@ -18,15 +18,16 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::LSTMOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_f32_bm1684x();
+void top::LSTMOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                        bool asymmetric) {
+  lowering_f32_bm1684x(rewriter);
 }
 
-Value top::LSTMOp::lowering_f32_bm1684x() {
+void top::LSTMOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
+  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
@@ -43,41 +44,35 @@ Value top::LSTMOp::lowering_f32_bm1684x() {
   pytorch_lstm_outshape[1] = lstm_outshape[2];
   pytorch_lstm_outshape[2] = lstm_outshape[1];
   pytorch_lstm_outshape[3] = lstm_outshape[3];
-  //auto tensor_type = output().getType().cast<RankedTensorType>();
-  //tensor_type.setShape(ArrayRef<int64_t>{pytorch_lstm_outshape});
-  auto lstmType = RankedTensorType::get(ArrayRef<int64_t>{pytorch_lstm_outshape}, builder.getF32Type());
+  // auto tensor_type = output().getType().cast<RankedTensorType>();
+  // tensor_type.setShape(ArrayRef<int64_t>{pytorch_lstm_outshape});
+  auto lstmType = RankedTensorType::get(
+      ArrayRef<int64_t>{pytorch_lstm_outshape}, rewriter.getF32Type());
   std::string pytorch_lstm_name = Module::getName(op).str() + "_pytorch_lstm";
-  auto pytorch_lstm = builder.getStringAttr(pytorch_lstm_name);
-  auto LSTMOp = builder.create<tpu::LSTMOp>(NameLoc::get(pytorch_lstm), lstmType,
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
+  auto pytorch_lstm = rewriter.getStringAttr(pytorch_lstm_name);
+  auto LSTMOp = rewriter.create<tpu::LSTMOp>(
+      NameLoc::get(pytorch_lstm), lstmType, ArrayRef<Value>{operands},
+      ArrayRef<NamedAttribute>{attrs});
 
   attrs.clear();
   operands.clear();
-  std::vector<int64_t> order(4, 0);
-  order[0] = 0;
-  order[1] = 2;
-  order[2] = 1;
-  order[3] = 3;
-  attrs.push_back(builder.getNamedAttr("order", builder.getI64ArrayAttr(order)));
+  std::vector<int64_t> order = {0, 2, 1, 3};
+  attrs.push_back(
+      rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
   operands.push_back(LSTMOp.output());
-  builder.setInsertionPointAfter(LSTMOp);
-  auto permuteType = RankedTensorType::get(ArrayRef<int64_t>{lstm_outshape}, builder.getF32Type());
-  auto permuteOp = builder.create<tpu::PermuteOp>(op->getLoc(), permuteType,
-                                                  ArrayRef<Value>{operands},
-                                                  ArrayRef<NamedAttribute>{attrs});
-  return permuteOp.output();
+  auto permuteType = RankedTensorType::get(ArrayRef<int64_t>{lstm_outshape},
+                                           rewriter.getF32Type());
+  rewriter.replaceOpWithNewOp<tpu::PermuteOp>(op, permuteType, operands, attrs);
 }
 
-Value top::LSTMOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::LSTMOp, BFloat16Type>(getOperation());
+void top::LSTMOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::LSTMOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::LSTMOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::LSTMOp, Float16Type>(getOperation());
+void top::LSTMOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::LSTMOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::LSTMOp::lowering_quant_bm1684x() {
+void top::LSTMOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("LSTMOp unsupported");
-  return nullptr;
 }

@@ -15,35 +15,33 @@ using namespace mlir;
 
 double active_silu(double val) { return val / (1 + std::exp(-val)); }
 
-Value top::SiLUOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::SiLUOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                        bool asymmetric) {
   auto ctx = getContext();
   auto op = getOperation();
-  OpBuilder builder(ctx);
   auto stype = Module::getStorageType(output());
   auto table = create_lookup_table(input(), output(), active_silu, asymmetric);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::LutOp>(getLoc(), newType,
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{input(), table}, attrs);
-  return newOp.output();
 }
 
-Value top::SiLUOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::SiLUOp>(getOperation());
+void top::SiLUOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SiLUOp>(rewriter, getOperation());
 }
 
-Value top::SiLUOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::SiLUOp, Float32Type>(getOperation());
+void top::SiLUOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SiLUOp, Float32Type>(rewriter, getOperation());
 }
 
-Value top::SiLUOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::SiLUOp, Float32Type>(getOperation());
+void top::SiLUOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SiLUOp, Float32Type>(rewriter, getOperation());
 }
 
-Value top::SiLUOp::lowering_quant_bm1684x() {
+void top::SiLUOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("SiLUOp not support now");
 }

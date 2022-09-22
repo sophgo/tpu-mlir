@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::GatherOp::lowering_int8_bm1684() {
+void top::GatherOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("GatherOp to be supported");
-  return nullptr;
 }
 
-Value top::GatherOp::lowering_f32_bm1684() {
+void top::GatherOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("GatherOp to be supported");
-  return nullptr;
 }

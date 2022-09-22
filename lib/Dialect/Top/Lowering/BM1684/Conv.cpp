@@ -17,9 +17,8 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ConvOp::lowering_int8_bm1684() {
+void top::ConvOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   auto op = getOperation();
-  OpBuilder builder(op);
   std::vector<Value> operands;
   operands.push_back(input());
   std::vector<NamedAttribute> attrs;
@@ -62,28 +61,28 @@ Value top::ConvOp::lowering_int8_bm1684() {
                  scale);
   auto filter_type = filter().getType().cast<RankedTensorType>();
   auto new_type =
-      RankedTensorType::get(filter_type.getShape(), builder.getI8Type());
+      RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
   auto new_filter = WeightOp::create(op, "filter_int8", *filter_int8, new_type);
   operands.push_back(new_filter);
   Value new_bias = bias();
   if (attr.has_bias) {
     auto bias_type = bias().getType().cast<RankedTensorType>();
-    auto new_type =
-        RankedTensorType::get(bias_type.getShape(), builder.getIntegerType(16));
+    auto new_type = RankedTensorType::get(bias_type.getShape(),
+                                          rewriter.getIntegerType(16));
     new_bias = WeightOp::create(op, "bias_int16", *bias_int16, new_type);
   }
   operands.push_back(new_bias);
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  attrs.push_back(builder.getNamedAttr(
-      "rshift", builder.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+  attrs.push_back(rewriter.getNamedAttr(
+      "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(
-      builder.getNamedAttr("with_bias", builder.getBoolAttr(attr.has_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
   auto newType = Quant::getQuantInt8Type(output());
-  auto newOp =
-      builder.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(op, newType, operands, attrs);
 }
 
-Value top::ConvOp::lowering_f32_bm1684() { return lowering_f32_bm1684x(); }
+void top::ConvOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_f32_bm1684x(rewriter);
+}

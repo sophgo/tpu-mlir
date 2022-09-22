@@ -17,10 +17,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::UpsampleOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::UpsampleOp>(getOperation());
+void top::UpsampleOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
+  lowering_common_int8<tpu::UpsampleOp>(rewriter, getOperation());
 }
 
-Value top::UpsampleOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::UpsampleOp>(getOperation());
+void top::UpsampleOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::UpsampleOp>(rewriter, getOperation());
 }

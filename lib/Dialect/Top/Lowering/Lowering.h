@@ -32,26 +32,27 @@ namespace top {
 // Lowering to a new Operation, with the same operands and same attrs, and
 // newType
 template <typename OpTy>
-static mlir::Value lowering_common(Operation *from, Type newType) {
-  OpBuilder builder(from);
-  builder.setInsertionPointAfter(from);
-  auto newOp = builder.create<OpTy>(from->getLoc(), newType,
-                                    from->getOperands(), from->getAttrs());
-  return newOp.output();
+static void lowering_common(PatternRewriter &rewriter, Operation *from,
+                            Type newType) {
+  // rewriter.setInsertionPointAfter(from);
+  rewriter.replaceOpWithNewOp<OpTy>(from, newType, from->getOperands(),
+                                    from->getAttrs());
 }
 
 // lowering to a new Operation, with same operands and same attrs, and quantize
 // f32 output to int8 output
 template <typename OpTy>
-static mlir::Value lowering_common_int8(Operation *from,
-                                        bool asymmetric = false) {
+static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
+                                 bool asymmetric = false) {
+  assert(from->getNumResults() == 1);
   auto newType = Quant::getQuantInt8Type(from->getResult(0), asymmetric);
-  return lowering_common<OpTy>(from, newType);
+  lowering_common<OpTy>(rewriter, from, newType);
 }
 
 // lowering to f32/f16/bf16
 template <typename OpTy, typename ElemTy = Float32Type>
-static mlir::Value lowering_common_float(Operation *from) {
+static void lowering_common_float(PatternRewriter &rewriter, Operation *from) {
+  assert(from->getNumResults() == 1);
   auto output = from->getResult(0);
   auto sType = Module::getStorageType(output);
   Type newType = output.getType();
@@ -67,7 +68,7 @@ static mlir::Value lowering_common_float(Operation *from) {
       newType = RankedTensorType::get(shape, ElemTy::get(ctx));
     }
   }
-  return lowering_common<OpTy>(from, newType);
+  lowering_common<OpTy>(rewriter, from, newType);
 }
 
 // cast Value to new type. if tensorType is true, new type will be "to", else

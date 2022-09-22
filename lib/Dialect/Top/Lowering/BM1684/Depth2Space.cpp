@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::Depth2SpaceOp::lowering_int8_bm1684() {
+void top::Depth2SpaceOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("Depth2SpaceOp to be supported");
-  return nullptr;
 }
 
-Value top::Depth2SpaceOp::lowering_f32_bm1684() {
+void top::Depth2SpaceOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("Depth2SpaceOp to be supported");
-  return nullptr;
 }

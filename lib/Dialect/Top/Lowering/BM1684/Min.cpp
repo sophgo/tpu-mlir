@@ -16,11 +16,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::MinOp::lowering_int8_bm1684() {
+void top::MinOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("MinOp to be supported");
-  return nullptr;
 }
 
-Value top::MinOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::MinOp, Float32Type>(getOperation());
+void top::MinOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MinOp, Float32Type>(rewriter, getOperation());
 }

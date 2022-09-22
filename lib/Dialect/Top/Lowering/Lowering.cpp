@@ -17,8 +17,10 @@ namespace top {
 bool need_cast(Type from, Type to) {
   auto f_eleType = Module::getStorageType(from);
   auto t_eleType = Module::getStorageType(to);
-  if ((f_eleType.isInteger(8) || f_eleType.isInteger(16) || f_eleType.isInteger(32)) &&
-      (t_eleType.isInteger(8) || t_eleType.isInteger(16) || t_eleType.isInteger(32)) ||
+  if ((f_eleType.isInteger(8) || f_eleType.isInteger(16) ||
+       f_eleType.isInteger(32)) &&
+          (t_eleType.isInteger(8) || t_eleType.isInteger(16) ||
+           t_eleType.isInteger(32)) ||
       f_eleType == t_eleType) {
     return false;
   }
@@ -142,8 +144,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
     auto add_name = in_name + "_add_zp";
     auto add_type = RankedTensorType::get(in_shape, builder.getI32Type());
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr(
-        "const_val", builder.getF64FloatAttr(in_zp)));
+    attrs.push_back(
+        builder.getNamedAttr("const_val", builder.getF64FloatAttr(in_zp)));
     auto name_loc = NameLoc::get(builder.getStringAttr(add_name));
     auto addOp = builder.create<tpu::AddConstOp>(name_loc, add_type,
                                                  ValueRange{in}, attrs);
@@ -161,10 +163,11 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   attrs.push_back(builder.getNamedAttr(
       "scale", builder.getF64FloatAttr(in_scale / out_scale)));
+  attrs.push_back(
+      builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(builder.getNamedAttr(
-      "offset", builder.getF64FloatAttr(offset)));
-  attrs.push_back(builder.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
+      "quant_mode",
+      tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
                                                ValueRange{rq_in}, attrs);
   if (out_zp == 0) {
@@ -462,32 +465,30 @@ struct LoweringPattern : public RewritePattern {
     }
     auto module = Module::getModuleOp(op);
     auto chip = Module::getChip(module);
-    Value newValue;
     if (chip == Module::Chip::BM1684) {
       if (real_mode == Quant::Type::F32) {
-        newValue = lowering_op.lowering_f32_bm1684();
+        lowering_op.lowering_f32_bm1684(rewriter);
       } else {
-        newValue = lowering_op.lowering_int8_bm1684();
+        lowering_op.lowering_int8_bm1684(rewriter);
       }
     } else if (chip == Module::Chip::BM1684x) {
       bool asymmetric = Module::getAsymmetric(module);
       if (Quant::isUniformQuantized(op->getResult(0))) {
-        newValue = lowering_op.lowering_quant_bm1684x();
+        lowering_op.lowering_quant_bm1684x(rewriter);
       } else if (real_mode == Quant::Type::INT8) {
-        newValue = lowering_op.lowering_int8_bm1684x(asymmetric);
+        lowering_op.lowering_int8_bm1684x(rewriter, asymmetric);
       } else if (real_mode == Quant::Type::F32) {
-        newValue = lowering_op.lowering_f32_bm1684x();
+        lowering_op.lowering_f32_bm1684x(rewriter);
       } else if (real_mode == Quant::Type::BF16) {
-        newValue = lowering_op.lowering_bf16_bm1684x();
+        lowering_op.lowering_bf16_bm1684x(rewriter);
       } else if (real_mode == Quant::Type::F16) {
-        newValue = lowering_op.lowering_f16_bm1684x();
+        lowering_op.lowering_f16_bm1684x(rewriter);
       } else {
         llvm_unreachable("unknown mode");
       }
     } else {
       llvm_unreachable("unknown chip");
     }
-    rewriter.replaceOp(op, {newValue});
     return success();
   }
 
@@ -536,8 +537,7 @@ protected:
     RewritePatternSet patterns(ctx_);
     patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
                  BackwardMutiInSingleOut<top::MinOp>,
-                 BackwardMutiInSingleOut<top::MaxOp>
-                >(ctx_);
+                 BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,

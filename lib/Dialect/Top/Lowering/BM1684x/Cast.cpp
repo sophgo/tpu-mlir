@@ -13,16 +13,23 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::CastOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common<tpu::CastOp>(getOperation(), output().getType());
+void top::CastOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                        bool asymmetric) {
+  lowering_common<tpu::CastOp>(rewriter, getOperation(), output().getType());
 }
 
-Value top::CastOp::lowering_f32_bm1684x() { return lowering_quant_bm1684x(); }
+void top::CastOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_quant_bm1684x(rewriter);
+}
 
-Value top::CastOp::lowering_bf16_bm1684x() { return lowering_quant_bm1684x(); }
+void top::CastOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_quant_bm1684x(rewriter);
+}
 
-Value top::CastOp::lowering_f16_bm1684x() { return lowering_quant_bm1684x(); }
+void top::CastOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_quant_bm1684x(rewriter);
+}
 
-Value top::CastOp::lowering_quant_bm1684x() {
-  return lowering_int8_bm1684x(true);
+void top::CastOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_int8_bm1684x(rewriter, true);
 }

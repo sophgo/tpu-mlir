@@ -17,12 +17,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ClipOp::lowering_int8_bm1684() {
+void top::ClipOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("ClipOp to be supported");
-  // return lowering_common_int8<tpu::ClipOp>(getOperation());;
 }
 
-Value top::ClipOp::lowering_f32_bm1684() {
+void top::ClipOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("ClipOp to be supported");
-  return nullptr;
 }
