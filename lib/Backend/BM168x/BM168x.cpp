@@ -267,6 +267,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
   CAST_FUNCTION(tensor_compact_move_gen_cmd);
+  CAST_FUNCTION(tensor_broadcast_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
   CAST_FUNCTION(sg_set_profile_dump);
   CAST_FUNCTION(sg_stas_dump);

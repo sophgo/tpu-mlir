@@ -101,6 +101,7 @@ protected:
   int64_t alloc_lmem(int64_t size);
   bool is_eu_align(mlir::Value opd, Operation *op);
   bool need_bcast(mlir::Value opd);
+  int64_t use_3ic(mlir::Value opd);
   inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
     return a.first == b.first && a.second == b.second;
   }
