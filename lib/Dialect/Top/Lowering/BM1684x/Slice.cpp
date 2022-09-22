@@ -13,22 +13,23 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SliceOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::SliceOp>(getOperation(), asymmetric);
+void top::SliceOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                         bool asymmetric) {
+  lowering_common_int8<tpu::SliceOp>(rewriter, getOperation(), asymmetric);
 }
 
-Value top::SliceOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::SliceOp>(getOperation());
+void top::SliceOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SliceOp>(rewriter, getOperation());
 }
 
-Value top::SliceOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::SliceOp, BFloat16Type>(getOperation());
+void top::SliceOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SliceOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::SliceOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::SliceOp, Float16Type>(getOperation());
+void top::SliceOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SliceOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::SliceOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::SliceOp>(getOperation(), output().getType());
+void top::SliceOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_common<tpu::SliceOp>(rewriter, getOperation(), output().getType());
 }

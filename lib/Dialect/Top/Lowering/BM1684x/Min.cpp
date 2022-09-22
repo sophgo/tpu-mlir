@@ -13,22 +13,22 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::MinOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::MinOp>(getOperation(), asymmetric);
+void top::MinOp::lowering_int8_bm1684x(PatternRewriter &rewriter, bool asymmetric) {
+  lowering_common_int8<tpu::MinOp>(rewriter, getOperation(), asymmetric);
 }
 
-Value top::MinOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::MinOp, Float32Type>(getOperation());
+void top::MinOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MinOp, Float32Type>(rewriter, getOperation());
 }
 
-Value top::MinOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::MinOp, BFloat16Type>(getOperation());
+void top::MinOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MinOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::MinOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::MinOp, Float16Type>(getOperation());
+void top::MinOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MinOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::MinOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::MinOp>(getOperation(), output().getType());
+void top::MinOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_common<tpu::MinOp>(rewriter, getOperation(), output().getType());
 }

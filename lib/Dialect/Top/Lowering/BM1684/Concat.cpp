@@ -16,10 +16,10 @@
 using namespace mlir;
 using namespace tpu_mlir;
 
-Value top::ConcatOp::lowering_int8_bm1684() {
-  return lowering_common_int8<tpu::ConcatOp>(getOperation());
+void top::ConcatOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
+  lowering_common_int8<tpu::ConcatOp>(rewriter, getOperation());
 }
 
-Value top::ConcatOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::ConcatOp>(getOperation());
+void top::ConcatOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ConcatOp>(rewriter, getOperation());
 }

@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::CastOp::lowering_int8_bm1684() {
+void top::CastOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("CastOp to be supported");
-  return nullptr;
 }
 
-Value top::CastOp::lowering_f32_bm1684() {
+void top::CastOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("CastOp to be supported");
-  return nullptr;
 }

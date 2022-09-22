@@ -16,8 +16,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::DeconvOp::lowering_int8_bm1684() {
+void top::DeconvOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("Not support now.\n");
 }
 
-Value top::DeconvOp::lowering_f32_bm1684() { return lowering_f32_bm1684x(); }
+void top::DeconvOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_f32_bm1684x(rewriter);
+}

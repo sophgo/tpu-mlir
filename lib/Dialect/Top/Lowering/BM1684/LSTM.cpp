@@ -18,11 +18,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::LSTMOp::lowering_int8_bm1684() {
+void top::LSTMOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("LSTMOp unsupported");
-  return nullptr;
 }
 
-Value top::LSTMOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::LSTMOp>(getOperation());
+void top::LSTMOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::LSTMOp>(rewriter, getOperation());
 }

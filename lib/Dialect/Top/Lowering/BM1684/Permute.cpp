@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PermuteOp::lowering_int8_bm1684() {
+void top::PermuteOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("PermuteOp to be supported");
-  return nullptr;
 }
 
-Value top::PermuteOp::lowering_f32_bm1684() {
+void top::PermuteOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("PermuteOp to be supported");
-  return nullptr;
 }

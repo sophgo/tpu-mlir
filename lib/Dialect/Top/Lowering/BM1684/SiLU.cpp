@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SiLUOp::lowering_int8_bm1684() {
+void top::SiLUOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("SiLUOp to be supported");
-  return nullptr;
 }
 
-Value top::SiLUOp::lowering_f32_bm1684() {
+void top::SiLUOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("SiLUOp to be supported");
-  return nullptr;
 }

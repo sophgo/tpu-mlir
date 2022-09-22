@@ -13,22 +13,23 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::ReluOp::lowering_int8_bm1684x(bool asymmetric) {
-return lowering_common_int8<tpu::ReluOp>(getOperation(), asymmetric);
+void top::ReluOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                        bool asymmetric) {
+  lowering_common_int8<tpu::ReluOp>(rewriter, getOperation(), asymmetric);
 }
 
-Value top::ReluOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::ReluOp>(getOperation());
+void top::ReluOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ReluOp>(rewriter, getOperation());
 }
 
-Value top::ReluOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::ReluOp, BFloat16Type>(getOperation());
+void top::ReluOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ReluOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::ReluOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::ReluOp, Float16Type>(getOperation());
+void top::ReluOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::ReluOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::ReluOp::lowering_quant_bm1684x() {
+void top::ReluOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("not support now");
 }

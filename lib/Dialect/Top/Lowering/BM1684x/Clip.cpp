@@ -13,25 +13,22 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::ClipOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::ClipOp::lowering_int8_bm1684x(PatternRewriter &rewriter, bool asymmetric) {
   llvm_unreachable("ClipOp not support now");
 }
 
-Value top::ClipOp::lowering_f32_bm1684x() {
+void top::ClipOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("ClipOp not support now");
-  // return lowering_common_float<tpu::ClipOp>(getOperation());
 }
 
-Value top::ClipOp::lowering_bf16_bm1684x() {
+void top::ClipOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("ClipOp not support now");
-  // return lowering_common_float<tpu::ClipOp, BFloat16Type>(getOperation());
 }
 
-Value top::ClipOp::lowering_f16_bm1684x() {
+void top::ClipOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("ClipOp not support now");
-  // return lowering_common_float<tpu::ClipOp, Float16Type>(getOperation());
 }
 
-Value top::ClipOp::lowering_quant_bm1684x() {
+void top::ClipOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("ClipOp not support now");
 }

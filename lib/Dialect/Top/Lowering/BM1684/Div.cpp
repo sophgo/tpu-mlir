@@ -17,12 +17,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::DivOp::lowering_int8_bm1684() {
+void top::DivOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("DivOp to be supported");
-  return nullptr;
 }
 
-Value top::DivOp::lowering_f32_bm1684() {
+void top::DivOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("DivOp to be supported");
-  return nullptr;
 }

@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SigmoidOp::lowering_int8_bm1684() {
+void top::SigmoidOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("SigmoidOp to be supported");
-  return nullptr;
 }
 
-Value top::SigmoidOp::lowering_f32_bm1684() {
+void top::SigmoidOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("SigmoidOp to be supported");
-  return nullptr;
 }

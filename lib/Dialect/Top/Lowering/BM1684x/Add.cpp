@@ -13,10 +13,10 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::AddOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                       bool asymmetric) {
   if (asymmetric == false) {
     auto op = getOperation();
-    OpBuilder builder(op);
     std::vector<Value> operands;
     const int nInputs = op->getNumOperands();
     std::vector<int64_t> rshift_v(nInputs);
@@ -42,40 +42,36 @@ Value top::AddOp::lowering_int8_bm1684x(bool asymmetric) {
       rshift_v[i] = shifti;
     }
 
-    builder.setInsertionPointAfter(op);
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(builder.getNamedAttr("do_relu", do_reluAttr()));
-    attrs.push_back(builder.getNamedAttr(
-        "multipliers", builder.getI64ArrayAttr(multiplier_v)));
+    attrs.push_back(rewriter.getNamedAttr("do_relu", do_reluAttr()));
+    attrs.push_back(rewriter.getNamedAttr(
+        "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
     attrs.push_back(
-        builder.getNamedAttr("rshifts", builder.getI64ArrayAttr(rshift_v)));
+        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-    auto newOp =
-        builder.create<tpu::AddOp>(op->getLoc(), newType, operands, attrs);
-    return newOp.output();
+    rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
   } else {
-    return lowering_f32_bm1684x();
+    lowering_f32_bm1684x(rewriter);
   }
 }
 
-Value top::AddOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::AddOp>(getOperation());
+void top::AddOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::AddOp>(rewriter, getOperation());
 }
 
-Value top::AddOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::AddOp, BFloat16Type>(getOperation());
+void top::AddOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::AddOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::AddOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::AddOp, Float16Type>(getOperation());
+void top::AddOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::AddOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::AddOp::lowering_quant_bm1684x() {
+void top::AddOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   if (Quant::isUniformQuantized(inputs()[0], output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   auto op = getOperation();
-  OpBuilder builder(getContext());
   const int nInputs = op->getNumOperands();
   assert(nInputs == 2); // TODO: nInput==1
   const int nTensors = nInputs + 1;
@@ -111,32 +107,36 @@ Value top::AddOp::lowering_quant_bm1684x() {
   auto ctx = op->getContext();
 
   // dequant left
-  auto input0_dequant = do_dequant(inputs()[0], builder.getI32Type(),
-                                   multiplier_v[0], shift_v[0], tpu::DequantMode::TFlite, lshift);
+  auto input0_dequant =
+      do_dequant(inputs()[0], rewriter.getI32Type(), multiplier_v[0],
+                 shift_v[0], tpu::DequantMode::TFlite, lshift);
   // op->setOperand(0, input0_dequant);
   operands.push_back(input0_dequant);
   // dequant right
-  auto input1_dequant = do_dequant(inputs()[1], builder.getI32Type(),
-                                   multiplier_v[1], shift_v[1], tpu::DequantMode::TFlite, lshift);
+  auto input1_dequant =
+      do_dequant(inputs()[1], rewriter.getI32Type(), multiplier_v[1],
+                 shift_v[1], tpu::DequantMode::TFlite, lshift);
   // op->setOperand(1, input1_dequant);
   operands.push_back(input1_dequant);
   // add
   std::string suffix = "_add";
   std::string new_name = Module::getName(op).str() + suffix;
-  builder.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
-      builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(1)));
-  attrs.push_back(builder.getNamedAttr("shift", builder.getI64IntegerAttr(0)));
+      rewriter.getNamedAttr("multiplier", rewriter.getI64IntegerAttr(1)));
+  attrs.push_back(
+      rewriter.getNamedAttr("shift", rewriter.getI64IntegerAttr(0)));
 
   auto newType =
-      RankedTensorType::get(Module::getShape(output()), builder.getI32Type());
+      RankedTensorType::get(Module::getShape(output()), rewriter.getI32Type());
   // auto add_quant = lowering_common<tpu::AddOp>(op, newType);
-  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto newOp = builder.create<tpu::AddOp>(name_loc, newType, operands, attrs);
+  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+  rewriter.setInsertionPointAfter(op);
+  auto newOp = rewriter.create<tpu::AddOp>(name_loc, newType, operands, attrs);
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);
-  return do_requant(op->getLoc(), newOp.output(), output().getType(), true,
-                    scalei, shifti, tpu::RequantMode::TFlite);
+  auto v = do_requant(op->getLoc(), newOp.output(), output().getType(), true,
+                      scalei, shifti, tpu::RequantMode::TFlite);
+  rewriter.replaceOp(op, {v});
 }

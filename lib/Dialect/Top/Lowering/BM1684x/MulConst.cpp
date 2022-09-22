@@ -13,7 +13,8 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::MulConstOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::MulConstOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                            bool asymmetric) {
   auto op = getOperation();
   OpBuilder builder(op);
   double scale_i, scale_o;
@@ -27,35 +28,28 @@ Value top::MulConstOp::lowering_int8_bm1684x(bool asymmetric) {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  attrs.push_back(builder.getNamedAttr("multiplier",
-                                       builder.getI64IntegerAttr(multiplier)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getI64IntegerAttr(multiplier)));
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  builder.setInsertionPointAfter(op);
-  auto newOp = builder.create<tpu::MulShiftOp>(op->getLoc(), newType,
-                                               ValueRange{input()}, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::MulShiftOp>(op, newType, ValueRange{input()},
+                                               attrs);
 }
 
-Value top::MulConstOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::MulConstOp, Float32Type>(getOperation());
+void top::MulConstOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MulConstOp, Float32Type>(rewriter, getOperation());
 }
 
-Value top::MulConstOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::MulConstOp, BFloat16Type>(getOperation());
+void top::MulConstOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MulConstOp, BFloat16Type>(rewriter,
+                                                       getOperation());
 }
 
-Value top::MulConstOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::MulConstOp, Float16Type>(getOperation());
+void top::MulConstOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MulConstOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::MulConstOp::lowering_quant_bm1684x() {
-  Builder builder(getContext());
-  auto in0_f32 = do_cast(input(), builder.getF32Type(), false);
-  auto op = getOperation();
-  op->setOperand(0, in0_f32);
-  auto type = output().getType();
-  auto v = lowering_common_float<tpu::MulConstOp>(op);
-  return do_cast(v, type, true);
+void top::MulConstOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  llvm_unreachable("Not Implemented");
 }

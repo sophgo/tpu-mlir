@@ -20,7 +20,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::MatMulOp::lowering_int8_bm1684() {
+void top::MatMulOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);
@@ -56,22 +56,22 @@ Value top::MatMulOp::lowering_int8_bm1684() {
     }
   }
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
   float scale = 1.0 * (1 << rshift) * th_input / th_output;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   quantizeToInt8(filter_f32->data(), filter_int8->data(), filter_f32->size(),
                  scale);
   auto filter_type = right().getType().cast<RankedTensorType>();
   auto new_type =
-      RankedTensorType::get(filter_type.getShape(), builder.getI8Type());
+      RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
   auto new_filter = WeightOp::create(op, "filter_int8", *filter_int8, new_type);
   operands.push_back(input());
   operands.push_back(new_filter);
   auto new_bias = bias();
   if (with_bias) {
     auto bias_type = bias().getType().cast<RankedTensorType>();
-    auto new_type =
-        RankedTensorType::get(bias_type.getShape(), builder.getIntegerType(16));
+    auto new_type = RankedTensorType::get(bias_type.getShape(),
+                                          rewriter.getIntegerType(16));
     new_bias = WeightOp::create(op, "bias_int16", *bias_int16, new_type);
   }
   operands.push_back(new_bias);
@@ -79,11 +79,9 @@ Value top::MatMulOp::lowering_int8_bm1684() {
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(output());
-  auto newOp =
-      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 
-Value top::MatMulOp::lowering_f32_bm1684() {
-  return lowering_common_float<tpu::MatMulOp>(getOperation());
+void top::MatMulOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MatMulOp>(rewriter, getOperation());
 }

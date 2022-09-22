@@ -15,12 +15,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SoftmaxOp::lowering_int8_bm1684() {
+void top::SoftmaxOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("SoftmaxOp to be supported");
-  return nullptr;
 }
 
-Value top::SoftmaxOp::lowering_f32_bm1684() {
+void top::SoftmaxOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
   llvm_unreachable("SoftmaxOp to be supported");
-  return nullptr;
 }

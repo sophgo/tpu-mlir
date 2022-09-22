@@ -13,11 +13,11 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
-Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::MatMulOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                          bool asymmetric) {
   // refer quantize_convlike_layer_int8
   auto op = getOperation();
   OpBuilder builder(op);
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
@@ -68,19 +68,19 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
   get_scale_and_shift(scale_f, scale, shift, 32);
 
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(shift)));
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(shift)));
   attrs.push_back(
-      builder.getNamedAttr("multiplier", builder.getI64IntegerAttr(scale)));
+      rewriter.getNamedAttr("multiplier", rewriter.getI64IntegerAttr(scale)));
   auto filter_type = right().getType().cast<RankedTensorType>();
   auto new_type =
-      RankedTensorType::get(filter_type.getShape(), builder.getI8Type());
+      RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
   auto new_filter = WeightOp::create(op, "filter_int8", *filter_int8, new_type);
   operands.push_back(input());
   operands.push_back(new_filter);
   auto new_bias = bias();
   if (with_bias) {
     std::vector<int64_t> shape = {N};
-    auto new_type = RankedTensorType::get(shape, builder.getI32Type());
+    auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
     new_bias = WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
@@ -92,20 +92,17 @@ Value top::MatMulOp::lowering_int8_bm1684x(bool asymmetric) {
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp =
-      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 
-Value top::MatMulOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::MatMulOp>(getOperation());
+void top::MatMulOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::MatMulOp>(rewriter, getOperation());
 }
 
-Value top::MatMulOp::lowering_f16_bm1684x() {
+void top::MatMulOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   operands.push_back(input());
@@ -121,17 +118,14 @@ Value top::MatMulOp::lowering_f16_bm1684x() {
   }
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
-      RankedTensorType::get(tensor_type.getShape(), builder.getF16Type());
-  auto newOp =
-      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+      RankedTensorType::get(tensor_type.getShape(), rewriter.getF16Type());
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 
-Value top::MatMulOp::lowering_bf16_bm1684x() {
+void top::MatMulOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   operands.push_back(input());
@@ -147,13 +141,11 @@ Value top::MatMulOp::lowering_bf16_bm1684x() {
   }
   auto tensor_type = output().getType().cast<RankedTensorType>();
   auto newType =
-      RankedTensorType::get(tensor_type.getShape(), builder.getBF16Type());
-  auto newOp =
-      builder.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
-  return newOp.output();
+      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 
-Value top::MatMulOp::lowering_quant_bm1684x() {
+void top::MatMulOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   if (!Quant::isUniformQuantized(input(), right(), output())) {
     llvm_unreachable("input output should be quantized");
   }
@@ -174,7 +166,6 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
   auto ctx = getContext();
   OpBuilder builder(ctx);
   auto op = getOperation();
-  builder.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(input());
   auto right_stype = Module::getStorageType(right());
@@ -196,14 +187,15 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
     attrs.push_back(attr);
   }
   if (right_zero_point)
-    attrs.push_back(
-        builder.getNamedAttr("right_zp", builder.getI64IntegerAttr(right_zero_point)));
-  attrs.push_back(builder.getNamedAttr("multiplier",
-                                       builder.getI64IntegerAttr(multiplier)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "right_zp", rewriter.getI64IntegerAttr(right_zero_point)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getI64IntegerAttr(multiplier)));
   attrs.push_back(
-      builder.getNamedAttr("rshift", builder.getI64IntegerAttr(-shift)));
-  attrs.push_back(builder.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
 
   if (input_zeroPoint != 0) {
@@ -224,18 +216,13 @@ Value top::MatMulOp::lowering_quant_bm1684x() {
             input_zeroPoint * right_quant->at(c_ind + r_ind * col_size);
       }
     }
-    auto bias_type = RankedTensorType::get({col_size}, builder.getI32Type());
+    auto bias_type = RankedTensorType::get({col_size}, rewriter.getI32Type());
     auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
                                           *bias_quant, bias_type);
     operands.push_back(new_bias);
   } else {
     operands.push_back(bias());
   }
-  // auto newType = RankedTensorType::get(Module::getShape(output()),
-  // builder.getI32Type());
-  auto newOp = builder.create<tpu::MatMulOp>(op->getLoc(), output().getType(),
-                                             operands, attrs);
-  return newOp.output();
-  // return do_requant(newOp.output(), Module::getName(op).str(),
-  // output().getType(), true, multiplier, shift, 1);
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, output().getType(), operands,
+                                             attrs);
 }

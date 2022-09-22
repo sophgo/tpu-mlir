@@ -942,7 +942,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(input_data, graph_def)
 
     def test_Gather(self, case_name):
-        total_tokens = 60004
+        total_tokens = 1024
         token_shape = [total_tokens, 256]
         input_shape = [1, 13]
         output_shape = [1, 13, 256]

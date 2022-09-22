@@ -15,9 +15,9 @@ using namespace mlir;
 
 double active_sigmoid(double val) { return 1 / (1 + std::exp(-val)); }
 
-Value top::SigmoidOp::lowering_int8_bm1684x(bool asymmetric) {
+void top::SigmoidOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                           bool asymmetric) {
   auto op = getOperation();
-  OpBuilder builder(op);
   auto stype = Module::getStorageType(output());
   Value table =
       create_lookup_table(input(), output(), active_sigmoid, asymmetric);
@@ -25,25 +25,23 @@ Value top::SigmoidOp::lowering_int8_bm1684x(bool asymmetric) {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  builder.setInsertionPointAfter(op);
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
-  auto newOp = builder.create<tpu::LutOp>(getLoc(), newType,
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{input(), table}, attrs);
-  return newOp.output();
 }
 
-Value top::SigmoidOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::SigmoidOp>(getOperation());
+void top::SigmoidOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SigmoidOp>(rewriter, getOperation());
 }
 
-Value top::SigmoidOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::SigmoidOp, Float32Type>(getOperation());
+void top::SigmoidOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SigmoidOp, Float32Type>(rewriter, getOperation());
 }
 
-Value top::SigmoidOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::SigmoidOp, Float32Type>(getOperation());
+void top::SigmoidOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::SigmoidOp, Float32Type>(rewriter, getOperation());
 }
 
-Value top::SigmoidOp::lowering_quant_bm1684x() {
+void top::SigmoidOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   llvm_unreachable("SigmoidOp not support now");
 }

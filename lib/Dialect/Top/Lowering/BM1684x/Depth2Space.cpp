@@ -13,24 +13,27 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::Depth2SpaceOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::Depth2SpaceOp>(getOperation(), asymmetric);
+void top::Depth2SpaceOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                               bool asymmetric) {
+  lowering_common_int8<tpu::Depth2SpaceOp>(rewriter, getOperation(),
+                                           asymmetric);
 }
 
-Value top::Depth2SpaceOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::Depth2SpaceOp>(getOperation());
+void top::Depth2SpaceOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::Depth2SpaceOp>(rewriter, getOperation());
 }
 
-Value top::Depth2SpaceOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::Depth2SpaceOp, BFloat16Type>(
-      getOperation());
+void top::Depth2SpaceOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::Depth2SpaceOp, BFloat16Type>(rewriter,
+                                                          getOperation());
 }
 
-Value top::Depth2SpaceOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::Depth2SpaceOp, Float16Type>(getOperation());
+void top::Depth2SpaceOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::Depth2SpaceOp, Float16Type>(rewriter,
+                                                         getOperation());
 }
 
-Value top::Depth2SpaceOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::Depth2SpaceOp>(getOperation(),
-                                             output().getType());
+void top::Depth2SpaceOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_common<tpu::Depth2SpaceOp>(rewriter, getOperation(),
+                                      output().getType());
 }

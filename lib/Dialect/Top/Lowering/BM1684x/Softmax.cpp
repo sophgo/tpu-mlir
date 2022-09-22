@@ -13,13 +13,13 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::SoftmaxOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_f32_bm1684x();
+void top::SoftmaxOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                           bool asymmetric) {
+  lowering_f32_bm1684x(rewriter);
 }
 
-Value top::SoftmaxOp::lowering_f32_bm1684x() {
+void top::SoftmaxOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
   auto op = getOperation();
-  OpBuilder builder(getContext());
   std::vector<Value> operands;
   operands.push_back(input());
   auto none = Module::getNoneOp(op);
@@ -28,28 +28,27 @@ Value top::SoftmaxOp::lowering_f32_bm1684x() {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  builder.setInsertionPointAfter(op);
-  auto newOp = builder.create<tpu::SoftmaxOp>(op->getLoc(), output().getType(),
-                                              operands, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(op, output().getType(), operands,
+                                              attrs);
 }
 
-Value top::SoftmaxOp::lowering_bf16_bm1684x() {
-  // return lowering_common_float<tpu::SoftmaxOp, BFloat16Type>(getOperation());
-  return lowering_f32_bm1684x();
+void top::SoftmaxOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  // lowering_common_float<tpu::SoftmaxOp, BFloat16Type>(rewriter,
+  // getOperation());
+  lowering_f32_bm1684x(rewriter);
 }
 
-Value top::SoftmaxOp::lowering_f16_bm1684x() {
-  // return lowering_common_float<tpu::SoftmaxOp, Float16Type>(getOperation());
-  return lowering_f32_bm1684x();
+void top::SoftmaxOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  // lowering_common_float<tpu::SoftmaxOp, Float16Type>(rewriter,
+  // getOperation());
+  lowering_f32_bm1684x(rewriter);
 }
 
-Value top::SoftmaxOp::lowering_quant_bm1684x() {
+void top::SoftmaxOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
   if (Quant::isUniformQuantized(input(), output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   auto op = getOperation();
-  OpBuilder builder(getContext());
   const int nInputs = op->getNumOperands();
   int64_t zeropoint;
   double i_scale;
@@ -62,12 +61,10 @@ Value top::SoftmaxOp::lowering_quant_bm1684x() {
   }
   auto table_opd = create_lookup_table(op, table);
 
-  builder.setInsertionPointAfter(op);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newOp = builder.create<tpu::SoftmaxOp>(
-      op->getLoc(), output().getType(), ValueRange{input(), table_opd}, attrs);
-  return newOp.output();
+  rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
+      op, output().getType(), ValueRange{input(), table_opd}, attrs);
 }

@@ -13,22 +13,23 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-Value top::PermuteOp::lowering_int8_bm1684x(bool asymmetric) {
-  return lowering_common_int8<tpu::PermuteOp>(getOperation(), asymmetric);
+void top::PermuteOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
+                                           bool asymmetric) {
+  lowering_common_int8<tpu::PermuteOp>(rewriter, getOperation(), asymmetric);
 }
 
-Value top::PermuteOp::lowering_f32_bm1684x() {
-  return lowering_common_float<tpu::PermuteOp>(getOperation());
+void top::PermuteOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::PermuteOp>(rewriter, getOperation());
 }
 
-Value top::PermuteOp::lowering_bf16_bm1684x() {
-  return lowering_common_float<tpu::PermuteOp, BFloat16Type>(getOperation());
+void top::PermuteOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::PermuteOp, BFloat16Type>(rewriter, getOperation());
 }
 
-Value top::PermuteOp::lowering_f16_bm1684x() {
-  return lowering_common_float<tpu::PermuteOp, Float16Type>(getOperation());
+void top::PermuteOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
+  lowering_common_float<tpu::PermuteOp, Float16Type>(rewriter, getOperation());
 }
 
-Value top::PermuteOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::PermuteOp>(getOperation(), output().getType());
+void top::PermuteOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
+  lowering_common<tpu::PermuteOp>(rewriter, getOperation(), output().getType());
 }
