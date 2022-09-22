@@ -37,12 +37,6 @@ typedef enum {
   STORE_MODE_4N = 2,
 } STORE_MODE_T;
 
-#define BM_BINARY_ADD 0
-#define BM_BINARY_SUB 1
-#define BM_BINARY_MUL 2
-#define BM_BINARY_DIV 3
-#define BM_BINARY_MAX 4
-
 #define SUBNET_MODE_TPU 0
 #define SUBNET_MODE_CPU 1
 #define SUBNET_MODE_MERGE 2
@@ -240,6 +234,31 @@ typedef enum {
   BINARY_BIT_OR = 10014,
   BINARY_BIT_XOR = 10015,
 } binary_type_t;
+
+// use for constbinary
+typedef struct constbinary_common_spec {
+    float B_const_val;
+    int B_dtype;
+    int inversed;
+    int binary_type;
+    int if_relu;
+    float relu_upper_limit;
+    int scale_A;
+    int rshift_A;
+} constbinary_common_spec_t;
+
+typedef struct constbinary_global_spec {
+    constbinary_common_spec_t common;
+} constbinary_global_spec_t;
+
+typedef struct constbinary_local_spec {
+    constbinary_common_spec_t common;
+    uint32_t buffer_addr;
+} constbinary_local_spec_t;
+
+typedef struct constbinary_local_param {
+    constbinary_local_spec_t spec;
+} constbinary_local_param_t;
 
 typedef struct {
   uint64_t input_addr;

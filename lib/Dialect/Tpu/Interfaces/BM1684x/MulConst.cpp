@@ -17,39 +17,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// use for constbinary
-typedef struct constbinary_common_spec {
-  float B_const_val;
-  int B_dtype;
-  int inversed;
-  int binary_type;
-  int if_relu;
-  float relu_upper_limit;
-  int scale_A;
-  int rshift_A;
-} constbinary_common_spec_t;
-
-typedef struct constbinary_global_spec {
-  constbinary_common_spec_t common;
-} constbinary_global_spec_t;
-
-typedef struct constbinary_local_spec {
-  constbinary_common_spec_t common;
-  uint32_t buffer_addr;
-} constbinary_local_spec_t;
-
-typedef struct constbinary_local_param {
-  constbinary_local_spec_t spec;
-} constbinary_local_param_t;
-
-#ifdef __cplusplus
-}
-#endif
-
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -62,7 +29,7 @@ void tpu::MulConstOp::codegen_global_bm1684x() {
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
   constbinary_global_spec_t param = {0};
-  param.common.binary_type = BM_BINARY_MUL;
+  param.common.binary_type = BINARY_MUL;
   param.common.if_relu = do_relu();
   param.common.relu_upper_limit = relu_limit().convertToDouble();
   if (Quant::isUniformQuantized(input())) {
@@ -115,7 +82,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   constbinary_local_spec_t param = {0};
 
-  param.common.binary_type = BM_BINARY_MUL;
+  param.common.binary_type = BINARY_MUL;
   param.common.if_relu = do_relu();
   param.common.relu_upper_limit = relu_limit().convertToDouble();
   if (Quant::isUniformQuantized(input())) {

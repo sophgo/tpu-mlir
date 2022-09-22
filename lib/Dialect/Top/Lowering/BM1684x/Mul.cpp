@@ -46,7 +46,7 @@ void top::MulOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr("do_relu", do_reluAttr()));
     attrs.push_back(rewriter.getNamedAttr(
-        "multiplier", rewriter.getI64IntegerAttr(multiplier)));
+        "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
     attrs.push_back(
         rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
     auto newType = Quant::getQuantInt8Type(output(), asymmetric);

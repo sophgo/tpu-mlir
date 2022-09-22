@@ -70,7 +70,7 @@ void top::MatMulOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(shift)));
   attrs.push_back(
-      rewriter.getNamedAttr("multiplier", rewriter.getI64IntegerAttr(scale)));
+      rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(scale)));
   auto filter_type = right().getType().cast<RankedTensorType>();
   auto new_type =
       RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
@@ -190,7 +190,7 @@ void top::MatMulOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
     attrs.push_back(rewriter.getNamedAttr(
         "right_zp", rewriter.getI64IntegerAttr(right_zero_point)));
   attrs.push_back(rewriter.getNamedAttr(
-      "multiplier", rewriter.getI64IntegerAttr(multiplier)));
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
   attrs.push_back(rewriter.getNamedAttr(

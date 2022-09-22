@@ -36,7 +36,7 @@ void tpu::DivOp::codegen_global_bm1684x() {
   auto output_spec = BM1684x::get_output_spec(op);
   bcbinary_common_spec_t spec;
   memset(&spec, 0, sizeof(bcbinary_common_spec_t));
-  spec.binary_type = BM_BINARY_DIV;
+  spec.binary_type = BINARY_DIV;
   spec.if_relu = (int)do_relu();
   spec.relu_upper_limit = relu_limit().convertToDouble();
   spec.scale_A = 1;

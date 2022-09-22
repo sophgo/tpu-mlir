@@ -20,37 +20,7 @@ using namespace mlir;
 int64_t top::AbsOp::getFLOPs() {
   return Module::getNumElements(output());
 }
-#if 0
-LogicalResult top::AbsOp::init(InferenceParameter &p) {
-  auto binary = new Binary();
-  (*binary)
-      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
-      .dst(p.outputs[0], Module::getShape(output()))
-      .algorithem(algorithm::eltwise_abs)
-      .setup();
 
-  p.handle = (void *)binary;
-
-  return success();
-}
-void top::AbsOp::deinit(InferenceParameter &p) {
-  if (p.handle != nullptr) {
-    auto binary = (Binary *)p.handle;
-    delete binary;
-    p.handle = nullptr;
-  }
-}
-
-LogicalResult top::AbsOp::inference(InferenceParameter &p) {
-  if (p.handle == nullptr) {
-    return failure();
-  }
-  auto binary = (Binary *)p.handle;
-  binary->run();
-  return success();
-}
-#endif
 LogicalResult top::AbsOp::init(InferenceParameter &p) { return success(); }
 void top::AbsOp::deinit(InferenceParameter &p) {}
 

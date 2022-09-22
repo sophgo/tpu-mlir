@@ -69,13 +69,14 @@ class ONNX_IR_TESTER(object):
             "Max": self.test_Max,
             "Min": self.test_Min,
             "Abs": self.test_Abs,
+            "Neg": self.test_Neg,
             #############################
             # Torch Test Case, Alphabetically
             #############################
             "LayerGroup": self.test_LayerGroup,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
-        #self.quant_modes = ["f16", "bf16"]  # add later
+         #self.quant_modes = ["f16", "bf16"]  # add later
 
     def test_single(self, case: str):
         print("Test: {}".format(case))
@@ -1092,6 +1093,22 @@ class ONNX_IR_TESTER(object):
             outputs=['output'],
         )
         graph_def = helper.make_graph([abs_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_Neg(self, case_name):
+        input_shape = [1, 16, 64, 64]
+        output_shape = [1, 16, 64, 64]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        neg_def = helper.make_node(
+            case_name,
+            inputs=['input'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([neg_def], case_name, [input], [output])
         self.onnx_and_test({'input': input_data}, graph_def)
 
 if __name__ == "__main__":

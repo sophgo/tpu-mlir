@@ -347,7 +347,7 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift
   );
 
@@ -602,7 +602,7 @@ def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift
   );
 
@@ -749,7 +749,7 @@ def Top_TileOp: Top_Op<"Tile"> {
 def Top_AbsOp : Top_Op<"Abs", [InOutSameShape]> {
   let summary = " Abs operator";
   let description = [{
-     Absolute takes one input data (Tensor) and produces one output data (Tensor) where the absolute is, y = abs(x), is applied to the tensor elementwise.
+     y = abs(x)
   }];
   let arguments = (ins
     AnyTensor:$input
@@ -757,4 +757,5 @@ def Top_AbsOp : Top_Op<"Abs", [InOutSameShape]> {
 
   let results = (outs AnyTensor:$output);
 }
+
 #endif // Top_OPS

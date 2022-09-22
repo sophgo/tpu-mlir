@@ -78,7 +78,7 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
   param.scale_val = multiplier();
   param.rshift_num = rshift();
   param.input_dtype = BM168x::getDataType(input());
-  param.scale_dtype = DTYPE_UINT8; // default
+  param.scale_dtype = param.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUND_UP;
   BM1684x::instance().call_global_func("backend_api_mulshift_global", &param,
@@ -147,7 +147,7 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
   param.scale_val = multiplier();
   param.rshift_num = rshift();
   param.input_dtype = BM168x::getDataType(input());
-  param.scale_dtype = DTYPE_UINT8; // default
+  param.scale_dtype = param.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUND_UP;
   BM1684x::instance().call_local_func("backend_api_mulshift_local", &param,
