@@ -38,7 +38,7 @@ The operation is as follows:
 Caffe to MLIR
 ------------------
 
-The model in this example is bgr input with mean and scale of ``103.94, 116.78, 123.68`` and ``0.017, 0.017, 0.017`` respectively.
+The model in this example is `BGR` input with mean and scale of ``103.94, 116.78, 123.68`` and ``0.017, 0.017, 0.017`` respectively.
 
 The model conversion command:
 
@@ -53,7 +53,7 @@ The model conversion command:
        --mean 103.94,116.78,123.68 \
        --scale 0.017,0.017,0.017 \
        --keep_aspect_ratio \
-       --pixel_format rgb \
+       --pixel_format bgr \
        --test_input ../image/cat.jpg \
        --test_result mobilenet_v2_top_outputs.npz \
        --mlir mobilenet_v2.mlir

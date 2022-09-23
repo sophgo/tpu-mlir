@@ -418,7 +418,7 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         if len(input_shape) > 2:
             new_dim = 1
-            for dim in input_shape:
+            for dim in input_shape[1:]:
                 new_dim *= dim
             in_op = self.mlir.create_reshape_op([in_op], [input_shape[0], new_dim],
                                                 **{'name': layer.bottom[0] + "_reshape"})
