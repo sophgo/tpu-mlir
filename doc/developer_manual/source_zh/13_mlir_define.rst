@@ -141,9 +141,9 @@ CastOp
 
 ClipOp
 ^^^^^^^^^^^^^^^
-:简述: 
+:简述:
       将给定输入限制在一定范围内
-     
+
 :输入:
     - input: tensor
 
@@ -206,7 +206,7 @@ ConvOp
 :输入:
     - input: 输入tensor
     - filter: 参数tensor，其形状为 :math:`(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size[0]}, \text{kernel\_size[1]})`:
-    - bias: 可学习的偏差tensor，形状为 :math:`(out_channels)`.
+    - bias: 可学习的偏差tensor，形状为 :math:`(out\_channels)`.
 
 :输出:
     - output: 结果tensor
@@ -239,7 +239,7 @@ DeconvOp
 :输入:
     - input: 输入tensor
     - filter: 参数tensor，其形状为 :math:`(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size[0]}, \text{kernel\_size[1]})`:
-    - bias: 可学习的偏差tensor，形状为 :math:`(out_channels)`.
+    - bias: 可学习的偏差tensor，形状为 :math:`(out\_channels)`.
 
 :输出:
     - output: 结果tensor
@@ -336,7 +336,7 @@ LSTMOp
 :属性:
     - filter:卷积核
     - recurrence：循环单元
-    - bias：LSTM的参数：偏置 
+    - bias：LSTM的参数：偏置
     - initial_h：LSTM中的每句话经过当前cell后会得到一个state,state 是个tuple(c, h)，其中h=[batch_size, hidden_size]
     - initial_c：c=[batch_size, hidden_size]
     - have_bias：是否设置偏置bias，默认为false
@@ -653,7 +653,7 @@ SiLUOp
 
 SliceOp
 ^^^^^^^^^^^^^^^
-:简述: tensor切片，将输入的tensor的各个维度，根据offset和steps数组中的偏移和步长进行切片，生成新的tesnor
+:简述: tensor切片，将输入的tensor的各个维度，根据offset和steps数组中的偏移和步长进行切片，生成新的tensor
 
 
 :输入:
