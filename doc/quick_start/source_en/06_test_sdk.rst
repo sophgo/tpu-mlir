@@ -175,6 +175,7 @@ Install the client on the SOC device and mount the shared directory:
 
 .. code-block:: console
 
+   $ mkdir model-zoo
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 

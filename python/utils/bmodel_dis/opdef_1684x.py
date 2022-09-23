@@ -186,6 +186,14 @@ class bdc_base:
         "cmd_id_dep",
     )
 
+    def __eq__(self, other):
+        if len(self.cmd) != len(other.cmd):
+            return False
+        return (self.cmd == other.cmd).all()
+
+    def __hash__(self):
+        return hash(str(self.cmd))
+
     @classmethod
     def decode(cls, cmd_reg):
         cls = cls()
@@ -676,6 +684,14 @@ class dma_base:
         "cmd_id",
         "cmd_id_dep",
     )
+
+    def __eq__(self, other):
+        if len(self.cmd) != len(other.cmd):
+            return False
+        return (self.cmd == other.cmd).all()
+
+    def __hash__(self):
+        return hash(str(self.cmd))
 
     @classmethod
     def decode(cls, cmd_reg):

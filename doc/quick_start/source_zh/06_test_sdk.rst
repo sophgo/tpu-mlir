@@ -185,6 +185,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 .. code-block:: console
 
+   $ mkdir model-zoo
    $ sudo apt-get install -y nfs-common
    $ sudo mount -t nfs <IP>:/path/to/model-zoo ./model-zoo
 
