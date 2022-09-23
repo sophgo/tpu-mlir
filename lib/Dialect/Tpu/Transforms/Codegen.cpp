@@ -281,7 +281,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
   timestep_table.push_back(ts_row);
   int timestep_num = timestep_table.size();
   // 2. create a vector to map id to op
-  std::vector<Operation*> group_ops;
+  std::vector<Operation *> group_ops;
   for (int64_t id = 0; id < max_id;) {
     body.walk([&](Operation *op) {
       if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
@@ -317,10 +317,22 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         const tensor_step_t *tensor_step =
             timestep_swpipl.read_swloop_buffer(ginfo.stage);
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
+
+        // add prefix to each cmd in profile.txt
+        std::string prefix = Module::getName(group_ops[id]).str();
         if (ginfo.overstepped == false) {
           if (chip == Module::Chip::BM1684) {
             lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
           } else if (chip == Module::Chip::BM1684x) {
+            auto pid_node =
+                (CMD_ID_NODE *)BM168x::instance(Module::Chip::BM1684x)
+                    ->bdc_node;
+            if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
+              pid_node = (CMD_ID_NODE *)BM168x::instance(Module::Chip::BM1684x)
+                             ->gdma_node;
+            }
+            BM168x::instance(Module::Chip::BM1684x)
+                ->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
             lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep);
           } else {
             llvm_unreachable("chip not support");
