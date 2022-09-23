@@ -193,14 +193,111 @@ def decode_gdma(file_name):
     return [x for x in TPUCMD.decode_gdma(a)]
 
 
+def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
+    r"""
+    Compare two BModel of operations; generate the delta as a unified diff.
+
+    Unified diffs are a compact way of showing line changes and a few
+    lines of context.  The number of context lines is set by 'n' which
+    defaults to three.
+    """
+    import difflib
+
+    def fmt_op(op):
+        if format == "raw":
+            return str(op.attr)
+        if format == "mlir":
+            return str(op)
+        if format == "bits":
+            return "".join((str(x) for x in op.cmd))
+
+    lineterm = "\n"
+    started = False
+    for group in difflib.SequenceMatcher(None, a, b).get_grouped_opcodes(n):
+        if not started:
+            started = True
+            yield f"--- {fromfile}"
+            yield f"+++ {tofile}"
+
+        first, last = group[0], group[-1]
+        file1_range = difflib._format_range_unified(first[1], last[2])
+        file2_range = difflib._format_range_unified(first[3], last[4])
+        yield "@@ -{} +{} @@{}".format(file1_range, file2_range, lineterm)
+
+        for tag, i1, i2, j1, j2 in group:
+            if tag == "equal":
+                for line in a[i1:i2]:
+                    yield "    " + fmt_op(line)
+                continue
+            if tag in {"replace", "delete"}:
+                for line in a[i1:i2]:
+                    yield "-   " + fmt_op(line)
+            if tag in {"replace", "insert"}:
+                for line in b[j1:j2]:
+                    yield "+   " + fmt_op(line)
+        yield ""
+
+
+import argparse
+
+parser = argparse.ArgumentParser(description="BModel disassembler.")
+parser.add_argument(
+    "bmodels",
+    type=str,
+    nargs="+",
+    help="The path of BModels. If one BModel is provided, the assemble code will be printed. Compare the Bmodels if two models provided.",
+)
+parser.add_argument(
+    "--fmt",
+    dest="format",
+    choices=["mlir", "raw", "bits"],
+    default="mlir",
+    help="The format of format operations.",
+)
+parser.add_argument(
+    "--N",
+    dest="N",
+    type=int,
+    default=3,
+    help="The number of context lines.",
+)
+
+
 if __name__ == "__main__":
-    args = sys.argv
-    assert (
-        len(args) == 2
-    ), f"The input should be a bmodel file. but more arguments are provided {args}"
-    tpu_cmd = TPUCMD(args[1])
-    for idx, cmd in tpu_cmd.cmd:
-        fmt_cmd = ["\n    " + str(x) for x in cmd.all]
-        fmt_cmd = "".join(fmt_cmd) + "\n"
-        fun_name = "graph" + "".join((str(x) for x in idx))
-        print(f"func.func @{fun_name}() {{{fmt_cmd}}}")
+    args = parser.parse_args()
+
+    if len(args.bmodels) == 1:
+        tpu_cmd = TPUCMD(args.bmodels[0])
+        for idx, cmd in tpu_cmd.cmd:
+            fmt_cmd = ["\n    " + str(x) for x in cmd.all]
+            fmt_cmd = "".join(fmt_cmd) + "\n"
+            fun_name = "graph" + "".join((str(x) for x in idx))
+            print(f"func.func @{fun_name}() {{{fmt_cmd}}}")
+
+    if len(args.bmodels) == 2:
+        tpu_cmd_a = TPUCMD(args.bmodels[0])
+        tpu_cmd_b = TPUCMD(args.bmodels[1])
+        is_same = True
+        for (idx, cmd_a), (_, cmd_b) in zip(tpu_cmd_a.cmd, tpu_cmd_b.cmd):
+            fmt_cmd = [
+                "\n" + x
+                for x in unified_diff(
+                    cmd_a.all,
+                    cmd_b.all,
+                    args.bmodels[0],
+                    args.bmodels[1],
+                    n=args.N,
+                    format=args.format,
+                )
+            ]
+            fun_name = "graph" + "".join((str(x) for x in idx))
+            if fmt_cmd != []:
+                is_same = False
+                fmt_cmd = "".join(fmt_cmd[:-1]) + "\n"
+                print(f"func.func @{fun_name}() {{{fmt_cmd}}}")
+        if is_same:
+            print(f""""{args.bmodels[0]}" and "{args.bmodels[1]}" are the same!""")
+            exit(0)
+        else:
+            exit(1)
+    parser.error("Too many BModels.")
