@@ -13,9 +13,11 @@ namespace llvm {
 namespace Intrinsic {
 enum SPVIntrinsics : unsigned {
 // Enum values for intrinsics
-    spv_assign_name = 8202,                           // llvm.spv.assign.name
+    spv_alloca = 8320,                                // llvm.spv.alloca
+    spv_assign_name,                           // llvm.spv.assign.name
     spv_assign_type,                           // llvm.spv.assign.type
     spv_bitcast,                               // llvm.spv.bitcast
+    spv_cmpxchg,                               // llvm.spv.cmpxchg
     spv_const_composite,                       // llvm.spv.const.composite
     spv_extractelt,                            // llvm.spv.extractelt
     spv_extractv,                              // llvm.spv.extractv
@@ -27,6 +29,7 @@ enum SPVIntrinsics : unsigned {
     spv_store,                                 // llvm.spv.store
     spv_switch,                                // llvm.spv.switch
     spv_track_constant,                        // llvm.spv.track.constant
+    spv_unreachable,                           // llvm.spv.unreachable
     spv_unref_global,                          // llvm.spv.unref.global
 }; // enum
 } // namespace Intrinsic

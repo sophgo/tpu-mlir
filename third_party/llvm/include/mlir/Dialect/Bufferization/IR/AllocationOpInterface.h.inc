@@ -36,6 +36,7 @@ struct AllocationOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     static ::mlir::Optional<::mlir::Operation*> buildDealloc(::mlir::OpBuilder&builder, ::mlir::Value alloc);
     static ::mlir::Optional<::mlir::Value> buildClone(::mlir::OpBuilder&builder, ::mlir::Value alloc);
   };
@@ -48,15 +49,35 @@ public:
   using ::mlir::OpInterface<AllocationOpInterface, detail::AllocationOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::AllocationOpInterfaceTrait<ConcreteOp> {};
+  /// Builds a deallocation operation using the provided builder and the
+  /// current allocation value (which refers to the current Op implementing
+  /// this interface). The allocation value is a result of the current
+  /// operation implementing this interface. If there is no compatible
+  /// deallocation operation, this method can return ::llvm::None.
   ::mlir::Optional<::mlir::Operation*> buildDealloc(::mlir::OpBuilder& builder, ::mlir::Value alloc);
+  /// Builds a clone operation using the provided builder and the current
+  /// allocation value (which refers to the current Op implementing this
+  /// interface). The allocation value is a result of the current operation
+  /// implementing this interface. If there is no compatible clone operation,
+  /// this method can return ::llvm::None.
   ::mlir::Optional<::mlir::Value> buildClone(::mlir::OpBuilder& builder, ::mlir::Value alloc);
 };
 namespace detail {
   template <typename ConcreteOp>
   struct AllocationOpInterfaceTrait : public ::mlir::OpInterface<AllocationOpInterface, detail::AllocationOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Builds a deallocation operation using the provided builder and the
+    /// current allocation value (which refers to the current Op implementing
+    /// this interface). The allocation value is a result of the current
+    /// operation implementing this interface. If there is no compatible
+    /// deallocation operation, this method can return ::llvm::None.
     static ::mlir::Optional<::mlir::Operation*> buildDealloc(::mlir::OpBuilder& builder, ::mlir::Value alloc) {
       return llvm::None;
     }
+    /// Builds a clone operation using the provided builder and the current
+    /// allocation value (which refers to the current Op implementing this
+    /// interface). The allocation value is a result of the current operation
+    /// implementing this interface. If there is no compatible clone operation,
+    /// this method can return ::llvm::None.
     static ::mlir::Optional<::mlir::Value> buildClone(::mlir::OpBuilder& builder, ::mlir::Value alloc) {
       return llvm::None;
     }

@@ -13,20 +13,56 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TOP_OPS
-#define TOP_OPS
+#ifndef TPU_MLIR_TOP_OPS
+#define TPU_MLIR_TOP_OPS
 
+include "mlir/IR/AttrTypeBase.td"
+include "mlir/IR/EnumAttr.td"
 include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "tpu_mlir/Dialect/Top/IR/TopAttr.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/LoweringInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
+// =============================================================================
+//
+// Defines TOP Dialect.
+//
+//===----------------------------------------------------------------------===//
+
+def Top_Dialect : Dialect {
+  let name = "top";
+  let summary = "A topdialect for the TPU_MLIR specification";
+  let cppNamespace = "::tpu_mlir::top";
+  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
+  let extraClassDeclaration = [{
+  void loadWeightFile(llvm::StringRef file) {
+    wFile = std::make_unique<mlir::TensorFile>(file, false);
+  }
+  std::unique_ptr<mlir::TensorFile> wFile;
+  }];
+}
+
+//===----------------------------------------------------------------------===//
+// TOP Attributes.
+//===----------------------------------------------------------------------===//
+
+class Top_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
+    : AttrDef<Top_Dialect, attrName, traits> {
+  let mnemonic = attrMnemonic;
+}
+
+//===----------------------------------------------------------------------===//
+// TOP Types.
+//===----------------------------------------------------------------------===//
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
+
+//===----------------------------------------------------------------------===//
+// TOP Op Definition.
+//===----------------------------------------------------------------------===//
 
 class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
     Op<Top_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
@@ -80,7 +116,15 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let arguments = (
     ins AnyTensor:$input,
-    OptionalAttr<Top_PreprocessParamAttr>:$preprocess
+    // preprocess for input
+    OptionalAttr<StrAttr>:$pixel_format,
+    OptionalAttr<StrAttr>:$channel_format,
+    OptionalAttr<I64ArrayAttr>:$resize_dims,
+    OptionalAttr<BoolAttr>:$keep_aspect_ratio,
+    OptionalAttr<I64Attr>:$pad_value,
+    OptionalAttr<StrAttr>:$pad_type,
+    OptionalAttr<F64ArrayAttr>:$scale,
+    OptionalAttr<F64ArrayAttr>:$mean
   );
 
   let results = (outs AnyTensor:$output);
@@ -248,6 +292,31 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 def Top_AvgPoolOp:Top_PoolOp<"AvgPool">;
 def Top_MaxPoolOp:Top_PoolOp<"MaxPool">;
 
+
+def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
+
+  let summary = "Depth2Space operator";
+
+  let description = [{
+    Refer to `https://github.com/onnx/onnx/blob/main/docs/Operators.md#depthtospace`
+    [n, c, h, w] => [n, c / (block_h * block_w), h * block_h, w * block_w];
+    if inversed, [n, c, h, w] => [n, c * block_h * block_w, h / block_h, w / block_w];
+
+    if DCR(depth-column-row), channel ordered by block_h * block_w * c;
+    else CRD(column-row-depth), channel ordered by c * block_h * block_w;
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$block_h,
+    I64Attr:$block_w,
+    BoolAttr:$is_CRD,
+    BoolAttr:$is_inversed
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
   let summary = "add operator";
 
@@ -266,35 +335,11 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
-
-  let summary = "Depth2Space operator";
-
-  let description = [{
-    Refer to `https://github.com/onnx/onnx/blob/main/docs/Operators.md#depthtospace`
-    [n, c, h, w] => [n, c / (block_h * block_w), h * block_h, w * block_w];
-    if inversed, [n, c, h, w] => [n, c * block_h * block_w, h / block_h, w / block_w];
-
-    if DCR(depth-column-row), channel ordered by block_h * block_w * c;
-    else CRD(column-row-depth), chennel ordered by c * block_h * block_w;
-  }];
-
-  let arguments = (
-    ins AnyTensor:$input,
-    I64Attr:$block_h,
-    I64Attr:$block_w,
-    BoolAttr:$is_CRD,
-    BoolAttr:$is_inversed
-  );
-
-  let results = (outs AnyTensor:$output);
-}
-
 def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
   let summary = "Mul operator";
 
   let description = [{
-    Elementwise mul of input1 and input2. input1 and input2 are tensors.
+    Elementwise multiplication of input1 and input2. input1 and input2 are tensors.
   }];
 
   let arguments = (ins
@@ -308,6 +353,34 @@ def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
 
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_MinOp: Top_Op<"Min"> {
+  let summary = "min operator";
+
+  let description = [{
+    Element-wise min of each of the input tensors. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_MaxOp: Top_Op<"Max"> {
+  let summary = "max operator";
+
+  let description = [{
+    Element-wise max of each of the input tensors. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
@@ -365,7 +438,8 @@ def Top_PadOp:Top_Op<"Pad"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$paddings
+    I64ArrayAttr:$paddings,
+    DefaultValuedAttr<F64Attr, "0.0">:$val
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
@@ -657,4 +731,19 @@ def Top_GatherOp: Top_Op<"Gather"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_TileOp: Top_Op<"Tile"> {
+  let summary = "Tile operator";
+  let description = [{
+    Perform Tile operation on the given tensor.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$tile
+  );
+
+  let results = (outs AnyTenor:$output);
+  let hasCanonicalizer = 1;
+}
 #endif // Top_OPS

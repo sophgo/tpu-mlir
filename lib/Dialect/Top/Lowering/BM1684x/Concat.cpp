@@ -45,5 +45,30 @@ Value top::ConcatOp::lowering_f16_bm1684x() {
 }
 
 Value top::ConcatOp::lowering_quant_bm1684x() {
-  return lowering_common<tpu::ConcatOp>(getOperation(), output().getType());
+  // if (!output().getType().isUnsignedInteger(8)) {
+  //   return lowering_common<tpu::ConcatOp>(getOperation(), output().getType());
+  // }
+  auto op = getOperation();
+  OpBuilder builder(op);
+  builder.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  auto out_stype = Module::getStorageType(output());
+  if (out_stype.isUnsignedInteger(8)) {
+    for (auto in : inputs()) {
+      auto new_in = do_transfer_fp(in, output(), true);
+      operands.push_back(new_in);
+    }
+  } else {
+    for (auto in : inputs()) {
+      operands.push_back(in);
+    }
+  }
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newOp =
+      builder.create<tpu::ConcatOp>(getLoc(), output().getType(), operands, attrs);
+  return newOp.output();
 }

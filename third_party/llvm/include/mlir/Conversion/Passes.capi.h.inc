@@ -122,6 +122,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertLinalgToStandard();
 
 
 /* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertMathToFuncs();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertMathToFuncs();
+
+
+/* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertMathToLLVM();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertMathToLLVM();
 
@@ -217,11 +222,6 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertVectorToLLVM();
 
 
 /* Create Conversion Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertVectorToROCDL();
-MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertVectorToROCDL();
-
-
-/* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionConvertVectorToSCF();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionConvertVectorToSCF();
 
@@ -244,6 +244,11 @@ MLIR_CAPI_EXPORTED void mlirRegisterConversionGpuToLLVMConversionPass();
 /* Create Conversion Pass. */
 MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionLowerHostCodeToLLVM();
 MLIR_CAPI_EXPORTED void mlirRegisterConversionLowerHostCodeToLLVM();
+
+
+/* Create Conversion Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateConversionMapMemRefStorageClass();
+MLIR_CAPI_EXPORTED void mlirRegisterConversionMapMemRefStorageClass();
 
 
 /* Create Conversion Pass. */

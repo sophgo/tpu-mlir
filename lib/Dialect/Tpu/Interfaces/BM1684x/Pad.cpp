@@ -45,7 +45,7 @@ void tpu::PadOp::codegen_global_bm1684x() {
     param.pad[i][1] = pads->at(i + pad_dim);
   }
   param.type = 0;
-  param.constant = 0;
+  param.constant = val().convertToDouble();
 
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);

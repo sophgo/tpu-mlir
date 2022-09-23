@@ -17,7 +17,16 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::PadOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::PadOp::init(InferenceParameter &p) {
+  float *dst = p.outputs[0];
+  auto total_num = Module::getNumElements(output());
+  float val_ = val().convertToDouble();
+  for (int i = 0; i < total_num; i++) {
+    dst[i] = val_;
+  }
+  return success();
+}
+
 void tpu::PadOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::PadOp::inference(InferenceParameter &p) {

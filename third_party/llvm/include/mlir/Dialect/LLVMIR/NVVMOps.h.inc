@@ -90,6 +90,11 @@ class MmaOp;
 } // namespace mlir
 namespace mlir {
 namespace NVVM {
+class RcpApproxFtzF32Op;
+} // namespace NVVM
+} // namespace mlir
+namespace mlir {
+namespace NVVM {
 class ShflOp;
 } // namespace NVVM
 } // namespace mlir
@@ -240,7 +245,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -297,7 +302,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -354,7 +359,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -411,7 +416,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -468,7 +473,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -525,7 +530,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -611,13 +616,13 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value dst();
-  ::mlir::Value src();
+  ::mlir::Value getDst();
+  ::mlir::Value getSrc();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr sizeAttr();
-  uint32_t size();
-  ::mlir::UnitAttr bypass_l1Attr();
-  ::llvm::Optional<bool> bypass_l1();
+  ::mlir::IntegerAttr getSizeAttr();
+  uint32_t getSize();
+  ::mlir::UnitAttr getBypassL1Attr();
+  ::llvm::Optional<bool> getBypassL1();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -636,19 +641,19 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr bypass_l1AttrName() {
+  ::mlir::StringAttr getBypassL1AttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr bypass_l1AttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getBypassL1AttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr sizeAttrName() {
+  ::mlir::StringAttr getSizeAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr sizeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getSizeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -658,18 +663,18 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value dst();
-  ::mlir::Value src();
-  ::mlir::MutableOperandRange dstMutable();
-  ::mlir::MutableOperandRange srcMutable();
+  ::mlir::Value getDst();
+  ::mlir::Value getSrc();
+  ::mlir::MutableOperandRange getDstMutable();
+  ::mlir::MutableOperandRange getSrcMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::IntegerAttr sizeAttr();
-  uint32_t size();
-  ::mlir::UnitAttr bypass_l1Attr();
-  ::llvm::Optional<bool> bypass_l1();
-  void sizeAttr(::mlir::IntegerAttr attr);
-  void bypass_l1Attr(::mlir::UnitAttr attr);
+  ::mlir::IntegerAttr getSizeAttr();
+  uint32_t getSize();
+  ::mlir::UnitAttr getBypassL1Attr();
+  ::llvm::Optional<bool> getBypassL1();
+  void setSizeAttr(::mlir::IntegerAttr attr);
+  void setBypassL1Attr(::mlir::UnitAttr attr);
   ::mlir::Attribute removeBypass_l1Attr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value dst, ::mlir::Value src, ::mlir::IntegerAttr size, /*optional*/::mlir::UnitAttr bypass_l1);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value dst, ::mlir::Value src, ::mlir::IntegerAttr size, /*optional*/::mlir::UnitAttr bypass_l1);
@@ -714,8 +719,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -734,11 +739,11 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr nAttrName() {
+  ::mlir::StringAttr getNAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr nAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
@@ -750,9 +755,9 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  void nAttr(::mlir::IntegerAttr attr);
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  void setNAttr(::mlir::IntegerAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr n);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr n);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, uint32_t n);
@@ -820,7 +825,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -877,7 +882,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -934,7 +939,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -991,7 +996,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -1022,12 +1027,12 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value ptr();
+  ::mlir::Value getPtr();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr numAttr();
-  uint32_t num();
-  ::mlir::NVVM::MMALayoutAttr layoutAttr();
-  ::mlir::NVVM::MMALayout layout();
+  ::mlir::IntegerAttr getNumAttr();
+  uint32_t getNum();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAttr();
+  ::mlir::NVVM::MMALayout getLayout();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1046,19 +1051,19 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr layoutAttrName() {
+  ::mlir::StringAttr getLayoutAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr layoutAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr numAttrName() {
+  ::mlir::StringAttr getNumAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr numAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNumAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -1068,17 +1073,17 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ptr();
-  ::mlir::MutableOperandRange ptrMutable();
+  ::mlir::TypedValue<::mlir::LLVM::LLVMPointerType> getPtr();
+  ::mlir::MutableOperandRange getPtrMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
-  ::mlir::IntegerAttr numAttr();
-  uint32_t num();
-  ::mlir::NVVM::MMALayoutAttr layoutAttr();
-  ::mlir::NVVM::MMALayout layout();
-  void numAttr(::mlir::IntegerAttr attr);
-  void layoutAttr(::mlir::NVVM::MMALayoutAttr attr);
+  ::mlir::Value getRes();
+  ::mlir::IntegerAttr getNumAttr();
+  uint32_t getNum();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAttr();
+  ::mlir::NVVM::MMALayout getLayout();
+  void setNumAttr(::mlir::IntegerAttr attr);
+  void setLayoutAttr(::mlir::NVVM::MMALayoutAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::IntegerAttr num, ::mlir::NVVM::MMALayoutAttr layout);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::IntegerAttr num, ::mlir::NVVM::MMALayoutAttr layout);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, uint32_t num, ::mlir::NVVM::MMALayout layout);
@@ -1121,24 +1126,24 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange operandA();
-  ::mlir::ValueRange operandB();
-  ::mlir::ValueRange operandC();
+  ::mlir::ValueRange getOperandA();
+  ::mlir::ValueRange getOperandB();
+  ::mlir::ValueRange getOperandC();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::NVVM::MMAShapeAttr shapeAttr();
-  ::mlir::NVVM::MMAShapeAttr shape();
-  ::mlir::NVVM::MMAB1OpAttr b1OpAttr();
-  ::llvm::Optional<::mlir::NVVM::MMAB1Op> b1Op();
-  ::mlir::NVVM::MMAIntOverflowAttr intOverflowBehaviorAttr();
-  ::llvm::Optional<::mlir::NVVM::MMAIntOverflow> intOverflowBehavior();
-  ::mlir::NVVM::MMALayoutAttr layoutAAttr();
-  ::mlir::NVVM::MMALayout layoutA();
-  ::mlir::NVVM::MMALayoutAttr layoutBAttr();
-  ::mlir::NVVM::MMALayout layoutB();
-  ::mlir::NVVM::MMATypesAttr multiplicandAPtxTypeAttr();
-  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandAPtxType();
-  ::mlir::NVVM::MMATypesAttr multiplicandBPtxTypeAttr();
-  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandBPtxType();
+  ::mlir::NVVM::MMAShapeAttr getShapeAttr();
+  ::mlir::NVVM::MMAShapeAttr getShape();
+  ::mlir::NVVM::MMAB1OpAttr getB1OpAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAB1Op> getB1Op();
+  ::mlir::NVVM::MMAIntOverflowAttr getIntOverflowBehaviorAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAIntOverflow> getIntOverflowBehavior();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAAttr();
+  ::mlir::NVVM::MMALayout getLayoutA();
+  ::mlir::NVVM::MMALayoutAttr getLayoutBAttr();
+  ::mlir::NVVM::MMALayout getLayoutB();
+  ::mlir::NVVM::MMATypesAttr getMultiplicandAPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> getMultiplicandAPtxType();
+  ::mlir::NVVM::MMATypesAttr getMultiplicandBPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> getMultiplicandBPtxType();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1157,67 +1162,67 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr b1OpAttrName() {
+  ::mlir::StringAttr getB1OpAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr b1OpAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getB1OpAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr intOverflowBehaviorAttrName() {
+  ::mlir::StringAttr getIntOverflowBehaviorAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr intOverflowBehaviorAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getIntOverflowBehaviorAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr layoutAAttrName() {
+  ::mlir::StringAttr getLayoutAAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr layoutAAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutAAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr layoutBAttrName() {
+  ::mlir::StringAttr getLayoutBAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr layoutBAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutBAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr multiplicandAPtxTypeAttrName() {
+  ::mlir::StringAttr getMultiplicandAPtxTypeAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr multiplicandAPtxTypeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMultiplicandAPtxTypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr multiplicandBPtxTypeAttrName() {
+  ::mlir::StringAttr getMultiplicandBPtxTypeAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr multiplicandBPtxTypeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMultiplicandBPtxTypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
-  ::mlir::StringAttr operand_segment_sizesAttrName() {
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
     return getAttributeNameForIndex(6);
   }
 
-  static ::mlir::StringAttr operand_segment_sizesAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 6);
   }
 
-  ::mlir::StringAttr shapeAttrName() {
+  ::mlir::StringAttr getShapeAttrName() {
     return getAttributeNameForIndex(7);
   }
 
-  static ::mlir::StringAttr shapeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getShapeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 7);
   }
 
@@ -1227,36 +1232,36 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range operandA();
-  ::mlir::Operation::operand_range operandB();
-  ::mlir::Operation::operand_range operandC();
-  ::mlir::MutableOperandRange operandAMutable();
-  ::mlir::MutableOperandRange operandBMutable();
-  ::mlir::MutableOperandRange operandCMutable();
+  ::mlir::Operation::operand_range getOperandA();
+  ::mlir::Operation::operand_range getOperandB();
+  ::mlir::Operation::operand_range getOperandC();
+  ::mlir::MutableOperandRange getOperandAMutable();
+  ::mlir::MutableOperandRange getOperandBMutable();
+  ::mlir::MutableOperandRange getOperandCMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
-  ::mlir::NVVM::MMAShapeAttr shapeAttr();
-  ::mlir::NVVM::MMAShapeAttr shape();
-  ::mlir::NVVM::MMAB1OpAttr b1OpAttr();
-  ::llvm::Optional<::mlir::NVVM::MMAB1Op> b1Op();
-  ::mlir::NVVM::MMAIntOverflowAttr intOverflowBehaviorAttr();
-  ::llvm::Optional<::mlir::NVVM::MMAIntOverflow> intOverflowBehavior();
-  ::mlir::NVVM::MMALayoutAttr layoutAAttr();
-  ::mlir::NVVM::MMALayout layoutA();
-  ::mlir::NVVM::MMALayoutAttr layoutBAttr();
-  ::mlir::NVVM::MMALayout layoutB();
-  ::mlir::NVVM::MMATypesAttr multiplicandAPtxTypeAttr();
-  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandAPtxType();
-  ::mlir::NVVM::MMATypesAttr multiplicandBPtxTypeAttr();
-  ::llvm::Optional<::mlir::NVVM::MMATypes> multiplicandBPtxType();
-  void shapeAttr(::mlir::NVVM::MMAShapeAttr attr);
-  void b1OpAttr(::mlir::NVVM::MMAB1OpAttr attr);
-  void intOverflowBehaviorAttr(::mlir::NVVM::MMAIntOverflowAttr attr);
-  void layoutAAttr(::mlir::NVVM::MMALayoutAttr attr);
-  void layoutBAttr(::mlir::NVVM::MMALayoutAttr attr);
-  void multiplicandAPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr);
-  void multiplicandBPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr);
+  ::mlir::Value getRes();
+  ::mlir::NVVM::MMAShapeAttr getShapeAttr();
+  ::mlir::NVVM::MMAShapeAttr getShape();
+  ::mlir::NVVM::MMAB1OpAttr getB1OpAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAB1Op> getB1Op();
+  ::mlir::NVVM::MMAIntOverflowAttr getIntOverflowBehaviorAttr();
+  ::llvm::Optional<::mlir::NVVM::MMAIntOverflow> getIntOverflowBehavior();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAAttr();
+  ::mlir::NVVM::MMALayout getLayoutA();
+  ::mlir::NVVM::MMALayoutAttr getLayoutBAttr();
+  ::mlir::NVVM::MMALayout getLayoutB();
+  ::mlir::NVVM::MMATypesAttr getMultiplicandAPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> getMultiplicandAPtxType();
+  ::mlir::NVVM::MMATypesAttr getMultiplicandBPtxTypeAttr();
+  ::llvm::Optional<::mlir::NVVM::MMATypes> getMultiplicandBPtxType();
+  void setShapeAttr(::mlir::NVVM::MMAShapeAttr attr);
+  void setB1OpAttr(::mlir::NVVM::MMAB1OpAttr attr);
+  void setIntOverflowBehaviorAttr(::mlir::NVVM::MMAIntOverflowAttr attr);
+  void setLayoutAAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void setLayoutBAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void setMultiplicandAPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr);
+  void setMultiplicandBPtxTypeAttr(::mlir::NVVM::MMATypesAttr attr);
   ::mlir::Attribute removeB1OpAttr();
   ::mlir::Attribute removeIntOverflowBehaviorAttr();
   ::mlir::Attribute removeMultiplicandAPtxTypeAttr();
@@ -1303,7 +1308,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 4    && "tf32" == eltypeA && "tf32" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 4    && "tf32" == eltypeA && "tf32" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k4_row_col_tf32;
 
 
@@ -1312,7 +1317,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "tf32" == eltypeA && "tf32" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "tf32" == eltypeA && "tf32" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_tf32;
 
 
@@ -1321,7 +1326,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "bf16" == eltypeA && "bf16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "bf16" == eltypeA && "bf16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_bf16;
 
 
@@ -1330,7 +1335,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "bf16" == eltypeA && "bf16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "bf16" == eltypeA && "bf16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_bf16;
 
 
@@ -1339,35 +1344,35 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f64" == eltypeA && "f64" == eltypeB &&  "f64" == eltypeC &&  "f64" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f64" == eltypeA && "f64" == eltypeB &&  "f64" == eltypeC &&  "f64" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f64;
 
 
 
 
 
-  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_row_f16_f16;
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f16_f16;
 
-  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_col_row_f16_f16;
 
-  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_col_col_f16_f16;
 
-  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_row_f32_f16;
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f32_f16;
 
-  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_col_row_f32_f16;
 
-  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_col_col_f32_f16;
 
 
@@ -1378,21 +1383,21 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_row_f32_f32;
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_row_col_f32_f32;
 
-  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "col" && layoutB == "row" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_col_row_f32_f32;
 
-  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "col" && layoutB == "col" &&     m == 8 && n == 8 && k == 4    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k4_col_col_f32_f32;
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_f16_f16;
 
 
@@ -1417,7 +1422,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 8    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k8_row_col_f32_f32;
 
 
@@ -1426,7 +1431,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f16_f16;
 
 
@@ -1435,7 +1440,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f16" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f32_f16;
 
 
@@ -1444,7 +1449,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f16" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f16" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f16_f32;
 
 
@@ -1453,7 +1458,7 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "f16" == eltypeA && "f16" == eltypeB &&  "f32" == eltypeC &&  "f32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_f32_f32;
 
 
@@ -1462,9 +1467,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_s8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_s8;
 
 
@@ -1472,9 +1477,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_s8_u8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_s8_u8;
 
 
@@ -1482,9 +1487,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_u8_s8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_u8_s8;
 
 
@@ -1492,9 +1497,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_u8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k16_row_col_satfinite_u8;
 
 
@@ -1502,9 +1507,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_s8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_s8;
 
 
@@ -1512,9 +1517,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_s8_u8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_s8_u8;
 
 
@@ -1522,9 +1527,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_u8_s8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_u8_s8;
 
 
@@ -1532,9 +1537,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_u8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 16    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k16_row_col_satfinite_u8;
 
 
@@ -1542,9 +1547,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s8;
 
 
@@ -1552,9 +1557,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s8_u8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s8_u8;
 
 
@@ -1562,9 +1567,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u8_s8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "s8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u8_s8;
 
 
@@ -1572,9 +1577,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u8;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u8" == eltypeA && "u8" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u8;
 
 
@@ -1582,9 +1587,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_s4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_s4;
 
 
@@ -1592,9 +1597,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_s4_u4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_s4_u4;
 
 
@@ -1602,9 +1607,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_u4_s4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_u4_s4;
 
 
@@ -1612,9 +1617,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_u4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m8n8k32_row_col_satfinite_u4;
 
 
@@ -1622,9 +1627,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s4;
 
 
@@ -1632,9 +1637,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_s4_u4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_s4_u4;
 
 
@@ -1642,9 +1647,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u4_s4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u4_s4;
 
 
@@ -1652,9 +1657,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_u4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 32    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k32_row_col_satfinite_u4;
 
 
@@ -1662,9 +1667,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_s4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_s4;
 
 
@@ -1672,9 +1677,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_s4_u4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "s4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_s4_u4;
 
 
@@ -1682,9 +1687,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_u4_s4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "s4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_u4_s4;
 
 
@@ -1692,9 +1697,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_u4;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 1 == static_cast<int>(*sat) : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 64    && "u4" == eltypeA && "u4" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 1 == static_cast<int>(*sat) : true))
     return llvm::Intrinsic::nvvm_mma_m16n8k64_row_col_satfinite_u4;
 
 
@@ -1704,9 +1709,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::xor_popc == b1Op.getValue() : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.has_value() ? MMAB1Op::xor_popc == b1Op.value() : true))
     return llvm::Intrinsic::nvvm_mma_xor_popc_m8n8k128_row_col_b1;
-  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::and_popc == b1Op.getValue() : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 8 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.has_value() ? MMAB1Op::and_popc == b1Op.value() : true))
     return llvm::Intrinsic::nvvm_mma_and_popc_m8n8k128_row_col_b1;
 
 
@@ -1722,9 +1727,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::xor_popc == b1Op.getValue() : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.has_value() ? MMAB1Op::xor_popc == b1Op.value() : true))
     return llvm::Intrinsic::nvvm_mma_xor_popc_m16n8k128_row_col_b1;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::and_popc == b1Op.getValue() : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 128    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.has_value() ? MMAB1Op::and_popc == b1Op.value() : true))
     return llvm::Intrinsic::nvvm_mma_and_popc_m16n8k128_row_col_b1;
 
 
@@ -1740,9 +1745,9 @@ public:
 
 
 
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 256    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::xor_popc == b1Op.getValue() : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 256    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.has_value() ? MMAB1Op::xor_popc == b1Op.value() : true))
     return llvm::Intrinsic::nvvm_mma_xor_popc_m16n8k256_row_col_b1;
-  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 256    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.hasValue()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.hasValue() ? MMAB1Op::and_popc == b1Op.getValue() : true))
+  if (layoutA == "row" && layoutB == "col" &&     m == 16 && n == 8 && k == 256    && "b1" == eltypeA && "b1" == eltypeB &&  "s32" == eltypeC &&  "s32" == eltypeD  && (sat.has_value()  ? 0 == static_cast<int>(*sat) : true) && (b1Op.has_value() ? MMAB1Op::and_popc == b1Op.value() : true))
     return llvm::Intrinsic::nvvm_mma_and_popc_m16n8k256_row_col_b1;
 
 
@@ -1771,6 +1776,66 @@ namespace mlir {
 namespace NVVM {
 
 //===----------------------------------------------------------------------===//
+// ::mlir::NVVM::RcpApproxFtzF32Op declarations
+//===----------------------------------------------------------------------===//
+
+class RcpApproxFtzF32OpAdaptor {
+public:
+  RcpApproxFtzF32OpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  RcpApproxFtzF32OpAdaptor(RcpApproxFtzF32Op op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getArg();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class RcpApproxFtzF32Op : public ::mlir::Op<RcpApproxFtzF32Op, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::FloatType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = RcpApproxFtzF32OpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("nvvm.rcp.approx.ftz.f");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::TypedValue<::mlir::FloatType> getArg();
+  ::mlir::MutableOperandRange getArgMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::TypedValue<::mlir::FloatType> getRes();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value arg);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value arg);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+public:
+};
+} // namespace NVVM
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::NVVM::RcpApproxFtzF32Op)
+
+namespace mlir {
+namespace NVVM {
+
+//===----------------------------------------------------------------------===//
 // ::mlir::NVVM::ShflOp declarations
 //===----------------------------------------------------------------------===//
 
@@ -1783,15 +1848,15 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value dst();
-  ::mlir::Value val();
-  ::mlir::Value offset();
-  ::mlir::Value mask_and_clamp();
+  ::mlir::Value getDst();
+  ::mlir::Value getVal();
+  ::mlir::Value getOffset();
+  ::mlir::Value getMaskAndClamp();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::NVVM::ShflKindAttr kindAttr();
-  ::mlir::NVVM::ShflKind kind();
-  ::mlir::UnitAttr return_value_and_is_validAttr();
-  ::llvm::Optional<bool> return_value_and_is_valid();
+  ::mlir::NVVM::ShflKindAttr getKindAttr();
+  ::mlir::NVVM::ShflKind getKind();
+  ::mlir::UnitAttr getReturnValueAndIsValidAttr();
+  ::llvm::Optional<bool> getReturnValueAndIsValid();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -1810,19 +1875,19 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr kindAttrName() {
+  ::mlir::StringAttr getKindAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr kindAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getKindAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr return_value_and_is_validAttrName() {
+  ::mlir::StringAttr getReturnValueAndIsValidAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr return_value_and_is_validAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getReturnValueAndIsValidAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
@@ -1832,23 +1897,23 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value dst();
-  ::mlir::Value val();
-  ::mlir::Value offset();
-  ::mlir::Value mask_and_clamp();
-  ::mlir::MutableOperandRange dstMutable();
-  ::mlir::MutableOperandRange valMutable();
-  ::mlir::MutableOperandRange offsetMutable();
-  ::mlir::MutableOperandRange mask_and_clampMutable();
+  ::mlir::TypedValue<::mlir::IntegerType> getDst();
+  ::mlir::Value getVal();
+  ::mlir::TypedValue<::mlir::IntegerType> getOffset();
+  ::mlir::TypedValue<::mlir::IntegerType> getMaskAndClamp();
+  ::mlir::MutableOperandRange getDstMutable();
+  ::mlir::MutableOperandRange getValMutable();
+  ::mlir::MutableOperandRange getOffsetMutable();
+  ::mlir::MutableOperandRange getMaskAndClampMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
-  ::mlir::NVVM::ShflKindAttr kindAttr();
-  ::mlir::NVVM::ShflKind kind();
-  ::mlir::UnitAttr return_value_and_is_validAttr();
-  ::llvm::Optional<bool> return_value_and_is_valid();
-  void kindAttr(::mlir::NVVM::ShflKindAttr attr);
-  void return_value_and_is_validAttr(::mlir::UnitAttr attr);
+  ::mlir::Value getRes();
+  ::mlir::NVVM::ShflKindAttr getKindAttr();
+  ::mlir::NVVM::ShflKind getKind();
+  ::mlir::UnitAttr getReturnValueAndIsValidAttr();
+  ::llvm::Optional<bool> getReturnValueAndIsValid();
+  void setKindAttr(::mlir::NVVM::ShflKindAttr attr);
+  void setReturnValueAndIsValidAttr(::mlir::UnitAttr attr);
   ::mlir::Attribute removeReturn_value_and_is_validAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value dst, ::mlir::Value val, ::mlir::Value offset, ::mlir::Value mask_and_clamp, ::mlir::NVVM::ShflKindAttr kind, /*optional*/::mlir::UnitAttr return_value_and_is_valid);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value dst, ::mlir::Value val, ::mlir::Value offset, ::mlir::Value mask_and_clamp, ::mlir::NVVM::ShflKindAttr kind, /*optional*/::mlir::UnitAttr return_value_and_is_valid);
@@ -1918,7 +1983,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -1975,7 +2040,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -2032,7 +2097,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -2063,8 +2128,8 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value mask();
-  ::mlir::Value pred();
+  ::mlir::Value getMask();
+  ::mlir::Value getPred();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -2089,13 +2154,13 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value mask();
-  ::mlir::Value pred();
-  ::mlir::MutableOperandRange maskMutable();
-  ::mlir::MutableOperandRange predMutable();
+  ::mlir::Value getMask();
+  ::mlir::Value getPred();
+  ::mlir::MutableOperandRange getMaskMutable();
+  ::mlir::MutableOperandRange getPredMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value mask, ::mlir::Value pred);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value mask, ::mlir::Value pred);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -2125,21 +2190,21 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value ptr();
-  ::mlir::Value stride();
+  ::mlir::Value getPtr();
+  ::mlir::Value getStride();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr mAttr();
-  uint32_t m();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  ::mlir::IntegerAttr kAttr();
-  uint32_t k();
-  ::mlir::NVVM::MMALayoutAttr layoutAttr();
-  ::mlir::NVVM::MMALayout layout();
-  ::mlir::NVVM::MMATypesAttr eltypeAttr();
-  ::mlir::NVVM::MMATypes eltype();
-  ::mlir::NVVM::MMAFragAttr fragAttr();
-  ::mlir::NVVM::MMAFrag frag();
+  ::mlir::IntegerAttr getMAttr();
+  uint32_t getM();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  ::mlir::IntegerAttr getKAttr();
+  uint32_t getK();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAttr();
+  ::mlir::NVVM::MMALayout getLayout();
+  ::mlir::NVVM::MMATypesAttr getEltypeAttr();
+  ::mlir::NVVM::MMATypes getEltype();
+  ::mlir::NVVM::MMAFragAttr getFragAttr();
+  ::mlir::NVVM::MMAFrag getFrag();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2158,51 +2223,51 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr eltypeAttrName() {
+  ::mlir::StringAttr getEltypeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr eltypeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getEltypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr fragAttrName() {
+  ::mlir::StringAttr getFragAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr fragAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getFragAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr kAttrName() {
+  ::mlir::StringAttr getKAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr kAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getKAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr layoutAttrName() {
+  ::mlir::StringAttr getLayoutAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr layoutAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr mAttrName() {
+  ::mlir::StringAttr getMAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr mAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr nAttrName() {
+  ::mlir::StringAttr getNAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr nAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
@@ -2212,31 +2277,31 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ptr();
-  ::mlir::Value stride();
-  ::mlir::MutableOperandRange ptrMutable();
-  ::mlir::MutableOperandRange strideMutable();
+  ::mlir::TypedValue<::mlir::LLVM::LLVMPointerType> getPtr();
+  ::mlir::TypedValue<::mlir::IntegerType> getStride();
+  ::mlir::MutableOperandRange getPtrMutable();
+  ::mlir::MutableOperandRange getStrideMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
-  ::mlir::IntegerAttr mAttr();
-  uint32_t m();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  ::mlir::IntegerAttr kAttr();
-  uint32_t k();
-  ::mlir::NVVM::MMALayoutAttr layoutAttr();
-  ::mlir::NVVM::MMALayout layout();
-  ::mlir::NVVM::MMATypesAttr eltypeAttr();
-  ::mlir::NVVM::MMATypes eltype();
-  ::mlir::NVVM::MMAFragAttr fragAttr();
-  ::mlir::NVVM::MMAFrag frag();
-  void mAttr(::mlir::IntegerAttr attr);
-  void nAttr(::mlir::IntegerAttr attr);
-  void kAttr(::mlir::IntegerAttr attr);
-  void layoutAttr(::mlir::NVVM::MMALayoutAttr attr);
-  void eltypeAttr(::mlir::NVVM::MMATypesAttr attr);
-  void fragAttr(::mlir::NVVM::MMAFragAttr attr);
+  ::mlir::Value getRes();
+  ::mlir::IntegerAttr getMAttr();
+  uint32_t getM();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  ::mlir::IntegerAttr getKAttr();
+  uint32_t getK();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAttr();
+  ::mlir::NVVM::MMALayout getLayout();
+  ::mlir::NVVM::MMATypesAttr getEltypeAttr();
+  ::mlir::NVVM::MMATypes getEltype();
+  ::mlir::NVVM::MMAFragAttr getFragAttr();
+  ::mlir::NVVM::MMAFrag getFrag();
+  void setMAttr(::mlir::IntegerAttr attr);
+  void setNAttr(::mlir::IntegerAttr attr);
+  void setKAttr(::mlir::IntegerAttr attr);
+  void setLayoutAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void setEltypeAttr(::mlir::NVVM::MMATypesAttr attr);
+  void setFragAttr(::mlir::NVVM::MMAFragAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::Value stride, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::NVVM::MMAFragAttr frag);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::Value stride, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::NVVM::MMAFragAttr frag);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::Value ptr, ::mlir::Value stride, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layout, ::mlir::NVVM::MMATypes eltype, ::mlir::NVVM::MMAFrag frag);
@@ -2336,22 +2401,22 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange args();
+  ::mlir::ValueRange getArgs();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr mAttr();
-  uint32_t m();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  ::mlir::IntegerAttr kAttr();
-  uint32_t k();
-  ::mlir::NVVM::MMALayoutAttr layoutAAttr();
-  ::mlir::NVVM::MMALayout layoutA();
-  ::mlir::NVVM::MMALayoutAttr layoutBAttr();
-  ::mlir::NVVM::MMALayout layoutB();
-  ::mlir::NVVM::MMATypesAttr eltypeAAttr();
-  ::mlir::NVVM::MMATypes eltypeA();
-  ::mlir::NVVM::MMATypesAttr eltypeBAttr();
-  ::mlir::NVVM::MMATypes eltypeB();
+  ::mlir::IntegerAttr getMAttr();
+  uint32_t getM();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  ::mlir::IntegerAttr getKAttr();
+  uint32_t getK();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAAttr();
+  ::mlir::NVVM::MMALayout getLayoutA();
+  ::mlir::NVVM::MMALayoutAttr getLayoutBAttr();
+  ::mlir::NVVM::MMALayout getLayoutB();
+  ::mlir::NVVM::MMATypesAttr getEltypeAAttr();
+  ::mlir::NVVM::MMATypes getEltypeA();
+  ::mlir::NVVM::MMATypesAttr getEltypeBAttr();
+  ::mlir::NVVM::MMATypes getEltypeB();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2370,59 +2435,59 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr eltypeAAttrName() {
+  ::mlir::StringAttr getEltypeAAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr eltypeAAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getEltypeAAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr eltypeBAttrName() {
+  ::mlir::StringAttr getEltypeBAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr eltypeBAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getEltypeBAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr kAttrName() {
+  ::mlir::StringAttr getKAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr kAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getKAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr layoutAAttrName() {
+  ::mlir::StringAttr getLayoutAAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr layoutAAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutAAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr layoutBAttrName() {
+  ::mlir::StringAttr getLayoutBAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr layoutBAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutBAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
-  ::mlir::StringAttr mAttrName() {
+  ::mlir::StringAttr getMAttrName() {
     return getAttributeNameForIndex(5);
   }
 
-  static ::mlir::StringAttr mAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 5);
   }
 
-  ::mlir::StringAttr nAttrName() {
+  ::mlir::StringAttr getNAttrName() {
     return getAttributeNameForIndex(6);
   }
 
-  static ::mlir::StringAttr nAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 6);
   }
 
@@ -2432,32 +2497,32 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range args();
-  ::mlir::MutableOperandRange argsMutable();
+  ::mlir::Operation::operand_range getArgs();
+  ::mlir::MutableOperandRange getArgsMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
-  ::mlir::IntegerAttr mAttr();
-  uint32_t m();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  ::mlir::IntegerAttr kAttr();
-  uint32_t k();
-  ::mlir::NVVM::MMALayoutAttr layoutAAttr();
-  ::mlir::NVVM::MMALayout layoutA();
-  ::mlir::NVVM::MMALayoutAttr layoutBAttr();
-  ::mlir::NVVM::MMALayout layoutB();
-  ::mlir::NVVM::MMATypesAttr eltypeAAttr();
-  ::mlir::NVVM::MMATypes eltypeA();
-  ::mlir::NVVM::MMATypesAttr eltypeBAttr();
-  ::mlir::NVVM::MMATypes eltypeB();
-  void mAttr(::mlir::IntegerAttr attr);
-  void nAttr(::mlir::IntegerAttr attr);
-  void kAttr(::mlir::IntegerAttr attr);
-  void layoutAAttr(::mlir::NVVM::MMALayoutAttr attr);
-  void layoutBAttr(::mlir::NVVM::MMALayoutAttr attr);
-  void eltypeAAttr(::mlir::NVVM::MMATypesAttr attr);
-  void eltypeBAttr(::mlir::NVVM::MMATypesAttr attr);
+  ::mlir::Value getRes();
+  ::mlir::IntegerAttr getMAttr();
+  uint32_t getM();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  ::mlir::IntegerAttr getKAttr();
+  uint32_t getK();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAAttr();
+  ::mlir::NVVM::MMALayout getLayoutA();
+  ::mlir::NVVM::MMALayoutAttr getLayoutBAttr();
+  ::mlir::NVVM::MMALayout getLayoutB();
+  ::mlir::NVVM::MMATypesAttr getEltypeAAttr();
+  ::mlir::NVVM::MMATypes getEltypeA();
+  ::mlir::NVVM::MMATypesAttr getEltypeBAttr();
+  ::mlir::NVVM::MMATypes getEltypeB();
+  void setMAttr(::mlir::IntegerAttr attr);
+  void setNAttr(::mlir::IntegerAttr attr);
+  void setKAttr(::mlir::IntegerAttr attr);
+  void setLayoutAAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void setLayoutBAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void setEltypeAAttr(::mlir::NVVM::MMATypesAttr attr);
+  void setEltypeBAttr(::mlir::NVVM::MMATypesAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, ::mlir::NVVM::MMATypesAttr eltypeA, ::mlir::NVVM::MMATypesAttr eltypeB, ::mlir::ValueRange args);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layoutA, ::mlir::NVVM::MMALayoutAttr layoutB, ::mlir::NVVM::MMATypesAttr eltypeA, ::mlir::NVVM::MMATypesAttr eltypeB, ::mlir::ValueRange args);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layoutA, ::mlir::NVVM::MMALayout layoutB, ::mlir::NVVM::MMATypes eltypeA, ::mlir::NVVM::MMATypes eltypeB, ::mlir::ValueRange args);
@@ -2531,20 +2596,20 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value ptr();
-  ::mlir::ValueRange args();
-  ::mlir::Value stride();
+  ::mlir::Value getPtr();
+  ::mlir::ValueRange getArgs();
+  ::mlir::Value getStride();
   ::mlir::DictionaryAttr getAttributes();
-  ::mlir::IntegerAttr mAttr();
-  uint32_t m();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  ::mlir::IntegerAttr kAttr();
-  uint32_t k();
-  ::mlir::NVVM::MMALayoutAttr layoutAttr();
-  ::mlir::NVVM::MMALayout layout();
-  ::mlir::NVVM::MMATypesAttr eltypeAttr();
-  ::mlir::NVVM::MMATypes eltype();
+  ::mlir::IntegerAttr getMAttr();
+  uint32_t getM();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  ::mlir::IntegerAttr getKAttr();
+  uint32_t getK();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAttr();
+  ::mlir::NVVM::MMALayout getLayout();
+  ::mlir::NVVM::MMATypesAttr getEltypeAttr();
+  ::mlir::NVVM::MMATypes getEltype();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -2563,43 +2628,43 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
-  ::mlir::StringAttr eltypeAttrName() {
+  ::mlir::StringAttr getEltypeAttrName() {
     return getAttributeNameForIndex(0);
   }
 
-  static ::mlir::StringAttr eltypeAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getEltypeAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 0);
   }
 
-  ::mlir::StringAttr kAttrName() {
+  ::mlir::StringAttr getKAttrName() {
     return getAttributeNameForIndex(1);
   }
 
-  static ::mlir::StringAttr kAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getKAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 1);
   }
 
-  ::mlir::StringAttr layoutAttrName() {
+  ::mlir::StringAttr getLayoutAttrName() {
     return getAttributeNameForIndex(2);
   }
 
-  static ::mlir::StringAttr layoutAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getLayoutAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 2);
   }
 
-  ::mlir::StringAttr mAttrName() {
+  ::mlir::StringAttr getMAttrName() {
     return getAttributeNameForIndex(3);
   }
 
-  static ::mlir::StringAttr mAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getMAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 3);
   }
 
-  ::mlir::StringAttr nAttrName() {
+  ::mlir::StringAttr getNAttrName() {
     return getAttributeNameForIndex(4);
   }
 
-  static ::mlir::StringAttr nAttrName(::mlir::OperationName name) {
+  static ::mlir::StringAttr getNAttrName(::mlir::OperationName name) {
     return getAttributeNameForIndex(name, 4);
   }
 
@@ -2609,29 +2674,29 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ptr();
-  ::mlir::Operation::operand_range args();
-  ::mlir::Value stride();
-  ::mlir::MutableOperandRange ptrMutable();
-  ::mlir::MutableOperandRange argsMutable();
-  ::mlir::MutableOperandRange strideMutable();
+  ::mlir::TypedValue<::mlir::LLVM::LLVMPointerType> getPtr();
+  ::mlir::Operation::operand_range getArgs();
+  ::mlir::TypedValue<::mlir::IntegerType> getStride();
+  ::mlir::MutableOperandRange getPtrMutable();
+  ::mlir::MutableOperandRange getArgsMutable();
+  ::mlir::MutableOperandRange getStrideMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::IntegerAttr mAttr();
-  uint32_t m();
-  ::mlir::IntegerAttr nAttr();
-  uint32_t n();
-  ::mlir::IntegerAttr kAttr();
-  uint32_t k();
-  ::mlir::NVVM::MMALayoutAttr layoutAttr();
-  ::mlir::NVVM::MMALayout layout();
-  ::mlir::NVVM::MMATypesAttr eltypeAttr();
-  ::mlir::NVVM::MMATypes eltype();
-  void mAttr(::mlir::IntegerAttr attr);
-  void nAttr(::mlir::IntegerAttr attr);
-  void kAttr(::mlir::IntegerAttr attr);
-  void layoutAttr(::mlir::NVVM::MMALayoutAttr attr);
-  void eltypeAttr(::mlir::NVVM::MMATypesAttr attr);
+  ::mlir::IntegerAttr getMAttr();
+  uint32_t getM();
+  ::mlir::IntegerAttr getNAttr();
+  uint32_t getN();
+  ::mlir::IntegerAttr getKAttr();
+  uint32_t getK();
+  ::mlir::NVVM::MMALayoutAttr getLayoutAttr();
+  ::mlir::NVVM::MMALayout getLayout();
+  ::mlir::NVVM::MMATypesAttr getEltypeAttr();
+  ::mlir::NVVM::MMATypes getEltype();
+  void setMAttr(::mlir::IntegerAttr attr);
+  void setNAttr(::mlir::IntegerAttr attr);
+  void setKAttr(::mlir::IntegerAttr attr);
+  void setLayoutAttr(::mlir::NVVM::MMALayoutAttr attr);
+  void setEltypeAttr(::mlir::NVVM::MMATypesAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value ptr, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::ValueRange args, ::mlir::Value stride);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value ptr, ::mlir::IntegerAttr m, ::mlir::IntegerAttr n, ::mlir::IntegerAttr k, ::mlir::NVVM::MMALayoutAttr layout, ::mlir::NVVM::MMATypesAttr eltype, ::mlir::ValueRange args, ::mlir::Value stride);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value ptr, uint32_t m, uint32_t n, uint32_t k, ::mlir::NVVM::MMALayout layout, ::mlir::NVVM::MMATypes eltype, ::mlir::ValueRange args, ::mlir::Value stride);
@@ -2726,7 +2791,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value res();
+  ::mlir::Value getRes();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type res);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});

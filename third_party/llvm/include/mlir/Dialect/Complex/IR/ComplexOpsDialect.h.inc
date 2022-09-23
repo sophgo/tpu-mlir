@@ -20,6 +20,14 @@ public:
     return ::llvm::StringLiteral("complex");
   }
 
+  /// Parse an attribute registered to this dialect.
+  ::mlir::Attribute parseAttribute(::mlir::DialectAsmParser &parser,
+                                   ::mlir::Type type) const override;
+
+  /// Print an attribute registered to this dialect.
+  void printAttribute(::mlir::Attribute attr,
+                      ::mlir::DialectAsmPrinter &os) const override;
+
   /// Materialize a single constant operation from a given attribute value with
   /// the desired resultant type.
   ::mlir::Operation *materializeConstant(::mlir::OpBuilder &builder,

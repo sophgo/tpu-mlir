@@ -313,7 +313,7 @@ public:
   ::mlir::MutableOperandRange typeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value attr();
+  ::mlir::TypedValue<::mlir::pdl::AttributeType> attr();
   ::mlir::Attribute valueAttr();
   ::llvm::Optional<::mlir::Attribute> value();
   void valueAttr(::mlir::Attribute attr);
@@ -385,7 +385,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::TypedValue<::mlir::pdl::OperationType> operation();
   ::mlir::MutableOperandRange operationMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -447,7 +447,7 @@ public:
   ::mlir::MutableOperandRange typeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value val();
+  ::mlir::TypedValue<::mlir::pdl::ValueType> val();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type val, /*optional*/::mlir::Value type);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value type);
@@ -504,11 +504,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value type();
+  ::mlir::TypedValue<::mlir::pdl::RangeType> type();
   ::mlir::MutableOperandRange typeMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value val();
+  ::mlir::TypedValue<::mlir::pdl::RangeType> val();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type val, /*optional*/::mlir::Value type);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, /*optional*/::mlir::Value type);
@@ -604,7 +604,7 @@ public:
   ::mlir::MutableOperandRange typesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value op();
+  ::mlir::TypedValue<::mlir::pdl::OperationType> op();
   ::mlir::StringAttr nameAttr();
   ::llvm::Optional< ::llvm::StringRef > name();
   ::mlir::ArrayAttr attributeNamesAttr();
@@ -808,7 +808,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value operation();
+  ::mlir::TypedValue<::mlir::pdl::OperationType> operation();
   ::mlir::Value replOperation();
   ::mlir::Operation::operand_range replValues();
   ::mlir::MutableOperandRange operationMutable();
@@ -892,11 +892,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value parent();
+  ::mlir::TypedValue<::mlir::pdl::OperationType> parent();
   ::mlir::MutableOperandRange parentMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value val();
+  ::mlir::TypedValue<::mlir::pdl::ValueType> val();
   ::mlir::IntegerAttr indexAttr();
   uint32_t index();
   void indexAttr(::mlir::IntegerAttr attr);
@@ -978,11 +978,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value parent();
+  ::mlir::TypedValue<::mlir::pdl::OperationType> parent();
   ::mlir::MutableOperandRange parentMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value val();
+  ::mlir::TypedValue<::mlir::pdl::PDLType> val();
   ::mlir::IntegerAttr indexAttr();
   ::llvm::Optional<uint32_t> index();
   void indexAttr(::mlir::IntegerAttr attr);
@@ -1164,7 +1164,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::pdl::TypeType> result();
   ::mlir::TypeAttr typeAttr();
   ::llvm::Optional<::mlir::Type> type();
   void typeAttr(::mlir::TypeAttr attr);
@@ -1246,7 +1246,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::pdl::RangeType> result();
   ::mlir::ArrayAttr typesAttr();
   ::llvm::Optional< ::mlir::ArrayAttr > types();
   void typesAttr(::mlir::ArrayAttr attr);

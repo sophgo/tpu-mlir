@@ -31,6 +31,7 @@ struct AffineMapAccessInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     NamedAttribute getAffineMapAttrForMemRef(::mlir::Operation *tablegen_opaque_val, Value memref) const;
   };
 };template <typename ConcreteOp>
@@ -42,16 +43,18 @@ public:
   using ::mlir::OpInterface<AffineMapAccessInterface, detail::AffineMapAccessInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::AffineMapAccessInterfaceTrait<ConcreteOp> {};
+  /// Returns the AffineMapAttr associated with 'memref'.
   NamedAttribute getAffineMapAttrForMemRef(Value memref);
 };
 namespace detail {
   template <typename ConcreteOp>
   struct AffineMapAccessInterfaceTrait : public ::mlir::OpInterface<AffineMapAccessInterface, detail::AffineMapAccessInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Returns the AffineMapAttr associated with 'memref'.
     NamedAttribute getAffineMapAttrForMemRef(Value memref) {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         assert(memref == op.getMemRef() &&
                "Expected memref argument to match memref operand");
-        return {StringAttr::get(op.getContext(), op.getMapAttrName()),
+        return {StringAttr::get(op.getContext(), op.getMapAttrStrName()),
                 op.getAffineMapAttr()};
     }
   };
@@ -69,7 +72,7 @@ NamedAttribute detail::AffineMapAccessInterfaceInterfaceTraits::ExternalModel<Co
 ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         assert(memref == op.getMemRef() &&
                "Expected memref argument to match memref operand");
-        return {StringAttr::get(op.getContext(), op.getMapAttrName()),
+        return {StringAttr::get(op.getContext(), op.getMapAttrStrName()),
                 op.getAffineMapAttr()};
 }
 class AffineReadOpInterface;
@@ -109,6 +112,7 @@ struct AffineReadOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     Value getMemRef(::mlir::Operation *tablegen_opaque_val) const;
     MemRefType getMemRefType(::mlir::Operation *tablegen_opaque_val) const;
     Operation::operand_range getMapOperands(::mlir::Operation *tablegen_opaque_val) const;
@@ -124,31 +128,41 @@ public:
   using ::mlir::OpInterface<AffineReadOpInterface, detail::AffineReadOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::AffineReadOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the memref operand to read from.
   Value getMemRef();
+  /// Returns the type of the memref operand.
   MemRefType getMemRefType();
+  /// Returns affine map operands.
   Operation::operand_range getMapOperands();
+  /// Returns the affine map used to index the memref for this operation.
   AffineMap getAffineMap();
+  /// Returns the value read by this operation.
   Value getValue();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct AffineReadOpInterfaceTrait : public ::mlir::OpInterface<AffineReadOpInterface, detail::AffineReadOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Returns the memref operand to read from.
     Value getMemRef() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getOperand(op.getMemRefOperandIndex());
     }
+    /// Returns the type of the memref operand.
     MemRefType getMemRefType() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getMemRef().getType().template cast<MemRefType>();
     }
+    /// Returns affine map operands.
     Operation::operand_range getMapOperands() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return llvm::drop_begin(op.getOperands(), 1);
     }
+    /// Returns the affine map used to index the memref for this operation.
     AffineMap getAffineMap() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getAffineMapAttr().getValue();
     }
+    /// Returns the value read by this operation.
     Value getValue() {
       return cast<ConcreteOp>(this->getOperation());
     }
@@ -255,6 +269,7 @@ struct AffineWriteOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     Value getMemRef(::mlir::Operation *tablegen_opaque_val) const;
     MemRefType getMemRefType(::mlir::Operation *tablegen_opaque_val) const;
     Operation::operand_range getMapOperands(::mlir::Operation *tablegen_opaque_val) const;
@@ -270,31 +285,41 @@ public:
   using ::mlir::OpInterface<AffineWriteOpInterface, detail::AffineWriteOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::AffineWriteOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the memref operand to write to.
   Value getMemRef();
+  /// Returns the type of the memref operand.
   MemRefType getMemRefType();
+  /// Returns affine map operands.
   Operation::operand_range getMapOperands();
+  /// Returns the affine map used to index the memref for this operation.
   AffineMap getAffineMap();
+  /// Returns the value to store.
   Value getValueToStore();
 };
 namespace detail {
   template <typename ConcreteOp>
   struct AffineWriteOpInterfaceTrait : public ::mlir::OpInterface<AffineWriteOpInterface, detail::AffineWriteOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Returns the memref operand to write to.
     Value getMemRef() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getOperand(op.getMemRefOperandIndex());
     }
+    /// Returns the type of the memref operand.
     MemRefType getMemRefType() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getMemRef().getType().template cast<MemRefType>();
     }
+    /// Returns affine map operands.
     Operation::operand_range getMapOperands() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return llvm::drop_begin(op.getOperands(), 2);
     }
+    /// Returns the affine map used to index the memref for this operation.
     AffineMap getAffineMap() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getAffineMapAttr().getValue();
     }
+    /// Returns the value to store.
     Value getValueToStore() {
       ConcreteOp op = cast<ConcreteOp>(this->getOperation());
         return op.getOperand(op.getStoredValOperandIndex());

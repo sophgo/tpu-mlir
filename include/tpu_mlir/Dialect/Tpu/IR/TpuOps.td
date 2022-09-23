@@ -16,24 +16,102 @@
 #ifndef TPU_MLIR_TPU_OPS
 #define TPU_MLIR_TPU_OPS
 
+include "mlir/IR/AttrTypeBase.td"
+include "mlir/IR/OpBase.td"
+include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.td"
 include "tpu_mlir/Interfaces/LocalGenInterface.td"
 include "tpu_mlir/Interfaces/WeightReorderInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
-// ----------
-// type
-// ----------
+// =============================================================================
+//
+// Defines Tpu Dialect.
+//
+//===----------------------------------------------------------------------===//
+
+def Tpu_Dialect : Dialect {
+  let name = "tpu";
+  let summary = "A tpu dialect for the SOPHGO AI chips";
+  let cppNamespace = "::tpu_mlir::tpu";
+  let useDefaultAttributePrinterParser = 1;
+  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
+}
+
+//===----------------------------------------------------------------------===//
+// Tpu Attributes.
+//===----------------------------------------------------------------------===//
+
+class Tpu_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
+    : AttrDef<Tpu_Dialect, attrName, traits> {
+  let mnemonic = attrMnemonic;
+}
+
+def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
+  let summary = "Structure of layer group parameters";
+  let parameters = (ins
+    "int64_t":$out_addr,
+    "int64_t":$out_size,
+    "int64_t":$buffer_addr,
+    "int64_t":$buffer_size,
+    "bool":$eu_align,
+    ArrayRefParameter<"int64_t">:$h_idx,
+    ArrayRefParameter<"int64_t">:$h_slice,
+    ArrayRefParameter<"int64_t">:$n_idx,
+    ArrayRefParameter<"int64_t">:$n_slice,
+    "int64_t":$id,
+    "int64_t":$stage
+  );
+  let assemblyFormat = "`<` struct(params) `>`";
+}
+
+def Tpu_DequantMode: I32EnumAttr<"DequantMode",
+    "dequant mode supported by DequantOp",
+    [
+      I32EnumAttrCase<"Normal", 0>,
+      I32EnumAttrCase<"TFlite", 1>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_DequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_DequantMode, "dq_mode">;
+
+def Tpu_RequantMode: I32EnumAttr<"RequantMode",
+    "requant mode supported by RequantOp",
+    [
+      I32EnumAttrCase<"TFlite_Lshift", 0>,
+      I32EnumAttrCase<"TFlite", 1>,
+      I32EnumAttrCase<"Normal", 2>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
+
+def Tpu_PoolMode: I32EnumAttr<"PoolMode",
+    "pooling mode supported by PoolOp",
+    [
+      I32EnumAttrCase<"Avg", 0>,
+      I32EnumAttrCase<"Max", 1>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_PoolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PoolMode, "pool_mode">;
+
+//===----------------------------------------------------------------------===//
+// Tpu Types.
+//===----------------------------------------------------------------------===//
 
 def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
 def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 
-// ----------
-// op definition
-// ----------
+//===----------------------------------------------------------------------===//
+// Tpu Operations.
+//===----------------------------------------------------------------------===//
+
 class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,[NoSideEffect, TpuTypeRestrict])> ;
 
@@ -122,11 +200,18 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
     I64ArrayAttr:$kernel_shape,
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
+    Tpu_PoolModeAttr:$pool_mode,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    /// symmetric quantize param
+    OptionalAttr<I64Attr>:$multiplier,
+    OptionalAttr<I64Attr>:$rshift,
+    /// asymmetric quantize param
+    OptionalAttr<F64Attr>:$scale,
+    OptionalAttr<F64Attr>:$offset,
+    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
   );
 
   let results = (outs AnyTensor:$output);
@@ -135,65 +220,9 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   }];
 }
 
-def Tpu_MaxPool1DOp:Tpu_PoolOp<"MaxPool1D">;
-def Tpu_AvgPool1DOp:Tpu_PoolOp<"AvgPool1D"> {
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$kernel_shape,
-    I64ArrayAttr:$strides,
-    I64ArrayAttr:$pads,
-    DefaultValuedAttr<I64Attr, "0">:$pad_value,
-    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    /// symmetric quantize param
-    OptionalAttr<I64Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
-    /// asymmetric quantize param
-    OptionalAttr<F64Attr>:$scale,
-    OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
-  );
-}
-
-def Tpu_MaxPool2DOp:Tpu_PoolOp<"MaxPool2D">;
-def Tpu_AvgPool2DOp:Tpu_PoolOp<"AvgPool2D"> {
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$kernel_shape,
-    I64ArrayAttr:$strides,
-    I64ArrayAttr:$pads,
-    DefaultValuedAttr<I64Attr, "0">:$pad_value,
-    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    /// symmetric quantize param
-    OptionalAttr<I64Attr>:$multiplier,
-    OptionalAttr<I64Attr>:$rshift,
-    /// asymmetric quantize param
-    OptionalAttr<F64Attr>:$scale,
-    OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
-  );
-}
-
-def Tpu_MaxPool3DOp:Tpu_PoolOp<"MaxPool3D">;
-def Tpu_AvgPool3DOp:Tpu_PoolOp<"AvgPool3D"> {
-  let arguments = (ins
-    AnyTensor:$input,
-    I64ArrayAttr:$kernel_shape,
-    I64ArrayAttr:$strides,
-    I64ArrayAttr:$pads,
-    DefaultValuedAttr<I64Attr, "0">:$pad_value,
-    DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    /// quantize param
-    OptionalAttr<F64Attr>:$scale,
-    OptionalAttr<F64Attr>:$offset,
-    OptionalAttr<Tpu_LayerGroupAttr>:$layer_group
-  );
-}
+def Tpu_Pool1DOp:Tpu_PoolOp<"Pool1D">;
+def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
+def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
 
 def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
@@ -218,6 +247,28 @@ def Tpu_AddOp: Tpu_Op<"Add", [SupportFuseRelu, InOutSameDim,
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_AddConstOp: Tpu_Op<"AddConst", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "add const operator";
+
+  let description = [{
+    Elementwise add of input1 and input2. Input2 is constant.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    // quant param
+    DefaultValuedAttr<I64Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "mul operator";
@@ -233,6 +284,38 @@ def Tpu_MulOp: Tpu_Op<"Mul", [SupportFuseRelu, InOutSameDim,
     // quant param
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MaxOp: Tpu_Op<"Max", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "max operator";
+
+  let description = [{
+    Elementwise max of input1 and input2. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MinOp: Tpu_Op<"Min", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "min operator";
+
+  let description = [{
+    Elementwise min of input1 and input2. All inputs and outputs must have the same data type.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -319,6 +402,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -327,7 +411,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit);
+      double &relu_limit, int64_t &zp);
   }];
 }
 
@@ -420,6 +504,37 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
 def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis",
   [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "requant operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$quant,
+    Tpu_RequantModeAttr:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_RequantFpOp:Tpu_Op<"RequantFp",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "requant float operation";
+  let description = [{
+    Requant 32/16/8 bit data to int8 or uint8 data
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$scale,
+    DefaultValuedAttr<F64Attr, "0.0">:$offset,
+    Tpu_RequantModeAttr:$quant_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "requant float operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
   }];
@@ -643,7 +758,8 @@ def Tpu_PadOp:Tpu_Op<"Pad"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64ArrayAttr:$paddings
+    I64ArrayAttr:$paddings,
+    DefaultValuedAttr<F64Attr, "0.0">:$val
   );
   let results = (outs AnyTensor:$output);
 }
@@ -796,6 +912,20 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_TileOp:Tpu_Op<"Tile", [DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "Tile operation";
+  let description = [{
+    Returns a tensor with the same type as the input, with a new shape
+    specified by the shape argument.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$tile
+  );
   let results = (outs AnyTensor:$output);
 }
 

@@ -6,24 +6,40 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
+/// Returns true if the given value is defined outside of the loop.
+/// A sensible implementation could be to check whether the value's defining
+/// operation lies outside of the loops body region. If the loop uses
+/// explicit capture of dependencies, an implementation could check whether
+/// the value corresponds to a captured dependency.
 bool mlir::LoopLikeOpInterface::isDefinedOutsideOfLoop(::mlir::Value  value) {
       return getImpl()->isDefinedOutsideOfLoop(getImpl(), getOperation(), value);
   }
+/// Returns the region that makes up the body of the loop and should be
+/// inspected for loop-invariant operations.
 ::mlir::Region &mlir::LoopLikeOpInterface::getLoopBody() {
       return getImpl()->getLoopBody(getImpl(), getOperation());
   }
+/// Moves the given loop-invariant operation out of the loop.
 void mlir::LoopLikeOpInterface::moveOutOfLoop(::mlir::Operation * op) {
       return getImpl()->moveOutOfLoop(getImpl(), getOperation(), op);
   }
-::mlir::Optional<::mlir::Value> mlir::LoopLikeOpInterface::getSingleInductionVar() {
+/// If there is a single induction variable return it, otherwise return
+/// llvm::None.
+::llvm::Optional<::mlir::Value> mlir::LoopLikeOpInterface::getSingleInductionVar() {
       return getImpl()->getSingleInductionVar(getImpl(), getOperation());
   }
-::mlir::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleLowerBound() {
+/// Return the single lower bound value or attribute if it exists, otherwise
+/// return llvm::None.
+::llvm::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleLowerBound() {
       return getImpl()->getSingleLowerBound(getImpl(), getOperation());
   }
-::mlir::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleStep() {
+/// Return the single step value or attribute if it exists, otherwise
+/// return llvm::None.
+::llvm::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleStep() {
       return getImpl()->getSingleStep(getImpl(), getOperation());
   }
-::mlir::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleUpperBound() {
+/// Return the single upper bound value or attribute if it exists, otherwise
+/// return llvm::None.
+::llvm::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleUpperBound() {
       return getImpl()->getSingleUpperBound(getImpl(), getOperation());
   }

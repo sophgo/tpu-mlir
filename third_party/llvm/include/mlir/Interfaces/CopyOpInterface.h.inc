@@ -35,6 +35,7 @@ struct CopyOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct CopyOpInterfaceTrait;
@@ -45,7 +46,9 @@ public:
   using ::mlir::OpInterface<CopyOpInterface, detail::CopyOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::CopyOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the source value for this copy operation
   ::mlir::Value getSource();
+  /// Returns the target value for this copy operation
   ::mlir::Value getTarget();
 };
 namespace detail {

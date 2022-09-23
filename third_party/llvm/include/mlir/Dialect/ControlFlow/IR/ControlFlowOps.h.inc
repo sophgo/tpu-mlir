@@ -90,7 +90,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value getArg();
+  ::mlir::TypedValue<::mlir::IntegerType> getArg();
   ::mlir::MutableOperandRange getArgMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
@@ -179,7 +179,7 @@ public:
   static ::mlir::LogicalResult canonicalize(BranchOp op, ::mlir::PatternRewriter &rewriter);
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
-  ::mlir::Block *getSuccessorForOperands(::mlir::ArrayRef<::mlir::Attribute> operands);
+  ::mlir::Block *getSuccessorForOperands(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -245,7 +245,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value getCondition();
+  ::mlir::TypedValue<::mlir::IntegerType> getCondition();
   ::mlir::Operation::operand_range getTrueDestOperands();
   ::mlir::Operation::operand_range getFalseDestOperands();
   ::mlir::MutableOperandRange getConditionMutable();
@@ -264,7 +264,7 @@ public:
   ::mlir::LogicalResult verifyInvariants();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
-  ::mlir::Block *getSuccessorForOperands(::mlir::ArrayRef<::mlir::Attribute> operands);
+  ::mlir::Block *getSuccessorForOperands(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
@@ -355,8 +355,8 @@ public:
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::DenseIntElementsAttr getCaseValuesAttr();
   ::llvm::Optional< ::mlir::DenseIntElementsAttr > getCaseValues();
-  ::mlir::DenseIntElementsAttr getCaseOperandSegmentsAttr();
-  ::mlir::DenseIntElementsAttr getCaseOperandSegments();
+  ::mlir::DenseI32ArrayAttr getCaseOperandSegmentsAttr();
+  ::llvm::ArrayRef<int32_t> getCaseOperandSegments();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -405,7 +405,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value getFlag();
+  ::mlir::TypedValue<::mlir::IntegerType> getFlag();
   ::mlir::Operation::operand_range getDefaultOperands();
   ::mlir::OperandRangeRange getCaseOperands();
   ::mlir::MutableOperandRange getFlagMutable();
@@ -417,10 +417,10 @@ public:
   ::mlir::SuccessorRange getCaseDestinations();
   ::mlir::DenseIntElementsAttr getCaseValuesAttr();
   ::llvm::Optional< ::mlir::DenseIntElementsAttr > getCaseValues();
-  ::mlir::DenseIntElementsAttr getCaseOperandSegmentsAttr();
-  ::mlir::DenseIntElementsAttr getCaseOperandSegments();
+  ::mlir::DenseI32ArrayAttr getCaseOperandSegmentsAttr();
+  ::llvm::ArrayRef<int32_t> getCaseOperandSegments();
   void setCaseValuesAttr(::mlir::DenseIntElementsAttr attr);
-  void setCaseOperandSegmentsAttr(::mlir::DenseIntElementsAttr attr);
+  void setCaseOperandSegmentsAttr(::mlir::DenseI32ArrayAttr attr);
   ::mlir::Attribute removeCase_valuesAttr();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value flag, Block *defaultDestination, ValueRange defaultOperands, ArrayRef<APInt> caseValues = {}, BlockRange caseDestinations = {}, ArrayRef<ValueRange> caseOperands = {});
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value flag, Block *defaultDestination, ValueRange defaultOperands, ArrayRef<int32_t> caseValues = {}, BlockRange caseDestinations = {}, ArrayRef<ValueRange> caseOperands = {});
@@ -433,7 +433,7 @@ public:
   ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::SuccessorOperands getSuccessorOperands(unsigned index);
-  ::mlir::Block *getSuccessorForOperands(::mlir::ArrayRef<::mlir::Attribute> operands);
+  ::mlir::Block *getSuccessorForOperands(::llvm::ArrayRef<::mlir::Attribute> operands);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
   void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);

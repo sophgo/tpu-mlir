@@ -44,6 +44,7 @@ struct FunctionOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
     ::mlir::Type cloneTypeWith(::mlir::Operation *tablegen_opaque_val, ::mlir::TypeRange inputs, ::mlir::TypeRange results) const;
     ::mlir::LogicalResult verifyBody(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::LogicalResult verifyType(::mlir::Operation *tablegen_opaque_val) const;
@@ -57,10 +58,28 @@ public:
   using ::mlir::OpInterface<FunctionOpInterface, detail::FunctionOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::FunctionOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the function argument types based exclusively on
+  /// the type (to allow for this method may be called on function
+  /// declarations).
   ::llvm::ArrayRef<::mlir::Type> getArgumentTypes();
+  /// Returns the function result types based exclusively on
+  /// the type (to allow for this method may be called on function
+  /// declarations).
   ::llvm::ArrayRef<::mlir::Type> getResultTypes();
+  /// Returns a clone of the function type with the given argument and
+  /// result types.
+  /// 
+  /// Note: The default implementation assumes the function type has
+  ///       an appropriate clone method:
+  ///         `Type clone(ArrayRef<Type> inputs, ArrayRef<Type> results)`
   ::mlir::Type cloneTypeWith(::mlir::TypeRange inputs, ::mlir::TypeRange results);
+  /// Verify the contents of the body of this function.
+  /// 
+  /// Note: The default implementation merely checks that if the entry block
+  /// exists, it has the same number and type of arguments as the function type.
   ::mlir::LogicalResult verifyBody();
+  /// Verify the type attribute of the function for derived op-specific
+  /// invariants.
   ::mlir::LogicalResult verifyType();
 
     //===------------------------------------------------------------------===//
@@ -516,9 +535,19 @@ public:
 namespace detail {
   template <typename ConcreteOp>
   struct FunctionOpInterfaceTrait : public ::mlir::OpInterface<FunctionOpInterface, detail::FunctionOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Returns a clone of the function type with the given argument and
+    /// result types.
+    /// 
+    /// Note: The default implementation assumes the function type has
+    ///       an appropriate clone method:
+    ///         `Type clone(ArrayRef<Type> inputs, ArrayRef<Type> results)`
     ::mlir::Type cloneTypeWith(::mlir::TypeRange inputs, ::mlir::TypeRange results) {
       return (*static_cast<ConcreteOp *>(this)).getFunctionType().clone(inputs, results);
     }
+    /// Verify the contents of the body of this function.
+    /// 
+    /// Note: The default implementation merely checks that if the entry block
+    /// exists, it has the same number and type of arguments as the function type.
     ::mlir::LogicalResult verifyBody() {
       if ((*static_cast<ConcreteOp *>(this)).isExternal())
         return success();
@@ -545,6 +574,8 @@ namespace detail {
 
       return success();
     }
+    /// Verify the type attribute of the function for derived op-specific
+    /// invariants.
     ::mlir::LogicalResult verifyType() {
       return success();
     }

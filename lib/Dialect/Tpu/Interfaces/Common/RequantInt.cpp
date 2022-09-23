@@ -50,8 +50,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
               zero_point + MultiplyByQuantizedMultiplier(
                                (int32_t)(p.inputs[0][offset]),
                                (int32_t)multi, (int32_t)shift_val);
-          p.outputs[0][offset] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                              : Quant::to_int8(v);
+          p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }
@@ -66,8 +65,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
               zero_point + MultiplyByQuantizedMultiplier(
                                (int32_t)(p.inputs[0][offset]),
                                (int32_t)multi, (int32_t)shift_val);
-          p.outputs[0][offset] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                              : Quant::to_int8(v);
+          p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }
@@ -80,8 +78,7 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
           auto v =
               zero_point + applyMultiplierAndRShift(
                                (p.inputs[0][offset] - zp_x), multi, -shift_val);
-          p.outputs[0][offset] = o_sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                              : Quant::to_int8(v);
+          p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }

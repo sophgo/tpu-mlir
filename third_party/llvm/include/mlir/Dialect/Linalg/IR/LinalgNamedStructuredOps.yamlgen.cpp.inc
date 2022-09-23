@@ -9,7 +9,7 @@ ArrayAttr CopyOp::iterator_types() {
     SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
 }
 
-ArrayAttr CopyOp::indexing_maps() {
+ArrayAttr CopyOp::getIndexingMaps() {
   MLIRContext *context = getContext();
   AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
   AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
@@ -76,7 +76,7 @@ ArrayAttr ElemwiseUnaryOp::iterator_types() {
     SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
 }
 
-ArrayAttr ElemwiseUnaryOp::indexing_maps() {
+ArrayAttr ElemwiseUnaryOp::getIndexingMaps() {
   MLIRContext *context = getContext();
   AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
   AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
@@ -153,7 +153,7 @@ ArrayAttr ElemwiseBinaryOp::iterator_types() {
     SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
 }
 
-ArrayAttr ElemwiseBinaryOp::indexing_maps() {
+ArrayAttr ElemwiseBinaryOp::getIndexingMaps() {
   MLIRContext *context = getContext();
   AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
   AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
@@ -238,7 +238,7 @@ static SmallVector<AffineExpr> getSymbolBindings(MatmulOp self) {
   return exprs;
 }
 
-ArrayAttr MatmulOp::indexing_maps() {
+ArrayAttr MatmulOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -324,7 +324,7 @@ static SmallVector<AffineExpr> getSymbolBindings(MatmulUnsignedOp self) {
   return exprs;
 }
 
-ArrayAttr MatmulUnsignedOp::indexing_maps() {
+ArrayAttr MatmulUnsignedOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -402,7 +402,7 @@ static SmallVector<AffineExpr> getSymbolBindings(QuantizedMatmulOp self) {
   return exprs;
 }
 
-ArrayAttr QuantizedMatmulOp::indexing_maps() {
+ArrayAttr QuantizedMatmulOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -491,7 +491,7 @@ static SmallVector<AffineExpr> getSymbolBindings(Mmt4DOp self) {
   return exprs;
 }
 
-ArrayAttr Mmt4DOp::indexing_maps() {
+ArrayAttr Mmt4DOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -570,7 +570,7 @@ static SmallVector<AffineExpr> getSymbolBindings(BatchMatmulOp self) {
   return exprs;
 }
 
-ArrayAttr BatchMatmulOp::indexing_maps() {
+ArrayAttr BatchMatmulOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -649,7 +649,7 @@ static SmallVector<AffineExpr> getSymbolBindings(QuantizedBatchMatmulOp self) {
   return exprs;
 }
 
-ArrayAttr QuantizedBatchMatmulOp::indexing_maps() {
+ArrayAttr QuantizedBatchMatmulOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -734,7 +734,7 @@ static SmallVector<AffineExpr> getSymbolBindings(MatvecOp self) {
   return exprs;
 }
 
-ArrayAttr MatvecOp::indexing_maps() {
+ArrayAttr MatvecOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -811,7 +811,7 @@ static SmallVector<AffineExpr> getSymbolBindings(VecmatOp self) {
   return exprs;
 }
 
-ArrayAttr VecmatOp::indexing_maps() {
+ArrayAttr VecmatOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -889,7 +889,7 @@ static SmallVector<AffineExpr> getSymbolBindings(BatchMatvecOp self) {
   return exprs;
 }
 
-ArrayAttr BatchMatvecOp::indexing_maps() {
+ArrayAttr BatchMatvecOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -965,7 +965,7 @@ static SmallVector<AffineExpr> getSymbolBindings(DotOp self) {
   return exprs;
 }
 
-ArrayAttr DotOp::indexing_maps() {
+ArrayAttr DotOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1042,7 +1042,7 @@ static SmallVector<AffineExpr> getSymbolBindings(Conv1DOp self) {
   return exprs;
 }
 
-ArrayAttr Conv1DOp::indexing_maps() {
+ArrayAttr Conv1DOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1121,7 +1121,7 @@ static SmallVector<AffineExpr> getSymbolBindings(Conv2DOp self) {
   return exprs;
 }
 
-ArrayAttr Conv2DOp::indexing_maps() {
+ArrayAttr Conv2DOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1202,7 +1202,7 @@ static SmallVector<AffineExpr> getSymbolBindings(Conv3DOp self) {
   return exprs;
 }
 
-ArrayAttr Conv3DOp::indexing_maps() {
+ArrayAttr Conv3DOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1290,7 +1290,7 @@ exprs.push_back(getAffineConstantExpr(cst4, context));
   return exprs;
 }
 
-ArrayAttr Conv1DNwcWcfOp::indexing_maps() {
+ArrayAttr Conv1DNwcWcfOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1374,6 +1374,116 @@ void Conv1DNwcWcfOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
+// Implementation of Conv1DNcwFcwOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr Conv1DNcwFcwOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(Conv1DNcwFcwOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+  exprs.push_back(getAffineSymbolExpr(2, context));
+
+int64_t cst3 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst3, context));
+
+  exprs.push_back(getAffineSymbolExpr(4, context));
+
+int64_t cst5 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst5, context));
+
+  exprs.push_back(getAffineSymbolExpr(6, context));
+  return exprs;
+}
+
+ArrayAttr Conv1DNcwFcwOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4)[s0, s1, s2, s3, s4, s5, s6] -> (d0, d3, d2 * s3 + d4 * s5)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 5, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4)[s0, s1, s2, s3, s4, s5, s6] -> (d1, d3, d4)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 5, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4)[s0, s1, s2, s3, s4, s5, s6] -> (d0, d1, d2)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 5, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned Conv1DNcwFcwOp::getNumRegionArgs() { return 3; }
+
+std::string Conv1DNcwFcwOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool Conv1DNcwFcwOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult Conv1DNcwFcwOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 1 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 1 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void Conv1DNcwFcwOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "Conv1DNcwFcwOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult Conv1DNcwFcwOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    Conv1DNcwFcwOp::getNumRegionArgs(), Conv1DNcwFcwOp::getRegionBuilder());
+}
+void Conv1DNcwFcwOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult Conv1DNcwFcwOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void Conv1DNcwFcwOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of Conv2DNhwcHwcfOp
 //===----------------------------------------------------------------------===//
 
@@ -1410,7 +1520,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr Conv2DNhwcHwcfOp::indexing_maps() {
+ArrayAttr Conv2DNhwcHwcfOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1494,6 +1604,126 @@ void Conv2DNhwcHwcfOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
+// Implementation of Conv2DNhwcFhwcOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr Conv2DNhwcFhwcOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(Conv2DNhwcFhwcOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+
+int64_t cst2 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst2, context));
+
+  exprs.push_back(getAffineSymbolExpr(3, context));
+
+int64_t cst4 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst4, context));
+
+  exprs.push_back(getAffineSymbolExpr(5, context));
+
+int64_t cst6 = self.strides().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst6, context));
+
+  exprs.push_back(getAffineSymbolExpr(7, context));
+
+int64_t cst8 = self.dilations().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst8, context));
+
+  exprs.push_back(getAffineSymbolExpr(9, context));
+  exprs.push_back(getAffineSymbolExpr(10, context));
+  return exprs;
+}
+
+ArrayAttr Conv2DNhwcFhwcOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] -> (d0, d1 * s2 + d4 * s4, d2 * s6 + d5 * s8, d6)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 7, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] -> (d3, d4, d5, d6)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 7, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10] -> (d0, d1, d2, d3)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 7, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned Conv2DNhwcFhwcOp::getNumRegionArgs() { return 3; }
+
+std::string Conv2DNhwcFhwcOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool Conv2DNhwcFhwcOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult Conv2DNhwcFhwcOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void Conv2DNhwcFhwcOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "Conv2DNhwcFhwcOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult Conv2DNhwcFhwcOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    Conv2DNhwcFhwcOp::getNumRegionArgs(), Conv2DNhwcFhwcOp::getRegionBuilder());
+}
+void Conv2DNhwcFhwcOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult Conv2DNhwcFhwcOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void Conv2DNhwcFhwcOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of Conv2DNhwcHwcfQOp
 //===----------------------------------------------------------------------===//
 
@@ -1530,7 +1760,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr Conv2DNhwcHwcfQOp::indexing_maps() {
+ArrayAttr Conv2DNhwcHwcfQOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1658,7 +1888,7 @@ exprs.push_back(getAffineConstantExpr(cst9, context));
   return exprs;
 }
 
-ArrayAttr Conv2DNchwFchwOp::indexing_maps() {
+ArrayAttr Conv2DNchwFchwOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1742,6 +1972,127 @@ void Conv2DNchwFchwOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
+// Implementation of Conv2DNgchwFgchwOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr Conv2DNgchwFgchwOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(Conv2DNgchwFgchwOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+  exprs.push_back(getAffineSymbolExpr(2, context));
+  exprs.push_back(getAffineSymbolExpr(3, context));
+
+int64_t cst4 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst4, context));
+
+  exprs.push_back(getAffineSymbolExpr(5, context));
+
+int64_t cst6 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst6, context));
+
+  exprs.push_back(getAffineSymbolExpr(7, context));
+
+int64_t cst8 = self.strides().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst8, context));
+
+  exprs.push_back(getAffineSymbolExpr(9, context));
+
+int64_t cst10 = self.dilations().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst10, context));
+
+  exprs.push_back(getAffineSymbolExpr(11, context));
+  return exprs;
+}
+
+ArrayAttr Conv2DNgchwFgchwOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11] -> (d0, d1, d5, d3 * s4 + d6 * s6, d4 * s8 + d7 * s10)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 8, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11] -> (d1, d2, d5, d6, d7)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 8, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11] -> (d0, d1, d2, d3, d4)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 8, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned Conv2DNgchwFgchwOp::getNumRegionArgs() { return 3; }
+
+std::string Conv2DNgchwFgchwOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool Conv2DNgchwFgchwOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult Conv2DNgchwFgchwOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void Conv2DNgchwFgchwOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "Conv2DNgchwFgchwOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult Conv2DNgchwFgchwOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    Conv2DNgchwFgchwOp::getNumRegionArgs(), Conv2DNgchwFgchwOp::getRegionBuilder());
+}
+void Conv2DNgchwFgchwOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult Conv2DNgchwFgchwOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void Conv2DNgchwFgchwOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of Conv3DNdhwcDhwcfOp
 //===----------------------------------------------------------------------===//
 
@@ -1788,7 +2139,7 @@ exprs.push_back(getAffineConstantExpr(cst12, context));
   return exprs;
 }
 
-ArrayAttr Conv3DNdhwcDhwcfOp::indexing_maps() {
+ArrayAttr Conv3DNdhwcDhwcfOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1897,7 +2248,7 @@ exprs.push_back(getAffineConstantExpr(cst4, context));
   return exprs;
 }
 
-ArrayAttr DepthwiseConv1DNwcWcOp::indexing_maps() {
+ArrayAttr DepthwiseConv1DNwcWcOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -1981,6 +2332,116 @@ void DepthwiseConv1DNwcWcOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
+// Implementation of DepthwiseConv1DNwcWcmOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr DepthwiseConv1DNwcWcmOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(DepthwiseConv1DNwcWcmOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+
+int64_t cst2 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst2, context));
+
+  exprs.push_back(getAffineSymbolExpr(3, context));
+
+int64_t cst4 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst4, context));
+
+  exprs.push_back(getAffineSymbolExpr(5, context));
+  exprs.push_back(getAffineSymbolExpr(6, context));
+  return exprs;
+}
+
+ArrayAttr DepthwiseConv1DNwcWcmOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4)[s0, s1, s2, s3, s4, s5, s6] -> (d0, d1 * s2 + d4 * s4, d2)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 5, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4)[s0, s1, s2, s3, s4, s5, s6] -> (d4, d2, d3)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 5, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4)[s0, s1, s2, s3, s4, s5, s6] -> (d0, d1, d2, d3)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 5, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned DepthwiseConv1DNwcWcmOp::getNumRegionArgs() { return 3; }
+
+std::string DepthwiseConv1DNwcWcmOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool DepthwiseConv1DNwcWcmOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult DepthwiseConv1DNwcWcmOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 1 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 1 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void DepthwiseConv1DNwcWcmOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "DepthwiseConv1DNwcWcmOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult DepthwiseConv1DNwcWcmOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv1DNwcWcmOp::getNumRegionArgs(), DepthwiseConv1DNwcWcmOp::getRegionBuilder());
+}
+void DepthwiseConv1DNwcWcmOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult DepthwiseConv1DNwcWcmOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void DepthwiseConv1DNwcWcmOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of DepthwiseConv2DNhwcHwcOp
 //===----------------------------------------------------------------------===//
 
@@ -2016,7 +2477,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr DepthwiseConv2DNhwcHwcOp::indexing_maps() {
+ArrayAttr DepthwiseConv2DNhwcHwcOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2100,6 +2561,125 @@ void DepthwiseConv2DNhwcHwcOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
+// Implementation of DepthwiseConv2DNchwChwOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr DepthwiseConv2DNchwChwOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(DepthwiseConv2DNchwChwOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+
+int64_t cst2 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst2, context));
+
+  exprs.push_back(getAffineSymbolExpr(3, context));
+
+int64_t cst4 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst4, context));
+
+  exprs.push_back(getAffineSymbolExpr(5, context));
+
+int64_t cst6 = self.strides().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst6, context));
+
+  exprs.push_back(getAffineSymbolExpr(7, context));
+
+int64_t cst8 = self.dilations().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst8, context));
+
+  exprs.push_back(getAffineSymbolExpr(9, context));
+  return exprs;
+}
+
+ArrayAttr DepthwiseConv2DNchwChwOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9] -> (d0, d3, d1 * s2 + d4 * s4, d2 * s6 + d5 * s8)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 6, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9] -> (d3, d4, d5)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 6, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9] -> (d0, d3, d1, d2)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 6, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned DepthwiseConv2DNchwChwOp::getNumRegionArgs() { return 3; }
+
+std::string DepthwiseConv2DNchwChwOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool DepthwiseConv2DNchwChwOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult DepthwiseConv2DNchwChwOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 2 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void DepthwiseConv2DNchwChwOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "DepthwiseConv2DNchwChwOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult DepthwiseConv2DNchwChwOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv2DNchwChwOp::getNumRegionArgs(), DepthwiseConv2DNchwChwOp::getRegionBuilder());
+}
+void DepthwiseConv2DNchwChwOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult DepthwiseConv2DNchwChwOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void DepthwiseConv2DNchwChwOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of DepthwiseConv2DNhwcHwcQOp
 //===----------------------------------------------------------------------===//
 
@@ -2135,7 +2715,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr DepthwiseConv2DNhwcHwcQOp::indexing_maps() {
+ArrayAttr DepthwiseConv2DNhwcHwcQOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2263,7 +2843,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr DepthwiseConv2DNhwcHwcmOp::indexing_maps() {
+ArrayAttr DepthwiseConv2DNhwcHwcmOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2383,7 +2963,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr DepthwiseConv2DNhwcHwcmQOp::indexing_maps() {
+ArrayAttr DepthwiseConv2DNhwcHwcmQOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2475,6 +3055,265 @@ void DepthwiseConv2DNhwcHwcmQOp::getEffects(SmallVectorImpl<
 }
 
 //===----------------------------------------------------------------------===//
+// Implementation of DepthwiseConv3DNdhwcDhwcOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr DepthwiseConv3DNdhwcDhwcOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName(), getParallelIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(DepthwiseConv3DNdhwcDhwcOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+
+int64_t cst2 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst2, context));
+
+  exprs.push_back(getAffineSymbolExpr(3, context));
+
+int64_t cst4 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst4, context));
+
+  exprs.push_back(getAffineSymbolExpr(5, context));
+
+int64_t cst6 = self.strides().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst6, context));
+
+  exprs.push_back(getAffineSymbolExpr(7, context));
+
+int64_t cst8 = self.dilations().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst8, context));
+
+  exprs.push_back(getAffineSymbolExpr(9, context));
+
+int64_t cst10 = self.strides().getValues<int64_t>()[2];
+exprs.push_back(getAffineConstantExpr(cst10, context));
+
+  exprs.push_back(getAffineSymbolExpr(11, context));
+
+int64_t cst12 = self.dilations().getValues<int64_t>()[2];
+exprs.push_back(getAffineConstantExpr(cst12, context));
+
+  exprs.push_back(getAffineSymbolExpr(13, context));
+  return exprs;
+}
+
+ArrayAttr DepthwiseConv3DNdhwcDhwcOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13] -> (d0, d1 * s2 + d4 * s4, d2 * s6 + d5 * s8, d3 * s10 + d6 * s12, d7)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 8, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13] -> (d4, d5, d6, d7)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 8, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13] -> (d0, d1, d2, d3, d7)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 8, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned DepthwiseConv3DNdhwcDhwcOp::getNumRegionArgs() { return 3; }
+
+std::string DepthwiseConv3DNdhwcDhwcOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool DepthwiseConv3DNdhwcDhwcOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult DepthwiseConv3DNdhwcDhwcOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 3 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 3 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void DepthwiseConv3DNdhwcDhwcOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "DepthwiseConv3DNdhwcDhwcOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult DepthwiseConv3DNdhwcDhwcOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv3DNdhwcDhwcOp::getNumRegionArgs(), DepthwiseConv3DNdhwcDhwcOp::getRegionBuilder());
+}
+void DepthwiseConv3DNdhwcDhwcOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult DepthwiseConv3DNdhwcDhwcOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void DepthwiseConv3DNdhwcDhwcOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
+// Implementation of DepthwiseConv3DNdhwcDhwcmOp
+//===----------------------------------------------------------------------===//
+
+ArrayAttr DepthwiseConv3DNdhwcDhwcmOp::iterator_types() {
+  return Builder(getContext()).getStrArrayAttr(SmallVector<StringRef>{ getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getParallelIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName(), getReductionIteratorTypeName(), getParallelIteratorTypeName() });
+}
+
+static SmallVector<AffineExpr> getSymbolBindings(DepthwiseConv3DNdhwcDhwcmOp self) {
+  MLIRContext *context = self.getContext();
+  SmallVector<AffineExpr> exprs;
+  exprs.push_back(getAffineSymbolExpr(0, context));
+  exprs.push_back(getAffineSymbolExpr(1, context));
+
+int64_t cst2 = self.strides().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst2, context));
+
+  exprs.push_back(getAffineSymbolExpr(3, context));
+
+int64_t cst4 = self.dilations().getValues<int64_t>()[0];
+exprs.push_back(getAffineConstantExpr(cst4, context));
+
+  exprs.push_back(getAffineSymbolExpr(5, context));
+
+int64_t cst6 = self.strides().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst6, context));
+
+  exprs.push_back(getAffineSymbolExpr(7, context));
+
+int64_t cst8 = self.dilations().getValues<int64_t>()[1];
+exprs.push_back(getAffineConstantExpr(cst8, context));
+
+  exprs.push_back(getAffineSymbolExpr(9, context));
+
+int64_t cst10 = self.strides().getValues<int64_t>()[2];
+exprs.push_back(getAffineConstantExpr(cst10, context));
+
+  exprs.push_back(getAffineSymbolExpr(11, context));
+
+int64_t cst12 = self.dilations().getValues<int64_t>()[2];
+exprs.push_back(getAffineConstantExpr(cst12, context));
+
+  exprs.push_back(getAffineSymbolExpr(13, context));
+  exprs.push_back(getAffineSymbolExpr(14, context));
+  return exprs;
+}
+
+ArrayAttr DepthwiseConv3DNdhwcDhwcmOp::getIndexingMaps() {
+  static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
+  ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
+  if (cached)
+    return cached;
+
+  MLIRContext *context = getContext();
+  auto symbolBindings = getSymbolBindings(*this);
+  SmallVector<AffineMap> maps;
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7, d8)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14] -> (d0, d1 * s2 + d5 * s4, d2 * s6 + d6 * s8, d3 * s10 + d7 * s12, d8)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 9, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7, d8)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14] -> (d5, d6, d7, d8, d4)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 9, 0));
+  maps.push_back(mlir::parseAttribute("affine_map<(d0, d1, d2, d3, d4, d5, d6, d7, d8)[s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14] -> (d0, d1, d2, d3, d8, d4)>", context).cast<AffineMapAttr>().getValue());
+  maps.back() = simplifyAffineMap(maps.back().replaceDimsAndSymbols({}, symbolBindings, 9, 0));
+  cached = Builder(context).getAffineMapArrayAttr(maps);
+  getOperation()->setAttr(memoizeAttr, cached);
+  return cached;
+}
+
+unsigned DepthwiseConv3DNdhwcDhwcmOp::getNumRegionArgs() { return 3; }
+
+std::string DepthwiseConv3DNdhwcDhwcmOp::getLibraryCallName() {
+  return generateLibraryCallName(getOperation());
+}
+
+bool DepthwiseConv3DNdhwcDhwcmOp::hasDynamicIndexingMaps() { return true; }
+LogicalResult DepthwiseConv3DNdhwcDhwcmOp::verifyIndexingMapRequiredAttributes() {
+  Operation *op = getOperation();
+  
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("strides")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'strides'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 3 })
+    return op->emitError("incorrect shape for index attribute 'strides'");
+}
+
+
+if (auto attr = op->getAttrOfType<DenseElementsAttr>("dilations")) {
+  if (!attr.getType().getElementType().isInteger(64))
+    return op->emitError("incorrect element type for index attribute 'dilations'");
+  if (attr.getType().getShape() != ArrayRef<int64_t>{ 3 })
+    return op->emitError("incorrect shape for index attribute 'dilations'");
+}
+
+  return success();
+}
+
+void DepthwiseConv3DNdhwcDhwcmOp::regionBuilder(ImplicitLocOpBuilder &b,
+                        Block &block, ArrayRef<NamedAttribute> attrs) {
+  assert(3 > 0 && block.getNumArguments() == 3 &&
+         "DepthwiseConv3DNdhwcDhwcmOp regionBuilder expects 3 (>=0) args");
+  RegionBuilderHelper helper(block.getArgument(0).getContext(), block);
+  SmallVector<Value> yields;
+  
+  Value value1 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(0));
+  Value value2 = helper.buildTypeFn(TypeFn::cast_signed, block.getArgument(2).getType(), block.getArgument(1));
+  Value value3 = helper.buildBinaryFn(BinaryFn::mul, value1, value2);
+  Value value4 = helper.buildBinaryFn(BinaryFn::add, block.getArgument(2), value3);
+  yields.push_back(value4);
+  helper.yieldOutputs(yields);
+}
+
+ParseResult DepthwiseConv3DNdhwcDhwcmOp::parse(OpAsmParser &parser, OperationState &result) {
+  return ::parseNamedStructuredOp(parser, result,
+    DepthwiseConv3DNdhwcDhwcmOp::getNumRegionArgs(), DepthwiseConv3DNdhwcDhwcmOp::getRegionBuilder());
+}
+void DepthwiseConv3DNdhwcDhwcmOp::print(OpAsmPrinter &p) {
+  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+}
+
+LogicalResult DepthwiseConv3DNdhwcDhwcmOp::fold(ArrayRef<Attribute>,
+                        SmallVectorImpl<OpFoldResult> &) {
+  return foldMemRefCast(*this);
+}
+void DepthwiseConv3DNdhwcDhwcmOp::getEffects(SmallVectorImpl<
+    SideEffects::EffectInstance<MemoryEffects::Effect> >&effects) {
+      SmallVector<Value> inputBuffers = getInputBufferOperands();
+      SmallVector<Value> outputBuffers = getOutputBufferOperands();
+      getGenericEffectsImpl(effects,
+        getOperation()->getResults(), inputBuffers, outputBuffers);
+}
+
+//===----------------------------------------------------------------------===//
 // Implementation of PoolingNhwcSumOp
 //===----------------------------------------------------------------------===//
 
@@ -2510,7 +3349,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr PoolingNhwcSumOp::indexing_maps() {
+ArrayAttr PoolingNhwcSumOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2627,7 +3466,7 @@ exprs.push_back(getAffineConstantExpr(cst9, context));
   return exprs;
 }
 
-ArrayAttr PoolingNchwSumOp::indexing_maps() {
+ArrayAttr PoolingNchwSumOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2744,7 +3583,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr PoolingNhwcMaxOp::indexing_maps() {
+ArrayAttr PoolingNhwcMaxOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2861,7 +3700,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr PoolingNhwcMaxUnsignedOp::indexing_maps() {
+ArrayAttr PoolingNhwcMaxUnsignedOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -2978,7 +3817,7 @@ exprs.push_back(getAffineConstantExpr(cst9, context));
   return exprs;
 }
 
-ArrayAttr PoolingNchwMaxOp::indexing_maps() {
+ArrayAttr PoolingNchwMaxOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -3095,7 +3934,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr PoolingNhwcMinOp::indexing_maps() {
+ArrayAttr PoolingNhwcMinOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -3212,7 +4051,7 @@ exprs.push_back(getAffineConstantExpr(cst8, context));
   return exprs;
 }
 
-ArrayAttr PoolingNhwcMinUnsignedOp::indexing_maps() {
+ArrayAttr PoolingNhwcMinUnsignedOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -3339,7 +4178,7 @@ exprs.push_back(getAffineConstantExpr(cst12, context));
   return exprs;
 }
 
-ArrayAttr PoolingNdhwcSumOp::indexing_maps() {
+ArrayAttr PoolingNdhwcSumOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -3466,7 +4305,7 @@ exprs.push_back(getAffineConstantExpr(cst12, context));
   return exprs;
 }
 
-ArrayAttr PoolingNdhwcMaxOp::indexing_maps() {
+ArrayAttr PoolingNdhwcMaxOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -3593,7 +4432,7 @@ exprs.push_back(getAffineConstantExpr(cst12, context));
   return exprs;
 }
 
-ArrayAttr PoolingNdhwcMinOp::indexing_maps() {
+ArrayAttr PoolingNdhwcMinOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -3684,7 +4523,7 @@ ArrayAttr FillOp::iterator_types() {
     SmallVector<StringRef>(rank, getParallelIteratorTypeName()));
 }
 
-ArrayAttr FillOp::indexing_maps() {
+ArrayAttr FillOp::getIndexingMaps() {
   MLIRContext *context = getContext();
   AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
   AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
@@ -3749,7 +4588,7 @@ static SmallVector<AffineExpr> getSymbolBindings(FillRng2DOp self) {
   return exprs;
 }
 
-ArrayAttr FillRng2DOp::indexing_maps() {
+ArrayAttr FillRng2DOp::getIndexingMaps() {
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)

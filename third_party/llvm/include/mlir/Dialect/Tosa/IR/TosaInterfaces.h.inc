@@ -28,6 +28,7 @@ struct TosaOpInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct TosaOpTrait;

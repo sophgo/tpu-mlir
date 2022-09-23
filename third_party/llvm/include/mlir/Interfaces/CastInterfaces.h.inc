@@ -32,6 +32,7 @@ struct CastOpInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteOp;
   };
 };template <typename ConcreteOp>
 struct CastOpInterfaceTrait;
@@ -42,6 +43,8 @@ public:
   using ::mlir::OpInterface<CastOpInterface, detail::CastOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::CastOpInterfaceTrait<ConcreteOp> {};
+  /// Returns true if the given set of input and result types are compatible
+  /// to cast using this cast operation.
   bool areCastCompatible(::mlir::TypeRange inputs, ::mlir::TypeRange outputs);
 };
 namespace detail {

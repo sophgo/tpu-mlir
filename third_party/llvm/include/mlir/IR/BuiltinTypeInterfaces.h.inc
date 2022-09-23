@@ -29,6 +29,7 @@ struct MemRefElementTypeInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteType>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteType;
   };
 };template <typename ConcreteType>
 struct MemRefElementTypeInterfaceTrait;
@@ -81,6 +82,7 @@ struct ShapedTypeInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteType>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteType;
   };
 };template <typename ConcreteType>
 struct ShapedTypeTrait;
@@ -91,9 +93,14 @@ public:
   using ::mlir::TypeInterface<ShapedType, detail::ShapedTypeInterfaceTraits>::TypeInterface;
   template <typename ConcreteType>
   struct Trait : public detail::ShapedTypeTrait<ConcreteType> {};
+  /// Returns a clone of this type with the given shape and element
+  /// type. If a shape is not provided, the current shape of the type is used.
   ::mlir::ShapedType cloneWith(::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) const;
+  /// Returns the element type of this shaped type.
   ::mlir::Type getElementType() const;
+  /// Returns if this type is ranked, i.e. it has a known number of dimensions.
   bool hasRank() const;
+  /// Returns the shape of this type if it is ranked, otherwise asserts.
   ::llvm::ArrayRef<int64_t> getShape() const;
 
     // TODO: merge these two special values in a single one used everywhere.

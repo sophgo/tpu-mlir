@@ -50,6 +50,8 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::IntegerAttr getDimAttr();
+  uint64_t getDim();
   ::mlir::IntegerAttr dimAttr();
   uint64_t dim();
   ::mlir::LogicalResult verify(::mlir::Location loc);
@@ -70,6 +72,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getDimAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getDimAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr dimAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -86,9 +96,13 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::IndexType> getResult();
+  ::mlir::TypedValue<::mlir::IndexType> result();
+  ::mlir::IntegerAttr getDimAttr();
+  uint64_t getDim();
   ::mlir::IntegerAttr dimAttr();
   uint64_t dim();
+  void setDimAttr(::mlir::IntegerAttr attr);
   void dimAttr(::mlir::IntegerAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::IntegerAttr dim);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::IntegerAttr dim);
@@ -137,8 +151,11 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getSizes();
   ::mlir::ValueRange sizes();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::ArrayAttr getStaticSizesAttr();
+  ::mlir::ArrayAttr getStaticSizes();
   ::mlir::ArrayAttr static_sizesAttr();
   ::mlir::ArrayAttr static_sizes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
@@ -159,6 +176,14 @@ public:
     return ::llvm::makeArrayRef(attrNames);
   }
 
+  ::mlir::StringAttr getStaticSizesAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getStaticSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
   ::mlir::StringAttr static_sizesAttrName() {
     return getAttributeNameForIndex(0);
   }
@@ -173,13 +198,19 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getSizes();
   ::mlir::Operation::operand_range sizes();
+  ::mlir::MutableOperandRange getSizesMutable();
   ::mlir::MutableOperandRange sizesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::TensorType> getResult();
+  ::mlir::TypedValue<::mlir::TensorType> result();
+  ::mlir::ArrayAttr getStaticSizesAttr();
+  ::mlir::ArrayAttr getStaticSizes();
   ::mlir::ArrayAttr static_sizesAttr();
   ::mlir::ArrayAttr static_sizes();
+  void setStaticSizesAttr(::mlir::ArrayAttr attr);
   void static_sizesAttr(::mlir::ArrayAttr attr);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange shape, ArrayRef<int64_t> staticShape, Type elementType);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ValueRange shape, Type elementType);
@@ -207,7 +238,7 @@ private:
   }
 
 public:
-  static StringRef getStaticSizesAttrName() {
+  static StringRef getStaticSizesAttrStrName() {
     return "static_sizes";
   }
 
@@ -221,7 +252,7 @@ public:
 
   // Return true if the size of the tensor is dynamic at `idx`
   bool isDynamicSize(unsigned idx) {
-    APInt v = *(static_sizes().getAsValueRange<IntegerAttr>().begin() + idx);
+    APInt v = *(getStaticSizes().getAsValueRange<IntegerAttr>().begin() + idx);
     return ShapedType::isDynamic(v.getSExtValue());
   }
 
@@ -229,7 +260,7 @@ public:
   // and return the shape.
   int64_t getStaticSize(unsigned idx) {
     assert(!isDynamicSize(idx) && "expected static size");
-    APInt v = *(static_sizes().
+    APInt v = *(getStaticSizes().
         template getAsValueRange<IntegerAttr>().begin() + idx);
       return v.getSExtValue();
   }
@@ -240,8 +271,8 @@ public:
   unsigned getIndexOfDynamicSize(unsigned idx) {
     assert(isDynamicSize(idx) && "expected dynamic size");
     return std::count_if(
-        static_sizes().getValue().begin(),
-        static_sizes().getValue().begin() + idx,
+        getStaticSizes().getValue().begin(),
+        getStaticSizes().getValue().begin() + idx,
         [&](Attribute attr) {
           return ShapedType::isDynamic(attr.cast<IntegerAttr>().getInt());
         });
@@ -276,6 +307,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getValues();
   ::mlir::ValueRange values();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
@@ -301,7 +333,9 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getValues();
   ::mlir::Operation::operand_range values();
+  ::mlir::MutableOperandRange getValuesMutable();
   ::mlir::MutableOperandRange valuesMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);

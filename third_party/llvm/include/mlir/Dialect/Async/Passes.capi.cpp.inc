@@ -11,7 +11,7 @@ MlirPass mlirCreateAsyncAsyncParallelFor() {
   return wrap(mlir::createAsyncParallelForPass().release());
 }
 void mlirRegisterAsyncAsyncParallelFor() {
-  registerAsyncParallelForPass();
+  registerAsyncParallelFor();
 }
 
 
@@ -19,7 +19,7 @@ MlirPass mlirCreateAsyncAsyncRuntimePolicyBasedRefCounting() {
   return wrap(mlir::createAsyncRuntimePolicyBasedRefCountingPass().release());
 }
 void mlirRegisterAsyncAsyncRuntimePolicyBasedRefCounting() {
-  registerAsyncRuntimePolicyBasedRefCountingPass();
+  registerAsyncRuntimePolicyBasedRefCounting();
 }
 
 
@@ -27,7 +27,7 @@ MlirPass mlirCreateAsyncAsyncRuntimeRefCounting() {
   return wrap(mlir::createAsyncRuntimeRefCountingPass().release());
 }
 void mlirRegisterAsyncAsyncRuntimeRefCounting() {
-  registerAsyncRuntimeRefCountingPass();
+  registerAsyncRuntimeRefCounting();
 }
 
 
@@ -35,7 +35,7 @@ MlirPass mlirCreateAsyncAsyncRuntimeRefCountingOpt() {
   return wrap(mlir::createAsyncRuntimeRefCountingOptPass().release());
 }
 void mlirRegisterAsyncAsyncRuntimeRefCountingOpt() {
-  registerAsyncRuntimeRefCountingOptPass();
+  registerAsyncRuntimeRefCountingOpt();
 }
 
 
@@ -43,6 +43,6 @@ MlirPass mlirCreateAsyncAsyncToAsyncRuntime() {
   return wrap(mlir::createAsyncToAsyncRuntimePass().release());
 }
 void mlirRegisterAsyncAsyncToAsyncRuntime() {
-  registerAsyncToAsyncRuntimePass();
+  registerAsyncToAsyncRuntime();
 }
 

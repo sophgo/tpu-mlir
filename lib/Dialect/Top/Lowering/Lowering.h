@@ -79,6 +79,7 @@ Value do_quantize(Value v, bool asymmetric);
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
+Value do_transfer_fp(Value in, Value out, bool asymmetric);
 
 // from int8 to int32
 Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t rshift,

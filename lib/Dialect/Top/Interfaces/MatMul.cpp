@@ -55,7 +55,7 @@ LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   double limit;
   parseParam(batch, M, K, N, with_bias, relu, limit);
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, relu, limit);
+                K, N, relu, limit, 0);
   p.handle = (void *)matmul;
   return success();
 }

@@ -6,6 +6,7 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
+/// Returns the size of the type in bytes.
 unsigned mlir::LLVM::PointerElementTypeInterface::getSizeInBytes(const DataLayout & dataLayout) const {
       return getImpl()->getSizeInBytes(getImpl(), *this, dataLayout);
   }

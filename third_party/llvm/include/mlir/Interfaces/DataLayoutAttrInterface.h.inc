@@ -38,6 +38,7 @@ struct DataLayoutEntryInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteAttr>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteAttr;
     ::mlir::LogicalResult verifyEntry(::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) const;
   };
 };template <typename ConcreteAttr>
@@ -49,8 +50,11 @@ public:
   using ::mlir::AttributeInterface<DataLayoutEntryInterface, detail::DataLayoutEntryInterfaceInterfaceTraits>::AttributeInterface;
   template <typename ConcreteAttr>
   struct Trait : public detail::DataLayoutEntryInterfaceTrait<ConcreteAttr> {};
+  /// Returns the key of the this layout entry.
   ::mlir::DataLayoutEntryKey getKey() const;
+  /// Returns the value of this layout entry.
   ::mlir::Attribute getValue() const;
+  /// Checks that the entry is well-formed, reports errors at the provided location.
   ::mlir::LogicalResult verifyEntry(::mlir::Location loc) const;
 
     /// Returns `true` if the key of this entry is a type.
@@ -62,6 +66,7 @@ public:
 namespace detail {
   template <typename ConcreteAttr>
   struct DataLayoutEntryInterfaceTrait : public ::mlir::AttributeInterface<DataLayoutEntryInterface, detail::DataLayoutEntryInterfaceInterfaceTraits>::Trait<ConcreteAttr> {
+    /// Checks that the entry is well-formed, reports errors at the provided location.
     ::mlir::LogicalResult verifyEntry(::mlir::Location loc) const {
       return ::mlir::success();
     }
@@ -134,6 +139,7 @@ struct DataLayoutSpecInterfaceInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteAttr>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteAttr;
     ::mlir::DataLayoutEntryList getSpecForType(::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID type) const;
     ::mlir::DataLayoutEntryInterface getSpecForIdentifier(::mlir::Attribute tablegen_opaque_val, ::mlir::StringAttr identifier) const;
     ::mlir::LogicalResult verifySpec(::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) const;
@@ -147,10 +153,15 @@ public:
   using ::mlir::AttributeInterface<DataLayoutSpecInterface, detail::DataLayoutSpecInterfaceInterfaceTraits>::AttributeInterface;
   template <typename ConcreteAttr>
   struct Trait : public detail::DataLayoutSpecInterfaceTrait<ConcreteAttr> {};
+  /// Combines the current layout with the given list of layouts, provided from the outermost (oldest) to the innermost (newest). Returns null on failure.
   ::mlir::DataLayoutSpecInterface combineWith(::llvm::ArrayRef<::mlir::DataLayoutSpecInterface> specs) const;
+  /// Returns the list of layout entries.
   ::mlir::DataLayoutEntryListRef getEntries() const;
+  /// Returns a copy of the entries related to a specific type class regardles of type parameters.
   ::mlir::DataLayoutEntryList getSpecForType(::mlir::TypeID type) const;
+  /// Returns the entry related to the given identifier, if present.
   ::mlir::DataLayoutEntryInterface getSpecForIdentifier(::mlir::StringAttr identifier) const;
+  /// Verifies the validity of the specification and reports any errors at the given location.
   ::mlir::LogicalResult verifySpec(::mlir::Location loc) const;
 
     /// Returns a copy of the entries related to the type specified as template
@@ -172,13 +183,16 @@ public:
 namespace detail {
   template <typename ConcreteAttr>
   struct DataLayoutSpecInterfaceTrait : public ::mlir::AttributeInterface<DataLayoutSpecInterface, detail::DataLayoutSpecInterfaceInterfaceTraits>::Trait<ConcreteAttr> {
+    /// Returns a copy of the entries related to a specific type class regardles of type parameters.
     ::mlir::DataLayoutEntryList getSpecForType(::mlir::TypeID type) const {
       return ::mlir::detail::filterEntriesForType((*static_cast<const ConcreteAttr *>(this)).getEntries(), type);
     }
+    /// Returns the entry related to the given identifier, if present.
     ::mlir::DataLayoutEntryInterface getSpecForIdentifier(::mlir::StringAttr identifier) const {
       return ::mlir::detail::filterEntryForIdentifier((*static_cast<const ConcreteAttr *>(this)).getEntries(),
                                                         identifier);
     }
+    /// Verifies the validity of the specification and reports any errors at the given location.
     ::mlir::LogicalResult verifySpec(::mlir::Location loc) const {
       return ::mlir::detail::verifyDataLayoutSpec((*static_cast<const ConcreteAttr *>(this)), loc);
     }

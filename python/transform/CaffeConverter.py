@@ -54,14 +54,15 @@ class CaffeConverter(BaseConverter):
             'Deconvolution': lambda layer: self.convert_deconvolution_op(layer),
             'DetectionOutput': lambda layer: self.convert_detection_output_op(layer),
             'Dropout': lambda layer: self.convert_dropout_op(layer),
-            'DummyData': lambda layer: self.convert_dummydata_op(layer),
+            'DummyData': lambda layer: self.convert_nothing(layer),
             'Embed': lambda layer: self.convert_embed_op(layer),
             'Eltwise': lambda layer: self.convert_eltwise_op(layer),
             'Flatten': lambda layer: self.convert_flatten_op(layer),
             'FrcnDetection': lambda layer: self.convert_frcn_detection_op(layer),
             'InnerProduct': lambda layer: self.convert_inner_product_op(layer),
-            'Input': lambda layer: self.convert_input_op(layer),
+            'Input': lambda layer: self.convert_nothing(layer),
             'Interp': lambda layer: self.convert_interp_op(layer),
+            'ImageData': lambda layer: self.convert_nothing(layer),
             'LRN': lambda layer: self.convert_lrn_op(layer),
             'LSTM': lambda layer: self.convert_lstm_op(layer),
             'Lstm': lambda layer: self.convert_lstm_jun_op(layer),
@@ -84,7 +85,7 @@ class CaffeConverter(BaseConverter):
             'Scale': lambda layer: self.convert_scale_op(layer),
             'ShuffleChannel': lambda layer: self.convert_shufflechannel_op(layer),
             'Sigmoid': lambda layer: self.convert_sigmoid_op(layer),
-            'Silence': lambda layer: self.convert_silence_op(layer),
+            'Silence': lambda layer: self.convert_nothing(layer),
             'Slice': lambda layer: self.convert_slice_op(layer),
             'Softmax': lambda layer: self.convert_softmax_op(layer),
             'Split': lambda layer: self.convert_split_op(layer),
@@ -156,17 +157,7 @@ class CaffeConverter(BaseConverter):
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(_name, idx, **{})
             else:
-                preprocess_hint = {
-                    'mean': self.preprocess_args['mean'],
-                    'scale': self.preprocess_args['scale'],
-                    'pixel_format': self.preprocess_args["pixel_format"],
-                    'channel_format': self.preprocess_args["channel_format"],
-                    'pad_type': self.preprocess_args["pad_type"],
-                    'resize_dims': self.preprocess_args['resize_dims'],
-                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],
-                    'pad_value': self.preprocess_args["pad_value"]
-                }
-                input_op = self.mlir.create_input_op(_name, idx, **preprocess_hint)
+                input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(layer):
@@ -190,7 +181,7 @@ class CaffeConverter(BaseConverter):
                 if out in self.select_outputs:
                     self.output_names.append(out)
 
-        assert(len(self.select_outputs) == len(self.output_names))
+        assert (len(self.select_outputs) == len(self.output_names))
         # add return op
         return_op = list()
         # Set output
@@ -316,7 +307,8 @@ class CaffeConverter(BaseConverter):
             input_shape1 = self.getShape(layer.bottom[1])
             if len(input_shape1) < len(input_shape):
                 output_shape1 = list(input_shape1) + [1] * (len(input_shape) - len(input_shape1))
-                op1 = self.mlir.create_reshape_op([op1], output_shape1, **{'name': layer.bottom[1] + "_reshape"})
+                op1 = self.mlir.create_reshape_op([op1], output_shape1,
+                                                  **{'name': layer.bottom[1] + "_reshape"})
             new_op = self.mlir.create_mul_op([in_op, op1], output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
         else:
@@ -335,7 +327,11 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
         attrs = {'name': layer.name}
-        new_op = self.mlir.create_relu_op([op], output_shape, **attrs)
+        if layer.relu_param.HasField('negative_slope'):
+            attrs['alpha'] = layer.relu_param.negative_slope
+            new_op = self.mlir.create_leaky_relu_op([op], output_shape, **attrs)
+        else:
+            new_op = self.mlir.create_relu_op([op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
     def convert_pooling_op(self, layer):
@@ -359,7 +355,8 @@ class CaffeConverter(BaseConverter):
                 strides[0] = p.stride_h
             if p.HasField('stride_w'):
                 strides[1] = p.stride_w
-            pads = set_caffe_pad(input_shape, output_shape, kernel_shape, strides) # if not p.HasField('pad') else [p.pad] * 4
+            pads = set_caffe_pad(input_shape, output_shape, kernel_shape,
+                                 strides)  # if not p.HasField('pad') else [p.pad] * 4
         else:
             pads = [0] * 4
             strides = [1] * 2
@@ -516,9 +513,9 @@ class CaffeConverter(BaseConverter):
         op = self.getOperand(layer.bottom[0])
         self.addOperand(layer.top[0], op)
 
-    def convert_dummydata_op(self, layer):
-        assert (self.layerType(layer) == 'DummyData')
+    def convert_nothing(self, layer):
         # do nothing
+        pass
 
     def convert_embed_op(self, layer):
         assert (self.layerType(layer) == 'Embed')
@@ -531,10 +528,6 @@ class CaffeConverter(BaseConverter):
     def convert_frcn_detection_op(self, layer):
         assert (self.layerType(layer) == 'FrcnDetection')
         raise RuntimeError("not implemented")
-
-    def convert_input_op(self, layer):
-        assert (self.layerType(layer) == 'Input')
-        # do nothing
 
     def convert_interp_op(self, layer):
         assert (self.layerType(layer) == 'Interp')
@@ -605,8 +598,14 @@ class CaffeConverter(BaseConverter):
         output_shape[1] = int(input_shape[1] * stride * stride)
         output_shape[2] = int(input_shape[2] / stride)
         output_shape[3] = int(input_shape[3] / stride)
-        attrs = {'name': layer.name}
-        new_op = self.mlir.create_reshape_op([in_op], output_shape, **attrs)
+        attrs = {
+            "block_h": stride,
+            "block_w": stride,
+            "is_CRD": False,
+            "is_inversed": True,
+            'name': layer.name
+        }
+        new_op = self.mlir.create_depth2space_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
     def convert_reshape_op(self, layer):
@@ -637,10 +636,6 @@ class CaffeConverter(BaseConverter):
         attrs = {'scale': 1, 'bias': 0, 'name': layer.name}
         new_op = self.mlir.create_sigmoid_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
-
-    def convert_silence_op(self, layer):
-        assert (self.layerType(layer) == 'Silence')
-        # do nothing now
 
     def convert_slice_op(self, layer):
         assert (self.layerType(layer) == 'Slice')

@@ -264,7 +264,7 @@ std::pair<unsigned, unsigned> ApplyNativeConstraintOpAdaptor::getODSOperandIndex
 ::mlir::StringAttr ApplyNativeConstraintOpAdaptor::nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyNativeConstraintOp::nameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef ApplyNativeConstraintOpAdaptor::name() {
@@ -512,7 +512,7 @@ std::pair<unsigned, unsigned> ApplyNativeRewriteOpAdaptor::getODSOperandIndexAnd
 ::mlir::StringAttr ApplyNativeRewriteOpAdaptor::nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ApplyNativeRewriteOp::nameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef ApplyNativeRewriteOpAdaptor::name() {
@@ -789,7 +789,7 @@ std::pair<unsigned, unsigned> AttributeOpAdaptor::getODSOperandIndexAndLength(un
 ::mlir::Attribute AttributeOpAdaptor::valueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AttributeOp::valueAttrName(*odsOpName)).dyn_cast_or_null<::mlir::Attribute>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::Attribute> AttributeOpAdaptor::value() {
@@ -861,7 +861,7 @@ std::pair<unsigned, unsigned> AttributeOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AttributeOp::attr() {
+::mlir::TypedValue<::mlir::pdl::AttributeType> AttributeOp::attr() {
   return *getODSResults(0).begin();
 }
 
@@ -979,7 +979,7 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       typeOperands.push_back(operand);
@@ -996,7 +996,7 @@ void AttributeOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::AttributeType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::pdl::TypeType>();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(typeOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(typeOperands, odsBuildableType1, typeOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1069,7 +1069,7 @@ std::pair<unsigned, unsigned> EraseOp::getODSOperandIndexAndLength(unsigned inde
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value EraseOp::operation() {
+::mlir::TypedValue<::mlir::pdl::OperationType> EraseOp::operation() {
   return *getODSOperands(0).begin();
 }
 
@@ -1135,7 +1135,7 @@ void EraseOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mli
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::OperationType>();
-  if (parser.resolveOperands(operationOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(operationOperands, odsBuildableType0, operationOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1249,7 +1249,7 @@ std::pair<unsigned, unsigned> OperandOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value OperandOp::val() {
+::mlir::TypedValue<::mlir::pdl::ValueType> OperandOp::val() {
   return *getODSResults(0).begin();
 }
 
@@ -1322,7 +1322,7 @@ void OperandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       typeOperands.push_back(operand);
@@ -1334,7 +1334,7 @@ void OperandOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::ValueType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::pdl::TypeType>();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(typeOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(typeOperands, odsBuildableType1, typeOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1431,7 +1431,7 @@ std::pair<unsigned, unsigned> OperandsOp::getODSOperandIndexAndLength(unsigned i
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value OperandsOp::type() {
+::mlir::TypedValue<::mlir::pdl::RangeType> OperandsOp::type() {
   auto operands = getODSOperands(0);
   return operands.empty() ? ::mlir::Value() : *operands.begin();
 }
@@ -1452,7 +1452,7 @@ std::pair<unsigned, unsigned> OperandsOp::getODSResultIndexAndLength(unsigned in
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value OperandsOp::val() {
+::mlir::TypedValue<::mlir::pdl::RangeType> OperandsOp::val() {
   return *getODSResults(0).begin();
 }
 
@@ -1526,7 +1526,7 @@ void OperandsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       typeOperands.push_back(operand);
@@ -1538,7 +1538,7 @@ void OperandsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::
   ::mlir::Type odsBuildableType0 = ::mlir::pdl::RangeType::get(parser.getBuilder().getType<::mlir::pdl::ValueType>());
   ::mlir::Type odsBuildableType1 = ::mlir::pdl::RangeType::get(parser.getBuilder().getType<::mlir::pdl::TypeType>());
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(typeOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(typeOperands, odsBuildableType1, typeOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -1576,16 +1576,12 @@ OperationOpAdaptor::OperationOpAdaptor(OperationOp op) : odsOperands(op->getOper
 
 std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, OperationOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, OperationOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange OperationOpAdaptor::getODSOperands(unsigned index) {
@@ -1613,7 +1609,7 @@ std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(un
 ::mlir::StringAttr OperationOpAdaptor::nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, OperationOp::nameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > OperationOpAdaptor::name() {
@@ -1624,7 +1620,7 @@ std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(un
 ::mlir::ArrayAttr OperationOpAdaptor::attributeNamesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, OperationOp::attributeNamesAttrName(*odsOpName)).cast<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::ArrayAttr OperationOpAdaptor::attributeNames() {
@@ -1661,9 +1657,8 @@ std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(un
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'pdl.operation' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -1678,16 +1673,12 @@ std::pair<unsigned, unsigned> OperationOpAdaptor::getODSOperandIndexAndLength(un
 }
 
 std::pair<unsigned, unsigned> OperationOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range OperationOp::getODSOperands(unsigned index) {
@@ -1736,7 +1727,7 @@ std::pair<unsigned, unsigned> OperationOp::getODSResultIndexAndLength(unsigned i
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value OperationOp::op() {
+::mlir::TypedValue<::mlir::pdl::OperationType> OperationOp::op() {
   return *getODSResults(0).begin();
 }
 
@@ -1782,7 +1773,7 @@ void OperationOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(operands);
   odsState.addOperands(attributes);
   odsState.addOperands(types);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(operands.size()), static_cast<int32_t>(attributes.size()), static_cast<int32_t>(types.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(operands.size()), static_cast<int32_t>(attributes.size()), static_cast<int32_t>(types.size())}));
   if (name) {
   odsState.addAttribute(nameAttrName(odsState.name), name);
   }
@@ -1794,7 +1785,7 @@ void OperationOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &o
   odsState.addOperands(operands);
   odsState.addOperands(attributes);
   odsState.addOperands(types);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({static_cast<int32_t>(operands.size()), static_cast<int32_t>(attributes.size()), static_cast<int32_t>(types.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({static_cast<int32_t>(operands.size()), static_cast<int32_t>(attributes.size()), static_cast<int32_t>(types.size())}));
   if (name) {
   odsState.addAttribute(nameAttrName(odsState.name), name);
   }
@@ -1839,9 +1830,8 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -1909,7 +1899,7 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   {
     ::mlir::OptionalParseResult parseResult =
       parser.parseOptionalAttribute(nameAttr, parser.getBuilder().getType<::mlir::NoneType>(), "name", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
+    if (parseResult.has_value() && failed(*parseResult))
       return ::mlir::failure();
   }
   if (nameAttr) {
@@ -1950,13 +1940,13 @@ void OperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, :
   }
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(operandsOperands.size()), static_cast<int32_t>(attributesOperands.size()), static_cast<int32_t>(typesOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(operandsOperands.size()), static_cast<int32_t>(attributesOperands.size()), static_cast<int32_t>(typesOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::OperationType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::pdl::AttributeType>();
   result.addTypes(odsBuildableType0);
   if (parser.resolveOperands(operandsOperands, operandsTypes, operandsOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(attributesOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(attributesOperands, odsBuildableType1, attributesOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(typesOperands, typesTypes, typesOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -2028,7 +2018,7 @@ std::pair<unsigned, unsigned> PatternOpAdaptor::getODSOperandIndexAndLength(unsi
 ::mlir::IntegerAttr PatternOpAdaptor::benefitAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, PatternOp::benefitAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 uint16_t PatternOpAdaptor::benefit() {
@@ -2039,7 +2029,7 @@ uint16_t PatternOpAdaptor::benefit() {
 ::mlir::StringAttr PatternOpAdaptor::sym_nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, PatternOp::sym_nameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > PatternOpAdaptor::sym_name() {
@@ -2302,16 +2292,12 @@ ReplaceOpAdaptor::ReplaceOpAdaptor(ReplaceOp op) : odsOperands(op->getOperands()
 
 std::pair<unsigned, unsigned> ReplaceOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReplaceOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ReplaceOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange ReplaceOpAdaptor::getODSOperands(unsigned index) {
@@ -2352,9 +2338,8 @@ std::pair<unsigned, unsigned> ReplaceOpAdaptor::getODSOperandIndexAndLength(unsi
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'pdl.replace' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -2363,16 +2348,12 @@ std::pair<unsigned, unsigned> ReplaceOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 std::pair<unsigned, unsigned> ReplaceOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range ReplaceOp::getODSOperands(unsigned index) {
@@ -2381,7 +2362,7 @@ std::pair<unsigned, unsigned> ReplaceOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ReplaceOp::operation() {
+::mlir::TypedValue<::mlir::pdl::OperationType> ReplaceOp::operation() {
   return *getODSOperands(0).begin();
 }
 
@@ -2427,7 +2408,7 @@ void ReplaceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   if (replOperation)
     odsState.addOperands(replOperation);
   odsState.addOperands(replValues);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, (replOperation ? 1 : 0), static_cast<int32_t>(replValues.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({1, (replOperation ? 1 : 0), static_cast<int32_t>(replValues.size())}));
 }
 
 void ReplaceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value operation, /*optional*/::mlir::Value replOperation, ::mlir::ValueRange replValues) {
@@ -2435,7 +2416,7 @@ void ReplaceOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   if (replOperation)
     odsState.addOperands(replOperation);
   odsState.addOperands(replValues);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, (replOperation ? 1 : 0), static_cast<int32_t>(replValues.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({1, (replOperation ? 1 : 0), static_cast<int32_t>(replValues.size())}));
   assert(resultTypes.size() == 0u && "mismatched number of results");
   odsState.addTypes(resultTypes);
 }
@@ -2463,9 +2444,8 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -2541,7 +2521,7 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       replOperationOperands.push_back(operand);
@@ -2551,11 +2531,11 @@ void ReplaceOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   }
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({1, static_cast<int32_t>(replOperationOperands.size()), static_cast<int32_t>(replValuesOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({1, static_cast<int32_t>(replOperationOperands.size()), static_cast<int32_t>(replValuesOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::OperationType>();
-  if (parser.resolveOperands(operationOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(operationOperands, odsBuildableType0, operationOperandsLoc, result.operands))
     return ::mlir::failure();
-  if (parser.resolveOperands(replOperationOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(replOperationOperands, odsBuildableType0, replOperationOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(replValuesOperands, replValuesTypes, replValuesOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -2624,7 +2604,7 @@ std::pair<unsigned, unsigned> ResultOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::IntegerAttr ResultOpAdaptor::indexAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ResultOp::indexAttrName(*odsOpName)).cast<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 uint32_t ResultOpAdaptor::index() {
@@ -2661,7 +2641,7 @@ std::pair<unsigned, unsigned> ResultOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResultOp::parent() {
+::mlir::TypedValue<::mlir::pdl::OperationType> ResultOp::parent() {
   return *getODSOperands(0).begin();
 }
 
@@ -2681,7 +2661,7 @@ std::pair<unsigned, unsigned> ResultOp::getODSResultIndexAndLength(unsigned inde
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResultOp::val() {
+::mlir::TypedValue<::mlir::pdl::ValueType> ResultOp::val() {
   return *getODSResults(0).begin();
 }
 
@@ -2794,7 +2774,7 @@ void ResultOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::ValueType>();
   ::mlir::Type odsBuildableType1 = parser.getBuilder().getType<::mlir::pdl::OperationType>();
   result.addTypes(odsBuildableType0);
-  if (parser.resolveOperands(parentOperands, odsBuildableType1, result.operands))
+  if (parser.resolveOperands(parentOperands, odsBuildableType1, parentOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -2853,7 +2833,7 @@ std::pair<unsigned, unsigned> ResultsOpAdaptor::getODSOperandIndexAndLength(unsi
 ::mlir::IntegerAttr ResultsOpAdaptor::indexAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ResultsOp::indexAttrName(*odsOpName)).dyn_cast_or_null<::mlir::IntegerAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<uint32_t> ResultsOpAdaptor::index() {
@@ -2890,7 +2870,7 @@ std::pair<unsigned, unsigned> ResultsOp::getODSOperandIndexAndLength(unsigned in
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResultsOp::parent() {
+::mlir::TypedValue<::mlir::pdl::OperationType> ResultsOp::parent() {
   return *getODSOperands(0).begin();
 }
 
@@ -2910,7 +2890,7 @@ std::pair<unsigned, unsigned> ResultsOp::getODSResultIndexAndLength(unsigned ind
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value ResultsOp::val() {
+::mlir::TypedValue<::mlir::pdl::PDLType> ResultsOp::val() {
   return *getODSResults(0).begin();
 }
 
@@ -3010,7 +2990,7 @@ void ResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   {
     ::mlir::OptionalParseResult parseResult =
       parser.parseOptionalAttribute(indexAttr, parser.getBuilder().getIntegerType(32), "index", result.attributes);
-    if (parseResult.hasValue() && failed(*parseResult))
+    if (parseResult.has_value() && failed(*parseResult))
       return ::mlir::failure();
   }
   if (indexAttr) {
@@ -3029,7 +3009,7 @@ void ResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::OperationType>();
   result.addTypes(valTypes);
-  if (parser.resolveOperands(parentOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(parentOperands, odsBuildableType0, parentOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -3073,16 +3053,12 @@ RewriteOpAdaptor::RewriteOpAdaptor(RewriteOp op) : odsOperands(op->getOperands()
 
 std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RewriteOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, RewriteOp::operand_segment_sizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange RewriteOpAdaptor::getODSOperands(unsigned index) {
@@ -3107,7 +3083,7 @@ std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsi
 ::mlir::StringAttr RewriteOpAdaptor::nameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, RewriteOp::nameAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > RewriteOpAdaptor::name() {
@@ -3142,9 +3118,8 @@ std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsi
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 2)
       return emitError(loc, "'pdl.rewrite' op ""'operand_segment_sizes' attribute for specifying operand segments must have 2 "
                 "elements, but got ") << numElements;
@@ -3156,16 +3131,12 @@ std::pair<unsigned, unsigned> RewriteOpAdaptor::getODSOperandIndexAndLength(unsi
 }
 
 std::pair<unsigned, unsigned> RewriteOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, operand_segment_sizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range RewriteOp::getODSOperands(unsigned index) {
@@ -3230,7 +3201,7 @@ void RewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   if (root)
     odsState.addOperands(root);
   odsState.addOperands(externalArgs);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(root ? 1 : 0), static_cast<int32_t>(externalArgs.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(root ? 1 : 0), static_cast<int32_t>(externalArgs.size())}));
   if (name) {
   odsState.addAttribute(nameAttrName(odsState.name), name);
   }
@@ -3241,7 +3212,7 @@ void RewriteOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &ods
   if (root)
     odsState.addOperands(root);
   odsState.addOperands(externalArgs);
-  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({(root ? 1 : 0), static_cast<int32_t>(externalArgs.size())}));
+  odsState.addAttribute(operand_segment_sizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({(root ? 1 : 0), static_cast<int32_t>(externalArgs.size())}));
   if (name) {
   odsState.addAttribute(nameAttrName(odsState.name), name);
   }
@@ -3278,9 +3249,8 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 2)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 2 "
                 "elements, but got ") << numElements;
@@ -3338,7 +3308,7 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
     ::mlir::OpAsmParser::UnresolvedOperand operand;
     ::mlir::OptionalParseResult parseResult =
                                     parser.parseOptionalOperand(operand);
-    if (parseResult.hasValue()) {
+    if (parseResult.has_value()) {
       if (failed(*parseResult))
         return ::mlir::failure();
       rootOperands.push_back(operand);
@@ -3369,7 +3339,7 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
 
   {
      auto parseResult = parser.parseOptionalRegion(*bodyRegion);
-     if (parseResult.hasValue() && failed(*parseResult))
+     if (parseResult.has_value() && failed(*parseResult))
        return ::mlir::failure();
   }
   if (!bodyRegion->empty()) {
@@ -3379,9 +3349,9 @@ void RewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::m
   if (parser.parseOptionalAttrDictWithKeyword(result.attributes))
     return ::mlir::failure();
   result.addRegion(std::move(bodyRegion));
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({static_cast<int32_t>(rootOperands.size()), static_cast<int32_t>(externalArgsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({static_cast<int32_t>(rootOperands.size()), static_cast<int32_t>(externalArgsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getType<::mlir::pdl::OperationType>();
-  if (parser.resolveOperands(rootOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(rootOperands, odsBuildableType0, rootOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(externalArgsOperands, externalArgsTypes, externalArgsOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -3452,7 +3422,7 @@ std::pair<unsigned, unsigned> TypeOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::TypeAttr TypeOpAdaptor::typeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TypeOp::typeAttrName(*odsOpName)).dyn_cast_or_null<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional<::mlir::Type> TypeOpAdaptor::type() {
@@ -3499,7 +3469,7 @@ std::pair<unsigned, unsigned> TypeOp::getODSResultIndexAndLength(unsigned index)
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TypeOp::result() {
+::mlir::TypedValue<::mlir::pdl::TypeType> TypeOp::result() {
   return *getODSResults(0).begin();
 }
 
@@ -3640,7 +3610,7 @@ std::pair<unsigned, unsigned> TypesOpAdaptor::getODSOperandIndexAndLength(unsign
 ::mlir::ArrayAttr TypesOpAdaptor::typesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, TypesOp::typesAttrName(*odsOpName)).dyn_cast_or_null<::mlir::ArrayAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::mlir::ArrayAttr > TypesOpAdaptor::types() {
@@ -3687,7 +3657,7 @@ std::pair<unsigned, unsigned> TypesOp::getODSResultIndexAndLength(unsigned index
            std::next(getOperation()->result_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value TypesOp::result() {
+::mlir::TypedValue<::mlir::pdl::RangeType> TypesOp::result() {
   return *getODSResults(0).begin();
 }
 

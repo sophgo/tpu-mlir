@@ -45,6 +45,17 @@ def _compute_pad(stride, dilation, input_size, filter, padding):
     pad = [i for i in padding_before] + [i for i in padding_after]
     return pad
 
+def _axis_transpose(op, axis):
+    in_dim = len(op.inputs[0].shape)
+    if in_dim == 4:
+        if axis == 0:
+            return 0
+        elif axis == 3:
+            return 1
+        else:
+            return axis + 1
+    else:
+        return axis
 
 class TFLiteReader:
     """
@@ -264,6 +275,7 @@ class TFLiteConverter(BaseConverter):
             "DEQUANTIZE": lambda _: ("top.Cast", {}),
             "QUANTIZE": lambda _: ("top.Cast", {}),
             "RESHAPE": lambda _: ("top.Reshape", {}),
+            "CONCATENATION": self.concat_op,
         }
         input_types=[]
         for x in self.graph.inputs:
@@ -599,6 +611,20 @@ class TFLiteConverter(BaseConverter):
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
         }
 
+    def concat_op(self, op):
+        from .tflite.ConcatenationOptions import ConcatenationOptions
+        op_options = op.builtin_options
+        param = ConcatenationOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        axis = _axis_transpose(op, param.Axis())
+        fused_active = param.FusedActivationFunction()
+        if fused_active not in [0, 1]:
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
+        return "top.Concat", {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
+            "do_relu": BoolAttr.get(fused_active == 1),
+        }
+
     def convert_subgraph(self, subgraph):
         class symbolTable:
             symbol_table = {}
@@ -635,17 +661,7 @@ class TFLiteConverter(BaseConverter):
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(input.name, idx, **{})
             else:
-                preprocess_hint = {
-                    'mean': self.preprocess_args['mean'],
-                    'scale': self.preprocess_args['scale'],
-                    'pixel_format': self.preprocess_args["pixel_format"],
-                    'channel_format': self.preprocess_args["channel_format"],
-                    'pad_type': self.preprocess_args["pad_type"],
-                    'resize_dims': self.preprocess_args['resize_dims'],
-                    'keep_aspect_ratio': self.preprocess_args['keep_aspect_ratio'],
-                    'pad_value': self.preprocess_args['pad_value']
-                }
-                input_op = self.mlir.create_input_op(input.name, idx, **preprocess_hint)
+                input_op = self.mlir.create_input_op(input.name, idx, **self.preprocess_args)
             symbol_table.update({input.id: input_op})
 
         def add_operation(operation):

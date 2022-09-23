@@ -37,6 +37,7 @@ class Top:
     ScaleOp = 'top.Scale'
     LSTMOp = 'top.LSTM'
     GatherOp = 'top.Gather'
+    TileOp = 'top.Tile'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -150,41 +151,23 @@ class MLIRImporter(object):
 
     def create_input_op(self, name, index, **kargs):
         assert (index < len(self.func_args))
-        shape = [self.input_types[index].get_dim_size(x) \
-                 for x in range(self.input_types[index].rank)]
-        mean = kargs.get('mean', [0.0, 0.0, 0.0])
-        scale = kargs.get('scale', [1.0, 1.0, 1.0])
-        pixel_format = kargs.get('pixel_format', 'bgr')
-        channel_format = kargs.get('channel_format', 'nchw')
-        keep_aspect_ratio = kargs.get('keep_aspect_ratio', False)
-        pad_value = kargs.get('pad_value', 0)
-        pad_type = kargs.get('pad_type', 'center')
-        resize_dims = kargs.get('resize_dims', shape[-2:])
-
-        preprocess_param = {
-            'mean':
-            ArrayAttr.get([FloatAttr.get_f64(x) for x in mean]),
-            'scale':
-            ArrayAttr.get([FloatAttr.get_f64(x) for x in scale]),
-            'keep_aspect_ratio':
-            BoolAttr.get(keep_aspect_ratio),
-            'pad_value':
-            IntegerAttr.get(self.mlir_type['INT64'], pad_value),
-            'resize_dims':
-            ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in resize_dims]),
-            'pixel_format':
-            StringAttr.get(pixel_format),
-            'channel_format':
-            StringAttr.get(channel_format),
-            'pad_type':
-            StringAttr.get(pad_type)
-        }
-
         param = {}
-
-        if len(kargs) > 0:
-            param["preprocess"] = DictAttr.get(preprocess_param)
-
+        if 'scale' in kargs:
+            param['scale'] = ArrayAttr.get([FloatAttr.get_f64(x) for x in kargs['scale']])
+        if 'mean' in kargs:
+            param['mean'] = ArrayAttr.get([FloatAttr.get_f64(x) for x in kargs['mean']])
+        if 'resize_dims' in kargs:
+            param['resize_dims'] = ArrayAttr.get([IntegerAttr.get(self.mlir_type['INT64'], x) for x in kargs['resize_dims']])
+        if 'keep_aspect_ratio' in kargs:
+            param['keep_aspect_ratio'] = BoolAttr.get(kargs['keep_aspect_ratio'])
+        if 'pad_type' in kargs:
+            param['pad_type'] = StringAttr.get(kargs['pad_type'])
+        if 'pad_value' in kargs:
+            param['pad_value'] = IntegerAttr.get(self.mlir_type['INT64'], kargs['pad_value'])
+        if 'pixel_format' in kargs:
+            param['pixel_format'] = StringAttr.get(kargs['pixel_format'])
+        if 'channel_format' in kargs:
+            param['channel_format'] = StringAttr.get(kargs['channel_format'])
         op = Operation.create(Top.InputOp,
                               results=[self.input_types[index]],
                               operands=[self.func_args[index]],
@@ -423,6 +406,7 @@ class MLIRImporter(object):
         param = {
             'name': StringAttr.get(kargs['name']),
             'paddings': self.ArrayAttr(kargs['paddings']),
+            'val': FloatAttr.get_f64(kargs['val']),
         }
         return self.buildOp(Top.PadOp, operands, [output_type], **param)
 
@@ -496,6 +480,15 @@ class MLIRImporter(object):
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
         }
         return self.buildOp(Top.GatherOp, operands, [output_type], **param)
+
+    def create_tile_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': StringAttr.get(kargs['name']),
+            'axis':  IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'tile':  IntegerAttr.get(self.mlir_type['INT64'], kargs['tile']),
+        }
+        return self.buildOp(Top.TileOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

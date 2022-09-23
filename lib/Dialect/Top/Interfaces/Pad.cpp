@@ -17,7 +17,15 @@ using namespace mlir;
 
 int64_t top::PadOp::getFLOPs() { return 0; }
 
-LogicalResult top::PadOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::PadOp::init(InferenceParameter &p) {
+  float *dst = p.outputs[0];
+  auto total_num = Module::getNumElements(output());
+  float val_ = val().convertToDouble();
+  for (int i = 0; i < total_num; i++) {
+    dst[i] = val_;
+  }
+  return success();
+}
 void top::PadOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PadOp::inference(InferenceParameter &p) {
@@ -26,7 +34,7 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
   int64_t ic = in_shape[1];
   int64_t ih = in_shape[2];
   int64_t iw = in_shape[3];
-  std::shared_ptr<std::vector<int64_t>> pads_ = Module::getI64Array(paddings());
+  auto pads_ = Module::getI64Array(paddings());
   int num_dims = in_shape.size();
   std::vector<int> pads;
   for (int i = 0; i < num_dims * 2; i++) {

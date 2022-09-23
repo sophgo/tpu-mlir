@@ -20,6 +20,11 @@ class CloneOp;
 } // namespace mlir
 namespace mlir {
 namespace bufferization {
+class DeallocTensorOp;
+} // namespace bufferization
+} // namespace mlir
+namespace mlir {
+namespace bufferization {
 class ToMemrefOp;
 } // namespace bufferization
 } // namespace mlir
@@ -54,8 +59,11 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::ValueRange dynamicSizes();
+  ::mlir::ValueRange getDynamicSizes();
+  ::mlir::Value getCopy();
   ::mlir::DictionaryAttr getAttributes();
+  ::mlir::IntegerAttr getMemorySpaceAttr();
+  ::llvm::Optional<uint64_t> getMemorySpace();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
@@ -63,14 +71,31 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class AllocTensorOp : public ::mlir::Op<AllocTensorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::TensorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::bufferization::BufferizableOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
+class AllocTensorOp : public ::mlir::Op<AllocTensorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::TensorType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::AttrSizedOperandSegments, ::mlir::OpTrait::OpInvariants, ::mlir::bufferization::BufferizableOpInterface::Trait, ::mlir::ReifyRankedShapedTypeOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
   using Adaptor = AllocTensorOpAdaptor;
 public:
   static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
-    return {};
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("memory_space"), ::llvm::StringRef("operand_segment_sizes")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getMemorySpaceAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getMemorySpaceAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  ::mlir::StringAttr getOperandSegmentSizesAttrName() {
+    return getAttributeNameForIndex(1);
+  }
+
+  static ::mlir::StringAttr getOperandSegmentSizesAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 1);
   }
 
   static constexpr ::llvm::StringLiteral getOperationName() {
@@ -79,27 +104,59 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range dynamicSizes();
-  ::mlir::MutableOperandRange dynamicSizesMutable();
+  ::mlir::Operation::operand_range getDynamicSizes();
+  ::mlir::TypedValue<::mlir::TensorType> getCopy();
+  ::mlir::MutableOperandRange getDynamicSizesMutable();
+  ::mlir::MutableOperandRange getCopyMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ValueRange dynamicSizes);
+  ::mlir::TypedValue<::mlir::TensorType> getResult();
+  ::mlir::IntegerAttr getMemorySpaceAttr();
+  ::llvm::Optional<uint64_t> getMemorySpace();
+  void setMemorySpaceAttr(::mlir::IntegerAttr attr);
+  ::mlir::Attribute removeMemory_spaceAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, RankedTensorType type, ValueRange dynamicSizes);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, RankedTensorType type, ValueRange dynamicSizes, Value copy);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::ValueRange dynamic_sizes, /*optional*/::mlir::Value copy, /*optional*/::mlir::IntegerAttr memory_space);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange dynamic_sizes, /*optional*/::mlir::Value copy, /*optional*/::mlir::IntegerAttr memory_space);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
   static void getCanonicalizationPatterns(::mlir::RewritePatternSet &results, ::mlir::MLIRContext *context);
   ::mlir::LogicalResult reifyResultShapes(::mlir::OpBuilder &builder, ::mlir::ReifiedRankedShapedTypeDims &reifiedReturnShapes);
-  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
-  void print(::mlir::OpAsmPrinter &_odsPrinter);
-public:
-  LogicalResult bufferize(RewriterBase &rewriter, BufferizationState &state);
-
-  bool isMemoryWrite(OpResult opResult, const AnalysisState &state) const {
-    // AllocTensorOps allocate but do not write.
-    return false;
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
   }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 2 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  LogicalResult bufferize(RewriterBase &rewriter,
+                          const BufferizationOptions &options);
+
+  bool isMemoryWrite(OpResult opResult, const AnalysisState &state);
+
+  bool bufferizesToAllocation(OpResult opResult) { return true; }
+
+  bool bufferizesToMemoryRead(OpOperand &opOperand,
+                              const AnalysisState &state);
+
+  bool bufferizesToMemoryWrite(OpOperand &opOperand,
+                               const AnalysisState &state);
+
+  SmallVector<OpResult> getAliasingOpResult(
+      OpOperand &opOperand, const AnalysisState &state);
+
+  FailureOr<BaseMemRefType> getBufferType(
+      Value value, const BufferizationOptions &options,
+      const DenseMap<Value, BaseMemRefType> &fixedTypes);
 
   RankedTensorType getType() {
     return getResult().getType().cast<RankedTensorType>();
@@ -114,6 +171,7 @@ public:
   // the tensor at dimension `idx`. Asserts that the shape is
   // dynamic at that `idx`.
   unsigned getIndexOfDynamicSize(unsigned idx) {
+    assert(!getCopy() && "no dim sizes specified when copying a tensor");
     assert(isDynamicDim(idx) && "expected dynamic size");
     ArrayRef<int64_t> shape = getType().getShape();
     return std::count_if(
@@ -123,9 +181,7 @@ public:
 
   // Return the Value of the dynamic size of the tensor at dimension
   // `idx`. Asserts that the shape is dynamic at that `idx.
-  Value getDynamicSize(unsigned idx) {
-    return getOperand(getIndexOfDynamicSize(idx));
-  }
+  Value getDynamicSize(OpBuilder &b, unsigned idx);
 
   // Assert that the size of the result tensor is static at `idx`
   // and return the shape.
@@ -154,7 +210,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value input();
+  ::mlir::Value getInput();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -179,11 +235,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value input();
-  ::mlir::MutableOperandRange inputMutable();
+  ::mlir::Value getInput();
+  ::mlir::MutableOperandRange getInputMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value output();
+  ::mlir::Value getOutput();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value value);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type output, ::mlir::Value input);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value input);
@@ -198,12 +254,87 @@ public:
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &_odsPrinter);
 public:
-  Value getSource() { return input(); }
-  Value getTarget() { return output(); }
+  Value getSource() { return getInput(); }
+  Value getTarget() { return getOutput(); }
 };
 } // namespace bufferization
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::bufferization::CloneOp)
+
+namespace mlir {
+namespace bufferization {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::bufferization::DeallocTensorOp declarations
+//===----------------------------------------------------------------------===//
+
+class DeallocTensorOpAdaptor {
+public:
+  DeallocTensorOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  DeallocTensorOpAdaptor(DeallocTensorOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getTensor();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class DeallocTensorOp : public ::mlir::Op<DeallocTensorOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::bufferization::BufferizableOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = DeallocTensorOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    return {};
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("bufferization.dealloc_tensor");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::TypedValue<::mlir::TensorType> getTensor();
+  ::mlir::MutableOperandRange getTensorMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Value tensor);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value tensor);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+public:
+  bool bufferizesToMemoryRead(OpOperand &opOperand,
+                              const AnalysisState &state) const {
+    return false;
+  }
+
+  bool bufferizesToMemoryWrite(OpOperand &opOperand,
+                               const AnalysisState &state) const {
+    return false;
+  }
+
+  SmallVector<OpResult> getAliasingOpResult(
+      OpOperand &opOperand, const AnalysisState &state) const {
+    return {};
+  }
+
+  LogicalResult bufferize(RewriterBase &rewriter,
+                          const BufferizationOptions &options);
+};
+} // namespace bufferization
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::bufferization::DeallocTensorOp)
 
 namespace mlir {
 namespace bufferization {
@@ -221,7 +352,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value tensor();
+  ::mlir::Value getTensor();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -246,11 +377,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value tensor();
-  ::mlir::MutableOperandRange tensorMutable();
+  ::mlir::TypedValue<::mlir::TensorType> getTensor();
+  ::mlir::MutableOperandRange getTensorMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value memref();
+  ::mlir::Value getMemref();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type memref, ::mlir::Value tensor);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value tensor);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
@@ -296,7 +427,7 @@ public:
   }
 
   LogicalResult bufferize(RewriterBase &rewriter,
-                          BufferizationState &state);
+                          const BufferizationOptions &options);
 };
 } // namespace bufferization
 } // namespace mlir
@@ -318,7 +449,7 @@ public:
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
-  ::mlir::Value memref();
+  ::mlir::Value getMemref();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
@@ -343,11 +474,11 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value memref();
-  ::mlir::MutableOperandRange memrefMutable();
+  ::mlir::Value getMemref();
+  ::mlir::MutableOperandRange getMemrefMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value result();
+  ::mlir::TypedValue<::mlir::TensorType> getResult();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Value memref);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Value memref);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::Value memref);
@@ -381,7 +512,7 @@ public:
   // results as not writable enforces a buffer copy and has the same effect.
 
   LogicalResult bufferize(RewriterBase &rewriter,
-                          BufferizationState &state) const {
+                          const BufferizationOptions &options) const {
     // to_tensor cannot be bufferized. However, other ops that are using
     // to_tensor's result will eventually be bufferized. At that point, they
     // will start using to_tensor's memref operand. Once all users of
@@ -395,6 +526,12 @@ public:
   bool isWritable(Value value, const AnalysisState &state) const {
     // It is unknown whether the memref operand is writable or not.
     return false;
+  }
+
+  FailureOr<BaseMemRefType> getBufferType(
+      Value value, const BufferizationOptions &options,
+      const DenseMap<Value, BaseMemRefType> &fixedTypes) {
+    return getMemref().getType().cast<BaseMemRefType>();
   }
 };
 } // namespace bufferization

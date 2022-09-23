@@ -167,7 +167,7 @@ std::pair<unsigned, unsigned> CallIndirectOp::getODSOperandIndexAndLength(unsign
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CallIndirectOp::getCallee() {
+::mlir::TypedValue<::mlir::FunctionType> CallIndirectOp::getCallee() {
   return *getODSOperands(0).begin();
 }
 
@@ -395,7 +395,7 @@ std::pair<unsigned, unsigned> CallOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::FlatSymbolRefAttr CallOpAdaptor::getCalleeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CallOp::getCalleeAttrName(*odsOpName)).cast<::mlir::FlatSymbolRefAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef CallOpAdaptor::getCallee() {
@@ -663,7 +663,7 @@ std::pair<unsigned, unsigned> ConstantOpAdaptor::getODSOperandIndexAndLength(uns
 ::mlir::FlatSymbolRefAttr ConstantOpAdaptor::getValueAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, ConstantOp::getValueAttrName(*odsOpName)).cast<::mlir::FlatSymbolRefAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef ConstantOpAdaptor::getValue() {
@@ -856,7 +856,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr FuncOpAdaptor::getSymNameAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, FuncOp::getSymNameAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef FuncOpAdaptor::getSymName() {
@@ -867,7 +867,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::TypeAttr FuncOpAdaptor::getFunctionTypeAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, FuncOp::getFunctionTypeAttrName(*odsOpName)).cast<::mlir::TypeAttr>();
-    return attr;
+  return attr;
 }
 
 ::mlir::FunctionType FuncOpAdaptor::getFunctionType() {
@@ -878,7 +878,7 @@ std::pair<unsigned, unsigned> FuncOpAdaptor::getODSOperandIndexAndLength(unsigne
 ::mlir::StringAttr FuncOpAdaptor::getSymVisibilityAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 2, odsAttrs.end() - 0, FuncOp::getSymVisibilityAttrName(*odsOpName)).dyn_cast_or_null<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::llvm::StringRef > FuncOpAdaptor::getSymVisibility() {

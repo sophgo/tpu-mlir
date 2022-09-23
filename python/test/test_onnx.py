@@ -33,40 +33,43 @@ class ONNX_IR_TESTER(object):
             "AvgPool3D": self.test_AvgPool3D,
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
+            #"BroadcastMulConst": self.test_BroadcastMulConst,
             "Concat": self.test_Concat,
             "Conv1d": self.test_Conv1d,
-            "BroadcastMulConst": self.test_BroadcastMulConst,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "ConvTranspose2D": self.test_ConvTranspose,
             "Clip": self.test_Clip,
             "Div": self.test_Div,
+            "Expand": self.test_Expand,
             #"Gather": self.test_Gather,
             "GatherToSlice": self.test_GatherToSlice,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
+            "LayerGroup2": self.test_LayerGroup2,
             #"LSTM": self.test_LSTM,
             "MaxPool1D": self.test_MaxPool1D,
             "MaxPool2D": self.test_MaxPool2D,
             "MaxPool3D": self.test_MaxPool3D,
             "Mul": self.test_Mul,
             "MulConst": self.test_MulConst,
-            "Pad": self.test_Pad,
+            "Pad0": self.test_Pad0,  # zero pad
+            "Pad1": self.test_Pad1,  # pad val
             "Resize": self.test_Resize,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
             "Softmax": self.test_Softmax,
-            #"Squeeze": self.test_Squeeze,
+            "Squeeze": self.test_Squeeze,
             "Sigmoid": self.test_Sigmoid,
             "Slice": self.test_Slice,
             "Split": self.test_Split,
             "Scale": self.test_Scale,
+            "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
             #############################
             # Torch Test Case, Alphabetically
             #############################
             "LayerGroup": self.test_LayerGroup,
-            "Lg": self.test_Lg,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
         #self.quant_modes = ["f16", "bf16"]  # add later
@@ -74,7 +77,7 @@ class ONNX_IR_TESTER(object):
     def test_single(self, case: str):
         print("Test: {}".format(case))
         if case in self.test_function:
-            self.test_function[case]()
+            self.test_function[case](case)
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
@@ -159,7 +162,7 @@ class ONNX_IR_TESTER(object):
         if quant_mode == "int8":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
         npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
-        npz_compare([tpu_npz, model_npz, "--tolerance", "0.99,0.9", "-v"])
+        npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
 
         msg = quant_mode.upper()
         if quant_mode == "int8":
@@ -184,38 +187,46 @@ class ONNX_IR_TESTER(object):
     def torch_and_onnx_compare(self, input_data: dict, onnx_file: str, origin_output):
         onnx_outs = self.simple_onnx_inference(input_data, onnx_file)
         num_outputs = len(onnx_outs)
-        assert (len(origin_output) == num_outputs)
-        for i in range(num_outputs):
-            np.testing.assert_allclose(origin_output[i].data.numpy().flatten(),
-                                       onnx_outs[i].flatten(),
+        if isinstance(origin_output, tuple):
+            assert (len(origin_output) == num_outputs)
+            for i in range(num_outputs):
+                np.testing.assert_allclose(origin_output[i].data.numpy().flatten(),
+                                           onnx_outs[i].flatten(),
+                                           rtol=1e-5,
+                                           atol=1e-01)
+        else:
+            np.testing.assert_allclose(origin_output.data.numpy().flatten(),
+                                       onnx_outs[0].flatten(),
                                        rtol=1e-5,
                                        atol=1e-01)
         print("* Torch and Onnx result compared *")
 
-    def torch_and_test(self, inputs, torch_model, model_name: str):
+    def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str):
         origin_output = torch_model(inputs)
         onnx_file = model_name + ".onnx"
         in_names = []
+        in_data = {}
         if isinstance(inputs, tuple):
-            for i in range(len(inputs)):
-                in_names.append("in_{}".format(i))
+            for idx, input in enumerate(inputs):
+                name = "in_{}".format(idx)
+                in_names.append(name)
+                in_data[name] = input.data.numpy().astype(np.float32)
         else:
-            in_names = ["in_0"]
+            in_names.append('in_0')
+            in_data['in_0'] = inputs.data.numpy().astype(np.float32)
+
         torch.onnx.export(torch_model,
                           inputs,
                           onnx_file,
                           export_params=True,
-                          opset_version=11,
                           verbose=True,
                           input_names=in_names)
-
         onnx_model = onnx.load(onnx_file)
-        input_data = {onnx_model.graph.node[0].input[0]: inputs.data.numpy().astype(np.float32)}
+        self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
+        self.onnx_and_test(in_data, onnx_model.graph)
 
-        self.torch_and_onnx_compare(input_data, onnx_file, origin_output)
-        self.onnx_and_test(input_data, onnx_model.graph, model_name)
-
-    def onnx_and_test(self, input_data: dict, graph_def, model_name: str):
+    def onnx_and_test(self, input_data: dict, graph_def):
+        model_name = graph_def.name
         onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
         # test onnx and mlir outputs
         counter = 0
@@ -245,30 +256,29 @@ class ONNX_IR_TESTER(object):
     ##################################
     # adding operators from here
     ##################################
-    def AvgPoolBase(self, test_case, input_shape, output_shape, kernel, strides):
+    def AvgPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        pool_def = onnx.helper.make_node(
+        pool_def = helper.make_node(
             'AveragePool',
             inputs=['input'],
             outputs=['output'],
             kernel_shape=kernel,
             strides=strides,
         )
-        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
-        self.onnx_and_test({"input": input_data}, graph_def, test_case)
+        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        self.onnx_and_test({"input": input_data}, graph_def)
 
-    def test_AvgPool1D(self):
-        test_case = 'AvgPool1D'
+    def test_AvgPool1D(self, case_name):
         input_shape = [1, 32, 128]
         output_shape = [1, 32, 64]
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        pool_def = onnx.helper.make_node(
+        pool_def = helper.make_node(
             'AveragePool',
             inputs=['input'],
             outputs=['pool_output'],
@@ -284,41 +294,41 @@ class ONNX_IR_TESTER(object):
         initializer.append(mul_const)
         mul_def = helper.make_node('Mul', ['pool_output', 'const_mul'], ['output'])
 
-        graph_def = helper.make_graph([pool_def, mul_def], test_case, [input], [output],
+        graph_def = helper.make_graph([pool_def, mul_def], case_name, [input], [output],
                                       initializer)
-        self.onnx_and_test({"input": input_data}, graph_def, test_case)
+        self.onnx_and_test({"input": input_data}, graph_def)
 
-    def test_AvgPool2D(self):
-        self.AvgPoolBase('AvgPool2D', [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
+    def test_AvgPool2D(self, case_name):
+        self.AvgPoolBase(case_name, [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
 
-    def test_AvgPool3D(self):
-        self.AvgPoolBase('AvgPool3D', [2, 32, 16, 32, 64], [2, 32, 8, 16, 32], [2, 2, 2], [2, 2, 2])
+    def test_AvgPool3D(self, case_name):
+        self.AvgPoolBase(case_name, [2, 32, 16, 32, 64], [2, 32, 8, 16, 32], [2, 2, 2], [2, 2, 2])
 
-    def MaxPoolBase(self, test_case, input_shape, output_shape, kernel, strides):
+    def MaxPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        pool_def = onnx.helper.make_node(
+        pool_def = helper.make_node(
             'MaxPool',
             inputs=['input'],
             outputs=['output'],
             kernel_shape=kernel,
             strides=strides,
         )
-        graph_def = helper.make_graph([pool_def], test_case, [input], [output])
-        self.onnx_and_test({"input": input_data}, graph_def, test_case)
+        graph_def = helper.make_graph([pool_def], case_name, [input], [output])
+        self.onnx_and_test({"input": input_data}, graph_def)
 
-    def test_MaxPool1D(self):
-        self.MaxPoolBase('MaxPool1D', [1, 32, 128], [1, 32, 64], [2], [2])
+    def test_MaxPool1D(self, case_name):
+        self.MaxPoolBase(case_name, [1, 32, 128], [1, 32, 64], [2], [2])
 
-    def test_MaxPool2D(self):
-        self.MaxPoolBase('MaxPool2D', [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
+    def test_MaxPool2D(self, case_name):
+        self.MaxPoolBase(case_name, [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
 
-    def test_MaxPool3D(self):
-        self.MaxPoolBase('MaxPool3D', [1, 32, 16, 32, 64], [1, 32, 8, 16, 63], [2, 1, 2], [2, 2, 1])
+    def test_MaxPool3D(self, case_name):
+        self.MaxPoolBase(case_name, [1, 32, 16, 32, 64], [1, 32, 8, 16, 63], [2, 1, 2], [2, 2, 1])
 
-    def ConvBase(self, test_case, input_shape, filter_shape, output_shape, kernel, padding, stride,
+    def ConvBase(self, case_name, input_shape, filter_shape, output_shape, kernel, padding, stride,
                  dilation, groups):
         input_data = np.random.randn(*input_shape).astype(np.float32)
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
@@ -341,21 +351,20 @@ class ONNX_IR_TESTER(object):
         )
 
         graph_def = helper.make_graph([conv_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[weight, bias])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Conv1d(self):
+    def test_Conv1d(self, case_name):
         oc = 32
-        self.ConvBase('Conv1d', [1, 16, 100], [oc, 16, 3], [1, oc, 100], [3], [1, 1], [1], [1], 1)
+        self.ConvBase(case_name, [1, 16, 100], [oc, 16, 3], [1, oc, 100], [3], [1, 1], [1], [1], 1)
 
-    def test_Conv2d(self):
-        test_case = 'Conv2d'
+    def test_Conv2d(self, case_name):
         oc = 32
         input_shape = [1, 16, 100, 100]
         filter_shape = [oc, 16, 3, 3]
         output_shape = [1, oc, 100, 100]
-        self.ConvBase(test_case,
+        self.ConvBase(case_name,
                       input_shape,
                       filter_shape,
                       output_shape,
@@ -365,13 +374,12 @@ class ONNX_IR_TESTER(object):
                       dilation=[1, 1],
                       groups=1)
 
-    def test_Conv3d(self):
-        test_case = 'Conv3d'
+    def test_Conv3d(self, case_name):
         oc = 32
         input_shape = [1, 16, 10, 30, 50]
         filter_shape = [oc, 16, 3, 3, 3]
         output_shape = [1, oc, 10, 30, 50]
-        self.ConvBase(test_case,
+        self.ConvBase(case_name,
                       input_shape,
                       filter_shape,
                       output_shape,
@@ -381,8 +389,7 @@ class ONNX_IR_TESTER(object):
                       dilation=[1, 1, 1],
                       groups=1)
 
-    def test_SiLU(self):
-        test_case = 'SiLU'
+    def test_SiLU(self, case_name):
         input_shape = [1, 16, 64, 64]
         output_shape = [1, 16, 64, 64]
         input_data = np.random.randn(*input_shape).astype(np.float32)
@@ -400,11 +407,10 @@ class ONNX_IR_TESTER(object):
             inputs=['input', 'x1'],
             outputs=['output'],
         )
-        graph_def = helper.make_graph([sigmoid_def, mul_def], test_case, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        graph_def = helper.make_graph([sigmoid_def, mul_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Concat(self):
-        test_case = "Concat"
+    def test_Concat(self, case_name):
         input_shape = {"input1": [1, 4, 32], "input2": [1, 4, 64], "input3": [1, 4, 64]}
         output_shape = [1, 4, 32 + 64 + 64]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
@@ -419,15 +425,10 @@ class ONNX_IR_TESTER(object):
                                       outputs=["output"],
                                       axis=2)
 
-        graph_def = helper.make_graph([concat_def], test_case, inputs, [output])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        graph_def = helper.make_graph([concat_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_Transpose(self):
-        test_case = 'Transpose'
+    def test_Transpose(self, case_name):
         input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20]]
         transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2]}
         for input_shape in input_shapes:
@@ -436,16 +437,15 @@ class ONNX_IR_TESTER(object):
             order = transpose_orders[len(input_shape)]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
             output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-            transpose_def = helper.make_node(test_case,
+            transpose_def = helper.make_node("Transpose",
                                              inputs=['input'],
                                              outputs=['output'],
                                              perm=order)
-            graph_def = helper.make_graph([transpose_def], test_case, [input], [output])
-            self.onnx_and_test({'input': input_data}, graph_def, test_case)
+            graph_def = helper.make_graph([transpose_def], case_name, [input], [output])
+            self.onnx_and_test({'input': input_data}, graph_def)
             print("[Success] {}D data test".format(len(input_shape)))
 
-    def test_LeakyRelu(self):
-        test_case = "LeakyRelu"
+    def test_LeakyRelu(self, case_name):
         oc = 32
         input_shape = [1, 16, 100, 100]
         filter_shape = [oc, 16, 3, 3]
@@ -476,12 +476,11 @@ class ONNX_IR_TESTER(object):
                                          alpha=0.67)
 
         graph_def = helper.make_graph([conv_def, leakyrelu_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[weight, bias])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Mul(self):
-        test_case = 'Mul'
+    def test_Mul(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
@@ -493,15 +492,10 @@ class ONNX_IR_TESTER(object):
 
         mul_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
 
-        graph_def = helper.make_graph([mul_def], test_case, inputs, [output])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        graph_def = helper.make_graph([mul_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_MulConst(self):
-        test_case = 'MulConst'
+    def test_MulConst(self, case_name):
         input_shape = [1, 3, 27, 27]
         output_shape = [1, 3, 27, 27]
         input_data = np.random.randn(*input_shape).astype(np.float32)
@@ -520,12 +514,11 @@ class ONNX_IR_TESTER(object):
         const_mul_def = helper.make_node("Mul", inputs=["input", "const_mul"], outputs=["output"])
 
         graph_def = helper.make_graph([const_mul_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=initializer)
-        self.onnx_and_test({"input": input_data}, graph_def, test_case)
+        self.onnx_and_test({"input": input_data}, graph_def)
 
-    def test_Scale(self):
-        test_case = 'Scale'
+    def test_Scale(self, case_name):
         input_shape = [1, 32, 100, 100]
         output_shape = [1, 32, 100, 100]
         weight_shape = [1, 32, 1, 1]
@@ -545,13 +538,12 @@ class ONNX_IR_TESTER(object):
                                           outputs=["output"])
 
         graph_def = helper.make_graph([mul_weight_def, add_offset_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[weight, offset])
 
-        self.onnx_and_test({"input": input_data}, graph_def, test_case)
+        self.onnx_and_test({"input": input_data}, graph_def)
 
-    def test_Resize(self):
-        test_case = "Resize"
+    def test_Resize(self, case_name):
         input_shape = [1, 16, 32, 32]
         output_shape = [1, 16, 64, 64]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
@@ -567,59 +559,71 @@ class ONNX_IR_TESTER(object):
                                       nearest_mode='floor',
                                       coordinate_transformation_mode='asymmetric')
         graph_def = helper.make_graph([resize_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[roi, scales])
         input_data = np.random.randn(*input_shape).astype(np.float32)
-        self.onnx_and_test({"input": input_data}, graph_def, test_case)
+        self.onnx_and_test({"input": input_data}, graph_def)
 
-    def test_Softmax(self):
-        test_case = 'Softmax'
+    def test_Softmax(self, case_name):
         input_shape = [1, 1000, 1, 1]
         axis = 1
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        softmax_def = helper.make_node(test_case, inputs=['input'], outputs=['output'], axis=axis)
-        graph_def = helper.make_graph([softmax_def], test_case, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
+        graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Log(self):
-        test_case = 'Log'
+    def test_Log(self, case_name):
         input_shape = [1, 3, 32, 32]
         input_data = np.clip(np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        log_def = helper.make_node(test_case, inputs=['input'], outputs=['output'])
-        graph_def = helper.make_graph([log_def], test_case, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        log_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([log_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Pad(self):
-        test_case = 'Pad'
+    def test_Pad0(self, case_name):
         input_shape = [3, 8, 32, 32]
         output_shape = [3, 8, 44, 46]
         pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        data_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['pads'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.INT64,
-                dims=pads.shape,
-                vals=pads.flatten(),
-            ),
-        )
-        pad_def = helper.make_node(test_case, ['input', 'pads'],
+        pad_val = helper.make_tensor(name='pads',
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pads.shape,
+                                     vals=pads.flatten())
+        pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='constant')
+        graph_def = helper.make_graph([pad_def],
+                                      case_name, [input], [output],
+                                      initializer=[pad_val])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_Pad1(self, case_name):
+        input_shape = [3, 8, 32, 32]
+        output_shape = [3, 8, 44, 46]
+        pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        pad_shape = helper.make_tensor(name='pads',
+                                       data_type=onnx.TensorProto.INT64,
+                                       dims=pads.shape,
+                                       vals=pads.flatten())
+        pad_val = helper.make_tensor(name='pad_val',
+                                     data_type=onnx.TensorProto.FLOAT,
+                                     dims=[],
+                                     vals=[0.6])
+        pad_def = helper.make_node("Pad", ['input', 'pads', 'pad_val'],
                                    outputs=['output'],
                                    mode='constant')
-        graph_def = helper.make_graph([data_def, pad_def], test_case, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        graph_def = helper.make_graph([pad_def],
+                                      case_name, [input], [output],
+                                      initializer=[pad_shape, pad_val])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Div(self):
-        test_case = 'Div'
+    def test_Div(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
@@ -632,15 +636,10 @@ class ONNX_IR_TESTER(object):
 
         div_def = helper.make_node("Div", inputs=list(input_shape.keys()), outputs=["output"])
 
-        graph_def = helper.make_graph([div_def], test_case, inputs, [output])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        graph_def = helper.make_graph([div_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_ConvTranspose(self):
-        test_case = 'ConvTranspose'
+    def test_ConvTranspose(self, case_name):
         oc, ic = 16, 8
         ih, iw = 16, 16
         kernel_shape = [3, 3]
@@ -661,7 +660,7 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-        convtranspose_def = helper.make_node(test_case,
+        convtranspose_def = helper.make_node("ConvTranspose",
                                              inputs=['input', 'weight', 'bias'],
                                              outputs=['output'],
                                              kernel_shape=kernel_shape,
@@ -670,38 +669,40 @@ class ONNX_IR_TESTER(object):
                                              dilations=dilations,
                                              group=1)
         graph_def = helper.make_graph([convtranspose_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[weight, bias])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Squeeze(self):
-        test_case = 'Squeeze'
+    def test_Squeeze(self, case_name):
         axis = [1, 3]
         input_shape = [3, 1, 32, 1]
         output_shape = [input_shape[i] for i in range(len(input_shape)) if i not in axis]
-        input_data = np.random.randn(*input_shape).astype(np.float32)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        input_data0 = np.random.randn(*input_shape).astype(np.float32)
+        input_data1 = np.random.randn(*input_shape).astype(np.float32)
+        input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
+        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
         axes = helper.make_tensor('axes', TensorProto.INT64, [len(axis)],
                                   axis * np.ones(1).astype(int))
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        node_def = helper.make_node(test_case, inputs=['input', 'axes'], outputs=['output'])
-        graph_def = helper.make_graph([node_def], test_case, [input], [output], [axes])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        add_def = helper.make_node("Add", inputs=['input0', 'input1'], outputs=['x'])
+        squeeze_def = helper.make_node("Squeeze", inputs=['x', 'axes'], outputs=['output'])
+        graph_def = helper.make_graph([add_def, squeeze_def],
+                                      case_name, [input0, input1], [output],
+                                      initializer=[axes])
+        self.onnx_and_test({'input0': input_data0, 'input1': input_data1}, graph_def)
 
-    def test_Clip(self):
-        test_case = 'Clip'
+    def test_Clip(self, case_name):
         input_shape = [1, 3, 32, 32]
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         min = helper.make_tensor('min', TensorProto.FLOAT, [], 0.0 * np.ones(1))
         max = helper.make_tensor('max', TensorProto.FLOAT, [], 6.0 * np.ones(1))
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        node_def = helper.make_node(test_case, inputs=['input', 'min', 'max'], outputs=['output'])
-        graph_def = helper.make_graph([node_def], test_case, [input], [output], [min, max])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        node_def = helper.make_node(case_name, inputs=['input', 'min', 'max'], outputs=['output'])
+        graph_def = helper.make_graph([node_def], case_name, [input], [output], [min, max])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Sigmoid(self):
-        test_case = 'Sigmoid'
+    def test_Sigmoid(self, case_name):
         input_shape = [1, 16, 64, 64]
         output_shape = [1, 16, 64, 64]
         input_data = np.random.randn(*input_shape).astype(np.float32)
@@ -710,15 +711,14 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
         sigmoid_def = helper.make_node(
-            test_case,
+            case_name,
             inputs=['input'],
             outputs=['output'],
         )
-        graph_def = helper.make_graph([sigmoid_def], test_case, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        graph_def = helper.make_graph([sigmoid_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Slice(self):
-        test_case = 'Slice'
+    def test_Slice(self, case_name):
         input_shape = [5, 116, 64, 64]
         output_shape = [3, 16, 16, 8]
         input_data = np.random.randn(*input_shape).astype(np.float32)
@@ -734,18 +734,17 @@ class ONNX_IR_TESTER(object):
         axes = helper.make_tensor('axes', TensorProto.INT64, [4], axes_data)
         steps = helper.make_tensor('steps', TensorProto.INT64, [4], steps_data)
         slice_def = helper.make_node(
-            test_case,
+            case_name,
             inputs=['input', 'starts', 'ends', 'axes', 'steps'],
             outputs=['output'],
         )
 
         graph_def = helper.make_graph([slice_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[starts, ends, axes, steps])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_Split(self):
-        test_case = 'Split'
+    def test_Split(self, case_name):
         input_shape = [6, 116, 64, 64]
         output1_shape = [3, 116, 64, 64]
         output2_shape = [3, 116, 64, 64]
@@ -757,39 +756,37 @@ class ONNX_IR_TESTER(object):
         output_1 = helper.make_tensor_value_info('output_1', TensorProto.FLOAT, output1_shape)
         output_2 = helper.make_tensor_value_info('output_2', TensorProto.FLOAT, output2_shape)
         split_def = helper.make_node(
-            test_case,
+            "Split",
             inputs=['input', 'split'],
             outputs=['output_1', 'output_2'],
             axis=0,
         )
 
         graph_def = helper.make_graph([split_def],
-                                      test_case, [input], [output_1, output_2],
+                                      case_name, [input], [output_1, output_2],
                                       initializer=[split])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_ReduceMean(self):
-        test_case = 'ReduceMean'
-        input_shape = [1, 1024, 7, 7]
-        output_shape = [1, 1024]
+    def test_ReduceMean(self, case_name):
+        input_shape = [2, 200, 7, 7]
+        output_shape = [2, 1, 1, 7]
         input_data = np.random.randn(*input_shape).astype(np.float32)
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
         reducemean_def = helper.make_node(
-            test_case,
+            "ReduceMean",
             inputs=['input'],
             outputs=['output'],
-            axes=[2, 3],
-            keepdims=0,
+            axes=[1, 2],
+            keepdims=1,
         )
 
-        graph_def = helper.make_graph([reducemean_def], test_case, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        graph_def = helper.make_graph([reducemean_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_LayerGroup(self):
-        model_name = "layer_group"
+    def test_LayerGroup(self, case_name):
 
         class Model(nn.Module):
 
@@ -804,12 +801,10 @@ class ONNX_IR_TESTER(object):
                 y2 = y0 + y1
                 return y0, y2
 
-        shape = (2, 3, 100, 100)
-        input_data = torch.randn(*shape)
-        self.torch_and_test(input_data, Model(), model_name)
+        x = torch.randn(4, 3, 50, 50).float()
+        self.torch_and_test(x, Model(), case_name)
 
-    def test_Add(self):
-        test_case = 'Add'
+    def test_Add(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
@@ -819,13 +814,12 @@ class ONNX_IR_TESTER(object):
         ]
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
 
-        add_def = helper.make_node(test_case, inputs=list(input_shape.keys()), outputs=["output"])
+        add_def = helper.make_node("Add", inputs=list(input_shape.keys()), outputs=["output"])
 
-        graph_def = helper.make_graph([add_def], test_case, inputs, [output])
-        self.onnx_and_test(input_data, graph_def, test_case)
+        graph_def = helper.make_graph([add_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_BroadcastAdd(self):
-        test_case = "BroadcastAdd"
+    def test_BroadcastAdd(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
@@ -834,11 +828,10 @@ class ONNX_IR_TESTER(object):
         ]
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
         add_def = helper.make_node("Add", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([add_def], test_case, inputs, [output])
-        self.onnx_and_test(input_data, graph_def, test_case)
+        graph_def = helper.make_graph([add_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_LSTM(self):
-        test_case = 'LSTM'
+    def test_LSTM(self, case_name):
         seq_length = 75
         batch_size = 2
         num_dir = 2
@@ -868,7 +861,7 @@ class ONNX_IR_TESTER(object):
                                            dims=[],
                                            vals=[seq_length])
 
-        node_def = onnx.helper.make_node(
+        node_def = helper.make_node(
             "LSTM",
             inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
             outputs=['output'],
@@ -876,12 +869,11 @@ class ONNX_IR_TESTER(object):
             hidden_size=hidden_size,
         )
         graph_def = helper.make_graph([node_def],
-                                      test_case, [input], [output],
+                                      case_name, [input], [output],
                                       initializer=[w, r, b, sequence_lens, h0, c0])
-        self.onnx_and_test({'input': input_data}, graph_def, test_case)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
-    def test_BroadcastMul(self):
-        test_case = "BroadcastMul"
+    def test_BroadcastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
@@ -890,15 +882,10 @@ class ONNX_IR_TESTER(object):
         ]
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
         mul_def = helper.make_node("Mul", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([mul_def], test_case, inputs, [output])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        graph_def = helper.make_graph([mul_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_BroadcastMulConst(self):
-        test_case = "BroadcastMulConst"
+    def test_BroadcastMulConst(self, case_name):
         input_shape = [1, 127, 270, 28]
         constant_shape = [2, 1, 1, 28]
         output_shape = [2, 127, 270, 28]
@@ -920,60 +907,45 @@ class ONNX_IR_TESTER(object):
         mul_def = helper.make_node("Mul", inputs=["sigmoid", "constant"], outputs=["output"])
 
         graph_def = helper.make_graph([sigmoid_def, mul_def],
-                                      test_case, [inputs], [output],
+                                      case_name, [inputs], [output],
                                       initializer=[constant])
-        self.onnx_and_test(
-            input_data,
-            graph_def,
-            test_case,
-        )
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_Lg(self):
-        test_case = "Lg"
+    def test_LayerGroup2(self, case_name):
         input_shape = [1, 64, 4, 4]
         constant_shape = [1, 64, 4, 4]
         output_shape = [1, 64, 4, 4]
 
-        input_data = {"input": np.random.randn(*input_shape).astype(np.float32),
-                      "input1": np.random.randn(*input_shape).astype(np.float32)}
-        inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
-        inputs1 = helper.make_tensor_value_info("input1", TensorProto.FLOAT, constant_shape)
+        input_data = {
+            "input0": np.random.randn(*input_shape).astype(np.float32),
+            "input1": np.random.randn(*input_shape).astype(np.float32)
+        }
+        input0 = helper.make_tensor_value_info("input0", TensorProto.FLOAT, input_shape)
+        input1 = helper.make_tensor_value_info("input1", TensorProto.FLOAT, constant_shape)
 
-        output = helper.make_tensor_value_info(
-            "output", TensorProto.FLOAT, output_shape
-        )
-        sigmoid = helper.make_tensor_value_info(
-            "sigmoid", TensorProto.FLOAT, output_shape
-        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        sigmoid = helper.make_tensor_value_info("sigmoid", TensorProto.FLOAT, output_shape)
         sigmoid_def = helper.make_node(
             "Sigmoid",
-            inputs=['input'],
+            inputs=['input0'],
             outputs=['sigmoid'],
         )
-        mul_def = helper.make_node(
-            "Mul", inputs=["sigmoid", "input1"], outputs=["output"]
-        )
-        graph_def = helper.make_graph(
-            [sigmoid_def, mul_def], test_case, [inputs,inputs1], [sigmoid, output]
-        )
-        self.onnx_and_test(input_data, graph_def,test_case)
+        mul_def = helper.make_node("Mul", inputs=["sigmoid", "input1"], outputs=["output"])
+        graph_def = helper.make_graph([sigmoid_def, mul_def], case_name, [input0, input1],
+                                      [sigmoid, output])
+        self.onnx_and_test(input_data, graph_def)
 
-    def test_Gather(self):
-        test_case = 'Gather'
+    def test_Gather(self, case_name):
         total_tokens = 60004
         token_shape = [total_tokens, 256]
         input_shape = [1, 13]
         output_shape = [1, 13, 256]
-        input_data = {
-            "input": np.random.randint(0, total_tokens, input_shape).astype(np.int64)
-        }
+        input_data = {"input": np.random.randint(0, total_tokens, input_shape).astype(np.int64)}
 
-        input = helper.make_tensor_value_info(
-            'input', TensorProto.INT64, input_shape)
-        output = helper.make_tensor_value_info(
-            'output', TensorProto.FLOAT, output_shape)
+        input = helper.make_tensor_value_info('input', TensorProto.INT64, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
-        token_data =onnx.helper.make_tensor(
+        token_data = helper.make_tensor(
             name='tokens',
             data_type=onnx.TensorProto.FLOAT,
             dims=token_shape,
@@ -982,38 +954,83 @@ class ONNX_IR_TESTER(object):
 
         gather_node = helper.make_node(
             'Gather',  # node name
-            ['tokens','input'],  # inputs
+            ['tokens', 'input'],  # inputs
             ['output'],  # outputs
         )
 
-        graph_def = helper.make_graph(
-            [gather_node],
-            test_case,
-            [input],
-            [output],
-            initializer=[token_data]
+        graph_def = helper.make_graph([gather_node],
+                                      case_name, [input], [output],
+                                      initializer=[token_data])
+        self.onnx_and_test(input_data, graph_def)
+
+    def test_Tile(self, case_name):
+        input_shape = [1, 4, 6, 8]
+        output_shape = [1, 24, 24, 16]
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        tiles = helper.make_tensor(
+            name='tiles',
+            data_type=onnx.TensorProto.INT64,
+            dims=[4],
+            vals=np.array([1, 6, 4, 2]),
         )
-        self.onnx_and_test(input_data, graph_def, test_case)
+        tile_node = helper.make_node(
+            'Tile',
+            ['input', 'tiles'],
+            ['output'],
+        )
+        graph_def = helper.make_graph([tile_node],
+                                      case_name, [input], [output],
+                                      initializer=[tiles])
+        input_data = {'input': np.random.rand(*input_shape).astype(np.float32)}
+        self.onnx_and_test(input_data, graph_def)
 
+    def test_Expand(self, case_name):
+        input_shape = [1, 3, 1, 16]
+        output_shape = [1, 3, 16, 16]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
 
-    def test_GatherToSlice(self):
-        test_case = 'GatherToSlice'
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+
+        shape_def = helper.make_tensor(
+            name='new_shape',
+            data_type=onnx.TensorProto.INT64,
+            dims=[len(output_shape)],
+            vals=np.array(output_shape, dtype=np.int64),
+        )
+        expand_node = helper.make_node(
+            'Expand',  # node name
+            ['input', 'new_shape'],  # inputs
+            ['output'],  # outputs
+        )
+
+        graph_def = helper.make_graph([expand_node],
+                                      case_name, [input], [output],
+                                      initializer=[shape_def])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_GatherToSlice(self, case_name):
         input_shape = {"input": [1, 32, 27, 27], "indices": [5]}
         output_shape = [1, 5, 27, 27]
-        input_data = {
-            "input": np.random.randn(*input_shape['input']).astype(np.float32)
-        }
+        input_data = {"input": np.random.randn(*input_shape['input']).astype(np.float32)}
 
-        inputs = [
-            helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape['input'])
-        ]
-        indices = helper.make_tensor("indices", TensorProto.INT64, input_shape['indices'], np.arange(2, 15, 3).astype(np.int64))
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape['input'])
+        indices = helper.make_tensor("indices", TensorProto.INT64, input_shape['indices'],
+                                     np.arange(2, 15, 3).astype(np.int64))
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
 
-        gather_def = helper.make_node("Gather", inputs=list(input_shape.keys()), outputs=["output"], axis=1)
+        gather_def = helper.make_node("Gather",
+                                      inputs=list(input_shape.keys()),
+                                      outputs=["output"],
+                                      axis=1)
 
-        graph_def = helper.make_graph([gather_def], test_case, inputs, [output], initializer=[indices])
-        self.onnx_and_test(input_data, graph_def, test_case)
+        graph_def = helper.make_graph([gather_def],
+                                      case_name, [input], [output],
+                                      initializer=[indices])
+        self.onnx_and_test(input_data, graph_def)
 
 
 if __name__ == "__main__":

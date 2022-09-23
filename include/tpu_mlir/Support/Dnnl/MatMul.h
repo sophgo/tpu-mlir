@@ -15,9 +15,10 @@ class MatMul {
 public:
   MatMul();
 
+  void right_init(float *right, int64_t right_zp, int64_t len);
   void setup(float *left, float *right, float *bias, float *output,
              int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
-             double relu_limit);
+             double relu_limit, int64_t right_zp);
 
   void run();
 
@@ -26,5 +27,8 @@ private:
   stream engine_stream;
   std::vector<primitive> net;
   std::vector<std::unordered_map<int, memory>> net_args;
+  std::shared_ptr<std::vector<float>> bias0;
+  float *p_right;
+  std::shared_ptr<std::vector<float>> right_after_zp;
 };
 } // namespace tpu_mlir

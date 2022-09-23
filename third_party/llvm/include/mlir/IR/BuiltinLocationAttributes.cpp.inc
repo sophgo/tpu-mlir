@@ -25,7 +25,7 @@ namespace mlir {
 namespace detail {
 struct CallSiteLocAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<Location, Location>;
-  CallSiteLocAttrStorage(Location callee, Location caller) : ::mlir::AttributeStorage(), callee(callee), caller(caller) {}
+  CallSiteLocAttrStorage(Location callee, Location caller) : callee(callee), caller(caller) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (callee == std::get<0>(tblgenKey)) && (caller == std::get<1>(tblgenKey));
@@ -63,7 +63,7 @@ namespace mlir {
 namespace detail {
 struct FileLineColLocAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<StringAttr, unsigned, unsigned>;
-  FileLineColLocAttrStorage(StringAttr filename, unsigned line, unsigned column) : ::mlir::AttributeStorage(), filename(filename), line(line), column(column) {}
+  FileLineColLocAttrStorage(StringAttr filename, unsigned line, unsigned column) : filename(filename), line(line), column(column) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (filename == std::get<0>(tblgenKey)) && (line == std::get<1>(tblgenKey)) && (column == std::get<2>(tblgenKey));
@@ -113,7 +113,7 @@ namespace mlir {
 namespace detail {
 struct FusedLocAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<Location>, Attribute>;
-  FusedLocAttrStorage(::llvm::ArrayRef<Location> locations, Attribute metadata) : ::mlir::AttributeStorage(), locations(locations), metadata(metadata) {}
+  FusedLocAttrStorage(::llvm::ArrayRef<Location> locations, Attribute metadata) : locations(locations), metadata(metadata) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (locations == std::get<0>(tblgenKey)) && (metadata == std::get<1>(tblgenKey));
@@ -152,7 +152,7 @@ namespace mlir {
 namespace detail {
 struct NameLocAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<StringAttr, Location>;
-  NameLocAttrStorage(StringAttr name, Location childLoc) : ::mlir::AttributeStorage(), name(name), childLoc(childLoc) {}
+  NameLocAttrStorage(StringAttr name, Location childLoc) : name(name), childLoc(childLoc) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (name == std::get<0>(tblgenKey)) && (childLoc == std::get<1>(tblgenKey));
@@ -195,7 +195,7 @@ namespace mlir {
 namespace detail {
 struct OpaqueLocAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<uintptr_t, TypeID, Location>;
-  OpaqueLocAttrStorage(uintptr_t underlyingLocation, TypeID underlyingTypeID, Location fallbackLocation) : ::mlir::AttributeStorage(), underlyingLocation(underlyingLocation), underlyingTypeID(underlyingTypeID), fallbackLocation(fallbackLocation) {}
+  OpaqueLocAttrStorage(uintptr_t underlyingLocation, TypeID underlyingTypeID, Location fallbackLocation) : underlyingLocation(underlyingLocation), underlyingTypeID(underlyingTypeID), fallbackLocation(fallbackLocation) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (underlyingLocation == std::get<0>(tblgenKey)) && (underlyingTypeID == std::get<1>(tblgenKey)) && (fallbackLocation == std::get<2>(tblgenKey));

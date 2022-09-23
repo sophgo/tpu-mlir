@@ -146,7 +146,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::Operation::operand_range copyOperands();
   ::mlir::Operation::operand_range copyinOperands();
   ::mlir::Operation::operand_range copyinReadonlyOperands();
@@ -283,7 +283,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::Value asyncOperand();
   ::mlir::Value waitDevnum();
   ::mlir::Operation::operand_range waitOperands();
@@ -427,7 +427,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::Value asyncOperand();
   ::mlir::Value waitDevnum();
   ::mlir::Operation::operand_range waitOperands();
@@ -541,7 +541,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Operation::operand_range deviceTypeOperands();
   ::mlir::Value deviceNumOperand();
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::MutableOperandRange deviceTypeOperandsMutable();
   ::mlir::MutableOperandRange deviceNumOperandMutable();
   ::mlir::MutableOperandRange ifCondMutable();
@@ -733,6 +733,7 @@ public:
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, /*optional*/::mlir::IntegerAttr collapse, /*optional*/::mlir::Value gangNum, /*optional*/::mlir::Value gangStatic, /*optional*/::mlir::Value workerNum, /*optional*/::mlir::Value vectorLength, /*optional*/::mlir::UnitAttr seq, /*optional*/::mlir::UnitAttr independent, /*optional*/::mlir::UnitAttr auto_, ::mlir::ValueRange tileOperands, ::mlir::ValueRange privateOperands, /*optional*/::mlir::acc::ReductionOpAttr reductionOp, ::mlir::ValueRange reductionOperands, ::mlir::IntegerAttr exec_mapping);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange results, /*optional*/::mlir::IntegerAttr collapse, /*optional*/::mlir::Value gangNum, /*optional*/::mlir::Value gangStatic, /*optional*/::mlir::Value workerNum, /*optional*/::mlir::Value vectorLength, /*optional*/bool seq, /*optional*/bool independent, /*optional*/bool auto_, ::mlir::ValueRange tileOperands, ::mlir::ValueRange privateOperands, /*optional*/::mlir::acc::ReductionOpAttr reductionOp, ::mlir::ValueRange reductionOperands, uint64_t exec_mapping = 0);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  static void populateDefaultAttrs(const ::mlir::RegisteredOperationName &opName, ::mlir::NamedAttrList &attributes);
   static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
   void print(::mlir::OpAsmPrinter &p);
   ::mlir::LogicalResult verifyInvariantsImpl();
@@ -894,8 +895,8 @@ public:
   ::mlir::Value numGangs();
   ::mlir::Value numWorkers();
   ::mlir::Value vectorLength();
-  ::mlir::Value ifCond();
-  ::mlir::Value selfCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> selfCond();
   ::mlir::Operation::operand_range reductionOperands();
   ::mlir::Operation::operand_range copyOperands();
   ::mlir::Operation::operand_range copyinOperands();
@@ -1063,7 +1064,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Operation::operand_range deviceTypeOperands();
   ::mlir::Value deviceNumOperand();
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::MutableOperandRange deviceTypeOperandsMutable();
   ::mlir::MutableOperandRange deviceNumOperandMutable();
   ::mlir::MutableOperandRange ifCondMutable();
@@ -1234,7 +1235,7 @@ public:
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::Value asyncOperand();
   ::mlir::Value waitDevnum();
   ::mlir::Operation::operand_range waitOperands();
@@ -1360,7 +1361,7 @@ public:
   ::mlir::Operation::operand_range waitOperands();
   ::mlir::Value asyncOperand();
   ::mlir::Value waitDevnum();
-  ::mlir::Value ifCond();
+  ::mlir::TypedValue<::mlir::IntegerType> ifCond();
   ::mlir::MutableOperandRange waitOperandsMutable();
   ::mlir::MutableOperandRange asyncOperandMutable();
   ::mlir::MutableOperandRange waitDevnumMutable();

@@ -78,8 +78,8 @@ void tpu::RequantIntAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step
   param.h = gi.h_slice;
   param.w = w;
 
-  auto requant_gi = LocalGenInterface::getGroupInfo(quant(), n_step, h_step);
-  param.requant_addr = (uint32_t)requant_gi.out_addr;
+  // auto requant_gi = LocalGenInterface::getGroupInfo(quant(), n_step, h_step);
+  // param.requant_addr = (uint32_t)requant_gi.out_addr;
   param.is_perchannel = true;
   param.reshaped_coeff = false;
 

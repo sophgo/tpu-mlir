@@ -1,6 +1,6 @@
 
 ## clone and build caffe
-# 2022.09.03 7f84d5a2337c805ac1e6f46493a24e59e89b9545
+# 2022.09.19 6b665ea602f602502121ca3dc84f58e801fcaa13
 ``` c++
 git clone git@github.com:sophgo/caffe.git
 mkdir -p caffe/build

@@ -217,6 +217,13 @@ public:
   }
   SubCommand() = default;
 
+  // Get the special subcommand representing no subcommand.
+  static SubCommand &getTopLevel();
+
+  // Get the special subcommand that can be used to put an option into all
+  // subcomands.
+  static SubCommand &getAll();
+
   void reset();
 
   explicit operator bool() const;
@@ -309,7 +316,7 @@ public:
   }
 
   bool isInAllSubCommands() const {
-    return llvm::is_contained(Subs, &*AllSubCommands);
+    return llvm::is_contained(Subs, &SubCommand::getAll());
   }
 
   //-------------------------------------------------------------------------===
@@ -1952,7 +1959,8 @@ void PrintHelpMessage(bool Hidden = false, bool Categorized = false);
 /// Hopefully this API can be deprecated soon. Any situation where options need
 /// to be modified by tools or libraries should be handled by sane APIs rather
 /// than just handing around a global list.
-StringMap<Option *> &getRegisteredOptions(SubCommand &Sub = *TopLevelSubCommand);
+StringMap<Option *> &
+getRegisteredOptions(SubCommand &Sub = SubCommand::getTopLevel());
 
 /// Use this to get all registered SubCommands from the provided parser.
 ///
@@ -2070,7 +2078,8 @@ void tokenizeConfigFile(StringRef Source, StringSaver &Saver,
 /// current config file.
 ///
 bool readConfigFile(StringRef CfgFileName, StringSaver &Saver,
-                    SmallVectorImpl<const char *> &Argv);
+                    SmallVectorImpl<const char *> &Argv,
+                    llvm::vfs::FileSystem &FS);
 
 /// Expand response files on a command line recursively using the given
 /// StringSaver and tokenization strategy.  Argv should contain the command line
@@ -2091,7 +2100,7 @@ bool readConfigFile(StringRef CfgFileName, StringSaver &Saver,
 /// the current response file.
 /// \param [in] FS File system used for all file access when running the tool.
 /// \param [in] CurrentDir Path used to resolve relative rsp files. If set to
-/// None, process' cwd is used instead.
+/// None, the file system current directory is used instead.
 /// \return true if all @files were expanded successfully or there were none.
 bool ExpandResponseFiles(StringSaver &Saver, TokenizerCallback Tokenizer,
                          SmallVectorImpl<const char *> &Argv, bool MarkEOLs,
@@ -2123,7 +2132,7 @@ bool expandResponseFiles(int Argc, const char *const *Argv, const char *EnvVar,
 /// not specific to the tool. This function allows a tool to specify a single
 /// option category to display in the -help output.
 void HideUnrelatedOptions(cl::OptionCategory &Category,
-                          SubCommand &Sub = *TopLevelSubCommand);
+                          SubCommand &Sub = SubCommand::getTopLevel());
 
 /// Mark all options not part of the categories as cl::ReallyHidden.
 ///
@@ -2133,7 +2142,7 @@ void HideUnrelatedOptions(cl::OptionCategory &Category,
 /// not specific to the tool. This function allows a tool to specify a single
 /// option category to display in the -help output.
 void HideUnrelatedOptions(ArrayRef<const cl::OptionCategory *> Categories,
-                          SubCommand &Sub = *TopLevelSubCommand);
+                          SubCommand &Sub = SubCommand::getTopLevel());
 
 /// Reset all command line options to a state that looks as if they have
 /// never appeared on the command line.  This is useful for being able to parse

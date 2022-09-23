@@ -17,7 +17,8 @@ namespace top {
 bool need_cast(Type from, Type to) {
   auto f_eleType = Module::getStorageType(from);
   auto t_eleType = Module::getStorageType(to);
-  if (f_eleType.isInteger(8) && t_eleType.isInteger(8) ||
+  if ((f_eleType.isInteger(8) || f_eleType.isInteger(16) || f_eleType.isInteger(32)) &&
+      (t_eleType.isInteger(8) || t_eleType.isInteger(16) || t_eleType.isInteger(32)) ||
       f_eleType == t_eleType) {
     return false;
   }
@@ -113,11 +114,63 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     attrs.push_back(
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     attrs.push_back(builder.getNamedAttr(
-        "quant_mode", tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
+        "quant_mode",
+        tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                   ValueRange{in}, attrs);
     return rqOp.output();
+  }
+}
+
+Value do_transfer_fp(Value in, Value out, bool asymmetric) {
+  double in_scale, out_scale;
+  int64_t in_zp, out_zp;
+  Quant::getScaleAndZeroPoint(in, in_scale, in_zp, asymmetric);
+  Quant::getScaleAndZeroPoint(out, out_scale, out_zp, asymmetric);
+  if (in_scale == out_scale && in_zp == out_zp) {
+    return in;
+  }
+  auto op = out.getDefiningOp();
+  OpBuilder builder(op);
+  auto in_name = Module::getName(in.getDefiningOp());
+  auto in_stype = Module::getStorageType(in);
+  float offset = out_zp;
+  auto in_shape = Module::getShape(in);
+  auto rq_in = in;
+  if (in_stype.isInteger(8) || in_zp != 0 && out_zp != 0) {
+    auto add_name = in_name + "_add_zp";
+    auto add_type = RankedTensorType::get(in_shape, builder.getI32Type());
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(builder.getNamedAttr(
+        "const_val", builder.getF64FloatAttr(in_zp)));
+    auto name_loc = NameLoc::get(builder.getStringAttr(add_name));
+    auto addOp = builder.create<tpu::AddConstOp>(name_loc, add_type,
+                                                 ValueRange{in}, attrs);
+    rq_in = addOp.output();
+  } else if (in_zp != 0 && out_zp == 0) {
+    offset = in_scale / out_scale * (-in_zp);
+  }
+
+  auto out_name = Module::getName(op);
+  auto new_name = in_name + "_to_" + out_name;
+
+  auto rq_stype = Module::getElementType(out);
+  auto rq_type = RankedTensorType::get(in_shape, rq_stype);
+  std::vector<NamedAttribute> attrs;
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  attrs.push_back(builder.getNamedAttr(
+      "scale", builder.getF64FloatAttr(in_scale / out_scale)));
+  attrs.push_back(builder.getNamedAttr(
+      "offset", builder.getF64FloatAttr(offset)));
+  attrs.push_back(builder.getNamedAttr(
+      "quant_mode", tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
+  auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
+                                               ValueRange{rq_in}, attrs);
+  if (out_zp == 0) {
+    return rqOp.output();
+  } else {
+    llvm_unreachable("Not support now.\n");
   }
 }
 
@@ -350,10 +403,11 @@ struct ForwardQuantType : public OpRewritePattern<TyOp> {
   }
 };
 
-struct BackwardConcat : public OpRewritePattern<top::ConcatOp> {
-  using OpRewritePattern<top::ConcatOp>::OpRewritePattern;
+template <typename TyOp>
+struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
 
-  LogicalResult matchAndRewrite(top::ConcatOp op,
+  LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
     // TODO: need to be more clever
     for (auto in : op.inputs()) {
@@ -376,9 +430,9 @@ struct BackwardConcat : public OpRewritePattern<top::ConcatOp> {
     }
     auto out_qtype = Quant::getCalibratedType(out);
 
-    for (auto in : op.inputs()) {
-      auto in_shape = in.getType().cast<RankedTensorType>().getShape();
-      auto new_type = RankedTensorType::get(in_shape, out_qtype);
+    for (Value in : op.inputs()) {
+      auto in_type = in.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
       in.setType(new_type);
     }
     return success();
@@ -480,7 +534,10 @@ protected:
       return;
     }
     RewritePatternSet patterns(ctx_);
-    patterns.add<BackwardConcat>(ctx_);
+    patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
+                 BackwardMutiInSingleOut<top::MinOp>,
+                 BackwardMutiInSingleOut<top::MaxOp>
+                >(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,
@@ -493,6 +550,7 @@ protected:
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::SliceOp>,
+                 ForwardCalibartion<top::TileOp>,
                  ForwardCalibartion<top::PadOp>,
                  ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::PermuteOp>,
@@ -508,8 +566,6 @@ protected:
   }
 
   void lowering_process() {
-    // adjust special type
-    mainFunc_.walk([&](Operation *op) { quant_for_special(op); });
     // lowering
     RewritePatternSet patterns(ctx_);
     patterns.add<LoweringPattern>(ctx_, mode_, quantize_map);
@@ -520,7 +576,8 @@ protected:
     mainFunc_.walk([&](Operation *op) {
       if (op->getDialect()->getNamespace() == "tpu" &&
           false == isa<tpu::CastOp, tpu::RequantIntOp, tpu::DequantIntOp,
-                       tpu::RequantIntAxisOp, tpu::DequantIntAxisOp>(op)) {
+                       tpu::RequantIntAxisOp, tpu::DequantIntAxisOp,
+                       tpu::RequantFpAxisOp, tpu::RequantFpOp>(op)) {
         auto oType = op->getResult(0).getType();
         if (op->hasOneUse()) {
           auto nextOp = *(op->getUsers().begin());
@@ -563,17 +620,6 @@ protected:
     } else {
       auto cast = do_cast(v, Module::getStorageType(to), false);
       op->setOperand(opd_idx, cast);
-    }
-  }
-
-  void quant_for_special(Operation *op) {
-    if (chip_ == Module::Chip::BM1684x) {
-      if (mode_ == Quant::Type::INT8) {
-        if (isa<top::AddOp, top::LeakyReluOp, top::MulOp, top::SoftmaxOp,
-                top::DivOp, top::LSTMOp>(op)) {
-          quantize_map[op] = Quant::Type::F32;
-        }
-      }
     }
   }
 

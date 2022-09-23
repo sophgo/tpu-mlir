@@ -76,9 +76,9 @@ static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_ControlFlowOps1(
 
 static ::mlir::LogicalResult __mlir_ods_local_attr_constraint_ControlFlowOps2(
     ::mlir::Operation *op, ::mlir::Attribute attr, ::llvm::StringRef attrName) {
-  if (attr && !(((attr.isa<::mlir::DenseIntElementsAttr>())) && ((attr.cast<::mlir::DenseIntElementsAttr>().getType().getElementType().isSignlessInteger(32))))) {
+  if (attr && !((attr.isa<::mlir::DenseI32ArrayAttr>()))) {
     return op->emitOpError("attribute '") << attrName
-        << "' failed to satisfy constraint: 32-bit signless integer elements attribute";
+        << "' failed to satisfy constraint: i32 dense array attribute";
   }
   return ::mlir::success();
 }
@@ -122,7 +122,7 @@ std::pair<unsigned, unsigned> AssertOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::StringAttr AssertOpAdaptor::getMsgAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, AssertOp::getMsgAttrName(*odsOpName)).cast<::mlir::StringAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::StringRef AssertOpAdaptor::getMsg() {
@@ -159,7 +159,7 @@ std::pair<unsigned, unsigned> AssertOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value AssertOp::getArg() {
+::mlir::TypedValue<::mlir::IntegerType> AssertOp::getArg() {
   return *getODSOperands(0).begin();
 }
 
@@ -279,7 +279,7 @@ void AssertOp::getCanonicalizationPatterns(::mlir::RewritePatternSet &results, :
   if (parser.parseOptionalAttrDict(result.attributes))
     return ::mlir::failure();
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(argOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(argOperands, odsBuildableType0, argOperandsLoc, result.operands))
     return ::mlir::failure();
   return ::mlir::success();
 }
@@ -517,16 +517,12 @@ CondBranchOpAdaptor::CondBranchOpAdaptor(CondBranchOp op) : odsOperands(op->getO
 
 std::pair<unsigned, unsigned> CondBranchOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CondBranchOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 0, CondBranchOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange CondBranchOpAdaptor::getODSOperands(unsigned index) {
@@ -566,9 +562,8 @@ std::pair<unsigned, unsigned> CondBranchOpAdaptor::getODSOperandIndexAndLength(u
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'cf.cond_br' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -577,16 +572,12 @@ std::pair<unsigned, unsigned> CondBranchOpAdaptor::getODSOperandIndexAndLength(u
 }
 
 std::pair<unsigned, unsigned> CondBranchOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range CondBranchOp::getODSOperands(unsigned index) {
@@ -595,7 +586,7 @@ std::pair<unsigned, unsigned> CondBranchOp::getODSOperandIndexAndLength(unsigned
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value CondBranchOp::getCondition() {
+::mlir::TypedValue<::mlir::IntegerType> CondBranchOp::getCondition() {
   return *getODSOperands(0).begin();
 }
 
@@ -659,7 +650,7 @@ void CondBranchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(condition);
   odsState.addOperands(trueDestOperands);
   odsState.addOperands(falseDestOperands);
-  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(trueDestOperands.size()), static_cast<int32_t>(falseDestOperands.size())}));
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({1, static_cast<int32_t>(trueDestOperands.size()), static_cast<int32_t>(falseDestOperands.size())}));
   odsState.addSuccessors(trueDest);
   odsState.addSuccessors(falseDest);
 }
@@ -668,7 +659,7 @@ void CondBranchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &
   odsState.addOperands(condition);
   odsState.addOperands(trueDestOperands);
   odsState.addOperands(falseDestOperands);
-  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(trueDestOperands.size()), static_cast<int32_t>(falseDestOperands.size())}));
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({1, static_cast<int32_t>(trueDestOperands.size()), static_cast<int32_t>(falseDestOperands.size())}));
   odsState.addSuccessors(trueDest);
   odsState.addSuccessors(falseDest);
   assert(resultTypes.size() == 0u && "mismatched number of results");
@@ -698,9 +689,8 @@ void CondBranchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -794,9 +784,9 @@ void CondBranchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
     return ::mlir::failure();
   result.addSuccessors(trueDestSuccessor);
   result.addSuccessors(falseDestSuccessor);
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({1, static_cast<int32_t>(trueDestOperandsOperands.size()), static_cast<int32_t>(falseDestOperandsOperands.size())}));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({1, static_cast<int32_t>(trueDestOperandsOperands.size()), static_cast<int32_t>(falseDestOperandsOperands.size())}));
   ::mlir::Type odsBuildableType0 = parser.getBuilder().getIntegerType(1);
-  if (parser.resolveOperands(conditionOperands, odsBuildableType0, result.operands))
+  if (parser.resolveOperands(conditionOperands, odsBuildableType0, conditionOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(trueDestOperandsOperands, trueDestOperandsTypes, trueDestOperandsOperandsLoc, result.operands))
     return ::mlir::failure();
@@ -859,16 +849,12 @@ SwitchOpAdaptor::SwitchOpAdaptor(SwitchOp op) : odsOperands(op->getOperands()), 
 
 std::pair<unsigned, unsigned> SwitchOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   assert(odsAttrs && "missing segment size attribute for op");
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SwitchOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 0, SwitchOp::getOperandSegmentSizesAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::ValueRange SwitchOpAdaptor::getODSOperands(unsigned index) {
@@ -887,13 +873,12 @@ std::pair<unsigned, unsigned> SwitchOpAdaptor::getODSOperandIndexAndLength(unsig
 
 ::llvm::SmallVector<::mlir::ValueRange> SwitchOpAdaptor::getCaseOperands() {
   auto tblgenTmpOperands = getODSOperands(2);
-  auto sizeAttrValues = getCaseOperandSegments().getValues<uint32_t>();
-  auto sizeAttrIt = sizeAttrValues.begin();
+  auto sizes = getCaseOperandSegments();
 
   ::llvm::SmallVector<::mlir::ValueRange> tblgenTmpOperandGroups;
-  for (int i = 0, e = ::llvm::size(sizeAttrValues); i < e; ++i, ++sizeAttrIt) {
-    tblgenTmpOperandGroups.push_back(tblgenTmpOperands.take_front(*sizeAttrIt));
-    tblgenTmpOperands = tblgenTmpOperands.drop_front(*sizeAttrIt);
+  for (int i = 0, e = sizes.size(); i < e; ++i) {
+    tblgenTmpOperandGroups.push_back(tblgenTmpOperands.take_front(sizes[i]));
+    tblgenTmpOperands = tblgenTmpOperands.drop_front(sizes[i]);
   }
   return tblgenTmpOperandGroups;
 }
@@ -905,7 +890,7 @@ std::pair<unsigned, unsigned> SwitchOpAdaptor::getODSOperandIndexAndLength(unsig
 ::mlir::DenseIntElementsAttr SwitchOpAdaptor::getCaseValuesAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
   auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 1, odsAttrs.end() - 1, SwitchOp::getCaseValuesAttrName(*odsOpName)).dyn_cast_or_null<::mlir::DenseIntElementsAttr>();
-    return attr;
+  return attr;
 }
 
 ::llvm::Optional< ::mlir::DenseIntElementsAttr > SwitchOpAdaptor::getCaseValues() {
@@ -913,13 +898,13 @@ std::pair<unsigned, unsigned> SwitchOpAdaptor::getODSOperandIndexAndLength(unsig
   return attr ? ::llvm::Optional< ::mlir::DenseIntElementsAttr >(attr) : (::llvm::None);
 }
 
-::mlir::DenseIntElementsAttr SwitchOpAdaptor::getCaseOperandSegmentsAttr() {
+::mlir::DenseI32ArrayAttr SwitchOpAdaptor::getCaseOperandSegmentsAttr() {
   assert(odsAttrs && "no attributes when constructing adapter");
-  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SwitchOp::getCaseOperandSegmentsAttrName(*odsOpName)).cast<::mlir::DenseIntElementsAttr>();
-    return attr;
+  auto attr = ::mlir::impl::getAttrFromSortedRange(odsAttrs.begin() + 0, odsAttrs.end() - 1, SwitchOp::getCaseOperandSegmentsAttrName(*odsOpName)).cast<::mlir::DenseI32ArrayAttr>();
+  return attr;
 }
 
-::mlir::DenseIntElementsAttr SwitchOpAdaptor::getCaseOperandSegments() {
+::llvm::ArrayRef<int32_t> SwitchOpAdaptor::getCaseOperandSegments() {
   auto attr = getCaseOperandSegmentsAttr();
   return attr;
 }
@@ -953,9 +938,8 @@ std::pair<unsigned, unsigned> SwitchOpAdaptor::getODSOperandIndexAndLength(unsig
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitError(loc, "'cf.switch' op ""'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -964,22 +948,18 @@ std::pair<unsigned, unsigned> SwitchOpAdaptor::getODSOperandIndexAndLength(unsig
   if (tblgen_case_values && !(((tblgen_case_values.isa<::mlir::DenseIntElementsAttr>())) && ((true))))
     return emitError(loc, "'cf.switch' op ""attribute 'case_values' failed to satisfy constraint: integer elements attribute");
 
-  if (tblgen_case_operand_segments && !(((tblgen_case_operand_segments.isa<::mlir::DenseIntElementsAttr>())) && ((tblgen_case_operand_segments.cast<::mlir::DenseIntElementsAttr>().getType().getElementType().isSignlessInteger(32)))))
-    return emitError(loc, "'cf.switch' op ""attribute 'case_operand_segments' failed to satisfy constraint: 32-bit signless integer elements attribute");
+  if (tblgen_case_operand_segments && !((tblgen_case_operand_segments.isa<::mlir::DenseI32ArrayAttr>())))
+    return emitError(loc, "'cf.switch' op ""attribute 'case_operand_segments' failed to satisfy constraint: i32 dense array attribute");
   return ::mlir::success();
 }
 
 std::pair<unsigned, unsigned> SwitchOp::getODSOperandIndexAndLength(unsigned index) {
-  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName()).cast<::mlir::DenseIntElementsAttr>();
-
-  const uint32_t *sizeAttrValueIt = &*sizeAttr.value_begin<uint32_t>();
-  if (sizeAttr.isSplat())
-    return {*sizeAttrValueIt * index, *sizeAttrValueIt};
+  auto sizeAttr = ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 1, (*this)->getAttrs().end() - 0, getOperandSegmentSizesAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 
   unsigned start = 0;
   for (unsigned i = 0; i < index; ++i)
-    start += sizeAttrValueIt[i];
-  return {start, sizeAttrValueIt[index]};
+    start += sizeAttr[i];
+  return {start, sizeAttr[index]};
 }
 
 ::mlir::Operation::operand_range SwitchOp::getODSOperands(unsigned index) {
@@ -988,7 +968,7 @@ std::pair<unsigned, unsigned> SwitchOp::getODSOperandIndexAndLength(unsigned ind
            std::next(getOperation()->operand_begin(), valueRange.first + valueRange.second)};
 }
 
-::mlir::Value SwitchOp::getFlag() {
+::mlir::TypedValue<::mlir::IntegerType> SwitchOp::getFlag() {
   return *getODSOperands(0).begin();
 }
 
@@ -1045,11 +1025,11 @@ std::pair<unsigned, unsigned> SwitchOp::getODSResultIndexAndLength(unsigned inde
   return attr ? ::llvm::Optional< ::mlir::DenseIntElementsAttr >(attr) : (::llvm::None);
 }
 
-::mlir::DenseIntElementsAttr SwitchOp::getCaseOperandSegmentsAttr() {
-  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getCaseOperandSegmentsAttrName()).cast<::mlir::DenseIntElementsAttr>();
+::mlir::DenseI32ArrayAttr SwitchOp::getCaseOperandSegmentsAttr() {
+  return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 1, getCaseOperandSegmentsAttrName()).cast<::mlir::DenseI32ArrayAttr>();
 }
 
-::mlir::DenseIntElementsAttr SwitchOp::getCaseOperandSegments() {
+::llvm::ArrayRef<int32_t> SwitchOp::getCaseOperandSegments() {
   auto attr = getCaseOperandSegmentsAttr();
   return attr;
 }
@@ -1058,7 +1038,7 @@ void SwitchOp::setCaseValuesAttr(::mlir::DenseIntElementsAttr attr) {
   (*this)->setAttr(getCaseValuesAttrName(), attr);
 }
 
-void SwitchOp::setCaseOperandSegmentsAttr(::mlir::DenseIntElementsAttr attr) {
+void SwitchOp::setCaseOperandSegmentsAttr(::mlir::DenseI32ArrayAttr attr) {
   (*this)->setAttr(getCaseOperandSegmentsAttrName(), attr);
 }
 
@@ -1075,8 +1055,8 @@ void SwitchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     ::llvm::SmallVector<int32_t> rangeSegments;
     for (::mlir::ValueRange range : caseOperands)
       rangeSegments.push_back(range.size());
-    odsState.addAttribute(getCaseOperandSegmentsAttrName(odsState.name), odsBuilder.getI32TensorAttr(rangeSegments));  }
-  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(defaultOperands.size()), static_cast<int32_t>(std::accumulate(caseOperands.begin(), caseOperands.end(), 0, [](int32_t curSum, ::mlir::ValueRange range) { return curSum + range.size(); }))}));
+    odsState.addAttribute(getCaseOperandSegmentsAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr(rangeSegments));  }
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({1, static_cast<int32_t>(defaultOperands.size()), static_cast<int32_t>(std::accumulate(caseOperands.begin(), caseOperands.end(), 0, [](int32_t curSum, ::mlir::ValueRange range) { return curSum + range.size(); }))}));
   if (case_values) {
   odsState.addAttribute(getCaseValuesAttrName(odsState.name), case_values);
   }
@@ -1093,8 +1073,8 @@ void SwitchOp::build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsS
     ::llvm::SmallVector<int32_t> rangeSegments;
     for (::mlir::ValueRange range : caseOperands)
       rangeSegments.push_back(range.size());
-    odsState.addAttribute(getCaseOperandSegmentsAttrName(odsState.name), odsBuilder.getI32TensorAttr(rangeSegments));  }
-  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getI32VectorAttr({1, static_cast<int32_t>(defaultOperands.size()), static_cast<int32_t>(std::accumulate(caseOperands.begin(), caseOperands.end(), 0, [](int32_t curSum, ::mlir::ValueRange range) { return curSum + range.size(); }))}));
+    odsState.addAttribute(getCaseOperandSegmentsAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr(rangeSegments));  }
+  odsState.addAttribute(getOperandSegmentSizesAttrName(odsState.name), odsBuilder.getDenseI32ArrayAttr({1, static_cast<int32_t>(defaultOperands.size()), static_cast<int32_t>(std::accumulate(caseOperands.begin(), caseOperands.end(), 0, [](int32_t curSum, ::mlir::ValueRange range) { return curSum + range.size(); }))}));
   if (case_values) {
   odsState.addAttribute(getCaseValuesAttrName(odsState.name), case_values);
   }
@@ -1141,9 +1121,8 @@ void SwitchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
   }
 
   {
-    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseIntElementsAttr>();
-    auto numElements =
-        sizeAttr.getType().cast<::mlir::ShapedType>().getNumElements();
+    auto sizeAttr = tblgen_operand_segment_sizes.cast<::mlir::DenseI32ArrayAttr>();
+    auto numElements = sizeAttr.asArrayRef().size();
     if (numElements != 3)
       return emitOpError("'operand_segment_sizes' attribute for specifying operand segments must have 3 "
                 "elements, but got ") << numElements;
@@ -1246,8 +1225,8 @@ void SwitchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
     return ::mlir::failure();
   result.addSuccessors(defaultDestinationSuccessor);
   result.addSuccessors(caseDestinationsSuccessors);
-  result.addAttribute("operand_segment_sizes", parser.getBuilder().getI32VectorAttr({1, static_cast<int32_t>(defaultOperandsOperands.size()), static_cast<int32_t>(caseOperandsOperands.size())}));
-  result.addAttribute("case_operand_segments", parser.getBuilder().getI32TensorAttr(caseOperandsOperandGroupSizes));
+  result.addAttribute("operand_segment_sizes", parser.getBuilder().getDenseI32ArrayAttr({1, static_cast<int32_t>(defaultOperandsOperands.size()), static_cast<int32_t>(caseOperandsOperands.size())}));
+  result.addAttribute("case_operand_segments", parser.getBuilder().getDenseI32ArrayAttr(caseOperandsOperandGroupSizes));
   if (parser.resolveOperands(flagOperands, flagTypes, flagOperandsLoc, result.operands))
     return ::mlir::failure();
   if (parser.resolveOperands(defaultOperandsOperands, defaultOperandsTypes, defaultOperandsOperandsLoc, result.operands))

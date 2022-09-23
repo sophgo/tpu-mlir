@@ -473,8 +473,9 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo, int64_t id) {
   return storeOp;
 }
 
-LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t id, int64_t stage,
-                                int64_t buffer_addr, int64_t buffer_size) {
+LayerGroupAttr GroupOps::getLgParam(lmem_info_t &linfo, int64_t id,
+                                    int64_t stage, int64_t buffer_addr,
+                                    int64_t buffer_size) {
   auto builder = OpBuilder(ctx);
   auto si = linfo.slice_info;
   std::vector<int64_t> h_idxs;
@@ -492,15 +493,9 @@ LayerGroup GroupOps::getLgParam(lmem_info_t &linfo, int64_t id, int64_t stage,
   if (buffer_size == 0) {
     buffer_addr = 0;
   }
-  return LayerGroup::get(
-      builder.getI64IntegerAttr(linfo.addr),
-      builder.getI64IntegerAttr(linfo.size),
-      builder.getI64IntegerAttr(buffer_addr),
-      builder.getI64IntegerAttr(buffer_size),
-      builder.getBoolAttr(linfo.eu_align), builder.getI64ArrayAttr(h_idxs),
-      builder.getI64ArrayAttr(h_slices), builder.getI64ArrayAttr(n_idxs),
-      builder.getI64ArrayAttr(n_slices), builder.getI64IntegerAttr(id),
-      builder.getI64IntegerAttr(stage), ctx);
+  return LayerGroupAttr::get(ctx, linfo.addr, linfo.size, buffer_addr,
+                             buffer_size, linfo.eu_align, h_idxs, h_slices,
+                             n_idxs, n_slices, id, stage);
 }
 
 group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
@@ -886,6 +881,14 @@ void GroupOps::adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs,
 
 void GroupOps::check_group_lmem(group_lmem_t &group_lmem,
                                 int64_t timestep_num) {
+  for (auto &linfo : *group_lmem) {
+    if (linfo.type != LMEM_OPERATION) {
+      llvm::errs() << "==== id = " << linfo.id << ", ";
+      linfo.value.print(llvm::errs());
+      llvm::errs() << ": start_ts = " << linfo.start_timestep
+                   << ", end_ts = " << linfo.end_timestep << "\n";
+    }
+  }
   std::list<std::pair<addr_pair_t, int64_t>> ts_lmems; // ((addr, size), id)
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     ts_lmems.clear();

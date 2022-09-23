@@ -22,28 +22,6 @@ using namespace tpu_mlir::backend;
 extern "C" {
 #endif
 
-// use for eltbinary or bcbinary
-typedef struct binary_common_spec {
-  int32_t binary_type;
-  int32_t if_relu;
-  float relu_limit;
-  int32_t scale_A;
-  int32_t scale_B;
-  int32_t rshift_A;
-  int32_t rshift_B;
-} binary_common_spec_t;
-
-typedef struct binary_local_spec {
-  binary_common_spec_t common;
-  uint32_t buffer_addr;
-} binary_local_spec_t;
-
-typedef struct binary_local_param {
-  binary_local_spec_t spec;
-  int32_t A_is_coeff;
-  int32_t B_is_coeff;
-} binary_local_param_t;
-
 #ifdef __cplusplus
 }
 #endif
@@ -91,7 +69,7 @@ int64_t tpu::MulOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
     if (multiplier() != 1 || rshift() != 0) {
       buffer_size = in_lmem_bytes * 2;
     }
-  } else if ((sizeof(dtype_A) > sizeof(dtype_O)) &&
+  } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
              (is_sign(dtype_A) || is_sign(dtype_B)) && (!is_sign(dtype_O))) {
     buffer_size = in_lmem_bytes;
   }

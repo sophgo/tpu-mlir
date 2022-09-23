@@ -16,12 +16,16 @@
 #ifdef GET_ATTRDEF_CLASSES
 #undef GET_ATTRDEF_CLASSES
 
-static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
-  if (mnemonic == ::mlir::sparse_tensor::SparseTensorEncodingAttr::getMnemonic()) {
-    value = ::mlir::sparse_tensor::SparseTensorEncodingAttr::parse(parser, type);
-    return ::mlir::success(!!value);
-  }
-  return {};
+static ::mlir::OptionalParseResult generatedAttributeParser(::mlir::AsmParser &parser, ::llvm::StringRef *mnemonic, ::mlir::Type type, ::mlir::Attribute &value) {
+  return ::mlir::AsmParser::KeywordSwitch<::mlir::OptionalParseResult>(parser)
+    .Case(::mlir::sparse_tensor::SparseTensorEncodingAttr::getMnemonic(), [&](llvm::StringRef, llvm::SMLoc) {
+      value = ::mlir::sparse_tensor::SparseTensorEncodingAttr::parse(parser, type);
+      return ::mlir::success(!!value);
+    })
+    .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
+      *mnemonic = keyword;
+      return llvm::None;
+    });
 }
 
 static ::mlir::LogicalResult generatedAttributePrinter(::mlir::Attribute def, ::mlir::AsmPrinter &printer) {
@@ -38,7 +42,7 @@ namespace sparse_tensor {
 namespace detail {
 struct SparseTensorEncodingAttrStorage : public ::mlir::AttributeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<SparseTensorEncodingAttr::DimLevelType>, AffineMap, unsigned, unsigned>;
-  SparseTensorEncodingAttrStorage(::llvm::ArrayRef<SparseTensorEncodingAttr::DimLevelType> dimLevelType, AffineMap dimOrdering, unsigned pointerBitWidth, unsigned indexBitWidth) : ::mlir::AttributeStorage(), dimLevelType(dimLevelType), dimOrdering(dimOrdering), pointerBitWidth(pointerBitWidth), indexBitWidth(indexBitWidth) {}
+  SparseTensorEncodingAttrStorage(::llvm::ArrayRef<SparseTensorEncodingAttr::DimLevelType> dimLevelType, AffineMap dimOrdering, unsigned pointerBitWidth, unsigned indexBitWidth) : dimLevelType(dimLevelType), dimOrdering(dimOrdering), pointerBitWidth(pointerBitWidth), indexBitWidth(indexBitWidth) {}
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (dimLevelType == std::get<0>(tblgenKey)) && (dimOrdering == std::get<1>(tblgenKey)) && (pointerBitWidth == std::get<2>(tblgenKey)) && (indexBitWidth == std::get<3>(tblgenKey));
@@ -98,12 +102,10 @@ namespace sparse_tensor {
                                       ::mlir::Type type) const {
   ::llvm::SMLoc typeLoc = parser.getCurrentLocation();
   ::llvm::StringRef attrTag;
-  if (::mlir::failed(parser.parseKeyword(&attrTag)))
-    return {};
   {
     ::mlir::Attribute attr;
-    auto parseResult = generatedAttributeParser(parser, attrTag, type, attr);
-    if (parseResult.hasValue())
+    auto parseResult = generatedAttributeParser(parser, &attrTag, type, attr);
+    if (parseResult.has_value())
       return attr;
   }
   

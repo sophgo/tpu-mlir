@@ -8,7 +8,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedAddFIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedAddIIntrOp>(opInst)) {
@@ -21,7 +21,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedAddIIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedDivFIntrOp>(opInst)) {
@@ -34,7 +34,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedDivFIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedMulFIntrOp>(opInst)) {
@@ -47,7 +47,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedMulFIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedMulIIntrOp>(opInst)) {
@@ -60,7 +60,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedMulIIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedSDivIIntrOp>(opInst)) {
@@ -73,7 +73,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedSDivIIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedSubFIntrOp>(opInst)) {
@@ -86,7 +86,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedSubFIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedSubIIntrOp>(opInst)) {
@@ -99,7 +99,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedSubIIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedUDivIIntrOp>(opInst)) {
@@ -112,7 +112,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::ScalableMaskedUDivIIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::SdotIntrOp>(opInst)) {
@@ -125,7 +125,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::SdotIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::SmmlaIntrOp>(opInst)) {
@@ -138,7 +138,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::SmmlaIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::UdotIntrOp>(opInst)) {
@@ -151,7 +151,7 @@ if (auto op = dyn_cast<::mlir::arm_sve::UdotIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }
 if (auto op = dyn_cast<::mlir::arm_sve::UmmlaIntrOp>(opInst)) {
@@ -164,6 +164,6 @@ if (auto op = dyn_cast<::mlir::arm_sve::UmmlaIntrOp>(opInst)) {
         });
     auto operands = moduleTranslation.lookupValues(opInst.getOperands());
     auto *inst = builder.CreateCall(fn, operands);
-    (void) inst;(void) inst;moduleTranslation.mapValue(op.res()) = inst;
+    (void) inst;(void) inst;moduleTranslation.mapValue(op.getRes()) = inst;
   return success();
 }

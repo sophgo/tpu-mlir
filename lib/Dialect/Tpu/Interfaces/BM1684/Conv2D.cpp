@@ -57,7 +57,7 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
         attr.has_bias ? Module::getAddress(bias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
         attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w,
-        rshift().getValue()[0].cast<IntegerAttr>().getInt(),
+        rshift().value()[0].cast<IntegerAttr>().getInt(),
         attr.has_bias ? 1 : 0, 0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
@@ -70,7 +70,7 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
         attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
         attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
         attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0,
-        rshift().getValue()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0,
+        rshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0,
         0, 0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }

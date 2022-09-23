@@ -9,9 +9,7 @@
 
 #pragma once
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Builders.h"
-#include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 using namespace mlir;
@@ -65,6 +63,7 @@ struct Module {
   static int64_t getNumElements(Value v);
   static Type getStorageType(Value v); // storage type
   static Type getStorageType(Type type);
+  static Type getElementType(Value v);
   static llvm::ArrayRef<int64_t> getShape(Value v);
   static inline FuncOp getMainFuncOp(ModuleOp module) {
     return getFuncOp(module, "main");

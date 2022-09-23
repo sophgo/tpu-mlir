@@ -20,12 +20,22 @@ class GlobalLoadConstOp;
 } // namespace mlir
 namespace mlir {
 namespace ml_program {
+class GlobalLoadGraphOp;
+} // namespace ml_program
+} // namespace mlir
+namespace mlir {
+namespace ml_program {
 class GlobalLoadOp;
 } // namespace ml_program
 } // namespace mlir
 namespace mlir {
 namespace ml_program {
 class GlobalOp;
+} // namespace ml_program
+} // namespace mlir
+namespace mlir {
+namespace ml_program {
+class GlobalStoreGraphOp;
 } // namespace ml_program
 } // namespace mlir
 namespace mlir {
@@ -299,14 +309,14 @@ namespace mlir {
 namespace ml_program {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::ml_program::GlobalLoadOp declarations
+// ::mlir::ml_program::GlobalLoadGraphOp declarations
 //===----------------------------------------------------------------------===//
 
-class GlobalLoadOpAdaptor {
+class GlobalLoadGraphOpAdaptor {
 public:
-  GlobalLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  GlobalLoadGraphOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GlobalLoadOpAdaptor(GlobalLoadOp op);
+  GlobalLoadGraphOpAdaptor(GlobalLoadGraphOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -322,7 +332,95 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GlobalLoadOp : public ::mlir::Op<GlobalLoadOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::AtLeastNResults<1>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait, ::mlir::OpAsmOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
+class GlobalLoadGraphOp : public ::mlir::Op<GlobalLoadGraphOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::NResults<2>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait, ::mlir::OpAsmOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = GlobalLoadGraphOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("global")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getGlobalAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getGlobalAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  void getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn);
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("ml_program.global_load_graph");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Operation::operand_range getConsumeTokens();
+  ::mlir::MutableOperandRange getConsumeTokensMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::Value getResult();
+  ::mlir::TypedValue<::mlir::ml_program::TokenType> getProduceToken();
+  ::mlir::SymbolRefAttr getGlobalAttr();
+  ::mlir::SymbolRefAttr getGlobal();
+  void setGlobalAttr(::mlir::SymbolRefAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verifySymbolUses(::mlir::SymbolTableCollection &symbolTable);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 1 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  /// Gets the corresponding GlobalOp (or nullptr).
+  GlobalOp getGlobalOp(SymbolTableCollection &symbolTable);
+};
+} // namespace ml_program
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ml_program::GlobalLoadGraphOp)
+
+namespace mlir {
+namespace ml_program {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ml_program::GlobalLoadOp declarations
+//===----------------------------------------------------------------------===//
+
+class GlobalLoadOpAdaptor {
+public:
+  GlobalLoadOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  GlobalLoadOpAdaptor(GlobalLoadOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::SymbolRefAttr getGlobalAttr();
+  ::mlir::SymbolRefAttr getGlobal();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class GlobalLoadOp : public ::mlir::Op<GlobalLoadOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::Type>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -341,24 +439,20 @@ public:
     return getAttributeNameForIndex(name, 0);
   }
 
-  void getAsmResultNames(::mlir::OpAsmSetValueNameFn setNameFn);
   static constexpr ::llvm::StringLiteral getOperationName() {
     return ::llvm::StringLiteral("ml_program.global_load");
   }
 
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
-  ::mlir::Operation::operand_range getConsumeTokens();
-  ::mlir::MutableOperandRange getConsumeTokensMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Value getResult();
-  ::mlir::Value getProduceToken();
   ::mlir::SymbolRefAttr getGlobalAttr();
   ::mlir::SymbolRefAttr getGlobal();
   void setGlobalAttr(::mlir::SymbolRefAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, /*optional*/::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::ValueRange consumeTokens);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type result, ::mlir::SymbolRefAttr global);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -525,14 +619,14 @@ namespace mlir {
 namespace ml_program {
 
 //===----------------------------------------------------------------------===//
-// ::mlir::ml_program::GlobalStoreOp declarations
+// ::mlir::ml_program::GlobalStoreGraphOp declarations
 //===----------------------------------------------------------------------===//
 
-class GlobalStoreOpAdaptor {
+class GlobalStoreGraphOpAdaptor {
 public:
-  GlobalStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+  GlobalStoreGraphOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
 
-  GlobalStoreOpAdaptor(GlobalStoreOp op);
+  GlobalStoreGraphOpAdaptor(GlobalStoreGraphOp op);
 
   ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
@@ -549,7 +643,96 @@ private:
   ::mlir::RegionRange odsRegions;
   ::llvm::Optional<::mlir::OperationName> odsOpName;
 };
-class GlobalStoreOp : public ::mlir::Op<GlobalStoreOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
+class GlobalStoreGraphOp : public ::mlir::Op<GlobalStoreGraphOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::OneResult, ::mlir::OpTrait::OneTypedResult<::mlir::ml_program::TokenType>::Impl, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::AtLeastNOperands<1>::Impl, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
+public:
+  using Op::Op;
+  using Op::print;
+  using Adaptor = GlobalStoreGraphOpAdaptor;
+public:
+  static ::llvm::ArrayRef<::llvm::StringRef> getAttributeNames() {
+    static ::llvm::StringRef attrNames[] = {::llvm::StringRef("global")};
+    return ::llvm::makeArrayRef(attrNames);
+  }
+
+  ::mlir::StringAttr getGlobalAttrName() {
+    return getAttributeNameForIndex(0);
+  }
+
+  static ::mlir::StringAttr getGlobalAttrName(::mlir::OperationName name) {
+    return getAttributeNameForIndex(name, 0);
+  }
+
+  static constexpr ::llvm::StringLiteral getOperationName() {
+    return ::llvm::StringLiteral("ml_program.global_store_graph");
+  }
+
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::Operation::operand_range getODSOperands(unsigned index);
+  ::mlir::Value getValue();
+  ::mlir::Operation::operand_range getConsumeTokens();
+  ::mlir::MutableOperandRange getValueMutable();
+  ::mlir::MutableOperandRange getConsumeTokensMutable();
+  std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
+  ::mlir::Operation::result_range getODSResults(unsigned index);
+  ::mlir::TypedValue<::mlir::ml_program::TokenType> getProduceToken();
+  ::mlir::SymbolRefAttr getGlobalAttr();
+  ::mlir::SymbolRefAttr getGlobal();
+  void setGlobalAttr(::mlir::SymbolRefAttr attr);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens);
+  static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+  ::mlir::LogicalResult verifyInvariantsImpl();
+  ::mlir::LogicalResult verifyInvariants();
+  ::mlir::LogicalResult verifySymbolUses(::mlir::SymbolTableCollection &symbolTable);
+  static ::mlir::ParseResult parse(::mlir::OpAsmParser &parser, ::mlir::OperationState &result);
+  void print(::mlir::OpAsmPrinter &_odsPrinter);
+  void getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects);
+private:
+  ::mlir::StringAttr getAttributeNameForIndex(unsigned index) {
+    return getAttributeNameForIndex((*this)->getName(), index);
+  }
+
+  static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
+    assert(index < 1 && "invalid attribute index");
+    return name.getRegisteredInfo()->getAttributeNames()[index];
+  }
+
+public:
+  /// Gets the corresponding GlobalOp (or nullptr).
+  GlobalOp getGlobalOp(SymbolTableCollection &symbolTable);
+};
+} // namespace ml_program
+} // namespace mlir
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::ml_program::GlobalStoreGraphOp)
+
+namespace mlir {
+namespace ml_program {
+
+//===----------------------------------------------------------------------===//
+// ::mlir::ml_program::GlobalStoreOp declarations
+//===----------------------------------------------------------------------===//
+
+class GlobalStoreOpAdaptor {
+public:
+  GlobalStoreOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAttr attrs = nullptr, ::mlir::RegionRange regions = {});
+
+  GlobalStoreOpAdaptor(GlobalStoreOp op);
+
+  ::mlir::ValueRange getOperands();
+  std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
+  ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::Value getValue();
+  ::mlir::DictionaryAttr getAttributes();
+  ::mlir::SymbolRefAttr getGlobalAttr();
+  ::mlir::SymbolRefAttr getGlobal();
+  ::mlir::LogicalResult verify(::mlir::Location loc);
+private:
+  ::mlir::ValueRange odsOperands;
+  ::mlir::DictionaryAttr odsAttrs;
+  ::mlir::RegionRange odsRegions;
+  ::llvm::Optional<::mlir::OperationName> odsOpName;
+};
+class GlobalStoreOp : public ::mlir::Op<GlobalStoreOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::OneOperand, ::mlir::OpTrait::OpInvariants, ::mlir::SymbolUserOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;
@@ -575,17 +758,14 @@ public:
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   ::mlir::Value getValue();
-  ::mlir::Operation::operand_range getConsumeTokens();
   ::mlir::MutableOperandRange getValueMutable();
-  ::mlir::MutableOperandRange getConsumeTokensMutable();
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value getProduceToken();
   ::mlir::SymbolRefAttr getGlobalAttr();
   ::mlir::SymbolRefAttr getGlobal();
   void setGlobalAttr(::mlir::SymbolRefAttr attr);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, /*optional*/::mlir::Type produceToken, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens);
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::Value value, ::mlir::ValueRange consumeTokens);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::SymbolRefAttr global, ::mlir::Value value);
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::SymbolRefAttr global, ::mlir::Value value);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
@@ -912,7 +1092,7 @@ public:
   ::mlir::Operation::operand_range getODSOperands(unsigned index);
   std::pair<unsigned, unsigned> getODSResultIndexAndLength(unsigned index);
   ::mlir::Operation::result_range getODSResults(unsigned index);
-  ::mlir::Value getToken();
+  ::mlir::TypedValue<::mlir::ml_program::TokenType> getToken();
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::Type token);
   static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes);
   static void build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});

@@ -32,6 +32,7 @@ struct VerifiableTensorEncodingInterfaceTraits {
   template<typename ConcreteModel, typename ConcreteAttr>
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
+    using ConcreteEntity = ConcreteAttr;
   };
 };template <typename ConcreteAttr>
 struct VerifiableTensorEncodingTrait;
@@ -42,6 +43,9 @@ public:
   using ::mlir::AttributeInterface<VerifiableTensorEncoding, detail::VerifiableTensorEncodingInterfaceTraits>::AttributeInterface;
   template <typename ConcreteAttr>
   struct Trait : public detail::VerifiableTensorEncodingTrait<ConcreteAttr> {};
+  /// Verifies the encoding is valid for a tensor type with the
+  /// given shape and element type. Generates a diagnostic using
+  /// the supplied callback on failure.
   ::mlir::LogicalResult verifyEncoding(ArrayRef<int64_t> shape, Type elementType, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const;
 };
 namespace detail {

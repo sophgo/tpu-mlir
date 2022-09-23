@@ -37,7 +37,51 @@ struct WarpExecuteOnLane0LoweringOptions {
 
 void populateWarpExecuteOnLane0OpToScfForPattern(
     RewritePatternSet &patterns,
-    const WarpExecuteOnLane0LoweringOptions &options);
+    const WarpExecuteOnLane0LoweringOptions &options,
+    PatternBenefit benefit = 1);
+
+using DistributionMapFn = std::function<AffineMap(vector::TransferWriteOp)>;
+
+/// Distribute transfer_write ops based on the affine map returned by
+/// `distributionMapFn`.
+/// Example:
+/// ```
+/// %0 = vector.warp_execute_on_lane_0(%id){
+///   ...
+///   vector.transfer_write %v, %A[%c0] : vector<32xf32>, memref<128xf32>
+///   vector.yield
+/// }
+/// ```
+/// To
+/// ```
+/// %r:3 = vector.warp_execute_on_lane_0(%id) -> (vector<1xf32>) {
+///   ...
+///   vector.yield %v : vector<32xf32>
+/// }
+/// vector.transfer_write %v, %A[%id] : vector<1xf32>, memref<128xf32>
+void populateDistributeTransferWriteOpPatterns(
+    RewritePatternSet &patterns, const DistributionMapFn &distributionMapFn,
+    PatternBenefit benefit = 1);
+
+/// Move scalar operations with no dependency on the warp op outside of the
+/// region.
+void moveScalarUniformCode(WarpExecuteOnLane0Op op);
+
+/// Collect patterns to propagate warp distribution.
+void populatePropagateWarpVectorDistributionPatterns(
+    RewritePatternSet &pattern, PatternBenefit benefit = 1);
+
+/// Lambda signature to compute a reduction of a distributed value for the given
+/// reduction kind and size.
+using DistributedReductionFn =
+    std::function<Value(Location, OpBuilder &, Value, CombiningKind, uint32_t)>;
+
+/// Collect patterns to distribute vector reduction ops using given lamdba to
+/// distribute reduction op.
+void populateDistributeReduction(
+    RewritePatternSet &pattern,
+    const DistributedReductionFn &distributedReductionFn,
+    PatternBenefit benefit = 1);
 
 } // namespace vector
 } // namespace mlir
