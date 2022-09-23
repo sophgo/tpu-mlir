@@ -39,7 +39,7 @@
 Caffe转MLIR
 ------------------
 
-本例中的模型是bgr输入，mean和scale分别为 ``103.94,116.78,123.68`` 和 ``0.017,0.017,0.017``。
+本例中的模型是 `BGR` 输入，mean和scale分别为 ``103.94,116.78,123.68`` 和 ``0.017,0.017,0.017``。
 
 模型转换命令如下：
 
@@ -54,7 +54,7 @@ Caffe转MLIR
        --mean 103.94,116.78,123.68 \
        --scale 0.017,0.017,0.017 \
        --keep_aspect_ratio \
-       --pixel_format rgb \
+       --pixel_format bgr \
        --test_input ../image/cat.jpg \
        --test_result mobilenet_v2_top_outputs.npz \
        --mlir mobilenet_v2.mlir
