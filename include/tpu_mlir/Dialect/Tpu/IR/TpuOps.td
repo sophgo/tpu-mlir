@@ -760,7 +760,8 @@ def Tpu_PadOp:Tpu_Op<"Pad"> {
   let arguments = (ins
     AnyTensor:$input,
     I64ArrayAttr:$paddings,
-    DefaultValuedAttr<F64Attr, "0.0">:$val
+    DefaultValuedAttr<F64Attr, "0.0">:$val,
+    DefaultValuedAttr<I64Attr, "0">:$mode
   );
   let results = (outs AnyTensor:$output);
 }

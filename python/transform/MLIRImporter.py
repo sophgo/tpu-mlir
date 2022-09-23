@@ -410,6 +410,7 @@ class MLIRImporter(object):
             'name': StringAttr.get(kargs['name']),
             'paddings': self.ArrayAttr(kargs['paddings']),
             'val': FloatAttr.get_f64(kargs['val']),
+            'mode': IntegerAttr.get(self.mlir_type['INT64'], kargs['mode'])
         }
         return self.buildOp(Top.PadOp, operands, [output_type], **param)
 

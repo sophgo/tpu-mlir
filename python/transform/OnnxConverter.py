@@ -860,6 +860,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_pad_op(self, onnx_node):
         assert (onnx_node.op_type == "Pad")
+        pad_mode = {"constant": 0, "reflect": 1}
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
@@ -868,7 +869,6 @@ class OnnxConverter(BaseConverter):
         mode = onnx_node.attrs.get("mode", "constant")
         if isinstance(mode, bytes):
             mode = mode.decode("utf-8")
-        assert (mode == "constant")  # only support constant now
         pads = list(self.getWeight(onnx_node.inputs[1]))
         if pads == None:
             raise RuntimeError("No paddings value")
@@ -887,6 +887,7 @@ class OnnxConverter(BaseConverter):
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'paddings': pads,
             'val': val,
+            'mode': pad_mode[mode],
         }
 
         new_op = self.mlir.create_pad_op([op], output_shape, **p)
