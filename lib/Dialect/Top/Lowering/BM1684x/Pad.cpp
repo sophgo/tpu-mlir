@@ -25,6 +25,7 @@ void top::PadOp::lowering_int8_bm1684x(PatternRewriter &rewriter,
   val_ = std::round(val_ / in_scale + in_zp);
   attrs.push_back(rewriter.getNamedAttr("paddings", paddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val_)));
+  attrs.push_back(rewriter.getNamedAttr("mode", modeAttr()));
 
   auto newType = Quant::getQuantInt8Type(output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, op->getOperands(),

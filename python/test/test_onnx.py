@@ -55,6 +55,8 @@ class ONNX_IR_TESTER(object):
             "MulConst": self.test_MulConst,
             "Pad0": self.test_Pad0,  # zero pad
             "Pad1": self.test_Pad1,  # pad val
+            # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
+            "PadReflect": self.test_PadReflect,
             "Resize": self.test_Resize,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
@@ -69,14 +71,13 @@ class ONNX_IR_TESTER(object):
             "Max": self.test_Max,
             "Min": self.test_Min,
             "Abs": self.test_Abs,
-            "Neg": self.test_Neg,
             #############################
             # Torch Test Case, Alphabetically
             #############################
             "LayerGroup": self.test_LayerGroup,
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
-         #self.quant_modes = ["f16", "bf16"]  # add later
+        #self.quant_modes = ["f16", "bf16"]  # add later
 
     def test_single(self, case: str):
         print("Test: {}".format(case))
@@ -630,6 +631,41 @@ class ONNX_IR_TESTER(object):
                                       initializer=[pad_shape, pad_val])
         self.onnx_and_test({'input': input_data}, graph_def)
 
+    def test_PadEdge(self, case_name):
+        input_shape = [3, 8, 32, 32]
+        output_shape = [3, 8, 44, 46]
+        pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        pad_val = helper.make_tensor(name='pads',
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pads.shape,
+                                     vals=pads.flatten())
+        pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='edge')
+        graph_def = helper.make_graph([pad_def],
+                                      case_name, [input], [output],
+                                      initializer=[pad_val])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_PadReflect(self, case_name):
+        input_shape = [3, 8, 32, 32]
+        output_shape = [3, 8, 44, 46]
+        pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        pad_val = helper.make_tensor(name='pads',
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pads.shape,
+                                     vals=pads.flatten())
+        pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='reflect')
+        graph_def = helper.make_graph([pad_def],
+                                      case_name, [input], [output],
+                                      initializer=[pad_val])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
     def test_Div(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
         output_shape = [1, 3, 27, 27]
@@ -943,7 +979,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(input_data, graph_def)
 
     def test_Gather(self, case_name):
-        total_tokens = 1024
+        total_tokens = 60004
         token_shape = [total_tokens, 256]
         input_shape = [1, 13]
         output_shape = [1, 13, 256]
@@ -1093,22 +1129,6 @@ class ONNX_IR_TESTER(object):
             outputs=['output'],
         )
         graph_def = helper.make_graph([abs_def], case_name, [input], [output])
-        self.onnx_and_test({'input': input_data}, graph_def)
-
-    def test_Neg(self, case_name):
-        input_shape = [1, 16, 64, 64]
-        output_shape = [1, 16, 64, 64]
-        input_data = np.random.randn(*input_shape).astype(np.float32)
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-
-        neg_def = helper.make_node(
-            case_name,
-            inputs=['input'],
-            outputs=['output'],
-        )
-        graph_def = helper.make_graph([neg_def], case_name, [input], [output])
         self.onnx_and_test({'input': input_data}, graph_def)
 
 if __name__ == "__main__":
