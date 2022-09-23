@@ -141,7 +141,28 @@ CastOp
 
 ClipOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述: 
+      将给定输入限制在一定范围内
+     
+:输入:
+    - input: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - min: 给定的下限
+    - max: 给定的上限
+
+:输出:
+    - output: 输出tensor
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %3 = "top.Clip"(%0) {max = 1%: f64,min = 2%: f64} : (tensor<1x3x32x32xf32>) -> tensor<1x3x32x32xf32> loc("Clip")
 
 ConcatOp
 ^^^^^^^^^^^^^^^
@@ -278,15 +299,85 @@ InputOp
 
 LeakyReluOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    tensor中每个元素执行LeakyRelu函数，函数可表示为：f(x) = alpha * x for x < 0, f(x) = x for x >= 0
+:输入:
+    - input: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - alpha:对应每个tensor的系数
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %4 = "top.LeakyRelu"(%3) {alpha = 0.67000001668930054 : f64} : (tensor<1x32x100x100xf32>) -> tensor<1x32x100x100xf32> loc("LeakyRelu")
 
 LSTMOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    执行RNN 的LSTM操作
+
+:输入:
+    - input: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    - filter:卷积核
+    - recurrence：循环单元
+    - bias：LSTM的参数：偏置 
+    - initial_h：LSTM中的每句话经过当前cell后会得到一个state,state 是个tuple(c, h)，其中h=[batch_size, hidden_size]
+    - initial_c：c=[batch_size, hidden_size]
+    - have_bias：是否设置偏置bias，默认为false
+    - bidirectional：设置双向循环的LSTM，默认为false
+    - batch_first：是否将batch放在第一维，默认为false
+    - num_layers：LSTM堆叠层数，默认为1
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+     %6 = "top.LSTM"(%0, %1, %2, %3, %4, %5) {batch_first = false, bidirectional = true, have_bias = true} : (tensor<75x2x128xf32>,tensor<2x256x128xf32>, tensor<2x256x64xf32>, tensor<2x512xf32>, tensor<2x2x64xf32>, tensor<2x2x64xf32>) -> tensor<75x2x2x64xf32> loc("LSTM")
 
 LogOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    按元素计算给定输入张量的自然对数
+
+:输入:
+    - input: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+    无
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+     %1 = "top.Log"(%0) : (tensor<1x3x32x32xf32>) -> tensor<1x3x32x32xf32> loc("Log")
 
 MaxPoolOp
 ^^^^^^^^^^^^^^^
@@ -433,7 +524,27 @@ PermuteOp
 
 ReluOp
 ^^^^^^^^^^^^^^^
-(待补充)
+:简述:
+    tensor中每个元素执行ReLU函数，如果极限为零，则不使用上限
+:输入:
+    - input: tensor
+
+:输出:
+    - output: tensor
+
+:属性:
+   - relu_limit：如果做Relu，指定上限值，如果是负数，则认为没有上限。
+
+:输出:
+    - output: 输出tensor
+
+:接口:
+    无
+
+:范例:
+    .. code-block:: console
+
+      %1 = "top.Relu"(%0) {relu_limit = 6.000000e+00 : f64} : (tensor<1x3x32x32xf32>) -> tensor<1x3x32x32xf32> loc("Clip")
 
 ReshapeOp
 ^^^^^^^^^^^^^^^
