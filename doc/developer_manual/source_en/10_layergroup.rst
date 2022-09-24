@@ -8,9 +8,9 @@ TPU chip memory can be divided into off-chip memory (i.e., Global Memory or GMEM
 
 Usually the global memory is very large (e.g., 4GB) while the local memory is quite limited (e.g., 16MB).
 
-In general, the amount of data and computation of neural network model is very large, so the OP of each layer usually needs to be sliced and put into local memory for operation, and then save the result to global memory.
+In general, the amount of data and computation of neural network model is very large, so the OP of each layer usually needs to be sliced and put into local memory for operation, and then the result is saved to global memory.
 
-LayerGroup enables as many OPs as possible to be executed in local memory after being sliced, so that avoids too many copy operations between local and global memory.
+LayerGroup enables as many OPs as possible to be executed in local memory after being sliced, so that it can avoid too many copy operations between local and global memory.
 
 Problem to be solved:
    How to keep Layer data in the limited local memory for computing, instead of repeatedly making copies between local and global memory.
@@ -43,7 +43,7 @@ Take Conv for example, as shown in the figure (:ref:`backward_h`).
 Dividing the Mem Cycle
 ----------------------
 
-How to divide the group? First of all, listing the lmem needed for each layer, which can be broadly classified into three categories:
+How to divide the group? First of all, list the lmem needed for each layer, which can be broadly classified into three categories:
 
 1. Activation Tensor, which is used to save the input and output results, and is released directly after there is no user.
 2. Weight, used to save the weights, released when there is no slice. Otherwise, always resides in the lmem.
