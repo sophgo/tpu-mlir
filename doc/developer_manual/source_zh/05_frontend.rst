@@ -121,7 +121,7 @@
    初始 mlir 文本
 
 
-1. generate_mlir
+3. generate_mlir
 
    * build input op，生成的 Top.inputOp 会被插入到 MLIRImporter.mlir_module 中。
 
