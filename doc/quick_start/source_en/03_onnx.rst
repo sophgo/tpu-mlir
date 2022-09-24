@@ -304,7 +304,7 @@ The int8 asymmetric bmodel is run as follows to get ``dog_int8_asym.jpg``:
 The four images are compared as follows:
 
 .. _yolov5s_result:
-.. figure:: ../assets/yolov5s.jpg
+.. figure:: ../assets/yolov5s.png
    :height: 13cm
    :align: center
 
