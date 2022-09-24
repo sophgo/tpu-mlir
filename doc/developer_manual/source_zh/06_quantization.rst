@@ -17,13 +17,14 @@ INT8量化分为非对称量化和对称量化。对称量化是非对称量化�
 非对称量化
 ~~~~~~~~~~~~
 
+.. _asym_quant:
 .. figure:: ../assets/quant_asym.png
    :height: 9.5cm
    :align: center
 
    非对称量化
 
-如上图所示，非对称量化其实就是把[min,max]范围内的数值定点到[-128, 127]或者[0, 255]区间。
+如上图(:ref:`asym_quant`)所示，非对称量化其实就是把[min,max]范围内的数值定点到[-128, 127]或者[0, 255]区间。
 
 从int8到float的量化公式表达如下：
 
@@ -41,7 +42,9 @@ S表示scale，是float；Z是zeropoint，是INT8类型；
 
 反过来从float到int8的量化公式如下：
 
-.. math::q = \frac{r}{S} + Z
+.. math::
+
+   q = \frac{r}{S} + Z
 
 对称量化
 ~~~~~~~~~~~~

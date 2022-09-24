@@ -10,23 +10,7 @@ The basic procedure is transforming the model into a mlir file with ``model_tran
 Calibration is required if you need to get the INT8 model.
 The general process is shown in the figure (:ref:`ui_0`).
 
-.. _ui_0:
-.. figure:: ../assets/ui_0.png
-   :height: 9.5cm
-   :align: center
-
-   User interface 1
-
 Other complex cases such as image input with preprocessing and multiple inputs are also supported, as shown in the figure (:ref:`ui_1`).
-
-.. _ui_1:
-.. figure:: ../assets/ui_1.png
-   :height: 9.5cm
-   :align: center
-
-   User interface 2
-
-
 
 TFLite model conversion is also supported, with the following command:
 
@@ -53,6 +37,38 @@ TFLite model conversion is also supported, with the following command:
        --tolerance 0.95,0.85 \
        --model resnet50_tf_1684x.bmodel
 
+Supporting the conversion of Caffe models, the commands are as follows:
+
+.. code-block:: console
+
+    # Caffe conversion example
+    $ model_transform.py \
+        --model_name resnet18_cf \
+        --model_def  ../resnet18.prototxt \
+        --model_data ../resnet18.caffemodel \
+        --input_shapes [[1,3,224,224]] \
+        --mean 104,117,123 \
+        --scale 1.0,1.0,1.0 \
+        --pixel_format bgr \
+        --test_input ../image/dog.jpg \
+        --test_result resnet50_cf_top_outputs.npz \
+        --mlir resnet50_cf.mlir
+    # The call of model_deploy is consistent with onnx
+    # ......
+
+.. _ui_0:
+.. figure:: ../assets/ui_0.png
+   :height: 9.5cm
+   :align: center
+
+   User interface 1
+
+.. _ui_1:
+.. figure:: ../assets/ui_1.png
+   :height: 9.5cm
+   :align: center
+
+   User interface 2
 
 .. _model_transform:
 
@@ -74,13 +90,16 @@ Used to convert various neural network models into MLIR files, the supported par
      - Model name
    * - model_def
      - Y
-     - Model definition file
+     - Model definition file (e.g., '.onnx', '.tflite' or '.prototxt' files)
+   * - model_data
+     - N
+     - Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file)
    * - input_shapes
      - N
      - The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
    * - resize_dims
      - N
-     - The original image needs to be resized. If not specified, it will be resized to the input size of the model
+     - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
    * - keep_aspect_ratio
      - N
      - Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting
@@ -106,7 +125,7 @@ Used to convert various neural network models into MLIR files, the supported par
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
    * - mlir
-     - N
+     - Y
      - The output mlir file name (including path)
 
 

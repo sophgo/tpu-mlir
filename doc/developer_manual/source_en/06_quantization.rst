@@ -17,13 +17,14 @@ INT8 quantization is divided into symmetric and asymmetric quantization. Symmetr
 Asymmetric Quantization
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+.. _asym_quant:
 .. figure:: ../assets/quant_asym.png
    :height: 9.5cm
    :align: center
 
    Asymmetric quantization
 
-As shown above, asymmetric quantization is actually the fixed-pointing of values in the range [min,max] to the interval [-128, 127] or [0, 255].
+As shown in the figure (:ref:`asym_quant`), asymmetric quantization is actually the fixed-pointing of values in the range [min,max] to the interval [-128, 127] or [0, 255].
 
 The quantization formula from int8 to float is:
 
@@ -41,7 +42,9 @@ When quantized to INT8, qmax=127,qmin=-128, and for UINT8, qmax=255,qmin=0.
 
 The quantization formula from float to INT8 is:
 
-.. math::q = \frac{r}{S} + Z
+.. math::
+
+   q = \frac{r}{S} + Z
 
 Symmetric Quantization
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -144,7 +147,7 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
 
 The way to implement Add with TPU is related to specific TPU instructions.
 
-The symmetric method here using INT16 as the intermediate buffer.
+The symmetric method here is to use INT16 as the intermediate buffer.
 
 The asymmetric method is to first de-quantize into the float, do the addition and then re-quantize into INT8.
 
@@ -152,7 +155,7 @@ The asymmetric method is to first de-quantize into the float, do the addition an
 AvgPool
 ~~~~~~~~~~~~
 
-The expression of average pooling can be abbreviated as: :math:`Y_i = \frac{\sum_{j=0}^{k}{(X_j)}}{k}, 其中k = kh \times kw`.
+The expression of average pooling can be abbreviated as: :math:`Y_i = \frac{\sum_{j=0}^{k}{(X_j)}}{k}, k = kh \times kw`.
 
 Substitute it into the int8 quantization formula, the derivation is as follows:
 
@@ -163,6 +166,6 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
    step1:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j-Z_x) + Z_y \\
    step2:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j) - (Z_y - \frac{S_x}{S_y}Z_x) \\
    step3:\quad & => y_i = (Scale_{f32}\sum_{j=0}^{k}(x_j) - Offset_{f32})_{i8} \\
-               & 其中Scale_{f32} = \frac{S_x}{S_yk}，Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
+               & Scale_{f32} = \frac{S_x}{S_yk}，Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
 
 

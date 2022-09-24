@@ -10,9 +10,7 @@ TPU芯片分为片外内存（或称Global Memory，简称GMEM）和片内内存
 
 都非常大，通常每层的OP都需要切分后放到Local Memory进行运算，结果再保存到Global Memory。
 
-LayerGroup就是让尽可能多的OP经过切分后能够在Local Memroy执行，而避免过多的Local和Grobal
-
-Memory的拷贝。
+LayerGroup就是让尽可能多的OP经过切分后能够在Local Memroy执行，而避免过多的Local和Grobal Memory的拷贝。
 
 要解决的问题：
    如何使Layer数据保持在有限的Local Memory进行运算，而不是反复进行Local与Global Memory之间的拷贝
