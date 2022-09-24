@@ -84,7 +84,7 @@ The conversion process:
 
 1. Conv op definition
 
-  Define the Top.Conv operator in TopOps.td. The definition shown in the figure (:ref:`convop_def`).
+  Define the Top.Conv operator in TopOps.td. The definition is shown in the figure (:ref:`convop_def`).
 
 .. _convop_def:
 .. figure:: ../assets/convop_def.png
@@ -110,7 +110,7 @@ The conversion process:
 
   init_MLIRImporter:
 
-  The initial mlir text MLIRImporter.mlir_module is generated based on model name, input shape and output shape from ``shapes``, as shown in the figure (:ref:` origin_mlir`).
+  The initial mlir text MLIRImporter.mlir_module is generated based on model name, input shape and output shape from ``shapes``, as shown in the figure (:ref:`origin_mlir`).
 
 .. _origin_mlir:
 .. figure:: ../assets/origin_mlir.png
@@ -119,15 +119,15 @@ The conversion process:
    Initial mlir text
 
 
-1. generate_mlir
+3. generate_mlir
 
    * build input op, the generated Top.inputOp will be inserted into MLIRImporter.mlir_module.
 
    * call convert_conv_op(), which calls MLIRImporter.create_conv_op to create a ConvOp, and the create function takes the following arguments.
 
-      1) inputOp: From (:ref:`conv_op`), we can see that inputs of the Conv operator contain input, weight and bias. inputOp has been created, and the op of weight and bias will be created by getWeightOp().
+      1) inputOp: from (:ref:`conv_op`), we can see that inputs of the Conv operator contain input, weight and bias. inputOp has been created, and the op of weight and bias will be created by getWeightOp().
 
-      2) output_shape: output shape of the Conv operator from ``shapes``.
+      2) output_shape: use onnx_node.name to get the output shape of the Conv operator from ``shapes``.
 
       3) Attributes: get attributes such as (:ref:`conv_op`) from the onnx Conv operator.
 
@@ -142,6 +142,6 @@ The conversion process:
    Complete mlir text
 
 
-1. Output
+4. Output
 
   Save the mlir text as Conv_origin.mlir and the weights in the ``tensors`` as Conv_TOP_F32_all_weight.npz.

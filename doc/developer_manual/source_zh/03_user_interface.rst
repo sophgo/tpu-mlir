@@ -10,22 +10,8 @@
 ``model_deploy.py`` 将mlir转成对应的model。如果需要转INT8模型，则
 需要进行calibration。大致过程如图(:ref:`ui_0`)。
 
-.. _ui_0:
-.. figure:: ../assets/ui_0.png
-   :height: 9.5cm
-   :align: center
-
-   用户界面1
 
 另外支持一下复杂的情况，支持图片输入带预处理，支持多输入情景，如图(:ref:`ui_1`)。
-
-.. _ui_1:
-.. figure:: ../assets/ui_1.png
-   :height: 9.5cm
-   :align: center
-
-   用户界面2
-
 
 
 支持TFLite模型的转换，命令参考如下：
@@ -72,6 +58,20 @@
         --mlir resnet50_cf.mlir
     # model_deploy的调用与onnx一致
     # ......
+
+.. _ui_0:
+.. figure:: ../assets/ui_0.png
+   :height: 9.5cm
+   :align: center
+
+   用户界面1
+
+.. _ui_1:
+.. figure:: ../assets/ui_1.png
+   :height: 9.5cm
+   :align: center
+
+   用户界面2
 
 .. _model_transform:
 

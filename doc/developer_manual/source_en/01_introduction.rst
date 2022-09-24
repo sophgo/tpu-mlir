@@ -7,13 +7,13 @@ The code has been open-sourced to github: https://github.com/sophgo/tpu-mlir .
 The overall architecture of TPU-MLIR is as follows:
 
 .. figure:: ../assets/framework.png
-   :height: 9.5cm
+   :height: 9cm
    :align: center
 
    TPU-MLIR overall architecture
 
 
-The current directly supported frameworks are tflite, onnx and caffe. models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
+The current directly supported frameworks are onnx, caffe and tflite. Models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
 https://github.com/onnx/tutorials.
 
 
