@@ -256,7 +256,7 @@ detect_yolov5.py \
 
 四张图片对比如下：
 
-![](./doc/quick_start/assets/yolov5s.jpg)
+![](./doc/quick_start/assets/yolov5s.png)
 
 
 # 辅助工具
