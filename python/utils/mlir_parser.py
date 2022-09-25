@@ -11,6 +11,7 @@
 import os
 import sys
 import mlir
+import re
 from mlir.ir import *
 
 
@@ -34,7 +35,8 @@ class Operation:
         loc = op.location
         if loc == "loc(unknown)":
             return None
-        return str(loc)[5:-2]
+        # loc(fused["pool1", "pool1_mask"]) => pool1
+        return re.search(r'\"(\S+?)\"', str(loc)).group(1)
 
     @staticmethod
     def type(op):
@@ -89,7 +91,7 @@ class Operation:
         for opd in op.operands:
             for j in reversed(range(idx)):
                 prev_op = body.operations[j]
-                if prev_op.result == opd:
+                if prev_op.results[0] == opd:
                     if Operation.type(prev_op) not in [
                         "tpu.None",
                         "top.None",
@@ -167,9 +169,6 @@ class MlirParser:
             if op.name == op_name:
                 return op.type
         return None
-
-
-
 
 
 

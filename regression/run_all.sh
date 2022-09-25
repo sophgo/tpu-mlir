@@ -22,6 +22,7 @@ model_list_basic=(
   "resnet50_v1"
   "resnet50_v2"
   "resnet50_tf"
+  "segnet_cf"
   "se-resnet50"
   "shufflenet_v2"
   "squeezenet1.0"

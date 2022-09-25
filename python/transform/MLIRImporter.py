@@ -22,6 +22,7 @@ class Top:
     MatMulOp = 'top.MatMul'
     MaxPoolOp = 'top.MaxPool'
     MaxPoolWithMaskOp = 'top.MaxPoolWithMask'
+    MaxUnpoolOp = 'top.MaxUnpool'
     PermuteOp = 'top.Permute'
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
@@ -418,6 +419,15 @@ class MLIRImporter(object):
             'scale_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_w']),
         }
         return self.buildOp(Top.UpsampleOp, operands, [output_type], **param)
+
+    def create_maxunpool_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'scale_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_h']),
+            'scale_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_w']),
+        }
+        return self.buildOp(Top.MaxUnpoolOp, operands, [output_type], **param)
 
     def create_softmax_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
