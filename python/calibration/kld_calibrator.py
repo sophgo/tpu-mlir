@@ -384,6 +384,8 @@ class SimpleTuner:
             pbar.set_description("tune op: {}".format(evaled_op))
             pbar.update(1)
             type = self.module_parsered.get_op_type_by_op_name(evaled_op)
+            if type is None:
+                continue
             node_label = ['idx:{}  name:{}  type:{}\n'.format(i, evaled_op, type.split('.')[-1])]
             if type == 'top.Input':
                 if self.dot is not None:

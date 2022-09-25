@@ -71,6 +71,11 @@ if echo ${model_path} | grep -q -E '\.tflite$'; then
   do_asymmetric=1
 fi
 
+excepts_opt=
+if [ x${excepts} != x ]; then
+  excepts_opt="--excepts=${excepts}"
+fi
+
 input_shapes_opt=
 if [ x${input_shapes} != x ]; then
   input_shapes_opt="--input_shapes=${input_shapes}"
@@ -137,6 +142,7 @@ model_transform.py \
   ${channel_format_opt} \
   ${test_input_opt} \
   ${test_result_opt} \
+  ${excepts_opt} \
   --mlir ${model_name}.mlir
 
 #########################
@@ -149,6 +155,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
+  ${excepts_opt} \
   --tolerance 0.99,0.99 \
   --model ${model_name}_bm1684x_f32.bmodel
 fi
@@ -160,6 +167,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
+  ${excepts_opt} \
   --tolerance 0.95,0.85 \
   --model ${model_name}_bm1684x_f16.bmodel
 fi
@@ -171,6 +179,7 @@ model_deploy.py \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
+  ${excepts_opt} \
   --tolerance 0.95,0.85 \
   --model ${model_name}_bm1684x_bf16.bmodel
 fi
@@ -211,6 +220,7 @@ model_deploy.py \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
+  ${excepts_opt} \
   --quant_input \
   --quant_output \
   --model ${model_name}_bm1684x_int8_sym.bmodel
@@ -233,6 +243,7 @@ model_deploy.py \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_asym_opt} \
+  ${excepts_opt} \
   --model ${model_name}_bm1684x_int8_asym.bmodel
 
 fi #do_asymmetric

@@ -134,15 +134,15 @@ def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool
     top_map = {}
     out = net.forward()
     if dump_all:
+        blobs_dict = dict(inputs)
         for name, layer in net.layer_dict.items():
             if layer.type == "Split":
                 continue
             if layer.type == "Slice":
                 continue
-            top_map[net.top_names[name][0]] = name
-        blobs_dict = dict(inputs)
-        for top, name in top_map.items():
-            blobs_dict[name] = net.blobs[top].data.copy()
+            tops = net.top_names[name]
+            for t in tops:
+                blobs_dict[t] = net.blobs[t].data.copy()
         return blobs_dict
     else:
         return out

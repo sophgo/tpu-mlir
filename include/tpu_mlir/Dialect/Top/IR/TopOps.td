@@ -582,6 +582,20 @@ def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_MaxUnpoolOp : Top_Op<"MaxUnpool"> {
+  let summary = "MaxUnpool operation";
+  let description = [{
+    Perform  MaxUnpool on input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$mask,
+    I64Attr:$scale_h,
+    I64Attr:$scale_w
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_LogOp: Top_Op<"Log", [InOutSameShape]> {
   let summary = "Log operator";
 

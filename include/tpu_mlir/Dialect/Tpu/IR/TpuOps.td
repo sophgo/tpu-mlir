@@ -758,6 +758,22 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>]> {
+  let summary = "MaxUnpool operation";
+  let description = [{
+    Perform MaxUnpool on input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$mask,
+    I64Attr:$scale_h,
+    I64Attr:$scale_w,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape]> {
   let summary = "Log operator";
 
