@@ -49,7 +49,7 @@ The preprocessing process is formulated as follows ( :math:`x` represents the in
    y = （x - mean） \times scale
 
 
-The image of the official yolov5 is rgb, each value will be multiplied by ``1/255``, respectively corresponding to
+The image of the official yolov5 is rgb. Each value will be multiplied by ``1/255``, respectively corresponding to
 ``0.0,0.0,0.0`` and ``0.0039216,0.0039216,0.0039216`` when it is converted into mean and scale.
 
 The model conversion command is as follows:
@@ -86,13 +86,13 @@ The model conversion command is as follows:
      - Model name
    * - model_def
      - Y
-     - Model definition file
+     - Model definition file (e.g., '.onnx', '.tflite' or '.prototxt' files)
    * - input_shapes
      - N
      - The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs
    * - resize_dims
      - N
-     - The original image needs to be resized. If not specified, it will be resized to the input size of the model
+     - The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model
    * - keep_aspect_ratio
      - N
      - Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting
@@ -118,7 +118,7 @@ The model conversion command is as follows:
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
    * - mlir
-     - N
+     - Y
      - The output mlir file name (including path)
 
 
@@ -256,7 +256,7 @@ After compilation, a file named ``${model_name}_1684x_int8_asym.bmodel`` is gene
 Effect comparison
 ----------------------
 
-There is yolov5 use case written in python in this release package for object detection on images. The source code path is ``$TPUC_ROOT/python/samples/detect_yolov5.py``. It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
+There is a yolov5 use case written in python in this release package for object detection on images. The source code path is ``$TPUC_ROOT/python/samples/detect_yolov5.py``. It can be learned how the model is used by reading the code. Firstly, preprocess to get the model's input, then do inference to get the output, and finally do post-processing.
 Use the following codes to validate the inference results of onnx/f32/int8 respectively.
 
 
@@ -301,7 +301,7 @@ The int8 asymmetric bmodel is run as follows to get ``dog_int8_asym.jpg``:
        --output dog_int8_asym.jpg
 
 
-The four images are compared as follows:
+The four images are compared as shown in the figure (:ref:`yolov5s_result`).
 
 .. _yolov5s_result:
 .. figure:: ../assets/yolov5s.png
