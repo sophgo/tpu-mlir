@@ -17,7 +17,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::MaxOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("MaxOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::MaxOp::lowering_f32_bm1684(PatternRewriter &rewriter) {

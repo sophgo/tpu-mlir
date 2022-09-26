@@ -19,7 +19,7 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::TileOp::codegen_global_bm1684() {
-  llvm_unreachable("1684 Tile Codegen to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::TileOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
@@ -31,5 +31,5 @@ int64_t tpu::TileOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
 }
 
 void tpu::TileOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
-  llvm_unreachable("1684 Tile Codegen to be supported");
+  llvm_unreachable("Not Implemented");
 }

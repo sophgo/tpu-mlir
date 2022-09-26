@@ -180,7 +180,7 @@ LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
             std::copy(srcptr, srcptr + ow, dstptr + h * ow);
           }
         } else {
-          llvm_unreachable("Pad mode to be supported");
+          llvm_unreachable("Not Implemented");
         }
       }
     }

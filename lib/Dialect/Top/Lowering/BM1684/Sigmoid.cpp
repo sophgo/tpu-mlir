@@ -16,9 +16,9 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::SigmoidOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("SigmoidOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::SigmoidOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("SigmoidOp to be supported");
+  llvm_unreachable("Not Implemented");
 }

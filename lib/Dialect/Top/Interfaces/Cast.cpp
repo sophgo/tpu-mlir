@@ -22,5 +22,5 @@ LogicalResult top::CastOp::init(InferenceParameter &p) { return success(); }
 void top::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CastOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Not support now");
+  llvm_unreachable("Not Implemented");
 }

@@ -18,7 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 void top::ScaleOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("ScaleOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::ScaleOp::lowering_f32_bm1684(PatternRewriter &rewriter) {

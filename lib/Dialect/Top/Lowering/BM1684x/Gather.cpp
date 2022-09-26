@@ -23,13 +23,13 @@ void top::GatherOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
 }
 
 void top::GatherOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("GatherOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::GatherOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("GatherOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::GatherOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("not support now");
+  llvm_unreachable("Not Implemented");
 }

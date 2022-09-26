@@ -19,7 +19,7 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::LeakyReluOp::codegen_global_bm1684() {
-  llvm_unreachable("Codegen to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::LeakyReluOp::getBufferSize_bm1684(
@@ -30,5 +30,5 @@ int64_t tpu::LeakyReluOp::getBufferSize_bm1684(
 
 void tpu::LeakyReluOp::codegen_local_bm1684(int64_t n_step,
                                                  int64_t h_step) {
-  llvm_unreachable("Codegen to be supported");
+  llvm_unreachable("Not Implemented");
 }

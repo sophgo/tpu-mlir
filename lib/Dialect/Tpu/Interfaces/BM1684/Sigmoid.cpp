@@ -9,7 +9,7 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::SigmoidOp::codegen_global_bm1684() {
-  llvm_unreachable("not support now");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::SigmoidOp::getBufferSize_bm1684(int64_t in_lmem_bytes,

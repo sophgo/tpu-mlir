@@ -17,7 +17,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::MinOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("MinOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::MinOp::lowering_f32_bm1684(PatternRewriter &rewriter) {

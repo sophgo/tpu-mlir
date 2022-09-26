@@ -208,5 +208,5 @@ void top::DeconvOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
 }
 
 void top::DeconvOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("Not support now");
+  llvm_unreachable("Not Implemented");
 }

@@ -18,9 +18,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 void top::LogOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("LogOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::LogOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("LogOp to be supported");
+  llvm_unreachable("Not Implemented");
 }

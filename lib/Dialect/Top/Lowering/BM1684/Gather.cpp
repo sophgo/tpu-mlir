@@ -16,9 +16,9 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::GatherOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("GatherOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::GatherOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("GatherOp to be supported");
+  llvm_unreachable("Not Implemented");
 }

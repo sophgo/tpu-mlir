@@ -17,7 +17,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::AbsOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("AbsOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::AbsOp::lowering_f32_bm1684(PatternRewriter &rewriter) {

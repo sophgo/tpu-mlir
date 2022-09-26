@@ -16,9 +16,9 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::BatchNormOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::BatchNormOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
 }

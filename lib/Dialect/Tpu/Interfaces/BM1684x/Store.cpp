@@ -18,7 +18,7 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::StoreOp::codegen_global_bm1684x() {
-  llvm_unreachable("not support now");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::StoreOp::getBufferSize_bm1684x(
