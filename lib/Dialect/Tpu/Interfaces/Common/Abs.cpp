@@ -27,20 +27,27 @@ LogicalResult tpu::AbsOp::inference(InferenceParameter &p) {
   auto out_type = Module::getStorageType(output());
   memset(p.outputs[0], 0, num_elem * sizeof(float));
   auto num_element = Module::getNumElements(input());
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-  for (int i = 0; i < num_element; ++i) {
-    auto val = p.inputs[0][i];
-    p.outputs[0][i] = std::abs(val);
-  }
 
-  if (out_type.isa<FloatType>()) {
+  if (out_type.isInteger(8)){
+    bool isU8 = out_type.isUnsignedInteger(8);
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+    for (int i = 0; i < num_element; ++i) {
+      double val = p.inputs[0][i];
+      p.outputs[0][i] = isU8 ? Quant::to_uint8(val)
+                             : std::abs(Quant::to_int8(val));
+    }
+  } else {
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+    for (int i = 0; i < num_element; ++i) {
+      auto val = p.inputs[0][i];
+      p.outputs[0][i] = std::abs(val);
+    }
+
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (out_type.isSignedInteger(8)){
-     std::cout << "================Abs Op can't support int8=================" << std::endl;
   }
   return success();
 }
