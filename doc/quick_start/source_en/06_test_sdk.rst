@@ -5,7 +5,7 @@ Test SDK release package with TPU-PERF
 Configure the system environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you are using Docker for the first time, use the methods in :ref:`First-time Docker <docker configuration>` to install and configure Docker. At the same time, ``git-lfs`` will be used in this chapter. If you use ``git-lfs`` for the first time, you can execute the following commands for installation and configuration (only for the first time, and the configuration is in the user's own system, not Docker container):
+If you are using Docker for the first time, use the methods in :ref:`First-time Docker <docker configuration>` to install and configure Docker. At the same time, ``git-lfs`` will be used in this chapter. If you use ``git-lfs`` for the first time, you can execute the following commands for installation and configuration (only for the first time, and the configuration is in the user's own system, not in Docker container):
 
 .. code-block:: console
    :linenos:

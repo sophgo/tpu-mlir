@@ -38,7 +38,7 @@ The operation is as follows:
 Caffe to MLIR
 ------------------
 
-The model in this example is `BGR` input with mean and scale of ``103.94, 116.78, 123.68`` and ``0.017, 0.017, 0.017`` respectively.
+The model in this example has a `BGR` input with mean and scale of ``103.94, 116.78, 123.68`` and ``0.017, 0.017, 0.017`` respectively.
 
 The model conversion command:
 

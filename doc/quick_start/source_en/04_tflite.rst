@@ -36,7 +36,7 @@ The operation is as follows:
 TFLite to MLIR
 ------------------
 
-The model in this example is bgr input, mean is ``103.939,116.779,123.68``, scale is ``1.0,1.0,1.0``.
+The model in this example has a bgr input, whose mean is 103.939,116.779,123.68 and scale is 1.0,1.0,1.0.
 
 The model conversion command:
 
