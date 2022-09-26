@@ -16,9 +16,9 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::PadOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("SliceOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::PadOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("SliceOp to be supported");
+  llvm_unreachable("Not Implemented");
 }

@@ -16,9 +16,9 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::Depth2SpaceOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("Depth2SpaceOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::Depth2SpaceOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("Depth2SpaceOp to be supported");
+  llvm_unreachable("Not Implemented");
 }

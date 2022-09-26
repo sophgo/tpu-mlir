@@ -23,6 +23,6 @@ LogicalResult top::BatchNormOp::init(InferenceParameter &p) { return success(); 
 void top::BatchNormOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::BatchNormOp::inference(InferenceParameter &p) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
   return success();
 }

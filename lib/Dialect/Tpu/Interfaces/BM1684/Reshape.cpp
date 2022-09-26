@@ -28,7 +28,7 @@ void tpu::ReshapeOp::codegen_global_bm1684() {
   Module::getNCHW(input(), in, ic, ih, iw);
   Module::getNCHW(output(), on, oc, oh, ow);
   if (on != in) {
-    llvm_unreachable("not support now");
+    llvm_unreachable("Not Implemented");
   } else {
     int total_num = align_up(on, 4l) * oc * oh * ow;
     BM1684::instance().dl_nodechip_global_memcpy_ex(

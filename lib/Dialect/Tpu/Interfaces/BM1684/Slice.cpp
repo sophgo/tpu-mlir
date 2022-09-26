@@ -19,5 +19,5 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::SliceOp::codegen_global_bm1684() {
-  llvm_unreachable("Codegen to be supported");
+  llvm_unreachable("Not Implemented");
 }

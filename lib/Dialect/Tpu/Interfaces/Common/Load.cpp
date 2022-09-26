@@ -20,6 +20,6 @@ LogicalResult tpu::LoadOp::init(InferenceParameter &p) { return success(); }
 void tpu::LoadOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LoadOp::inference(InferenceParameter &p) {
-  llvm_unreachable("Inference to be supported");
+  llvm_unreachable("Not Implemented");
   return success();
 }

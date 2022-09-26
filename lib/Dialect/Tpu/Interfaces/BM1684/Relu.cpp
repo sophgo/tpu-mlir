@@ -19,7 +19,7 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 void tpu::ReluOp::codegen_global_bm1684() {
-  llvm_unreachable("Codegen to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::ReluOp::getBufferSize_bm1684(int64_t in_lmem_bytes,

@@ -14,21 +14,21 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::BatchNormOp::lowering_int8_bm1684x(PatternRewriter &rewriter, bool asymmetric) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::BatchNormOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::BatchNormOp::lowering_bf16_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::BatchNormOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("BatchNormOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::BatchNormOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("not support now");
+  llvm_unreachable("Not Implemented");
 }

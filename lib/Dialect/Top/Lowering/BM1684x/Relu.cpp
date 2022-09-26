@@ -31,5 +31,5 @@ void top::ReluOp::lowering_f16_bm1684x(PatternRewriter &rewriter) {
 }
 
 void top::ReluOp::lowering_quant_bm1684x(PatternRewriter &rewriter) {
-  llvm_unreachable("not support now");
+  llvm_unreachable("Not Implemented");
 }

@@ -17,7 +17,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::MulOp::lowering_int8_bm1684(PatternRewriter &rewriter) {
-  llvm_unreachable("MulOp to be supported");
+  llvm_unreachable("Not Implemented");
 }
 
 void top::MulOp::lowering_f32_bm1684(PatternRewriter &rewriter) {
