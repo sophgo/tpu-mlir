@@ -34,10 +34,22 @@ a. Introduction of data structure:
 
 b. Flow description:
 
-    * Iterate through each Op, and determine if the input tensor of the Op is in rec_tbl, if yes, then determine if ref_cnt >= 1, if still yes, ref_cnt --. This operation means that the number of references to the input tensor is reduced by one.
+    * **Iterate through each Op, and determine if the input tensor of the Op is**
+
+      **in rec_tbl, if yes, then determine if ref_cnt >= 1, if still yes, ref_cnt**
+
+      **--. This operation means that the number of references to the input**
+
+      **tensor is reduced by one.**
+
        If ref_cnt is equal to 0, it means that the life cycle of the tensor is over, and later tensors can reuse its address space.
 
-    * When allocating the output tensor to each Op, we first check whether the EOL tensor address can be reused. In other words, the rec_tbl must meet the following 5 conditions before it can be reused:
+    * **When allocating the output tensor to each Op, we first check whether**
+
+      **the EOL tensor address can be reused. In other words, the rec_tbl must**
+
+      **meet the following 5 conditions before it can be reused:**
+
         * The corresponding tensor is not in the hold_edges.
         * The address of the corresponding tensor is not in_using_addr
         * The corresponding tensor is already EOL.
