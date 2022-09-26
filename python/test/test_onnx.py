@@ -27,6 +27,7 @@ class ONNX_IR_TESTER(object):
             #############################
             # ONNX Test Case, Alphabetically
             #############################
+            "Abs": self.test_Abs,
             "Add": self.test_Add,
             "AvgPool1D": self.test_AvgPool1D,
             "AvgPool2D": self.test_AvgPool2D,
@@ -70,7 +71,6 @@ class ONNX_IR_TESTER(object):
             "Transpose": self.test_Transpose,
             "Max": self.test_Max,
             "Min": self.test_Min,
-            "Abs": self.test_Abs,
             #############################
             # Torch Test Case, Alphabetically
             #############################
