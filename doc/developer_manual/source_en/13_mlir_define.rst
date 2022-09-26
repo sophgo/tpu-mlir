@@ -16,7 +16,7 @@ AddOp
     Add operation, :math:`Y = coeff_0 * X_0 + coeff_1 * X_1`
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -166,10 +166,10 @@ ConcatOp
 ^^^^^^^^^^^^^^^
 
 :Brief intro:
-    Concatenates the given sequence of tensors in the given dimension. All Inputtensors either have the same shape (except the dimension to be concatenated) or are all empty.
+    Concatenates the given sequence of tensors in the given dimension. All input tensors either have the same shape (except the dimension to be concatenated) or are all empty.
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -274,7 +274,7 @@ DivOp
     Division operation, :math:`Y = X_0 / X_1`
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -448,7 +448,7 @@ MulOp
     multiplication operation, :math:`Y = X_0 * X_1`
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
