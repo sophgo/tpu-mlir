@@ -555,7 +555,8 @@ protected:
                  ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::PermuteOp>,
                  ForwardCalibartion<top::UpsampleOp>,
-                 ForwardCalibartion<top::LeakyReluOp>
+                 ForwardCalibartion<top::LeakyReluOp>,
+                 ForwardCalibartion<top::AbsOp>
                 >(ctx_);
     // clang-format on
     if (chip_ == Module::Chip::BM1684) {
