@@ -80,7 +80,7 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
                 )
                 yield (t, None)
 
-    def to_represent_dat(self, tensor_with_desc):
+    def to_expressed_dat(self, tensor_with_desc):
         import numpy as np
 
         desc, v = tensor_with_desc
