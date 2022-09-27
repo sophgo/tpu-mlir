@@ -28,7 +28,7 @@
    $ mkdir mobilenet_v2 && cd mobilenet_v2
    $ cp $TPUC_ROOT/regression/model/mobilenet_v2_deploy.prototxt .
    $ cp $TPUC_ROOT/regression/model/mobilenet_v2.caffemodel .
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
+   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
 
@@ -51,9 +51,9 @@ Caffe转MLIR
        --model_def ../mobilenet_v2_deploy.prototxt \
        --model_data ../mobilenet_v2.caffemodel \
        --input_shapes [[1,3,224,224]] \
+       --resize_dims=256,256 \
        --mean 103.94,116.78,123.68 \
        --scale 0.017,0.017,0.017 \
-       --keep_aspect_ratio \
        --pixel_format bgr \
        --test_input ../image/cat.jpg \
        --test_result mobilenet_v2_top_outputs.npz \
@@ -92,13 +92,13 @@ MLIR转INT8模型
 然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为
 非对称的性能会略差于对称模型。
 
-这里用现有的100张来自COCO2017的图片举例，执行calibration：
+这里用现有的100张来自ILSVRC2012的图片举例，执行calibration：
 
 
 .. code-block:: console
 
    $ run_calibration.py mobilenet_v2.mlir \
-       --dataset ../COCO2017 \
+       --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
 
