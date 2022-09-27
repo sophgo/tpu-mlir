@@ -14,7 +14,7 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 void top::AbsOp::lowering_int8_bm1684x(PatternRewriter &rewriter, bool asymmetric) {
-  lowering_common_float<tpu::AbsOp, Float32Type>(rewriter, getOperation());
+  lowering_common_int8<tpu::AbsOp>(rewriter, getOperation(), asymmetric);
 }
 
 void top::AbsOp::lowering_f32_bm1684x(PatternRewriter &rewriter) {
