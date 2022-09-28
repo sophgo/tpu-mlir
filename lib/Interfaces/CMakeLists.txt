@@ -5,6 +5,7 @@ set(LLVM_OPTIONAL_SOURCES
   GlobalGenInterface.cpp
   FlopsInterface.cpp
   LocalGenInterface.cpp
+  TypeInterface.cpp
   )
 
 function(add_mlir_interface_library name)
@@ -28,3 +29,4 @@ add_mlir_interface_library(WeightReorderInterface)
 add_mlir_interface_library(GlobalGenInterface)
 add_mlir_interface_library(FlopsInterface)
 add_mlir_interface_library(LocalGenInterface)
+add_mlir_interface_library(TypeInterface)

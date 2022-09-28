@@ -121,3 +121,7 @@ LogicalResult tpu::Conv3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::Conv3DOp::LocalGenSupport() {
   return failure();
 }
+
+mlir::Type tpu::Conv3DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  return type_verify_case_i32(getOperation(), opd_idx, mode);
+}

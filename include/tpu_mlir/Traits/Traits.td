@@ -20,5 +20,6 @@ def SupportFuseRelu : TPUMLIROpTrait<"SupportFuseRelu">;
 def TpuTypeRestrict: TPUMLIROpTrait<"TpuTypeRestrict">;
 def InOutSameShape: TPUMLIROpTrait<"InOutSameShape">;
 def InOutSameDim: TPUMLIROpTrait<"InOutSameDim">;
+def InOutSameType: TPUMLIROpTrait<"InOutSameType">;
 
 #endif

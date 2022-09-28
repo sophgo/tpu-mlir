@@ -85,6 +85,11 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
   bool has_table = !table().getType().isa<NoneType>();
+  float in_scale = 0;
+  if (Quant::isUniformQuantized(input())) {
+    auto in_qtype = Quant::getUniformQuantizedType(input());
+    in_scale = in_qtype.getScale();
+  }
   if (Quant::isUniformQuantized(input(), output())) {
     assert(has_table);
     auto out_qtype = Quant::getUniformQuantizedType(output());
@@ -113,7 +118,7 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
 
     param.log = false;
     param.dtype = BM168x::getDataType(input());
-    param.scale_val = 0;
+    param.scale_val = in_scale;
     BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
                                          sizeof(param), input_spec->data(),
                                          output_spec->data());
