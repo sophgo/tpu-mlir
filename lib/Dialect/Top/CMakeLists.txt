@@ -20,6 +20,7 @@ add_mlir_library(TPUMLIRTop
   MLIRTopPassIncGen
   MLIRInferenceInterfaceIncGen
   MLIRLoweringInterfaceIncGen
+  MLIRFlopsInterfaceIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
@@ -33,6 +34,7 @@ add_mlir_library(TPUMLIRTop
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRLoweringInterface
+  MLIRFlopsInterface
   TPUMLIRSupport
   TPUMLIRTrait
 )

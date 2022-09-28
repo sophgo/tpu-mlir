@@ -73,8 +73,6 @@ Value do_cast(Value v, Type to, bool tensorType) {
   return castOp.output();
 }
 
-static double same_value(double x) { return x; }
-
 Value do_transfer(Value in, Value out, bool asymmetric) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -379,28 +377,22 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
   }
 };
 
-// keep output storage type the same with input storage type
 template <typename TyOp>
-struct ForwardQuantType : public OpRewritePattern<TyOp> {
+struct ForwardTypePattern : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
 
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
     Value in = op.input();
     Value out = op.output();
-    if (!Quant::isUniformQuantized(in)) {
-      return failure();
-    }
-    if (!Quant::isUniformQuantized(out)) {
-      return failure();
-    }
-    auto in_qtype = Quant::getUniformQuantizedType(in);
-    auto out_qtype = Quant::getUniformQuantizedType(out);
-    if (in_qtype == out_qtype) {
-      return failure();
-    }
+    auto in_type = in.getType().cast<RankedTensorType>();
     auto out_type = out.getType().cast<RankedTensorType>();
-    auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+    auto in_etype = in_type.getElementType();
+    auto out_etype = out_type.getElementType();
+    if (in_etype == out_etype) {
+      return failure();
+    }
+    auto new_type = RankedTensorType::get(out_type.getShape(), in_etype);
     out.setType(new_type);
     return success();
   }
@@ -507,14 +499,12 @@ public:
     llvm::errs() << "default quantize mode:" << this->mode << ", is asymmetric "
                  << this->isAsymmetric << ", chip :" << this->chip
                  << ", state:" << state_ << "\n";
-
     chip_ = StringRef(chip).upper();
     Module::setChip(module, chip_);
     mode_ = StringRef(mode).upper();
     Module::setMode(module, mode_);
     ctx_ = module.getContext();
     mainFunc_ = Module::getMainFuncOp(module);
-
     if (Module::State::TOP_QUANTIZED == state_) {
       Module::setAsymmetric(module, true);
       asymmetric_ = true;
@@ -571,32 +561,41 @@ protected:
     RewritePatternSet patterns(ctx_);
     patterns.add<LoweringPattern>(ctx_, mode_, quantize_map);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
+    // adjust reshape
+    patterns.clear();
+    patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
+    applyPatternsAndFoldGreedily(module, std::move(patterns));
   }
 
   void cast_process() {
     mainFunc_.walk([&](Operation *op) {
-      if (op->getDialect()->getNamespace() == "tpu" &&
-          false == isa<tpu::CastOp, tpu::RequantIntOp, tpu::DequantIntOp,
-                       tpu::RequantIntAxisOp, tpu::DequantIntAxisOp,
-                       tpu::RequantFpAxisOp, tpu::RequantFpOp>(op)) {
-        auto oType = op->getResult(0).getType();
-        if (op->hasOneUse()) {
-          auto nextOp = *(op->getUsers().begin());
-          if (isa<tpu::RequantIntOp, tpu::RequantIntAxisOp>(nextOp)) {
-            oType = nextOp->getResult(0).getType();
-          }
-        }
-        // here consider output type should be the same with input type
-        // if any op not follow this rule, should deal spically
+      if (isa<TypeInterface>(op) || op->hasTrait<InOutSameType>()) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
-          auto in_op = opd.getDefiningOp();
-          if (isa<top::WeightOp, top::NoneOp>(in_op) ||
-              Module::getStorageType(opd).isInteger(32)) {
-            continue;
+          TypeCastMode mode = TypeCastMode::DO_NOTHING;
+          mlir::Type target_type;
+          if (auto typeIf = dyn_cast<TypeInterface>(op)) {
+            target_type = typeIf.type_verify(idx, mode);
+          } else {
+            target_type = type_verify_case_same(op, idx, mode);
           }
-          if (need_cast(opd.getType(), oType)) {
-            DoCast(op, idx, oType);
+          switch (mode) {
+          case TypeCastMode::DO_NOTHING:
+            break;
+          case TypeCastMode::DO_QUANTIZE: {
+            auto castOp = do_quantize(opd, asymmetric_);
+            op->setOperand(idx, castOp);
+          } break;
+          case TypeCastMode::DO_DEQUANTIZE: {
+            auto castOp = do_cast(opd, target_type, false);
+            op->setOperand(idx, castOp);
+          } break;
+          case TypeCastMode::DO_CAST: {
+            auto castOp = do_cast(opd, target_type, false);
+            op->setOperand(idx, castOp);
+          } break;
+          default:
+            break;
           }
         }
       }
