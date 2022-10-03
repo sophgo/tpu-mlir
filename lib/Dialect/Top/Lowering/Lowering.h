@@ -71,13 +71,6 @@ static void lowering_common_float(PatternRewriter &rewriter, Operation *from) {
   lowering_common<OpTy>(rewriter, from, newType);
 }
 
-// cast Value to new type. if tensorType is true, new type will be "to", else
-// {getShape(v), to}. support F32/F16/BF16/qint8
-Value do_cast(Value v, Type to, bool tensorType);
-
-// from f32 quant to qint8
-Value do_quantize(Value v, bool asymmetric);
-
 // from int8 to int8, convert one (scale zp) to another (scale zp)
 Value do_transfer(Value in, Value out, bool asymmetric);
 Value do_transfer_fp(Value in, Value out, bool asymmetric);
