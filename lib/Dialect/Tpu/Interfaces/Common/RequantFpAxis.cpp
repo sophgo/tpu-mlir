@@ -58,7 +58,8 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int index = (n * shape[1] + c) * inner + i;
-          int32_t v = (int32_t)(round((float)(p.inputs[0][index]) * scale + offset));
+          int32_t v =
+              (int32_t)(round((float)(p.inputs[0][index]) * scale + offset));
           p.outputs[0][index] = saturate(v, o_sType);
         }
       }
@@ -69,4 +70,19 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
     break;
   }
   return success();
+}
+
+mlir::Type tpu::RequantFpAxisOp::type_verify(uint64_t opd_idx,
+                                             TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    auto op = getOperation();
+    auto stype = Module::getStorageType(input());
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwith = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwith);
+  }
+  return do_nothing(mode);
 }

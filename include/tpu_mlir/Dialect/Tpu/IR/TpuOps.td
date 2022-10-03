@@ -164,7 +164,6 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
 def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D">;
 def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
-    DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let arguments = (ins
     AnyTensor:$input,
@@ -189,7 +188,7 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
 }
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
-  [SupportFuseRelu, InOutSameType,
+  [SupportFuseRelu,
    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>]> {
   let summary = "pool operator";
 
@@ -228,7 +227,7 @@ def Tpu_Pool2DOp:Tpu_PoolOp<"Pool2D">;
 def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
-  [SupportFuseRelu, InOutSameType,
+  [SupportFuseRelu,
    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>]> {
   let summary = "max pool with operator";
 
@@ -255,7 +254,7 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
 }
 
 def Tpu_AddOp: Tpu_Op<"Add", [
-  SupportFuseRelu, InOutSameDim, InOutSameType,
+  SupportFuseRelu, InOutSameDim,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "add operator";
 
@@ -279,7 +278,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
 }
 
 def Tpu_AddConstOp: Tpu_Op<"AddConst",
-    [SupportFuseRelu, InOutSameShape, InOutSameType,
+    [SupportFuseRelu, InOutSameShape,
     DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "add const operator";
 
@@ -302,7 +301,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
 }
 
 def Tpu_MulOp: Tpu_Op<"Mul",
-    [SupportFuseRelu, InOutSameDim, InOutSameType,
+    [SupportFuseRelu, InOutSameDim,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "mul operator";
 
@@ -323,7 +322,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MaxOp: Tpu_Op<"Max", [InOutSameType,
+def Tpu_MaxOp: Tpu_Op<"Max", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "max operator";
 
@@ -339,7 +338,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [InOutSameType,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MinOp: Tpu_Op<"Min", [InOutSameType,
+def Tpu_MinOp: Tpu_Op<"Min", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "min operator";
 
@@ -355,7 +354,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [InOutSameType,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,InOutSameType,
+def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "mul const operator";
 
@@ -377,7 +376,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,InOutSam
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space", [InOutSameType]> {
+def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
   let summary = "Depth2Space operator";
 
@@ -403,7 +402,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space", [InOutSameType]> {
 
 def Tpu_LutOp: Tpu_Op<"Lut",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
-    InOutSameShape, InOutSameType]>{
+    InOutSameShape]>{
   let summary = "Lut operator";
 
   let description = [{
@@ -450,7 +449,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
 }
 
 def Tpu_ReluOp: Tpu_Op<"Relu",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape, InOutSameType]>{
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
   let summary = "Relu operator";
 
   let description = [{
@@ -479,8 +478,10 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_CastOp:Tpu_Op<"Cast",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_CastOp:Tpu_Op<"Cast", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "Cast operation";
   let description = [{
   }];
@@ -493,7 +494,7 @@ def Tpu_CastOp:Tpu_Op<"Cast",
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape, InOutSameType]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
     load input or weight from gmem to lmem;
@@ -509,7 +510,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
 }
 
 def Tpu_StoreOp:Tpu_Op<"Store",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape, InOutSameType]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "Store operation";
   let description = [{
   }];
@@ -520,11 +521,13 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 data
+    Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -536,8 +539,10 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
@@ -551,11 +556,13 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantFpOp:Tpu_Op<"RequantFp",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "requant float operation";
   let description = [{
-    Requant 32/16/8 bit data to int8 or uint8 data
+    Requant 32/16/8 bit data to int8 or uint8 data, by float scale and float offset
   }];
   let arguments = (ins
     AnyTensor:$input,
@@ -567,8 +574,10 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "requant float operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
@@ -582,8 +591,10 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_DequantIntOp:Tpu_Op<"DequantInt",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
     Dequant 8 bit data to 32/16 bit data
@@ -599,8 +610,10 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>,
+  InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
     Dequant 8 bit data to 32/16 bit data, PerAxis(or PerChannel)
@@ -647,7 +660,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
 }
 
 def Tpu_SiLUOp : Tpu_Op<"SiLU",
-    [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape, InOutSameType]> {
+    [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = " SiLU operator,  y = x * Sigmoid(x)";
   let description = [{
      Y = x * Sigmoid(x)
@@ -679,9 +692,9 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
-    DeclareOpInterfaceMethods<LocalGenInterface>,
-    InOutSameShape, InOutSameType]> {
+def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
+   [DeclareOpInterfaceMethods<LocalGenInterface>,
+    InOutSameShape]> {
   let summary = "leakyrelu operation";
   let description = [{
     The LeakyRelu operation multiples alpha with negative values, and the others keep changeless
@@ -698,7 +711,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu", [
   let results = (outs AnyTenor:$output);
 }
 
-def Tpu_ConcatOp:Tpu_Op<"Concat",[InOutSameType,
+def Tpu_ConcatOp:Tpu_Op<"Concat", [
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "Concatate operation";
   let description = [{
@@ -713,7 +726,7 @@ def Tpu_ConcatOp:Tpu_Op<"Concat",[InOutSameType,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MulShiftOp: Tpu_Op<"MulShift",[InOutSameType,
+def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     DeclareOpInterfaceMethods<LocalGenInterface>]> {
 
   let summary = "MulShift operator";
@@ -732,7 +745,7 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift",[InOutSameType,
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_PermuteOp: Tpu_Op<"Permute", [InOutSameType]> {
+def Tpu_PermuteOp: Tpu_Op<"Permute"> {
 
   let summary = "Permute operator";
 
@@ -750,7 +763,7 @@ def Tpu_PermuteOp: Tpu_Op<"Permute", [InOutSameType]> {
 }
 
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
-    SupportFuseRelu, InOutSameType,
+    SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
   let summary = "Upsample operation";
   let description = [{
@@ -768,7 +781,6 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
 }
 
 def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
-    InOutSameType,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>]> {
   let summary = "MaxUnpool operation";
   let description = [{
@@ -784,7 +796,7 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape, InOutSameType]> {
+def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape]> {
   let summary = "Log operator";
 
   let description = [{
@@ -798,7 +810,7 @@ def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape, InOutSameType]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_PadOp:Tpu_Op<"Pad", [InOutSameType]> {
+def Tpu_PadOp:Tpu_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.
@@ -816,7 +828,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [InOutSameType]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape, InOutSameType]> {
+def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
   let summary = "div operator";
 
   let description = [{
@@ -838,7 +850,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape, InOutSameType]> {
 
 def Tpu_SigmoidOp : Tpu_Op<"Sigmoid",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
-    InOutSameShape, InOutSameType]> {
+    InOutSameShape]> {
   let summary = " Sigmoid operator";
   let description = [{
      y = 1 / (1 + exp(-x))
@@ -853,7 +865,7 @@ def Tpu_SigmoidOp : Tpu_Op<"Sigmoid",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SliceOp: Tpu_Op<"Slice", [InOutSameType]> {
+def Tpu_SliceOp: Tpu_Op<"Slice"> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.
@@ -905,7 +917,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
   }];
 }
 
-def Tpu_SqueezeOp: Tpu_Op<"Squeeze", [InOutSameType]> {
+def Tpu_SqueezeOp: Tpu_Op<"Squeeze"> {
   let summary = "Squeeze operator";
 
   let description = [{
@@ -921,7 +933,7 @@ def Tpu_SqueezeOp: Tpu_Op<"Squeeze", [InOutSameType]> {
 }
 
 def Tpu_ScaleOp: Tpu_Op<"Scale", [
-  SupportFuseRelu, InOutSameShape, InOutSameType,
+  SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Scale operator";
 
@@ -945,7 +957,6 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
 }
 
 def Tpu_LSTMOp: Tpu_Op<"LSTM",[
-    InOutSameType,
     DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "LSTM operator";
 
@@ -972,7 +983,6 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
-    InOutSameType,
     DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Tile operation";
   let description = [{
@@ -987,7 +997,8 @@ def Tpu_TileOp:Tpu_Op<"Tile", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_GatherOp: Tpu_Op<"Gather"> {
+def Tpu_GatherOp: Tpu_Op<"Gather", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "Gather operator";
   let description = [{
     Perform Gather operation on the given axis.
@@ -1003,9 +1014,9 @@ def Tpu_GatherOp: Tpu_Op<"Gather"> {
   let results = (outs AnyTenor:$output);
 }
 
-def Tpu_AbsOp : Tpu_Op<"Abs",
-    [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
-    InOutSameShape, InOutSameType]> {
+def Tpu_AbsOp : Tpu_Op<"Abs", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  InOutSameShape]> {
   let summary = " Abs operator";
   let description = [{
      y = abs(x)

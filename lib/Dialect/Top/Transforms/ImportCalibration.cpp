@@ -62,10 +62,6 @@ public:
         if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
           break;
         }
-        if (!isAsymmetric) {
-          info.min = info.min < 0 ? -info.threshold : 0;
-          info.max = info.threshold;
-        }
         calibration_map[name] = info;
       } else if (std::regex_match(line, info_pattern)) {
       } else {
@@ -74,21 +70,25 @@ public:
         llvm_unreachable("\n  => not match required format\n");
       }
     }
-
+    double min, max;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
-          auto name = Module::getName(op).str();
-          if (calibration_map.find(name)== calibration_map.end()) {
-            llvm::errs() << "[" << name << "] not in " << this->tableFile << "!!\n";
-            llvm_unreachable("Import Calibration failed!!\n");
-          }
-          auto value = op->getResult(0);
-          auto &info = calibration_map[name];
-          auto type = value.getType().cast<RankedTensorType>();
-          if (type.getElementType().isIntOrIndex() == false) {
+          for (auto value : op->getResults()) {
+            auto type = value.getType().cast<RankedTensorType>();
+            if (type.getElementType().isIntOrIndex()) {
+              continue;
+            }
+            auto name = Module::getName(value).str();
+            if (calibration_map.find(name) == calibration_map.end()) {
+              llvm::errs() << "[" << name << "] not in " << this->tableFile
+                           << "!!\n";
+              llvm_unreachable("Import Calibration failed!!\n");
+            }
+            auto &info = calibration_map[name];
+            getMinMax(op, info, min, max);
             auto quant_type = quant::CalibratedQuantizedType::get(
-                type.getElementType(), info.min, info.max);
+                type.getElementType(), min, max);
             auto new_type = RankedTensorType::get(type.getShape(), quant_type);
             value.setType(new_type);
           }
@@ -97,6 +97,19 @@ public:
     }
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TOP_CALIBRATED);
+  }
+  void getMinMax(Operation *op, const cali_info &info, double &min,
+                 double &max) {
+    if (isa<top::AbsOp>(op)) {
+      min = -info.threshold;
+      max = info.threshold;
+    } else if (isAsymmetric == false) {
+      min = info.min < 0 ? (-info.threshold) : 0;
+      max = info.threshold;
+    } else {
+      min = info.min;
+      max = info.max;
+    }
   }
 };
 

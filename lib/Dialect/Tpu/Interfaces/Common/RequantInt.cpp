@@ -17,7 +17,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::RequantIntOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::RequantIntOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::RequantIntOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
@@ -46,10 +48,9 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v =
-              zero_point + MultiplyByQuantizedMultiplier(
-                               (int32_t)(p.inputs[0][offset]),
-                               (int32_t)multi, (int32_t)shift_val);
+          auto v = zero_point + MultiplyByQuantizedMultiplier(
+                                    (int32_t)(p.inputs[0][offset]),
+                                    (int32_t)multi, (int32_t)shift_val);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -61,10 +62,9 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v =
-              zero_point + MultiplyByQuantizedMultiplier(
-                               (int32_t)(p.inputs[0][offset]),
-                               (int32_t)multi, (int32_t)shift_val);
+          auto v = zero_point + MultiplyByQuantizedMultiplier(
+                                    (int32_t)(p.inputs[0][offset]),
+                                    (int32_t)multi, (int32_t)shift_val);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
@@ -75,13 +75,28 @@ LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          auto v =
-              zero_point + applyMultiplierAndRShift(
-                               (p.inputs[0][offset] - zp_x), multi, -shift_val);
+          auto v = zero_point +
+                   applyMultiplierAndRShift((p.inputs[0][offset] - zp_x), multi,
+                                            -shift_val);
           p.outputs[0][offset] = saturate(v, o_sType);
         }
       }
     }
   }
   return success();
+}
+
+mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
+                                          TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    auto op = getOperation();
+    auto stype = Module::getStorageType(input());
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwith = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwith);
+  }
+  return do_nothing(mode);
 }

@@ -70,39 +70,6 @@ LogicalResult verifyInOutSameDimTrait(Operation *op) {
   return mlir::success();
 }
 
-LogicalResult verifyInOutSameTypeTrait(Operation *op) {
-  auto num_opds = op->getNumOperands();
-  auto out = op->getResult(0);
-  bool out_isQuant = Quant::isUniformQuantized(out);
-  auto out_stype = Module::getStorageType(out);
-  bool out_isInt = out_stype.isIntOrIndex();
-  for (uint32_t i = 0; i < num_opds; i++) {
-    auto in_opd = op->getOperand(i);
-    auto in_op = in_opd.getDefiningOp();
-    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(op)) {
-      continue;
-    }
-    bool in_isQuant = Quant::isUniformQuantized(in_opd);
-    auto in_stype = Module::getStorageType(in_opd);
-    bool in_isInt = in_stype.isIntOrIndex();
-    if (in_stype == out_stype) {
-      continue;
-    }
-    if (out_isQuant && in_isQuant) {
-      continue;
-    }
-    if (out_isInt && in_isInt) {
-      if (in_stype.getIntOrFloatBitWidth() ==
-          out_stype.getIntOrFloatBitWidth()) {
-        continue;
-      }
-    }
-    op->dump();
-    return op->emitError("expected input and output with same type");
-  }
-  return mlir::success();
-}
-
 } // namespace impl
 } // namespace trait
 
