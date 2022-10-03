@@ -19,42 +19,67 @@ using namespace mlir;
 using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 
-static mlir::Type verifyCompatibleType(mlir::Value from, mlir::Value to,
+bool type_need_cast(Type from, Type to) {
+  auto f_sType = Module::getStorageType(from);
+  auto t_sType = Module::getStorageType(to);
+  if (f_sType == t_sType) {
+    return false;
+  }
+  if (f_sType.isIntOrIndex() && t_sType.isIntOrIndex()) {
+    if (f_sType.getIntOrFloatBitWidth() && t_sType.getIntOrFloatBitWidth()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::string type_string(mlir::Type type) {
+  auto t = Module::getStorageType(type);
+  std::string str;
+  if (t.isF32()) {
+    str = "f32";
+  } else if (t.isF16()) {
+    str = "f16";
+  } else if (t.isBF16()) {
+    str = "bf16";
+  } else if (t.isIntOrIndex()) {
+    if (t.isUnsignedInteger()) {
+      str = "ui";
+    } else {
+      str = "si";
+    }
+    auto bit = t.getIntOrFloatBitWidth();
+    str += std::to_string(bit);
+  } else {
+    t.dump();
+    llvm_unreachable("unknown type");
+  }
+  return str;
+}
+
+static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
                                        TypeCastMode &mode) {
-  auto op = from.getDefiningOp();
+  auto op = in.getDefiningOp();
   if (op != nullptr && isa<top::WeightOp, top::NoneOp>(op)) {
     return do_nothing(mode);
   }
-  bool from_isQuant = Quant::isUniformQuantized(from);
-  bool to_isQuant = Quant::isUniformQuantized(to);
-  auto from_stype = Module::getStorageType(from);
-  auto to_stype = Module::getStorageType(to);
-  bool from_isInt = from_stype.isIntOrIndex();
-  bool to_isInt = to_stype.isIntOrIndex();
   // case: equal, do nothing
-  if (from_stype == to_stype) {
+  auto from_stype = Module::getStorageType(in);
+  auto to_stype = Module::getStorageType(to);
+  if (false == type_need_cast(from_stype, to_stype)) {
     return do_nothing(mode);
   }
   // case: quantize
-  if (from_isQuant || to_isQuant) {
-    if ((from_isQuant && to_isQuant) || (from_isInt && to_isInt)) {
-      return do_nothing(mode);
-    }
-    if (to_isQuant) {
-      mode = TypeCastMode::DO_QUANTIZE;
-      return to_stype;
-    } else {
-      mode = TypeCastMode::DO_DEQUANTIZE;
-      return to_stype;
-    }
+  bool from_isQuant = Quant::isUniformQuantized(in);
+  bool to_isQuant = Quant::isUniformQuantized(to);
+  if (to_isQuant && !from_stype.isIntOrIndex()) {
+    mode = TypeCastMode::DO_QUANTIZE;
+    return to_stype;
   }
-  // case: integer and integer
-  if (from_isInt && to_isInt) {
-    // u8 => i8, i8 => u8, no need to cast
-    if (from_stype.getIntOrFloatBitWidth() ==
-        to_stype.getIntOrFloatBitWidth()) {
-      return do_nothing(mode);
-    }
+
+  if (from_isQuant && !to_stype.isIntOrIndex()) {
+    mode = TypeCastMode::DO_DEQUANTIZE;
+    return to_stype;
   }
 
   // case: other
@@ -64,13 +89,18 @@ static mlir::Type verifyCompatibleType(mlir::Value from, mlir::Value to,
 
 mlir::Type type_verify_case_same(mlir::Operation *op, uint64_t opd_idx,
                                  TypeCastMode &mode) {
-  auto num_opds = op->getNumOperands();
   auto out = op->getResult(0);
+  return type_verify_case_type(op, opd_idx, out.getType(), mode);
+}
+
+mlir::Type type_verify_case_type(mlir::Operation *op, uint64_t opd_idx,
+                                 mlir::Type type, TypeCastMode &mode) {
+  auto num_opds = op->getNumOperands();
   if (opd_idx >= num_opds) {
     llvm_unreachable("opd_idx is illegal.");
   }
   auto in = op->getOperand(opd_idx);
-  return verifyCompatibleType(in, out, mode);
+  return verifyCompatibleType(in, type, mode);
 }
 
 mlir::Type type_verify_case_i32(mlir::Operation *op, uint64_t opd_idx,

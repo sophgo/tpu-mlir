@@ -14,65 +14,6 @@ using namespace tpu_mlir::trait;
 namespace tpu_mlir {
 namespace top {
 
-bool need_cast(Type from, Type to) {
-  auto f_eleType = Module::getStorageType(from);
-  auto t_eleType = Module::getStorageType(to);
-  if ((f_eleType.isInteger(8) || f_eleType.isInteger(16) ||
-       f_eleType.isInteger(32)) &&
-          (t_eleType.isInteger(8) || t_eleType.isInteger(16) ||
-           t_eleType.isInteger(32)) ||
-      f_eleType == t_eleType) {
-    return false;
-  }
-  return true;
-}
-
-Value do_cast(Value v, Type to, bool tensorType) {
-  if (need_cast(v.getType(), to) == false) {
-    return v;
-  }
-  auto from_stype = Module::getStorageType(v);
-  auto to_stype = Module::getStorageType(to);
-  // check whether value has been casted
-  for (auto user : v.getUsers()) {
-    if (false == isa<tpu::CastOp>(user)) {
-      continue;
-    }
-    if (need_cast(user->getResult(0).getType(), to) == false) {
-      return user->getResult(0);
-    }
-  }
-  auto ctx = v.getContext();
-  OpBuilder builder(ctx);
-  std::string suffix;
-  if (to_stype.isF32()) {
-    suffix = "_f32";
-  } else if (to_stype.isF16()) {
-    suffix = "_f16";
-  } else if (to_stype.isBF16()) {
-    suffix = "_bf16";
-  } else if (to_stype.isInteger(8)) {
-    if (to_stype.isUnsignedInteger(8)) {
-      suffix = "_u8";
-    } else {
-      suffix = "_i8";
-    }
-  } else {
-    llvm_unreachable("unknown type");
-  }
-  std::vector<NamedAttribute> attrs;
-  builder.setInsertionPointAfterValue(v);
-  std::string new_name = Module::getName(v).str() + suffix;
-  auto newType = to;
-  if (tensorType == false) {
-    newType = RankedTensorType::get(Module::getShape(v), to_stype);
-  }
-  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto castOp =
-      builder.create<tpu::CastOp>(name_loc, newType, ValueRange{v}, attrs);
-  return castOp.output();
-}
-
 Value do_transfer(Value in, Value out, bool asymmetric) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -216,29 +157,6 @@ Value create_lookup_table(Operation *owner, const std::vector<float> &table) {
   OpBuilder builder(owner->getContext());
   auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getF32Type());
   return top::WeightOp::create(owner, "table", table, table_type);
-}
-
-Value do_quantize(Value v, bool asymmetric) {
-  // check whether value has been quantized
-  for (auto user : v.getUsers()) {
-    if (auto castOp = dyn_cast<tpu::CastOp>(user)) {
-      if (Quant::isUniformQuantized(castOp.output())) {
-        return castOp.output();
-      }
-    }
-  }
-  if (Quant::isCalibratedType(v) == false) {
-    v.dump();
-    llvm_unreachable("Only calibrated type can do quantize");
-  }
-  auto ctx = v.getContext();
-  OpBuilder builder(ctx);
-  auto newType = Quant::getQuantInt8Type(v, asymmetric);
-  builder.setInsertionPointAfterValue(v);
-  std::string new_name = Module::getName(v).str() + "_i8";
-  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto castOp = builder.create<tpu::CastOp>(name_loc, newType, ValueRange{v});
-  return castOp.output();
 }
 
 Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
@@ -568,59 +486,72 @@ protected:
   }
 
   void cast_process() {
+    // return types
+    auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
-      if (isa<TypeInterface>(op) || op->hasTrait<InOutSameType>()) {
+      if (isa<TypeInterface>(op) || op->hasTrait<InOutSameType>() ||
+          isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
             target_type = typeIf.type_verify(idx, mode);
-          } else {
+          } else if (op->hasTrait<InOutSameType>()) {
             target_type = type_verify_case_same(op, idx, mode);
+          } else if (isa<func::ReturnOp>(op)) {
+            // return op
+            target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
           }
-          switch (mode) {
-          case TypeCastMode::DO_NOTHING:
-            break;
-          case TypeCastMode::DO_QUANTIZE: {
-            auto castOp = do_quantize(opd, asymmetric_);
+          if (mode != TypeCastMode::DO_NOTHING) {
+            auto castOp = do_cast(opd, target_type, mode);
             op->setOperand(idx, castOp);
-          } break;
-          case TypeCastMode::DO_DEQUANTIZE: {
-            auto castOp = do_cast(opd, target_type, false);
-            op->setOperand(idx, castOp);
-          } break;
-          case TypeCastMode::DO_CAST: {
-            auto castOp = do_cast(opd, target_type, false);
-            op->setOperand(idx, castOp);
-          } break;
-          default:
-            break;
           }
         }
       }
     });
-    auto retTypes = mainFunc_.getResultTypes();
-    auto retOp = dyn_cast<func::ReturnOp>(mainFunc_.front().back());
-    assert(retOp && retOp.getNumOperands() == retTypes.size());
-    for (uint32_t idx = 0; idx < retTypes.size(); idx++) {
-      auto v = retOp.getOperand(idx);
-      auto t = retTypes[idx];
-      if (need_cast(v.getType(), t)) {
-        DoCast(retOp.getOperation(), idx, t);
-      }
-    }
   }
 
-  void DoCast(Operation *op, uint32_t opd_idx, Type to) {
-    auto v = op->getOperand(opd_idx);
-    if (Quant::isUniformQuantized(to)) {
-      auto cast = do_quantize(v, asymmetric_);
-      op->setOperand(opd_idx, cast);
-    } else {
-      auto cast = do_cast(v, Module::getStorageType(to), false);
-      op->setOperand(opd_idx, cast);
+  Value do_cast(Value v, Type to, TypeCastMode mode) {
+    auto from_stype = Module::getStorageType(v);
+    auto to_stype = Module::getStorageType(to);
+    // check whether value has been casted
+    for (auto user : v.getUsers()) {
+      if (false == isa<tpu::CastOp>(user)) {
+        continue;
+      }
+      if (type_need_cast(user->getResult(0).getType(), to) == false) {
+        return user->getResult(0);
+      }
     }
+    auto ctx = v.getContext();
+    OpBuilder builder(ctx);
+    builder.setInsertionPointAfterValue(v);
+    auto name = Module::getName(v).str();
+    switch (mode) {
+    case TypeCastMode::DO_DEQUANTIZE:
+    case TypeCastMode::DO_CAST: {
+      name += "_" + type_string(to_stype);
+      auto newType = RankedTensorType::get(Module::getShape(v), to_stype);
+      auto loc = NameLoc::get(builder.getStringAttr(name));
+      auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
+      return castOp.output();
+    }
+    case TypeCastMode::DO_QUANTIZE: {
+      if (Quant::isCalibratedType(v) == false) {
+        v.dump();
+        llvm_unreachable("Only calibrated type can do quantize");
+      }
+      auto newType = Quant::getQuantInt8Type(v, asymmetric_);
+      name += "_" + type_string(newType);
+      auto loc = NameLoc::get(builder.getStringAttr(name));
+      auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
+      return castOp.output();
+    }
+    default:
+      break;
+    }
+    return v;
   }
 
 protected:
