@@ -1124,7 +1124,7 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
         abs_def = helper.make_node(
-            case_name,
+            "Abs",
             inputs=['input'],
             outputs=['output'],
         )

@@ -56,3 +56,18 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+mlir::Type tpu::DequantIntOp::type_verify(uint64_t opd_idx,
+                                          TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    auto op = getOperation();
+    auto stype = Module::getStorageType(input());
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwith = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwith);
+  }
+  return do_nothing(mode);
+}

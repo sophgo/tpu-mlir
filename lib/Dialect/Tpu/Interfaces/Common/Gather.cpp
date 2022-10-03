@@ -48,3 +48,23 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+mlir::Type tpu::GatherOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  if (opd_idx == 1) {
+    // indices
+    auto opd = op->getOperand(1);
+    auto in_op = opd.getDefiningOp();
+    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+      return do_nothing(mode);
+    }
+    auto stype = Module::getStorageType(opd);
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwith = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwith);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}

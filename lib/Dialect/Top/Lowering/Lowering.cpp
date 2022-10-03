@@ -448,10 +448,13 @@ protected:
                  BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
+    // clang-format off
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::ReshapeOp>,
-                 BackwardCalibartion<top::LeakyReluOp>>(ctx_);
+                 BackwardCalibartion<top::LeakyReluOp>,
+                 BackwardCalibartion<top::AbsOp>>(ctx_);
+    // clang-format on
     applyPatternsAndFoldGreedily(module, std::move(patterns));
     patterns.clear();
     // clang-format off
@@ -489,19 +492,19 @@ protected:
     // return types
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
-      if (isa<TypeInterface>(op) || op->hasTrait<InOutSameType>() ||
-          isa<func::ReturnOp>(op)) {
+      bool is_tpu = (op->getDialect()->getNamespace() == "tpu");
+      if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
             target_type = typeIf.type_verify(idx, mode);
-          } else if (op->hasTrait<InOutSameType>()) {
-            target_type = type_verify_case_same(op, idx, mode);
           } else if (isa<func::ReturnOp>(op)) {
             // return op
             target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
+          } else {
+            target_type = type_verify_case_same(op, idx, mode);
           }
           if (mode != TypeCastMode::DO_NOTHING) {
             auto castOp = do_cast(opd, target_type, mode);
