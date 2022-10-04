@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum WASMIntrinsics : unsigned {
 // Enum values for intrinsics
-    wasm_alltrue = 9601,                              // llvm.wasm.alltrue
+    wasm_alltrue = 9590,                              // llvm.wasm.alltrue
     wasm_anytrue,                              // llvm.wasm.anytrue
     wasm_avgr_unsigned,                        // llvm.wasm.avgr.unsigned
     wasm_bitmask,                              // llvm.wasm.bitmask
@@ -62,8 +62,12 @@ enum WASMIntrinsics : unsigned {
     wasm_table_copy,                           // llvm.wasm.table.copy
     wasm_table_fill_externref,                 // llvm.wasm.table.fill.externref
     wasm_table_fill_funcref,                   // llvm.wasm.table.fill.funcref
+    wasm_table_get_externref,                  // llvm.wasm.table.get.externref
+    wasm_table_get_funcref,                    // llvm.wasm.table.get.funcref
     wasm_table_grow_externref,                 // llvm.wasm.table.grow.externref
     wasm_table_grow_funcref,                   // llvm.wasm.table.grow.funcref
+    wasm_table_set_externref,                  // llvm.wasm.table.set.externref
+    wasm_table_set_funcref,                    // llvm.wasm.table.set.funcref
     wasm_table_size,                           // llvm.wasm.table.size
     wasm_throw,                                // llvm.wasm.throw
     wasm_tls_align,                            // llvm.wasm.tls.align

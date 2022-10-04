@@ -258,8 +258,8 @@ void ModuleOp::setSymVisibilityAttr(::mlir::StringAttr attr) {
 
 void ModuleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   if ((*this)->getAttr("sym_name")) {
-  _odsPrinter << ' ';
-  _odsPrinter.printSymbolName(getSymNameAttr().getValue());
+    _odsPrinter << ' ';
+    _odsPrinter.printSymbolName(getSymNameAttr().getValue());
   }
   _odsPrinter.printOptionalAttrDictWithKeyword((*this)->getAttrs(), /*elidedAttrs=*/{"sym_name"});
   _odsPrinter << ' ';
@@ -447,11 +447,11 @@ void UnrealizedConversionCastOp::build(::mlir::OpBuilder &, ::mlir::OperationSta
 
 void UnrealizedConversionCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   if (!getInputs().empty()) {
-  _odsPrinter << ' ';
-  _odsPrinter << getInputs();
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << getInputs().getTypes();
+    _odsPrinter << ' ';
+    _odsPrinter << getInputs();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << getInputs().getTypes();
   }
   _odsPrinter << ' ' << "to";
   _odsPrinter << ' ';

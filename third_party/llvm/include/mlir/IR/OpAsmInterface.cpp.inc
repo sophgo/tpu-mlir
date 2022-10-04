@@ -65,7 +65,7 @@ void mlir::OpAsmOpInterface::getAsmBlockNames(::mlir::OpAsmSetBlockNameFn setNam
 /// Return the default dialect used when printing/parsing operations in
 /// regions nested under this operation. This allows for eliding the dialect
 /// prefix from the operation name, for example it would be possible to omit
-/// the `spv.` prefix from all operations within a SpirV module if this method
+/// the `spirv.` prefix from all operations within a SpirV module if this method
 /// returned `spv`. The default implementation returns an empty string which
 /// is ignored.
 ::llvm::StringRef mlir::OpAsmOpInterface::getDefaultDialect() {

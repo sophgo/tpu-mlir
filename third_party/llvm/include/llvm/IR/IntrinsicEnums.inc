@@ -339,12 +339,16 @@
     vp_add,                                    // llvm.vp.add
     vp_and,                                    // llvm.vp.and
     vp_ashr,                                   // llvm.vp.ashr
+    vp_ceil,                                   // llvm.vp.ceil
+    vp_copysign,                               // llvm.vp.copysign
     vp_fabs,                                   // llvm.vp.fabs
     vp_fadd,                                   // llvm.vp.fadd
     vp_fcmp,                                   // llvm.vp.fcmp
     vp_fdiv,                                   // llvm.vp.fdiv
+    vp_floor,                                  // llvm.vp.floor
     vp_fma,                                    // llvm.vp.fma
     vp_fmul,                                   // llvm.vp.fmul
+    vp_fmuladd,                                // llvm.vp.fmuladd
     vp_fneg,                                   // llvm.vp.fneg
     vp_fpext,                                  // llvm.vp.fpext
     vp_fptosi,                                 // llvm.vp.fptosi
@@ -357,7 +361,9 @@
     vp_inttoptr,                               // llvm.vp.inttoptr
     vp_load,                                   // llvm.vp.load
     vp_lshr,                                   // llvm.vp.lshr
+    vp_maxnum,                                 // llvm.vp.maxnum
     vp_merge,                                  // llvm.vp.merge
+    vp_minnum,                                 // llvm.vp.minnum
     vp_mul,                                    // llvm.vp.mul
     vp_or,                                     // llvm.vp.or
     vp_ptrtoint,                               // llvm.vp.ptrtoint
@@ -374,12 +380,15 @@
     vp_reduce_umax,                            // llvm.vp.reduce.umax
     vp_reduce_umin,                            // llvm.vp.reduce.umin
     vp_reduce_xor,                             // llvm.vp.reduce.xor
+    vp_round,                                  // llvm.vp.round
+    vp_roundeven,                              // llvm.vp.roundeven
     vp_scatter,                                // llvm.vp.scatter
     vp_sdiv,                                   // llvm.vp.sdiv
     vp_select,                                 // llvm.vp.select
     vp_sext,                                   // llvm.vp.sext
     vp_shl,                                    // llvm.vp.shl
     vp_sitofp,                                 // llvm.vp.sitofp
+    vp_sqrt,                                   // llvm.vp.sqrt
     vp_srem,                                   // llvm.vp.srem
     vp_store,                                  // llvm.vp.store
     vp_sub,                                    // llvm.vp.sub
@@ -393,4 +402,4 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 11086
+    num_intrinsics = 11079

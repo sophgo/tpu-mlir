@@ -814,7 +814,7 @@ void ApplyRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
           result.attributes)) {
     return ::mlir::failure();
   }
-  if (succeeded(parser.parseOptionalLParen())) {
+  if (::mlir::succeeded(parser.parseOptionalLParen())) {
 
   argsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(argsOperands))
@@ -827,7 +827,7 @@ void ApplyRewriteOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState
   if (parser.parseRParen())
     return ::mlir::failure();
   }
-  if (succeeded(parser.parseOptionalColon())) {
+  if (::mlir::succeeded(parser.parseOptionalColon())) {
 
   if (parser.parseTypeList(resultsTypes))
     return ::mlir::failure();
@@ -844,17 +844,17 @@ void ApplyRewriteOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(getNameAttr());
   if (!getArgs().empty()) {
-  _odsPrinter << "(";
-  _odsPrinter << getArgs();
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << getArgs().getTypes();
-  _odsPrinter << ")";
+    _odsPrinter << "(";
+    _odsPrinter << getArgs();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << getArgs().getTypes();
+    _odsPrinter << ")";
   }
   if (!getResults().empty()) {
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << getResults().getTypes();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << getResults().getTypes();
   }
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"name"});
 }
@@ -1681,7 +1681,7 @@ void CheckOperandCountOp::build(::mlir::OpBuilder &, ::mlir::OperationState &ods
     return ::mlir::failure();
   if (parser.parseKeyword("is"))
     return ::mlir::failure();
-  if (succeeded(parser.parseOptionalKeyword("at_least"))) {
+  if (::mlir::succeeded(parser.parseOptionalKeyword("at_least"))) {
     result.addAttribute("compareAtLeast", parser.getBuilder().getUnitAttr());
   }
 
@@ -1723,7 +1723,7 @@ void CheckOperandCountOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getInputOp();
   _odsPrinter << ' ' << "is";
   if ((*this)->getAttr("compareAtLeast")) {
-  _odsPrinter << ' ' << "at_least";
+    _odsPrinter << ' ' << "at_least";
   }
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(getCountAttr());
@@ -2257,7 +2257,7 @@ void CheckResultCountOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsS
     return ::mlir::failure();
   if (parser.parseKeyword("is"))
     return ::mlir::failure();
-  if (succeeded(parser.parseOptionalKeyword("at_least"))) {
+  if (::mlir::succeeded(parser.parseOptionalKeyword("at_least"))) {
     result.addAttribute("compareAtLeast", parser.getBuilder().getUnitAttr());
   }
 
@@ -2299,7 +2299,7 @@ void CheckResultCountOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << getInputOp();
   _odsPrinter << ' ' << "is";
   if ((*this)->getAttr("compareAtLeast")) {
-  _odsPrinter << ' ' << "at_least";
+    _odsPrinter << ' ' << "at_least";
   }
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(getCountAttr());
@@ -3506,7 +3506,7 @@ void CreateOperationOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsSt
           result.attributes)) {
     return ::mlir::failure();
   }
-  if (succeeded(parser.parseOptionalLParen())) {
+  if (::mlir::succeeded(parser.parseOptionalLParen())) {
 
   inputOperandsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(inputOperandsOperands))
@@ -3551,12 +3551,12 @@ void CreateOperationOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(getNameAttr());
   if (!getInputOperands().empty()) {
-  _odsPrinter << "(";
-  _odsPrinter << getInputOperands();
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << getInputOperands().getTypes();
-  _odsPrinter << ")";
+    _odsPrinter << "(";
+    _odsPrinter << getInputOperands();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << getInputOperands().getTypes();
+    _odsPrinter << ")";
   }
   printCreateOperationOpAttributes(_odsPrinter, *this, getInputAttributes(), getInputAttributeNamesAttr());
   _odsPrinter << ' ';
@@ -5778,8 +5778,8 @@ void GetOperandsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
 
 void GetOperandsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   if ((*this)->getAttr("index")) {
-  _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(getIndexAttr());
+    _odsPrinter << ' ';
+    _odsPrinter.printAttributeWithoutType(getIndexAttr());
   }
   _odsPrinter << ' ' << "of";
   _odsPrinter << ' ';
@@ -6269,8 +6269,8 @@ void GetResultsOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, 
 
 void GetResultsOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   if ((*this)->getAttr("index")) {
-  _odsPrinter << ' ';
-  _odsPrinter.printAttributeWithoutType(getIndexAttr());
+    _odsPrinter << ' ';
+    _odsPrinter.printAttributeWithoutType(getIndexAttr());
   }
   _odsPrinter << ' ' << "of";
   _odsPrinter << ' ';
@@ -7300,7 +7300,7 @@ void RecordMatchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
           result.attributes)) {
     return ::mlir::failure();
   }
-  if (succeeded(parser.parseOptionalLParen())) {
+  if (::mlir::succeeded(parser.parseOptionalLParen())) {
 
   inputsOperandsLoc = parser.getCurrentLocation();
   if (parser.parseOperandList(inputsOperands))
@@ -7328,7 +7328,7 @@ void RecordMatchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     return ::mlir::failure();
   if (parser.parseComma())
     return ::mlir::failure();
-  if (succeeded(parser.parseOptionalKeyword("generatedOps"))) {
+  if (::mlir::succeeded(parser.parseOptionalKeyword("generatedOps"))) {
   if (parser.parseLParen())
     return ::mlir::failure();
 
@@ -7355,7 +7355,7 @@ void RecordMatchOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState,
     return ::mlir::failure();
   if (parser.parseRParen())
     return ::mlir::failure();
-  if (succeeded(parser.parseOptionalComma())) {
+  if (::mlir::succeeded(parser.parseOptionalComma())) {
   if (parser.parseKeyword("root"))
     return ::mlir::failure();
   if (parser.parseLParen())
@@ -7389,12 +7389,12 @@ void RecordMatchOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter.printAttributeWithoutType(getRewriterAttr());
   if (!getInputs().empty()) {
-  _odsPrinter << "(";
-  _odsPrinter << getInputs();
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << getInputs().getTypes();
-  _odsPrinter << ")";
+    _odsPrinter << "(";
+    _odsPrinter << getInputs();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << getInputs().getTypes();
+    _odsPrinter << ")";
   }
   _odsPrinter << ' ' << ":";
   _odsPrinter << ' ' << "benefit";
@@ -7403,11 +7403,11 @@ void RecordMatchOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ")";
   _odsPrinter << ",";
   if ((*this)->getAttr("generatedOps")) {
-  _odsPrinter << ' ' << "generatedOps";
-  _odsPrinter << "(";
-  _odsPrinter.printAttributeWithoutType(getGeneratedOpsAttr());
-  _odsPrinter << ")";
-  _odsPrinter << ",";
+    _odsPrinter << ' ' << "generatedOps";
+    _odsPrinter << "(";
+    _odsPrinter.printAttributeWithoutType(getGeneratedOpsAttr());
+    _odsPrinter << ")";
+    _odsPrinter << ",";
   }
   _odsPrinter << ' ' << "loc";
   _odsPrinter << "(";
@@ -7416,11 +7416,11 @@ void RecordMatchOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << "]";
   _odsPrinter << ")";
   if ((*this)->getAttr("rootKind")) {
-  _odsPrinter << ",";
-  _odsPrinter << ' ' << "root";
-  _odsPrinter << "(";
-  _odsPrinter.printAttributeWithoutType(getRootKindAttr());
-  _odsPrinter << ")";
+    _odsPrinter << ",";
+    _odsPrinter << ' ' << "root";
+    _odsPrinter << "(";
+    _odsPrinter.printAttributeWithoutType(getRootKindAttr());
+    _odsPrinter << ")";
   }
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{"operand_segment_sizes", "rewriter", "benefit", "generatedOps", "rootKind"});
   _odsPrinter << ' ' << "->";
@@ -7632,10 +7632,10 @@ void ReplaceOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ';
   _odsPrinter << "(";
   if (!getReplValues().empty()) {
-  _odsPrinter << getReplValues();
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << getReplValues().getTypes();
+    _odsPrinter << getReplValues();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << getReplValues().getTypes();
   }
   _odsPrinter << ")";
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});

@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum AARCH64Intrinsics : unsigned {
 // Enum values for intrinsics
-    aarch64_addg = 387,                              // llvm.aarch64.addg
+    aarch64_addg = 396,                              // llvm.aarch64.addg
     aarch64_break,                             // llvm.aarch64.break
     aarch64_clrex,                             // llvm.aarch64.clrex
     aarch64_cls,                               // llvm.aarch64.cls
@@ -320,6 +320,8 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sme_write_vert,                    // llvm.aarch64.sme.write.vert
     aarch64_sme_writeq_horiz,                  // llvm.aarch64.sme.writeq.horiz
     aarch64_sme_writeq_vert,                   // llvm.aarch64.sme.writeq.vert
+    aarch64_sme_za_disable,                    // llvm.aarch64.sme.za.disable
+    aarch64_sme_za_enable,                     // llvm.aarch64.sme.za.enable
     aarch64_sme_zero,                          // llvm.aarch64.sme.zero
     aarch64_space,                             // llvm.aarch64.space
     aarch64_st64b,                             // llvm.aarch64.st64b
@@ -538,11 +540,8 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sve_ld1_gather_uxtw_index,         // llvm.aarch64.sve.ld1.gather.uxtw.index
     aarch64_sve_ld1ro,                         // llvm.aarch64.sve.ld1ro
     aarch64_sve_ld1rq,                         // llvm.aarch64.sve.ld1rq
-    aarch64_sve_ld2,                           // llvm.aarch64.sve.ld2
     aarch64_sve_ld2_sret,                      // llvm.aarch64.sve.ld2.sret
-    aarch64_sve_ld3,                           // llvm.aarch64.sve.ld3
     aarch64_sve_ld3_sret,                      // llvm.aarch64.sve.ld3.sret
-    aarch64_sve_ld4,                           // llvm.aarch64.sve.ld4
     aarch64_sve_ld4_sret,                      // llvm.aarch64.sve.ld4.sret
     aarch64_sve_ldff1,                         // llvm.aarch64.sve.ldff1
     aarch64_sve_ldff1_gather,                  // llvm.aarch64.sve.ldff1.gather
@@ -804,11 +803,6 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sve_trn1q,                         // llvm.aarch64.sve.trn1q
     aarch64_sve_trn2,                          // llvm.aarch64.sve.trn2
     aarch64_sve_trn2q,                         // llvm.aarch64.sve.trn2q
-    aarch64_sve_tuple_create2,                 // llvm.aarch64.sve.tuple.create2
-    aarch64_sve_tuple_create3,                 // llvm.aarch64.sve.tuple.create3
-    aarch64_sve_tuple_create4,                 // llvm.aarch64.sve.tuple.create4
-    aarch64_sve_tuple_get,                     // llvm.aarch64.sve.tuple.get
-    aarch64_sve_tuple_set,                     // llvm.aarch64.sve.tuple.set
     aarch64_sve_uaba,                          // llvm.aarch64.sve.uaba
     aarch64_sve_uabalb,                        // llvm.aarch64.sve.uabalb
     aarch64_sve_uabalt,                        // llvm.aarch64.sve.uabalt

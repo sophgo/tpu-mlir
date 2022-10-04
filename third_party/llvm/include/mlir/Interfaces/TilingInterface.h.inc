@@ -12,7 +12,7 @@ namespace detail {
 struct TilingInterfaceInterfaceTraits {
   struct Concept {
     SmallVector<Value> (*getDestinationOperands)(const Concept *impl, ::mlir::Operation *, OpBuilder &);
-    SmallVector<StringRef> (*getLoopIteratorTypes)(const Concept *impl, ::mlir::Operation *);
+    SmallVector<utils::IteratorType> (*getLoopIteratorTypes)(const Concept *impl, ::mlir::Operation *);
     SmallVector<Range> (*getIterationDomain)(const Concept *impl, ::mlir::Operation *, OpBuilder &);
     SmallVector<Operation *> (*getTiledImplementation)(const Concept *impl, ::mlir::Operation *, OpBuilder &, ArrayRef<OpFoldResult> , ArrayRef<OpFoldResult> );
     LogicalResult (*getResultTilePosition)(const Concept *impl, ::mlir::Operation *, OpBuilder &, unsigned, ArrayRef<OpFoldResult> , ArrayRef<OpFoldResult> , SmallVector<OpFoldResult> &, SmallVector<OpFoldResult> &);
@@ -26,7 +26,7 @@ struct TilingInterfaceInterfaceTraits {
     Model() : Concept{getDestinationOperands, getLoopIteratorTypes, getIterationDomain, getTiledImplementation, getResultTilePosition, generateResultTileValue, generateScalarImplementation} {}
 
     static inline SmallVector<Value> getDestinationOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
-    static inline SmallVector<StringRef> getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<utils::IteratorType> getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<Range> getIterationDomain(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
     static inline SmallVector<Operation *> getTiledImplementation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes);
     static inline LogicalResult getResultTilePosition(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes, SmallVector<OpFoldResult> & resultOffsets, SmallVector<OpFoldResult> & resultSizes);
@@ -40,7 +40,7 @@ struct TilingInterfaceInterfaceTraits {
     FallbackModel() : Concept{getDestinationOperands, getLoopIteratorTypes, getIterationDomain, getTiledImplementation, getResultTilePosition, generateResultTileValue, generateScalarImplementation} {}
 
     static inline SmallVector<Value> getDestinationOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
-    static inline SmallVector<StringRef> getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline SmallVector<utils::IteratorType> getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<Range> getIterationDomain(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
     static inline SmallVector<Operation *> getTiledImplementation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes);
     static inline LogicalResult getResultTilePosition(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes, SmallVector<OpFoldResult> & resultOffsets, SmallVector<OpFoldResult> & resultSizes);
@@ -52,7 +52,7 @@ struct TilingInterfaceInterfaceTraits {
   public:
     using ConcreteEntity = ConcreteOp;
     SmallVector<Value> getDestinationOperands(::mlir::Operation *tablegen_opaque_val, OpBuilder &b) const;
-    SmallVector<StringRef> getLoopIteratorTypes(::mlir::Operation *tablegen_opaque_val) const;
+    SmallVector<utils::IteratorType> getLoopIteratorTypes(::mlir::Operation *tablegen_opaque_val) const;
     SmallVector<Range> getIterationDomain(::mlir::Operation *tablegen_opaque_val, OpBuilder &b) const;
     SmallVector<Operation *> getTiledImplementation(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes) const;
     LogicalResult getResultTilePosition(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, unsigned resultNumber, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, SmallVector<OpFoldResult> &resultOffsets, SmallVector<OpFoldResult> &resultSizes) const;
@@ -75,12 +75,8 @@ public:
   /// this will be the operand into which the result of the tiled
   /// operation is written into.
   SmallVector<Value> getDestinationOperands(OpBuilder & b);
-  /// Returns a list of `StringRef`s that describe the number of
-  /// loops and the iterator types of the operation. The list is
-  /// expected to use
-  /// `getParallelIteratorTypeName()`/`getReductionIteratorTypeName()`
-  /// from MLIR Structured Op Utils.
-  SmallVector<StringRef> getLoopIteratorTypes();
+  /// Returns a list of iterator types that describe the number of loops.
+  SmallVector<utils::IteratorType> getLoopIteratorTypes();
   /// Returns a list of ranges that describe the loop bounds and
   /// step for the loops of the operation.
   SmallVector<Range> getIterationDomain(OpBuilder & b);
@@ -149,12 +145,8 @@ namespace detail {
     SmallVector<Value> getDestinationOperands(OpBuilder & b) {
       return ValueRange{};
     }
-    /// Returns a list of `StringRef`s that describe the number of
-    /// loops and the iterator types of the operation. The list is
-    /// expected to use
-    /// `getParallelIteratorTypeName()`/`getReductionIteratorTypeName()`
-    /// from MLIR Structured Op Utils.
-    SmallVector<StringRef> getLoopIteratorTypes() {
+    /// Returns a list of iterator types that describe the number of loops.
+    SmallVector<utils::IteratorType> getLoopIteratorTypes() {
       return {};
     }
     /// Returns a list of ranges that describe the loop bounds and
@@ -229,7 +221,7 @@ SmallVector<Value> detail::TilingInterfaceInterfaceTraits::Model<ConcreteOp>::ge
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getDestinationOperands(b);
 }
 template<typename ConcreteOp>
-SmallVector<StringRef> detail::TilingInterfaceInterfaceTraits::Model<ConcreteOp>::getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+SmallVector<utils::IteratorType> detail::TilingInterfaceInterfaceTraits::Model<ConcreteOp>::getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getLoopIteratorTypes();
 }
 template<typename ConcreteOp>
@@ -257,7 +249,7 @@ SmallVector<Value> detail::TilingInterfaceInterfaceTraits::FallbackModel<Concret
   return static_cast<const ConcreteOp *>(impl)->getDestinationOperands(tablegen_opaque_val, b);
 }
 template<typename ConcreteOp>
-SmallVector<StringRef> detail::TilingInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+SmallVector<utils::IteratorType> detail::TilingInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getLoopIteratorTypes(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
@@ -285,7 +277,7 @@ SmallVector<Value> detail::TilingInterfaceInterfaceTraits::ExternalModel<Concret
 return ValueRange{};
 }
 template<typename ConcreteModel, typename ConcreteOp>
-SmallVector<StringRef> detail::TilingInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getLoopIteratorTypes(::mlir::Operation *tablegen_opaque_val) const {
+SmallVector<utils::IteratorType> detail::TilingInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getLoopIteratorTypes(::mlir::Operation *tablegen_opaque_val) const {
 return {};
 }
 template<typename ConcreteModel, typename ConcreteOp>

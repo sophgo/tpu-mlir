@@ -15,12 +15,8 @@
 SmallVector<Value> mlir::TilingInterface::getDestinationOperands(OpBuilder & b) {
       return getImpl()->getDestinationOperands(getImpl(), getOperation(), b);
   }
-/// Returns a list of `StringRef`s that describe the number of
-/// loops and the iterator types of the operation. The list is
-/// expected to use
-/// `getParallelIteratorTypeName()`/`getReductionIteratorTypeName()`
-/// from MLIR Structured Op Utils.
-SmallVector<StringRef> mlir::TilingInterface::getLoopIteratorTypes() {
+/// Returns a list of iterator types that describe the number of loops.
+SmallVector<utils::IteratorType> mlir::TilingInterface::getLoopIteratorTypes() {
       return getImpl()->getLoopIteratorTypes(getImpl(), getOperation());
   }
 /// Returns a list of ranges that describe the loop bounds and

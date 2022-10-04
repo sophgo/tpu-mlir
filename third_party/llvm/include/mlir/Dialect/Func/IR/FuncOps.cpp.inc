@@ -1274,11 +1274,11 @@ void ReturnOp::build(::mlir::OpBuilder &, ::mlir::OperationState &odsState, ::ml
 void ReturnOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
   if (!operands().empty()) {
-  _odsPrinter << ' ';
-  _odsPrinter << operands();
-  _odsPrinter << ' ' << ":";
-  _odsPrinter << ' ';
-  _odsPrinter << operands().getTypes();
+    _odsPrinter << ' ';
+    _odsPrinter << operands();
+    _odsPrinter << ' ' << ":";
+    _odsPrinter << ' ';
+    _odsPrinter << operands().getTypes();
   }
 }
 
