@@ -3,9 +3,6 @@ file(GLOB _sources
           Interfaces/*.cpp
           Canonicalize/*.cpp
           Transforms/*.cpp
-          Lowering/*.cpp
-          Lowering/BM1684/*.cpp
-          Lowering/BM1684x/*.cpp
     )
 
 add_mlir_library(TPUMLIRTop
@@ -19,7 +16,6 @@ add_mlir_library(TPUMLIRTop
   MLIRTopOpsIncGen
   MLIRTopPassIncGen
   MLIRInferenceInterfaceIncGen
-  MLIRLoweringInterfaceIncGen
   MLIRFlopsInterfaceIncGen
 
   LINK_LIBS PUBLIC
@@ -33,7 +29,6 @@ add_mlir_library(TPUMLIRTop
   MLIRTransforms
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
-  MLIRLoweringInterface
   MLIRFlopsInterface
   TPUMLIRSupport
   TPUMLIRTrait

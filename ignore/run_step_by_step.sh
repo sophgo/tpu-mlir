@@ -25,7 +25,7 @@ model_transform.py \
 
 # lowering
 tpuc-opt resnet18.mlir \
-    --lowering="mode=F32 chip=bm1684x" \
+    --convert-top-to-tpu="mode=F32 chip=bm1684x" \
     --save-weight \
     -o resnet18_tpu_f32.mlir
 
@@ -93,7 +93,7 @@ run_calibration.py resnet18.mlir \
 # lowering to symetric int8
 tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=false' \
-    --lowering="mode=INT8 asymmetric=false chip=bm1684x" \
+    --convert-top-to-tpu="mode=INT8 asymmetric=false chip=bm1684x" \
     --save-weight \
     -o resnet18_tpu_int8_sym.mlir
 
@@ -136,7 +136,7 @@ npz_tool.py compare \
 # lowering to asymmetric int8
 tpuc-opt resnet18.mlir \
     --import-calibration-table='file=resnet18_cali_table asymmetric=true' \
-    --lowering="mode=INT8 asymmetric=true chip=bm1684x" \
+    --convert-top-to-tpu="mode=INT8 asymmetric=true chip=bm1684x" \
     --save-weight \
     -o resnet18_tpu_int8_asym.mlir
 
@@ -176,7 +176,7 @@ npz_tool.py compare \
 #################################
 
 tpuc-opt resnet18.mlir \
-    '--lowering=mode=F16 chip=bm1684x' \
+    '--convert-top-to-tpu=mode=F16 chip=bm1684x' \
     --save-weight \
     -o resnet18_f16_1684x.mlir
 
@@ -206,7 +206,7 @@ model_runner.py \
 #################################
 
 tpuc-opt resnet18.mlir \
-    '--lowering=mode=BF16 chip=bm1684x' \
+    '--convert-top-to-tpu=mode=BF16 chip=bm1684x' \
     --save-weight \
     -o resnet18_bf16_1684x.mlir
 
