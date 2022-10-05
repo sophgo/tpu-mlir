@@ -18,7 +18,6 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
-#include "tpu_mlir/Interfaces/LoweringInterface.h"
 #include "tpu_mlir/Interfaces/FlopsInterface.h"
 #include "tpu_mlir/Support/TensorFile.h"
 #include "tpu_mlir/Traits/Traits.h"

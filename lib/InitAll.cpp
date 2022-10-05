@@ -12,6 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Conversion/Passes.h"
 #include "mlir/Transforms/Passes.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
@@ -24,7 +25,8 @@ void registerAllDialects(mlir::DialectRegistry &registry) {
 }
 
 void registerAllPasses() {
-  registerCanonicalizerPass();
+  registerCanonicalizer();
+  mlir::registerConversionPasses();
   top::registerTopPasses();
   tpu::registerTpuPasses();
 }
