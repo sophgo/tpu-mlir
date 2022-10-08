@@ -14,13 +14,12 @@ namespace bm1684x {
 
 static double active_log(double val) { return std::log(val); }
 
-void LogLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::LogOp op) const {
+void LogLowering::LoweringF32(PatternRewriter &rewriter, top::LogOp op) const {
   lowering_common_float<tpu::LogOp>(rewriter, op);
 }
 
-void LogLowering::LoweringINT8(PatternRewriter &rewriter,
-                               top::LogOp op, bool asymmetric) const {
+void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
+                               bool asymmetric) const {
   auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
   Value table =
@@ -34,14 +33,12 @@ void LogLowering::LoweringINT8(PatternRewriter &rewriter,
                                           ValueRange{op.input(), table}, attrs);
 }
 
-void LogLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::LogOp op) const {
-  lowering_common_float<tpu::LogOp, BFloat16Type>(rewriter, op);
+void LogLowering::LoweringBF16(PatternRewriter &rewriter, top::LogOp op) const {
+  LoweringF32(rewriter, op);
 }
 
-void LogLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::LogOp op) const {
-  lowering_common_float<tpu::LogOp, Float16Type>(rewriter, op);
+void LogLowering::LoweringF16(PatternRewriter &rewriter, top::LogOp op) const {
+  LoweringF32(rewriter, op);
 }
 
 void LogLowering::LoweringQuantized(PatternRewriter &rewriter,

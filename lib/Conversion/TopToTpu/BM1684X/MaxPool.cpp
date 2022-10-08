@@ -25,8 +25,8 @@ void MaxPoolLowering::LoweringF32(PatternRewriter &rewriter,
   }
 }
 
-void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter,
-                                   top::MaxPoolOp op, bool asymmetric) const {
+void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
+                                   bool asymmetric) const {
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.kernel_shape().size() == 3) {

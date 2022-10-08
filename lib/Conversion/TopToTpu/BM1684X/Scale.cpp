@@ -46,8 +46,8 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
 
-void ScaleLowering::LoweringINT8(PatternRewriter &rewriter,
-                                 top::ScaleOp op, bool asymmetric) const {
+void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
+                                 bool asymmetric) const {
   int64_t n, c, h, w;
   Module::getNCHW(op.output(), n, c, h, w);
 

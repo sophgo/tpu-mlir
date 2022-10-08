@@ -18,8 +18,8 @@ void CastLowering::LoweringF32(PatternRewriter &rewriter,
                                op.output().getType());
 }
 
-void CastLowering::LoweringINT8(PatternRewriter &rewriter,
-                                top::CastOp op, bool asymmetric) const {
+void CastLowering::LoweringINT8(PatternRewriter &rewriter, top::CastOp op,
+                                bool asymmetric) const {
   lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.output().getType());
 }

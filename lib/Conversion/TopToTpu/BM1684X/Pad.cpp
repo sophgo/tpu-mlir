@@ -12,13 +12,12 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void PadLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::PadOp op) const {
+void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
   lowering_common_float<tpu::PadOp>(rewriter, op);
 }
 
-void PadLowering::LoweringINT8(PatternRewriter &rewriter,
-                               top::PadOp op, bool asymmetric) const {
+void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
+                               bool asymmetric) const {
   int64_t in_zp;
   double in_scale;
   Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
@@ -35,13 +34,11 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter,
                                           attrs);
 }
 
-void PadLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::PadOp op) const {
+void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
   lowering_common_float<tpu::PadOp, BFloat16Type>(rewriter, op);
 }
 
-void PadLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::PadOp op) const {
+void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
   lowering_common_float<tpu::PadOp, Float16Type>(rewriter, op);
 }
 

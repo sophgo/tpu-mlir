@@ -17,8 +17,8 @@ void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_float<tpu::MatMulOp>(rewriter, op);
 }
 
-void MatMulLowering::LoweringINT8(PatternRewriter &rewriter,
-                                  top::MatMulOp op, bool asymmetric) const {
+void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
+                                  bool asymmetric) const {
   // refer quantize_convlike_layer_int8
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;

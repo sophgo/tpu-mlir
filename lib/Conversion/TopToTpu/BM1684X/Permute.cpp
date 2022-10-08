@@ -17,8 +17,8 @@ void PermuteLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_float<tpu::PermuteOp>(rewriter, op);
 }
 
-void PermuteLowering::LoweringINT8(PatternRewriter &rewriter,
-                                   top::PermuteOp op, bool asymmetric) const {
+void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
+                                   bool asymmetric) const {
   lowering_common_int8<tpu::PermuteOp>(rewriter, op, asymmetric);
 }
 

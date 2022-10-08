@@ -12,8 +12,8 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void AddLowering::LoweringINT8(PatternRewriter &rewriter,
-                               top::AddOp addOp, bool asymmetric) const {
+void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
+                               bool asymmetric) const {
   if (asymmetric) {
     LoweringF32(rewriter, addOp);
     return;
