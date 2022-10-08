@@ -14,7 +14,9 @@
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include <map>
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "llvm/Support/Debug.h"
 
+#define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {
 
 void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
@@ -162,6 +164,18 @@ float func_log2(double dataInput) {
   return result;
 }
 
+void quantizeToInt32(const float *pSrc, int32_t *pDst, int len,
+                     double scale) {
+  // used in CV18xx bias quant
+  int32_t qmax = INT_MAX;
+  int32_t qmin = INT_MIN;
+  int tmp = 0;
+  for (int i = 0; i < len; i++) {
+    tmp = floor(pSrc[i] * scale + 0.5);
+    pDst[i] = (int32_t)((tmp > qmax) ? qmax : ((tmp < qmin) ? qmin : tmp));
+  }
+}
+
 float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift) {
   int16_t qmax = 32767;
@@ -204,13 +218,19 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
   return ratio;
 }
 
-void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, float scale) {
+void quantizeToInt8(const float *pSrc, int8_t *pDst, int len,
+                    double scale, bool round_mode) {
   int8_t qmax = 127;
   int8_t qmin = -128;
   int tmp = 0;
-
   for (int i = 0; i < len; i++) {
-    tmp = round(pSrc[i] * scale);
+    if (round_mode) {
+      tmp = round(pSrc[i] * scale);
+    } else {
+      // for CV18xx. Looks HW is different than std::round()
+      // we shall apply round only for input quant()
+      tmp = floor(pSrc[i] * scale + 0.5);
+    }
     pDst[i] = (int8_t)((tmp > qmax) ? qmax : ((tmp < qmin) ? qmin : tmp));
   }
 }
@@ -261,6 +281,142 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
   *quantized_multiplier = static_cast<int32_t>(q_fixed);
 }
 
+// CV18xx
+double getQcaleForFilter(float max_filter, float threshold_y,
+                           float threshold_x, int quant_bitwidth) {
+  /// get a QScale for Filter (with multiplier)
+  ///   Q(W) = W * (threshold_x / threshold_y) * (1 / QScale)
+  ///   find a QScale so that Q(max_filter) = 127
+  /// used in CV18xx per-channel mode
+  /// During runtime
+  ///   HW multiples the accumulated result by QScale before saturate to Int8
+  ///   QScale is then decomposed into a multipler and a rshift
+  ///   => QScale = Multiplier / (1 << RShift)
+  ///   where Multiplier is an interger
+  if(threshold_y <= 0) {
+    llvm::errs() << "WARNING: findQScaleForFilter threshold_y = "
+                 << threshold_y << "\n";
+    threshold_y = 0.00001;
+  }
+  float max_quant = (float)((1 << (quant_bitwidth-1)) -1);  // 127
+  double qscale = (max_filter * threshold_x) / (max_quant * threshold_y);
+  return qscale;
+}
+
+double getQscaleForBias(float max_bias, float threshold_y) {
+  /// get a QScale For Bias I32
+  ///   Q(B) = B * (127.0f / threshold_y)  * (1 / QScale)
+  ///   find a QScale so that Q(max_bias) = 0x7fffffff
+  /// used in CV18xx per-channel mode
+  /// During runtime
+  ///   HW multiples the accumulated result by QScale before saturate to Int8
+  ///   QScale is then decomposed into a multipler and a rshift
+  ///   => QScale = Multiplier / (1 << RShift)
+  ///   where Multiplier is an interger
+  if (threshold_y <= 0) {
+    llvm::errs() << "WARNING: findQScaleForBiasI32 threshold_y = "
+                 << threshold_y << "\n";
+    threshold_y = 0.00001;
+  }
+  double qscale = (max_bias * 127.0f) / (0x7fffffff * threshold_y);
+  return qscale;
+}
+
+void getRShiftAndMultiplierFromQScale(double double_multiplier,
+                                       int64_t *multiplier,
+                                       int64_t *shift, bool qdm,
+                                       int64_t max_multiplier) {
+  /// find RShift and Multiplier from QScale
+  ///   QScale = Multiplier / (1 << RShift)
+  ///   Multiplier is an integer
+  /// case 1: specifically multiply a int8/uint8 multplier, then rshift
+  ///   used in layers like element_wise, pooling, concat, etc
+  ///   qdm is false
+  ///   a max_multiplier (127 or 255 normally) has to be provided
+  /// case 2: qdm mode
+  ///   used in CV18xx per-channel conv mode
+  ///   qdm is true
+  ///   reference to [arxiv 1712.05877]
+  ///     choose the int32 value nearest to 2^31 * M0, M0 in [0.5, 1]
+  ///     this value is always at least 2^30 and have at least 30 bits accuracy
+  ///   the max_multiplier argument is ignored, fixed to (1 << 31)
+  /// if 'uint32_t *multiplier' is present, return multipler alongside
+  int64_t quantized_multiplier = 0;
+  if (qdm) {
+    if (double_multiplier >= 1) {
+      double_multiplier = 0.999999;
+      llvm::errs() << "WARNING: qscale > 1,  = " << double_multiplier << "\n";
+    }
+    QuantizeMultiplier(double_multiplier, &quantized_multiplier, shift);
+    *shift = -*shift;
+    LLVM_DEBUG(if (*shift > 25) {
+      llvm::errs() << "WARNING: large rshift = " << *shift
+                   << ", qscale = " << double_multiplier << "\n";});
+  } else {
+    if (double_multiplier > max_multiplier) {
+      llvm::errs() << "WARNING: qscale > max_multipiler ( " << double_multiplier
+                   << " v.s. " << max_multiplier << " )\n";
+      quantized_multiplier = max_multiplier;
+      *shift = 0;
+    } else {
+      bool found = false;
+      for (int64_t rshift = 0; rshift < 63; ++rshift) {
+        if (double_multiplier * (1ULL << (rshift + 1)) >= (double)max_multiplier) {
+          found = true;
+          quantized_multiplier = (int64_t)(double_multiplier * (1ULL << rshift));
+          *shift = rshift;
+          break;
+        }
+      }
+      if (!found) {
+        // we are here because qscale is too small, return 0 for both shift and
+        // multiplier
+        LLVM_DEBUG(llvm::errs() << "WARNING: failed to find rshift, qscale = "
+                   << std::to_string(double_multiplier) << "\n";);
+        quantized_multiplier = 0;
+        *shift = 0;
+      }
+    }
+  }
+  if (multiplier) {
+    *multiplier = quantized_multiplier;
+  }
+}
+
+void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst,
+                                       int len, float threshold_y,
+                                       float threshold_x, int64_t rshift,
+                                       int64_t multiplier, bool qdm) {
+  /// quantize a filter weight value into int8 based on rshift and multiplier
+  ///   Q(W) = W * (threshold_x / threshold_y) * (1 / QScale)
+  ///   QScale = Multiplier / (1 << RShift)
+  /// used in CV18xx legacy per-layer mode
+  if (qdm) {
+    rshift += 31;
+  }
+  double factor = (multiplier == 0) ? 0
+                                    : (double)(threshold_x / threshold_y) *
+                                          (1ULL << rshift) / multiplier;
+  quantizeToInt8(pSrc, pDst, len, factor, false);
+}
+
+void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst,
+                                     int len, float threshold_y,
+                                     int64_t rshift, int64_t multiplier,
+                                     bool qdm) {
+  /// quantize a bias weight value into int32 based on rshift and multiplier
+  ///   Q(B) = B * (127.0f / threshold_y) * (1 / QScale)
+  ///   QScale = Multiplier * (1 << RShift)
+  /// used in CV18xx per-channel mode (32bit bias)
+  if (qdm) {
+    rshift += 31;
+  }
+  double factor = (multiplier == 0) ? 0
+                                    : (double)(127.0f / threshold_y) *
+                                          (1ULL << rshift) / multiplier;
+  quantizeToInt32(pSrc, pDst, len, factor);
+}
+
 template <typename T>
 T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
   if (shift_num == 0)
@@ -306,8 +462,12 @@ template int64_t RightShiftRound(int64_t src, int shift_num, RoundingMode round_
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
-                                      int shift) {
+                                      int shift, bool postive_rshift) {
   // int shift = -(rshift - 31);
+  if (postive_rshift) {
+    // for cv18xx which rshift store in postive value
+    shift = -shift;
+  }
   int64_t value = shift > 0 ? x << shift : x;
   value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
   if (value > (1ll << 31) - 1)

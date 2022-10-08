@@ -2,12 +2,15 @@ file(GLOB _sources
           IR/*.cpp
           Interfaces/BM1684/*.cpp
           Interfaces/BM1684x/*.cpp
+          Interfaces/CV18xx/*.cpp
           Interfaces/Common/*.cpp
           Canonicalize/*.cpp
           Transforms/*.cpp
+          Transforms/BM168x/*.cpp
+          Transforms/CV18xx/*.cpp
           Transforms/LayerGroup/*.cpp)
 
-add_mlir_library(TPUMLIRTpu
+add_llvm_library(TPUMLIRTpu
   ${_sources}
 
   ADDITIONAL_HEADER_DIRS
@@ -44,4 +47,6 @@ add_mlir_library(TPUMLIRTpu
   TPUMLIRTrait
   TPUMLIRBackend
   TPUMLIRBuilder
+  ssl
+  crypto
 )

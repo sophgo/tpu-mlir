@@ -39,7 +39,7 @@ def parse_args():
 
 def postprocess(output, img, category_file, top_k = 5):
 
-    prob = output['prob']  
+    prob = output['prob']
     top_k_idx = np.argsort(-prob.flatten())[:top_k]
 
     txt_bk_color = (0, 0, 0)
@@ -51,13 +51,13 @@ def postprocess(output, img, category_file, top_k = 5):
     txt_size = cv2.getTextSize(line_txt[0], font, 0.4, 1)[0]
     #text left_bottom
     txt_x0 = 1
-    txt_y0 = txt_size[1] 
-    # rectangle left top 
+    txt_y0 = txt_size[1]
+    # rectangle left top
     rect_x0 = 0
     rect_y0 = 0
     # rectangle right bottom
-    rect_x1 = txt_size[0] + 2 
-    rect_y1 = int(1.5 * txt_size[1]) 
+    rect_x1 = txt_size[0] + 2
+    rect_y1 = int(1.5 * txt_size[1])
     step = int(1.5 * txt_size[1])
 
     img = cv2.rectangle(img, (rect_x0, rect_y0), (rect_x1, rect_y1), txt_bk_color, thickness=-1)
@@ -81,7 +81,7 @@ def main():
     img = preprocess(origin_img, input_shape)
     data = {'data': img}  # input name from model
     output = dict()
-    if args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'): 
+    if args.model_def.endswith('.prototxt') and args.model_data.endswith('.caffemodel'):
         output = caffe_inference(data, args.model_def, args.model_data, False)
     elif args.model_def.endswith('.mlir'):
         output = mlir_inference(data, args.model_def, False)
@@ -91,7 +91,7 @@ def main():
         raise RuntimeError("not support modle file:{}".format(args.model_def))
 
     fix_img = postprocess(output, origin_img, args.category_file, top_k = 5)
-    
+
     cv2.imwrite(args.output, fix_img)
 
 

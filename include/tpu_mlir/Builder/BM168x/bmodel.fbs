@@ -1,0 +1,177 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+// Written by:
+//     Pengchao Hu <pengchao.hu@bitmain.com>
+// Created Time: 2018-12-07 15:34
+// Description: this file is model definition file.
+//
+// Rules:
+// 1. Don't remove any item, or change any type or id number. If must, you can only change item name.
+// 2. You can add new item, but don't set it as required.
+//    If new item is a Vector, check whether it is NULL first and then access its elements in bmruntime.
+// 3. If this file changed, gen_model_header.sh need to be called manually to update model header files
+//
+// If you have any doubts, you can contact me (pengchao.hu@bitmain.com).
+
+namespace bmodel;
+
+// to store binary data
+struct Binary {
+    start:uint64;
+    size:uint64;
+}
+
+table Shape {
+    dim:[uint64] (id:0);
+}
+
+table CmdGroup {
+    bdc_num:uint32 (id: 0);      // m_bdc_group_id_v
+    gdma_num:uint32 (id: 1);     // m_gdma_group_id_v
+    binary_bdc:Binary (id: 2);   // bdc binary data
+    binary_gdma:Binary (id: 3);  // gdma binary data
+    bdc_cmd_byte:uint32 (id: 4);  // m_bdc_cmd_byte_v
+    gdma_cmd_byte:uint32 (id: 5); // m_gdma_cmd_byte_v
+}
+
+table StageIR {
+    ir_info_len:uint32 (id: 0);  // ir_info_len_vv
+    height_high:int32 (id: 1);   // stage_param_vv
+    height_low:int32 (id: 2);
+    width_high:int32 (id: 3);
+    width_low:int32 (id: 4);
+}
+
+table CoeffMem {
+    address:uint64 (id: 0);
+    check_code:[uint8] (id: 1);  // sha256 for check binary
+    binary_coeff:Binary (id: 2); // coeff binary data
+}
+
+table Tensor {
+    name:string (required, id: 0); // tensor name
+    data_type:uint32 (id: 1);      // tensor data type
+    gmem_stmode:int32 (id: 2);     // gmem stmode
+    device_addr:uint64 (id: 3);    // input/output_tensor_mem_map_v
+    size:uint64 (id:4);            // tensor device mem size
+    shape:[Shape] (id: 5);         // for static net, only one shape
+                                   // for dynamic net, each shape for each stage
+    mem_type:uint32 (id: 6);       // 0 : used in tpu,
+                                   // 1 : used in cpu,
+                                   // 2 : used in both cpu/tpu layer
+    scale:float32 = 1.0 (id: 7);
+    cpu_addr:uint32 (id: 8);       // tensor cpu mem. for cpu layer, recode every tensor's offset
+    pad_h:uint32 (id: 9);          // this item is for conv 3ic(hack for BM1684 to improve efficiency): higher 16bit: pad_h_top, lower 16bit: pad_h_down
+    zero_point:int32 = 0 (id: 10); // zero point for requant or dequant
+}
+
+table CpuConst {
+    name:string (id: 0);           // cpu const name
+    const_data:Binary (id: 1);     // coeff memory
+    check_code:[uint8] (id: 2);    // sha256 for check binary
+}
+
+table CpuParam {
+    op_type:int32 (id: 0);                    /* cpu layer op type  */
+    binary_param:Binary (id: 1);              /* cpu layer paramter */
+    cpu_const:[CpuConst] (id: 2);
+}
+
+table OutputFrom {
+    indice:[int32] (id: 0);
+}
+
+table MergeParam {
+    output_from: [OutputFrom] (id: 0);        /* len(output_from)==len(output_tensor), */
+}
+
+table SwitchParam {
+    output_from: [int32] (id: 0);        /* len(output_from)==len(output_tensor), */
+    output_branch: [int32] (id: 1);       /* 0: false branch, 1: true branch */
+}
+
+table SubNet {
+    subnet_mode:int32 (id: 0);                 /* tpu:0 cpu:1 */
+    cmd_group:[CmdGroup] (id: 1);              /* tpu instruction   */
+    cpu_param:[CpuParam] (id: 2);              /* cpu parameter     */
+    input_tensor:[Tensor] (id: 3);
+    output_tensor:[Tensor] (id: 4);
+    is_dynamic:int32 (id: 5);                  /* dynamic flag to support mix static/dynamic subnet */
+    ir_offset:uint32 (id: 6);                  /* per subnet ir offset */
+    ir_len:uint32 (id: 7);                     /* per subnet ir length */
+    n_dynamic:int32 (id: 8);                   /* per subnet n_dynamic */
+    h_w_dynamic:int32 (id: 9);                 /* per subnet h_w_dynamic */
+    id:int32 = -1 (id: 10);                    /* subnet index */
+    next_subnet_ids:[int32] (id: 11);          /* next subnet ids for running: -1 means invalid branch, empty means end */
+    merge_param: MergeParam (id: 12);
+    switch_param: SwitchParam (id: 13);
+}
+
+table NetStatic {      // for old bmodel, not use any more
+    input_tensor:[Tensor] (required, id: 0);
+    output_tensor:[Tensor] (required, id: 1);
+    cmd_group:[CmdGroup] (id: 2);
+    ctx_addr:uint64 (id: 3);
+    ctx_size:uint64 (id: 4);
+    coeff_mem:CoeffMem (id: 5);
+    sub_net:[SubNet] (id: 6);
+    net_profile:Binary (id: 7);
+}
+
+table NetDynamic {    // for old bmodel, not use any more
+    input_tensor:[Tensor] (required, id: 0);
+    output_tensor:[Tensor] (required, id: 1);
+    n_dynamic:int32 (id: 2); // n_dynamic
+    h_w_dynamic:int32 (id: 3); // h_w_dynamic
+    stage_ir:[StageIR] (id: 4);
+    binary_ir:Binary (id: 5); // ir binary data
+    ctx_addr:uint64 (id: 6);
+    ctx_size:uint64 (id: 7);
+    coeff_mem:CoeffMem (id: 8);
+    sub_net:[SubNet] (id: 9);
+}
+
+table NetParameter {
+    input_tensor:[Tensor] (required, id: 0);   /* per net input  tensor */
+    output_tensor:[Tensor] (required, id: 1);  /* per net output tensor */
+    ctx_addr:uint64 (id: 2);                   /* per net neuron tensor device memory */
+    ctx_size:uint64 (id: 3);
+    coeff_mem:CoeffMem (id: 4);                /* per net coeff tensor device memory */
+    is_dynamic:int32 (id: 5);                  /* whether net input shape varify */
+    n_dynamic:int32 (id: 6);                   /* whether net input batch varify */
+    h_w_dynamic:int32 (id: 7);                 /* whether net input h/w   varify */
+    cmd_group:[CmdGroup] (id: 8);              /* static tpu subnets share gdma/bdc binary context */
+    net_profile:Binary (id: 9);
+    stage_ir:[StageIR] (id: 10);
+    binary_ir:Binary (id: 11);                 /* dynamic tpu subnet share ir binary context */
+    sub_net:[SubNet] (id: 12);                 /* per subnet info */
+    cpu_mem_size:uint32 (id: 13);              /* per net just alloc one max cpu mem size */
+
+    // Per group neuron tensor device memory sizes.
+    // If this array exists, it will be used instead of ctx_size
+    ctx_sizes:[uint64] (id: 14);
+}
+
+table Net {
+    name:string (required, id: 0);     // net name
+    net_static:[NetStatic] (id: 1);    // for old bmodel, not use any more
+    net_dynamic:[NetDynamic] (id: 2);  // for old bmodel, not use any more
+    parameter:[NetParameter] (id: 3);  // one net can one or more stages
+}
+
+table Model {
+    type:string (required, id: 0);
+    version:string (required, id: 1);
+    time:string (required, id: 2);
+    chip:string (required, id: 3); // BM1682/BM1684/...
+    net:[Net] (required, id: 4);
+    neuron_size:uint64 (id: 5);    // max neuron size
+}
+
+root_type Model;

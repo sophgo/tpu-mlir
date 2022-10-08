@@ -20,6 +20,12 @@ install(FILES oneDNN/lib/libdnnl.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmcpu.so
               nntoolchain/lib/libusercpu.so
+              # cvitek
+              CV18xx/lib/libcvikernel.so
+              CV18xx/lib/libcviruntime.so
+              CV18xx/lib/libcvicmodel.so
+              CV18xx/lib/libunwind.so.8
+
         DESTINATION lib)
 install(DIRECTORY llvm/python_packages/mlir_core/mlir DESTINATION python)
 install(DIRECTORY caffe/python/caffe DESTINATION python)

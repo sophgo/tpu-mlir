@@ -54,4 +54,16 @@ convert to f16/bf16 float to f32 float
 */
 float f16_to_f32(uint16_t src);
 float bf16_to_f32(uint16_t src);
+
+/*
+for cv18xx
+*/
+// typedef uint16_t bfloat16;
+float cvi_f32_to_bf16(float src, bool is_tpu = true);
+void cvi_f32_to_bf16(float *p_src, float *p_dst, int num,
+                    bool is_tpu = true);
+void cvi_int8_to_bf16(float *p_src, float *p_dst,
+                     float scale, int zero_point,
+                     int num, bool is_tpu=true);
+
 } // namespace tpu_mlir

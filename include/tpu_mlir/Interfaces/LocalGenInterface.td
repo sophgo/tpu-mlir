@@ -53,6 +53,12 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       >,
       InterfaceMethod<
         /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"codegen_local_cv18xx",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
         /*retType=*/"::mlir::LogicalResult",
         /*methodName=*/"BackwardN",
         /*args=*/(ins "int64_t&":$in_idx, "int64_t&":$in_slice, "int64_t":$out_idx, "int64_t":$out_slice),
@@ -92,6 +98,14 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"int64_t",
+        /*methodName=*/"getBufferSize_cv18xx",
+        /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes,
+                      "int64_t":$in_nslice, "int64_t":$in_hslice,
+                      "int64_t":$out_nslice, "int64_t":$out_hslice)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"int64_t",
         /*methodName=*/"getBufferSize",
         /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes,
                       "int64_t":$in_nslice, "int64_t":$in_hslice,
@@ -105,6 +119,10 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
                                              in_nslice, in_hslice, out_nslice, out_hslice);
           } else if (chip == Module::Chip::BM1684x) {
             return $_op.getBufferSize_bm1684x(in_lmem_bytes, out_lmem_bytes,
+                                              in_nslice, in_hslice, out_nslice, out_hslice);
+          } else if (chip == Module::Chip::CV182x
+                     || chip == Module::Chip::CV183x) {
+            return $_op.getBufferSize_cv18xx(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_hslice, out_nslice, out_hslice);
           }
           return 0;

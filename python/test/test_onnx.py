@@ -6,6 +6,7 @@
 #
 # ==============================================================================
 
+from re import T
 import numpy as np
 import onnx
 from onnx import helper
@@ -78,6 +79,16 @@ class ONNX_IR_TESTER(object):
         }
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
         #self.quant_modes = ["f16", "bf16"]  # add later
+        self.chip = self.get_chip_name()
+        if self.chip.find("cv18") >= 0:
+            self.quant_modes = ["int8"]
+
+    def get_chip_name(self):
+        runchip = os.environ.get('SET_CHIP_NAME', None)
+        if not runchip:
+            print("no found SET_CHIP_NAME environment value, set bm1864x as default")
+            runchip = "bm1684x"
+        return runchip.lower()
 
     def test_single(self, case: str):
         print("Test: {}".format(case))
@@ -132,14 +143,19 @@ class ONNX_IR_TESTER(object):
         mlir_lowering(top_mlir,
                       tpu_mlir + ".mlir",
                       mode=quant_mode,
-                      chip="bm1684x",
+                      chip=self.chip,
                       cali_table=table_name,
                       asymmetric=isAsym)
 
         # transform
-        bmodel = tpu_mlir + ".bmodel"
         tpu_final = tpu_mlir + "_final.mlir"
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
+        if self.chip.find("cv18") >= 0:
+          # for cv183x cv182x cv181 cv180
+          bmodel = tpu_mlir + ".cvimodel"
+          mlir_to_cvi_model(tpu_mlir + ".mlir", bmodel, tpu_final)
+        else:
+          bmodel = tpu_mlir + ".bmodel"
+          mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
 
         return (tpu_mlir + ".mlir", bmodel)
 
@@ -151,25 +167,22 @@ class ONNX_IR_TESTER(object):
                               quant_mode: str,
                               model_name: str,
                               isAsym: bool = False):
+        ref_tpu_tolerance = "0.9,0.9"
         input_data = np.load(input_npz)
-
-        # tpu mlir inference
-        tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
-        # bmodel inference
-        bmodel_outs = model_inference(input_data, bmodel)
-
+        # save ref
         ref_npz = "{}_top_out.npz".format(model_name)
         np.savez(ref_npz, **top_mlir_output)
-        tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
-        np.savez(tpu_npz, **tpu_mlir_outs)
-        model_npz = bmodel.replace(".bmodel", "_model_out.npz")
-        np.savez(model_npz, **bmodel_outs)
-
-        # compare
-        ref_tpu_tolerance = "0.9,0.9"
+        # tpu mlir inference and compare
         if quant_mode == "int8":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
+        tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        np.savez(tpu_npz, **tpu_mlir_outs)
         npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
+        # bmodel / cvimodel inference and compare
+        model_outs = model_inference(input_data, bmodel)
+        model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        np.savez(model_npz, **model_outs)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
 
         msg = quant_mode.upper()
@@ -252,6 +265,8 @@ class ONNX_IR_TESTER(object):
         for quant_mode in self.quant_modes:
             if quant_mode == "int8":
                 for isAsym in [False, True]:
+                    if self.chip.find("cv18") >= 0 and isAsym:
+                        continue
                     tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode,
                                                             isAsym)
                     self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz,

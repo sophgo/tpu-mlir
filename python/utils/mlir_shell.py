@@ -83,8 +83,36 @@ def mlir_to_model(tpu_mlir: str,
     ]
 
     _os_system(cmd)
-    _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+    try:
+        _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+    except RuntimeError:
+        pass
 
+# tmp for cvitek, remove in the future
+def mlir_to_cvi_model(tpu_mlir: str,
+                  model: str,
+                  final_mlir: str,
+                  quant_input: bool = False,
+                  quant_output: bool = False):
+    codegen_param = '--cv-codegen="model_file={}"'.format(model)
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
+        quant_input, quant_output
+    )
+    cmd = [
+        "tpuc-opt",
+        tpu_mlir,
+        strip_io_quant_param,
+        "--weight-reorder",
+        "--subnet-divide",
+        "--cv-address-assign",
+        "--save-weight",
+        codegen_param,
+        "--mlir-print-debuginfo",
+        "-o",
+        final_mlir,
+    ]
+
+    _os_system(cmd)
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]

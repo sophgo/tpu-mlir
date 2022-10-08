@@ -28,6 +28,7 @@ struct Module {
     static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
     static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
     static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
+    static constexpr llvm::StringRef GMEM_PRIVATE_SIZE = "module.private_size";
     static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
     static constexpr llvm::StringRef MODE = "module.mode";
   };
@@ -46,6 +47,8 @@ struct Module {
     static constexpr llvm::StringRef ALL = "ALL";
     static constexpr llvm::StringRef BM1684 = "BM1684";
     static constexpr llvm::StringRef BM1684x = "BM1684X";
+    static constexpr llvm::StringRef CV182x = "CV182X";
+    static constexpr llvm::StringRef CV183x = "CV183X";
   };
 
   static top::NoneOp getNoneOp(Operation *op);
@@ -95,6 +98,13 @@ struct Module {
     module->setAttr(Attr::COEFF_SIZE,
                     Builder(module.getContext()).getI64IntegerAttr(size));
   }
+  static inline int64_t getGmemPrivateSize(ModuleOp module) {
+    return module->getAttrOfType<IntegerAttr>(Attr::GMEM_PRIVATE_SIZE).getInt();
+  }
+  static inline void setGmemPrivateSize(ModuleOp module, int64_t size) {
+    module->setAttr(Attr::GMEM_PRIVATE_SIZE,
+                    Builder(module.getContext()).getI64IntegerAttr(size));
+  }
   static inline int64_t getCoeffAddr(ModuleOp module) {
     return module->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
   }
@@ -119,8 +129,12 @@ struct Module {
   static inline llvm::StringRef getChip(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
   }
+  static StringRef getChip(Operation *op);
   static inline llvm::StringRef getMode(ModuleOp module) {
     return module->getAttrOfType<StringAttr>(Attr::MODE).getValue();
+  }
+  static inline llvm::StringRef getMode(FuncOp func) {
+    return func->getAttr("mode").cast<StringAttr>().getValue();
   }
   static inline void setChip(ModuleOp module, StringRef chip) {
     module->setAttr(Attr::CHIP,
@@ -162,6 +176,13 @@ struct Module {
   }
   static inline bool isState(ModuleOp module, llvm::StringRef state) {
     return state == getState(module);
+  }
+  static inline bool isTpuOp(Operation *op) {
+    return (op->getDialect()->getNamespace() == "tpu");
+  }
+  static inline bool isCV18xx(StringRef chip) {
+    return (chip == Module::Chip::CV183x
+            || chip == Module::Chip::CV182x);
   }
 };
 } // namespace helper

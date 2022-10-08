@@ -22,6 +22,8 @@ std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSubnetDividePass();
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCodegenPass();
+std::unique_ptr<OperationPass<ModuleOp>> createCVAddressAssignPass();
+std::unique_ptr<OperationPass<ModuleOp>> createCVCodegenPass();
 std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
 std::unique_ptr<OperationPass<FuncOp>> createStripIOQuant();
 

@@ -19,10 +19,10 @@
 #include <string>
 #include <vector>
 #include <sys/stat.h>
-#include "tpu_mlir/Builder/bmodel.hpp"
+#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "flatbuffers/idl.h"
 #include "flatbuffers/util.h"
-#include "tpu_mlir/Builder/bmodel_fbs.h"
+#include "tpu_mlir/Builder/BM168x/bmodel_fbs.h"
 
 using namespace bmodel;
 using namespace flatbuffers;

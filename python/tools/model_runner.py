@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 
+import importlib
 import numpy as np
 import argparse
 import os
@@ -19,10 +20,21 @@ def round_away_from_zero(x):
 
 
 def model_inference(inputs: dict, model_file: str) -> dict:
-    import pyruntime
+    pyruntime = "pyruntime_"
+    if model_file.endswith(".bmodel"):
+        pyruntime = pyruntime + "bm"
+    elif model_file.endswith(".cvimodel"):
+        pyruntime = pyruntime + "cvi"
+    else:
+        raise RuntimeError("not support modle file:{}".format(model_file))
+    pyruntime = importlib.import_module(pyruntime)
+
     outputs = dict()
     model = pyruntime.Model(model_file)
-    net = model.Net(model.networks[0])
+    try:
+        net = model.Net(model.networks[0])
+    except AttributeError:
+        net = model
     for i in net.inputs:
         assert i.name in inputs
         assert i.data.shape == inputs[i.name].shape
@@ -39,11 +51,11 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
-            outputs[i.name] = np.array((i.data.astype(np.float32) - i.qzero_point) * i.qscale, dtype=np.float32)
+            outputs[i.name] = np.array((i.data.astype(np.float32) - i.qzero_point)
+                                       * np.float32(i.qscale), dtype=np.float32)
         else:
             outputs[i.name] = np.array(i.data)
     return outputs
-
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     import pymlir
@@ -223,7 +235,7 @@ if __name__ == '__main__':
         output = tflite_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
         output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
-    elif args.model.endswith(".bmodel"):
+    elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
         output = model_inference(data, args.model)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))

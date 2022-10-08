@@ -751,4 +751,79 @@ void f32_to_bf16(float *p_src, float *p_dst, int num) {
   }
 }
 
+/*
+for cv18xx
+*/
+float cvi_f32_to_bf16(float src, bool is_tpu) {
+  // To convert a float 32 to bfloat16, a float 32 can be viewed as 32 bits
+  // with the following tags:
+  //
+  // Sign |  Exp (8 bits) | Frac (23 bits)
+  //  S     EEEEEEEE         FFFFFFLRTTTTTTTTTTTTTTT
+  //
+  //  S: Sign bit.
+  //  E: Exponent bits.
+  //  F: First 6 bits of fraction.
+  //  L: Least significant bit of resulting bfloat16 if we truncate away the
+  //  rest of the float32. This is also the 7th bit of fraction
+  //  R: Rounding bit, 8th bit of fraction.
+  //  T: Sticky bits, rest of fraction, 15 bits.
+
+  // At this point, src must be either a normal float, or +/-infinity or
+  // zero.
+  uint16_t u16_val;
+  if (is_tpu) {
+    // Fast rounding algorithm that rounds a half value to nearest even. This
+    // reduces expected error when we convert a large number of floats.
+    //
+    // The fast converting algorithm simply adds lsb (L) to 0x7fff (15 bits of
+    // 1s) as the rounding bias, adds the rounding bias to the input, then
+    // truncates the last 16 bits away.
+    uint32_t u32_val = *((uint32_t *)(&src));
+    uint32_t lsb = (u32_val >> 16) & 1;
+    u32_val += (0x7fff + lsb);
+    u16_val = ((uint16_t *)(&u32_val))[1];
+    /* HW behavior */
+    // infinity set to max finite positive value
+    u16_val = ((u16_val & 0x7f80) == 0x7f80) ?
+              0x7f7f : u16_val;
+  } else {
+    u16_val = ((uint16_t *)(&src))[1];
+  }
+  // recover bf16 to fp32
+  float dst = 0;
+  uint16_t *p = (uint16_t *)(&dst);
+  p[1] = u16_val;
+  return dst;
+}
+
+void cvi_f32_to_bf16(float *p_src, float *p_dst, int num,
+                    bool is_tpu) {
+#pragma omp parallel for schedule(static, omp_schedule(num))
+  for (int i = 0; i < num; i++) {
+    p_dst[i] = cvi_f32_to_bf16(p_src[i], is_tpu);
+  }
+}
+
+void cvi_int8_to_bf16(float *p_src, float *p_dst,
+                    float scale, int zero_point,
+                    int num, bool is_tpu) {
+  // int8 / uint8 ==> bf16 / fp32
+  if (is_tpu) {
+    scale = cvi_f32_to_bf16(scale);
+    zero_point = cvi_f32_to_bf16(zero_point);
+#pragma omp parallel for schedule(static, omp_schedule(num))
+    for (int i = 0; i < num; i++) {
+        p_dst[i] = cvi_f32_to_bf16(
+                      cvi_f32_to_bf16(
+                        p_src[i] + zero_point, (zero_point != 0))
+                      * scale);
+    }
+  } else {
+#pragma omp parallel for schedule(static, omp_schedule(num))
+    for (int i = 0; i < num; i++) {
+      p_dst[i] = (p_src[i] + zero_point) * scale;
+    }
+  }
+}
 } // namespace tpu_mlir

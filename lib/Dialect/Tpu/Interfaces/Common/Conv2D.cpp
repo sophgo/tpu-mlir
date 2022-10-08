@@ -83,6 +83,8 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
   // requant
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
@@ -110,16 +112,17 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           int offset = (in * c + ic) * h * w + hw;
           int64_t v = 0;
           if (mode == tpu::RequantMode::TFlite_Lshift ||
-              mode == tpu::RequantMode::TFlite) {
+              mode == tpu::RequantMode::TFlite  || is_cv18xx) {
             v = MultiplyByQuantizedMultiplier((int32_t)p.outputs[0][offset],
-                                              (int32_t)multi, (int32_t)shift) +
+                                              (int32_t)multi, (int32_t)shift,
+                                               is_cv18xx) +
                 o_qtype.getZeroPoint();
           } else {
             v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift) +
                 o_qtype.getZeroPoint();
           }
-          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                            : Quant::to_int8(v);
+          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v, !is_cv18xx)
+                                                            : Quant::to_int8(v, !is_cv18xx);
         }
       }
     }
