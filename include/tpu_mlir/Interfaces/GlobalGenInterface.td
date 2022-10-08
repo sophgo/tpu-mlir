@@ -29,6 +29,12 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
         /*methodName=*/"codegen_global_bm1684x",
         /*args=*/(ins)
       >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"codegen_global_cv18xx",
+        /*args=*/(ins "void*":$ctx, "int64_t":$layer_id)
+      >,
   ];
 }
 #endif // TPU_MLIR_GLOBAL_CODEGEN_INTERFACE

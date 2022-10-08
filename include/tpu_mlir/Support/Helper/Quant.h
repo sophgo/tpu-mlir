@@ -81,12 +81,12 @@ struct Quant {
   static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                                    bool &sign, bool asymmetric);
 
-  template <typename T> static inline int8_t to_int8(T value) {
-    auto v = std::round(value);
+  template <typename T> static inline int8_t to_int8(T value, bool bm_mode=true) {
+    auto v = bm_mode ? std::round(value) : floor(value + 0.5);
     return v > 127 ? 127 : v < -128 ? -128 : v;
   }
-  template <typename T> static inline uint8_t to_uint8(T value) {
-    auto v = std::round(value);
+  template <typename T> static inline uint8_t to_uint8(T value, bool bm_mode=true) {
+    auto v = bm_mode ? std::round(value) : floor(value + 0.5);
     return v > 255 ? 255 : v < 0 ? 0 : v;
   }
   static mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);

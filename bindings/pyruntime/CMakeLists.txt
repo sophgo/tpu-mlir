@@ -10,10 +10,12 @@ SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 SET(CMAKE_INSTALL_RPATH "\${ORIGIN}/")
 
 find_package(pybind11 REQUIRED CONFIG)
-pybind11_add_module(pyruntime pyruntime.cpp)
-
-target_link_libraries(pyruntime PRIVATE
+pybind11_add_module(pyruntime_bm pyruntime_bm.cpp)
+target_link_libraries(pyruntime_bm PRIVATE
   bmrt
 )
-install(TARGETS pyruntime DESTINATION python)
-
+pybind11_add_module(pyruntime_cvi pyruntime_cvi.cpp)
+target_link_libraries(pyruntime_cvi PRIVATE
+  cviruntime
+)
+install(TARGETS pyruntime_bm pyruntime_cvi DESTINATION python)

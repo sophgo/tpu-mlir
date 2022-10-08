@@ -1,0 +1,215 @@
+namespace cvi.model;
+
+///
+/// General Descriptions
+/// Model:
+///   A model is generated from one NN model, it contains one or more
+///   `Segment`s, each `Segment` could be either a TPU segment or a CPU
+///   segment. A Model takes one or more `Tensor`s as input, and produces
+///   one or more `Tensor's as output. Along with `Segment`s, a list of
+///   `Memory` and a list of `Tensor` are provided.
+/// Segment:
+///   A segment is a program running on a certain type of engine (`TPU` or
+///   `CPU`), which takes a list of `Tensor`s as input, and produces a list
+///   of `Tensor`s as output.
+/// Memory:
+///   Memorys are memory spaces that are holding actual data. `Memory`s are
+///   passed among `Segment`s or passed as input/output of the `Model`. When
+///   `size` field is present, `size` specifies the space that is needed. When
+///   `size` is not present (or set to -1), the memory is dynamic shaped, and
+///   runtime needs to derive size for the `Memory` after input shape has been
+///   set.
+/// Tensor:
+///   Tensor is an abstract description of a chunk of data, with a specific
+///   data type (DType) and shape, as well optional strides. Each Tensor is
+///   bound to a `Memory` (with memory_id). When present, `offset` is used to
+///   describe the relative address of the tensor within the `Memory`.
+/// InputTensor/OutputTensor:
+///   To describe the input/output tensors of the model, by referencing
+///   tensor_id in tensor_list, along with preprocess_hints/postprocess_hints.
+///   `preprocess_hints` are information on how input data should be processed
+///   before passing to the model, and `postprocess_hints` are information on
+///   how output data should be processed.
+/// Program:
+///   Program is the executive part of a `Segment`, 2 types of Programs are
+///   defined, TpuProgram and CpuProgram.
+/// TpuProgram:
+///   A TpuProgram consists of `Cmdbuf` and `Weight`. To support different
+///   batch_size or input image dimesions, multiple `Cmdbuf`s may be needed,
+///   with each `Cmdbuf` handling one fixed batch_size and image dims. i.e.
+///   on `Cmdbuf` level dynamic shape are not supported.
+/// Cmdbuf:
+///   Cmdbuf is a sequence of TPU instuctions.
+/// Weight:
+///   Weight is the trained weight data.
+/// CpuProgram:
+///   A CpuProgram consists of a cpu function and `Weight`. A function could
+///   be either a runtime build-in function, or a plug-in library registered
+///   along with the Model in the CpuFunction section.
+/// CpuFunction:
+///   A CpuFunction is a plug-in library registered along with the Model.
+///
+
+enum MajorVersion : ubyte {
+  value = 1
+}
+enum MinorVersion : ubyte {
+  value = 4
+}
+enum SubMinorVersion : ubyte {
+  value = 0
+}
+
+struct Version {
+    major_    : ubyte;
+    minor_    : ubyte;
+    sub_minor : ubyte;
+}
+
+enum DType : ubyte {
+  FP32         = 0,
+  INT32        = 1,
+  UINT32       = 2,
+  BF16         = 3,
+  INT16        = 4,
+  UINT16       = 5,
+  INT8         = 6,
+  UINT8        = 7
+}
+
+/// -1 is used to indicate that dim is dynamic
+table Shape {
+  dim:[int64] (required);
+}
+
+enum QuantType : ubyte {
+  NONE         = 0,
+  BF16         = 1,
+  INT8_SYM     = 2,
+  INT8_ASYM    = 3
+}
+
+/// for symetric quant, only max_value is used (also called threshold)
+table QuantInfo {
+  type:QuantType;
+  max_value:float;
+  min_value:float;
+  zero_point:float;
+  qscale:float;
+}
+
+table Tensor {
+  tensor_id:uint32;
+  name:string (required);
+  offset:int64;
+  dtype:DType;
+  shape:Shape (required);
+  stride:Shape;
+  quant:QuantInfo;
+  overwrote:bool;
+  scale:[float];
+  mean:[float];
+  pixel_format:string;
+  aligned:bool;
+  size:uint32;
+}
+
+table Weight {
+  name:string;
+  offset:int64;
+  size:uint32;
+  shape:Shape;
+  type:DType;
+}
+
+///
+/// color:
+///   channel order for input image, valid values are `RGB`, `BGR`.
+/// raw_scale:
+///   a scale to apply before other proprocessing precedures
+/// mean:
+///   channel mean value, preprocess will substract the input by this value
+/// std:
+///   channel std value, preprocess will divide the input by this value
+/// input_scale:
+///   a scale to apply after other proprocessing precedures
+///
+table PreProcessHints {
+  color:string;
+  raw_scale:float;
+  mean:string;
+  std:string;
+  input_scale:float;
+  data_format:string;
+}
+
+table PostProcessHints {
+  done_softmax:bool;
+}
+
+enum RoutineType: ubyte {
+  TPU = 0,
+  CPU = 1
+}
+
+table TpuRoutine {
+  cmdbuf_section:string;
+  dmabuf_section:string;
+}
+
+table CpuRoutine {
+  function_section:string (required);
+  function_args:[ubyte] (required);
+}
+
+table Routine {
+  type:RoutineType;
+  in_tensors:[string];
+  out_tensors:[string];
+  tpu_routine:TpuRoutine;
+  cpu_routine:CpuRoutine;
+}
+
+table Program {
+  batch_num:uint32;
+  neuron_size:uint32;
+  input_tensors:[string] (required);
+  output_tensors:[string] (required);
+  tensor_map:[Tensor] (required);
+  routines:[Routine] (required);
+  shared_gmem:uint32;
+  private_gmem:uint32;
+}
+
+enum SectionType: ubyte {
+  WEIGHT       = 0,
+  CMDBUF       = 1,
+  FUNC_X86     = 2,
+  FUNC_AARCH64 = 3,
+  DMABUF       = 4
+}
+
+table Section {
+  type:SectionType;
+  name:string (required);
+  size:uint32;
+  offset:uint32;
+  encrypt:bool;
+  compress:bool;
+  decompressed_size:uint32;
+}
+
+table Model {
+  version:Version (required);
+  name:string (required);
+  build_time:string;
+  preprocess_hints:PreProcessHints;
+  postprocess_hints:PostProcessHints;
+  weight_map:[Weight];
+  programs:[Program] (required);
+  sections:[Section] (required);
+  target:string;
+  mlir_version:string;
+}
+
+root_type Model;

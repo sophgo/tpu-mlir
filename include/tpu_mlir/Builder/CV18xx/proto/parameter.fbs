@@ -1,0 +1,46 @@
+namespace cvi.cpu_op;
+
+table IntAttr {
+    key:string;
+    value:int;
+}
+
+table FloatAttr {
+    key:string;
+    value:float;
+}
+
+table BoolAttr {
+    key:string;
+    value:bool;
+}
+
+table StrAttr {
+    key:string;
+    value:string;
+}
+
+table IntArrayAttr {
+    key:string;
+    value:[int];
+}
+
+table FloatArrayAttr {
+    key:string;
+    value:[float];
+}
+
+table Attribute {
+    float_attr:FloatAttr;
+    bool_attr:BoolAttr;
+    int_attr:IntAttr;
+    str_attr:StrAttr;
+    float_array_attr:FloatArrayAttr;
+    int_array_attr:IntArrayAttr;
+}
+
+table Parameter {
+    attributes:[Attribute];
+}
+
+root_type Parameter;

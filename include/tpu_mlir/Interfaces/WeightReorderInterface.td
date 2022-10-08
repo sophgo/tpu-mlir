@@ -35,7 +35,21 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         /*desc=*/[{
         }],
         /*retType=*/"void",
+        /*methodName=*/"weight_reorder_int8_cv18xx",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
         /*methodName=*/"weight_reorder_bf16_bm1684x",
+        /*args=*/(ins)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{
+        }],
+        /*retType=*/"void",
+        /*methodName=*/"weight_reorder_bf16_cv18xx",
         /*args=*/(ins)
       >,
       InterfaceMethod<
@@ -74,6 +88,12 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
               $_op.weight_reorder_bf16_bm1684x();
             } else {
               $_op.weight_reorder_int8_bm1684x();
+            }
+          } else if (chip == Module::Chip::CV182x || chip == Module::Chip::CV183x) {
+            if (type.isBF16()) {
+              $_op.weight_reorder_bf16_cv18xx();
+            } else {
+              $_op.weight_reorder_int8_cv18xx();
             }
           }
         }]

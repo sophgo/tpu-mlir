@@ -28,6 +28,7 @@ constexpr llvm::StringRef Module::Attr::COEFF_ADDR;
 constexpr llvm::StringRef Module::Attr::COEFF_SIZE;
 constexpr llvm::StringRef Module::Attr::NEURON_ADDR;
 constexpr llvm::StringRef Module::Attr::NEURON_SIZE;
+constexpr llvm::StringRef Module::Attr::GMEM_PRIVATE_SIZE;
 constexpr llvm::StringRef Module::Attr::ASYMMETRIC;
 constexpr llvm::StringRef Module::Attr::MODE;
 
@@ -42,6 +43,8 @@ constexpr llvm::StringRef Module::State::TPU_ADDRESSED;
 constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
 constexpr llvm::StringRef Module::Chip::BM1684x;
+constexpr llvm::StringRef Module::Chip::CV182x;
+constexpr llvm::StringRef Module::Chip::CV183x;
 
 top::NoneOp Module::getNoneOp(Operation *op) {
   assert(op != nullptr);
@@ -400,6 +403,11 @@ StringRef Module::getName(Value v) {
   v.dump();
   llvm_unreachable("No name info");
   return "";
+}
+
+StringRef Module::getChip(Operation *op) {
+  auto module = getModuleOp(op);
+  return getChip(module);
 }
 
 void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,

@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Int8.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
@@ -27,28 +28,52 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   auto out_type = Module::getStorageType(output());
   bool isInQuant = Quant::isUniformQuantized(input());
   bool isOutQuant = Quant::isUniformQuantized(output());
+  auto op = getOperation();
+  auto chip = Module::getChip(op);
+  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_tpu = Module::isTpuOp(op);
+  if (is_cv18xx && (out_type.isF16() || out_type.isF16())) {
+    llvm_unreachable("CV18xx not support this dtype.");
+  }
   if (in_type.isF32() && out_type.isF16()) {
     f32_to_f16(p.inputs[0], p.outputs[0], num_elem);
   } else if (in_type.isF32() && out_type.isBF16()) {
-    f32_to_bf16(p.inputs[0], p.outputs[0], num_elem);
+    if (is_cv18xx) {
+      cvi_f32_to_bf16(p.inputs[0], p.outputs[0], num_elem, is_tpu);
+    } else{
+      f32_to_bf16(p.inputs[0], p.outputs[0], num_elem);
+    }
   } else if (isOutQuant && false == isInQuant) {
+    // FP32|BF16|F16|... => INT8|UINT8|...
     auto qtype = Quant::getUniformQuantizedType(output());
+    if (is_cv18xx) {
+      cvi_f32_to_int8(p.inputs[0], p.outputs[0], 1. / qtype.getScale(),
+                     qtype.getZeroPoint(), num_elem,
+                     out_type.isUnsignedInteger(8), is_tpu);
+    } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (size_t i = 0; i < num_elem; i++) {
-      float v =
-          std::round(p.inputs[0][i] / qtype.getScale()) + qtype.getZeroPoint();
-      if (out_type.isUnsignedInteger(8)) {
-        p.outputs[0][i] = Quant::to_uint8(v);
-      } else {
-        p.outputs[0][i] = Quant::to_int8(v);
+      for (size_t i = 0; i < num_elem; i++) {
+        float v =
+            std::round(p.inputs[0][i] / qtype.getScale()) + qtype.getZeroPoint();
+        if (out_type.isUnsignedInteger(8)) {
+          p.outputs[0][i] = Quant::to_uint8(v);
+        } else {
+          p.outputs[0][i] = Quant::to_int8(v);
+        }
       }
     }
   } else if (isInQuant && false == isOutQuant) {
+    // INT8|UINT8|... ==> FP32|BF16|F16|...
     auto qtype = Quant::getUniformQuantizedType(input());
+    if (is_cv18xx) {
+      cvi_int8_to_bf16(p.inputs[0], p.outputs[0], qtype.getScale(),
+                      -qtype.getZeroPoint(), num_elem, is_tpu);
+    } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (size_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] =
-          qtype.getScale() * (p.inputs[0][i] - qtype.getZeroPoint());
+      for (size_t i = 0; i < num_elem; i++) {
+        p.outputs[0][i] =
+            qtype.getScale() * (p.inputs[0][i] - qtype.getZeroPoint());
+      }
     }
   } else {
     std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);

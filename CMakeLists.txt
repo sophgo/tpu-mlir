@@ -69,6 +69,12 @@ link_directories(${FLATBUFFERS_PATH}/lib)
 set(NNTOOLCHAIN_PATH ${PROJECT_SOURCE_DIR}/third_party/nntoolchain)
 include_directories(${NNTOOLCHAIN_PATH}/include)
 link_directories(${NNTOOLCHAIN_PATH}/lib)
+#-------------------------------------------------------------------------------
+# CV18xx Configuration
+#-------------------------------------------------------------------------------
+set(CV18XX_PATH ${PROJECT_SOURCE_DIR}/third_party/CV18xx)
+include_directories(${CV18XX_PATH}/include)
+link_directories(${CV18XX_PATH}/lib)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)

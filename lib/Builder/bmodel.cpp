@@ -12,7 +12,7 @@
  * Created Time: 2018-12-07 15:34
  */
 
-#include "tpu_mlir/Builder/bmodel.hpp"
+#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include <memory.h>
 #include <stdlib.h>
 #include <ctime>

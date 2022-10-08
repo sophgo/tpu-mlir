@@ -10,6 +10,7 @@
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
+#include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU
@@ -165,6 +166,17 @@ public:
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (LoweringConfig::chip == Module::Chip::BM1684) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
+    } else if (LoweringConfig::chip == Module::Chip::CV182x
+               || LoweringConfig::chip == Module::Chip::CV183x) {
+      if (LoweringConfig::mode == Quant::Type::INT8
+          && LoweringConfig::isAsymmetric) {
+        // Todo support tflite int8
+        std::string errorMsg = "Chip: " + LoweringConfig::chip +
+                               " not support: " + LoweringConfig::mode +
+                               " asymmetric quantization now.\n";
+        llvm_unreachable(errorMsg.c_str());
+      }
+      cv18xx::populateTopToTpuConversionPatterns(&patterns);
     } else {
       llvm_unreachable("Not Implemented");
     }
@@ -226,7 +238,7 @@ protected:
     // return types
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
-      bool is_tpu = (op->getDialect()->getNamespace() == "tpu");
+      bool is_tpu = Module::isTpuOp(op);
       if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
