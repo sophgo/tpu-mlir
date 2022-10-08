@@ -12,23 +12,20 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void MinLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::MinOp op) const {
+void MinLowering::LoweringF32(PatternRewriter &rewriter, top::MinOp op) const {
   lowering_common_float<tpu::MinOp, Float32Type>(rewriter, op);
 }
 
-void MinLowering::LoweringINT8(PatternRewriter &rewriter,
-                               top::MinOp op, bool asymmetric) const {
+void MinLowering::LoweringINT8(PatternRewriter &rewriter, top::MinOp op,
+                               bool asymmetric) const {
   lowering_common_int8<tpu::MinOp>(rewriter, op, asymmetric);
 }
 
-void MinLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::MinOp op) const {
+void MinLowering::LoweringBF16(PatternRewriter &rewriter, top::MinOp op) const {
   lowering_common_float<tpu::MinOp, BFloat16Type>(rewriter, op);
 }
 
-void MinLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::MinOp op) const {
+void MinLowering::LoweringF16(PatternRewriter &rewriter, top::MinOp op) const {
   lowering_common_float<tpu::MinOp, Float16Type>(rewriter, op);
 }
 

@@ -19,8 +19,8 @@ void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
 
 static double active_sigmoid(double val) { return 1 / (1 + std::exp(-val)); }
 
-void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter,
-                                   top::SigmoidOp op, bool asymmetric) const {
+void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
+                                   bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());
   Value table =
       create_lookup_table(op.input(), op.output(), active_sigmoid, asymmetric);
@@ -35,12 +35,12 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SigmoidOp op) const {
-  lowering_common_float<tpu::SigmoidOp, BFloat16Type>(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 
 void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SigmoidOp op) const {
-  lowering_common_float<tpu::SigmoidOp, Float16Type>(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -18,8 +18,8 @@ void SiLULowering::LoweringF32(PatternRewriter &rewriter,
 }
 
 static double active_silu(double val) { return val / (1 + std::exp(-val)); }
-void SiLULowering::LoweringINT8(PatternRewriter &rewriter,
-                                top::SiLUOp op, bool asymmetric) const {
+void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
+                                bool asymmetric) const {
   auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
   auto table =
@@ -35,12 +35,12 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter,
 
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SiLUOp op) const {
-  lowering_common_float<tpu::SiLUOp, BFloat16Type>(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 
 void SiLULowering::LoweringF16(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
-  lowering_common_float<tpu::SiLUOp, Float16Type>(rewriter, op);
+  LoweringF32(rewriter, op);
 }
 
 void SiLULowering::LoweringQuantized(PatternRewriter &rewriter,

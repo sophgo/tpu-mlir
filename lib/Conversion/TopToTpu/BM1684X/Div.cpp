@@ -12,23 +12,20 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void DivLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::DivOp op) const {
+void DivLowering::LoweringF32(PatternRewriter &rewriter, top::DivOp op) const {
   lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
 }
 
-void DivLowering::LoweringINT8(PatternRewriter &rewriter,
-                               top::DivOp op, bool asymmetric) const {
+void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp op,
+                               bool asymmetric) const {
   lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
 }
 
-void DivLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::DivOp op) const {
+void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
   lowering_common_float<tpu::DivOp, BFloat16Type>(rewriter, op.getOperation());
 }
 
-void DivLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::DivOp op) const {
+void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
   lowering_common_float<tpu::DivOp, Float16Type>(rewriter, op.getOperation());
 }
 

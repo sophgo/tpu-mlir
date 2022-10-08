@@ -17,8 +17,8 @@ void AbsLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_float<tpu::AbsOp>(rewriter, absOp.getOperation());
 }
 
-void AbsLowering::LoweringINT8(PatternRewriter &rewriter,
-                               top::AbsOp absOp, bool asymmetric) const {
+void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp absOp,
+                               bool asymmetric) const {
   lowering_common_int8<tpu::AbsOp>(rewriter, absOp.getOperation(), asymmetric);
 }
 

@@ -54,19 +54,19 @@ void LSTMLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::PermuteOp>(op, permuteType, operands, attrs);
 }
 
-void LSTMLowering::LoweringINT8(PatternRewriter &rewriter,
-                                top::LSTMOp op, bool asymmetric) const {
+void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
+                                bool asymmetric) const {
   LoweringF32(rewriter, op);
 }
 
 void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::LSTMOp op) const {
-  LoweringF32(rewriter, op);
+  lowering_common_float<tpu::LSTMOp, BFloat16Type>(rewriter, op);
 }
 
 void LSTMLowering::LoweringF16(PatternRewriter &rewriter,
                                top::LSTMOp op) const {
-  LoweringF32(rewriter, op);
+  lowering_common_float<tpu::LSTMOp, Float16Type>(rewriter, op);
 }
 
 void LSTMLowering::LoweringQuantized(PatternRewriter &rewriter,

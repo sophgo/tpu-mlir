@@ -33,8 +33,8 @@ void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
                                              operands, attrs);
 }
 
-void DeconvLowering::LoweringINT8(PatternRewriter &rewriter,
-                                  top::DeconvOp op, bool asymmetric) const {
+void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
+                                  bool asymmetric) const {
   deconv_attr_t param;
   op.parseParam(&param);
   rewriter.setInsertionPointAfter(op);
@@ -149,8 +149,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter,
   }
   auto new_quant_type =
       RankedTensorType::get({1, param.oc, 1, 3}, rewriter.getI32Type());
-  auto new_quant = top::WeightOp::create(op, "quant_int32", *quant_int32,
-                                         new_quant_type);
+  auto new_quant =
+      top::WeightOp::create(op, "quant_int32", *quant_int32, new_quant_type);
 
   attrs.clear();
   auto ctx = op->getContext();

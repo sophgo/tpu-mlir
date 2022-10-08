@@ -17,8 +17,8 @@ void TileLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_float<tpu::TileOp>(rewriter, op);
 }
 
-void TileLowering::LoweringINT8(PatternRewriter &rewriter,
-                                top::TileOp op, bool asymmetric) const {
+void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
+                                bool asymmetric) const {
   lowering_common_int8<tpu::TileOp>(rewriter, op, asymmetric);
 }
 

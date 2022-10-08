@@ -17,8 +17,8 @@ void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_float<tpu::ReshapeOp>(rewriter, op);
 }
 
-void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter,
-                                   top::ReshapeOp op, bool asymmetric) const {
+void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,
+                                   bool asymmetric) const {
   lowering_common_int8<tpu::ReshapeOp>(rewriter, op, asymmetric);
 }
 

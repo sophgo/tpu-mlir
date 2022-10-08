@@ -17,8 +17,8 @@ void SqueezeLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_float<tpu::SqueezeOp>(rewriter, op);
 }
 
-void SqueezeLowering::LoweringINT8(PatternRewriter &rewriter,
-                                   top::SqueezeOp op, bool asymmetric) const {
+void SqueezeLowering::LoweringINT8(PatternRewriter &rewriter, top::SqueezeOp op,
+                                   bool asymmetric) const {
   lowering_common_int8<tpu::SqueezeOp>(rewriter, op, asymmetric);
 }
 

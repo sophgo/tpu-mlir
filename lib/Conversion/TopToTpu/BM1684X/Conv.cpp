@@ -46,8 +46,8 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOp(op, {newValue});
 }
 
-void ConvLowering::LoweringINT8(PatternRewriter &rewriter,
-                                top::ConvOp op, bool asymmetric) const {
+void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
+                                bool asymmetric) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());

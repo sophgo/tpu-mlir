@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 
 namespace mlir {
@@ -162,6 +163,10 @@ public:
     target.addLegalOp<top::InputOp, top::WeightOp, top::NoneOp>();
     if (LoweringConfig::chip == Module::Chip::BM1684x) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
+    } else if (LoweringConfig::chip == Module::Chip::BM1684) {
+      bm1684::populateTopToTpuConversionPatterns(&patterns);
+    } else {
+      llvm_unreachable("Not Implemented");
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     // if (failed(
