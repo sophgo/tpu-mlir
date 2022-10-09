@@ -26,13 +26,14 @@ void Softmax::setup(float *input, float *output, softmax_attr_t &attr) {
   p_input = input;
   p_output = output;
 
-  auto src_md = memory::desc(attr_.src_shape, dt::f32, tag::nc);
+  auto src_md = memory::desc(attr_.src_shape, dt::f32, tag::nchw);
   auto src_mem = memory(src_md, eng, p_input);
 
-  auto dst_md = memory::desc(attr_.dst_shape, dt::f32, tag::nc);
+  auto dst_md = memory::desc(attr_.dst_shape, dt::f32, tag::nchw);
   auto dst_mem = memory(dst_md, eng, p_output);
 
-  auto softmax_d = softmax_forward::desc(prop_kind::forward_training, src_md, attr_.axis);
+  auto softmax_d =
+      softmax_forward::desc(prop_kind::forward_training, src_md, attr_.axis);
   auto softmax_pd = softmax_forward::primitive_desc(softmax_d, eng);
   softmax_prim = softmax_forward(softmax_pd);
 
@@ -45,4 +46,4 @@ void Softmax::run() {
   eng_stream.wait();
 }
 
-}
+} // namespace tpu_mlir
