@@ -14,8 +14,8 @@ If you are using Docker for the first time, use the methods in :ref:`First-time 
    $ sudo apt-get install git-lfs
 
 
-Get the ``model-zoo`` model
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Get the ``model-zoo`` model [#extra]_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In the same directory of ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir's release package), use the following command to clone the ``model-zoo`` project:
 
@@ -38,6 +38,17 @@ If you have cloned ``model-zoo``, you can execute the following command to synch
    $ cd ../
 
 This process downloads a large amount of data from ``GitHub``. Due to differences in specific network environments, this process may take a long time.
+
+.. rubric:: Footnotes
+
+.. [#extra] If you get the `model-zoo` test package provided by SOPHGO, you can
+   do the following to create and set up the `model-zoo`。
+
+   .. code :: console
+
+      $ mkdir -p model-zoo
+      $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
+
 
 .. _get tpu-perf:
 
