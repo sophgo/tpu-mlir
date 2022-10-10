@@ -26,10 +26,10 @@ void Softmax::setup(float *input, float *output, softmax_attr_t &attr) {
   p_input = input;
   p_output = output;
 
-  auto src_md = memory::desc(attr_.src_shape, dt::f32, tag::nchw);
+  auto src_md = memory::desc(attr_.src_shape, dt::f32, tag::ncw);
   auto src_mem = memory(src_md, eng, p_input);
 
-  auto dst_md = memory::desc(attr_.dst_shape, dt::f32, tag::nchw);
+  auto dst_md = memory::desc(attr_.dst_shape, dt::f32, tag::ncw);
   auto dst_mem = memory(dst_md, eng, p_output);
 
   auto softmax_d =
