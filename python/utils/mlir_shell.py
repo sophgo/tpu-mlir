@@ -43,7 +43,7 @@ def mlir_lowering(top_mlir: str,
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
         cmd.extend([cali_param])
-    lower_param = "--lowering=\"mode={} asymmetric={} chip={}\"".format(
+    lower_param = "--convert-top-to-tpu=\"mode={} asymmetric={} chip={}\"".format(
         mode.upper(), asymmetric, chip.lower())
     cmd.extend(
         [

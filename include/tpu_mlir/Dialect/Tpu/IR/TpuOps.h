@@ -21,6 +21,7 @@
 #include "tpu_mlir/Interfaces/WeightReorderInterface.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h"
+#include "tpu_mlir/Interfaces/TypeInterface.h"
 #include "tpu_mlir/Support/TensorFile.h"
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOpsDialect.h.inc"

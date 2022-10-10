@@ -88,3 +88,7 @@ void tpu::CastOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                               MLIRContext *context) {
   results.insert<SimplifyRedundantCast>(context);
 }
+
+mlir::Type tpu::CastOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  return do_nothing(mode);
+}

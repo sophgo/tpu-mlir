@@ -22,8 +22,8 @@ add_mlir_library(TPUMLIRTpu
   MLIRInferenceInterfaceIncGen
   MLIRWeightReorderInterfaceIncGen
   MLIRGlobalGenInterfaceIncGen
-  MLIRFlopsInterfaceIncGen
   MLIRLocalGenInterfaceIncGen
+  MLIRTypeInterfaceIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
@@ -38,8 +38,8 @@ add_mlir_library(TPUMLIRTpu
   MLIRInferenceInterface
   MLIRWeightReorderInterface
   MLIRGlobalGenInterface
-  MLIRFlopsInterface
   MLIRLocalGenInterface
+  MLIRTypeInterface
   TPUMLIRSupport
   TPUMLIRTrait
   TPUMLIRBackend

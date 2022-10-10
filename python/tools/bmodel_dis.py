@@ -195,7 +195,7 @@ def decode_gdma(file_name):
 
 def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
     r"""
-    Compare two BModel of operations; generate the delta as a unified diff.
+    Compare the operations of two BModel; generate the delta as a unified diff.
 
     Unified diffs are a compact way of showing line changes and a few
     lines of context.  The number of context lines is set by 'n' which
@@ -203,13 +203,12 @@ def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
     """
     import difflib
 
-    def fmt_op(op):
-        if format == "raw":
-            return str(op.attr)
-        if format == "mlir":
-            return str(op)
-        if format == "bits":
-            return "".join((str(x) for x in op.cmd))
+    fmt_op = {
+        "raw": lambda op: str(op.attr),
+        "mlir": lambda op: str(op),
+        "bits": lambda op: "".join((str(x) for x in op.cmd)),
+    }
+    fmt = fmt_op[format]
 
     lineterm = "\n"
     started = False
@@ -227,14 +226,14 @@ def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
         for tag, i1, i2, j1, j2 in group:
             if tag == "equal":
                 for line in a[i1:i2]:
-                    yield "    " + fmt_op(line)
+                    yield "    " + fmt(line)
                 continue
             if tag in {"replace", "delete"}:
                 for line in a[i1:i2]:
-                    yield "-   " + fmt_op(line)
+                    yield "-   " + fmt(line)
             if tag in {"replace", "insert"}:
                 for line in b[j1:j2]:
-                    yield "+   " + fmt_op(line)
+                    yield "+   " + fmt(line)
         yield ""
 
 

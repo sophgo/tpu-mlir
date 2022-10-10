@@ -35,10 +35,20 @@ a. 数据结构介绍:
 
 b. 流程介绍:
 
-    * 遍历每个Op, 在遍历Op时,判断Op的输入tensor是否位于rec_tbl中,如果yes,判断ref_cnt是否>=1, 如果yes,则ref_cnt--,表示输入tensor的引用数降低1个。
-       如果ref_cnt等于0,表示生命周期已结束,后面的tensor可以复用它的地址空间。
+    * **遍历每个Op, 在遍历Op时,判断Op的输入tensor是否位于rec_tbl**
 
-    * 在给每个Op的output tensor分配时,先check是否可以复用EOL的tensor地址,check思路,遍历rec_tbl, 需要同时满足如下5个条件才能reuse:
+      **中，如果yes,判断ref_cnt是否>=1, 如果yes,则ref_cnt--,表示输**
+
+      **入tensor的引用数降低1个。**
+
+      如果ref_cnt等于0,表示生命周期已结束,后面的tensor可以复用它的地址空间。
+
+    * **在给每个Op的output tensor分配时,先check是否可以复用EOL的**
+
+      **tensor地址,check思路,遍历rec_tbl, 需要同时满足如下5个条件才**
+
+      **能reuse:**
+
         * 对应的tensor不在hold_edges内
         * 对应tensor的地址不在in_using_addr内
         * 对应tensor已EOL

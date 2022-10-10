@@ -67,6 +67,7 @@ class Constant;
 class FastISel;
 class FunctionLoweringInfo;
 class GlobalValue;
+class Loop;
 class GISelKnownBits;
 class IntrinsicInst;
 class IRBuilderBase;
@@ -1412,6 +1413,18 @@ public:
     return false;
   }
 
+  // Return true if the target supports a scatter/gather instruction with
+  // indices which are scaled by the particular value.  Note that all targets
+  // must by definition support scale of 1.
+  virtual bool isLegalScaleForGatherScatter(uint64_t Scale,
+                                            uint64_t ElemSize) const {
+    // MGATHER/MSCATTER are only required to support scaling by one or by the
+    // element size.
+    if (Scale != ElemSize && Scale != 1)
+      return false;
+    return true;
+  }
+
   /// Return how the condition code should be treated: either it is legal, needs
   /// to be expanded to some other code sequence, or the target has a custom
   /// expander for it.
@@ -1891,11 +1904,11 @@ public:
 
   /// Returns the name of the symbol used to emit stack probes or the empty
   /// string if not applicable.
-  virtual bool hasStackProbeSymbol(MachineFunction &MF) const { return false; }
+  virtual bool hasStackProbeSymbol(const MachineFunction &MF) const { return false; }
 
-  virtual bool hasInlineStackProbe(MachineFunction &MF) const { return false; }
+  virtual bool hasInlineStackProbe(const MachineFunction &MF) const { return false; }
 
-  virtual StringRef getStackProbeSymbolName(MachineFunction &MF) const {
+  virtual StringRef getStackProbeSymbolName(const MachineFunction &MF) const {
     return "";
   }
 
@@ -1932,6 +1945,12 @@ public:
   /// AtomicExpandPass into an __atomic_* library call.
   unsigned getMaxAtomicSizeInBitsSupported() const {
     return MaxAtomicSizeInBitsSupported;
+  }
+
+  /// Returns the size in bits of the maximum div/rem the backend supports.
+  /// Larger operations will be expanded by ExpandLargeDivRem.
+  unsigned getMaxDivRemBitWidthSupported() const {
+    return MaxDivRemBitWidthSupported;
   }
 
   /// Returns the size of the smallest cmpxchg or ll/sc instruction
@@ -2491,6 +2510,12 @@ protected:
     MaxAtomicSizeInBitsSupported = SizeInBits;
   }
 
+  /// Set the size in bits of the maximum div/rem the backend supports.
+  /// Larger operations will be expanded by ExpandLargeDivRem.
+  void setMaxDivRemBitWidthSupported(unsigned SizeInBits) {
+    MaxDivRemBitWidthSupported = SizeInBits;
+  }
+
   /// Sets the minimum cmpxchg or ll/sc size supported by the backend.
   void setMinCmpXchgSizeInBits(unsigned SizeInBits) {
     MinCmpXchgSizeInBits = SizeInBits;
@@ -2783,6 +2808,13 @@ public:
   /// come first).
   virtual bool shouldSinkOperands(Instruction *I,
                                   SmallVectorImpl<Use *> &Ops) const {
+    return false;
+  }
+
+  /// Try to optimize extending or truncating conversion instructions (like
+  /// zext, trunc, fptoui, uitofp) for the target.
+  virtual bool optimizeExtendOrTruncateConversion(Instruction *I,
+                                                  Loop *L) const {
     return false;
   }
 
@@ -3178,6 +3210,10 @@ private:
   /// Size in bits of the maximum atomics size the backend supports.
   /// Accesses larger than this will be expanded by AtomicExpandPass.
   unsigned MaxAtomicSizeInBitsSupported;
+
+  /// Size in bits of the maximum div/rem size the backend supports.
+  /// Larger operations will be expanded by ExpandLargeDivRem.
+  unsigned MaxDivRemBitWidthSupported;
 
   /// Size in bits of the minimum cmpxchg or ll/sc operation the
   /// backend supports.
@@ -3999,6 +4035,23 @@ public:
     return false;
   }
 
+  /// Allows the target to handle physreg-carried dependency
+  /// in target-specific way. Used from the ScheduleDAGSDNodes to decide whether
+  /// to add the edge to the dependency graph.
+  /// Def - input: Selection DAG node defininfg physical register
+  /// User - input: Selection DAG node using physical register
+  /// Op - input: Number of User operand
+  /// PhysReg - inout: set to the physical register if the edge is
+  /// necessary, unchanged otherwise
+  /// Cost - inout: physical register copy cost.
+  /// Returns 'true' is the edge is necessary, 'false' otherwise
+  virtual bool checkForPhysRegDependency(SDNode *Def, SDNode *User, unsigned Op,
+                                         const TargetRegisterInfo *TRI,
+                                         const TargetInstrInfo *TII,
+                                         unsigned &PhysReg, int &Cost) const {
+    return false;
+  }
+
   /// Target-specific combining of register parts into its original value
   virtual SDValue
   joinRegisterPartsIntoValue(SelectionDAG &DAG, const SDLoc &DL,
@@ -4570,9 +4623,16 @@ public:
                                               const AsmOperandInfo &OpInfo,
                                               SelectionDAG &DAG) const;
 
+  // Targets may override this function to collect operands from the CallInst
+  // and for example, lower them into the SelectionDAG operands. 
+  virtual void CollectTargetIntrinsicOperands(const CallInst &I,
+                                              SmallVectorImpl<SDValue> &Ops,
+                                              SelectionDAG &DAG) const;
+
   //===--------------------------------------------------------------------===//
   // Div utility functions
   //
+
   SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
@@ -4695,6 +4755,26 @@ public:
                  SelectionDAG &DAG, MulExpansionKind Kind,
                  SDValue LL = SDValue(), SDValue LH = SDValue(),
                  SDValue RL = SDValue(), SDValue RH = SDValue()) const;
+
+  /// Attempt to expand an n-bit div/rem/divrem by constant using a n/2-bit
+  /// urem by constant and other arithmetic ops. The n/2-bit urem by constant
+  /// will be expanded by DAGCombiner. This is not possible for all constant
+  /// divisors.
+  /// \param N Node to expand
+  /// \param Result A vector that will be filled with the lo and high parts of
+  ///        the results. For *DIVREM, this will be the quotient parts followed
+  ///        by the remainder parts.
+  /// \param HiLoVT The value type to use for the Lo and Hi parts. Should be
+  ///        half of VT.
+  /// \param LL Low bits of the LHS of the operation. You can use this
+  ///        parameter if you want to control how low bits are extracted from
+  ///        the LHS.
+  /// \param LH High bits of the LHS of the operation. See LL for meaning.
+  /// \returns true if the node has been expanded, false if it has not.
+  bool expandDIVREMByConstant(SDNode *N, SmallVectorImpl<SDValue> &Result,
+                              EVT HiLoVT, SelectionDAG &DAG,
+                              SDValue LL = SDValue(),
+                              SDValue LH = SDValue()) const;
 
   /// Expand funnel shift.
   /// \param N Node to expand

@@ -153,7 +153,7 @@ def tflite_inference(
         tflite_file: str,
         dump_all: bool = True,
         input_is_nchw: bool = True,
-        use_represent_type: bool = True,
+        use_expressed_type: bool = True,
         tf_layout: bool = False,  # if "True" the the layout is nhwc
 ) -> dict:
     # TFLiteInterpreter is heavy, only import it when needed.
@@ -165,8 +165,8 @@ def tflite_inference(
     )
 
     def out_tensor_process(tensor_with_desc):
-        if use_represent_type:
-            tensor = session.to_represent_dat(tensor_with_desc)
+        if use_expressed_type:
+            tensor = session.to_expressed_dat(tensor_with_desc)
         else:
             _, tensor = tensor_with_desc
 

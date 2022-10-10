@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum RISCVIntrinsics : unsigned {
 // Enum values for intrinsics
-    riscv_aes32dsi = 7509,                            // llvm.riscv.aes32dsi
+    riscv_aes32dsi = 7519,                            // llvm.riscv.aes32dsi
     riscv_aes32dsmi,                           // llvm.riscv.aes32dsmi
     riscv_aes32esi,                            // llvm.riscv.aes32esi
     riscv_aes32esmi,                           // llvm.riscv.aes32esmi
@@ -24,25 +24,10 @@ enum RISCVIntrinsics : unsigned {
     riscv_aes64im,                             // llvm.riscv.aes64im
     riscv_aes64ks1i,                           // llvm.riscv.aes64ks1i
     riscv_aes64ks2,                            // llvm.riscv.aes64ks2
-    riscv_bcompress,                           // llvm.riscv.bcompress
-    riscv_bdecompress,                         // llvm.riscv.bdecompress
-    riscv_bfp,                                 // llvm.riscv.bfp
     riscv_brev8,                               // llvm.riscv.brev8
     riscv_clmul,                               // llvm.riscv.clmul
     riscv_clmulh,                              // llvm.riscv.clmulh
     riscv_clmulr,                              // llvm.riscv.clmulr
-    riscv_crc32_b,                             // llvm.riscv.crc32.b
-    riscv_crc32_d,                             // llvm.riscv.crc32.d
-    riscv_crc32_h,                             // llvm.riscv.crc32.h
-    riscv_crc32_w,                             // llvm.riscv.crc32.w
-    riscv_crc32c_b,                            // llvm.riscv.crc32c.b
-    riscv_crc32c_d,                            // llvm.riscv.crc32c.d
-    riscv_crc32c_h,                            // llvm.riscv.crc32c.h
-    riscv_crc32c_w,                            // llvm.riscv.crc32c.w
-    riscv_fsl,                                 // llvm.riscv.fsl
-    riscv_fsr,                                 // llvm.riscv.fsr
-    riscv_gorc,                                // llvm.riscv.gorc
-    riscv_grev,                                // llvm.riscv.grev
     riscv_masked_atomicrmw_add_i32,            // llvm.riscv.masked.atomicrmw.add.i32
     riscv_masked_atomicrmw_add_i64,            // llvm.riscv.masked.atomicrmw.add.i64
     riscv_masked_atomicrmw_max_i32,            // llvm.riscv.masked.atomicrmw.max.i32
@@ -85,12 +70,10 @@ enum RISCVIntrinsics : unsigned {
     riscv_sha512sum0r,                         // llvm.riscv.sha512sum0r
     riscv_sha512sum1,                          // llvm.riscv.sha512sum1
     riscv_sha512sum1r,                         // llvm.riscv.sha512sum1r
-    riscv_shfl,                                // llvm.riscv.shfl
     riscv_sm3p0,                               // llvm.riscv.sm3p0
     riscv_sm3p1,                               // llvm.riscv.sm3p1
     riscv_sm4ed,                               // llvm.riscv.sm4ed
     riscv_sm4ks,                               // llvm.riscv.sm4ks
-    riscv_unshfl,                              // llvm.riscv.unshfl
     riscv_unzip,                               // llvm.riscv.unzip
     riscv_vaadd,                               // llvm.riscv.vaadd
     riscv_vaadd_mask,                          // llvm.riscv.vaadd.mask
@@ -584,10 +567,6 @@ enum RISCVIntrinsics : unsigned {
     riscv_vxor_mask,                           // llvm.riscv.vxor.mask
     riscv_vzext,                               // llvm.riscv.vzext
     riscv_vzext_mask,                          // llvm.riscv.vzext.mask
-    riscv_xperm_b,                             // llvm.riscv.xperm.b
-    riscv_xperm_h,                             // llvm.riscv.xperm.h
-    riscv_xperm_n,                             // llvm.riscv.xperm.n
-    riscv_xperm_w,                             // llvm.riscv.xperm.w
     riscv_xperm4,                              // llvm.riscv.xperm4
     riscv_xperm8,                              // llvm.riscv.xperm8
     riscv_zip,                                 // llvm.riscv.zip

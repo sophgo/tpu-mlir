@@ -850,15 +850,6 @@ set_target_properties(llvm-profdata PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS llvm-profdata )
 list(APPEND _IMPORT_CHECK_FILES_FOR_llvm-profdata "${_IMPORT_PREFIX}/bin/llvm-profdata" )
 
-# Import target "mlir-linalg-ods-yaml-gen" for configuration "Release"
-set_property(TARGET mlir-linalg-ods-yaml-gen APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-linalg-ods-yaml-gen PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-linalg-ods-yaml-gen"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-linalg-ods-yaml-gen )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-linalg-ods-yaml-gen "${_IMPORT_PREFIX}/bin/mlir-linalg-ods-yaml-gen" )
-
 # Import target "MLIRSupportIndentedOstream" for configuration "Release"
 set_property(TARGET MLIRSupportIndentedOstream APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRSupportIndentedOstream PROPERTIES
@@ -869,15 +860,6 @@ set_target_properties(MLIRSupportIndentedOstream PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRSupportIndentedOstream )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRSupportIndentedOstream "${_IMPORT_PREFIX}/lib/libMLIRSupportIndentedOstream.a" )
 
-# Import target "mlir-lsp-server" for configuration "Release"
-set_property(TARGET mlir-lsp-server APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-lsp-server PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-lsp-server"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-lsp-server )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-lsp-server "${_IMPORT_PREFIX}/bin/mlir-lsp-server" )
-
 # Import target "mlir-opt" for configuration "Release"
 set_property(TARGET mlir-opt APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(mlir-opt PROPERTIES
@@ -886,51 +868,6 @@ set_target_properties(mlir-opt PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS mlir-opt )
 list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-opt "${_IMPORT_PREFIX}/bin/mlir-opt" )
-
-# Import target "mlir-pdll-lsp-server" for configuration "Release"
-set_property(TARGET mlir-pdll-lsp-server APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-pdll-lsp-server PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-pdll-lsp-server"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-pdll-lsp-server )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-pdll-lsp-server "${_IMPORT_PREFIX}/bin/mlir-pdll-lsp-server" )
-
-# Import target "mlir-reduce" for configuration "Release"
-set_property(TARGET mlir-reduce APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-reduce PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-reduce"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-reduce )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-reduce "${_IMPORT_PREFIX}/bin/mlir-reduce" )
-
-# Import target "mlir-translate" for configuration "Release"
-set_property(TARGET mlir-translate APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-translate PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-translate"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-translate )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-translate "${_IMPORT_PREFIX}/bin/mlir-translate" )
-
-# Import target "tblgen-lsp-server" for configuration "Release"
-set_property(TARGET tblgen-lsp-server APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(tblgen-lsp-server PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/tblgen-lsp-server"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS tblgen-lsp-server )
-list(APPEND _IMPORT_CHECK_FILES_FOR_tblgen-lsp-server "${_IMPORT_PREFIX}/bin/tblgen-lsp-server" )
-
-# Import target "mlir-cpu-runner" for configuration "Release"
-set_property(TARGET mlir-cpu-runner APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(mlir-cpu-runner PROPERTIES
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/mlir-cpu-runner"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS mlir-cpu-runner )
-list(APPEND _IMPORT_CHECK_FILES_FOR_mlir-cpu-runner "${_IMPORT_PREFIX}/bin/mlir-cpu-runner" )
 
 # Import target "bugpoint" for configuration "Release"
 set_property(TARGET bugpoint APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -1376,6 +1313,15 @@ set_target_properties(llvm-remark-size-diff PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS llvm-remark-size-diff )
 list(APPEND _IMPORT_CHECK_FILES_FOR_llvm-remark-size-diff "${_IMPORT_PREFIX}/bin/llvm-remark-size-diff" )
+
+# Import target "llvm-remarkutil" for configuration "Release"
+set_property(TARGET llvm-remarkutil APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(llvm-remarkutil PROPERTIES
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/llvm-remarkutil"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS llvm-remarkutil )
+list(APPEND _IMPORT_CHECK_FILES_FOR_llvm-remarkutil "${_IMPORT_PREFIX}/bin/llvm-remarkutil" )
 
 # Import target "llvm-rtdyld" for configuration "Release"
 set_property(TARGET llvm-rtdyld APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

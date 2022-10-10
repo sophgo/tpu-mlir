@@ -44,7 +44,8 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
           int32_t tmp = (int32_t)p.inputs[0][offset] - zero_point;
-          p.outputs[0][offset] = applyMultiplierAndRShift(tmp, multi, -shift_val);
+          p.outputs[0][offset] =
+              applyMultiplierAndRShift(tmp, multi, -shift_val);
         }
       }
     }
@@ -58,8 +59,10 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
       for (int n = 0; n < shape[0]; ++n) {
         for (int i = 0; i < inner; ++i) {
           int offset = (n * shape[1] + c) * inner + i;
-          int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point) << lshift_val;
-          p.outputs[0][offset] = MultiplyByQuantizedMultiplier(tmp, 1, -shift_val);
+          int64_t tmp = ((int32_t)p.inputs[0][offset] - zero_point)
+                        << lshift_val;
+          p.outputs[0][offset] =
+              MultiplyByQuantizedMultiplier(tmp, 1, -shift_val);
         }
       }
     }
@@ -67,4 +70,19 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
     llvm_unreachable("no such dequant mode");
   }
   return success();
+}
+
+mlir::Type tpu::DequantIntAxisOp::type_verify(uint64_t opd_idx,
+                                              TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    auto op = getOperation();
+    auto stype = Module::getStorageType(input());
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwith = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwith);
+  }
+  return do_nothing(mode);
 }

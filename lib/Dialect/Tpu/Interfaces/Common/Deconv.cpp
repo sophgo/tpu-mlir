@@ -115,3 +115,7 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih);
   return success();
 }
+
+mlir::Type tpu::DeconvOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  return type_verify_case_i32(getOperation(), opd_idx, mode);
+}

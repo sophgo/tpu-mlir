@@ -17,7 +17,9 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::RequantFpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
@@ -44,10 +46,11 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
-  case RequantMode::Normal : {
+  case RequantMode::Normal: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
-      int32_t v = (int32_t)(round((float)(p.inputs[0][i]) * scale_v - offset_v));
+      int32_t v =
+          (int32_t)(round((float)(p.inputs[0][i]) * scale_v - offset_v));
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
@@ -56,4 +59,18 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
     break;
   }
   return success();
+}
+
+mlir::Type tpu::RequantFpOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  if (opd_idx == 0) {
+    auto op = getOperation();
+    auto stype = Module::getStorageType(input());
+    if (stype.isIntOrIndex()) {
+      return do_nothing(mode);
+    }
+    mode = TypeCastMode::DO_CAST;
+    auto bitwith = stype.getIntOrFloatBitWidth();
+    return Builder(op).getIntegerType(bitwith);
+  }
+  return do_nothing(mode);
 }

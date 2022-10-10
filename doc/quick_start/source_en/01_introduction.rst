@@ -4,8 +4,9 @@ TPU-MLIR Introduction
 TPU-MLIR is the TPU compiler project for AI chips. This project provides a complete toolchain, which can convert pre-trained neural networks under different frameworks into binary files ``bmodel`` that can be efficiently run on TPUs.
 The code has been open-sourced to github: https://github.com/sophgo/tpu-mlir .
 
-The overall architecture of TPU-MLIR is as follows:
+The overall architecture of TPU-MLIR is shown in the figure (:ref:`framework`).
 
+.. _framework:
 .. figure:: ../assets/framework.png
    :height: 9.5cm
    :align: center
@@ -13,7 +14,7 @@ The overall architecture of TPU-MLIR is as follows:
    TPU-MLIR overall architecture
 
 
-The current directly supported frameworks are tflite, onnx and caffe. models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
+The current directly supported frameworks are tflite, onnx and caffe. Models from other frameworks need to be converted to onnx models. The method of converting models from other frameworks to onnx can be found on the onnx official website:
 https://github.com/onnx/tutorials.
 
 

@@ -23,7 +23,7 @@ Docker, please refer to :ref:`Setup Docker Container <docker container_setup>`.
      - ${TPUC_ROOT}/../model-zoo
      - The location of the model-zoo folder, at the same level as the SDK
 
-``envsetup.sh`` modify the environment variables as follows:
+``envsetup.sh`` modifies the environment variables as follows:
 
 .. code-block:: shell
    :linenos:

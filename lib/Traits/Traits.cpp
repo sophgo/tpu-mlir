@@ -8,9 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Traits/Traits.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+
 #include "mlir/Dialect/Quant/QuantTypes.h"
 
 using namespace mlir;
+using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
 

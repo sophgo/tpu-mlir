@@ -16,7 +16,7 @@ AddOp
     Add operation, :math:`Y = coeff_0 * X_0 + coeff_1 * X_1`
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -42,9 +42,8 @@ AvgPoolOp
 ^^^^^^^^^^^^^^^
 
 :Brief intro:
-    Perform average pooling on the input tensor, :math:`S=\frac{1}{width\ *\ height}\sum_{i,j}a_{ij}` . A sliding window of a given size will sequentially pool the input tensor
+    Perform average pooling on the input tensor, :math:`S=\frac{1}{width\ *\ height}\sum_{i,j}a_{ij}`, where :math:`width` and :math:`height` represent the width and height of the kernel_shape. :math:`\sum_{i,j}a_{ij}` means to sum the kernel_shape. A sliding window of a given size will sequentially pool the input tensor
 
-    Where :math:`width` and :math:`height` represent the width and height of the kernel_shape. :math:`\sum_{i,j}a_{ij}` means to sum the kernel_shape
 :Input:
     - input: tensor
 
@@ -166,10 +165,10 @@ ConcatOp
 ^^^^^^^^^^^^^^^
 
 :Brief intro:
-    Concatenates the given sequence of tensors in the given dimension. All Inputtensors either have the same shape (except the dimension to be concatenated) or are all empty.
+    Concatenates the given sequence of tensors in the given dimension. All input tensors either have the same shape (except the dimension to be concatenated) or are all empty.
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -197,9 +196,9 @@ ConvOp
 
     .. math::
 
-      \text{out}(N_i, C_{\text{out}_j}) = \text{bias}(C_{\text{out}_j}) + \sum_{k = 0}^{C_{\text{in}} - 1} \text{weight}(C_{\text{out}_j}, k) \star \text{input}(N_i, k)
+      \text{out}(N_i, C_{\text{out}_j}) = \text{bias}(C_{\text{out}_j}) + \sum_{k = 0}^{C_{\text{in}} - 1} \text{weight}(C_{\text{out}_j}, k) \star \text{input}(N_i, k),
 
-    Where :math:`\star` is a valid cross-correlation operation, :math:`N` is the batch size, :math:`C` is the number of channels, :math:`H, W` is the input image height and width.
+    where :math:`\star` is a valid cross-correlation operation, :math:`N` is the batch size, :math:`C` is the number of channels, :math:`H, W` is the input image height and width.
 
 :Input:
     - input: tensor
@@ -274,7 +273,7 @@ DivOp
     Division operation, :math:`Y = X_0 / X_1`
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -304,7 +303,7 @@ InputOp
 LeakyReluOp
 ^^^^^^^^^^^^^^^
 :Brief intro:
-    Apply the LeakyRelu function on each element in the tensor, the function can be expressed as: f(x) = alpha * x for x < 0, f(x) = x for x >= 0
+    Apply the LeakyRelu function on each element in the tensor. The function can be expressed as: f(x) = alpha * x for x < 0, f(x) = x for x >= 0
 :Input:
     - input: tensor
 
@@ -448,7 +447,7 @@ MulOp
     multiplication operation, :math:`Y = X_0 * X_1`
 
 :Input:
-    - inputs: tensor array, corresponding to 2 or more Inputtensor
+    - inputs: tensor array, corresponding to 2 or more input tensors
 
 :Output:
     - output: tensor
@@ -665,8 +664,8 @@ SliceOp
 
 
 :Attributes:
-    - offset: an array for storing slice offsets, the index of the offset array corresponds to the dimension index of the input tensor
-    - steps: an array that stores the step size of the slice, the index of the steps array corresponds to the index of the input tensor dimension
+    - offset: an array for storing slice offsets. The index of the offset array corresponds to the dimension index of the input tensor
+    - steps: an array that stores the step size of the slice. The index of the steps array corresponds to the index of the input tensor dimension
 
 
 :Output:
@@ -689,11 +688,11 @@ SoftmaxOp
     For the input tensor, the normalized index value is calculated on the dimension of the specified axis. The calculation method is as follows:
 
     .. math::
-        \sigma(Z)_i = \frac{e^{\beta{Z_i}}}{\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}}
+        \sigma(Z)_i = \frac{e^{\beta{Z_i}}}{\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}},
 
-    Where :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` do the exponential summation on the axis dimension. j ranges from 0 to K-1 and K is the size of the input tensor in the axis dimension.
+    where :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` does the exponential summation on the axis dimension. j ranges from 0 to K-1 and K is the size of the input tensor in the axis dimension.
 
-    For example: the size of the input tensor is :math:`(N, C, W, H)`, and the Softmax is calculated on the channel of axis=1. The calculation method is:
+    For example, the size of the input tensor is :math:`(N, C, W, H)`, and the Softmax is calculated on the channel of axis=1. The calculation method is:
 
     .. math::
         Y_{n,i,w,h} = \frac{e^{\beta{X_{n,i,w,h}}}}{\sum_{j=0}^{C-1}{e^{\beta{X_{n,j,w,h}}}}}
@@ -729,7 +728,7 @@ SqueezeOp
     - output: tensor
 
 :Attributes:
-    - axes: specifies the dimension to be cropped, 0 represents the first dimension and -1 represents the last dimension
+    - axes: specifies the dimension to be cropped. 0 represents the first dimension and -1 represents the last dimension
 
 :Interface:
     None

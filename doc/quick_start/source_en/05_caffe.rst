@@ -27,7 +27,7 @@ The operation is as follows:
    $ mkdir mobilenet_v2 && cd mobilenet_v2
    $ cp $TPUC_ROOT/regression/model/mobilenet_v2_deploy.prototxt .
    $ cp $TPUC_ROOT/regression/model/mobilenet_v2.caffemodel .
-   $ cp -rf $TPUC_ROOT/regression/dataset/COCO2017 .
+   $ cp -rf $TPUC_ROOT/regression/dataset/ILSVRC2012 .
    $ cp -rf $TPUC_ROOT/regression/image .
    $ mkdir workspace && cd workspace
 
@@ -38,7 +38,7 @@ The operation is as follows:
 Caffe to MLIR
 ------------------
 
-The model in this example is `BGR` input with mean and scale of ``103.94, 116.78, 123.68`` and ``0.017, 0.017, 0.017`` respectively.
+The model in this example has a `BGR` input with mean and scale of ``103.94, 116.78, 123.68`` and ``0.017, 0.017, 0.017`` respectively.
 
 The model conversion command:
 
@@ -50,9 +50,9 @@ The model conversion command:
        --model_def ../mobilenet_v2_deploy.prototxt \
        --model_data ../mobilenet_v2.caffemodel \
        --input_shapes [[1,3,224,224]] \
+       --resize_dims=256,256 \
        --mean 103.94,116.78,123.68 \
        --scale 0.017,0.017,0.017 \
-       --keep_aspect_ratio \
        --pixel_format bgr \
        --test_input ../image/cat.jpg \
        --test_result mobilenet_v2_top_outputs.npz \
@@ -91,13 +91,13 @@ Before converting to the INT8 model, you need to run calibration to get the cali
 Then use the calibration table to generate a symmetric or asymmetric bmodel. It is generally not recommended to use the asymmetric one if the symmetric one already meets the requirements, because
 the performance of the asymmetric model will be slightly worse than the symmetric model.
 
-Here is an example of the existing 100 images from COCO2017 to perform calibration:
+Here is an example of the existing 100 images from ILSVRC2012 to perform calibration:
 
 
 .. code-block:: console
 
    $ run_calibration.py mobilenet_v2.mlir \
-       --dataset ../COCO2017 \
+       --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
 
