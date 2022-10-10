@@ -16,8 +16,8 @@
    $ sudo apt-get install git-lfs
 
 
-获取 ``model-zoo`` 模型
-~~~~~~~~~~~~~~~~~~~~~~~
+获取 ``model-zoo`` 模型 [#extra]_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 在 ``tpu-mlir_xxxx.tar.gz`` （tpu-mlir的发布包）的同级目录下，使用以下命令克隆 ``model-zoo`` 工程：
 
@@ -40,6 +40,17 @@
    $ cd ../
 
 此过程会从 ``GitHub`` 上下载大量数据。由于具体网络环境的差异，此过程可能耗时较长。
+
+.. rubric:: Footnotes
+
+.. [#extra] 如果您获得了SOPHGO提供的 `model-zoo` 测试包，可以执行以下操作创建并
+   设置好 `model-zoo`。
+
+   .. code :: console
+
+      $ mkdir -p model-zoo
+      $ tar -xvf path/to/model-zoo_<date>.tar.bz2 --strip-components=1 -C model-zoo
+
 
 .. _get tpu-perf:
 
