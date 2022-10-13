@@ -41,8 +41,9 @@ This process downloads a large amount of data from ``GitHub``. Due to difference
 
 .. rubric:: Footnotes
 
-.. [#extra] If you get the `model-zoo` test package provided by SOPHGO, you can
-   do the following to create and set up the `model-zoo`。
+.. [#extra] If you get the ``model-zoo`` test package provided by SOPHGO, you can
+   do the following to create and set up the ``model-zoo``. After completing
+   this step, go directly to the next section :ref:`get tpu-perf`.
 
    .. code :: console
 
@@ -164,10 +165,14 @@ Add the following content to ``/etc/exports`` (configure the shared directory):
 
 .. code ::
 
-   /path/to/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
+   /the/absolute/path/of/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
 
-``*`` means that everyone can access the shared directory. Moreover, it can be configured to be accessible by a specific network segment or IP, such as ``192.168.43.0/24``.
+Where ``*`` means that everyone can access the shared directory. Moreover, it
+can be configured to be accessible by a specific network segment or IP, such as:
 
+.. code ::
+
+   /the/absolute/path/of/model-zoo 192.168.43.0/24(rw,sync,no_subtree_check,no_root_squash)
 
 Then execute the following command to make the configuration take effect:
 
