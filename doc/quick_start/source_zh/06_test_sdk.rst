@@ -43,8 +43,8 @@
 
 .. rubric:: Footnotes
 
-.. [#extra] 如果您获得了SOPHGO提供的 `model-zoo` 测试包，可以执行以下操作创建并
-   设置好 `model-zoo`。
+.. [#extra] 如果您获得了SOPHGO提供的 ``model-zoo`` 测试包，可以执行以下操作创建并
+   设置好 ``model-zoo``。完成此步骤后直接进入下一节 :ref:`get tpu-perf`。
 
    .. code :: console
 
@@ -173,10 +173,13 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 .. code ::
 
-   /path/to/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
+   /the/absolute/path/of/model-zoo *(rw,sync,no_subtree_check,no_root_squash)
 
-``*`` 表示所有人都可以访问该共享目录，也可以配置成特定网段或 IP 可访问，如
-``192.168.43.0/24`` 。
+其中 ``*`` 表示所有人都可以访问该共享目录，也可以配置成特定网段或 IP 可访问，如：
+
+.. code ::
+
+   /the/absolute/path/of/model-zoo 192.168.43.0/24(rw,sync,no_subtree_check,no_root_squash)
 
 
 然后执行如下命令使配置生效：
