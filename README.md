@@ -2,25 +2,19 @@
 
 # TPU-MLIR
 
-本项目是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链，其可以将不
-同框架下预训练的神经网络，转化为可以在算能TPU上高效运算的二进制文件`bmodel`。
+TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This project provides a complete toolchain, which can convert pre-trained neural networks from different frameworks into binary files `bmodel` that can be efficiently operated on TPUs.
 
-算能承续了比特大陆在AI领域沉淀多年的技术、专利、产品和客户，以成为全球领先的通用
-算力提供商为愿景，智算赋能数字世界为使命，专注于人工智能芯片、RISC-V指令集高性能
-CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工智能产品包括智算芯片、智算
-模组、智算盒子、智算卡、智算服务器等，丰富的产品形态为各型数据中心提供高效能的计
-算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
-规模化商业落地。
+TPU-MLIR is originally developed by SOPHGO. This company is committed to becoming the world's leading general computing power provider. SOPHGO has inherited the technology, patents, products and customers of BITMAIN in the AI field for many years and focused on the R&D, promotion and application of artificial intelligence chips and related products. It has two major brands: SOPHON and CVITEK. With the self-developed chips as the core, SOPHGO has created a matrix of computing power products, which covers the whole scene of "cloud, edge and terminal" and provides computing power products and overall solutions for urban brains, intelligent computing centers, intelligent security, intelligent transportation, safety production, industrial quality inspection, intelligent terminals and others.
 
-本项目的技术细节可以参考：[TPU-MLIR开发参考手册](http://tpumlir.org/docs/index.html)。
+For technical details of this project, please refer to: [TPU-MLIR Technical Reference Manual](https://tpumlir.org/en/docs/index.html).
 
-目前该工程支持BM1684x，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
+Currently, the project supports BM1684x. BM1684, CV183x, CV182x, Mars, and other chips will be supported in the future.
 
-# 编译工程
+# Compile the Project
 
-克隆本工程代码后，需要在docker中编译。
+After cloning the code of this project, it needs to be compiled in docker.
 
-* 从[dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev)下载所需的镜像。
+* Download the required image from [dockerhub](https://hub.docker.com/r/sophgo/tpuc_dev).
 
 ``` shell
 docker pull sophgo/tpuc_dev:latest
@@ -29,11 +23,11 @@ docker pull sophgo/tpuc_dev:latest
 docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev:latest
 ```
 
-容器建立后，代码在docker中的目录为`/workspace/tpu-mlir`。
+After the container is created, the directory of the code in docker should be `/workspace/tpu-mlir`.
 
-* 编译代码
+* Compile Code
 
-在工程目录下运行以下命令：
+Run the following command in the project directory:
 
 ``` shell
 cd tpu-mlir
@@ -41,41 +35,41 @@ source ./envsetup.sh
 ./build.sh
 ```
 
-# 代码验证
+# Code Verification
 
 ``` shell
-# 本工程包含yolov5s.onnx模型，可以直接用来验证
+# This project contains the yolov5s.onnx model, which can be used directly for verification
 pushd regression
 ./run_model.sh yolov5s
 popd
 ```
 
-**以下可选：**
+**Options:**
 
-如果要验证更多网络，需要克隆其他模型，参考<https://github.com/sophgo/model-zoo>
+If you want to verify more networks, you need to clone them first. Please refer to <https://github.com/sophgo/model-zoo>.
 
-克隆后模型路径对应为`/workspace/model-zoo`，然后如下命令验证：
+After cloning, the model path should be `/workspace/model-zoo`, and then use the following command to verify:
 
 ``` shell
-# 执行时间很长，该步骤也可以跳过
+# This step can also be skipped since its execution time is quite long
 pushd regression
 ./run_all.sh
 popd
 ```
 
-# 使用方法
+# Instructions
 
-以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
+Take `yolov5s.onnx` as an example to introduce how to compile an onnx model and run it on the BM1684x TPU platform.
 
-该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>。
+The model comes from the official website of yolov5: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>.
 
-在本工程已经放在`model/yolov5s.onnx`。
+It has been placed in `model/yolov5s.onnx`.
 
-## 准备模型和数据
+## Model and Data Preparation
 
-建立`model_yolov5s`目录，注意是与本工程同级目录；并把模型文件和图片文件都放入`model_yolov5s`目录中。
+Firstly, create a `model_yolov5s` directory at the same level directory with this project. Then put both model and image files into it.
 
-操作如下：
+The operation is as follows:
 
 ``` shell
 mkdir model_yolov5s && cd model_yolov5s
@@ -84,17 +78,19 @@ cp -rf ${REGRESSION_PATH}/dataset/COCO2017 .
 cp -rf ${REGRESSION_PATH}/image .
 mkdir workspace && cd workspace
 ```
-## 将模型转化MLIR
+## Convert the Model to MLIR
 
-如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
-预处理过程用公式表达如下（x代表输入)：
+If the model takes images as input, we need to learn its preprocessing before transforming. No preprocessing needs to be considered if the input is npz file. The preprocessing process is formulated as follows:
+
 $$
-y = （x - mean） \times scale
+y = （x - mean） \times scale,
 $$
 
-官网yolov5的图片是rgb，每个值会乘以`1/255`，转换成mean和scale对应为`0.0,0.0,0.0`和`0.0039216,0.0039216,0.0039216`。
+where `x` represents the input.
 
-模型转换命令如下：
+The input of the official yolov5 is RGB image. Each value will be multiplied by `1/255`. Mean and scale are `0.0, 0.0, 0.0` and `0.0039216, 0.0039216, 0.0039216` respectively.
+
+The model conversion command:
 
 ``` shell
 model_transform.py \
@@ -111,31 +107,31 @@ model_transform.py \
     --mlir yolov5s.mlir
 ```
 
-`model_transform.py`支持的参数如下:
+The arguments of `model_transform.py`:
 
-| **参数名**           | 必选？ | **说明**            |
-| ------------------- | ----- | ------------------- |
-| model_name          | 是    | 指定模型名称          |
-| model_def           | 是    | 指定模型定义文件，比如`.onnx`或`.tflite`或`.prototxt`文件 |
-| model_data          | 否    | 指定模型权重文件，caffe模型需要，对应`.caffemodel`文件 |
-| input_shapes        | 否    | 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况 |
-| resize_dims         | 否    | 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸 |
-| keep_aspect_ratio   | 否    | 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0 |
-| mean                | 否    | 图像每个通道的均值，默认为0.0,0.0,0.0                    |
-| scale               | 否    | 图片每个通道的比值，默认为1.0,1.0,1.0                    |
-| pixel_format        | 否    | 图片类型，可以是rgb、bgr、gray、rgbd四种情况              |
-| output_names        | 否    | 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出 |
-| test_input          | 否    | 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证 |
-| test_result         | 否    | 指定验证后的输出文件                                         |
-| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开                      |
-| mlir                | 是    | 指定输出的mlir文件路径                                       |
+| **Argument**           | Required？ | **Description**            |
+| ------------------- |  :-:  | ------------------- |
+| model_name          | Yes    | Model name          |
+| model_def           | Yes    | Model definition file (e.g., `.onnx`, `.tflite` or `.prototxt` files) |
+| model_data          | No    | Specify the model weight file, required when it is caffe model (corresponding to the '.caffemodel' file) |
+| input_shapes        | No    | The shape of the input, such as [[1,3,640,640]] (a two-dimensional array), which can support multiple inputs |
+| resize_dims         | No    | The size of the original image to be adjusted to. If not specified, it will be resized to the input size of the model |
+| keep_aspect_ratio   | No    | Whether to maintain the aspect ratio when resize. False by default. It will pad 0 to the insufficient part when setting |
+| mean                | No    | The mean of each channel of the image. The default is 0.0,0.0,0.0                    |
+| scale               | No    | The scale of each channel of the image. The default is 1.0,1.0,1.0                    |
+| pixel_format        | No    | Image type, can be rgb, bgr, gray or rgbd              |
+| output_names        | No    | The names of the output. Use the output of the model if not specified, otherwise use the specified names as the output |
+| test_input          | No    | The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified |
+| test_result         | No    | Output file to save validation result                                         |
+| excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma                      |
+| mlir                | Yes    | The output mlir file name (including path)                                       |
 
-转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
+After converting to mlir file, a `${model_name}_in_f32.npz` file containing preprocessed input will be generated.
 
 
-## MLIR转F32模型
+## MLIR to F32 bmodel
 
-将mlir文件转换成f32的bmodel，操作方法如下：
+Convert the mlir file to the F32 bmodel by the following command:
 
 ``` shell
 model_deploy.py \
@@ -147,27 +143,28 @@ model_deploy.py \
   --model yolov5s_1684x_f32.bmodel
 ```
 
-model_deploy.py的相关参数说明如下：
+The arguments of `model_deploy.py`:
 
-| **参数名**           | 必选？ | **说明**                       |
-| ------------------- | ----- | ----------------------------- |
-| mlir                | 是    | 指定mlir文件                                              |
-| quantize            | 是    | 指定默认量化类型，支持F32/BF16/F16/INT8                     |
-| chip                | 是    | 指定模型将要用到的平台，支持bm1684x（后续会支持多款TPU平台）     |
-| calibration_table   | 否    | 指定量化表路径，当存在INT8量化的时候需要量化表                 |
-| tolerance           | 否    | 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度 |
-| correctnetss        | 否    | 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.99 |
-| excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开 |
-| model               | 是    | 指定输出的model文件路径                                  |
+| **Argument**           | Required？ | **Description**                       |
+| ------------------- | :-: | ----------------------------- |
+| mlir                | Yes    | Mlir file                                             |
+| quantize            | Yes    | Quantization type (F32/F16/BF16/INT8)                     |
+| chip                | Yes    | The platform that the model will use. Currently only bm1684x is supported. More TPU platforms will be supported in the future     |
+| calibration_table   | No    | The quantization table path. Required when it is INT8 quantization                 |
+| tolerance           | No    | Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results |
+| correctnetss        | No    | Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default |
+| excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma |
+| model               | Yes    | Name of output model file (including path)                                  |
 
 
-## MLIR转INT8模型
+## MLIR to INT8 bmodel
 
-转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
+Before converting to the INT8 model, you need to run calibration to get the calibration table. The number of input data is about 100 to 1000 according to the situation.
 
-然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为非对称的性能会略差与对称模型。
+Then use the calibration table to generate a symmetric or asymmetric bmodel. It is generally not recommended to use the asymmetric one if the symmetric one already meets the requirements, because
+the performance of the asymmetric model will be slightly worse than the symmetric model.
 
-这里用现有的100张来自COCO2017的图片举例，执行calibration：
+Here is an example of the existing 100 images from COCO2017 to perform calibration:
 
 ``` shell
 run_calibration.py yolov5s.mlir \
@@ -177,7 +174,7 @@ run_calibration.py yolov5s.mlir \
 ```
 
 
-转成INT8对称量化模型，执行如下命令：
+Execute the following command to convert to the INT8 symmetric quantized model:
 
 ``` shell
 model_deploy.py \
@@ -191,7 +188,7 @@ model_deploy.py \
   --model yolov5s_1684x_int8_sym.bmodel
 ```
 
-转成INT8非对称量化模型，执行如下命令：
+To the INT8 asymmetric quantized model:
 
 ``` shell
 model_deploy.py \
@@ -206,11 +203,16 @@ model_deploy.py \
   --model yolov5s_1684x_int8_asym.bmodel
 ```
 
-## 效果对比
+## Performance Comparison
 
-本工程有用python写好的yolov5用例，源码路径`python/samples/detect_yolov5.py`，用于对图片进行目标检测。阅读该代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。以下用该代码分别来验证onnx/f32/int8的执行结果。
+This project has a yolov5 sample written in python (path:  `python/samples/detect_yolov5.py`) for object detection. Read the code to learn how the model is used:
+  1. preprocess the input
+  2. model inference to get output
+  3. post-process the output
 
-onnx模型的执行方式如下，得到`dog_onnx.jpg`：
+The following code is used to verify the output of onnx/f32/int8 model respectively:
+
+* ONNX model:
 
 ``` shell
 detect_yolov5.py \
@@ -220,8 +222,7 @@ detect_yolov5.py \
 ```
 
 
-
-f32 bmodel的执行方式如下，得到`dog_f32.jpg`：
+* F32 bmodel:
 
 ``` shell
 detect_yolov5.py \
@@ -232,7 +233,7 @@ detect_yolov5.py \
 
 
 
-int8 **对称**bmodel的执行方式如下，得到dog_int8_sym.jpg：
+* INT8 **symmetric quantized** bmodel:
 
 ``` shell
 detect_yolov5.py \
@@ -243,7 +244,7 @@ detect_yolov5.py \
 
 
 
-int8 **非对称**bmodel的执行方式如下，得到dog_int8_asym.jpg：
+* INT8 **asymmetric quantized** bmodel:
 
 ``` shell
 detect_yolov5.py \
@@ -254,16 +255,16 @@ detect_yolov5.py \
 
 
 
-四张图片对比如下：
+Outputs of four different models are compared below:
 
 ![](./doc/quick_start/assets/yolov5s.png)
 
 
-# 辅助工具
+# Auxiliary Tool
 
-## 模型推理工具`model_runner.py`
+## Model Inference Tool `model_runner.py`
 
-支持 bmodel/mlir/onnx/tflite
+Supports bmodel/mlir/onnx/tflite.
 
 ``` shell
 model_runner.py \
@@ -272,9 +273,9 @@ model_runner.py \
   --output resnet18_output.npz
 ```
 
-## `bmodel`模型工具
+## Tool for `bmodel`
 
-可以通过`model_tool`工具来查看和编辑`bmodel`文件, 用法参考以下列表:
+The `bmodel` file can be viewed and edited by `model_tool`:
 
 ```
   model_tool
@@ -286,7 +287,7 @@ model_runner.py \
     --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel
 ```
 
-例如, 获取`bmodel`的基本信息：
+For example, to get basic information of `bmodel`:
 
 ``` shell
 model_tool --info resnet18_1684x_f32.bmodel
