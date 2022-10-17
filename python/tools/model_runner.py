@@ -51,11 +51,13 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
-            outputs[i.name] = np.array((i.data.astype(np.float32) - i.qzero_point)
-                                       * np.float32(i.qscale), dtype=np.float32)
+            outputs[i.name] = np.array(
+                (i.data.astype(np.float32) - i.qzero_point) * np.float32(i.qscale),
+                dtype=np.float32)
         else:
             outputs[i.name] = np.array(i.data)
     return outputs
+
 
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     import pymlir
@@ -89,8 +91,8 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_keys = []
         model = onnx.load(onnx_file)
         no_list = [
-            "Cast", "Shape", "Unsqueeze", "Split", "Constant", "GRU", "Sqrt",
-            "ReduceMean", "Pow", "Sub", "Dropout", "Loop", "TopK"
+            "Cast", "Shape", "Unsqueeze", "Split", "Constant", "GRU", "Sqrt", "ReduceMean", "Pow",
+            "Sub", "Dropout", "Loop", "TopK"
         ]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
