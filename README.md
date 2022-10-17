@@ -10,7 +10,7 @@ For technical details of this project, please refer to: [TPU-MLIR Technical Refe
 
 Currently, the project supports BM1684x. BM1684, CV183x, CV182x, Mars, and other chips will be supported in the future.
 
-# Compile the Project
+# How to Build
 
 After cloning the code of this project, it needs to be compiled in docker.
 
@@ -25,7 +25,7 @@ docker run --privileged --name myname1234 -v $PWD:/workspace -it sophgo/tpuc_dev
 
 After the container is created, the directory of the code in docker should be `/workspace/tpu-mlir`.
 
-* Compile Code
+* Building
 
 Run the following command in the project directory:
 
@@ -35,7 +35,7 @@ source ./envsetup.sh
 ./build.sh
 ```
 
-# Code Verification
+# How to Test
 
 ``` shell
 # This project contains the yolov5s.onnx model, which can be used directly for verification
@@ -57,15 +57,15 @@ pushd regression
 popd
 ```
 
-# Instructions
+# Usage
 
-Take `yolov5s.onnx` as an example to introduce how to compile an onnx model and run it on the BM1684x TPU platform.
+Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684x TPU platform.
 
 The model comes from the official website of yolov5: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>.
 
-It has been placed in `model/yolov5s.onnx`.
+It has been placed in project path `model/yolov5s.onnx`.
 
-## Model and Data Preparation
+## Preparation
 
 Firstly, create a `model_yolov5s` directory at the same level directory with this project. Then put both model and image files into it.
 
@@ -78,7 +78,7 @@ cp -rf ${REGRESSION_PATH}/dataset/COCO2017 .
 cp -rf ${REGRESSION_PATH}/image .
 mkdir workspace && cd workspace
 ```
-## Convert the Model to MLIR
+## Model to MLIR
 
 If the model takes images as input, we need to learn its preprocessing before transforming. No preprocessing needs to be considered if the input is npz file. The preprocessing process is formulated as follows:
 
@@ -203,7 +203,7 @@ model_deploy.py \
   --model yolov5s_1684x_int8_asym.bmodel
 ```
 
-## Performance Comparison
+## Results Comparison
 
 This project has a yolov5 sample written in python (path:  `python/samples/detect_yolov5.py`) for object detection. Read the code to learn how the model is used:
   1. preprocess the input
@@ -260,7 +260,7 @@ Outputs of four different models are compared below:
 ![](./doc/quick_start/assets/yolov5s.png)
 
 
-# Auxiliary Tool
+# Auxiliary Tools
 
 ## Model Inference Tool `model_runner.py`
 
