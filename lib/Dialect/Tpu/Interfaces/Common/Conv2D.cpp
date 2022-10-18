@@ -103,6 +103,18 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     auto multiplier_v = Module::getI64Array(multiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
     auto mode = quant_mode();
+    MultiplierType m_type;
+    if (is_cv18xx) {
+      m_type = CVI_QDM_QUANT;
+    } else {
+      if (mode == tpu::RequantMode::TFlite_Lshift ||
+          mode == tpu::RequantMode::TFlite) {
+        m_type = BM_TFLITE_QUANT;
+      } else {
+        m_type = BM_QUANT;
+      }
+    }
+
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
@@ -111,18 +123,11 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
           int64_t v = 0;
-          if (mode == tpu::RequantMode::TFlite_Lshift ||
-              mode == tpu::RequantMode::TFlite  || is_cv18xx) {
-            v = MultiplyByQuantizedMultiplier((int32_t)p.outputs[0][offset],
-                                              (int32_t)multi, (int32_t)shift,
-                                               is_cv18xx) +
-                o_qtype.getZeroPoint();
-          } else {
-            v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift) +
-                o_qtype.getZeroPoint();
-          }
-          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v, !is_cv18xx)
-                                                            : Quant::to_int8(v, !is_cv18xx);
+          v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
+                                       m_type) +
+              o_qtype.getZeroPoint();
+          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
+                                                            : Quant::to_int8(v);
         }
       }
     }

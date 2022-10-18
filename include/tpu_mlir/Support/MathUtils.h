@@ -14,6 +14,31 @@
 
 namespace tpu_mlir {
 // =======================
+// round mode
+// =======================
+typedef enum {
+  ROUNDING_HALF_TO_EVEN = 0,
+  ROUNDING_HALF_AWAY_FROM_ZERO = 1,
+  ROUNDING_TOWARDS_ZERO = 2,
+  ROUNDING_DOWN = 3, /* FLOOR */
+  ROUNDING_UP = 4,   /* CEIL */
+  ROUNDING_HALF_UP = 5,
+  ROUNDING_HALF_DOWN = 6,
+  ROUNDING_UNKNOWN = -1
+} RoundingMode;
+
+// =======================
+// I8 multiplier type
+// =======================
+typedef enum {
+  BM_QUANT = 0,
+  BM_TFLITE_QUANT = 1,
+  CVI_QUANT = 2,
+  CVI_QDM_QUANT = 3, /* FLOOR */
+  UNKNOWN = -1
+} MultiplierType;
+
+// =======================
 // alignment function
 // =======================
 template <typename T> static inline T ceiling_func(T numerator, T denominator) {
@@ -56,47 +81,36 @@ float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
-void quantizeToInt8(const float *pSrc, int8_t *pDst, int len,
-                    double scale, bool round_mode = true);
+void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, double scale,
+                    RoundingMode round_mode = ROUNDING_HALF_DOWN);
 // to compitable with tflite
 void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
                         int64_t *shift);
 // cv18xx
-double getQcaleForFilter(float max_filter, float threshold_y,
-                          float threshold_x, int quant_bitwidth = 8);
+double getQcaleForFilter(float max_filter, float threshold_y, float threshold_x,
+                         int quant_bitwidth = 8);
 
 double getQscaleForBias(float max_bias, float threshold_y);
 void getRShiftAndMultiplierFromQScale(double double_multiplier,
-                                       int64_t *quantized_multiplier,
-                                       int64_t *shift, bool qdm = false,
-                                       int64_t max_multiplier = 127);
-void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst,
-                                       int len, float threshold_y,
-                                       float threshold_x, int64_t rshift,
-                                       int64_t multiplier, bool qdm = false);
-void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst,
-                                     int len, float threshold_y, int64_t rshift,
+                                      int64_t *quantized_multiplier,
+                                      int64_t *shift, bool qdm = false,
+                                      int64_t max_multiplier = 127);
+void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst, int len,
+                                       float threshold_y, float threshold_x,
+                                       int64_t rshift, int64_t multiplier,
+                                       bool qdm = false);
+void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst, int len,
+                                     float threshold_y, int64_t rshift,
                                      int64_t multiplier, bool qdm = false);
-// define round mode
-typedef enum {
-  ROUNDING_HALF_TO_EVEN = 0,
-  ROUNDING_HALF_AWAY_FROM_ZERO = 1,
-  ROUNDING_TOWARDS_ZERO = 2,
-  ROUNDING_DOWN = 3, /* FLOOR */
-  ROUNDING_UP = 4,   /* CEIL */
-  ROUNDING_HALF_UP = 5,
-  ROUNDING_HALF_DOWN = 6,
-  ROUNDING_UNKNOWN = -1
-} RoundingMode;
+
 template <typename T>
 T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift,
                                       bool postive_rshift = false);
-static inline int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier,
-                                               int64_t rshift) {
-  return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
-}
+int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
+                                 MultiplierType m_type = BM_QUANT);
+
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
@@ -105,12 +119,12 @@ void pad_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
 void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int h, int w, int kd, int kh, int kw, int dd, int dh,
                            int dw, int sd, int sh, int sw, int pdf, int pdb,
-                           int pht, int phb, int pwl, int pwr,
-                           float pad_value);
-void tensor_sub_zp(float* tensor_after_zp, float* src, int64_t length, float zero_point);
+                           int pht, int phb, int pwl, int pwr, float pad_value);
+void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
+                   float zero_point);
 
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
-              int k, int n, bool transpose);
+            int k, int n, bool transpose);
 
 static inline int32_t saturate(int32_t input, mlir::Type stype) {
   int32_t output;

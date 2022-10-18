@@ -11,10 +11,10 @@
 #include "float.h"
 #include "mlir/IR/PatternMatch.h"
 #include "omp.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include <map>
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 #include "llvm/Support/Debug.h"
+#include <map>
 
 #define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {
@@ -164,14 +164,14 @@ float func_log2(double dataInput) {
   return result;
 }
 
-void quantizeToInt32(const float *pSrc, int32_t *pDst, int len,
-                     double scale) {
+void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, double scale) {
   // used in CV18xx bias quant
   int32_t qmax = INT_MAX;
   int32_t qmin = INT_MIN;
   int tmp = 0;
   for (int i = 0; i < len; i++) {
-    tmp = floor(pSrc[i] * scale + 0.5);
+    tmp = helper::Quant::to_int(pSrc[i] * scale, ROUNDING_HALF_TO_EVEN);
+    ;
     pDst[i] = (int32_t)((tmp > qmax) ? qmax : ((tmp < qmin) ? qmin : tmp));
   }
 }
@@ -218,20 +218,10 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
   return ratio;
 }
 
-void quantizeToInt8(const float *pSrc, int8_t *pDst, int len,
-                    double scale, bool round_mode) {
-  int8_t qmax = 127;
-  int8_t qmin = -128;
-  int tmp = 0;
+void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, double scale,
+                    RoundingMode round_mode) {
   for (int i = 0; i < len; i++) {
-    if (round_mode) {
-      tmp = round(pSrc[i] * scale);
-    } else {
-      // for CV18xx. Looks HW is different than std::round()
-      // we shall apply round only for input quant()
-      tmp = floor(pSrc[i] * scale + 0.5);
-    }
-    pDst[i] = (int8_t)((tmp > qmax) ? qmax : ((tmp < qmin) ? qmin : tmp));
+    pDst[i] = helper::Quant::to_int8(pSrc[i] * scale, round_mode);
   }
 }
 
@@ -282,8 +272,8 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
 }
 
 // CV18xx
-double getQcaleForFilter(float max_filter, float threshold_y,
-                           float threshold_x, int quant_bitwidth) {
+double getQcaleForFilter(float max_filter, float threshold_y, float threshold_x,
+                         int quant_bitwidth) {
   /// get a QScale for Filter (with multiplier)
   ///   Q(W) = W * (threshold_x / threshold_y) * (1 / QScale)
   ///   find a QScale so that Q(max_filter) = 127
@@ -293,12 +283,12 @@ double getQcaleForFilter(float max_filter, float threshold_y,
   ///   QScale is then decomposed into a multipler and a rshift
   ///   => QScale = Multiplier / (1 << RShift)
   ///   where Multiplier is an interger
-  if(threshold_y <= 0) {
-    llvm::errs() << "WARNING: findQScaleForFilter threshold_y = "
-                 << threshold_y << "\n";
+  if (threshold_y <= 0) {
+    llvm::errs() << "WARNING: findQScaleForFilter threshold_y = " << threshold_y
+                 << "\n";
     threshold_y = 0.00001;
   }
-  float max_quant = (float)((1 << (quant_bitwidth-1)) -1);  // 127
+  float max_quant = (float)((1 << (quant_bitwidth - 1)) - 1); // 127
   double qscale = (max_filter * threshold_x) / (max_quant * threshold_y);
   return qscale;
 }
@@ -323,9 +313,8 @@ double getQscaleForBias(float max_bias, float threshold_y) {
 }
 
 void getRShiftAndMultiplierFromQScale(double double_multiplier,
-                                       int64_t *multiplier,
-                                       int64_t *shift, bool qdm,
-                                       int64_t max_multiplier) {
+                                      int64_t *multiplier, int64_t *shift,
+                                      bool qdm, int64_t max_multiplier) {
   /// find RShift and Multiplier from QScale
   ///   QScale = Multiplier / (1 << RShift)
   ///   Multiplier is an integer
@@ -351,7 +340,8 @@ void getRShiftAndMultiplierFromQScale(double double_multiplier,
     *shift = -*shift;
     LLVM_DEBUG(if (*shift > 25) {
       llvm::errs() << "WARNING: large rshift = " << *shift
-                   << ", qscale = " << double_multiplier << "\n";});
+                   << ", qscale = " << double_multiplier << "\n";
+    });
   } else {
     if (double_multiplier > max_multiplier) {
       llvm::errs() << "WARNING: qscale > max_multipiler ( " << double_multiplier
@@ -361,9 +351,11 @@ void getRShiftAndMultiplierFromQScale(double double_multiplier,
     } else {
       bool found = false;
       for (int64_t rshift = 0; rshift < 63; ++rshift) {
-        if (double_multiplier * (1ULL << (rshift + 1)) >= (double)max_multiplier) {
+        if (double_multiplier * (1ULL << (rshift + 1)) >=
+            (double)max_multiplier) {
           found = true;
-          quantized_multiplier = (int64_t)(double_multiplier * (1ULL << rshift));
+          quantized_multiplier =
+              (int64_t)(double_multiplier * (1ULL << rshift));
           *shift = rshift;
           break;
         }
@@ -372,7 +364,7 @@ void getRShiftAndMultiplierFromQScale(double double_multiplier,
         // we are here because qscale is too small, return 0 for both shift and
         // multiplier
         LLVM_DEBUG(llvm::errs() << "WARNING: failed to find rshift, qscale = "
-                   << std::to_string(double_multiplier) << "\n";);
+                                << std::to_string(double_multiplier) << "\n";);
         quantized_multiplier = 0;
         *shift = 0;
       }
@@ -383,10 +375,10 @@ void getRShiftAndMultiplierFromQScale(double double_multiplier,
   }
 }
 
-void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst,
-                                       int len, float threshold_y,
-                                       float threshold_x, int64_t rshift,
-                                       int64_t multiplier, bool qdm) {
+void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst, int len,
+                                       float threshold_y, float threshold_x,
+                                       int64_t rshift, int64_t multiplier,
+                                       bool qdm) {
   /// quantize a filter weight value into int8 based on rshift and multiplier
   ///   Q(W) = W * (threshold_x / threshold_y) * (1 / QScale)
   ///   QScale = Multiplier / (1 << RShift)
@@ -397,13 +389,12 @@ void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst,
   double factor = (multiplier == 0) ? 0
                                     : (double)(threshold_x / threshold_y) *
                                           (1ULL << rshift) / multiplier;
-  quantizeToInt8(pSrc, pDst, len, factor, false);
+  quantizeToInt8(pSrc, pDst, len, factor, ROUNDING_HALF_TO_EVEN);
 }
 
-void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst,
-                                     int len, float threshold_y,
-                                     int64_t rshift, int64_t multiplier,
-                                     bool qdm) {
+void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst, int len,
+                                     float threshold_y, int64_t rshift,
+                                     int64_t multiplier, bool qdm) {
   /// quantize a bias weight value into int32 based on rshift and multiplier
   ///   Q(B) = B * (127.0f / threshold_y) * (1 / QScale)
   ///   QScale = Multiplier * (1 << RShift)
@@ -456,13 +447,15 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
   return res;
 }
 
-template long long RightShiftRound(long long src, int shift_num, RoundingMode round_mode);
-template int64_t RightShiftRound(int64_t src, int shift_num, RoundingMode round_mode);
+template long long RightShiftRound(long long src, int shift_num,
+                                   RoundingMode round_mode);
+template int64_t RightShiftRound(int64_t src, int shift_num,
+                                 RoundingMode round_mode);
 
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
-                                      int shift, bool postive_rshift) {
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift,
+                                      bool postive_rshift) {
   // int shift = -(rshift - 31);
   if (postive_rshift) {
     // for cv18xx which rshift store in postive value
@@ -478,6 +471,49 @@ int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
     value = RightShiftRound(value, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
   }
   return (int32_t)value;
+}
+
+// for cv18xx USE_GOOGLE_GEMMLOWP_QDM
+static inline int32_t RoundingDivideByPOT(int32_t x, int exponent) {
+  if (x == 0) {
+    return 0;
+  }
+  if (exponent == 0) {
+    return x;
+  }
+  assert(exponent > 0 && exponent <= 31);
+  const int32_t mask = (1ll << exponent) - 1;
+  const int32_t remainder = x & mask;
+  const int32_t threshold = (mask >> 1) + ((x < 0) ? 1 : 0);
+  return ((x >> exponent) + ((remainder > threshold) ? 1 : 0));
+}
+
+static inline int32_t SaturatingRoundingDoublingHighMul(int32_t a, int32_t b) {
+  std::int64_t a_64(a);
+  std::int64_t b_64(b);
+  std::int64_t ab_64 = a_64 * b_64;
+  int32_t nudge = ab_64 >= 0 ? (1 << 30) : (1 - (1 << 30));
+  int32_t ab_x2_high32 = static_cast<int32_t>((ab_64 + nudge) / (1ll << 31));
+  return ab_x2_high32;
+}
+
+int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
+                                 MultiplierType m_type) {
+  if (m_type == BM_QUANT) {
+    return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
+  } else if (m_type == BM_TFLITE_QUANT) {
+    return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
+                                         (int32_t)rshift);
+  } else if (m_type == CVI_QUANT) {
+    return helper::Quant::to_int((float)(((v * multiplier)) / (1 << rshift)),
+                                 ROUNDING_HALF_UP);
+  } else if (m_type == CVI_QDM_QUANT) {
+    return RoundingDivideByPOT(
+        SaturatingRoundingDoublingHighMul((int32_t)v, (int32_t)multiplier),
+        rshift);
+  } else {
+    llvm_unreachable("unsupport quant multiplier type.");
+  }
 }
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
@@ -558,8 +594,8 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
   }
 }
 
-
-void tensor_sub_zp(float* tensor_after_zp, float* src, int64_t length, float zero_point) {
+void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
+                   float zero_point) {
 #pragma omp parallel for schedule(static, omp_schedule(length))
   for (int i = 0; i < length; ++i) {
     tensor_after_zp[i] = src[i] - zero_point;
@@ -570,12 +606,13 @@ int omp_schedule(int count) {
   return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
 }
 
-void function_relu(float *src, float *dst, int64_t size, float relu_limit, mlir::Type elem_type) {
+void function_relu(float *src, float *dst, int64_t size, float relu_limit,
+                   mlir::Type elem_type) {
 #pragma omp parallel for schedule(static, omp_schedule(size))
   for (int64_t i = 0; i < size; ++i) {
     dst[i] = src[i] > 0 ? src[i] : 0;
     if (relu_limit > 0.f && dst[i] > relu_limit) {
-      dst[i] =  relu_limit;
+      dst[i] = relu_limit;
     }
     if (elem_type) {
       if (elem_type.isUnsignedInteger(8)) {
@@ -587,8 +624,8 @@ void function_relu(float *src, float *dst, int64_t size, float relu_limit, mlir:
   }
 }
 
-int dnnl_mm(float *input, float *weight, float *bias,
-    float *output, int m, int k, int n, bool transpose) {
+int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
+            int k, int n, bool transpose) {
   if (!bias) {
     auto zero_bias = new std::vector<float>(n, 0.0f);
     bias = zero_bias->data();
@@ -598,8 +635,8 @@ int dnnl_mm(float *input, float *weight, float *bias,
   static int dump_idx = 0;
   std::string prefix = std::string("ip") + std::to_string(dump_idx);
   if (dump_idx == 0) {
-    write_bianry_file(prefix + std::string("_in.bin"),
-        (const char *)input, m * k * sizeof(float));
+    write_bianry_file(prefix + std::string("_in.bin"), (const char *)input,
+                      m * k * sizeof(float));
   }
 #endif // DUMP_FLAG
 
@@ -612,10 +649,10 @@ int dnnl_mm(float *input, float *weight, float *bias,
   std::vector<primitive> net;
   std::vector<std::unordered_map<int, memory>> net_args;
 
-  memory::dims src_tz = { m, k };
-  memory::dims weights_tz = { n, k };
-  memory::dims bias_tz = { n };
-  memory::dims dst_tz = { m, n };
+  memory::dims src_tz = {m, k};
+  memory::dims weights_tz = {n, k};
+  memory::dims bias_tz = {n};
+  memory::dims dst_tz = {m, n};
 
   if (!bias) {
     auto zero_bias = new std::vector<float>(n, 0.0f);
@@ -623,24 +660,21 @@ int dnnl_mm(float *input, float *weight, float *bias,
   }
 
   // memory
-  auto user_src_memory = memory(
-      { { src_tz }, dt::f32, tag::nc }, eng, input);
-  auto user_weights_memory = memory(
-      { { weights_tz }, dt::f32, tag::oi }, eng, weight);
-  auto user_bias_memory = memory(
-      { { bias_tz }, dt::f32, tag::x }, eng, bias);
-  auto user_dst_memory = memory(
-      { { dst_tz }, dt::f32, tag::nc }, eng, output);
+  auto user_src_memory = memory({{src_tz}, dt::f32, tag::nc}, eng, input);
+  auto user_weights_memory =
+      memory({{weights_tz}, dt::f32, tag::oi}, eng, weight);
+  auto user_bias_memory = memory({{bias_tz}, dt::f32, tag::x}, eng, bias);
+  auto user_dst_memory = memory({{dst_tz}, dt::f32, tag::nc}, eng, output);
 
   // md
-  auto src_md = memory::desc({ src_tz }, dt::f32, tag::any);
-  auto weights_md = memory::desc({ weights_tz }, dt::f32, tag::any);
-  auto bias_md = memory::desc({ bias_tz }, dt::f32, tag::any);
-  auto dst_md = memory::desc({ dst_tz }, dt::f32, tag::any);
+  auto src_md = memory::desc({src_tz}, dt::f32, tag::any);
+  auto weights_md = memory::desc({weights_tz}, dt::f32, tag::any);
+  auto bias_md = memory::desc({bias_tz}, dt::f32, tag::any);
+  auto dst_md = memory::desc({dst_tz}, dt::f32, tag::any);
 
   // fc desc
-  auto fc_desc = inner_product_forward::desc(prop_kind::forward_inference,
-      src_md, weights_md, bias_md, dst_md);
+  auto fc_desc = inner_product_forward::desc(
+      prop_kind::forward_inference, src_md, weights_md, bias_md, dst_md);
   auto fc_prim_desc = inner_product_forward::primitive_desc(fc_desc, eng);
 
   // do reorder if needed
@@ -648,8 +682,8 @@ int dnnl_mm(float *input, float *weight, float *bias,
   if (fc_prim_desc.src_desc() != user_src_memory.get_desc()) {
     src_memory = memory(fc_prim_desc.src_desc(), eng);
     net.push_back(reorder(user_src_memory, src_memory));
-    net_args.push_back({ { DNNL_ARG_FROM, user_src_memory },
-        { DNNL_ARG_TO, src_memory } });
+    net_args.push_back(
+        {{DNNL_ARG_FROM, user_src_memory}, {DNNL_ARG_TO, src_memory}});
   }
   auto weights_memory = user_weights_memory;
   if (fc_prim_desc.weights_desc() != user_weights_memory.get_desc()) {
@@ -662,31 +696,31 @@ int dnnl_mm(float *input, float *weight, float *bias,
   auto dst_memory = memory(fc_prim_desc.dst_desc(), eng);
 
   net.push_back(inner_product_forward(fc_prim_desc));
-  net_args.push_back({ { DNNL_ARG_SRC, src_memory },
-      { DNNL_ARG_WEIGHTS, weights_memory },
-      { DNNL_ARG_BIAS, bias_memory },
-      { DNNL_ARG_DST, dst_memory } });
+  net_args.push_back({{DNNL_ARG_SRC, src_memory},
+                      {DNNL_ARG_WEIGHTS, weights_memory},
+                      {DNNL_ARG_BIAS, bias_memory},
+                      {DNNL_ARG_DST, dst_memory}});
 
   // reorder or copy the output
   if (dst_memory != user_dst_memory) {
     net.push_back(reorder(dst_memory, user_dst_memory));
-    net_args.push_back({ { DNNL_ARG_FROM, dst_memory },
-        { DNNL_ARG_TO, user_dst_memory } });
+    net_args.push_back(
+        {{DNNL_ARG_FROM, dst_memory}, {DNNL_ARG_TO, user_dst_memory}});
   }
 
   // run
   assert(net.size() == net_args.size() && "something is missing");
   for (size_t i = 0; i < net.size(); ++i)
-      net.at(i).execute(s, net_args.at(i));
+    net.at(i).execute(s, net_args.at(i));
 
   s.wait();
 
 #ifdef DUMP_FLAG
   if (dump_idx == 0) {
-    write_bianry_file(prefix + std::string("_out.bin"),
-        (const char *)output, m * n * sizeof(float));
+    write_bianry_file(prefix + std::string("_out.bin"), (const char *)output,
+                      m * n * sizeof(float));
   }
-  dump_idx ++;
+  dump_idx++;
 #endif // DUMP_FLAG
 
   return 0;

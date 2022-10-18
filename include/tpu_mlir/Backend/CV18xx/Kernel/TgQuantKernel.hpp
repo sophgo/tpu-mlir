@@ -1,17 +1,21 @@
-/*
- * Copyright (C) Cvitek Co., Ltd. 2019-2020. All rights reserved.
- *
- * refined 2020-11-12
- */
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #ifndef TG_QUANT_KERNEL_HPP
 #define TG_QUANT_KERNEL_HPP
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include <cmath>
+#include <iostream>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
-#include <iostream>
-#include <cmath>
 
 namespace tpu_mlir {
 namespace backend {

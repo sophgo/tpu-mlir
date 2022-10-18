@@ -36,6 +36,13 @@ void cvi_backend_tg_quant_kernel(
     gaddr_t bottom_gaddr, gaddr_t top_gaddr,
     int input_n, int input_c, int input_h, int input_w,
     float const_scale = 1.0, int offset=0);
+
+void cvi_backend_tg_fixed_avg_pooling_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id,
+    gaddr_t ga_input, gaddr_t ga_output,
+    int n, int c, int h, int w, int kh, int kw, int pad_top, int pad_bot,
+    int pad_left, int pad_right, int stride_h, int stride_w,
+    bool do_relu, int rshift, int multiplier, bool ceil_mode);
 } // namespace backend
 } // namespace tpu_mlir
 #endif /* CVI_BACKEND_GLOBAL_API */
