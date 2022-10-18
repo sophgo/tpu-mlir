@@ -107,6 +107,7 @@ class ONNX_IR_TESTER(object):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
+        model_def.opset_import[0].version = 13
         onnx.checker.check_model(model_def)
         tool = OnnxTransformer(model_name, model_def)
         tool.model_transform(fp32_mlir)

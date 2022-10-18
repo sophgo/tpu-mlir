@@ -15,7 +15,8 @@ namespace cv18xx {
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
-      ConvLowering
+      ConvLowering,
+      AvgPoolLowering
       // clang-format on
       >(patterns->getContext());
 }

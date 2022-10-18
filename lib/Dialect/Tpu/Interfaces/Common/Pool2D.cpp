@@ -9,10 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -89,6 +89,9 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
     return success();
   }
   // average pooling
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
+  auto m_type = is_cv18xx ? CVI_QUANT : BM_QUANT;
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
   if (out_type.isInteger(8)) {
@@ -101,8 +104,19 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
       auto rs = rshift().value();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
-        p.outputs[0][i] = applyMultiplierAndRShift(
-            std::round(p.outputs[0][i] * pooling->kh * pooling->kw), multi, rs);
+        int64_t v = 0;
+        if (is_cv18xx) {
+          // keep precision
+          v = Quant::to_int((p.outputs[0][i] * pooling->kh * pooling->kw *
+                             multiplier().value()) /
+                                (1 << rshift().value()),
+                            ROUNDING_HALF_UP);
+          multi = 1;
+          rs = 0;
+        } else {
+          v = std::round(p.outputs[0][i] * pooling->kh * pooling->kw);
+        }
+        p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs, m_type);
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
                               ? Quant::to_uint8(p.outputs[0][i])
                               : Quant::to_int8(p.outputs[0][i]);
@@ -142,7 +156,7 @@ LogicalResult tpu::Pool2DOp::LocalGenSupport() {
 }
 
 LogicalResult tpu::Pool2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
-                                        int64_t out_idx, int64_t out_slice) {
+                                       int64_t out_idx, int64_t out_slice) {
   pool_attr_t attrs;
   parseParam(&attrs);
   in_slice = (out_slice - 1) * attrs.sh + attrs.kh;

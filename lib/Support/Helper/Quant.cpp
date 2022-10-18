@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/FakeQuantSupport.h"
+#include "mlir/IR/PatternMatch.h"
 
 #include "float.h"
 #include <map>
@@ -102,6 +102,39 @@ mlir::Type Quant::getQuantInt8Type(Value v, bool asymmetric) {
                                                 cali_type.getExpressedType(),
                                                 scale, zeropoint, qmin, qmax);
   return RankedTensorType::get(type.getShape(), qtype);
+}
+
+int32_t Quant::to_int(float_t v, RoundingMode round_mode) {
+  // round_mode:
+  //   0 : HALF_DOWN for bm168x
+  //   1 : ROUNDING_HALF_TO_EVEN for cv18xx
+  //   2 : ROUNDING_DOWN (round to zero) for cv18xx
+  int32_t i32_val;
+  if (round_mode == ROUNDING_HALF_DOWN) {
+    i32_val = std::round(v);
+  } else if (round_mode == ROUNDING_DOWN) {
+    i32_val = (int)v;
+  } else if (round_mode == ROUNDING_HALF_TO_EVEN) {
+    float fraction, integer;
+    float abs_v = std::abs(v);
+    fraction = std::modf(abs_v, &integer);
+    i32_val = (int)integer;
+    if (fraction > 0.5) {
+      i32_val = i32_val + 1;
+    } else if (fraction == 0.5) {
+      if (i32_val & 0x01) {
+        i32_val = i32_val + 1;
+      }
+    }
+    if (v < 0) {
+      i32_val = -i32_val;
+    }
+  } else if (round_mode == ROUNDING_HALF_UP) {
+    i32_val = floor(v + 0.5);
+  } else {
+    llvm_unreachable("not support round_mode.");
+  }
+  return i32_val;
 }
 
 } // namespace helper
