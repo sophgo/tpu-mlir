@@ -95,6 +95,7 @@ void getRShiftAndMultiplierFromQScale(double double_multiplier,
                                       int64_t *quantized_multiplier,
                                       int64_t *shift, bool qdm = false,
                                       int64_t max_multiplier = 127);
+int8_t getMultiplierI8FromQScaleAndRShift(double qscale, int8_t rshift);
 void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst, int len,
                                        float threshold_y, float threshold_x,
                                        int64_t rshift, int64_t multiplier,

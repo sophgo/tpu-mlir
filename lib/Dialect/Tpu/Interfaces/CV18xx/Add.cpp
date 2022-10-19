@@ -10,13 +10,14 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
-// using namespace tpu_mlir::backend;
+using namespace tpu_mlir::backend;
 
 // =========================================
 // GlobalGenInterface
@@ -24,7 +25,48 @@ using namespace tpu_mlir::helper;
 
 // int8
 void tpu::AddOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+  int input_num = inputs().size();
+  assert(input_num == 2);
+  int64_t n, c, h, w;
+  std::vector<gaddr_t> ga_inputs;
+  for (int i = 0; i < input_num; ++i) {
+    ga_inputs.emplace_back(Module::getAddress(inputs()[i]));
+  }
+  gaddr_t ga_output = Module::getAddress(output());
+
+  bool do_early_stride = false;
+  int early_stride_h = 0;
+  int early_stride_w = 0;
+
+  Module::getNCHW(output(), n, c, h, w);
+  auto multiplier_v = Module::getI64Array(multipliers(), input_num, 1);
+  auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+  int32_t rshift_int = static_cast<int32_t>(rshift_v->at(0));
+  std::vector<int32_t> multiplier_int;
+  for (int i = 0; i < input_num; ++i) {
+    multiplier_int.emplace_back(multiplier_v->at(i));
+  }
+
+  std::vector<int>coeffs(input_num, 1);
+
+  cvi_backend_tg_fixed_eltwise_add_kernel(
+    *backend_ctx,
+    layer_id,
+    ga_inputs.data(),
+    ga_output,
+    input_num,
+    n,
+    c,
+    h,
+    w,
+    do_relu(),
+    do_early_stride,
+    early_stride_h,
+    early_stride_w,
+    rshift_int,
+    multiplier_int.data(),
+    coeffs.data());
 }
 
 // =========================================

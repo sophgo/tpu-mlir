@@ -47,6 +47,8 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   auto out_type = Module::getStorageType(output());
   memset(p.outputs[0], 0, num_elem * sizeof(float));
   auto asym = Module::getAsymmetric(module);
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
   if (out_type.isa<FloatType>()) {
     auto binary = (Binary *)p.handle;
     binary->run();
@@ -62,34 +64,66 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto binary = (Binary *)p.handle;
     binary->run();
   } else if (asym == false) {
-    auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
-    auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
-    auto lhs_num_elem = Module::getNumElements(inputs()[0]);
-    auto rhs_num_elem = Module::getNumElements(inputs()[1]);
-    std::vector<float> lhs_tmp(lhs_num_elem);
-    std::vector<float> rhs_tmp(rhs_num_elem);
+    if (is_cv18xx) {
+      // cv18xx interpreter
+      auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
+      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+      auto lhs_num_elem = Module::getNumElements(inputs()[0]);
+      auto rhs_num_elem = Module::getNumElements(inputs()[1]);
+      std::vector<float> lhs_tmp(lhs_num_elem);
+      std::vector<float> rhs_tmp(rhs_num_elem);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
-    for (int i = 0; i < lhs_num_elem; i++) {
-      lhs_tmp[i] = applyMultiplierAndRShift(p.inputs[0][i], multiplier_v->at(0),
-                                            rshift_v->at(0));
-    }
+      for (int i = 0; i < lhs_num_elem; i++) {
+        lhs_tmp[i] = p.inputs[0][i] * multiplier_v->at(0);
+      }
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
-    for (int i = 0; i < rhs_num_elem; i++) {
-      rhs_tmp[i] = applyMultiplierAndRShift(p.inputs[1][i], multiplier_v->at(1),
-                                            rshift_v->at(1));
-    }
+      for (int i = 0; i < rhs_num_elem; i++) {
+        rhs_tmp[i] = p.inputs[1][i] * multiplier_v->at(1);
+      }
 
-    auto binary = (Binary *)p.handle;
-    (*binary)
-        .lhs(lhs_tmp.data(), Module::getShape(inputs()[0]))
-        .rhs(rhs_tmp.data(), Module::getShape(inputs()[1]))
-        .run();
+      auto binary = (Binary *)p.handle;
+      (*binary)
+          .lhs(lhs_tmp.data(), Module::getShape(inputs()[0]))
+          .rhs(rhs_tmp.data(), Module::getShape(inputs()[1]))
+          .run();
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int i = 0; i < num_elem; i++) {
-      auto &out = p.outputs[0][i];
-      out = out_type.isUnsignedInteger(8) ? Quant::to_uint8(out)
-                                          : Quant::to_int8(out);
+      for (int i = 0; i < num_elem; i++) {
+        auto &out = p.outputs[0][i];
+        out = applyMultiplierAndRShift(out, 1, rshift_v->at(0), CVI_QUANT);
+        out = out_type.isUnsignedInteger(8) ? Quant::to_uint8(out)
+                                            : Quant::to_int8(out);
+      }
+    } else {
+      auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
+      auto rshift_v = Module::getI64Array(rshifts(), 2, 0);
+      auto lhs_num_elem = Module::getNumElements(inputs()[0]);
+      auto rhs_num_elem = Module::getNumElements(inputs()[1]);
+      std::vector<float> lhs_tmp(lhs_num_elem);
+      std::vector<float> rhs_tmp(rhs_num_elem);
+#pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
+      for (int i = 0; i < lhs_num_elem; i++) {
+        lhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[0][i], multiplier_v->at(0), rshift_v->at(0));
+      }
+#pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
+      for (int i = 0; i < rhs_num_elem; i++) {
+        rhs_tmp[i] = applyMultiplierAndRShift(
+            p.inputs[1][i], multiplier_v->at(1), rshift_v->at(1));
+      }
+
+      auto binary = (Binary *)p.handle;
+      (*binary)
+          .lhs(lhs_tmp.data(), Module::getShape(inputs()[0]))
+          .rhs(rhs_tmp.data(), Module::getShape(inputs()[1]))
+          .run();
+
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+      for (int i = 0; i < num_elem; i++) {
+        auto &out = p.outputs[0][i];
+        out = out_type.isUnsignedInteger(8) ? Quant::to_uint8(out)
+                                            : Quant::to_int8(out);
+      }
     }
   } else {
     auto lhs_num_elem = Module::getNumElements(inputs()[0]);

@@ -369,7 +369,7 @@ class OnnxConverter(BaseConverter):
         assert (len(onnx_node.inputs) == 2)
         if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
             onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
-            self.convert_mul_op(onnx_node)
+            self.convert_add_op(onnx_node)
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         if not self.isWeight(onnx_node.inputs[0]) and self.isWeight(onnx_node.inputs[1]):

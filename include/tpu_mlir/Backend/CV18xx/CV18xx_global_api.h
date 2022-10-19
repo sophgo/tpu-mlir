@@ -29,6 +29,15 @@ void cvi_backend_tg_fixed_conv_kernel(
     std::vector<uint8_t> *new_filter = nullptr, int pad_value = 0,
     gaddr_t ga_scale_lut = GA_INVALID);
 
+void cvi_backend_tg_fixed_eltwise_add_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id,
+    gaddr_t ga_inputs[], gaddr_t ga_output,
+    int32_t operand_num, int32_t n, int32_t c,
+    int32_t h, int32_t w, bool do_relu, bool do_early_stride,
+    int32_t stride_h, int32_t stride_w, int32_t rshift,
+    const int32_t *multipliers,
+    const int32_t *coeffs);
+
 void cvi_backend_tg_quant_kernel(
     const CviBackendContext &ctx,
     uint32_t layer_id,

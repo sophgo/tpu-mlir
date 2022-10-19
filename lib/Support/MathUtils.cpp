@@ -375,6 +375,10 @@ void getRShiftAndMultiplierFromQScale(double double_multiplier,
   }
 }
 
+int8_t getMultiplierI8FromQScaleAndRShift(double qscale, int8_t rshift) {
+  return (uint32_t)(qscale * (1 << rshift));
+}
+
 void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst, int len,
                                        float threshold_y, float threshold_x,
                                        int64_t rshift, int64_t multiplier,
@@ -505,7 +509,7 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
                                          (int32_t)rshift);
   } else if (m_type == CVI_QUANT) {
-    return helper::Quant::to_int((float)(((v * multiplier)) / (1 << rshift)),
+    return helper::Quant::to_int(((((float)v * multiplier)) / (1 << rshift)),
                                  ROUNDING_HALF_UP);
   } else if (m_type == CVI_QDM_QUANT) {
     return RoundingDivideByPOT(
