@@ -458,13 +458,9 @@ template int64_t RightShiftRound(int64_t src, int shift_num,
 
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift,
-                                      bool postive_rshift) {
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
+                                      int shift) {
   // int shift = -(rshift - 31);
-  if (postive_rshift) {
-    // for cv18xx which rshift store in postive value
-    shift = -shift;
-  }
   int64_t value = shift > 0 ? x << shift : x;
   value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
   if (value > (1ll << 31) - 1)

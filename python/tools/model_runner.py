@@ -54,6 +54,9 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
+            qzero_point = 0
+            if hasattr(i, "qzero_point"):
+                qzero_point = i.qzero_point
             outputs[i.name] = np.array(
                 (i.data.astype(np.float32) - qzero_point) * np.float32(i.qscale),
                 dtype=np.float32)

@@ -82,19 +82,50 @@ struct Quant {
   static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
                                    bool &sign, bool asymmetric);
 
-  static int32_t to_int(float_t v, RoundingMode round_mode);
+  template <typename T> static int64_t to_int(T v, RoundingMode round_mode) {
+    // round_mode:
+    // HALF_DOWN for bm168x
+    // ROUNDING_HALF_TO_EVEN for cv18xx
+    // ROUNDING_DOWN  for cv18xx
+    // ROUNDING_HALF_UP for cv18xx
+    int64_t i64_val;
+    if (round_mode == ROUNDING_HALF_DOWN) {
+      i64_val = std::round(v);
+    } else if (round_mode == ROUNDING_DOWN) {
+      i64_val = (int64_t)v;
+    } else if (round_mode == ROUNDING_HALF_TO_EVEN) {
+      float fraction, integer;
+      float abs_v = std::abs(v);
+      fraction = std::modf(abs_v, &integer);
+      i64_val = (int64_t)integer;
+      if (fraction > 0.5) {
+        i64_val = i64_val + 1;
+      } else if (fraction == 0.5) {
+        if (i64_val & 0x01) {
+          i64_val = i64_val + 1;
+        }
+      }
+      if (v < 0) {
+        i64_val = -i64_val;
+      }
+    } else if (round_mode == ROUNDING_HALF_UP) {
+      i64_val = floor(v + 0.5);
+    } else {
+      llvm_unreachable("not support round_mode.");
+    }
+    return i64_val;
+  }
 
   template <typename T>
-  static inline int8_t to_int8(T value,
-                               RoundingMode round_mode = ROUNDING_HALF_DOWN) {
-    auto v = to_int((float)value, round_mode);
+  static int8_t to_int8(T value, RoundingMode round_mode = ROUNDING_HALF_DOWN) {
+    auto v = to_int(value, round_mode);
     return v > 127 ? 127 : v < -128 ? -128 : v;
   };
 
   template <typename T>
-  static inline uint8_t to_uint8(T value,
-                                 RoundingMode round_mode = ROUNDING_HALF_DOWN) {
-    auto v = to_int((float)value, round_mode);
+  static uint8_t to_uint8(T value,
+                          RoundingMode round_mode = ROUNDING_HALF_DOWN) {
+    auto v = to_int(value, round_mode);
     return v > 255 ? 255 : v < 0 ? 0 : v;
   }
   static mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
