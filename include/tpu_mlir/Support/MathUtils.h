@@ -107,8 +107,7 @@ void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst, int len,
 template <typename T>
 T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift,
-                                      bool postive_rshift = false);
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
                                  MultiplierType m_type = BM_QUANT);
 
