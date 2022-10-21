@@ -22,11 +22,11 @@ void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp op,
 }
 
 void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
-  lowering_common_float<tpu::DivOp, BFloat16Type>(rewriter, op.getOperation());
+  lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
 }
 
 void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
-  lowering_common_float<tpu::DivOp, Float16Type>(rewriter, op.getOperation());
+  lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
 }
 
 void DivLowering::LoweringQuantized(PatternRewriter &rewriter,
