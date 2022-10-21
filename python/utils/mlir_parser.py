@@ -8,7 +8,6 @@
 #
 # ==============================================================================
 
-import os
 import sys
 import mlir
 import re
@@ -112,10 +111,13 @@ class MlirParser:
         self.body = self.module.body.operations[0].regions[0].blocks[0]
         self.attrs = Operation.attrs(self.module.operation)
         self.ops = []
+        self.return_op = None
         for i in range(len(self.body.operations)):
             op = self.body.operations[i]
             type = Operation.type(op)
-            if type in ['top.None','top.Weight', 'func.return']:
+            if type in ['top.None', 'top.Weight', 'func.return']:
+                if type == 'func.return':
+                    self.return_op = op
                 continue
             self.ops.append(Operation(op, self.body, i))
         self.inputs = []
@@ -151,7 +153,6 @@ class MlirParser:
                 count += 1
         return count
 
-
     def get_op_by_op_name(self, op_name):
         for op in self.ops:
             if op.name == op_name:
@@ -170,6 +171,22 @@ class MlirParser:
                 return op.type
         return None
 
+    # the func is to get a dict with output names and corresponding shapes
+    def get_output_op_names_n_shapes(self):
+        if not self.return_op:
+            return []
+        outputs = {}
+        for op in self.body.operations:
+            if op == self.return_op:
+                continue
+            for opd in self.return_op.operands:
+                if op.result == opd:
+                    shape_type = mlir.ir.ShapedType(opd.type)
+                    shape = [shape_type.get_dim_size(
+                        i) for i in range(shape_type.rank)]
+                    name = Operation.name(op)
+                    outputs[name] = shape
+        return outputs
 
 
 if __name__ == '__main__':
