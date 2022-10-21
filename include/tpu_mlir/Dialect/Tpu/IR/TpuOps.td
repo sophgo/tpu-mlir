@@ -433,8 +433,8 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
-    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
+    DefaultValuedAttr<I64ArrayAttr, "{0}">:$rshifts,
     DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info

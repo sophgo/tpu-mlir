@@ -46,7 +46,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   for (int c = 0; c < attr.oc; c++) { // per-channel quantize
     float *p_filter = filter_f32->data() + c * inner_dim;
     float w_max = findMaxabs(p_filter, inner_dim);
-    double qscale = getQcaleForFilter(w_max, out_thr, in_thr);
+    double qscale = getQscaleForFilter(w_max, out_thr, in_thr);
     if (qscale >= 1) {
       // Now cv18xx not support lshift, if qscale > 1, rshift <= 0 not working
       // now we fix threshold_w to limit value qscale = (thr_w * thr_x) / (127.0

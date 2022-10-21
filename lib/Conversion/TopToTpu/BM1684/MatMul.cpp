@@ -53,7 +53,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     }
   }
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
+      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift)));
   float scale = 1.0 * (1 << rshift) * th_input / th_output;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   quantizeToInt8(filter_f32->data(), filter_int8->data(), filter_f32->size(),

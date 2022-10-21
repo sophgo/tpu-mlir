@@ -70,9 +70,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   get_scale_and_shift(scale_f, scale, shift, 32);
 
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(shift)));
+      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(shift)));
   attrs.push_back(
-      rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(scale)));
+      rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(scale)));
   auto filter_type = op.right().getType().cast<RankedTensorType>();
   auto new_type =
       RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
@@ -194,9 +194,9 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     attrs.push_back(rewriter.getNamedAttr(
         "right_zp", rewriter.getI64IntegerAttr(right_zero_point)));
   attrs.push_back(rewriter.getNamedAttr(
-      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
+      "multipliers", rewriter.getI64ArrayAttr(multiplier)));
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
+      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(-shift)));
   attrs.push_back(rewriter.getNamedAttr(
       "quant_mode",
       tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
