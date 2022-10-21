@@ -236,7 +236,7 @@ protected:
       updateOperandsLiveRange(op, endPosition);
       chosen = false;
       printf("op name:%s case fuse\n", Module::getName(op).str().c_str());
-    } else if (llvm::cast<TpuDialect>(op->getDialect())) {
+    } else if (op->getDialect()->getNamespace() == "tpu") {
       liveRange[op] = {loc, 0xFFFFFFFF};
       updateOperandsLiveRange(op, endPosition);
       chosen = true;

@@ -29,7 +29,7 @@ LOWERING_CV18XX(Add)
 LOWERING_CV18XX(AvgPool)
 LOWERING_CV18XX(Conv)
 LOWERING_CV18XX(Cast)
+LOWERING_CV18XX(MatMul)
 LOWERING_CV18XX(MaxPool)
-
 } // namespace bm1684x
 } // namespace tpu_mlir

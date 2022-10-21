@@ -37,18 +37,18 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         net = model
     for i in net.inputs:
         assert i.name in inputs
-        assert i.data.shape == inputs[i.name].shape
+        assert np.prod(i.data.shape) == np.prod(inputs[i.name].shape)
         qzero_point = 0
         if hasattr(i, "qzero_point"):
             qzero_point = i.qzero_point
         if i.data.dtype == inputs[i.name].dtype:
-            i.data[:] = inputs[i.name]
+            i.data[:] = inputs[i.name].reshape(i.data.shape)
         elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
             data = round_away_from_zero(inputs[i.name] * i.qscale + qzero_point)
-            i.data[:] = np.clip(data, -128, 127).astype(np.int8)
+            i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
         elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:
             data = round_away_from_zero(inputs[i.name] * i.qscale + qzero_point)
-            i.data[:] = np.clip(data, 0, 255).astype(np.uint8)
+            i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
         else:
             raise ValueError(f"unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()

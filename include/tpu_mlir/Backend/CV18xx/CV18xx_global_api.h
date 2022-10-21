@@ -59,6 +59,17 @@ void cvi_backend_tg_fixed_max_pooling_kernel(
     int n, int c, int h, int w, int kh, int kw, int pad_top, int pad_bot,
     int pad_left, int pad_right, int stride_h, int stride_w,
     bool do_relu, bool ceil_mode);
+
+void cvi_backend_tg_fixed_fc_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+    gaddr_t ga_weight, gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
+    bool have_bias, bool do_relu, std::vector<int> rshift_width,
+    std::vector<int> multiplier,
+    const std::vector<uint8_t> *old_filter = nullptr,
+    std::vector<uint8_t> *new_filter = nullptr, int batch_high = 1,
+    int batch_low = 1, bool lstride = false, bool rstride = false,
+    bool ostride = false);
+
 } // namespace backend
 } // namespace tpu_mlir
 #endif /* CVI_BACKEND_GLOBAL_API */
