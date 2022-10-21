@@ -76,8 +76,7 @@ class ONNX_IR_TESTER(object):
             #############################
             "LayerGroup": self.test_LayerGroup,
         }
-        self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
-        #self.quant_modes = ["f16", "bf16"]  # add later
+        self.quant_modes = ["f32", "int8", "f16", "bf16"]  # no quantization when quant_mode == "f32"
 
     def test_single(self, case: str):
         print("Test: {}".format(case))
