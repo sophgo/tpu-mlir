@@ -52,6 +52,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
+  BM1684x::fix_shape(input_spec->at(0), {(int32_t)M, (int32_t)K});
+  BM1684x::fix_shape(input_spec->at(1), {(int32_t)K, (int32_t)N});
+  BM1684x::fix_shape(output_spec->at(0), {(int32_t)M, (int32_t)N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.if_relu = relu;
