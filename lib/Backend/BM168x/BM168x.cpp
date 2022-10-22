@@ -181,6 +181,20 @@ BM168x::get_output_spec(Operation *op) {
   return std::move(specs);
 }
 
+void BM168x::fix_shape(tensor_spec_t &spec,
+                       const std::vector<int32_t> &new_shape) {
+  assert(new_shape.size() <= MAX_SHAPE_DIMS);
+  auto &old_shape = spec.shape;
+  int64_t new_num = std::accumulate(new_shape.begin(), new_shape.end(), 1,
+                                    std::multiplies<int32_t>());
+  int64_t old_num = std::accumulate(old_shape, old_shape + spec.dims, 1,
+                                    std::multiplies<int32_t>());
+  assert(new_num == old_num);
+  memset(old_shape, 0, sizeof(old_shape));
+  std::copy(new_shape.begin(), new_shape.end(), old_shape);
+  spec.dims = new_shape.size();
+}
+
 stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
                                     int64_t W) {
   stride_4D_t s;

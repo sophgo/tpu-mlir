@@ -506,13 +506,6 @@ class OnnxConverter(BaseConverter):
         A = onnx_node.inputs[0]
         B = onnx_node.inputs[1]
         in_op = self.getOperand(A)
-        in_shape = self.getShape(A)
-        b_shape = self.getShape(B)
-        if len(b_shape) == 2 and len(in_shape) > 2:
-            # [1,1024,1,1]*[1024,1000] => [1,1024]*[1024,1000]
-            new_dim = int(np.prod(in_shape[1:]))
-            in_op = self.mlir.create_reshape_op([in_op], [in_shape[0], new_dim],
-                                                **{'name': A + "_reshape"})
         operands.append(in_op)
 
         assert (self.isWeight(B))

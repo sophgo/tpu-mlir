@@ -451,13 +451,6 @@ class CaffeConverter(BaseConverter):
             filter = self.layer_dict[layer.name].blobs[0].data
             new_filter = np.ascontiguousarray(np.transpose(filter, (1, 0)))
             filter_op = self.create_weight_op(layer.name + "_filter", new_filter)
-        input_shape = self.getShape(layer.bottom[0])
-        if len(input_shape) > 2:
-            new_dim = 1
-            for dim in input_shape[1:]:
-                new_dim *= dim
-            in_op = self.mlir.create_reshape_op([in_op], [input_shape[0], new_dim],
-                                                **{'name': layer.bottom[0] + "_reshape"})
         attrs = {'name': self.get_loc(layer.top[0]), "do_relu": False}
         bias_op = self.mlir.none_op
         if with_bias:

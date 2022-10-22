@@ -237,27 +237,27 @@ typedef enum {
 
 // use for constbinary
 typedef struct constbinary_common_spec {
-    float B_const_val;
-    int B_dtype;
-    int inversed;
-    int binary_type;
-    int if_relu;
-    float relu_upper_limit;
-    int scale_A;
-    int rshift_A;
+  float B_const_val;
+  int B_dtype;
+  int inversed;
+  int binary_type;
+  int if_relu;
+  float relu_upper_limit;
+  int scale_A;
+  int rshift_A;
 } constbinary_common_spec_t;
 
 typedef struct constbinary_global_spec {
-    constbinary_common_spec_t common;
+  constbinary_common_spec_t common;
 } constbinary_global_spec_t;
 
 typedef struct constbinary_local_spec {
-    constbinary_common_spec_t common;
-    uint32_t buffer_addr;
+  constbinary_common_spec_t common;
+  uint32_t buffer_addr;
 } constbinary_local_spec_t;
 
 typedef struct constbinary_local_param {
-    constbinary_local_spec_t spec;
+  constbinary_local_spec_t spec;
 } constbinary_local_param_t;
 
 typedef struct {
@@ -432,6 +432,8 @@ public:
   get_input_spec(mlir::Operation *op);
   static std::shared_ptr<std::vector<tensor_spec_t>>
   get_output_spec(mlir::Operation *op);
+  static void fix_shape(tensor_spec_t &spec,
+                        const std::vector<int32_t> &new_shape);
 
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);

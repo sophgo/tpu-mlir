@@ -18,28 +18,36 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
+// clang-format off
+// case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7
+// case 2: [1, 512, 7, 7] * [25088, 4096] = [1, 4096] => batch = 1, M = 1, K = 25088, N = 4096
+// case 3: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7] => batch = 12, M = 5, K = 6, N = 7
+// case 4: [4, 5, 6] * [6,7] = [4, 5, 7] => batch =1, M = 20, K = 6, N = 7
+// clang-format on
 void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                                int64_t &N, bool &with_bias, bool &relu,
                                double &limit, int64_t &zp) {
-  auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto r_s = right().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
+  auto a_s = Module::getShape(input());
+  auto b_s = Module::getShape(right());
+  auto o_s = Module::getShape(output());
   with_bias = !bias().getType().isa<mlir::NoneType>();
   relu = do_relu();
-  limit = relu_limit().convertToDouble();
+  limit = this->relu_limit().convertToDouble();
   zp = right_zp();
-  auto r_dims = r_s.size();
-  auto i_dims = i_s.size();
-  N = r_s[r_dims - 1];
-  K = r_s[r_dims - 2];
-  if (r_dims > 2) {
-    M = i_s[i_dims - 2];
-    assert(i_s[i_dims - 1] == K);
-    batch = std::accumulate(r_s.begin(), r_s.begin() + r_dims - 2, 1,
-                            std::multiplies<int64_t>());
+  auto b_dims = b_s.size();
+  auto o_dims = o_s.size();
+  assert(b_dims >= 2);
+  N = b_s[b_dims - 1];
+  assert(N == o_s[o_dims - 1]);
+  K = b_s[b_dims - 2];
+  batch = 1;
+  for (int i = 0; i < b_dims - 2; i++) {
+    batch *= b_s[i];
+  }
+  if (batch > 1 || o_dims <= 2) {
+    M = o_s[o_dims - 2];
   } else {
-    batch = 1;
-    M = std::accumulate(i_s.begin(), i_s.begin() + i_dims - 1, 1,
+    M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                         std::multiplies<int64_t>());
   }
 }

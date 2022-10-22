@@ -46,6 +46,7 @@ class ONNX_IR_TESTER(object):
             "Expand": self.test_Expand,
             "Gather": self.test_Gather,
             "GatherToSlice": self.test_GatherToSlice,
+            "Gemm": self.test_Gemm,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
             "LayerGroup2": self.test_LayerGroup2,
@@ -53,6 +54,7 @@ class ONNX_IR_TESTER(object):
             "MaxPool1D": self.test_MaxPool1D,
             "MaxPool2D": self.test_MaxPool2D,
             "MaxPool3D": self.test_MaxPool3D,
+            "MatMul": self.test_MatMul,
             "Mul": self.test_Mul,
             "MulConst": self.test_MulConst,
             "Pad0": self.test_Pad0,  # zero pad
@@ -532,15 +534,48 @@ class ONNX_IR_TESTER(object):
                                        data_type=TensorProto.FLOAT,
                                        dims=[],
                                        vals=[2.0])
-        initializer = list()
-        initializer.append(mul_const)
 
         const_mul_def = helper.make_node("Mul", inputs=["input", "const_mul"], outputs=["output"])
 
         graph_def = helper.make_graph([const_mul_def],
                                       case_name, [input], [output],
-                                      initializer=initializer)
+                                      initializer=[mul_const])
         self.onnx_and_test({"input": input_data}, graph_def)
+
+    def test_Gemm(self, case_name):
+        M = 50
+        K = 100
+        N = 25
+        input_shape = [M, K]
+        weight_shape = [K, N]
+        bias_shape = [N]
+        output_shape = [M, N]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        bias_data = np.random.randn(*bias_shape).astype(np.float32)
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+        gemm_def = helper.make_node("Gemm", inputs=["input", "weight", "bias"], outputs=["output"])
+        graph_def = helper.make_graph([gemm_def], case_name, [input], [output], initializer=[weight, bias])
+        self.onnx_and_test({"input":input_data}, graph_def)
+
+    def test_MatMul(self, case_name):
+        M = 50
+        K = 100
+        N = 25
+        input_shape = [10, M, K]
+        weight_shape = [K, N]
+        output_shape = [10, M, N]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
+        gemm_def = helper.make_node("MatMul", inputs=["input", "weight"], outputs=["output"])
+        graph_def = helper.make_graph([gemm_def], case_name, [input], [output], initializer=[weight])
+        self.onnx_and_test({"input":input_data}, graph_def)
 
     def test_Scale(self, case_name):
         input_shape = [1, 32, 100, 100]
