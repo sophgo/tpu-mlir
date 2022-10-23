@@ -74,6 +74,7 @@ int64_t GmemAllocator::assignSpecifiedGmemToOp(
   }
   return size;
   */
+  return 0;
 }
 
 

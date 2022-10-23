@@ -110,6 +110,7 @@ class OnnxConverter(BaseConverter):
 
         self.onnxop_factory = {
             #pls add the Op alphabetically
+            "Abs": lambda node: self.convert_abs_op(node),
             "Add": lambda node: self.convert_add_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
@@ -130,9 +131,13 @@ class OnnxConverter(BaseConverter):
             "Log": lambda node: self.convert_log_op(node),
             "LSTM": lambda node: self.convert_lstm_op(node),
             "MatMul": lambda node: self.convert_gemm_op(node),
+            "Max": lambda node: self.convert_max_op(node),
             "MaxPool": lambda node: self.convert_maxpool_op(node),
+            "Min": lambda node: self.convert_min_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
+            "Neg": lambda node: self.convert_neg_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
+            "PRelu": lambda node: self.convert_prelu_op(node),
             "ReduceMean": lambda node: self.convert_reduce_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
@@ -145,10 +150,6 @@ class OnnxConverter(BaseConverter):
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
-            "Max": lambda node: self.convert_max_op(node),
-            "Min": lambda node: self.convert_min_op(node),
-            "Abs": lambda node: self.convert_abs_op(node),
-            "Neg": lambda node: self.convert_neg_op(node),
         }
 
     def __del__(self):
@@ -1367,3 +1368,27 @@ class OnnxConverter(BaseConverter):
         p = {'name': name, 'const_val': -1.0}
         mul_const_op = self.mlir.create_mul_const_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, mul_const_op)
+
+    def convert_prelu_op(self, onnx_node):
+        assert (onnx_node.op_type == "PRelu")
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        p = {'name': name}
+        in_op = self.getOperand(onnx_node.inputs[0])
+        slope_shape = self.getShape(onnx_node.inputs[1])
+        num_slope = np.prod(slope_shape)
+        if num_slope == 1:
+            weight = self.getWeight(onnx_node.inputs[1])
+            p['alpha'] = weight.flatten()[0]
+            new_op = self.mlir.create_leaky_relu_op([in_op], output_shape, **p)
+            self.addOperand(onnx_node.name, new_op)
+            return
+        in_shape = self.getShape(onnx_node.inputs[0])
+        slope_shape = [1] * len(in_shape)
+        if len(in_shape) > 1:
+            slope_shape[1] = num_slope
+        else:
+            slope_shape[0] = num_slope
+        slope = self.getWeightOp(onnx_node.inputs[1], slope_shape)
+        output_shape = self.getShape(onnx_node.name)
+        prelu_op = self.mlir.create_prelu_op([in_op, slope], output_shape, **p)
+        self.addOperand(onnx_node.name, prelu_op)

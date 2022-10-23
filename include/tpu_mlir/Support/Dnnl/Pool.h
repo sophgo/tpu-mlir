@@ -46,12 +46,11 @@ class Pooling {
 public:
   Pooling();
   ~Pooling();
-
-  void pad_init(float *input, pool_attr_t &attr, int izp);
   void setup(float *input, float *output, pool_attr_t attr, bool is_avg,
              int izp = 0);
   void run();
-
+private:
+  void pad_init(float *input, pool_attr_t &attr, int izp);
 public:
   int kd, kh, kw;
 

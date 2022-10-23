@@ -56,13 +56,12 @@ class Deconv {
 public:
   Deconv();
   ~Deconv();
-
-  void pad_init(float *input, deconv_attr_t &attr, int izp);
   void setup(float *input, float *weight, float *bias, float *output,
              deconv_attr_t &attr, int izp = 0);
 
   void run();
-
+private:
+  void pad_init(float *input, deconv_attr_t &attr, int izp);
 public:
   int kd, kh, kw;
 

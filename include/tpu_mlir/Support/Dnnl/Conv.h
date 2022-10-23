@@ -41,14 +41,12 @@ class Conv {
 public:
   Conv();
   ~Conv();
-
-  void pad_init(float *input, conv_attr_t &attr);
   void filter_init(float *weight, conv_attr_t &attr);
   void setup(float *input, float *weight, float *bias, float *output,
              conv_attr_t attr);
-
   void run();
-
+private:
+  void pad_init(float *input, conv_attr_t &attr);
 private:
   engine eng;
   stream eng_stream;

@@ -65,10 +65,14 @@ class BaseConverter(object):
             raise KeyError("No {} tensor in model".format(name))
         return self.tensors[name]
 
-    def getWeightOp(self, name):
+    def getWeightOp(self, name, shape:list=[]):
         if name not in self.tensors:
             raise KeyError("Should addWeight first:{}!!!".format(name))
-        op = self.mlir.create_weight_op(name, self.getShape(name))
+        old_shape = self.getShape(name)
+        if shape and old_shape != shape:
+            assert(np.prod(old_shape) == np.prod(shape))
+            old_shape = shape
+        op = self.mlir.create_weight_op(name, old_shape)
         self.addOperand(name, op)
         return op
 

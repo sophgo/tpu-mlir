@@ -14,7 +14,7 @@
 #include "tpu_mlir/Support/Dnnl/MatMul.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Dnnl/Deconv.h"
-
+#include "tpu_mlir/Support/Dnnl/PRelu.h"
 #include "mlir/IR/OpDefinition.h"
 
 namespace tpu_mlir {

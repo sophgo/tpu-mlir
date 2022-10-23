@@ -299,6 +299,21 @@ typedef struct {
   DATA_TYPE_T output_dtype;
 } dequant_int_param_t;
 
+typedef struct {
+  unsigned long long input_addr;
+  unsigned long long slope_addr;
+  unsigned long long output_addr;
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int channel_shared;
+  float slope_val;
+  int rshift_bit;
+  float relu_limit;
+  DATA_TYPE_T dtype;
+} prelu_param_t;
+
 #ifdef __cplusplus
 }
 #endif

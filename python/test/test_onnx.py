@@ -61,6 +61,7 @@ class ONNX_IR_TESTER(object):
             "Pad1": self.test_Pad1,  # pad val
             # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
             "PadReflect": self.test_PadReflect,
+            "PRelu": self.test_PRelu,
             "Resize": self.test_Resize,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
@@ -153,12 +154,12 @@ class ONNX_IR_TESTER(object):
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
         if self.chip.find("cv18") >= 0:
-          # for cv183x cv182x cv181 cv180
-          bmodel = tpu_mlir + ".cvimodel"
-          mlir_to_cvi_model(tpu_mlir + ".mlir", bmodel, tpu_final)
+            # for cv183x cv182x cv181 cv180
+            bmodel = tpu_mlir + ".cvimodel"
+            mlir_to_cvi_model(tpu_mlir + ".mlir", bmodel, tpu_final)
         else:
-          bmodel = tpu_mlir + ".bmodel"
-          mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
+            bmodel = tpu_mlir + ".bmodel"
+            mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
 
         return (tpu_mlir + ".mlir", bmodel)
 
@@ -249,7 +250,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(in_data, onnx_model.graph, model_name)
 
-    def onnx_and_test(self, input_data: dict, graph_def, name:str=""):
+    def onnx_and_test(self, input_data: dict, graph_def, name: str = ""):
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
         # test onnx and mlir outputs
@@ -558,8 +559,10 @@ class ONNX_IR_TESTER(object):
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
         gemm_def = helper.make_node("Gemm", inputs=["input", "weight", "bias"], outputs=["output"])
-        graph_def = helper.make_graph([gemm_def], case_name, [input], [output], initializer=[weight, bias])
-        self.onnx_and_test({"input":input_data}, graph_def)
+        graph_def = helper.make_graph([gemm_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias])
+        self.onnx_and_test({"input": input_data}, graph_def)
 
     def test_MatMul(self, case_name):
         M = 50
@@ -574,8 +577,10 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
         gemm_def = helper.make_node("MatMul", inputs=["input", "weight"], outputs=["output"])
-        graph_def = helper.make_graph([gemm_def], case_name, [input], [output], initializer=[weight])
-        self.onnx_and_test({"input":input_data}, graph_def)
+        graph_def = helper.make_graph([gemm_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight])
+        self.onnx_and_test({"input": input_data}, graph_def)
 
     def test_Scale(self, case_name):
         input_shape = [1, 32, 100, 100]
@@ -1181,6 +1186,23 @@ class ONNX_IR_TESTER(object):
         )
         graph_def = helper.make_graph([abs_def], case_name, [input], [output])
         self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_PRelu(self, case_name):
+        input_shape = [3, 5, 100, 100]
+        slope_shape = [1, 5, 1, 1]
+        output_shape = [3, 5, 100, 100]
+        input = np.random.randn(*input_shape).astype(np.float32)
+        slope = helper.make_tensor(name='slope',
+                                   data_type=onnx.TensorProto.FLOAT,
+                                   dims=slope_shape,
+                                   vals=[0.40, 0.37, 0.31, 0.19, 0.11])
+
+        inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)]
+        outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)]
+        prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output"])
+        graph_def = helper.make_graph([prelu_def], case_name, inputs, outputs, initializer=[slope])
+        self.onnx_and_test({"input": input}, graph_def)
+
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
