@@ -1028,4 +1028,20 @@ def Tpu_AbsOp : Tpu_Op<"Abs", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_PReluOp : Tpu_Op<"PReluOp", [
+  DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  let summary = "PReluOp operator";
+  let description = [{
+     f(x) = slope * x   for x < 0
+     f(x) = x           for x >= 0
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$slope,
+    DefaultValuedAttr<SI32Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

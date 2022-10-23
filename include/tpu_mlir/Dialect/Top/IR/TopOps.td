@@ -776,4 +776,18 @@ def Top_AbsOp : Top_Op<"Abs", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_PReluOp : Top_Op<"PRelu", [InOutSameDim]> {
+  let summary = "PRelu operator";
+  let description = [{
+     f(x) = slope * x   for x < 0
+     f(x) = x           for x >= 0
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$slope
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

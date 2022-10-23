@@ -210,6 +210,7 @@ protected:
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::ReshapeOp>,
                  BackwardCalibartion<top::LeakyReluOp>,
+                 BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
     // clang-format on
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
@@ -224,6 +225,7 @@ protected:
                  ForwardCalibartion<top::PermuteOp>,
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>,
+                 ForwardCalibartion<top::PReluOp>,
                  ForwardCalibartion<top::AbsOp>
                 >(ctx_);
     // clang-format on
