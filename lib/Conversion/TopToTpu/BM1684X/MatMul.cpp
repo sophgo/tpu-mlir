@@ -107,9 +107,13 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   if (auto rightOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
     operands.push_back(rightOp.clone_bf16(op));
   }
-  if (auto rightOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
-    operands.push_back(rightOp.clone_bf16(op));
+  if (auto biasOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
+    operands.push_back(biasOp.clone_bf16(op));
+  } else {
+    auto none = Module::getNoneOp(op);
+    operands.push_back(none);
   }
+
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -129,8 +133,11 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   if (auto rightOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
     operands.push_back(rightOp.clone_f16(op));
   }
-  if (auto rightOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
-    operands.push_back(rightOp.clone_f16(op));
+  if (auto biasOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
+    operands.push_back(biasOp.clone_f16(op));
+  } else {
+    auto none = Module::getNoneOp(op);
+    operands.push_back(none);
   }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
