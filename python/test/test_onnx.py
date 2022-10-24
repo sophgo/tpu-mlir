@@ -80,8 +80,9 @@ class ONNX_IR_TESTER(object):
             #############################
             "LayerGroup": self.test_LayerGroup,
         }
+
         self.quant_modes = ["f32", "int8"]  # no quantization when quant_mode == "f32"
-        #self.quant_modes = ["f16", "bf16"]  # add later
+        # self.quant_modes = ["f32", "int8", "f16", "bf16"]  # no quantization when quant_mode == "f32"
         self.chip = self.get_chip_name()
         if self.chip.find("cv18") >= 0:
             self.quant_modes = ["int8"]
@@ -400,6 +401,20 @@ class ONNX_IR_TESTER(object):
                       stride=[1, 1],
                       dilation=[1, 1],
                       groups=1)
+
+    # def test_Conv2d(self, case_name):
+    #     input_shape = [4, 3, 10, 10]
+    #     filter_shape = [8, 3, 3, 3]
+    #     output_shape = [4, 8, 10, 10]
+    #     self.ConvBase(case_name,
+    #                   input_shape,
+    #                   filter_shape,
+    #                   output_shape,
+    #                   kernel=[3, 3],
+    #                   padding=[1, 1, 1, 1],
+    #                   stride=[1, 1],
+    #                   dilation=[1, 1],
+    #                   groups=1)
 
     def test_Conv3d(self, case_name):
         oc = 32
