@@ -17,7 +17,9 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       // clang-format off
       AddLowering,
       AvgPoolLowering,
-      ConvLowering
+      CastLowering,
+      ConvLowering,
+      MaxPoolLowering
       // clang-format on
       >(patterns->getContext());
 }

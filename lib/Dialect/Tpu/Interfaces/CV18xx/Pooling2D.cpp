@@ -8,47 +8,53 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::helper;
-// using namespace tpu_mlir::backend;
 
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::Pool2DOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::Pool2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
   pool_attr_t attrs = {0};
   parseParam(&attrs);
+  assert(!attrs.do_relu);
+  gaddr_t ga_input = Module::getAddress(input());
+  gaddr_t ga_output = Module::getAddress(output());
   if (pool_mode() == tpu::PoolMode::Avg) {
-    assert(!attrs.do_relu);
-    gaddr_t ga_input = Module::getAddress(input());
-    gaddr_t ga_output = Module::getAddress(output());
-
     cvi_backend_tg_fixed_avg_pooling_kernel(
-    *backend_ctx,
-    layer_id, // layer_id,
-    ga_input,            // input_data_gaddr,
-    ga_output,           // output_data_gaddr,
-    attrs.n, attrs.c, attrs.ih, attrs.iw,
-    attrs.kh, attrs.kw,
-    attrs.pad_h, attrs.pad_h_after,
-    attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
-    attrs.sh, attrs.sw,
-    attrs.do_relu,        // int do_relu,
-    (int8_t)rshift().value(),       // int right_shift_width,
-    (int8_t)multiplier().value(),   // &threshold_x_quantized,
-    true);
-
+        *backend_ctx,
+        layer_id,  // layer_id,
+        ga_input,  // input_data_gaddr,
+        ga_output, // output_data_gaddr,
+        attrs.n, attrs.c, attrs.ih, attrs.iw, attrs.kh, attrs.kw, attrs.pad_h,
+        attrs.pad_h_after, attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
+        attrs.sh, attrs.sw,
+        attrs.do_relu,                // int do_relu,
+        (int8_t)rshift().value(),     // int right_shift_width,
+        (int8_t)multiplier().value(), // &threshold_x_quantized,
+        true);
+  } else if (pool_mode() == tpu::PoolMode::Max) {
+    cvi_backend_tg_fixed_max_pooling_kernel(
+        *backend_ctx,
+        layer_id,  // layer_id,
+        ga_input,  // input_data_gaddr,
+        ga_output, // output_data_gaddr,
+        attrs.n, attrs.c, attrs.ih, attrs.iw, attrs.kh, attrs.kw, attrs.pad_h,
+        attrs.pad_h_after, attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
+        attrs.sh, attrs.sw,
+        attrs.do_relu, // int do_relu,
+        true);
   } else {
     llvm_unreachable("Not supported now");
   }
