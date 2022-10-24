@@ -473,44 +473,19 @@ int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
   return (int32_t)value;
 }
 
-// for cv18xx USE_GOOGLE_GEMMLOWP_QDM
-static inline int32_t RoundingDivideByPOT(int32_t x, int exponent) {
-  if (x == 0) {
-    return 0;
-  }
-  if (exponent == 0) {
-    return x;
-  }
-  assert(exponent > 0 && exponent <= 31);
-  const int32_t mask = (1ll << exponent) - 1;
-  const int32_t remainder = x & mask;
-  const int32_t threshold = (mask >> 1) + ((x < 0) ? 1 : 0);
-  return ((x >> exponent) + ((remainder > threshold) ? 1 : 0));
-}
-
-static inline int32_t SaturatingRoundingDoublingHighMul(int32_t a, int32_t b) {
-  std::int64_t a_64(a);
-  std::int64_t b_64(b);
-  std::int64_t ab_64 = a_64 * b_64;
-  int32_t nudge = ab_64 >= 0 ? (1 << 30) : (1 - (1 << 30));
-  int32_t ab_x2_high32 = static_cast<int32_t>((ab_64 + nudge) / (1ll << 31));
-  return ab_x2_high32;
-}
-
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
                                  MultiplierType m_type) {
   if (m_type == BM_QUANT) {
     return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
-  } else if (m_type == BM_TFLITE_QUANT) {
+  } else if (m_type == BM_TFLITE_QUANT || m_type == CVI_QDM_QUANT) {
+    if (m_type == CVI_QDM_QUANT) {
+      rshift = -rshift;
+    }
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
                                          (int32_t)rshift);
   } else if (m_type == CVI_QUANT) {
     return helper::Quant::to_int(((((float)v * multiplier)) / (1 << rshift)),
                                  ROUNDING_HALF_UP);
-  } else if (m_type == CVI_QDM_QUANT) {
-    return RoundingDivideByPOT(
-        SaturatingRoundingDoublingHighMul((int32_t)v, (int32_t)multiplier),
-        rshift);
   } else {
     llvm_unreachable("unsupport quant multiplier type.");
   }
