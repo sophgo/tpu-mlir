@@ -35,8 +35,9 @@ except subprocess.CalledProcessError as call_e:
 tag_find = re.findall("(\d+)\.(\d+)\-(\d+)", tag_str)
 if not tag_find:
     tag_find = re.findall("(\d+)\.(\d+)", tag_str)
-    assert(tag_find)
-release =  ".".join(tag_find[0])
+release = "unknown"
+if tag_find:
+    release =  ".".join(tag_find[0])
 
 
 # -- General configuration ---------------------------------------------------

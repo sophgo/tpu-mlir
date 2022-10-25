@@ -26,6 +26,8 @@ popd
 
 # Clean up some files for release build
 if [ "$1" = "RELEASE" ]; then
+  # build doc
+  ./release_doc.sh
   # strip mlir tools
   pushd $INSTALL_PATH
   find ./ -name "*.so" |xargs strip
