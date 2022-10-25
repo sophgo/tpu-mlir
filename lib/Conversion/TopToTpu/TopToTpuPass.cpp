@@ -11,6 +11,9 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
+#include <sstream>
+#include <fstream>
+#include <regex>
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU
@@ -149,6 +152,7 @@ public:
     LoweringConfig::isAsymmetric = isAsymmetric;
     Module::setChip(module_, LoweringConfig::chip);
     Module::setMode(module_, LoweringConfig::mode);
+
     if (Module::State::TOP_QUANTIZED == state_) {
       Module::setAsymmetric(module_, true);
       LoweringConfig::isAsymmetric = true;
@@ -156,7 +160,7 @@ public:
       Module::setAsymmetric(module_, LoweringConfig::isAsymmetric);
       calibration_process();
     }
-
+    init_qtable();
     RewritePatternSet patterns(ctx_);
     ConversionTarget target(*ctx_);
     target.addLegalDialect<tpu::TpuDialect, func::FuncDialect>();
@@ -166,10 +170,10 @@ public:
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (LoweringConfig::chip == Module::Chip::BM1684) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
-    } else if (LoweringConfig::chip == Module::Chip::CV182x
-               || LoweringConfig::chip == Module::Chip::CV183x) {
-      if (LoweringConfig::mode == Quant::Type::INT8
-          && LoweringConfig::isAsymmetric) {
+    } else if (LoweringConfig::chip == Module::Chip::CV182x ||
+               LoweringConfig::chip == Module::Chip::CV183x) {
+      if (LoweringConfig::mode == Quant::Type::INT8 &&
+          LoweringConfig::isAsymmetric) {
         // Todo support tflite int8
         std::string errorMsg = "Chip: " + LoweringConfig::chip +
                                " not support: " + LoweringConfig::mode +
@@ -303,6 +307,63 @@ protected:
       break;
     }
     return v;
+  }
+
+  static StringRef qmode(const std::string &mode) {
+    std::string tmp = StringRef(mode).upper();
+    if (tmp == Quant::Type::INT8) {
+      return Quant::Type::INT8;
+    }
+    if (tmp == Quant::Type::F16) {
+      return Quant::Type::F16;
+    }
+    if (tmp == Quant::Type::BF16) {
+      return Quant::Type::BF16;
+    }
+    if (tmp == Quant::Type::F32) {
+      return Quant::Type::F32;
+    }
+    llvm_unreachable("Unknown quantize mode");
+    return "";
+  }
+
+  void init_qtable() {
+    LoweringConfig::quantize_map.clear();
+    if (qtable.empty()) {
+      return;
+    }
+    std::regex map_pattern("\\S+\\s+\\S+");
+    std::regex name_pattern("\\S+");
+    std::regex info_pattern("#.*");
+    std::ifstream infile(qtable);
+    if (!infile) {
+      llvm::errs() << "Can't open file: " << qtable << " !\n";
+      llvm_unreachable("Open quantize table failed");
+    }
+    std::string line;
+    while (std::getline(infile, line)) {
+      if (line.back() == '\r') {
+        line.pop_back();
+      }
+      std::istringstream iss(line);
+      std::string name;
+      std::string mode;
+      if (std::regex_match(line, info_pattern)) {
+        continue;
+      }
+      if (std::regex_match(line, map_pattern)) {
+        iss >> name;
+        iss >> mode;
+        LoweringConfig::quantize_map[name] = qmode(mode);
+        continue;
+      }
+      if (std::regex_match(line, name_pattern)) {
+        continue;
+      }
+
+      llvm::errs() << "Error, quantize file in [" << line << "]\n";
+      assert(false);
+    }
   }
 
 protected:
