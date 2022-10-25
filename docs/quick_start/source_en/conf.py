@@ -35,8 +35,9 @@ except subprocess.CalledProcessError as call_e:
 tag_find = re.findall("(\d+)\.(\d+)\-(\d+)", tag_str)
 if not tag_find:
     tag_find = re.findall("(\d+)\.(\d+)", tag_str)
-    assert(tag_find)
-release =  ".".join(tag_find[0])
+release = "unknown"
+if tag_find:
+    release =  ".".join(tag_find[0])
 
 
 # -- General configuration ---------------------------------------------------
@@ -73,7 +74,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = 'zh_CN'
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -117,7 +118,7 @@ html_static_path = ['../assets']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "TPU-MLIR快速入门指南"
+htmlhelp_basename = "TPU-MLIR Quick Start"
 
 
 # 图片和表格自动编号

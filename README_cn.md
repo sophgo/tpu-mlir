@@ -1,4 +1,4 @@
-![](./doc/assets/sophgo_chip.png)
+![](./docs/assets/sophgo_chip.png)
 
 # TPU-MLIR
 
@@ -256,7 +256,7 @@ detect_yolov5.py \
 
 四张图片对比如下：
 
-![](./doc/quick_start/assets/yolov5s.png)
+![](./docs/quick_start/assets/yolov5s.png)
 
 
 # 辅助工具

@@ -14,30 +14,6 @@ cp -rf ${INSTALL_PATH} ${release_archive}
 
 cp -rf ${PROJECT_ROOT}/regression ${release_archive}
 
-# generate tpu-mlir_quick_start_guide
-# ------------------------------------------------------------------------------
-pushd ${PROJECT_ROOT}/doc/quick_start
-make clean
-make pdf
-popd
-mkdir -p ${release_archive}/docs
-cp -f ${PROJECT_ROOT}/doc/quick_start/build_zh/tpu-mlir_quick_start_zh.pdf \
-   ${release_archive}/docs/"TPU-MLIR快速入门指南.pdf"
-cp -f ${PROJECT_ROOT}/doc/quick_start/build_en/tpu-mlir_quick_start_en.pdf \
-   ${release_archive}/docs/"TPU-MLIR_Quick_Start.pdf"
-# ------------------------------------------------------------------------------
-
-# generate tpu-mlir_technical_manual
-# ------------------------------------------------------------------------------
-pushd ${PROJECT_ROOT}/doc/developer_manual
-make clean
-make pdf
-popd
-cp -f ${PROJECT_ROOT}/doc/developer_manual/build_zh/tpu-mlir_technical_manual_zh.pdf \
-   ${release_archive}/docs/"TPU-MLIR开发参考手册.pdf"
-cp -f ${PROJECT_ROOT}/doc/developer_manual/build_en/tpu-mlir_technical_manual_en.pdf \
-   ${release_archive}/docs/"TPU-MLIR_Technical_Reference_Manual.pdf"
-
 # ------------------------------------------------------------------------------
 
 # build a envsetup.sh

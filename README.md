@@ -1,4 +1,4 @@
-![](./doc/assets/sophgo_chip.png)
+![](./docs/assets/sophgo_chip.png)
 
 # TPU-MLIR
 
@@ -257,7 +257,7 @@ detect_yolov5.py \
 
 Outputs of four different models are compared below:
 
-![](./doc/quick_start/assets/yolov5s.png)
+![](./docs/quick_start/assets/yolov5s.png)
 
 
 # Auxiliary Tools
