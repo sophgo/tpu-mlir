@@ -36,7 +36,7 @@ struct LoweringConfig {
   static std::string chip;
   static std::string mode;
   static bool isAsymmetric;
-  static std::map<Operation *, llvm::StringRef> quantize_map;
+  static std::map<std::string, llvm::StringRef> quantize_map;
 };
 
 template <typename OpTy> class TopLowering : public OpRewritePattern<OpTy> {
@@ -51,7 +51,8 @@ public:
       return success();
     }
     auto real_mode = LoweringConfig::mode;
-    auto iter = LoweringConfig::quantize_map.find(op);
+    auto op_name = Module::getName(op);
+    auto iter = LoweringConfig::quantize_map.find(op_name.str());
     if (iter != LoweringConfig::quantize_map.end()) {
       real_mode = iter->second;
     }

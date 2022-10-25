@@ -23,6 +23,8 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
   let options = [
     Option<"mode", "mode", "std::string", /*default=*/"",
            "default quantization mode: INT8/BF16/F32">,
+    Option<"qtable", "qtable", "std::string", /*default=*/"",
+           "a table of Ops that quantized to specific mode">,
     Option<"chip", "chip", "std::string", /*default=*/"",
            "chip: cv183x/cv182x/bm1684/bm1684x">,
     Option<"isAsymmetric", "asymmetric", "bool", /*default=*/"false",
