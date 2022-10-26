@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SigmoidOp op) const {
-  lowering_common_float<tpu::SigmoidOp>(rewriter, op);
+  lowering_common_f32<tpu::SigmoidOp>(rewriter, op);
 }
 
 static double active_sigmoid(double val) { return 1 / (1 + std::exp(-val)); }

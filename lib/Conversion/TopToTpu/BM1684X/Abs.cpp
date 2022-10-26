@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void AbsLowering::LoweringF32(PatternRewriter &rewriter,
                               top::AbsOp absOp) const {
-  lowering_common_float<tpu::AbsOp>(rewriter, absOp.getOperation());
+  lowering_common_f32<tpu::AbsOp>(rewriter, absOp.getOperation());
 }
 
 void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp absOp,
@@ -24,14 +24,12 @@ void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp absOp,
 
 void AbsLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::AbsOp absOp) const {
-  lowering_common_float<tpu::AbsOp, BFloat16Type>(rewriter,
-                                                  absOp.getOperation());
+  lowering_common_bf16<tpu::AbsOp>(rewriter, absOp.getOperation());
 }
 
 void AbsLowering::LoweringF16(PatternRewriter &rewriter,
                               top::AbsOp absOp) const {
-  lowering_common_float<tpu::AbsOp, Float16Type>(rewriter,
-                                                 absOp.getOperation());
+  lowering_common_f16<tpu::AbsOp>(rewriter, absOp.getOperation());
 }
 
 void AbsLowering::LoweringQuantized(PatternRewriter &rewriter,

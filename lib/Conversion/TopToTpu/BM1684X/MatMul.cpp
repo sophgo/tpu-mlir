@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void MatMulLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  lowering_common_float<tpu::MatMulOp>(rewriter, op);
+  lowering_common_f32<tpu::MatMulOp>(rewriter, op);
 }
 
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
@@ -118,9 +118,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 
@@ -143,9 +141,7 @@ void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getF16Type());
+  auto newType = getQuantF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 

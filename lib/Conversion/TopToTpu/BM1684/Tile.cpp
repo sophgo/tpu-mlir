@@ -14,7 +14,7 @@ namespace bm1684 {
 
 void TileLowering::LoweringF32(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_float<tpu::TileOp>(rewriter, op);
+  lowering_common_f32<tpu::TileOp>(rewriter, op);
 }
 
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,

@@ -13,20 +13,20 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void DivLowering::LoweringF32(PatternRewriter &rewriter, top::DivOp op) const {
-  lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::DivOp>(rewriter, op.getOperation());
 }
 
 void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp op,
                                bool asymmetric) const {
-  lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::DivOp>(rewriter, op.getOperation());
 }
 
 void DivLowering::LoweringBF16(PatternRewriter &rewriter, top::DivOp op) const {
-  lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::DivOp>(rewriter, op.getOperation());
 }
 
 void DivLowering::LoweringF16(PatternRewriter &rewriter, top::DivOp op) const {
-  lowering_common_float<tpu::DivOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::DivOp>(rewriter, op.getOperation());
 }
 
 void DivLowering::LoweringQuantized(PatternRewriter &rewriter,

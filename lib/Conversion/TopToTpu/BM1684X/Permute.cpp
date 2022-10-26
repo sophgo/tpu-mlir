@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void PermuteLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::PermuteOp op) const {
-  lowering_common_float<tpu::PermuteOp>(rewriter, op);
+  lowering_common_f32<tpu::PermuteOp>(rewriter, op);
 }
 
 void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
@@ -24,12 +24,12 @@ void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
 
 void PermuteLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::PermuteOp op) const {
-  lowering_common_float<tpu::PermuteOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::PermuteOp>(rewriter, op);
 }
 
 void PermuteLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::PermuteOp op) const {
-  lowering_common_float<tpu::PermuteOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::PermuteOp>(rewriter, op);
 }
 
 void PermuteLowering::LoweringQuantized(PatternRewriter &rewriter,

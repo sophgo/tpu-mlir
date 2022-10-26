@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void SiLULowering::LoweringF32(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
-  lowering_common_float<tpu::SiLUOp>(rewriter, op);
+  lowering_common_f32<tpu::SiLUOp>(rewriter, op);
 }
 
 static double active_silu(double val) { return val / (1 + std::exp(-val)); }

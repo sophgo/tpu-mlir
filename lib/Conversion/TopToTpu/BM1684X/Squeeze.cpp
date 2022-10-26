@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void SqueezeLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SqueezeOp op) const {
-  lowering_common_float<tpu::SqueezeOp>(rewriter, op);
+  lowering_common_f32<tpu::SqueezeOp>(rewriter, op);
 }
 
 void SqueezeLowering::LoweringINT8(PatternRewriter &rewriter, top::SqueezeOp op,
@@ -24,12 +24,12 @@ void SqueezeLowering::LoweringINT8(PatternRewriter &rewriter, top::SqueezeOp op,
 
 void SqueezeLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SqueezeOp op) const {
-  lowering_common_float<tpu::SqueezeOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::SqueezeOp>(rewriter, op);
 }
 
 void SqueezeLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::SqueezeOp op) const {
-  lowering_common_float<tpu::SqueezeOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::SqueezeOp>(rewriter, op);
 }
 
 void SqueezeLowering::LoweringQuantized(PatternRewriter &rewriter,

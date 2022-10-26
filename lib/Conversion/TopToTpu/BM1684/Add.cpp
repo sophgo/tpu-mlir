@@ -51,7 +51,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
 }
 
 void AddLowering::LoweringF32(PatternRewriter &rewriter, top::AddOp op) const {
-  lowering_common_float<tpu::AddOp>(rewriter, op);
+  lowering_common_f32<tpu::AddOp>(rewriter, op);
 }
 
 } // namespace bm1684

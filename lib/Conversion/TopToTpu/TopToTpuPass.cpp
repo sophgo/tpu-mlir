@@ -172,14 +172,6 @@ public:
       bm1684::populateTopToTpuConversionPatterns(&patterns);
     } else if (LoweringConfig::chip == Module::Chip::CV182x ||
                LoweringConfig::chip == Module::Chip::CV183x) {
-      if (LoweringConfig::mode == Quant::Type::INT8 &&
-          LoweringConfig::isAsymmetric) {
-        // Todo support tflite int8
-        std::string errorMsg = "Chip: " + LoweringConfig::chip +
-                               " not support: " + LoweringConfig::mode +
-                               " asymmetric quantization now.\n";
-        llvm_unreachable(errorMsg.c_str());
-      }
       cv18xx::populateTopToTpuConversionPatterns(&patterns);
     } else {
       llvm_unreachable("Not Implemented");

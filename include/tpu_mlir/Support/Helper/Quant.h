@@ -129,6 +129,8 @@ struct Quant {
     return v > 255 ? 255 : v < 0 ? 0 : v;
   }
   static mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
+  static mlir::Type getQuantBF16Type(Value v);
+  static mlir::Type getQuantF16Type(Value v);
 };
 } // namespace helper
 } // namespace tpu_mlir

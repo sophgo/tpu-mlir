@@ -39,12 +39,14 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
     getRShiftAndMultiplierFromQScale(scale_max, &scalei, &rshifti);
 
     for (int idx = 0; idx < num_slope; idx++) {
-      slope_int8[idx] = getMultiplierI8FromQScaleAndRShift(slope_f32->at(idx), rshifti);
+      slope_int8[idx] =
+          getMultiplierI8FromQScaleAndRShift(slope_f32->at(idx), rshifti);
     }
 
     operands.push_back(op.input());
     auto new_type = RankedTensorType::get(slope_shape, rewriter.getI8Type());
-    auto new_slope = top::WeightOp::create(op, "slope_i8", slope_int8, new_type);
+    auto new_slope =
+        top::WeightOp::create(op, "slope_i8", slope_int8, new_type);
     operands.push_back(new_slope);
 
     for (auto &attr : op->getAttrs()) {
@@ -117,18 +119,6 @@ void PReluLowering::LoweringBF16(PatternRewriter &rewriter,
   auto slope_shape = Module::getShape(op.slope());
   int src_dims = src_shape.size();
   int slope_dims = slope_shape.size();
-  assert(src_dims == slope_dims);
-
-  bool channel_share = false;
-  if (slope_shape[1] == 1) {
-    channel_share = true;
-  } else {
-    for (int i = 0; i < slope_dims; i++) {
-      if (i != 1 && slope_shape[i] != 1) {
-        assert(0);
-      }
-    }
-  }
 
   std::vector<Value> operands;
   auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
@@ -138,26 +128,9 @@ void PReluLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  attrs.push_back(rewriter.getNamedAttr("channel_shared",
-                                        rewriter.getBoolAttr(channel_share)));
-  if (channel_share) {
-    auto slope_f32 = slopeOp.read<float>();
-    float *slope_data = slope_f32->data();
-    float slope_val = (float)(*slope_data);
-    attrs.push_back(rewriter.getNamedAttr("slope_val",
-                                          rewriter.getF64FloatAttr(slope_val)));
-    operands.push_back(op.slope());
-  } else {
-    operands.push_back(slopeOp.clone_bf16(op));
-  }
-  Value newValue;
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
-  auto newOp =
-      rewriter.create<tpu::PReluOp>(op->getLoc(), newType, operands, attrs);
-  newValue = newOp.output();
-  rewriter.replaceOp(op, {newValue});
+  operands.push_back(slopeOp.clone_bf16(op));
+  auto newType = getQuantBF16Type(op.output());
+  rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
 }
 
 void PReluLowering::LoweringF16(PatternRewriter &rewriter,
@@ -169,18 +142,6 @@ void PReluLowering::LoweringF16(PatternRewriter &rewriter,
   auto slope_shape = Module::getShape(op.slope());
   int src_dims = src_shape.size();
   int slope_dims = slope_shape.size();
-  assert(src_dims == slope_dims);
-
-  bool channel_share = false;
-  if (slope_shape[1] == 1) {
-    channel_share = true;
-  } else {
-    for (int i = 0; i < slope_dims; i++) {
-      if (i != 1 && slope_shape[i] != 1) {
-        assert(0);
-      }
-    }
-  }
 
   std::vector<Value> operands;
   auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
@@ -190,26 +151,9 @@ void PReluLowering::LoweringF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  attrs.push_back(rewriter.getNamedAttr("channel_shared",
-                                        rewriter.getBoolAttr(channel_share)));
-  if (channel_share) {
-    auto slope_f32 = slopeOp.read<float>();
-    float *slope_data = slope_f32->data();
-    float slope_val = (float)(*slope_data);
-    attrs.push_back(rewriter.getNamedAttr("slope_val",
-                                          rewriter.getF64FloatAttr(slope_val)));
-    operands.push_back(op.slope());
-  } else {
-    operands.push_back(slopeOp.clone_f16(op));
-  }
-  Value newValue;
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getF16Type());
-  auto newOp =
-      rewriter.create<tpu::PReluOp>(op->getLoc(), newType, operands, attrs);
-  newValue = newOp.output();
-  rewriter.replaceOp(op, {newValue});
+  operands.push_back(slopeOp.clone_f16(op));
+  auto newType = getQuantF16Type(op.output());
+  rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
 }
 
 void PReluLowering::LoweringQuantized(PatternRewriter &rewriter,

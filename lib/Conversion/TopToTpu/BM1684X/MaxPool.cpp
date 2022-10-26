@@ -17,11 +17,11 @@ void MaxPoolLowering::LoweringF32(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.kernel_shape().size() == 3) {
-    lowering_common_float<tpu::Pool3DOp>(rewriter, op);
+    lowering_common_f32<tpu::Pool3DOp>(rewriter, op);
   } else if (op.kernel_shape().size() == 2) {
-    lowering_common_float<tpu::Pool2DOp>(rewriter, op);
+    lowering_common_f32<tpu::Pool2DOp>(rewriter, op);
   } else {
-    lowering_common_float<tpu::Pool1DOp>(rewriter, op);
+    lowering_common_f32<tpu::Pool1DOp>(rewriter, op);
   }
 }
 
@@ -43,11 +43,11 @@ void MaxPoolLowering::LoweringBF16(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.kernel_shape().size() == 3) {
-    lowering_common_float<tpu::Pool3DOp, BFloat16Type>(rewriter, op);
+    lowering_common_bf16<tpu::Pool3DOp>(rewriter, op);
   } else if (op.kernel_shape().size() == 2) {
-    lowering_common_float<tpu::Pool2DOp, BFloat16Type>(rewriter, op);
+    lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
   } else {
-    lowering_common_float<tpu::Pool1DOp, BFloat16Type>(rewriter, op);
+    lowering_common_bf16<tpu::Pool1DOp>(rewriter, op);
   }
 }
 
@@ -56,11 +56,11 @@ void MaxPoolLowering::LoweringF16(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
   if (op.kernel_shape().size() == 3) {
-    lowering_common_float<tpu::Pool3DOp, Float16Type>(rewriter, op);
+    lowering_common_f16<tpu::Pool3DOp>(rewriter, op);
   } else if (op.kernel_shape().size() == 2) {
-    lowering_common_float<tpu::Pool2DOp, Float16Type>(rewriter, op);
+    lowering_common_f16<tpu::Pool2DOp>(rewriter, op);
   } else {
-    lowering_common_float<tpu::Pool1DOp, Float16Type>(rewriter, op);
+    lowering_common_f16<tpu::Pool1DOp>(rewriter, op);
   }
 }
 

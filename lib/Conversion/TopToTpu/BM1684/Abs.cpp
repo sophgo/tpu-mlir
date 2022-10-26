@@ -13,7 +13,7 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void AbsLowering::LoweringF32(PatternRewriter &rewriter, top::AbsOp op) const {
-  lowering_common_float<tpu::AbsOp>(rewriter, op);
+  lowering_common_f32<tpu::AbsOp>(rewriter, op);
 }
 
 void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp op,
