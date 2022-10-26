@@ -11,13 +11,12 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "llvm/Support/Debug.h"
 
-#define DEBUG_TYPE "lowering-conv"
+#define DEBUG_TYPE "lowering-add"
 
 namespace tpu_mlir {
 namespace cv18xx {
 void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
                                 bool asymmetric) const {
-  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   int64_t o_zp;

@@ -9,10 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -82,6 +82,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   matmul->run();
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
@@ -89,32 +91,59 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (Quant::isUniformQuantized(output())) {
-    auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto rft = rshift();
-    auto mlti = multiplier();
-    auto num_output = Module::getNumElements(output());
-    if (quant_mode() == tpu::RequantMode::TFlite_Lshift ||
-        quant_mode() == tpu::RequantMode::TFlite) {
-#pragma omp parallel for schedule(static, omp_schedule(num_output))
-      for (int64_t i = 0; i < num_output; i++) {
-        // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >> rft);
-        auto v = MultiplyByQuantizedMultiplier(
-                                (int32_t)(p.outputs[0][i]),
-                                (int32_t)mlti, -(int32_t)rft);
-        if (out_type.isUnsignedInteger(8)) {
-          p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
-        } else {
-          p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+    if (is_cv18xx) {
+      int64_t batch, M, K, N, zp;
+      bool relu, with_bias;
+      double limit;
+      parseParam(batch, M, K, N, with_bias, relu, limit, zp);
+      auto rshift_v = Module::getI64Array(rshifts(), batch, 0);
+      auto multiplier_v = Module::getI64Array(multipliers(), batch, 1);
+      int64_t isz = M * N;
+      for (int64_t i = 0; i < batch; ++i) {
+#pragma omp parallel for schedule(static, omp_schedule(isz))
+        for (int64_t j = 0; j < isz; ++j) {
+          int64_t offset = i * isz + j;
+          int64_t v = 0;
+          v = applyMultiplierAndRShift(p.outputs[0][offset],
+                                       multiplier_v->at(i), rshift_v->at(i),
+                                       CVI_QDM_QUANT);
+          p.outputs[0][offset] = out_type.isUnsignedInteger(8)
+                                     ? Quant::to_uint8(v)
+                                     : Quant::to_int8(v);
         }
       }
-    } else if (quant_mode() == tpu::RequantMode::Normal) {
+    } else {
+      auto o_qtype = Quant::getUniformQuantizedType(output());
+      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+      auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+      assert(rshift_v->size() == 1);
+      assert(multiplier_v->size() == 1);
+      auto num_output = Module::getNumElements(output());
+      if (quant_mode() == tpu::RequantMode::TFlite_Lshift ||
+          quant_mode() == tpu::RequantMode::TFlite) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
-      for (int i = 0; i < num_output; ++i) {
-        auto v = applyMultiplierAndRShift(p.outputs[0][i], mlti, rft);
-        if (out_type.isUnsignedInteger(8)) {
-          p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
-        } else {
-          p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+        for (int64_t i = 0; i < num_output; i++) {
+          // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>
+          // rft);
+          auto v = MultiplyByQuantizedMultiplier((int32_t)(p.outputs[0][i]),
+                                                 (int32_t)multiplier_v->at(0),
+                                                 -(int32_t)rshift_v->at(0));
+          if (out_type.isUnsignedInteger(8)) {
+            p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
+          } else {
+            p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+          }
+        }
+      } else if (quant_mode() == tpu::RequantMode::Normal) {
+#pragma omp parallel for schedule(static, omp_schedule(num_output))
+        for (int i = 0; i < num_output; ++i) {
+          auto v = applyMultiplierAndRShift(
+              p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0));
+          if (out_type.isUnsignedInteger(8)) {
+            p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
+          } else {
+            p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+          }
         }
       }
     }
