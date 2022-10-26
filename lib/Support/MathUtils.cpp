@@ -272,7 +272,7 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
 }
 
 // CV18xx
-double getQcaleForFilter(float max_filter, float threshold_y, float threshold_x,
+double getQscaleForFilter(float max_filter, float threshold_y, float threshold_x,
                          int quant_bitwidth) {
   /// get a QScale for Filter (with multiplier)
   ///   Q(W) = W * (threshold_x / threshold_y) * (1 / QScale)

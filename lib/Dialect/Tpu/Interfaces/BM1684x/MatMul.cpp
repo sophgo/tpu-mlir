@@ -61,13 +61,17 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   spec.relu_limit = relu_limit;
   spec.have_bias = with_bias;
   if (Quant::isUniformQuantized(input())) {
+    auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+    auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+    assert(rshift_v->size() == 1);
+    assert(multiplier_v->size() == 1);
     spec.rshift = 0;
     spec.is_asymmetric = 1;
     spec.rzp_is_const = 1;
     spec.rzp_const_val = right_zp;
     spec.requant_mode = static_cast<int>(quant_mode());
-    spec.mul_val = multiplier();
-    spec.shift_val = -rshift();
+    spec.mul_val = multiplier_v->at(0);
+    spec.shift_val = -rshift_v->at(0);
     auto output_type = Quant::getUniformQuantizedType(output());
     spec.offset_val = output_type.getZeroPoint();
   }
