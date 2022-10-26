@@ -178,24 +178,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
   auto op = getOperation();
   OpBuilder builder(getContext());
 
-  int use_3ic_optimize = 0;
-  if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
-      attr.kw > 1) {
-    use_3ic_optimize = 3; // merge kh and kw to ic
-  } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
-             (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
-    use_3ic_optimize = 2; // merge kw to ic
-  } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
-    use_3ic_optimize = 1; // merge kh to ic
-  } else {
-    use_3ic_optimize = 0;
-  }
-  if (use_3ic_optimize) {
-    // Now only support broadcast using BDC when it is a local layer.
-    use_3ic_optimize |= 0x10;
-  }
-
-  if (attr.is_dw || attr.groups > 1) {
+  if (attr.is_dw) {
     filter_shape = {1, attr.ic, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
     filter().setType(new_filter_type);
@@ -209,6 +192,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
       data_u16->at(i) = isF16 ? f32_to_f16(data_fp32->at(i)) :
                         f32_to_bf16(data_fp32->at(i));
     }
+
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
     bias().setType(new_bias_type);
@@ -217,6 +201,25 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
         top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
     op->setOperand(2, newBiasOp);
   } else {
+    int use_3ic_optimize = 0;
+    if( false) {  // Shut down 3ic optimization temporarily for fp16/bfp16
+      if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
+          attr.kw > 1) {
+        use_3ic_optimize = 3; // merge kh and kw to ic
+      } else if (attr.ic * attr.kw <= IC_PARALLEL && attr.kw > 1 &&
+                 (attr.kh < attr.kw || attr.ic * attr.kh > IC_PARALLEL)) {
+        use_3ic_optimize = 2; // merge kw to ic
+      } else if (attr.ic * attr.kh <= IC_PARALLEL && attr.kh > 1) {
+        use_3ic_optimize = 1; // merge kh to ic
+      } else {
+        use_3ic_optimize = 0;
+      }
+      if (use_3ic_optimize) {
+        // Now only support broadcast using BDC when it is a local layer.
+        use_3ic_optimize |= 0x10;
+      }
+    }
+
     reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
     op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
     // bias op
@@ -237,6 +240,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
       filter_shape[3] /= 64;
     }
   }
+
   auto new_type = RankedTensorType::get(filter_shape, filter_type);
   auto new_op = top::WeightOp::create(op, "filter_reorderd", *filter_u16, new_type);
   op->setOperand(1, new_op);
