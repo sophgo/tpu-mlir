@@ -14,14 +14,14 @@ namespace bm1684x {
 
 void LeakyReluLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::LeakyReluOp op) const {
-  lowering_common_float<tpu::LeakyReluOp>(rewriter, op);
+  lowering_common_f32<tpu::LeakyReluOp>(rewriter, op);
 }
 
 void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::LeakyReluOp op,
                                      bool asymmetric) const {
   if (asymmetric) {
-    lowering_common_float<tpu::LeakyReluOp>(rewriter, op);
+    lowering_common_f32<tpu::LeakyReluOp>(rewriter, op);
   } else {
     int multiplier, rshift;
     get_scale_and_shift(op.alpha().convertToDouble(), multiplier, rshift, 8);
@@ -40,12 +40,12 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void LeakyReluLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LeakyReluOp op) const {
-  lowering_common_float<tpu::LeakyReluOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::LeakyReluOp>(rewriter, op);
 }
 
 void LeakyReluLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::LeakyReluOp op) const {
-  lowering_common_float<tpu::LeakyReluOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::LeakyReluOp>(rewriter, op);
 }
 
 void LeakyReluLowering::LoweringQuantized(PatternRewriter &rewriter,

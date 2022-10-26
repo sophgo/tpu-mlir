@@ -14,7 +14,7 @@ namespace bm1684 {
 
 void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::ConcatOp op) const {
-  lowering_common_float<tpu::ConcatOp>(rewriter, op);
+  lowering_common_f32<tpu::ConcatOp>(rewriter, op);
 }
 
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter, top::ConcatOp op,

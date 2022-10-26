@@ -56,19 +56,17 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
 
 void AddLowering::LoweringF32(PatternRewriter &rewriter,
                               top::AddOp addOp) const {
-  lowering_common_float<tpu::AddOp>(rewriter, addOp.getOperation());
+  lowering_common_f32<tpu::AddOp>(rewriter, addOp.getOperation());
 }
 
 void AddLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::AddOp addOp) const {
-  lowering_common_float<tpu::AddOp, BFloat16Type>(rewriter,
-                                                  addOp.getOperation());
+  lowering_common_bf16<tpu::AddOp>(rewriter, addOp.getOperation());
 }
 
 void AddLowering::LoweringF16(PatternRewriter &rewriter,
                               top::AddOp addOp) const {
-  lowering_common_float<tpu::AddOp, Float16Type>(rewriter,
-                                                 addOp.getOperation());
+  lowering_common_f16<tpu::AddOp>(rewriter, addOp.getOperation());
 }
 
 void AddLowering::LoweringQuantized(PatternRewriter &rewriter,

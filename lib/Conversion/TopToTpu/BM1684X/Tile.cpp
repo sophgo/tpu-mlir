@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void TileLowering::LoweringF32(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_float<tpu::TileOp>(rewriter, op);
+  lowering_common_f32<tpu::TileOp>(rewriter, op);
 }
 
 void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
@@ -24,12 +24,12 @@ void TileLowering::LoweringINT8(PatternRewriter &rewriter, top::TileOp op,
 
 void TileLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::TileOp op) const {
-  lowering_common_float<tpu::TileOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::TileOp>(rewriter, op);
 }
 
 void TileLowering::LoweringF16(PatternRewriter &rewriter,
                                top::TileOp op) const {
-  lowering_common_float<tpu::TileOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::TileOp>(rewriter, op);
 }
 
 void TileLowering::LoweringQuantized(PatternRewriter &rewriter,

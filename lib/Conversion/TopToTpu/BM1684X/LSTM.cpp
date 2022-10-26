@@ -61,12 +61,12 @@ void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
 
 void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::LSTMOp op) const {
-  lowering_common_float<tpu::LSTMOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::LSTMOp>(rewriter, op);
 }
 
 void LSTMLowering::LoweringF16(PatternRewriter &rewriter,
                                top::LSTMOp op) const {
-  lowering_common_float<tpu::LSTMOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::LSTMOp>(rewriter, op);
 }
 
 void LSTMLowering::LoweringQuantized(PatternRewriter &rewriter,

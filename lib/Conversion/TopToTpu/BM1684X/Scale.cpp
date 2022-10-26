@@ -148,12 +148,12 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
 
 void ScaleLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::ScaleOp op) const {
-  lowering_common_float<tpu::ScaleOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::ScaleOp>(rewriter, op);
 }
 
 void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::ScaleOp op) const {
-  lowering_common_float<tpu::ScaleOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::ScaleOp>(rewriter, op);
 }
 
 void ScaleLowering::LoweringQuantized(PatternRewriter &rewriter,

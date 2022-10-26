@@ -14,7 +14,7 @@ namespace bm1684 {
 
 void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
-  lowering_common_float<tpu::ReshapeOp>(rewriter, op);
+  lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
 }
 
 void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,

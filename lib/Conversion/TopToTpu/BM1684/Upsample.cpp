@@ -14,7 +14,7 @@ namespace bm1684 {
 
 void UpsampleLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::UpsampleOp op) const {
-  lowering_common_float<tpu::UpsampleOp>(rewriter, op);
+  lowering_common_f32<tpu::UpsampleOp>(rewriter, op);
 }
 
 void UpsampleLowering::LoweringINT8(PatternRewriter &rewriter,

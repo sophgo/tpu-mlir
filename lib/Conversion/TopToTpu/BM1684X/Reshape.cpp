@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void ReshapeLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
-  lowering_common_float<tpu::ReshapeOp>(rewriter, op);
+  lowering_common_f32<tpu::ReshapeOp>(rewriter, op);
 }
 
 void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,
@@ -24,12 +24,12 @@ void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,
 
 void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::ReshapeOp op) const {
-  lowering_common_float<tpu::ReshapeOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::ReshapeOp>(rewriter, op);
 }
 
 void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::ReshapeOp op) const {
-  lowering_common_float<tpu::ReshapeOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::ReshapeOp>(rewriter, op);
 }
 
 void ReshapeLowering::LoweringQuantized(PatternRewriter &rewriter,

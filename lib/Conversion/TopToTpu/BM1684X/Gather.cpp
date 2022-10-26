@@ -14,12 +14,12 @@ namespace bm1684x {
 
 void GatherLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::GatherOp op) const {
-  lowering_common_float<tpu::GatherOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::GatherOp>(rewriter, op.getOperation());
 }
 
 void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
-  lowering_common_float<tpu::GatherOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::GatherOp>(rewriter, op.getOperation());
 }
 
 void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -32,9 +32,7 @@ void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::GatherOp>(op.getOperation(), newType,
                                              operands, attrs);
 }
@@ -48,9 +46,7 @@ void GatherLowering::LoweringF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getF16Type());
+  auto newType = getQuantF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::GatherOp>(op.getOperation(), newType,
                                              operands, attrs);
 }

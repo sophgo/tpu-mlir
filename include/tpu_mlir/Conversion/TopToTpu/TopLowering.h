@@ -45,7 +45,7 @@ public:
 
   LogicalResult matchAndRewrite(OpTy opTy,
                                 PatternRewriter &rewriter) const override {
-    Operation* op = opTy.getOperation();
+    Operation *op = opTy.getOperation();
     if (Quant::isUniformQuantized(op->getResult(0))) {
       LoweringQuantized(rewriter, opTy);
       return success();
@@ -115,18 +115,15 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
   lowering_common<OpTy>(rewriter, from, newType);
 }
 
-// lowering to f32/f16/bf16
-template <typename OpTy, typename ElemTy = Float32Type>
-static void lowering_common_float(PatternRewriter &rewriter, Operation *from) {
-  assert(from->getNumResults() == 1);
-  auto output = from->getResult(0);
-  auto sType = Module::getStorageType(output);
-  Type newType = output.getType();
+template <typename ElemTy = Float32Type>
+static mlir::Type getQuantFloatType(Value v) {
+  auto sType = Module::getStorageType(v);
+  Type newType = v.getType();
   if (sType.isa<ElemTy>() == false) {
-    auto shape = Module::getShape(output);
-    auto ctx = from->getContext();
-    if (Quant::isCalibratedType(output)) {
-      auto caliType = Quant::getCalibratedType(output);
+    auto shape = Module::getShape(v);
+    auto ctx = v.getContext();
+    if (Quant::isCalibratedType(v)) {
+      auto caliType = Quant::getCalibratedType(v);
       auto newCaliType = quant::CalibratedQuantizedType::get(
           ElemTy::get(ctx), caliType.getMin(), caliType.getMax());
       newType = RankedTensorType::get(shape, newCaliType);
@@ -134,7 +131,38 @@ static void lowering_common_float(PatternRewriter &rewriter, Operation *from) {
       newType = RankedTensorType::get(shape, ElemTy::get(ctx));
     }
   }
+  return newType;
+}
+
+static mlir::Type getQuantBF16Type(Value v) {
+  return getQuantFloatType<BFloat16Type>(v);
+}
+
+static mlir::Type getQuantF16Type(Value v) {
+  return getQuantFloatType<Float16Type>(v);
+}
+
+// lowering to f32/f16/bf16
+template <typename OpTy, typename ElemTy>
+static void lowering_common_float(PatternRewriter &rewriter, Operation *from) {
+  assert(from->getNumResults() == 1);
+  auto newType = getQuantFloatType<ElemTy>(from->getResult(0));
   lowering_common<OpTy>(rewriter, from, newType);
+}
+
+template <typename OpTy>
+static void lowering_common_f32(PatternRewriter &rewriter, Operation *from) {
+  lowering_common_float<OpTy, Float32Type>(rewriter, from);
+}
+
+template <typename OpTy>
+static void lowering_common_bf16(PatternRewriter &rewriter, Operation *from) {
+  lowering_common_float<OpTy, BFloat16Type>(rewriter, from);
+}
+
+template <typename OpTy>
+static void lowering_common_f16(PatternRewriter &rewriter, Operation *from) {
+  lowering_common_float<OpTy, Float16Type>(rewriter, from);
 }
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)

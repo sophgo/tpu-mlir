@@ -14,13 +14,13 @@ namespace bm1684x {
 
 void MaxUnpoolLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::MaxUnpoolOp op) const {
-  lowering_common_float<tpu::MaxUnpoolOp>(rewriter, op);
+  lowering_common_f32<tpu::MaxUnpoolOp>(rewriter, op);
 }
 
 void MaxUnpoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::MaxUnpoolOp op,
                                      bool asymmetric) const {
-  lowering_common_float<tpu::MaxUnpoolOp>(rewriter, op);
+  lowering_common_f32<tpu::MaxUnpoolOp>(rewriter, op);
 }
 
 void MaxUnpoolLowering::LoweringBF16(PatternRewriter &rewriter,

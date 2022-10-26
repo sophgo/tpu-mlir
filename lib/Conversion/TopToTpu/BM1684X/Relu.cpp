@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void ReluLowering::LoweringF32(PatternRewriter &rewriter,
                                top::ReluOp op) const {
-  lowering_common_float<tpu::ReluOp>(rewriter, op);
+  lowering_common_f32<tpu::ReluOp>(rewriter, op);
 }
 
 void ReluLowering::LoweringINT8(PatternRewriter &rewriter, top::ReluOp op,
@@ -24,12 +24,12 @@ void ReluLowering::LoweringINT8(PatternRewriter &rewriter, top::ReluOp op,
 
 void ReluLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ReluOp op) const {
-  lowering_common_float<tpu::ReluOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::ReluOp>(rewriter, op);
 }
 
 void ReluLowering::LoweringF16(PatternRewriter &rewriter,
                                top::ReluOp op) const {
-  lowering_common_float<tpu::ReluOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::ReluOp>(rewriter, op);
 }
 
 void ReluLowering::LoweringQuantized(PatternRewriter &rewriter,

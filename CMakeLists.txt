@@ -104,8 +104,8 @@ string(SUBSTRING ${GIT_SHORT_HASH} ${iLength} -1 PATCH_VERSION)
 set(GIT_SHORT_HASH "${MAIN_VERSION}.${PATCH_VERSION}")
 
 string(TIMESTAMP BUILD_TIME "%Y%m%d")
-set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "nntoolchain version" FORCE)
-message(STATUS "nntoolchain version: ${MLIR_VERSION}")
+set(MLIR_VERSION "${GIT_SHORT_HASH}-${BUILD_TIME}" CACHE STRING "tpu-mlir version" FORCE)
+message(STATUS "tpu-mlir version: ${MLIR_VERSION}")
 add_definitions(-DMLIR_VERSION="${MLIR_VERSION}")
 #-------------------------------------------------------------------------------
 

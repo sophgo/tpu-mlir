@@ -15,7 +15,7 @@ namespace bm1684x {
 static double active_log(double val) { return std::log(val); }
 
 void LogLowering::LoweringF32(PatternRewriter &rewriter, top::LogOp op) const {
-  lowering_common_float<tpu::LogOp>(rewriter, op);
+  lowering_common_f32<tpu::LogOp>(rewriter, op);
 }
 
 void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,

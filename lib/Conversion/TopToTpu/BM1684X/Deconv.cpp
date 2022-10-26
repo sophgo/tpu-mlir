@@ -180,9 +180,7 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
   bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
 }
 
@@ -202,9 +200,7 @@ void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
   bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getF16Type());
+  auto newType = getQuantF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
 }
 

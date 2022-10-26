@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::ConcatOp concatOp) const {
-  lowering_common_float<tpu::ConcatOp>(rewriter, concatOp.getOperation());
+  lowering_common_f32<tpu::ConcatOp>(rewriter, concatOp.getOperation());
 }
 
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -36,14 +36,12 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void ConcatLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp) const {
-  lowering_common_float<tpu::ConcatOp, BFloat16Type>(rewriter,
-                                                     concatOp.getOperation());
+  lowering_common_bf16<tpu::ConcatOp>(rewriter, concatOp.getOperation());
 }
 
 void ConcatLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::ConcatOp concatOp) const {
-  lowering_common_float<tpu::ConcatOp, Float16Type>(rewriter,
-                                                    concatOp.getOperation());
+  lowering_common_f16<tpu::ConcatOp>(rewriter, concatOp.getOperation());
 }
 
 void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void MulConstLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::MulConstOp op) const {
-  lowering_common_float<tpu::MulConstOp>(rewriter, op);
+  lowering_common_f32<tpu::MulConstOp>(rewriter, op);
 }
 
 void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -42,12 +42,12 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::MulConstOp op) const {
-  lowering_common_float<tpu::MulConstOp, BFloat16Type>(rewriter, op);
+  lowering_common_bf16<tpu::MulConstOp>(rewriter, op);
 }
 
 void MulConstLowering::LoweringF16(PatternRewriter &rewriter,
                                    top::MulConstOp op) const {
-  lowering_common_float<tpu::MulConstOp, Float16Type>(rewriter, op);
+  lowering_common_f16<tpu::MulConstOp>(rewriter, op);
 }
 
 void MulConstLowering::LoweringQuantized(PatternRewriter &rewriter,
