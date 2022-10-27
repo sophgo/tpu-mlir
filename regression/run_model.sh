@@ -189,6 +189,7 @@ fi
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
+QTABLE=${REGRESSION_PATH}/cali_tables/${model_name}_qtable
 if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
     echo "Error: ${model_name} has no dataset"
@@ -205,6 +206,15 @@ if [ -f ${CALI_TABLE} ]; then
   cali_opt="--calibration_table ${CALI_TABLE}"
 fi
 
+qtable_opt=
+if [ x${use_quantize_table} == x1 ]; then
+  if [ ! -f ${QTABLE} ]; then
+    echo "Error: ${QTABLE} not exist"
+    exit 1
+  fi
+  qtable_opt="--quantize_table ${QTABLE}"
+fi
+
 # to symmetric
 if [ ${do_symmetric} == 1 ]; then
 
@@ -216,6 +226,7 @@ model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize INT8 \
   ${cali_opt} \
+  ${qtable_opt} \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \
@@ -239,6 +250,7 @@ model_deploy.py \
   --quantize INT8 \
   --asymmetric \
   ${cali_opt} \
+  ${qtable_opt} \
   --chip bm1684x \
   ${test_innpz_opt} \
   ${test_reference_opt} \

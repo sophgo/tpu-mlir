@@ -315,6 +315,7 @@ protected:
     if (tmp == Quant::Type::F32) {
       return Quant::Type::F32;
     }
+    llvm::errs() << "Unknown quantize mode: [" << mode << "]\n";
     llvm_unreachable("Unknown quantize mode");
     return "";
   }
