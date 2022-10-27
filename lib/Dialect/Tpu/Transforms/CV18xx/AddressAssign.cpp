@@ -157,8 +157,11 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (gaddrMap.find(op) != gaddrMap.end()) {
-          if (!isa<tpu::ReshapeOp>(op)) {
-            Module::setAddress(op->getResult(0), gaddrMap[op]);
+          Module::setAddress(op->getResult(0), gaddrMap[op]);
+        } else {
+          if (isa<tpu::ReshapeOp>(op)) {
+            auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op);
+            Module::setAddress(reshapeOp.output(), Module::getAddress(reshapeOp.input()));
           }
         }
       });
