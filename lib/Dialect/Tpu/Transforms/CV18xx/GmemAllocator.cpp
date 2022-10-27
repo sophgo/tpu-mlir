@@ -17,7 +17,6 @@
 #include <sstream>
 #include <fstream>
 #include <set>
-#include <tuple>
 #include <vector>
 
 using namespace llvm;
@@ -28,28 +27,28 @@ namespace tpu_mlir {
 namespace tpu {
 
 GmemAllocator::GmemAllocator(
-    std::map<Operation *, int64_t> &gaddrMap,
+    std::map<int64_t, int64_t> &gaddrMap,
     uint32_t alignment)
     : gaddrMap_(gaddrMap),
       alignment(alignment) {
 }
 
 void GmemAllocator::markGmemReusedOp(
-    std::vector<Operation *> &ops,
-    std::map<Operation *, int64_t> &gaddrMap,
-    std::set<Operation *> &gmemReusedSet,
-    uint32_t alignment) {
+      std::vector<int64_t> &ops,
+      std::map<int64_t, int64_t> &gaddrMap,
+      std::map<int64_t, TensorLive> &liveRange,
+      std::set<int64_t> &gmemReusedSet,
+      uint32_t alignment) {
 
-  std::vector<Operation *> tmp;
+  std::vector<int64_t> tmp;
   for (int i = ops.size() - 1; i >= 0; i--) {
     if (gaddrMap.find(ops[i]) == gaddrMap.end())
       continue;
-
     auto addr_i = gaddrMap[ops[i]];
-    auto sz_i = GmemAllocatorMethod::getTensorGmemSize(ops[i], alignment);
+    auto sz_i = liveRange[ops[i]].tensor_size;
     for (int j = 0; j < (int)tmp.size(); j++) {
       auto addr_j = gaddrMap[tmp[j]];
-      auto sz_j = GmemAllocatorMethod::getTensorGmemSize(tmp[j], alignment);
+      auto sz_j = liveRange[tmp[j]].tensor_size;
       auto start = std::min(addr_i, addr_j);
       auto end = std::max(addr_i + sz_i, addr_j + sz_j);
       // memory overlap
@@ -63,7 +62,7 @@ void GmemAllocator::markGmemReusedOp(
 
 int64_t GmemAllocator::assignSpecifiedGmemToOp(
                                        Operation *op,
-                                       std::map<Operation *, int64_t> &gaddrMap,
+                                       std::map<int64_t, int64_t> &gaddrMap,
                                        int64_t baseGaddr,
                                        uint32_t alignment) {
                                          /*
@@ -93,8 +92,8 @@ void GmemAllocator::registerAllMethod() {
 }
 
 int64_t GmemAllocator::assignGaddr(
-    std::vector<Operation *> &ops,
-    std::map<Operation *, std::vector<uint32_t>> &liveRange,
+    std::vector<int64_t> &ops,
+    std::map<int64_t, TensorLive> &liveRange,
     bool neuronMemoryReuse, int64_t baseGaddr) {
   if (ops.empty()) {
     llvm::errs() << "Warning input ops is empty!\n";

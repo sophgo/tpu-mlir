@@ -17,6 +17,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
 
+#include <iostream>
 #include <sstream>
 #include <fstream>
 #include <set>
@@ -32,8 +33,6 @@ namespace tpu {
 // for cv18xx. Todo let cv18xx bm168x use same addrAssigner
 class CVAddressAssignPass : public CVAddressAssignBase<CVAddressAssignPass> {
 public:
-  //Value, offset, size, ref_cnt
-  using gmem_entry = std::tuple<mlir::Value, int64_t, int64_t, int64_t>;
 
   CVAddressAssignPass() {}
   void runOnOperation() override {
@@ -60,13 +59,13 @@ public:
     Module::setCoeffSize(module, addr - start_addr);
     // assign activation
     uint32_t loc = 0;
-    std::map<Operation *, std::vector<uint32_t>> liveRange;
+    //key: the operation pointer + output index, convert the result to type int64_t
+    std::map<int64_t, TensorLive> liveRange;
     std::map<Operation *, uint32_t> ops_loc;
-    std::vector<Operation *> shared_ops;
-    std::vector<std::vector<Operation *> > shared_ops_regions;
-    std::vector<Operation *> private_ops;
-    std::vector<Operation *> io_ops;
-
+    std::vector<int64_t> shared_outs;
+    std::vector<std::vector<int64_t>> shared_outs_regions;
+    std::vector<int64_t> private_outs;
+    std::vector<int64_t> io_outs;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         ops_loc[op] = loc;
@@ -80,47 +79,38 @@ public:
                 func::CallOp, tpu::YieldOp>(op)) {
           return;
         }
-        bool chosen = false;
-        updateLiveRangeOfOps(op, ops_loc, liveRange, chosen);
-        printf("op name:%s  func:%s loc:%u\n",
-               Module::getName(op).str().c_str(), func.getName().str().c_str(),
-               ops_loc[op]);
-        if (chosen) {
-          if (isOpBelongToIOMemoryRegion(op)) {
-            if (io_ops.size() < 5) {
-              io_ops.emplace_back(op);
-              printf("op name:%s insert iomem\n",
-                     Module::getName(op).str().c_str());
+        int n = op->getNumResults();
+        for (int i = 0; i < n; i++) {
+          bool chosen = false;
+          updateLiveRangeOfOps(op, i, ops_loc, liveRange, chosen, neuron_alignment);
+          if (chosen) {
+            if (isOpBelongToIOMemoryRegion(op)) {
+              if (io_outs.size() < 5) {
+                io_outs.emplace_back((int64_t)op + i);
+              } else {
+                private_outs.emplace_back((int64_t)op + i);
+              }
+            } else if (isOpBelongToSharedMemoryRegion(op)) {
+              shared_outs.emplace_back((int64_t)op + i);
             } else {
-              private_ops.emplace_back(op);
-              printf("op name:%s insert primem\n",
-                     Module::getName(op).str().c_str());
+              private_outs.emplace_back((int64_t)op + i);
             }
-          } else if (isOpBelongToSharedMemoryRegion(op)) {
-            shared_ops.emplace_back(op);
-            printf("op name:%s insert shared mem\n",
-                   Module::getName(op).str().c_str());
-          } else {
-            private_ops.emplace_back(op);
-            printf("op name:%s insert primem\n",
-                   Module::getName(op).str().c_str());
           }
         }
       });
-      if (!shared_ops.empty()) {
-        shared_ops_regions.emplace_back(std::move(shared_ops));
+      if (!shared_outs.empty()) {
+        shared_outs_regions.emplace_back(std::move(shared_outs));
       }
     }
-
-    // assign gaddr for ops in different memory regions
     int64_t sharedGmemOffset = 0;
     int64_t sharedGmemSize = 0;
-    std::map<Operation *, int64_t> gaddrMap;
+    //key: the operation pointer + output index, convert the result to type int64_t
+    std::map<int64_t, int64_t> gaddrMap;
 
-    for (auto &targetOps : shared_ops_regions) {
+    for (auto &targetOuts : shared_outs_regions) {
       GmemAllocator allocator(gaddrMap, neuron_alignment);
       auto gmemUsed =
-          allocator.assignGaddr(targetOps, liveRange, true, sharedGmemOffset);
+          allocator.assignGaddr(targetOuts, liveRange, true, sharedGmemOffset);
       if (sharedGmemSize < sharedGmemOffset + gmemUsed) {
         sharedGmemSize = sharedGmemOffset + gmemUsed;
       }
@@ -143,25 +133,31 @@ public:
     int64_t baseGaddr = (((uint64_t)2) << 40);
     int64_t privateGmemSize = 0;
     // 2. Assign gaddr for ops in private region.
-    if (!private_ops.empty()) {
+    if (!private_outs.empty()) {
       GmemAllocator allocator(gaddrMap, neuron_alignment);
-      privateGmemSize = allocator.assignGaddr(private_ops, liveRange,
+      privateGmemSize = allocator.assignGaddr(private_outs, liveRange,
                                               true, baseGaddr);
     }
 
     // 3. Assign gaddr for ops in IO memory regin.
-    for (int i = 0; i < (int)io_ops.size(); ++i) {
-      gaddrMap[io_ops[i]] = (((uint64_t)3 + i) << 40);
+    for (int i = 0; i < (int)io_outs.size(); ++i) {
+      gaddrMap[io_outs[i]] = (((uint64_t)3 + i) << 40);
     }
 
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        if (gaddrMap.find(op) != gaddrMap.end()) {
-          Module::setAddress(op->getResult(0), gaddrMap[op]);
-        } else {
-          if (isa<tpu::ReshapeOp>(op)) {
-            auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op);
-            Module::setAddress(reshapeOp.output(), Module::getAddress(reshapeOp.input()));
+        int n = op->getNumResults();
+        for (int i = 0; i < n; i++) {
+          int64_t save_opd = (int64_t)op + i;
+          if (gaddrMap.find(save_opd) != gaddrMap.end()) {
+            if (!isa<tpu::ReshapeOp>(op)) {
+              Module::setAddress(op->getResult(i), gaddrMap[save_opd]);
+            }
+          } else {
+            if (isa<tpu::ReshapeOp>(op)) {
+              auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op);
+              Module::setAddress(reshapeOp.output(), Module::getAddress(reshapeOp.input()));
+            }
           }
         }
       });
@@ -170,7 +166,6 @@ public:
     // TODO markGmemReusedOp
     // TODO crop concat pattern
 
-    Module::setNeuronAddr(module, sharedGmemOffset);
     Module::setNeuronSize(module, sharedGmemSize);
     Module::setGmemPrivateSize(module, privateGmemSize);
     Module::updateModuleTypes(module);
@@ -206,48 +201,61 @@ protected:
   }
 
   void updateLiveRangeOfOps(
-      Operation *op, std::map<Operation *, uint32_t> &ops_loc,
-      std::map<Operation *, std::vector<uint32_t>> &liveRange, bool &chosen) {
+      Operation *op, int index, std::map<Operation *, uint32_t> &ops_loc,
+      std::map<int64_t, TensorLive> &liveRange,
+      bool &chosen, int64_t alignment = 64) {
     auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
       for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-        auto opd = op->getOperand(i).getDefiningOp();
-        if (liveRange.find(opd) != liveRange.end()) {
-          if (isa<top::InputOp>(opd) && liveRange[opd][1] == 0xFFFFFFFF) {
+        auto operand = op->getOperand(i);
+        auto opd = operand.getDefiningOp();
+        if (opd == 0x0) {
+          continue;
+        }
+        int64_t save_opd = (int64_t)opd;
+        if (opd->getNumResults() > 1) {
+          int this_index = getOutIndex(opd, operand);
+          assert(this_index != -1);
+          save_opd = save_opd + this_index;
+        }
+        if (liveRange.find(save_opd) != liveRange.end()) {
+          if (isa<top::InputOp>(opd) && liveRange[save_opd].end == 0xFFFFFFFF) {
             continue;
           }
-          if (liveRange[opd][1] == 0xFFFFFFFF ||
-              liveRange[opd][1] < endPosition) {
-            liveRange[opd][1] = endPosition;
+          if (liveRange[save_opd].end == 0xFFFFFFFF ||
+              liveRange[save_opd].end < endPosition) {
+            liveRange[save_opd].end = endPosition;
           }
         }
       }
     };
-    uint32_t endPosition = ops_loc[op] + 1;
+
+    auto save_op = (int64_t)op + index;
     uint32_t loc = ops_loc[op];
+    uint32_t endPosition = loc + 1;
     // TODO refer to tpu_compiler AssignNeuronAddress.cpp
     if (isa<top::InputOp>(op)) {
-      liveRange[op] = {0, 0xFFFFFFFF};
-      updateOperandsLiveRange(op, endPosition);
+      uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
+      assert(liveRange.count(save_op) == 0);
+      //TensorLive tl = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
+      liveRange[save_op] = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
       chosen = true;
-      printf("op name:%s case input\n", Module::getName(op).str().c_str());
+    } else if (Module::isOpInGroup(op)) {
+      updateOperandsLiveRange(op, endPosition);
+      chosen = false;
     } else if (isInPlaceOp(op)) {
       uint32_t maxPosition = endPosition;
       findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
       updateOperandsLiveRange(op, maxPosition);
-      printf("op name:%s case inplace\n", Module::getName(op).str().c_str());
-    } else if (fuse_address(op) && !isa<tpu::StoreOp>(op)) {
-      updateOperandsLiveRange(op, endPosition);
       chosen = false;
-      printf("op name:%s case fuse\n", Module::getName(op).str().c_str());
     } else if (op->getDialect()->getNamespace() == "tpu") {
-      liveRange[op] = {loc, 0xFFFFFFFF};
-      updateOperandsLiveRange(op, endPosition);
+      uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
+      assert(liveRange.count(save_op) == 0);
+      //TensorLive tl = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
+      liveRange[save_op] = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
       chosen = true;
-      printf("op name:%s case tpu\n", Module::getName(op).str().c_str());
     } else {
       updateOperandsLiveRange(op, endPosition);
       chosen = false;
-      printf("op name:%s case other\n", Module::getName(op).str().c_str());
     }
   }
 
@@ -282,27 +290,13 @@ protected:
     return nextOp;
   }
 
-  bool fuse_address(Operation *op) {
-    if (Module::isOpInGroup(op)) {
-      return true;
-    }
-    if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
-      if (chip == Module::Chip::BM1684x) {
-        auto addr = Module::getAddress(reshapeOp.input());
-        Module::setAddress(reshapeOp.output(), addr);
-        return true;
-      }
-    }
-    return false;
-  }
-
   void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition, std::map<Operation *, uint32_t> &ops_loc) {
     for (auto &use : op->getResult(0).getUses()) {
       Operation *next = use.getOwner();
       if (isInPlaceOp(next)) {
         findInPlaceOpMaxUsePosition(next, maxPosition, ops_loc);
       } else {
-        uint32_t curPosition = ops_loc[op] + 1;
+        uint32_t curPosition = ops_loc[next] + 1;
         if (maxPosition < curPosition) {
           maxPosition = curPosition;
         }
@@ -310,12 +304,24 @@ protected:
     }
   }
 
-  StringRef chip;
-private:
-   //record the allocated Gmem:Value, offset, size, ref_cnt
-  std::vector<gmem_entry> rec_tbl;
-  std::vector<mlir::Value> hold_edges;
-  std::set<int64_t> in_using_addr;
+  int getOutIndex(Operation *op, Value &out) {
+    for (int i = 0; i < op->getNumResults(); i++) {
+      if (op->getResult(i) == out) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_) {
+    uint32_t size = Module::getBytes(op->getResult(index));
+    // pad to aligment_
+    if (size % aligment_) {
+      size = size + aligment_ - (size % aligment_);
+    }
+    return size;
+  }
+
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createCVAddressAssignPass() {

@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/GmemAllocator.hpp"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -36,9 +37,6 @@ namespace tpu {
 
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
-  //Value, offset, size, ref_cnt
-  using gmem_entry = std::tuple<mlir::Value, int64_t, int64_t, int64_t>;
-
   AddressAssignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
@@ -47,9 +45,14 @@ public:
       llvm_unreachable("module should be divided");
     }
     Module::removeUnusedOp(module);
+    bm_assign_addr(module);
+  }
 
+protected:
+  void bm_assign_addr(mlir::ModuleOp &module) {
     int64_t start_addr = 0;
     int64_t alignment = BM168x::ALIGNMENT;
+    //bool check = false;
     chip = Module::getChip(module);
     if (chip == Module::Chip::BM1684) {
       start_addr = BM1684::instance().get_ctx_start_addr();
@@ -72,51 +75,45 @@ public:
     Module::setCoeffSize(module, addr - start_addr);
     // assign activation
     start_addr = addr;
+    uint32_t loc = 0;
+    //key: the operation pointer + output index, convert the result to type int64_t
+    std::map<int64_t, TensorLive> liveRange;
+    std::map<Operation *, uint32_t> ops_loc;
+    std::vector<int64_t> common_ops;
+    std::vector<int64_t> inplace_ops;
+    //0.update liverange of ops and choose ops to allocate.
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        //adjust the lifecycle.
-        calc_tensor_life_cycle(op);
-        if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
-                func::CallOp, tpu::YieldOp>(op)) {
-        } else if (fuse_address(op)) {
-          if (isa<tpu::ReshapeOp>(op)) {
-            //need to record the lifecycle and allocated addr of output tensor
-            for (auto out : op->getResults()) {
-              int user_size = 0;
-              for (auto user : out.getUsers())
-                user_size++;
-              record_info(out, Module::getAddress(out), user_size);
-            }
-          }
-        } else {
-          for (auto out : op->getResults()) {
-            int64_t bytes = Module::getBytes(out);
-
-            //check if can reuse the gmem according to the lifecycle of tensor.
-            int64_t reused_addr = 0;
-            check_can_reuse_gmem(op, bytes, reused_addr);
-
-            //use the number of tensor's Users as the life cycle.
-            int user_size = 0;
-            for (auto user : out.getUsers()) {
-              user_size++;
-            }
-
-            /* don't share the gmem between input/output tensor except reshape op .*/
-            if (reused_addr == 0) {
-              Module::setAddress(out, addr);
-              record_info(out, addr, user_size);
-              addr = align_up(addr + bytes, alignment);
-            } else {
-              Module::setAddress(out, reused_addr);
-              record_info(out, reused_addr, user_size);
-            }
-            adjust_eol_edge(op);
+        ops_loc[op] = loc;
+        ++loc;
+      });
+    }
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](Operation *op) {
+        int n = op->getNumResults();
+        for (int i = 0; i < n; i++) {
+          updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops, alignment);
+        }
+      }
+      );
+    }
+    //1.assign common_ops
+    //key: the operation pointer + output index, convert the result to type int64_t
+    std::map<int64_t, int64_t> gaddrMap;
+    if (!common_ops.empty()) {
+      GmemAllocator allocator(gaddrMap, alignment);
+      auto gmemUsed = allocator.assignGaddr(common_ops, liveRange, true, start_addr);
+      addr += gmemUsed;
+    }
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](Operation *op) {
+        for (int i = 0; i < op->getNumResults(); i++) {
+          int64_t save_op = (int64_t)op + i;
+          if (gaddrMap.find(save_op) != gaddrMap.end()) {
+            Module::setAddress(op->getResult(i), gaddrMap[save_op]);
           }
         }
-        //adjust_eol_edge(op);
       });
-      // sync StoreOp addr
       func.walk([&](tpu::GroupOp gOp) {
         int idx = 0;
         gOp.body().walk([&](tpu::StoreOp sOp) {
@@ -126,103 +123,118 @@ public:
         });
       });
     }
+    //2.set inplace_ops address
+    for (auto op : inplace_ops) {
+    if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op)) {
+      if (chip == Module::Chip::BM1684x) {
+        auto addr = Module::getAddress(reshapeOp.input());
+        Module::setAddress(reshapeOp.output(), addr);
+        }
+      }
+    }
     Module::setNeuronAddr(module, start_addr);
     Module::setNeuronSize(module, addr - start_addr);
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_ADDRESSED);
   }
 
-protected:
-  bool fuse_address(Operation *op) {
-    if (Module::isOpInGroup(op)) {
-      return true;
-    }
-    if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
-      if (chip == Module::Chip::BM1684x) {
-        auto addr = Module::getAddress(reshapeOp.input());
-        Module::setAddress(reshapeOp.output(), addr);
-        return true;
+  void updateLiveRangeofBMOps(Operation* op, int index, std::map<Operation *, uint32_t> &ops_loc,
+        std::map<int64_t, TensorLive> &liveRange,
+        std::vector<int64_t> &common_ops, std::vector<int64_t> &inplace_ops, int alignment) {
+    auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
+      for (uint32_t i = 0; i < op->getNumOperands(); i++) {
+        auto operand = op->getOperand(i);
+        auto opd = operand.getDefiningOp();
+        if (opd == 0x0) {
+          continue;
+        }
+        int64_t save_opd = (int64_t)opd;
+        if (opd->getNumResults() > 1) {
+          int this_index = getOutIndex(opd, operand);
+          assert(this_index != -1);
+          save_opd = save_opd + this_index;
+        }
+        if (liveRange.find(save_opd) != liveRange.end()) {
+          if (isa<top::InputOp>(opd) && liveRange[save_opd].end == 0xFFFFFFFF) {
+            continue;
+          }
+          if (liveRange[save_opd].end == 0xFFFFFFFF ||
+              liveRange[save_opd].end < endPosition) {
+            liveRange[save_opd].end = endPosition;
+          }
+        }
       }
+    };
+    int64_t save_op = (int64_t)op + index;
+    uint32_t loc = ops_loc[op];
+    uint32_t endPosition = loc + 1;
+    if (isa<top::InputOp>(op)) {
+      //liveRange.emplace_back(TensorLive(out, 0, 0xFFFFFFFF));
+      uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
+      assert(liveRange.count(save_op) == 0);
+      liveRange[save_op] = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
+      updateOperandsLiveRange(op, endPosition);
+      common_ops.emplace_back(save_op);
+    } else if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
+                func::CallOp, tpu::YieldOp>(op) || Module::isOpInGroup(op)) {
+      updateOperandsLiveRange(op, endPosition);
+    } else if (isInPlaceOp(op)) {
+      uint32_t maxPosition = endPosition;
+      findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
+      updateOperandsLiveRange(op, maxPosition);
+      inplace_ops.emplace_back(save_op);
+    } else if (op->getDialect()->getNamespace() == "tpu") {
+      uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
+      assert(liveRange.count(save_op) == 0);
+      liveRange[save_op] = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
+      updateOperandsLiveRange(op, endPosition);
+      common_ops.emplace_back(save_op);
+    } else {
+      updateOperandsLiveRange(op, endPosition);
+    }
+  }
+
+  void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition, std::map<Operation *, uint32_t> &ops_loc) {
+    for (auto &use : op->getResult(0).getUses()) {
+      Operation *next = use.getOwner();
+      if (isInPlaceOp(next)) {
+        findInPlaceOpMaxUsePosition(next, maxPosition, ops_loc);
+      } else {
+        uint32_t curPosition = ops_loc[next] + 1;
+        if (maxPosition < curPosition) {
+          maxPosition = curPosition;
+        }
+      }
+    }
+  }
+
+  bool isInPlaceOp(Operation *op) {
+    // TODO crop op
+    if (isa<tpu::ReshapeOp>(op)) {
+      return true;
     }
     return false;
   }
 
-  void calc_tensor_life_cycle(Operation *op) {
-    //decrease the ref_cnt of allocated tensor for further reuse gmem
-    for (auto v: op->getOperands()) {
-      //change the ref_cnt
-      for (auto it = rec_tbl.begin(); it != rec_tbl.end(); it++) {
-        if (std::get<0>(*it) == v && std::get<3>(*it) >= 1 ) {
-          //decrease the ref_cnt
-          std::get<3>(*it)--;
-        }
+  int getOutIndex(Operation *op, Value &out) {
+    for (int i = 0; i < op->getNumResults(); i++) {
+      if (op->getResult(i) == out) {
+        return i;
       }
     }
+    return -1;
   }
 
-  void adjust_eol_edge(Operation *op) {
-    //remove the holdtensor
-    for (auto v: op->getOperands()) {
-      auto iter = std::find(std::begin(hold_edges), std::end(hold_edges), v);
-      if (iter != std::end(hold_edges)) {
-        for (auto it = rec_tbl.begin(); it != rec_tbl.end(); it++) {
-          if (std::get<0>(*it) == v && std::get<3>(*it) == 0 ) {
-            //remove the using addr
-            in_using_addr.erase(std::get<1>(*it));
-            hold_edges.erase(std::remove(hold_edges.begin(), hold_edges.end(), v), hold_edges.end());
-          }
-        }
-      }
+  uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_) {
+    uint32_t size = Module::getBytes(op->getResult(index));
+    // pad to aligment_
+    if (size % aligment_) {
+      size = size + aligment_ - (size % aligment_);
     }
-  }
+    return size;
+}
 
-  int is_same_addr_with_input(Operation *op,
-                              int64_t addr) {
-    int64_t same = 0;
-    for (auto in: op->getOperands())
-    {
-      if (in.getType().isa<RankedTensorType>()
-          && in.getType().cast<RankedTensorType>().getEncoding()
-          && in.getType().cast<RankedTensorType>().getEncoding().isa<IntegerAttr>()
-          && Module::getAddress(in) == addr) {
-        same = 1;
-        break;
-      }
-    }
-    return same;
-  }
-
-  void check_can_reuse_gmem(Operation *op,
-                            int64_t need_size,
-                            int64_t &reused_addr) {
-    for (auto iter = rec_tbl.begin(); iter != rec_tbl.end(); iter++) {
-      //TODO: merge more than two EOL tensor's consecutive gmem to one gmem
-      auto it = std::find(std::begin(hold_edges), std::end(hold_edges), std::get<0>(*iter));
-      if (it == hold_edges.end()
-          && !in_using_addr.count(std::get<1>(*iter))
-          && std::get<3>(*iter) == 0
-            && std::get<2>(*iter) >= need_size) {
-        if (!is_same_addr_with_input(op, std::get<1>(*iter))) {
-          reused_addr = std::get<1>(*iter);
-          break;
-        }
-      }
-    }
-  }
-
-  void record_info(mlir::Value tensor,
-                   int64_t offset,
-                   int64_t users){
-    rec_tbl.push_back(std::make_tuple(tensor, offset, Module::getBytes(tensor), users));
-    hold_edges.push_back(tensor);
-    in_using_addr.insert(offset);
-  }
   StringRef chip;
-private:
-   //record the allocated Gmem:Value, offset, size, ref_cnt
-  std::vector<gmem_entry> rec_tbl;
-  std::vector<mlir::Value> hold_edges;
-  std::set<int64_t> in_using_addr;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createAddressAssignPass() {
