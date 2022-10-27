@@ -63,6 +63,7 @@ class ONNX_IR_TESTER(object):
             "PadReflect": self.test_PadReflect,
             "PRelu": self.test_PRelu,
             "Resize": self.test_Resize,
+            "Reshape": self.test_Reshape,
             "ReduceMean": self.test_ReduceMean,
             "SiLU": self.test_SiLU,
             "Softmax": self.test_Softmax,
@@ -641,6 +642,21 @@ class ONNX_IR_TESTER(object):
                                       initializer=[roi, scales])
         input_data = np.random.randn(*input_shape).astype(np.float32)
         self.onnx_and_test({"input": input_data}, graph_def)
+
+    def test_Reshape(self, case_name):
+        input_shape = [1, 16, 32, 32]
+        right_shape = [3]
+        output_shape = [1, 16, 1024]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        right_data = np.array([1, 16, 1024], dtype=np.int64)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        right = helper.make_tensor('right', TensorProto.INT64, right_shape, right_data)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        reshape_def = helper.make_node(case_name, inputs=['input', 'right'], outputs=['output'])
+        graph_def = helper.make_graph([reshape_def],
+                                      case_name, [input], [output],
+                                      initializer=[right])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_Softmax(self, case_name):
         input_shape = [1, 1000, 1, 1]

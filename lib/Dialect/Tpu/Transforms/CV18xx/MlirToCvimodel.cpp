@@ -338,16 +338,6 @@ flatbuffers::Offset<Tensor>
   }
   parseOpInfo(op, name, shape, size, offset, dtype);
   auto overwritten = false;
-  if (isa<tpu::ReshapeOp>(op)) {
-    auto opd = op->getOperand(0).getDefiningOp();
-    auto v = op->getResult(0);  // FIXME if preOp has multi oWWut
-    offset = Module::getAddress(v); // FIXME if pre is tpu::Grop
-    // TODO set preOp's overwritten to reshapeOp
-    // overwritten = preop.overwritten
-    if (isa<tpu::GroupOp>(op)) {
-      overwritten = true;
-    }
-  }
   // TODO set reuse flag
 
   // quant info

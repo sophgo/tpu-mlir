@@ -174,8 +174,22 @@ std::string Module::genWeightFileName(ModuleOp module) {
 
 int64_t Module::getAddress(Value v) {
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
-  assert(attr && attr.isa<IntegerAttr>());
-  return attr.cast<IntegerAttr>().getInt();
+  if (!attr) {
+    if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
+      int index = block_arg.getArgNumber();
+      auto parent_op = v.getParentBlock()->getParentOp();
+      auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
+      if (funcOp) {
+        mlir::func::CallOp callee = getCallOp(getModuleOp(parent_op), funcOp);
+        return Module::getAddress(callee.getOperand(index));
+      }
+    }
+  } else {
+    assert(attr.isa<IntegerAttr>());
+    return attr.cast<IntegerAttr>().getInt();
+  }
+  llvm_unreachable("can't get address");
+  return 0;
 }
 
 void Module::setAddress(Value v, int64_t addr) {
