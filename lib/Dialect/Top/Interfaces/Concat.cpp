@@ -7,42 +7,51 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Support/Dnnl/Concat.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
 using namespace mlir;
 
 int64_t top::ConcatOp::getFLOPs() { return 0; }
 
-LogicalResult top::ConcatOp::init(InferenceParameter &p) { return success(); }
-void top::ConcatOp::deinit(InferenceParameter &p) {}
+LogicalResult top::ConcatOp::init(InferenceParameter &p) {
+  auto concat = new Concat();
+  p.handle = (void *)concat;
+  return success();
+}
+void top::ConcatOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto concat = (Concat *)(p.handle);
+    delete concat;
+    p.handle = nullptr;
+  }
+}
 
 LogicalResult top::ConcatOp::inference(InferenceParameter &p) {
   auto axis_ = axis();
-  auto op0_shape = inputs()[0].getType().cast<RankedTensorType>().getShape();
+  auto input_shape = inputs()[0].getType().cast<RankedTensorType>().getShape();
+  concat_attr_t attr;
+  int channel = input_shape[axis_];
 
-  int64_t high = 1;
-  for (int64_t i = 0; i < axis_; ++i)
-    high *= op0_shape[i];
-  // Split the elements to high and low parts and view the lower parts as a
-  // single one. We can merge those elemnets more efficiently.
-  // [a,b,c,d] -> [a*b, c*d] \
-  //      ^                   | ---> [a*b, c*d + e*d] --> [a,b, c+e, d]
-  // [a,b,e,d] -> [a*b, e*d] /                                  ^^^
-  //      ^
-  SmallVector<int64_t> tailNum(inputs().size());
-  for (auto idt : llvm::enumerate(inputs())) {
-    tailNum[idt.index()] =
-        idt.value().getType().cast<RankedTensorType>().getNumElements() / high;
+  int outer_dim = 1;
+  for (int i = 0; i < axis_; i++) {
+    outer_dim *= input_shape[i];
   }
-  auto out_p = p.outputs[0];
-  for (int64_t i = 0; i < high; ++i) {
-    for (auto idt : llvm::enumerate(tailNum)) {
-      memcpy(out_p, p.inputs[idt.index()] + i * idt.value(),
-             idt.value() * sizeof(float));
-      out_p += idt.value();
-    }
+  int inner_dim = 1;
+  for (int i = axis_ + 1; i < input_shape.size(); i++) {
+    inner_dim *= input_shape[i];
   }
 
+  attr.src_shape = {outer_dim, channel, inner_dim};
+  attr.dst_shape = attr.src_shape;
+  attr.axis = axis_;
+
+  auto concat = (Concat *)p.handle;
+  concat->setup(p.inputs, p.outputs[0], attr);
+  concat->run();
   return success();
 }
