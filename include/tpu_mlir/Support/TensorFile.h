@@ -15,21 +15,21 @@
 #define MLIR_SUPPORT_TENSORFILE_H_
 
 #include "cnpy.h"
-#include "mlir/Support/LogicalResult.h"
-#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
+#include "mlir/IR/OpDefinition.h"
+#include "mlir/Support/LogicalResult.h"
 #include "llvm/ADT/Twine.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/raw_ostream.h"
 
-#include <type_traits>
-#include <string>
-#include <system_error>
-#include <ctime>
 #include <atomic>
+#include <ctime>
 #include <fstream>
 #include <set>
+#include <string>
+#include <system_error>
+#include <type_traits>
 
 #include <iomanip>
 template <typename T> static std::string int_to_hex(T i) {
@@ -42,7 +42,8 @@ namespace mlir {
 
 template <typename T> static bool check_type(Type eltType) {
   if (eltType.isa<quant::UniformQuantizedPerAxisType>()) {
-    eltType = eltType.cast<quant::UniformQuantizedPerAxisType>().getStorageType();
+    eltType =
+        eltType.cast<quant::UniformQuantizedPerAxisType>().getStorageType();
   } else if (eltType.isa<quant::UniformQuantizedType>()) {
     eltType = eltType.cast<quant::UniformQuantizedType>().getStorageType();
   }
@@ -59,7 +60,8 @@ template <typename T> static bool check_type(Type eltType) {
     same =
         (std::is_same<T, int16_t>::value || std::is_same<T, uint16_t>::value);
   } else if (eltType.isInteger(32)) {
-    same = (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value);
+    same =
+        (std::is_same<T, int32_t>::value || std::is_same<T, uint32_t>::value);
   } else {
     // eltType.isF16()
     // eltType.isF64()
@@ -98,6 +100,33 @@ public:
   }
 
   ~TensorFile() {}
+
+  /// update a tensor for weight compress
+  /// if the name is not found, return failure()
+  template <typename T>
+  LogicalResult updateTensorData(llvm::StringRef name, const T *data,
+                                 size_t count) {
+    assert(!readOnly);
+    auto it = map.find(name.str());
+    if (it == map.end()) {
+      llvm::errs() << "failed to add tensor " << name.str()
+                   << ", already exist\n";
+      llvm_unreachable("addTensor error!");
+      return failure();
+    }
+    cnpy::NpyArray &arr = it->second;
+    if (arr.num_bytes() != count * sizeof(T)) {
+      llvm::errs() << "size does not match for tensor " << name.str()
+                   << " " <<  count * sizeof(T) << " vs "
+                   << arr.num_bytes() << "\n";
+      llvm_unreachable("readTensor failed");
+      return failure();
+    }
+    arr.fortran_order = false;
+    memcpy(arr.data_holder->data(), data, arr.num_bytes());
+    cnt_update++;
+    return success();
+  }
 
   /// add a new tensor to file
   /// if the name is already used, return failure()
@@ -243,7 +272,7 @@ public:
     return success();
   }
 
-  bool changed() { return cnt_add + cnt_del > 0; }
+  bool changed() { return cnt_update + cnt_add + cnt_del > 0; }
 
   template <typename T>
   void colMajorToRowMajor(T &des, const cnpy::NpyArray &src) {
@@ -267,7 +296,7 @@ public:
 
   void save(const std::string &file = "") {
     assert(!readOnly);
-    if (cnt_add + cnt_del == 0) {
+    if (cnt_add + cnt_del + cnt_update == 0) {
       return;
     }
     if (!file.empty()) {
@@ -287,6 +316,7 @@ public:
     cnpy::npz_save_all(filename, map);
     cnt_add = 0;
     cnt_del = 0;
+    cnt_update = 0;
     return;
   }
 
@@ -306,6 +336,7 @@ private:
   cnpy::npz_t map;
   std::atomic<int> cnt_del = {0};
   std::atomic<int> cnt_add = {0};
+  std::atomic<int> cnt_update = {0};
 };
 
 /// Open the file specified by its name for reading.

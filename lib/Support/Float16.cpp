@@ -6,9 +6,9 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "bitcasts.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include <math.h>
 
 namespace tpu_mlir {
@@ -518,7 +518,7 @@ static inline uint16_t fp16_alt_from_fp32_value(float f) {
 /// The round mode is the same with default CPU standard
 /// Default round mode: round to nearest with tie to even
 /// The round mode can be change through fesetround()
-static inline bf16 fp32_to_bf16(fp32& single) {
+static inline bf16 fp32_to_bf16(fp32 &single) {
   bf16 res;
   if (single.format.exp == 255) {
     if (single.format.frac != 0) {
@@ -600,7 +600,7 @@ static inline bf16 fp32_to_bf16_denorm(fp32 src, RoundingMode round_mode) {
   return dst;
 }
 
-static inline bf16 fp32_to_bf16_all(fp32& src, RoundingMode round_mode) {
+static inline bf16 fp32_to_bf16_all(fp32 &src, RoundingMode round_mode) {
   bf16 dst;
   fp32 fp32val;
   long long temp_r, temp_l;
@@ -622,17 +622,21 @@ static inline bf16 fp32_to_bf16_all(fp32& src, RoundingMode round_mode) {
       temp_r = RightShiftRound<long long>((long long)src.bits, 16, round_mode);
     }
     temp_l = temp_r << 16;
-    fp32val.bits = temp_l&0xFFFFFFFF;
+    fp32val.bits = temp_l & 0xFFFFFFFF;
     dst = fp32_to_bf16(fp32val);
   } else if (src.format.exp == 0xff && src.format.frac != 0) {
     dst.bits = 0x7fff;
-  } else if (src.format.sign == 0 && src.format.exp == 0xff && src.format.frac == 0) {
+  } else if (src.format.sign == 0 && src.format.exp == 0xff &&
+             src.format.frac == 0) {
     dst.bits = 0x7f80;
-  } else if (src.format.sign == 1 && src.format.exp == 0xff && src.format.frac == 0) {
+  } else if (src.format.sign == 1 && src.format.exp == 0xff &&
+             src.format.frac == 0) {
     dst.bits = 0xff80;
-  } else if (src.format.sign == 0 && src.format.exp == 0 && src.format.frac == 0) {
+  } else if (src.format.sign == 0 && src.format.exp == 0 &&
+             src.format.frac == 0) {
     dst.bits = 0x0000;
-  } else if (src.format.sign == 1 && src.format.exp == 0 && src.format.frac == 0) {
+  } else if (src.format.sign == 1 && src.format.exp == 0 &&
+             src.format.frac == 0) {
     dst.bits = 0x8000;
   } else {
     // Denorm fp32, use fp32_to_bf16_denorm
@@ -656,7 +660,7 @@ static inline fp16 fp32_to_fp16(fp32 single) {
   return res;
 }
 
-static inline fp16 fp32_to_fp16_all(fp32& src, RoundingMode round_mode) {
+static inline fp16 fp32_to_fp16_all(fp32 &src, RoundingMode round_mode) {
   fp16 dst;
   fp32 fp32val;
   long long temp_r, temp_l;
@@ -678,7 +682,7 @@ static inline fp16 fp32_to_fp16_all(fp32& src, RoundingMode round_mode) {
       temp_r = RightShiftRound<long long>(src.bits, 13, round_mode);
     }
     temp_l = temp_r << 13;
-    fp32val.bits = temp_l&0xFFFFFFFF;
+    fp32val.bits = temp_l & 0xFFFFFFFF;
     dst = fp32_to_fp16(fp32val);
   } else if (src.format.exp > 0 && src.format.exp <= 112) {
     int mant = (src.bits & 0x7FFFFF) + (1 << 23);
@@ -690,13 +694,17 @@ static inline fp16 fp32_to_fp16_all(fp32& src, RoundingMode round_mode) {
     dst.format.sign = src.format.sign;
   } else if (src.format.exp == 0xff && src.format.frac != 0) {
     dst.bits = 0x7fff;
-  } else if (src.format.sign == 0 && src.format.exp == 0xff && src.format.frac == 0) {
+  } else if (src.format.sign == 0 && src.format.exp == 0xff &&
+             src.format.frac == 0) {
     dst.bits = 0x7c00;
-  } else if (src.format.sign == 1 && src.format.exp == 0xff && src.format.frac == 0) {
+  } else if (src.format.sign == 1 && src.format.exp == 0xff &&
+             src.format.frac == 0) {
     dst.bits = 0xfc00;
-  } else if (src.format.sign == 0 && src.format.exp == 0 && src.format.frac == 0) {
+  } else if (src.format.sign == 0 && src.format.exp == 0 &&
+             src.format.frac == 0) {
     dst.bits = 0x0000;
-  } else if (src.format.sign == 1 && src.format.exp == 0 && src.format.frac == 0) {
+  } else if (src.format.sign == 1 && src.format.exp == 0 &&
+             src.format.frac == 0) {
     dst.bits = 0x8000;
   } else {
     // Denorm fp32, use fp32_to_fp16 directly
@@ -706,9 +714,9 @@ static inline fp16 fp32_to_fp16_all(fp32& src, RoundingMode round_mode) {
 }
 
 float f16_to_f32(uint16_t src) {
-  fp16 half = { .bits = src};
+  fp16 half = {.bits = src};
   if (half.format.exp == 31 && half.format.frac != 0) {
-    fp32 res = { 0 };
+    fp32 res = {0};
     // NAN which had beed checked with IC
     res.bits = UINT32_C(0xFFC00000);
     return res.fval;
@@ -724,13 +732,13 @@ float bf16_to_f32(uint16_t src) {
 }
 
 uint16_t f32_to_bf16(float src) {
-  fp32 tmp = { .fval = src };
+  fp32 tmp = {.fval = src};
   bf16 ret = fp32_to_bf16_all(tmp, tpu_mlir::ROUNDING_HALF_TO_EVEN);
   return ret.bits;
 }
 
 uint16_t f32_to_f16(float src) {
-  fp32 tmp = { .fval = src };
+  fp32 tmp = {.fval = src};
   fp16 ret = fp32_to_fp16_all(tmp, tpu_mlir::ROUNDING_HALF_TO_EVEN);
   return ret.bits;
 }
@@ -754,7 +762,7 @@ void f32_to_bf16(float *p_src, float *p_dst, int num) {
 /*
 for cv18xx
 */
-float cvi_f32_to_bf16(float src, bool is_tpu) {
+uint16_t cvi_f32_to_u16(float src, bool is_tpu) {
   // To convert a float 32 to bfloat16, a float 32 can be viewed as 32 bits
   // with the following tags:
   //
@@ -785,39 +793,40 @@ float cvi_f32_to_bf16(float src, bool is_tpu) {
     u16_val = ((uint16_t *)(&u32_val))[1];
     /* HW behavior */
     // infinity set to max finite positive value
-    u16_val = ((u16_val & 0x7f80) == 0x7f80) ?
-              0x7f7f : u16_val;
+    u16_val = ((u16_val & 0x7f80) == 0x7f80) ? 0x7f7f : u16_val;
   } else {
     u16_val = ((uint16_t *)(&src))[1];
   }
+  return u16_val;
+}
+
+float cvi_f32_to_bf16(float src, bool is_tpu) {
+  auto u16_val = cvi_f32_to_u16(src, is_tpu);
   // recover bf16 to fp32
-  float dst = 0;
+  // todo use f16_to_f32
+  float_t dst = 0;
   uint16_t *p = (uint16_t *)(&dst);
   p[1] = u16_val;
   return dst;
 }
 
-void cvi_f32_to_bf16(float *p_src, float *p_dst, int num,
-                    bool is_tpu) {
+void cvi_f32_to_bf16(float *p_src, float *p_dst, int num, bool is_tpu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; i++) {
     p_dst[i] = cvi_f32_to_bf16(p_src[i], is_tpu);
   }
 }
 
-void cvi_int8_to_bf16(float *p_src, float *p_dst,
-                    float scale, int zero_point,
-                    int num, bool is_tpu) {
+void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int zero_point,
+                      int num, bool is_tpu) {
   // int8 / uint8 ==> bf16 / fp32
   if (is_tpu) {
     scale = cvi_f32_to_bf16(scale);
     zero_point = cvi_f32_to_bf16(zero_point);
 #pragma omp parallel for schedule(static, omp_schedule(num))
     for (int i = 0; i < num; i++) {
-        p_dst[i] = cvi_f32_to_bf16(
-                      cvi_f32_to_bf16(
-                        p_src[i] + zero_point, (zero_point != 0))
-                      * scale);
+      p_dst[i] = cvi_f32_to_bf16(
+          cvi_f32_to_bf16(p_src[i] + zero_point, (zero_point != 0)) * scale);
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num))

@@ -93,6 +93,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
   template<typename T>
+  mlir::LogicalResult update(const std::vector<T>& data, size_t count);
+  template<typename T>
   std::shared_ptr<std::vector<T>> read();
   std::shared_ptr<std::vector<float>> read_as_float();
   std::shared_ptr<std::vector<uint8_t>> read_as_byte();

@@ -22,6 +22,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   operands.push_back(op.input());
   conv_attr_t attr = {0};
   op.parseParam(&attr);
+  if (attr.pht > 15 || attr.phb > 15 || attr.pwl > 15 || attr.pwr > 15) {
+    llvm_unreachable("Fix me. Not supported now");
+  }
   double in_thr, out_thr;
   in_thr = Quant::getThreshold(op.input());
   out_thr = Quant::getThreshold(op.output());
@@ -53,23 +56,23 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       // * thr_y) thr_w = qscale * 127.0 * thr_y / thr_x qscale = 0.99999999
       qscale = 0.999999;
       LLVM_DEBUG(llvm::errs()
-                << "WARNING: adjust threshold_w for qscale"
-                << ", qscale_filter = " << qscale << ", max_filter[" << c
-                << "] = " << qscale * 127 * out_thr / in_thr << "\n";);
+                     << "WARNING: adjust threshold_w for qscale"
+                     << ", qscale_filter = " << qscale << ", max_filter[" << c
+                     << "] = " << qscale * 127 * out_thr / in_thr << "\n";);
     }
     if (attr.has_bias) {
       float b_max = fabs(bias_fp32->data()[c]);
       double qscale_bias = getQscaleForBias(b_max, out_thr);
       if (qscale_bias > qscale) {
         LLVM_DEBUG(llvm::errs() << "WARNING: adjust qscale for bias"
-                        << ", qscale_filter = " << qscale
-                        << ", qscale_bias = " << qscale_bias << "\n";);
+                                << ", qscale_filter = " << qscale
+                                << ", qscale_bias = " << qscale_bias << "\n";);
         if (qscale_bias >= 1) {
           // prevent for auto tuning
           LLVM_DEBUG(llvm::errs()
-                        << "WARNING:  qscale_bias are valid, keep org qscale"
-                        << ", qscale_filter = " << qscale
-                        << ", qscale_bias = " << qscale_bias << "\n";);
+                         << "WARNING:  qscale_bias are valid, keep org qscale"
+                         << ", qscale_filter = " << qscale
+                         << ", qscale_bias = " << qscale_bias << "\n";);
         } else {
           qscale = qscale_bias;
         }
@@ -81,24 +84,27 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     multiplier_v.push_back(multiplier);
     rshift_v.push_back(rshift);
     // quantize weight
-    quantizeFilterRShiftAndMultiplier(p_filter, filter_i8->data() + c * inner_dim,
-                                      inner_dim, out_thr, in_thr, rshift,
-                                      multiplier, true);
+    quantizeFilterRShiftAndMultiplier(
+        p_filter, filter_i8->data() + c * inner_dim, inner_dim, out_thr, in_thr,
+        rshift, multiplier, true);
     if (attr.has_bias) {
-      quantizeBiasRShiftAndMultiplier(bias_fp32->data() + c, bias_int32->data() + c,
-                                      1, out_thr, rshift, multiplier, true);
+      quantizeBiasRShiftAndMultiplier(bias_fp32->data() + c,
+                                      bias_int32->data() + c, 1, out_thr,
+                                      rshift, multiplier, true);
     }
   }
   auto filter_type = op.filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
                                         rewriter.getIntegerType(8, true));
-  auto new_filter = top::WeightOp::create(op, "filter_i8", *filter_i8, new_type);
+  auto new_filter =
+      top::WeightOp::create(op, "filter_i8", *filter_i8, new_type);
   operands.push_back(new_filter);
 
   if (attr.has_bias) {
     auto new_type =
         RankedTensorType::get({1, attr.oc, 1, 1}, rewriter.getI32Type());
-    auto new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
+    auto new_bias =
+        top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
     operands.push_back(op.bias()); // none
@@ -108,9 +114,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     attrs.push_back(attr);
   }
   auto ctx = op->getContext();
-  attrs.push_back(
-      rewriter.getNamedAttr("quant_mode",
-        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
@@ -119,14 +124,54 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
   auto newOp = rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                            ArrayRef<Value>{operands},
-                                            ArrayRef<NamedAttribute>{attrs});
+                                              ArrayRef<Value>{operands},
+                                              ArrayRef<NamedAttribute>{attrs});
   Value newValue = newOp.output();
   rewriter.replaceOp(op, {newValue});
 }
+
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
-  llvm_unreachable("Not supported now");
+  auto ctx = getContext();
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  operands.push_back(op.input());
+  operands.push_back(filterOp.clone_bf16(op));
+  operands.push_back(op.bias());
+
+  conv_attr_t attr = {0};
+  op.parseParam(&attr);
+  if (attr.pht > 15 || attr.phb > 15 || attr.pwl > 15 || attr.pwr > 15) {
+    llvm_unreachable("Fix me. Not supported now");
+  }
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
+  attrs.push_back(
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
+  auto tensor_type = op.output().getType().cast<RankedTensorType>();
+  auto newType =
+      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  Value newValue;
+  if (op.kernel_shape().size() == 1) {
+    auto newOp =
+        rewriter.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
+    newValue = newOp.output();
+  } else if (op.kernel_shape().size() == 2) {
+    auto newOp =
+        rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
+    newValue = newOp.output();
+  } else {
+    auto newOp =
+        rewriter.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
+    newValue = newOp.output();
+  }
+  rewriter.replaceOp(op, {newValue});
 }
 
 } // namespace cv18xx

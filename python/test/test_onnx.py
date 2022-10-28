@@ -85,6 +85,7 @@ class ONNX_IR_TESTER(object):
         self.quant_modes = ["f32", "int8", "f16", "bf16"]  # no quantization when quant_mode == "f32"
         self.chip = self.get_chip_name()
         if self.chip.find("cv18") >= 0:
+            # self.quant_modes = ["int8", "bf16"]
             self.quant_modes = ["int8"]
 
     def get_chip_name(self):

@@ -6,14 +6,13 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
-#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include <sstream>
+#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
 #include <fstream>
 #include <regex>
+#include <sstream>
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU
@@ -170,8 +169,7 @@ public:
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (LoweringConfig::chip == Module::Chip::BM1684) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
-    } else if (LoweringConfig::chip == Module::Chip::CV182x ||
-               LoweringConfig::chip == Module::Chip::CV183x) {
+    } else if (Module::isCV18xx(LoweringConfig::chip)) {
       cv18xx::populateTopToTpuConversionPatterns(&patterns);
     } else {
       llvm_unreachable("Not Implemented");

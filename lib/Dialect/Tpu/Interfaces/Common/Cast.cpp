@@ -32,14 +32,12 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   bool is_cv18xx = Module::isCV18xx(chip);
   auto round_mode = is_cv18xx ? ROUNDING_HALF_TO_EVEN : ROUNDING_HALF_DOWN;
   bool is_tpu = Module::isTpuOp(op);
-  if (is_cv18xx && (out_type.isF16() || out_type.isF16())) {
-    llvm_unreachable("CV18xx not support this dtype.");
-  }
+
   if (in_type.isF32() && out_type.isF16()) {
     f32_to_f16(p.inputs[0], p.outputs[0], num_elem);
   } else if (in_type.isF32() && out_type.isBF16()) {
     if (is_cv18xx) {
-      cvi_f32_to_bf16(p.inputs[0], p.outputs[0], num_elem, is_tpu);
+      cvi_f32_to_bf16(p.inputs[0], p.outputs[0], num_elem, false);
     } else {
       f32_to_bf16(p.inputs[0], p.outputs[0], num_elem);
     }
