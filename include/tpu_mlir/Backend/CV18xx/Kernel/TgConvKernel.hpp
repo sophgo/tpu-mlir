@@ -7,8 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TG_CONV_KERNEL_HPP
-#define TG_CONV_KERNEL_HPP
+#pragma once
 
 #include <cmath>
 #include <iostream>
@@ -1083,4 +1082,3 @@ private:
 };
 } // namespace backend
 } // namespace tpu_mlir
-#endif

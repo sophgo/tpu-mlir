@@ -9,14 +9,28 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Float16.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::top;
 using namespace mlir;
+
+template <typename T>
+LogicalResult WeightOp::update(const std::vector<T> &data, size_t count) {
+  auto op = getOperation();
+  auto dialect = op->getDialect();
+  auto topDialect = llvm::cast<TopDialect>(dialect);
+  if (topDialect->wFile == nullptr) {
+    auto moduleOp = Module::getModuleOp(op);
+    auto weight_file = Module::getWeightFile(moduleOp);
+    topDialect->loadWeightFile(weight_file);
+  }
+  return topDialect->wFile->updateTensorData(Module::getName(op).str(), &data[0],
+                                             count);
+}
 
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto op = getOperation();
@@ -101,7 +115,7 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_i32->data(), bytes);
     return std::move(data_u8);
-  } else if (dtype.isa<::mlir::Float16Type, ::mlir::BFloat16Type>()){
+  } else if (dtype.isa<::mlir::Float16Type, ::mlir::BFloat16Type>()) {
     auto data_u16 = read<uint16_t>();
     auto bytes = data_u16->size() * sizeof(uint16_t);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
@@ -134,7 +148,8 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), type);
   return newOp.getResult();
 }
-
+template LogicalResult WeightOp::update(const std::vector<uint8_t> &data,
+                                        size_t cont);
 template std::shared_ptr<std::vector<float>> WeightOp::read();
 template std::shared_ptr<std::vector<int8_t>> WeightOp::read();
 template std::shared_ptr<std::vector<int16_t>> WeightOp::read();
@@ -159,6 +174,9 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
 template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<int32_t> &data,
                                 RankedTensorType &type);
+template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
+                                const std::vector<uint32_t> &data,
+                                RankedTensorType &type);
 
 mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
@@ -167,9 +185,15 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto data = read<float>();
   auto count = data->size();
   auto data_bf16 = std::make_shared<std::vector<uint16_t>>(count);
+  auto is_cv18xx = Module::isCV18xx(Module::getChip(OwnerOp));
 
+#pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {
-    data_bf16->at(i) = f32_to_bf16(data->at(i));
+    if (is_cv18xx) {
+      data_bf16->at(i) = cvi_f32_to_u16(data->at(i), true);
+    } else {
+      data_bf16->at(i) = f32_to_bf16(data->at(i));
+    }
   }
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);
@@ -183,8 +207,7 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
       topDialect->wFile->addTensor(new_name, data_bf16->data(), new_type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  auto newOp =
-      builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type);
   return newOp.getResult();
 };
 
@@ -195,8 +218,10 @@ mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto data = read<float>();
   auto count = data->size();
   auto data_f16 = std::make_shared<std::vector<uint16_t>>(count);
+
+#pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {
-    data_f16->at(i) = f32_to_f16( data->at(i) );
+    data_f16->at(i) = f32_to_f16(data->at(i));
   }
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);

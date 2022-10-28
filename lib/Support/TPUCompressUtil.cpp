@@ -482,8 +482,8 @@ WeightCompresser::~WeightCompresser() {
     return;
   }
   assert(new_data.size() <= old_data.size());
-  auto weight_op =
-    top::WeightOp::create(op, "compressed", new_data, rtype);
-  op->setOperand(1, weight_op);
+  auto weight_op = op->getOperand(1).getDefiningOp();
+  auto w_cast_op = dyn_cast<top::WeightOp>(weight_op);
+  w_cast_op.update(new_data, new_data.size());
 }
 } // namespace tpu_mlir
