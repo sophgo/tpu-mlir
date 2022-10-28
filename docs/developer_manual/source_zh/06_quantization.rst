@@ -169,5 +169,63 @@ AvgPool
                & 其中Scale_{f32} = \frac{S_x}{S_yk}，Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
 
 
+LeakyReLU
+~~~~~~~~~~~~
+
+LeakyReLU的表达式可以简写为： :math:`Y = \begin{cases} X, if X \geq 0\\ \alpha X, if X < 0 \end{cases}`
+
+代入int8量化公式，推导如下：
+
+.. math::
+
+   float:\quad & Y = \begin{cases} X, if \ X \geq 0\\ \alpha X, if \ X < 0 \end{cases} \\
+   step0:\quad & => S_y (q_y - Z_y) = \begin{cases} S_x(q_x - Z_x), if \ q_x \geq 0\\ \alpha S_x (q_x - Z_x), if \ q_x < 0 \end{cases} \\
+   step1:\quad & => q_y = \begin{cases} \frac{S_x}{S_y}(q_x - Z_x) + Z_y, if \ q_x \geq 0\\ \alpha \frac{S_x}{S_y} (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases}  
+
+对称量化时，:math:`S_y=\frac{threshold_y}{128}, S_x=\frac{threshold_x}{128}`，非对称量化时，:math:`S_y = \frac{max_y ⁡- min_y}{255}, S_x = \frac{max_x ⁡- min_x}{255}`。通过BackwardCalibration操作后，:math:`max_y = max_x， min_y = min_x，threshold_y = threshold_x`，此时Sx/Sy = 1。
+
+.. math::
+
+   step2:\quad & => q_y = \begin{cases} (q_x - Z_x) + Z_y， if \ q_x \geq 0\\ \alpha (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases} \\
+   step3:\quad & => q_y = \begin{cases} q_x - Z_x + Z_y， if \ q_x \geq 0\\ M_{i8} >> rshift_{i8} (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases} 
+
+当为对称量化时，Zx和Zy均为0。
+
+Pad
+~~~~~~~~~~~~
+
+Pad的表达式可以简写为：:math:`Y = \begin{cases} X, \ origin\ location \\ value, \ padded\ location \end{cases}`
+
+代入int8量化公式，推导如下：
+
+.. math::
+   float:\quad & Y = \begin{cases} X, \ origin\ location \\ value, \ padded\ location \end{cases} \\
+   step0:\quad & => S_y (q_y - Z_y) = \begin{cases} S_x (q_x - Z_x), \ origin\ location \\ value, \ padded\ location \end{cases} \\
+   step1:\quad & => q_y = \begin{cases} \frac{S_x}{S_y} (q_x - Z_x) + Z_y, \ origin\ location \\ \frac{value}{S_y} + Z_y, \ padded\ location \end{cases}
+
+通过ForwardCalibration操作后，:math:`max_y = max_x， min_y = min_x，threshold_y = threshold_x`，此时Sx/Sy = 1。
+
+.. math::
+   step2:\quad & => q_y = \begin{cases} (q_x - Z_x) + Z_y, \ origin\ location \\ \frac{value}{S_y} + Z_y, \ padded\ location \end{cases}
+
+对称量化时，Zx和Zy均为0，pad填入 round(value/Sy), 非对称量化时，pad填入round(value/Sy + Zy)。
 
 
+PReLU
+~~~~~~~~~~~~
+PReLU的表达式可以简写为：:math:`Y_i = \begin{cases} X_i, if \ X_i \geq 0\\ \alpha_i X_i, if \ X_i < 0 \end{cases}`
+
+代入int8量化公式，推导如下：
+
+.. math::
+   float:\quad & Y_i = \begin{cases} X_i, if \  X_i \geq 0\\ \alpha_i X_i, if \ X_i < 0 \end{cases} \\
+   step0:\quad & => S_y (y_i - Z_y) = \begin{cases} S_x (x_i - Z_x), if \ x_i \geq 0\\ S_{\alpha}q_{\alpha_i}S_x (x_i - Z_x), if \ x_i < 0 \end{cases} \\
+   step1:\quad & => y_i = \begin{cases} \frac{S_x}{S_y} (x_i - Z_x) + Z_y, if \ x_i \geq 0\\ S_{\alpha}q_{\alpha_i}\frac{S_x}{S_y} (x_i - Z_x) + Z_y, if \ x_i < 0 \end{cases} \\
+
+通过BackwardCalibration操作后，:math:`max_y = max_x， min_y = min_x，threshold_y = threshold_x`，此时Sx/Sy = 1。
+
+.. math::
+   step2:\quad & => y_i = \begin{cases} (x_i - Z_x) + Z_y, if \ x_i \geq 0\\ S_{\alpha}q_{\alpha_i}(x_i - Z_x) + Z_y, if \ x_i < 0 \end{cases} \\
+   step3:\quad & => y_i = \begin{cases} (x_i - Z_x) + Z_y, if \ x_i \geq 0\\ q_{\alpha_i} * M_{i8} (x_i - Z_x) >> rshift_{i8} + Z_y, if \ x_i < 0 \end{cases} \\
+
+一共有oc个Multiplier和1个rshift。当为对称量化时，Zx和Zy均为0。
