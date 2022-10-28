@@ -1,0 +1,5 @@
+xception4_conv3_1 F32
+xception4_conv3_2 F32
+xception10_elewise F32
+xception11_elewise F32
+xception12_elewise F32
