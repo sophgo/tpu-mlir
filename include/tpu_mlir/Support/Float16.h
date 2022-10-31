@@ -45,9 +45,17 @@ typedef union {
 convert to f32 float to f16/bf16 float
 */
 void f32_to_f16(float *p_src, float *p_dst, int num);
-void f32_to_bf16(float *p_src, float *p_dst, int num);
 uint16_t f32_to_f16(float src);
-uint16_t f32_to_bf16(float src);
+
+// f32 to bf16 common
+uint16_t f32_to_bf16(float src, bool is_cv18xx = false, bool is_tpu = true);
+void f32_to_bf16(float *p_src, float *p_dst, int num, bool is_cv18xx = false,
+                 bool is_tpu = true);
+// bm168x
+uint16_t bm_f32_to_bf16(float src);
+// cv18xx
+uint16_t cvi_f32_to_bf16(float src, bool is_tpu);
+float cvi_f32_to_fbf16(float src, bool is_tpu = true);
 
 /*
 convert to f16/bf16 float to f32 float
@@ -56,15 +64,9 @@ float f16_to_f32(uint16_t src);
 float bf16_to_f32(uint16_t src);
 
 /*
-for cv18xx
+convert to int8 to bf16 float
 */
-// typedef uint16_t bfloat16;
-uint16_t cvi_f32_to_u16(float src, bool is_tpu);
-float cvi_f32_to_bf16(float src, bool is_tpu = true);
-void cvi_f32_to_bf16(float *p_src, float *p_dst, int num,
-                    bool is_tpu = true);
-void cvi_int8_to_bf16(float *p_src, float *p_dst,
-                     float scale, int zero_point,
-                     int num, bool is_tpu=true);
+void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int zero_point,
+                      int num, bool is_tpu = true);
 
 } // namespace tpu_mlir

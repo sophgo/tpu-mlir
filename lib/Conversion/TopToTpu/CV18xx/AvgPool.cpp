@@ -63,7 +63,16 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::AvgPoolOp poolOp) const {
-  llvm_unreachable("Not support now.");
+  auto op = poolOp.getOperation();
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
+  if (poolOp.kernel_shape().size() == 3) {
+    lowering_common_bf16<tpu::Pool3DOp>(rewriter, op);
+  } else if (poolOp.kernel_shape().size() == 2) {
+    lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
+  } else {
+    lowering_common_bf16<tpu::Pool1DOp>(rewriter, op);
+  }
 }
 
 

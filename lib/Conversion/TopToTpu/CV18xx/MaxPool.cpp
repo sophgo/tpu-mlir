@@ -27,7 +27,15 @@ void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
 
 void MaxPoolLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::MaxPoolOp op) const {
-  llvm_unreachable("Not support now.");
+  op->setAttr("pool_mode",
+              tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
+  if (op.kernel_shape().size() == 3) {
+    lowering_common_bf16<tpu::Pool3DOp>(rewriter, op);
+  } else if (op.kernel_shape().size() == 2) {
+    lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
+  } else {
+    lowering_common_bf16<tpu::Pool1DOp>(rewriter, op);
+  }
 }
 
 } // namespace cv18xx

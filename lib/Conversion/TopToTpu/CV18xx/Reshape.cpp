@@ -22,7 +22,7 @@ void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,
 
 void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ReshapeOp op) const {
-  llvm_unreachable("Not supported now");
+  lowering_common_bf16<tpu::ReshapeOp>(rewriter, op);
 }
 
 } // namespace cv18xx

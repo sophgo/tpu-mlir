@@ -156,8 +156,24 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::MatMulOp op) const {
-  llvm_unreachable("Not supported now");
+  std::vector<Value> operands;
+  std::vector<NamedAttribute> attrs;
+  operands.push_back(op.input());
+  if (auto rightOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
+    operands.push_back(rightOp.clone_bf16(op));
+  } else {
+    operands.push_back(op.right());
+  }
+  if (auto biasOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
+    operands.push_back(biasOp.clone_bf16(op));
+  } else {
+    operands.push_back(op.bias());
+  }
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto newType = getQuantBF16Type(op.output());
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
-
 } // namespace cv18xx
 } // namespace tpu_mlir
