@@ -36,11 +36,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
   if (in_type.isF32() && out_type.isF16()) {
     f32_to_f16(p.inputs[0], p.outputs[0], num_elem);
   } else if (in_type.isF32() && out_type.isBF16()) {
-    if (is_cv18xx) {
-      cvi_f32_to_bf16(p.inputs[0], p.outputs[0], num_elem, false);
-    } else {
-      f32_to_bf16(p.inputs[0], p.outputs[0], num_elem);
-    }
+    f32_to_bf16(p.inputs[0], p.outputs[0], num_elem, is_cv18xx, false);
   } else if (isOutQuant && false == isInQuant) {
     // FP32|BF16|F16|... => INT8|UINT8|...
     auto qtype = Quant::getUniformQuantizedType(output());
@@ -48,10 +44,10 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     for (size_t i = 0; i < num_elem; i++) {
       float v;
       if (is_cv18xx) {
-        v = cvi_f32_to_bf16(
-            cvi_f32_to_bf16(cvi_f32_to_bf16(p.inputs[0][i], false) *
-                            cvi_f32_to_bf16(1. / qtype.getScale())) +
-                cvi_f32_to_bf16(qtype.getZeroPoint()),
+        v = cvi_f32_to_fbf16(
+            cvi_f32_to_fbf16(cvi_f32_to_fbf16(p.inputs[0][i], false) *
+                             cvi_f32_to_fbf16(1. / qtype.getScale())) +
+                cvi_f32_to_fbf16(qtype.getZeroPoint()),
             (qtype.getZeroPoint() != 0));
       } else {
         v = std::round(p.inputs[0][i] / qtype.getScale()) +

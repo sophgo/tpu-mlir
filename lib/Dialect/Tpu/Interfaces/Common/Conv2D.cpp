@@ -90,11 +90,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
-      if (is_cv18xx) {
-        cvi_f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, true);
-      } else {
-        f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
-      }
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }

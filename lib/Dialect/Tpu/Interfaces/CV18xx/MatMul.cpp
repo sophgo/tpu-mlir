@@ -37,30 +37,48 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     if (with_bias) {
       ga_bias = Module::getAddress(bias());
     }
-    auto multiplier_v = Module::getI64Array(multipliers(), batch, 1);
-    auto rshift_v = Module::getI64Array(rshifts(), batch, 0);
-    std::vector<int32_t> multiplier_int32;
-    std::vector<int32_t> rshift_int32;
-    multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());
-    rshift_int32.assign(rshift_v->begin(), rshift_v->end());
-
     WeightCompresser weight_opt(this->getOperation(), true);
-    cvi_backend_tg_fixed_fc_kernel(*backend_ctx, layer_id, ga_input, ga_filter,
-                                   ga_bias, ga_output, M, K, N, with_bias, relu,
-                                   rshift_int32, multiplier_int32,
-                                   &weight_opt.old_data, &weight_opt.new_data,
-                                   1, batch, false, false, false);
+    if (Quant::isUniformQuantized(output())) {
+      auto multiplier_v = Module::getI64Array(multipliers(), batch, 1);
+      auto rshift_v = Module::getI64Array(rshifts(), batch, 0);
+      std::vector<int32_t> multiplier_int32;
+      std::vector<int32_t> rshift_int32;
+      multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());
+      rshift_int32.assign(rshift_v->begin(), rshift_v->end());
+      cvi_backend_tg_fixed_fc_kernel(
+          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
+          N, with_bias, relu, rshift_int32, multiplier_int32,
+          &weight_opt.old_data, &weight_opt.new_data, 1, batch, false, false,
+          false);
+    } else {
+      // TODO batch_high, batch_low, lstride, ostride, do_quant_bf16
+      gaddr_t ga_scale = GA_INVALID;
+      gaddr_t ga_zeropoint = GA_INVALID;
+      bool do_quant_bf16 = false;
+      cvi_backend_tg_bf16_fc_kernel(
+          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
+          N, with_bias, relu, &weight_opt.old_data, &weight_opt.new_data, 1,
+          batch, false, false, false, do_quant_bf16, ga_scale, ga_zeropoint);
+    }
   } else {
-    auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
-    auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
-    std::vector<int32_t> multiplier_int32;
-    std::vector<int32_t> rshift_int32;
-    multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());
-    rshift_int32.assign(rshift_v->begin(), rshift_v->end());
+    if (Quant::isUniformQuantized(output())) {
+      auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+      std::vector<int32_t> multiplier_int32;
+      std::vector<int32_t> rshift_int32;
+      multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());
+      rshift_int32.assign(rshift_v->begin(), rshift_v->end());
 
-    cvi_backend_tg_fixed_fc_kernel(*backend_ctx, layer_id, ga_input, ga_filter,
-                                   ga_bias, ga_output, M, K, N, with_bias, relu,
-                                   rshift_int32, multiplier_int32, nullptr, nullptr, 1,
-                                   batch, false, false, false);
+      cvi_backend_tg_fixed_fc_kernel(
+          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
+          N, with_bias, relu, rshift_int32, multiplier_int32, nullptr, nullptr,
+          1, batch, false, false, false);
+    } else {
+      // TODO batch_high, batch_low, lt, rt, ot
+      cvi_backend_tg_bf16_fc_kernel(*backend_ctx, layer_id, ga_input, ga_filter,
+                                    GA_INVALID, ga_output, M, K, N, false,
+                                    relu, nullptr, nullptr, 1,
+                                    batch, false, false, false);
+    }
   }
 }

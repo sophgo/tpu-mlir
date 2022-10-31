@@ -76,5 +76,30 @@ void cvi_backend_tg_bf16_conv_kernel(
     std::vector<uint8_t> *filter = nullptr,
     std::vector<uint8_t> *new_filter = nullptr, bool do_quant = false,
     gaddr_t ga_scale = 0, gaddr_t ga_zeropoint = 0);
+
+void cvi_backend_tg_bf16_eltwise_add_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id,
+    gaddr_t ga_inputs[], gaddr_t ga_output,
+    int32_t operand_num, int32_t n, int32_t c,
+    int32_t h, int32_t w, bool do_relu, bool do_early_stride,
+    int32_t stride_h, int32_t stride_w,
+    const float *coeffs);
+
+void cvi_backend_tg_bf16_fc_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+    gaddr_t ga_weight, gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
+    bool do_bias, bool do_relu,
+    const std::vector<uint8_t> *old_filter = nullptr,
+    std::vector<uint8_t> *new_filter = nullptr, int batch_high = 1,
+    int batch_low = 1, bool lstride = false, bool rstride = false,
+    bool ostride = false, bool do_quant_bf16 = 0, gaddr_t ga_scale = 0,
+    gaddr_t ga_zeropoint = 0);
+
+void cvi_backend_tg_bf16_pooling_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ifmap_gaddr,
+    gaddr_t ofmap_gaddr, gaddr_t index_gaddr, gaddr_t o_findex_gaddr, int n,
+    int c, int h, int w, int kh, int kw, int pad_top, int pad_bot, int pad_left,
+    int pad_right, int stride_h, int stride_w, int is_avg_pooling,
+    float avg_const, int do_relu, const bool ceil_mode);
 } // namespace backend
 } // namespace tpu_mlir

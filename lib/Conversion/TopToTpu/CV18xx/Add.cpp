@@ -66,7 +66,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
 }
 void AddLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::AddOp op) const {
-  llvm_unreachable("Not supported now");
+  lowering_common_bf16<tpu::AddOp>(rewriter, op.getOperation());
 }
 
 } // namespace cv18xx

@@ -189,11 +189,7 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
 
 #pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {
-    if (is_cv18xx) {
-      data_bf16->at(i) = cvi_f32_to_u16(data->at(i), true);
-    } else {
-      data_bf16->at(i) = f32_to_bf16(data->at(i));
-    }
+    data_bf16->at(i) = f32_to_bf16(data->at(i), is_cv18xx, true);
   }
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);
