@@ -32,14 +32,45 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
   int64_t zeropoint;
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
-    operands.push_back(input);
-    Quant::getScaleAndZeroPoint(input, scale, zeropoint, asymmetric);
-    int scalei, shifti;
-    auto scale_f = scale / o_scale;
-    // get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
-    // "get_scale_and_shift_positive" use positive right_shift, left_shift
-    // will be converted to the multiplier.
-    get_scale_and_shift_positive(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+    int scalei = 1, shifti = 0;
+    if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
+      // constant tensor
+      auto constF32 = constOp.read<float>();
+      float fmax, fmin;
+      findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
+      bool cSign = (fmin < 0);
+      float fqmax = cSign ? 127 : 255;
+      auto filter_type = input.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(filter_type.getShape(),
+                                            rewriter.getIntegerType(8, cSign));
+      // scale = fmax / fqmax;
+      scale = o_scale; // Merge o_scale to Qconst, reducing multiple and shift
+      if (cSign) {
+        auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
+        std::transform(
+            constF32->begin(), constF32->end(), constI8->begin(),
+            [&](const float cf32) { return Quant::to_int8(cf32 / scale); });
+        auto new_filter =
+            top::WeightOp::create(constOp, "i8", *constI8, new_type);
+        operands.push_back(new_filter);
+      } else {
+        auto constU8 = std::make_shared<std::vector<uint8_t>>(constF32->size());
+        std::transform(
+            constF32->begin(), constF32->end(), constU8->begin(),
+            [&](const float cf32) { return Quant::to_uint8(cf32 / scale); });
+        auto new_filter =
+            top::WeightOp::create(constOp, "u8", *constU8, new_type);
+        operands.push_back(new_filter);
+      }
+    } else {
+      operands.push_back(input);
+      Quant::getScaleAndZeroPoint(input, scale, zeropoint, asymmetric);
+      auto scale_f = scale / o_scale;
+      // get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+      // "get_scale_and_shift_positive" use positive right_shift, left_shift
+      // will be converted to the multiplier.
+      get_scale_and_shift_positive(coeff_v->at(i) * scale_f, scalei, shifti, 8);
+    }
     multiplier_v[i] = scalei;
     rshift_v[i] = shifti;
   }
@@ -61,11 +92,23 @@ void AddLowering::LoweringF32(PatternRewriter &rewriter,
 
 void AddLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::AddOp addOp) const {
+  for (int i = 0, n = addOp.getNumOperands(); i < n; ++i) {
+    if (auto constOp =
+            dyn_cast<top::WeightOp>(addOp.getOperand(i).getDefiningOp())) {
+      addOp.setOperand(i, constOp.clone_bf16(addOp));
+    }
+  }
   lowering_common_bf16<tpu::AddOp>(rewriter, addOp.getOperation());
 }
 
 void AddLowering::LoweringF16(PatternRewriter &rewriter,
                               top::AddOp addOp) const {
+  for (int i = 0, n = addOp.getNumOperands(); i < n; ++i) {
+    if (auto constOp =
+            dyn_cast<top::WeightOp>(addOp.getOperand(i).getDefiningOp())) {
+      addOp.setOperand(i, constOp.clone_f16(addOp));
+    }
+  }
   lowering_common_f16<tpu::AddOp>(rewriter, addOp.getOperation());
 }
 
