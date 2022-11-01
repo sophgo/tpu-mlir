@@ -252,6 +252,7 @@ protected:
       assert(liveRange.count(save_op) == 0);
       //TensorLive tl = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
       liveRange[save_op] = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
+      updateOperandsLiveRange(op, endPosition);
       chosen = true;
     } else {
       updateOperandsLiveRange(op, endPosition);

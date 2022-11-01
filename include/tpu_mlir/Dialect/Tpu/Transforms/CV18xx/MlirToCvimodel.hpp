@@ -43,6 +43,16 @@ using FBModel = flatbuffers::Offset<Model>;
 using FBWeight = flatbuffers::Offset<Weight>;
 using FBPreProcessHints = flatbuffers::Offset<PreProcessHints>;
 
+struct opInfo {
+  Operation *op;
+  std::string name;
+  std::vector<int64_t> shape;
+  size_t size;
+  int64_t offset;
+  DType dtype;
+  bool overwrite;
+};
+
 class CviRoutine {
 public:
   CviRoutine(flatbuffers::FlatBufferBuilder &fbb,
@@ -125,7 +135,7 @@ private:
                          std::vector<uint8_t>& data);
   void parseOpInfo(Operation *op, std::string& name, std::vector<int64_t>& shape,
                    size_t& size, int64_t& offset, DType& dtype);
-  flatbuffers::Offset<Tensor> buildNeuron(Operation *op);
+  flatbuffers::Offset<Tensor> buildNeuron(opInfo &op);
 };
 
 #endif  // LIBCVIODEL_HPP_
