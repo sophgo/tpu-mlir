@@ -37,6 +37,7 @@ typedef struct fc_global_spec {
   int32_t mul_val;
   int32_t shift_val;
   int32_t offset_val;
+  int32_t round_mode;
 } fc_global_spec_t;
 
 #ifdef __cplusplus
@@ -74,6 +75,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.shift_val = -rshift_v->at(0);
     auto output_type = Quant::getUniformQuantizedType(output());
     spec.offset_val = output_type.getZeroPoint();
+    spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
   }
   BM1684x::instance().call_global_func("backend_api_fc_global", &spec,
                                        sizeof(spec), input_spec->data(),

@@ -157,6 +157,7 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
   for (int i = 0; i < spec.dims; i++) {
     spec.shape[i] = shape[i];
   }
+  spec.elem_num = 0;
   return spec;
 }
 std::shared_ptr<std::vector<tensor_spec_t>>

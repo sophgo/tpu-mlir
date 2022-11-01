@@ -17,13 +17,16 @@ namespace tpu_mlir {
 // round mode
 // =======================
 typedef enum {
-  ROUNDING_HALF_TO_EVEN = 0,
-  ROUNDING_HALF_AWAY_FROM_ZERO = 1,
-  ROUNDING_TOWARDS_ZERO = 2,
-  ROUNDING_DOWN = 3, /* FLOOR */
-  ROUNDING_UP = 4,   /* CEIL */
-  ROUNDING_HALF_UP = 5,
-  ROUNDING_HALF_DOWN = 6,
+  ROUNDING_HALF_AWAY_FROM_ZERO = 0,   // 1.5 -> 2   -1.5 -> -2
+  ROUNDING_HALF_UP = 1,               // 1.5 -> 2   -1.5 -> -1
+  ROUNDING_HALF_DOWN = 2,             // 1.5 -> 1   -1.5 -> -2
+  ROUNDING_HALF_TO_EVEN = 3,          // 1.5 -> 2    2.5 -> 2
+  ROUNDING_HALF_TO_ODD = 4,           // 1.5 -> 1    0.5 -> 1
+  ROUNDING_HALF_TOWARDS_ZERO = 5,     // 1.5 -> 1   -1.5 -> -1
+  ROUNDING_TOWARDS_ZERO = 6,          // 1.6 -> 1   -1.6 -> -1
+  ROUNDING_AWAY_FROM_ZERO = 7,        // 1.4 -> 2   -1.4 -> -2
+  ROUNDING_UP = 8,   /* CEIL */       // 1.4 -> 2   -1.6 -> -1
+  ROUNDING_DOWN = 9, /* FLOOR */      // 1.6 -> 1   -1.4 -> -2
   ROUNDING_UNKNOWN = -1
 } RoundingMode;
 
