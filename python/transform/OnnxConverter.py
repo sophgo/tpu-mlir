@@ -377,8 +377,8 @@ class OnnxConverter(BaseConverter):
             opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
             output_shape = self.getShape(onnx_node.name)
             channel = output_shape[1]
+            op0 = self.getOperand(onnx_node.inputs[0])
             if opd1_num_elem == channel:
-                op0 = self.getOperand(onnx_node.inputs[0])
                 offset = self.getWeight(onnx_node.inputs[1])
                 weight_data = np.ones_like(offset)
                 self.addWeight(name + '_scale', weight_data)
