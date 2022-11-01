@@ -44,6 +44,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if i.data.dtype == inputs[i.name].dtype:
             i.data[:] = inputs[i.name].reshape(i.data.shape)
         elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
+            if model_file.endswith(".cvimodel"):
+                raise RuntimeError("not support --quant_input now")
             data = round_away_from_zero(inputs[i.name] * i.qscale + qzero_point)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
         elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:

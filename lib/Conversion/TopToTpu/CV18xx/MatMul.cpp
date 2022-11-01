@@ -164,11 +164,7 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   } else {
     operands.push_back(op.right());
   }
-  if (auto biasOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
-    operands.push_back(biasOp.clone_bf16(op));
-  } else {
-    operands.push_back(op.bias());
-  }
+  operands.push_back(op.bias());
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
