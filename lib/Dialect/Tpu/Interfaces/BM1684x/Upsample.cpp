@@ -22,15 +22,8 @@ extern "C" {
 #endif
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long output_addr;
-  int input_n;
-  int input_c;
-  int input_h;
-  int input_w;
   int size;
   int if_relu;
-  DATA_TYPE_T dtype;
 } upsample_spec_t;
 
 #ifdef __cplusplus
@@ -43,21 +36,17 @@ typedef struct {
 void tpu::UpsampleOp::codegen_global_bm1684x() {
   assert(scale_h() == scale_w());
   auto op = getOperation();
-  int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  // int64_t n, c, h, w;
+  // Module::getNCHW(input(), n, c, h, w);
 
   upsample_spec_t spec = {0};
-  spec.input_addr = Module::getAddress(input());
-  spec.output_addr = Module::getAddress(output());
-  spec.input_n = n;
-  spec.input_c = c;
-  spec.input_h = h;
-  spec.input_w = w;
   spec.size = scale_h();
   spec.if_relu = do_relu();
-  spec.dtype = BM168x::getDataType(output());
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
   BM1684x::instance().call_global_func("backend_api_upsample_global", &spec,
-                                       sizeof(spec));
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // =========================================
@@ -73,20 +62,30 @@ int64_t tpu::UpsampleOp::getBufferSize_bm1684x(
 void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   assert(scale_h() == scale_w());
   auto op = getOperation();
-  int64_t n, c, h, w;
+  int64_t n, c, h, w, oh, ow;
   Module::getNCHW(input(), n, c, h, w);
+  Module::getNCHW(output(), n, c, oh, ow);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   upsample_spec_t spec = {0};
-  spec.input_addr = in_gi.out_addr;
-  spec.output_addr = gi.out_addr;
   spec.size = scale_h();
   spec.if_relu = do_relu();
-  spec.dtype = BM168x::getDataType(input());
-  spec.input_n = in_gi.n_slice;
-  spec.input_c = c;
-  spec.input_h = in_gi.h_slice;
-  spec.input_w = w;
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info.is_w_split = false;
+  sec_info.w_slice = w;
+
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = ow;
   BM1684x::instance().call_local_func("backend_api_upsample_local", &spec,
-                                      sizeof(spec));
+                                      sizeof(spec), &sec_info, input_spec->data(),
+                                      output_spec->data());
 }

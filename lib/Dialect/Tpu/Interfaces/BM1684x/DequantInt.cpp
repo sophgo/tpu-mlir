@@ -42,6 +42,8 @@ void tpu::DequantIntOp::codegen_global_bm1684x() {
   param.is_perchannel = false;
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
+  param.round_mode = quant_mode() == tpu::DequantMode::Normal ?
+                     ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
   BM1684x::instance().call_global_func("backend_api_dequant_int_global", &param,
                                        sizeof(param));
 }
@@ -81,6 +83,8 @@ void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.lshift = lshift();
   param.mode = static_cast<int>(quant_mode());
   param.is_perchannel = false;
+  param.round_mode = quant_mode() == tpu::DequantMode::Normal ?
+                     ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
 
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());

@@ -27,7 +27,7 @@ model_list_basic=(
   "shufflenet_v2"
   "squeezenet1.0"
   "vgg16"
-  # "inception_v4_tf"
+#  "inception_v4_tf"
 # object detection
   "ssd-12"
   "yolov5s"

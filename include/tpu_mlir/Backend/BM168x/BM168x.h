@@ -106,6 +106,7 @@ typedef struct local_tensor_spec {
   int32_t shape[MAX_SHAPE_DIMS];
   uint8_t consume_num;
   int *host_data;
+  int elem_num;
 } tensor_spec_t;
 
 typedef enum {
@@ -278,6 +279,7 @@ typedef struct {
   int mode;
   int reshaped_coeff;
   int zx_value;
+  int round_mode;
 } requant_int_param_t;
 
 typedef struct {
@@ -297,6 +299,7 @@ typedef struct {
   int lshift;
   DATA_TYPE_T input_dtype;
   DATA_TYPE_T output_dtype;
+  int round_mode;
 } dequant_int_param_t;
 
 typedef struct {

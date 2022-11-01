@@ -78,7 +78,7 @@ static void SpecAssign(const pool_attr_t &attrs, pooling_common_spec_t &spec) {
   spec.if_relu = attrs.do_relu;
   spec.relu_limit = attrs.relu_limit;
   spec.ceil_mode = 0;
-  spec.round_mode = ROUND_UP;
+  spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
   /// TODO: may be need support pad value for pooling2D and pooling 3D
   /// spec.pad_value = attrs.pad_value;
 }
@@ -99,7 +99,8 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
     if (Quant::isUniformQuantized(input())) {
-      spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+      spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2: 0;
+                                    // (attrs.count_include_pad ? 2 : 1) : 0;
       if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier = multiplier().value();
         spec.rshiftbits = rshift().value();
@@ -165,7 +166,9 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     common.is_avg_pooling = true;
-    common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2 : 0;
+    common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2: 0;
+                                    // (attrs.count_include_pad ? 2 : 1) : 0;
+
     if (common.avg_pooling_quant_mode == 0) {
       common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
       common.rshiftbits = rshift().has_value() ? rshift().value() : -1;
