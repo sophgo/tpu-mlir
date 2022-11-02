@@ -62,6 +62,7 @@ struct Module {
                       bool left_align = true);
   static void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c,
                       int64_t &h, int64_t &w, bool left_align = true);
+  static void getShapeVec(Value v, std::vector<int64_t> &vec_shape);
   static size_t getBytes(Value v);
   static int64_t getNumElements(Value v);
   static Type getStorageType(Value v); // storage type
