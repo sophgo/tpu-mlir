@@ -9,21 +9,35 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-// #include "tpu_mlir/Backend/BM168x/cv18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
-// using namespace tpu_mlir::backend;
+using namespace tpu_mlir::backend;
 
 
 // =========================================
 // GlobalGenInterface
 // =========================================
 void tpu::UpsampleOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+  gaddr_t ga_input = Module::getAddress(input());
+  gaddr_t ga_output = Module::getAddress(output());
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto scale_h = this->scale_h();
+  auto scale_w = this->scale_w();
+  if (Quant::isUniformQuantized(output())) {
+    cvi_backend_tg_upsample_kernel(*backend_ctx, layer_id, ga_input, ga_output, n,
+                                  c, h, w, scale_h, scale_w, CVK_FMT_I8);
+  } else {
+    cvi_backend_tg_upsample_kernel(*backend_ctx, layer_id, ga_input, ga_output, n,
+                                  c, h, w, scale_h, scale_w, CVK_FMT_BF16);
+  }
 }
 
 // =========================================
