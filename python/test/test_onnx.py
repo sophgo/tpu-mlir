@@ -120,7 +120,7 @@ class ONNX_IR_TESTER(object):
     def get_chip_name(self):
         runchip = os.environ.get('SET_CHIP_NAME', None)
         if not runchip:
-            print("no found SET_CHIP_NAME environment value, set bm1864x as default")
+            print("no found SET_CHIP_NAME environment value, set bm1684x as default")
             runchip = "bm1684x"
         return runchip.lower()
 
@@ -745,8 +745,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(input_data, graph_def)
 
     def test_Transpose(self, case_name):
-        input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20]]
-        transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2]}
+        input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20], [1, 4, 2, 16, 20, 40]]
+        transpose_orders = {4: [0, 2, 1, 3], 5:[0, 1, 3, 4, 2], 6:[0, 1, 2, 5, 3, 4]}
         for input_shape in input_shapes:
             input_data = np.random.randn(*input_shape).astype(np.float32)
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)

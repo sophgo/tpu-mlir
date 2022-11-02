@@ -21,7 +21,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConvLowering,
       MatMulLowering,
       MaxPoolLowering,
-      ReshapeLowering
+      ReshapeLowering,
+      PermuteLowering
       // clang-format on
       >(patterns->getContext());
 }
