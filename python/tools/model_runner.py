@@ -60,8 +60,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             if hasattr(i, "qzero_point"):
                 qzero_point = i.qzero_point
             outputs[i.name] = np.array(
-                (i.data.astype(np.float32) - qzero_point) * np.float32(i.qscale),
-                dtype=np.float32)
+                (i.data.astype(np.float32) - qzero_point) * np.float32(i.qscale), dtype=np.float32)
         else:
             outputs[i.name] = np.array(i.data)
     return outputs
@@ -224,8 +223,8 @@ def tflite_inference(
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
     # yapf: disable
+    parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="input npz file")
     parser.add_argument("--model", type=str, required=True,
                         help="mlir/onnx/tflie/bmodel/prototxt file.")

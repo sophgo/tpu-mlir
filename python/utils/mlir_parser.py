@@ -110,6 +110,9 @@ class MlirParser:
         self.module = mlir.ir.Module.parse(context, self.ctx)
         self.body = self.module.body.operations[0].regions[0].blocks[0]
         self.attrs = Operation.attrs(self.module.operation)
+        self.module_name = eval(self.attrs['module.name'])
+        self.module_state = eval(self.attrs['module.state'])
+        self.module_weight_file = eval(self.attrs['module.weight_file'])
         self.ops = []
         self.return_op = None
         for i in range(len(self.body.operations)):

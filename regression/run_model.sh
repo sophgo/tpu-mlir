@@ -1,4 +1,6 @@
 #!/bin/bash
+# full test: run_model.sh mobilenet_v2
+# basic test: run_model.sh mobilenet_v2 0
 set -ex
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"

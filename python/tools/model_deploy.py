@@ -48,8 +48,8 @@ class DeployTool:
         self.test_input = args.test_input
         self.ref_npz = args.test_reference
         self.module = MlirParser(args.mlir)
-        self.module_name = eval(self.module.attrs['module.name'])
-        self.state = eval(self.module.attrs['module.state'])
+        self.module_name = self.module.module_name
+        self.state = self.module.module_state
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         if self.quantize == "int8":
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--correctness", default='0.99,0.90', help="correctness")
     parser.add_argument("--chip", required=True, type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'mars'],
+                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
                         help="chip platform name")
     parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz file for inference, "
