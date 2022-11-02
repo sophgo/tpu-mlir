@@ -150,6 +150,8 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
 }
 template LogicalResult WeightOp::update(const std::vector<uint8_t> &data,
                                         size_t cont);
+template LogicalResult WeightOp::update(const std::vector<uint32_t> &data,
+                                        size_t cont);
 template std::shared_ptr<std::vector<float>> WeightOp::read();
 template std::shared_ptr<std::vector<int8_t>> WeightOp::read();
 template std::shared_ptr<std::vector<int16_t>> WeightOp::read();

@@ -157,6 +157,10 @@ public:
       LoweringConfig::isAsymmetric = true;
     } else {
       Module::setAsymmetric(module_, LoweringConfig::isAsymmetric);
+      if (Module::isCV18xx(LoweringConfig::chip)) {
+        all_int8_process();
+        Module::updateModuleTypes(module_);
+      }
       calibration_process();
     }
     init_qtable();
@@ -228,6 +232,28 @@ protected:
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
+  }
+
+  void all_int8_process() {
+    auto retTypes = mainFunc_.getResultTypes();
+    mainFunc_.walk([&](Operation *op) {
+      if (isa<tpu_mlir::InferenceInterface>(op) || isa<top::InputOp>(op)) {
+        for (auto value : op->getResults()) {
+          if (!Quant::isCalibratedType(value)) {
+            continue;
+          }
+          auto out_qtype = Quant::getCalibratedType(value);
+          if (out_qtype.getMin() != -out_qtype.getMax()) {
+            auto max = out_qtype.getMax();
+            auto quant_type = quant::CalibratedQuantizedType::get(
+                out_qtype.getExpressedType(), -max, max);
+            auto new_type =
+                RankedTensorType::get(Module::getShape(value), quant_type);
+            value.setType(new_type);
+          }
+        }
+      }
+    });
   }
 
   void cast_process() {
