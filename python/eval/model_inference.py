@@ -32,11 +32,13 @@ class mlir_inference(object):
         self.input_num = self.module_parsered.get_input_num()
         self.img_proc = preprocess()
         self.img_proc.load_config(self.module_parsered.get_input_op_by_idx(0))
+        args.net_input_dims = self.img_proc.net_input_dims
         self.batched_labels = []
         self.batched_imgs = ''
         exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(name = args.postprocess_type))
         self.score = eval('{}(args)'.format(args.postprocess_type))
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        print('batch_size:', self.batch_size)
 
     def run(self, idx, img_path, target = None):
         self.idx = idx
@@ -87,7 +89,6 @@ class onnx_inference(object):
     def __init__(self, args):
         self.img_proc = preprocess()
         self.img_proc.config(**vars(args))
-        args.batch_size = ast.literal_eval(args.net_input_dims)[0][0]
         self.batched_labels = []
         self.batched_imgs = ''
         self.net = onnxruntime.InferenceSession(args.model_file)

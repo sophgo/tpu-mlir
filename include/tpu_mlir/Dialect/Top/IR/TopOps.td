@@ -90,6 +90,10 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     the tensor type in the .npz file.
   }];
 
+  let arguments = (ins
+    OptionalAttr<F64ArrayAttr>:$weight_scale
+  );
+
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
   template<typename T>

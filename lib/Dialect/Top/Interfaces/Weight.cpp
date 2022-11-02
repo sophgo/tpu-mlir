@@ -145,7 +145,9 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto ret = topDialect->wFile->addTensor(new_name, &data, type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), type);
+  std::vector<mlir::Attribute> attrElements;
+  auto nulldataAttr = builder.getArrayAttr(attrElements);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), type, nulldataAttr);
   return newOp.getResult();
 }
 template LogicalResult WeightOp::update(const std::vector<uint8_t> &data,
@@ -205,7 +207,10 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
       topDialect->wFile->addTensor(new_name, data_bf16->data(), new_type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type);
+  std::vector<mlir::Attribute> attrElements;
+  auto nulldataAttr = builder.getArrayAttr(attrElements);
+  auto newOp =
+      builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type, nulldataAttr);
   return newOp.getResult();
 };
 
@@ -233,6 +238,8 @@ mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto ret = topDialect->wFile->addTensor(new_name, data_f16->data(), new_type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type);
+  std::vector<mlir::Attribute> attrElements;
+  auto nulldataAttr = builder.getArrayAttr(attrElements);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type, nulldataAttr);
   return newOp.getResult();
 };

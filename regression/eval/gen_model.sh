@@ -69,6 +69,16 @@ if [ x${pixel_format} != x ]; then
   pixel_format_opt="--pixel_format=${pixel_format}"
 fi
 
+pad_value_opt=
+if [ x${pad_value} != x ]; then
+  pad_value_opt="--pad_value=${pad_value}"
+fi
+
+pad_type_opt=
+if [ x${pad_type} != x ]; then
+  pad_type_opt="--pad_type=${pad_type}"
+fi
+
 test_input_opt=
 test_result_opt=
 test_innpz_opt=
@@ -91,12 +101,17 @@ model_transform.py \
   ${mean_opt} \
   ${scale_opt} \
   ${pixel_format_opt} \
+  ${pad_value_opt} \
+  ${pad_type_opt} \
   ${test_input_opt} \
   ${test_result_opt} \
   --mlir ${model_name}.mlir
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
+if [ x$2 != x ]; then
+  CALI_TABLE=$2
+fi
 if [ ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
     echo "Error: ${model_name} has no dataset"
@@ -112,7 +127,9 @@ fi
 tpuc-opt ${model_name}.mlir \
     --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
     --convert-top-to-tpu="mode=INT8 asymmetric=false chip=bm1684x" \
+    --canonicalize \
     --save-weight \
+    --mlir-print-debuginfo \
     -o ${model_name}_bm1684x_tpu_int8_sym.mlir
 
 model_runner.py \
@@ -121,22 +138,26 @@ model_runner.py \
     --dump_all_tensors \
     --output ${model_name}_bm1684x_tpu_int8_sym_outputs.npz
 
-npz_tool.py compare \
-    ${model_name}_bm1684x_tpu_int8_sym_outputs.npz \
-    ${model_name}_top_outputs.npz \
-    --tolerance ${int8_sym_tolerance} -v
-
 # lowering to asymmetric int8
 tpuc-opt ${model_name}.mlir \
     --import-calibration-table="file=${CALI_TABLE} asymmetric=true" \
     --convert-top-to-tpu="mode=INT8 asymmetric=true chip=bm1684x" \
+    --canonicalize \
     --save-weight \
+    --mlir-print-debuginfo \
     -o ${model_name}_bm1684x_tpu_int8_asym.mlir
 
 model_runner.py \
     --model ${model_name}_bm1684x_tpu_int8_asym.mlir \
     --input ${model_name}_in_f32.npz \
+    --dump_all_tensors \
     --output ${model_name}_bm1684x_tpu_int8_asym_outputs.npz
+
+
+npz_tool.py compare \
+    ${model_name}_bm1684x_tpu_int8_sym_outputs.npz \
+    ${model_name}_top_outputs.npz \
+    --tolerance ${int8_sym_tolerance} -v
 
 npz_tool.py compare \
     ${model_name}_bm1684x_tpu_int8_asym_outputs.npz \

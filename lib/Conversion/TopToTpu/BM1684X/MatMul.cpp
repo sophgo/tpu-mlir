@@ -30,12 +30,18 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   auto filterOp = cast<top::WeightOp>(op.right().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   int64_t in_zp, out_zp;
-  double in_scale, out_scale;
+  double in_scale, out_scale, w_scale;
   Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
   Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
+  std::shared_ptr<std::vector<double>> weight_scale_v;
+  if (filterOp.weight_scale().has_value() && weight_scale_v->size()) {
+    weight_scale_v = Module::getF64Array(filterOp.weight_scale().value());
+    w_scale = weight_scale_v->data()[0];
+  } else {
+    double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
+    w_scale = w_max / 127.0;
+  }
 
-  double w_max = findMaxabs(filter_f32->data(), filter_f32->size());
-  double w_scale = w_max / 127.0;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   for (uint64_t t = 0; t < filter_f32->size(); t++) {
     filter_int8->at(t) = Quant::to_int8(filter_f32->at(t) / w_scale);

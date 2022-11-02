@@ -13,8 +13,6 @@ logger = setup_logger('root', log_level="INFO")
 class score_Parser():
     def __init__(self):
         parser = argparse.ArgumentParser(description='Eval YOLO networks.')
-        parser.add_argument("--net_input_dims", type=str, default="640,640",
-                            help="'height,width' dimensions of net input tensors.")
         parser.add_argument("--draw_image_count", type=int, default=0,
                             help="the number of images will draw results")
         parser.add_argument("--nms_score_thr", type=float, default=0.01,
@@ -363,7 +361,7 @@ def preproc(img, input_size, swap=(2, 0, 1)):
     resized_img = cv2.resize(
         img,
         (int(img.shape[1] * r), int(img.shape[0] * r)),
-        interpolation=cv2.INTER_LINEAR,
+        interpolation=cv2.INTER_AREA
     ).astype(np.uint8)
     padded_img[: int(img.shape[0] * r), : int(img.shape[1] * r)] = resized_img
 
@@ -382,7 +380,7 @@ def make_grid(nx, ny, stride, anchor):
 def _sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
-def postproc(outputs, imsize, anchors=ANCHORS):
+def postproc(outputs, imsize, anchors = ANCHORS):
     z = []
     for out in  outputs:
         # bs, 3, 20, 20, 85
@@ -431,13 +429,14 @@ class coco_mAP(base_class):
     def init(self, args):
         self.args = args
         self.json_dict = []
-        self.input_shape = tuple(map(int, self.args.net_input_dims.split(',')))
+        self.ratio_list = []
 
     def preproc(self, img_paths):
         img_list = []
         for path in img_paths.split(','):
             origin_img = cv2.imread(path)
-            img, self.ratio = preproc(origin_img, self.input_shape)
+            img, ratio = preproc(origin_img, self.args.net_input_dims)
+            self.ratio_list.append(ratio)
             img = np.expand_dims(img, axis=0) / 255.  # 0 - 255 to 0.0 - 1.0
             img_list.append(img)
         x = np.concatenate(img_list, axis = 0)
@@ -445,38 +444,45 @@ class coco_mAP(base_class):
 
     def update(self, idx, outputs, img_paths = None, labels = None, ratios = None):
         img_path_list = img_paths.split(',')
-        scores, boxes_xyxy = postproc(outputs, self.input_shape)
-        dets = multiclass_nms(boxes_xyxy, scores, nms_thr=self.args.nms_threshold, score_thr=self.args.nms_score_thr)
-        if dets is not None:
-            final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
-            if ratios is not None:
-                final_boxes /= ratios[0]
-            else:
-                final_boxes /= self.ratio
-            if idx < self.args.draw_image_count:
-                out_path = "vis_outout"
-                mkdir(out_path)
-                output_path = os.path.join(out_path, os.path.split(img_path_list[0])[-1])
+        print(img_path_list, outputs[0].shape, outputs[1].shape, outputs[2].shape, self.args.net_input_dims)
+        for i in range(outputs[0].shape[0]):
+            batch1_output = []
+            for output in outputs:
+                batch1_output.append(np.expand_dims(output[i,...], axis=0))
+            scores, boxes_xyxy = postproc(batch1_output, self.args.net_input_dims)
+            dets = multiclass_nms(boxes_xyxy, scores, nms_thr=self.args.nms_threshold, score_thr=self.args.nms_score_thr)
+            if dets is not None:
+                final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
+                if ratios is not None:
+                    final_boxes /= ratios[i]
+                    print(ratios[i])
+                else:
+                    final_boxes /= self.ratio_list[i]
+                    print(self.ratio_list[i])
+                if idx < self.args.draw_image_count:
+                    out_path = "vis_outout"
+                    mkdir(out_path)
+                    output_path = os.path.join(out_path, os.path.split(img_path_list[i])[-1])
 
-                origin_img = vis(origin_img, final_boxes, final_scores, final_cls_inds,
-                                conf=self.args.score_thr, class_names=COCO_CLASSES)
-                cv2.imwrite(output_path, origin_img)
+                    origin_img = vis(origin_img, final_boxes, final_scores, final_cls_inds,
+                                    conf=self.args.score_thr, class_names=COCO_CLASSES)
+                    cv2.imwrite(output_path, origin_img)
 
-            boxes_xywh = xyxy2xywh(final_boxes)
-            # store js info
-            try:
-                image_id = get_image_id_in_path(img_path_list[0])
-            except ValueError:
-                image_id = None
-                print("Warning Make sure you are test custom image.")
-            # convert to coco format
-            for ind in range(final_boxes.shape[0]):
-                self.json_dict.append({
-                    "image_id": image_id,
-                    "category_id": COCO_IDX[final_cls_inds[ind].astype(np.int32)],
-                    "bbox": list(boxes_xywh[ind]),
-                    "score": float(final_scores[ind].astype(np.float32))
-                })
+                boxes_xywh = xyxy2xywh(final_boxes)
+                # store js info
+                try:
+                    image_id = get_image_id_in_path(img_path_list[i])
+                except ValueError:
+                    image_id = None
+                    print("Warning Make sure you are test custom image.")
+                # convert to coco format
+                for ind in range(final_boxes.shape[0]):
+                    self.json_dict.append({
+                        "image_id": image_id,
+                        "category_id": COCO_IDX[final_cls_inds[ind].astype(np.int32)],
+                        "bbox": list(boxes_xywh[ind]),
+                        "score": float(final_scores[ind].astype(np.float32))
+                    })
 
     def get_result(self):
         if os.path.exists('./result_json_file'):

@@ -120,7 +120,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
     output_keys = []
     if dump_all:
         output_keys, onnx_file = generate_onnx_with_all(onnx_file)
-    session = onnxruntime.InferenceSession(onnx_file)
+    session = onnxruntime.InferenceSession(onnx_file, providers=['CPUExecutionProvider'])
     inodes = session.get_inputs()
     data = {}
     for node in inodes:
