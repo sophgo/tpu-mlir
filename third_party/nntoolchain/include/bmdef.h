@@ -85,16 +85,16 @@ typedef struct bm_net_info_s {
   char const** input_names;      /* input_names[0] / [1] / .../ [input_num-1] */
   bm_data_type_t* input_dtypes;  /* input_dtypes[0] / [1] / .../ [input_num-1] */
   float* input_scales;           /* input_scales[0] / [1] / .../ [input_num-1] */
-  int* input_zero_point;         /* input_zero_point[0] / [1] / .../ [input_num-1] */
   int output_num;                /* number of outputs */
   char const** output_names;     /* output_names[0] / [1] / .../ [output_num-1] */
   bm_data_type_t* output_dtypes; /* output_dtypes[0] / [1] / .../ [output_num-1] */
   float* output_scales;          /* output_scales[0] / [1] / .../ [output_num-1] */
-  int* output_zero_point;        /* output_zero_point[0] / [1] / .../ [input_num-1] */
   int stage_num;                 /* number of stages */
   bm_stage_info_t* stages;       /* stages[0] / [1] / ... / [stage_num-1] */
   size_t* max_input_bytes;       /* max_input_bytes[0]/ [1] / ... / [input_num-1] */
   size_t* max_output_bytes;      /* max_output_bytes[0] / [1] / ... / [output_num-1] */
+  int* input_zero_point;         /* input_zero_point[0] / [1] / .../ [input_num-1] */
+  int* output_zero_point;        /* output_zero_point[0] / [1] / .../ [input_num-1] */
 } bm_net_info_t;
 
 #if defined(__cplusplus)

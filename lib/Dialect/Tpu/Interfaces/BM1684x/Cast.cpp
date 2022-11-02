@@ -49,6 +49,7 @@ typedef struct {
   float scale_value;
   int offset_value;
   int input_dtype;
+  int output_dtype;
 } dequant_fp_param_t;
 
 typedef struct cast_common_spec {
@@ -128,6 +129,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.scale_value = qtype.getScale();
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(input());
+      param.output_dtype = BM168x::getDataType(output());
       BM1684x::instance().call_global_func("backend_api_dequant_float_global",
                                            &param, sizeof(param));
     }
@@ -219,6 +221,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
       param.scale_value = qtype.getScale();
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(input());
+      param.output_dtype = BM168x::getDataType(output());
       BM1684x::instance().call_local_func("backend_api_dequant_float_local",
                                           &param, sizeof(param));
     }
