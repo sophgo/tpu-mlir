@@ -51,11 +51,28 @@ run_onnx_op()
 
 export -f run_onnx_op
 
+run_basic_test()
+{
+  echo "======= basic test ====="
+  $REGRESSION_PATH/basic_test/run.sh > basic_test.log 2>&1 | true
+  if [ "${PIPESTATUS[0]}" -ne "0" ]; then
+    echo "basic test FAILED" >> result.log
+    cat basic_test.log >> fail.log
+    return 1
+  else
+    echo "basic test PASSED" >> result.log
+    return 0
+  fi
+}
+
+export -f run_basic_test
+
 run_all()
 {
   echo "" > fail.log
   echo "" > result.log
   echo "run_onnx_op" > cmd.txt
+  echo "run_basic_test" >> cmd.txt
   for net in ${model_list_basic[@]}
   do
     echo "run_regression_net $net" >> cmd.txt
@@ -72,10 +89,10 @@ if [ "$?" -ne 0 ]; then
 fi
 
 if [ $ERR -eq 0 ]; then
-  echo BASICE TEST PASSED
+  echo SIMPLE TEST PASSED
 else
   cat fail.log
-  echo BASICE TEST FAILED
+  echo SIMPLE TEST FAILED
 fi
 
 cat result.log

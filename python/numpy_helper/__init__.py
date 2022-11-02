@@ -82,6 +82,17 @@ def npz_to_dat(args):
         for i in datas:
             f.write(datas[i].tobytes())
 
+def npz_to_npy(args):
+    if len(args) != 2:
+        print("Usage: {} to_npy filename.npz name".format(sys.argv[0]))
+        exit(-1)
+    name = args[1]
+    datas = np.load(args[0])
+    if name not in datas:
+        raise RuntimeError("{} not found in {}".format(name, args[0]))
+    t = datas[name]
+    np.save("{}.npy".format(name), t)
+
 def npz_bf16_to_fp32(args):
     if len(args) < 2:
         print("Usage: {} bf16_to_fp32 in.npz out.npz".format(sys.argv[0]))
@@ -101,22 +112,6 @@ def npz_bf16_to_fp32(args):
         npz_out[s] = fp32_arr
 
     np.savez(args[1], **npz_out)
-
-def npz_int8_to_fp32(args):
-    # just for full-int8 not deal with mix-precision
-    if len(args) < 3:
-        print("Usage: {} int8_to_fp32 in.npz quantized_op_info.csv out.npz".format(sys.argv[0]))
-        exit(-1)
-    npz_in = np.load(args[0])
-    _, _, _, thresholds = load_op_info(args[1])
-    npz_out = {}
-    for name in npz_in.files:
-        int8_arr = npz_in[name]
-        if name in thresholds and not thresholds[name] == 0.0:
-            npz_out[name] = dequantize(int8_arr, thresholds[name]).astype(np.float32)
-        else:
-            npz_out[name] = int8_arr.astype(np.float32)
-    np.savez(args[2], **npz_out)
 
 
 def npz_transpose(args):

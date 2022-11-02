@@ -15,12 +15,12 @@ npz_tool_func = {
     'dump':npz_dump,
     "extract": npz_extract,
     "rename": npz_rename,
-    "to_bin": npz_to_bin,
-    "int8_to_fp32": npz_int8_to_fp32,
     "bf16_to_fp32": npz_bf16_to_fp32,
     "tranpose": npz_transpose,
     "get_shape": get_npz_shape,
+    "to_bin": npz_to_bin,
     "to_dat": npz_to_dat,
+    "to_npy": npz_to_npy,
 }
 
 def main():
