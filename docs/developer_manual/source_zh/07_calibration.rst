@@ -70,12 +70,10 @@ Calibration
      - 描述
    * - --dataset
      - 对于单输入网络，放置输入的各个图片或已预处理的输入npy/npz文件(无顺序要求)；对于多输入网络,
-       放置各个样本的已预处理的npz文件（注意npz和npy中tensor均只要batch-size为1即可，若需要对
-       batch-size大于1的网络进行校准，run_calibration.py自动将各个单batch的tensor组装为多batch）
+       放置各个样本的已预处理的npz文件
    * - --data_list
      - 将各个样本的图片文件地址，或者npz文件地址，或者npy文件地址，一行放一个样本，
-       放置在文本文件中，若网络有多个输入文件，文件间通过逗号分割（注意npz文件应该只有1个输入地址
-       同样,npz和npy中tensor均为单batch，对于多batch网络的校准，run_calibration.py会自动拼装）
+       放置在文本文件中，若网络有多个输入文件，文件间通过逗号分割（注意npz文件应该只有1个输入地址）
 
 .. _data_list:
 .. figure:: ../assets/data_list.png
@@ -171,7 +169,7 @@ auto-tune算法
    $ run_calibration.py yolov5s.mlir \
       --dataset $REGRESSION_PATH/dataset/COCO2017 \
       --input_num 100 \
-      --tune_num 10 \ #使用4个样本进行tune，注意同前描述类似,npy和npz中只需单batch tensor，对多batch网络的tune，会自动将单batch数据组装为多batch
+      --tune_num 10 \
       -o yolov5s_cali_table
 
 
