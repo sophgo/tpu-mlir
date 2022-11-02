@@ -129,6 +129,10 @@ class SimpleTuner:
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
         self.module_parsered = MlirParser(args.mlir_file)
+        self.batch_size = self.module_parsered.get_batch_size()
+        self.input_num = self.module_parsered.get_input_num()
+        for i in range(self.args.tune_num % self.batch_size):
+            self.images.append(self.images[-1])
         log_level="DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         self.logger = setup_logger('auto_tune', log_level = log_level)
         self.tune_steps = 20
@@ -155,13 +159,57 @@ class SimpleTuner:
         self.dq_activations = {}
         self.ref_activations = {}
         count = self.module_parsered.get_user_count_by_op_name(self.ppa_list[0].input_name)
-        for i, image in enumerate(self.images):
-            if is_npy(image):
-                x = np.load(image)
+        cali_pic = is_image_file(self.images[0].split(',')[-1])
+        batched_inputs = self.input_num*[''] if cali_pic else {}
+        idx, tune_idx = 0, 0
+        self.dq_activations[tune_idx] = {}
+        self.ref_activations[tune_idx] = {}
+        for n, data in enumerate(self.images):
+            idx += 1
+            if data.lower().endswith('.npz'):
+                x = np.load(data)
+                for k, v in x.items():
+                    if k in batched_inputs:
+                        batched_inputs[k].append(v)
+                    else:
+                        batched_inputs[k] = [v]
+                    if idx == self.batch_size:
+                        batched_x = np.concatenate(batched_inputs[k], axis = 0)
+                        self.dq_activations[tune_idx][k] = [batched_x, count]
+                        self.ref_activations[tune_idx][k] = [batched_x, count]
+            elif is_image_file(data.split(',')[-1]):
+                inputs = data.split(',')
+                inputs = [s.strip() for s in inputs]
+                assert(self.input_num == len(inputs))
+                for i in range(self.input_num):
+                    batched_inputs[i] += '{},'.format(inputs[i])
+                    if idx == self.batch_size:
+                        x = self.ppa_list[i].run(batched_inputs[i][:-1])
+                        self.dq_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
+                        self.ref_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
             else:
-                x = self.ppa_list[0].run(image)
-            self.dq_activations[i] = {self.ppa_list[0].input_name:[x, count]}
-            self.ref_activations[i] = {self.ppa_list[0].input_name:[x, count]}
+                self.dq_activations[tune_idx] = {}
+                self.ref_activations[tune_idx] = {}
+                inputs = data.split(',')
+                inputs = [s.strip() for s in inputs]
+                assert (self.input_num == len(inputs))
+                for name, input in zip(self.module.input_names, inputs):
+                    assert (input.lower().endswith('.npy'))
+                    x = np.load(input)
+                    if name in batched_inputs:
+                        batched_inputs[name].append(v)
+                    else:
+                        batched_inputs[name] = [v]
+                    if idx == self.batch_size:
+                        batched_x = np.concatenate(batched_inputs[name], axis = 0)
+                        self.dq_activations[tune_idx][name] = [batched_x, count]
+                        self.ref_activations[tune_idx][name] = [batched_x, count]
+            if idx == self.batch_size:
+                idx = 0
+                tune_idx += 1
+                batched_inputs = self.input_num*[''] if cali_pic else {}
+                self.dq_activations[tune_idx] = {}
+                self.ref_activations[tune_idx] = {}
 
     def get_input_tensor(self, i, op_name):
         if op_name in self.dq_activations[i]:
@@ -471,9 +519,8 @@ class ActivationCalibrator(BaseKldCalibrator):
             self.ppa_list.append(tmp)
 
         n = len(data_list) % self.batch_size
-        if n != 0:
-            for i in range(n):
-                data_list.append(data_list[-1])
+        for i in range(n):
+            data_list.append(data_list[-1])
         self.data_list = data_list
         self.num_samples = len(data_list)
 
@@ -495,31 +542,33 @@ class ActivationCalibrator(BaseKldCalibrator):
             os.system('rm -rf ./tmpdata/;mkdir -p ./tmpdata/')
         else:
             os.system('mkdir -p ./tmpdata/')
-        batched_inputs = self.input_num*['']
+        cali_pic = is_image_file(self.data_list[0].split(',')[-1])
+        batched_inputs = self.input_num*[''] if cali_pic else {}
         show_mem_info('mem info before _activations_generator_and_find_minmax')
         pbar = tqdm(self.data_list, total=self.num_samples, position=0, leave=True)
         for data_idx, data in enumerate(self.data_list):
             pbar.set_description("inference and find Min Max *{}".format(data.split("/")[-1]))
             pbar.update(1)
+            idx += 1
             if data.lower().endswith('.npz'):
                 x = np.load(data)
                 for k, v in x.items():
-                    self.module.set_tensor(k, v, False)
-                self.module.invoke()
-            elif data.lower().endswith('.jpg') or data.lower().endswith('.jpeg'):
+                    if k in batched_inputs:
+                        batched_inputs[k].append(v)
+                    else:
+                        batched_inputs[k] = [v]
+                    if idx == self.batch_size:
+                        batched_x = np.concatenate(batched_inputs[k], axis = 0)
+                        self.module.set_tensor(k, batched_x, False)
+            elif is_image_file(data.split(',')[-1]):
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
                 assert(self.input_num == len(inputs))
-                idx += 1
                 for i in range(self.input_num):
                     batched_inputs[i] += '{},'.format(inputs[i])
                     if idx == self.batch_size:
                         x = self.ppa_list[i].run(batched_inputs[i][:-1])
                         self.module.set_tensor(self.ppa_list[i].input_name, x, False)
-                if idx == self.batch_size:
-                    self.module.invoke()
-                    idx = 0
-                    batched_inputs = self.input_num*['']
             else:
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
@@ -527,15 +576,24 @@ class ActivationCalibrator(BaseKldCalibrator):
                 for name, input in zip(self.module.input_names, inputs):
                     assert (input.lower().endswith('.npy'))
                     x = np.load(input)
-                    self.module.set_tensor(name, x, False)
+                    if name in batched_inputs:
+                        batched_inputs[name].append(x)
+                    else:
+                        batched_inputs[name] = [x]
+                    if idx == self.batch_size:
+                        batched_x = np.concatenate(batched_inputs[name], axis = 0)
+                        self.module.set_tensor(name, batched_x, False)
+            if idx == self.batch_size:
+                idx = 0
+                batched_inputs = self.input_num*[''] if cali_pic else {}
                 self.module.invoke()
-            activations = self.module.get_all_tensor()
-            self.find_min_max_abs_per_input(activations)
-            for name in activations:
-                activations[name] = activations[name].astype(np.float32)
-            np.savez('./tmpdata/{}_activations.npz'.format(data_idx), **activations)
-            del activations
-            gc.collect()
+                activations = self.module.get_all_tensor()
+                self.find_min_max_abs_per_input(activations)
+                for name in activations:
+                    activations[name] = activations[name].astype(np.float32)
+                np.savez('./tmpdata/{}_activations.npz'.format(data_idx), **activations)
+                del activations
+                gc.collect()
         pbar.close()
         show_mem_info('mem info after _activations_generator_and_find_minmax')
 
@@ -569,10 +627,11 @@ class ActivationCalibrator(BaseKldCalibrator):
         histogram_width_map = {}
 
         show_mem_info('mem info before calc_thresholds')
-        pbar = tqdm(self.data_list, total=self.num_samples, position=0, leave=True)
-        for data_idx, data in enumerate(self.data_list):
-            activations = np.load('./tmpdata/{}_activations.npz'.format(data_idx))
-            pbar.set_description("calc_thresholds: {}".format(data.split("/")[-1]))
+        num = self.num_samples//self.batch_size
+        pbar = tqdm(self.data_list, total=num, position=0, leave=True)
+        for i in range(num):
+            activations = np.load('./tmpdata/{}_activations.npz'.format(i))
+            pbar.set_description("calc_thresholds, iter {}".format(i))
             pbar.update(1)
             for op_name, activation in activations.items():
                 _, _, abs_value = self.activations_statistics[op_name]
