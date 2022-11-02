@@ -86,9 +86,9 @@ def show_mem_info(info):
 
 
 def is_image_file(filename):
-    support_list={'.jpg','.bmp','.png','.jpeg'}
+    support_list={'.jpg','.bmp','.png','.jpeg','.jfif'}
     for type in support_list:
-        if filename.lower().endswith(type):
+        if filename.strip().lower().endswith(type):
             return True
     return False
 
