@@ -99,13 +99,22 @@ class DeployTool:
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
-        mlir_to_model(
-            self.tpu_mlir,
-            self.model,
-            self.final_mlir,
-            self.quant_input,
-            self.quant_output,
-        )
+        if self.chip.find("cv18") >= 0:
+            mlir_to_cvi_model(
+                self.tpu_mlir,
+                self.model,
+                self.final_mlir,
+                self.quant_input,
+                self.quant_output,
+            )
+        else:
+            mlir_to_model(
+                self.tpu_mlir,
+                self.model,
+                self.final_mlir,
+                self.quant_input,
+                self.quant_output,
+            )
         if self.do_validate:
             tool.validate_model()
 

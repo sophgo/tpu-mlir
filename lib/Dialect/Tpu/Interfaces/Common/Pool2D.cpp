@@ -106,13 +106,8 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
       for (int64_t i = 0; i < num_elem; ++i) {
         int64_t v = 0;
         if (is_cv18xx) {
-          // keep precision
-          v = Quant::to_int((p.outputs[0][i] * pooling->kh * pooling->kw *
-                             multiplier().value()) /
-                                (1 << rshift().value()),
+          v = Quant::to_int(p.outputs[0][i] * pooling->kh * pooling->kw,
                             ROUNDING_HALF_UP);
-          multi = 1;
-          rs = 0;
         } else {
           v = std::round(p.outputs[0][i] * pooling->kh * pooling->kw);
         }
