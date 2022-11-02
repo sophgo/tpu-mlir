@@ -35,7 +35,7 @@ if __name__ == "__main__":
   po = Pool(5)
 
   for model in model_list_all:
-    cmd_line = 'rm -rf {model};$REGRESSION_PATH/eval/gen_model.sh {model}'.format(model=model)
+    cmd_line = 'rm -rf {};$REGRESSION_PATH/eval/gen_model.sh {} {}'.format(model, model, model_list_all[model][1] if len(model_list_all[model]) > 1 else '')
     print('cmd_line:', cmd_line)
     os.system(cmd_line)
 

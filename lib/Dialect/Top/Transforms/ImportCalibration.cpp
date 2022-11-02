@@ -44,6 +44,7 @@ public:
       llvm_unreachable("wrong mlir state");
     }
     std::map<std::string, cali_info> calibration_map;
+    std::map<std::string, std::shared_ptr<std::vector<double>>> per_chan_scales_map;
     std::ifstream infile(this->tableFile);
     if (!infile) {
       llvm_unreachable("can't open calibration table file!");
@@ -55,19 +56,35 @@ public:
       if (line.back() == '\r') {
         line.pop_back();
       }
-      std::istringstream iss(line);
-      std::string name;
-      if (std::regex_match(line, cali_pattern)) {
-        cali_info info = {0, 0, 0};
-        if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
-          break;
+
+      if (std::string::npos != line.find("_weight")) {
+        std::string name;
+        double value;
+        int num = 0, zp = 0;
+        std::istringstream iss(line);
+        iss >> name;
+        iss >> num;
+        auto vScales = std::make_shared<std::vector<double>>(num);
+        for (int i = 0; i < num; i++) {
+          iss >> value;
+          vScales->data()[i] = value;
         }
-        calibration_map[name] = info;
-      } else if (std::regex_match(line, info_pattern)) {
+        per_chan_scales_map[name] = vScales;
       } else {
-        // Format of threshold table error
-        llvm::errs() << line;
-        llvm_unreachable("\n  => not match required format\n");
+        std::istringstream iss(line);
+        std::string name;
+        if (std::regex_match(line, cali_pattern)) {
+          cali_info info = {0, 0, 0};
+          if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
+            break;
+          }
+          calibration_map[name] = info;
+        } else if (std::regex_match(line, info_pattern)) {
+        } else {
+          // Format of threshold table error
+          llvm::errs() << line;
+          llvm_unreachable("\n  => not match required format\n");
+        }
       }
     }
     double min, max;
@@ -79,18 +96,27 @@ public:
             if (type.getElementType().isIntOrIndex()) {
               continue;
             }
+
             auto name = Module::getName(value).str();
-            if (calibration_map.find(name) == calibration_map.end()) {
-              llvm::errs() << "[" << name << "] not in " << this->tableFile
-                           << "!!\n";
-              llvm_unreachable("Import Calibration failed!!\n");
+            if (calibration_map.find(name) != calibration_map.end()) {
+              auto &info = calibration_map[name];
+              getMinMax(op, info, min, max);
+              auto quant_type = quant::CalibratedQuantizedType::get(
+                  type.getElementType(), min, max);
+              auto new_type = RankedTensorType::get(type.getShape(), quant_type);
+              value.setType(new_type);
             }
-            auto &info = calibration_map[name];
-            getMinMax(op, info, min, max);
-            auto quant_type = quant::CalibratedQuantizedType::get(
-                type.getElementType(), min, max);
-            auto new_type = RankedTensorType::get(type.getShape(), quant_type);
-            value.setType(new_type);
+          }
+        } else if (isa<WeightOp>(op)) {
+          auto type = op->getResult(0).getType().cast<RankedTensorType>();
+          if (type.getShape().size() > 1) { //?????weight??scale/zp????finetune??bias??scale??????weight/input??scale??zp?0
+            auto user = op->getUsers().begin();
+            std::string str = Module::getName(*user).str() + "_weight";
+            if (per_chan_scales_map.count(str)) {
+              OpBuilder builder(op);
+              op->setAttr("weight_scale",
+                          builder.getF64ArrayAttr(ArrayRef<double>{*per_chan_scales_map[str]}));
+            }
           }
         }
       });

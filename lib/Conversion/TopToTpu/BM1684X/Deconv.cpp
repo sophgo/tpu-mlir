@@ -52,6 +52,10 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
   bool fsign = (fmin < 0 || param.with_bias == true);
   float fqmax = fsign ? 127 : 255;
+  std::shared_ptr<std::vector<double>> weight_scale_v;
+  if (filterOp.weight_scale().has_value() && weight_scale_v->size()) {
+    weight_scale_v = Module::getF64Array(filterOp.weight_scale().value());
+  }
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
@@ -65,11 +69,16 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     bias_int32 = std::make_shared<std::vector<int32_t>>(param.oc, 0);
   }
 
+  double scale_w;
   int inner_dim = filter_f32->size() / param.oc;
   for (int c = 0; c < param.oc; c++) { // per-channel量化
     float *p_filter = filter_f32->data() + c * inner_dim;
-    float w_max = findMaxabs(p_filter, inner_dim);
-    double scale_w = std::max(w_max / fqmax, 1e-5f);
+    if (filterOp.weight_scale().has_value()) {
+      scale_w = weight_scale_v->data()[c];
+    } else {
+      float w_max = findMaxabs(p_filter, inner_dim);
+      scale_w = std::max(w_max / fqmax, 1e-5f);
+    }
     if (fsign) {
       for (int t = 0; t < inner_dim; t++) {
         filter_i8->data()[c * inner_dim + t] =
