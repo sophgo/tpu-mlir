@@ -64,6 +64,12 @@ void cvi_backend_tg_fixed_fc_kernel(
     int batch_low = 1, bool lstride = false, bool rstride = false,
     bool ostride = false);
 
+void cvi_backend_tg_permute_kernel(const CviBackendContext &ctx,
+                                   uint32_t layer_id, gaddr_t ga_input,
+                                   gaddr_t ga_output, int n, int c, int h,
+                                   int w, int order_n, int order_c, int order_h,
+                                   int order_w, cvk_fmt_t fmt);
+
 //////////////// bf16 kernel API /////////////////
 void cvi_backend_tg_bf16_conv_kernel(
     const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_ifmap,

@@ -350,6 +350,14 @@ void Module::getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
   getNCHW(shape, n, c, h, w, left_align);
 }
 
+void Module::getShapeVec(Value v, std::vector<int64_t> &vec_shape) {
+  auto shape = v.getType().cast<RankedTensorType>().getShape();
+  int num_dims = shape.size();
+  for (int i = 0; i < num_dims; i++) {
+    vec_shape.push_back(shape[i]);
+  }
+}
+
 bool Module::isOpInGroup(Operation *Op) {
   if (Op == nullptr) {
     return false;
