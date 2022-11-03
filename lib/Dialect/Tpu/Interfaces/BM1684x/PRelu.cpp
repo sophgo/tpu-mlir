@@ -17,23 +17,36 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    float upper_limit;
+    float slope_val;
+    int is_channel_shared;
+    int rshift_bit;
+    int round_mode;
+} prelu_spec_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 void tpu::PReluOp::codegen_global_bm1684x() {
-  int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
-  prelu_param_t p = {0};
-  p.input_addr = Module::getAddress(input());
-  p.output_addr = Module::getAddress(output());
-  p.input_n = n;
-  p.input_c = c;
-  p.input_h = h;
-  p.input_w = w;
-  p.rshift_bit = rshift();
-  p.relu_limit = -1;
-  p.dtype = BM168x::getDataType(input());
-  p.channel_shared = 0;
-  p.slope_addr = Module::getAddress(slope());
-  BM1684x::instance().call_global_func("backend_api_prelu_global", &p,
-                                       sizeof(prelu_param_t));
+  prelu_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.is_channel_shared = false;
+  spec.slope_val = 0.f;
+  spec.rshift_bit = rshift();
+  spec.upper_limit = -1;
+  spec.round_mode = ROUND_UP;
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  BM1684x::instance().call_global_func("backend_api_prelu_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 int64_t tpu::PReluOp::getBufferSize_bm1684x(
@@ -43,24 +56,35 @@ int64_t tpu::PReluOp::getBufferSize_bm1684x(
 }
 
 void tpu::PReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  prelu_param_t p = {0};
-  p.input_addr = in_gi.out_addr;
-  p.output_addr = gi.out_addr;
-  p.input_n = static_cast<int32_t>(gi.n_slice);
-  p.input_c = static_cast<int32_t>(c);
-  p.input_h = static_cast<int32_t>(gi.h_slice);
-  p.input_w = static_cast<int32_t>(w);
-  p.rshift_bit = rshift();
-  p.relu_limit = 0;
-  p.dtype = BM168x::getDataType(input());
-  auto slope_gi = LocalGenInterface::getGroupInfo(slope(), n_step, h_step);
-  p.channel_shared = 0;
-  p.slope_addr = slope_gi.out_addr;
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
 
-  BM1684x::instance().call_local_func("backend_api_prelu_local", &p,
-                                      sizeof(prelu_param_t));
+  prelu_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.is_channel_shared = false;
+  spec.slope_val = 0.f;
+  spec.rshift_bit = rshift();
+  spec.upper_limit = 0;
+  spec.round_mode = ROUND_UP;
+
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.d_slice = 1;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = w;
+  BM1684x::instance().call_local_func("backend_api_prelu_local", &spec,
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }
