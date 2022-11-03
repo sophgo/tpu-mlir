@@ -509,26 +509,32 @@ class OnnxConverter(BaseConverter):
         in_op = self.getOperand(A)
         operands.append(in_op)
 
-        assert (self.isWeight(B))
-        if trans_b == 1 or alpha != 1:
-            _tensor = self.getWeight(B)
-            if trans_b == 1:
-                _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
-            if alpha != 1:
-                _tensor *= alpha
-            B += '_fix'
-            self.addWeight(B, _tensor)
-        operands.append(self.getWeightOp(B))
+        if self.isWeight(B):
+            if trans_b == 1 or alpha != 1:
+                _tensor = self.getWeight(B)
+                if trans_b == 1:
+                    _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
+                if alpha != 1:
+                    _tensor *= alpha
+                B += '_fix'
+                self.addWeight(B, _tensor)
+            operands.append(self.getWeightOp(B))
+        else:
+            operands.append(self.getOperand(B))
         if len(onnx_node.inputs) > 2 and beta != 0:
             C = onnx_node.inputs[2]
-            if beta != 1:
-                _tensor = self.getWeight(C)
-                _tensor *= beta
-                C += '_fix'
-                self.addWeight(C, _tensor)
-            operands.append(self.getWeightOp(C))
+            if self.isWeight(C):
+                if beta != 1:
+                    _tensor = self.getWeight(C)
+                    _tensor *= beta
+                    C += '_fix'
+                    self.addWeight(C, _tensor)
+                operands.append(self.getWeightOp(C))
+            else:
+                operands.append(self.getOperand(C))
         else:
             operands.append(self.mlir.none_op)
+
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type), 'do_relu': False}
         output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_matmul_op(operands, output_shape, **p)
