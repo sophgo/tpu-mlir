@@ -9,18 +9,19 @@
 
 #pragma once
 
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/LutFunc.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
+#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/Location.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
@@ -179,13 +180,5 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
-
-// create lookup table
-typedef double (*activate_f)(double);
-
-Value create_lookup_table(Value in, Value out, activate_f func,
-                          bool asymmetric);
-
-Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 
 } // namespace tpu_mlir

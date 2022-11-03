@@ -29,8 +29,10 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(
+      op, newType,
+      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
+      attrs);
 }
 
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,

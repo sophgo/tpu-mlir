@@ -1,0 +1,54 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
+#pragma once
+
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
+
+#include "mlir/Dialect/Quant/QuantTypes.h"
+#include "mlir/IR/Location.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Pass/Pass.h"
+#include "mlir/Transforms/DialectConversion.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+
+using namespace llvm;
+using namespace mlir;
+using namespace tpu_mlir;
+using namespace tpu_mlir::helper;
+
+namespace tpu_mlir {
+
+// create lookup table
+typedef double (*activate_f)(double);
+
+Value create_lookup_table(Value in, Value out, activate_f func,
+                          bool asymmetric);
+
+Value create_lookup_table(Operation *owner, const std::vector<float> &table);
+
+void bf16_gen_base_slope_table(float *base_table, float *slope_table,
+                               float range_start, float range_end,
+                               activate_f func);
+
+void bf16_lut_slope(float *input, float *output, int size, float *base_table,
+                    float *slope_table, float range_start, float range_end);
+
+void bf16_gen_exponent_mantissa_table(const std::string &name, float *exp_table,
+                                      float *mantissa_table);
+
+void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
+                       float *mantissa_table, const std::string &method);
+} // namespace tpu_mlir

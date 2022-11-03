@@ -128,6 +128,11 @@ struct Quant {
     auto v = to_int(value, round_mode);
     return v > 255 ? 255 : v < 0 ? 0 : v;
   }
+  static uint16_t to_bf16(float src, bool rounding);
+  static void to_bf16(float *src, uint16_t *dst, size_t size,
+                      bool rounding = true);
+  static float BF16(float src, bool rounding = true);
+  static void BF16(float *src, float *dst, size_t size, bool rounding = true);
   static mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
   static mlir::Type getQuantBF16Type(Value v);
   static mlir::Type getQuantF16Type(Value v);

@@ -42,6 +42,10 @@ typedef struct {
 // =========================================
 // GlobalGenInterface
 // =========================================
+void tpu::LutOp::weight_reorder_int8_bm1684x() {}
+void tpu::LutOp::weight_reorder_f16_bm1684x() {}
+void tpu::LutOp::weight_reorder_f32_bm1684x() {}
+void tpu::LutOp::weight_reorder_bf16_bm1684x() {}
 
 void tpu::LutOp::codegen_global_bm1684x() {
   lut_param_t p = {0};

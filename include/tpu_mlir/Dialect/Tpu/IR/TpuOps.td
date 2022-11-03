@@ -102,6 +102,19 @@ def Tpu_PoolMode: I32EnumAttr<"PoolMode",
 }
 def Tpu_PoolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PoolMode, "pool_mode">;
 
+def Tpu_LutMode : I32EnumAttr<"LutMode",
+    "look up table mode",
+    [
+      I32EnumAttrCase<"Other", 0>,
+      I32EnumAttrCase<"Mantissa", 1>,
+      I32EnumAttrCase<"Slope", 2>,
+      I32EnumAttrCase<"Log", 3>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_LutModeAttr : EnumAttr<Tpu_Dialect, Tpu_LutMode, "lut_mode">;
+
 //===----------------------------------------------------------------------===//
 // Tpu Types.
 //===----------------------------------------------------------------------===//
@@ -402,6 +415,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
 def Tpu_LutOp: Tpu_Op<"Lut",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<WeightReorderInterface>,
     InOutSameShape]>{
   let summary = "Lut operator";
 
@@ -412,6 +426,10 @@ def Tpu_LutOp: Tpu_Op<"Lut",
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$table,
+    AnyTensorOrNone:$mantissa,
+    DefaultValuedAttr<F64Attr, "8">:$max_range,
+    DefaultValuedAttr<F64Attr, "-8">:$min_range,
+    DefaultValuedAttr<Tpu_LutModeAttr, "tpu::LutMode::Other">:$lut_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
