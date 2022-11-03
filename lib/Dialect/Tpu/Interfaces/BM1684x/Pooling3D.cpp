@@ -52,6 +52,20 @@ typedef struct pooling3d_spec {
 }
 #endif
 
+static bool has_pad(const pool_attr_t &attrs) {
+  if (attrs.pad_h != 0 || attrs.pad_w != 0 || attrs.pad_d != 0)
+    return true;
+  if ((attrs.ih - attrs.kh) % attrs.sh != 0 ||
+      (attrs.iw - attrs.kw) % attrs.sw != 0 ||
+      (attrs.id - attrs.kd) % attrs.sd != 0)
+    return true;
+  if ((attrs.ih - attrs.kh) / attrs.sh + 1 != attrs.oh ||
+      (attrs.iw - attrs.kw) / attrs.sw + 1 != attrs.ow ||
+      (attrs.id - attrs.kd) / attrs.sd + 1 != attrs.od)
+    return true;
+  return false;
+}
+
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -97,12 +111,21 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    spec.avg_pooling_quant_mode = 2;
-    spec.merge_requant = true;
-    if (scale().has_value())
-      spec.rq_scale = scale().value().convertToDouble();
-    if (offset().has_value())
-      spec.rq_offset = offset().value().convertToDouble();
+    if (Quant::isUniformQuantized(input())) {
+      bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+      spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
+      // if (spec.avg_pooling_quant_mode == 0) {
+      //   spec.multiplier = multiplier().has_value() ? multiplier().value() : 1;
+      //   spec.rshiftbits = rshift().has_value() ? rshift().value() : 0;
+      // }
+      if (spec.avg_pooling_quant_mode == 2) {
+        spec.merge_requant = true;
+        spec.rq_scale =
+            scale().has_value() ? (scale().value().convertToDouble()) : 1.;
+        spec.rq_offset =
+            offset().has_value() ? (offset().value().convertToDouble()) : 0.;
+      }
+    }
   }
 
   BM1684x::instance().call_global_func("backend_api_pool3d_global", &spec,
@@ -194,12 +217,22 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    spec.avg_pooling_quant_mode = 2;
-    spec.merge_requant = true;
-    if (scale().has_value())
-      spec.rq_scale = static_cast<float>(scale().value().convertToDouble());
-    if (offset().has_value())
-      spec.rq_offset = static_cast<float>(offset().value().convertToDouble());
+    if (Quant::isUniformQuantized(input())) {
+      bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+      spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
+
+      // if (spec.avg_pooling_quant_mode == 0) {
+      //   spec.multiplier = multiplier().has_value() ? multiplier().value() : 1;
+      //   spec.rshiftbits = rshift().has_value() ? rshift().value() : 0;
+      // }
+      if (spec.avg_pooling_quant_mode == 2) {
+        spec.merge_requant = true;
+        spec.rq_scale =
+            scale().has_value() ? (scale().value().convertToDouble()) : 1.;
+        spec.rq_offset =
+            offset().has_value() ? (offset().value().convertToDouble()) : 0.;
+      }
+    }
   }
 
   spec.if_relu = attrs.do_relu;

@@ -83,6 +83,20 @@ static void SpecAssign(const pool_attr_t &attrs, pooling_common_spec_t &spec) {
   /// spec.pad_value = attrs.pad_value;
 }
 
+static bool has_pad(const pool_attr_t &attrs) {
+  if (attrs.pad_h != 0 || attrs.pad_w != 0 || attrs.pad_d != 0)
+    return true;
+  if ((attrs.ih - attrs.kh) % attrs.sh != 0 ||
+      (attrs.iw - attrs.kw) % attrs.sw != 0 ||
+      (attrs.id - attrs.kd) % attrs.sd != 0)
+    return true;
+  if ((attrs.ih - attrs.kh) / attrs.sh + 1 != attrs.oh ||
+      (attrs.iw - attrs.kw) / attrs.sw + 1 != attrs.ow ||
+      (attrs.id - attrs.kd) / attrs.sd + 1 != attrs.od)
+    return true;
+  return false;
+}
+
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -99,15 +113,19 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
     if (Quant::isUniformQuantized(input())) {
-      spec.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2: 0;
-                                    // (attrs.count_include_pad ? 2 : 1) : 0;
+      bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+      spec.avg_pooling_quant_mode =
+          Module::getAsymmetric(module) ? (with_pad ? 1 : 2) : 0;
+
       if (spec.avg_pooling_quant_mode == 0) {
-        spec.multiplier = multiplier().value();
-        spec.rshiftbits = rshift().value();
+        spec.multiplier = multiplier().has_value() ? multiplier().value() : 1;
+        spec.rshiftbits = rshift().has_value() ? rshift().value() : 0;
       } else if (spec.avg_pooling_quant_mode == 2) {
         spec.merge_requant = true;
-        spec.rq_scale = scale().value().convertToDouble();
-        spec.rq_offset = offset().value().convertToDouble();
+        spec.rq_scale =
+            scale().has_value() ? (scale().value().convertToDouble()) : 1.;
+        spec.rq_offset =
+            offset().has_value() ? (offset().value().convertToDouble()) : 0.;
       }
     }
   }
@@ -165,9 +183,10 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
       (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
 
   if (pool_mode() == tpu::PoolMode::Avg) {
+    bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
     common.is_avg_pooling = true;
-    common.avg_pooling_quant_mode = Module::getAsymmetric(module) ? 2: 0;
-                                    // (attrs.count_include_pad ? 2 : 1) : 0;
+    common.avg_pooling_quant_mode =
+        Module::getAsymmetric(module) ? (with_pad ? 1 : 2) : 0;
 
     if (common.avg_pooling_quant_mode == 0) {
       common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
