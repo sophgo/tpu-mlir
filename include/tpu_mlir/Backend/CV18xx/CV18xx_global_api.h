@@ -64,6 +64,12 @@ void cvi_backend_tg_fixed_fc_kernel(
     int batch_low = 1, bool lstride = false, bool rstride = false,
     bool ostride = false);
 
+void cvi_backend_tg_upsample_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id,
+    gaddr_t ga_ifmap, gaddr_t ga_ofmap, uint32_t input_n, uint32_t input_c,
+    uint32_t input_h, uint32_t input_w, uint32_t h_factor, uint32_t w_factor,
+    cvk_fmt_t fmt);
+
 void cvi_backend_tg_permute_kernel(const CviBackendContext &ctx,
                                    uint32_t layer_id, gaddr_t ga_input,
                                    gaddr_t ga_output, int n, int c, int h,
