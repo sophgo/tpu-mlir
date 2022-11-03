@@ -40,6 +40,22 @@ typedef struct fc_global_spec {
   int32_t round_mode;
 } fc_global_spec_t;
 
+typedef struct batch_matmul_common_spec {
+  int Y_dtype;
+  int L_trans;
+  int R_trans;
+  bool R_zp_is_const;
+  int R_zp_const_val;
+  bool has_bias;
+  bool hdim_is_batch;
+  /* requant param */
+  int requant_mode; // mode < 0 means no requantize
+  int mul_val;
+  int shift_val;
+  int offset_val;
+  // int round_mode;
+} batch_matmul_common_spec_t;
+
 #ifdef __cplusplus
 }
 #endif
@@ -49,10 +65,42 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   bool with_bias, relu;
   double relu_limit;
   parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp);
-  assert(batch == 1);
   auto op = getOperation();
   auto input_spec = BM1684x::get_input_spec(op);
   auto output_spec = BM1684x::get_output_spec(op);
+  if (batch != 1) {
+    BM1684x::fix_shape(input_spec->at(0),
+                       {(int32_t)batch, (int32_t)M, (int32_t)K});
+    BM1684x::fix_shape(input_spec->at(1),
+                       {(int32_t)batch, (int32_t)K, (int32_t)N});
+    BM1684x::fix_shape(output_spec->at(0),
+                       {(int32_t)batch, (int32_t)M, (int32_t)N});
+    batch_matmul_common_spec_t spec{0};
+    spec.Y_dtype = output_spec->at(0).dtype;
+    spec.L_trans = false;
+    spec.R_trans = false;
+    spec.has_bias = with_bias;
+    spec.hdim_is_batch = false;
+    spec.requant_mode = -1;
+    if (Quant::isUniformQuantized(input())) {
+      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+      auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+      assert(rshift_v->size() == 1);
+      assert(multiplier_v->size() == 1);
+      spec.requant_mode = static_cast<int>(quant_mode());
+      spec.R_zp_is_const = true;
+      spec.R_zp_const_val = right_zp;
+      spec.mul_val = multiplier_v->at(0);
+      spec.shift_val = -rshift_v->at(0);
+      auto output_type = Quant::getUniformQuantizedType(output());
+      spec.offset_val = output_type.getZeroPoint();
+    }
+
+    BM1684x::instance().call_global_func(
+        "backend_api_batch_matmul_global", &spec, sizeof(spec),
+        input_spec->data(), output_spec->data());
+    return;
+  }
   BM1684x::fix_shape(input_spec->at(0), {(int32_t)M, (int32_t)K});
   BM1684x::fix_shape(input_spec->at(1), {(int32_t)K, (int32_t)N});
   BM1684x::fix_shape(output_spec->at(0), {(int32_t)M, (int32_t)N});
