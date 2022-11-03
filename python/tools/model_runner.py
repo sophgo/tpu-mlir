@@ -73,11 +73,10 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
     for name in module.input_names:
         assert (name in inputs)
         input = inputs[name]
-        is_int = False
         if input.dtype == np.int8 or input.dtype == np.uint8:
-            is_int = True
-            input = input.astype(np.float32)
-        module.set_tensor(name, input, is_int)
+            module.set_tensor_from_int(name, input.astype(np.float32))
+        else:
+            module.set_tensor(name, input.astype(np.float32))
     module.invoke()
     tensors = module.get_all_tensor()
     if dump_all:

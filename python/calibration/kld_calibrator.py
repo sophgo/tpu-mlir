@@ -314,7 +314,7 @@ class SimpleTuner:
             refcount = self.ref_activations[i][input_op][1]
             if i == 0:
                 tmp += '\nits input:{}, refcount:{}'.format(input_op, refcount)
-            self.module.set_tensor(input_op, data, False)
+            self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
             count = self.parser.get_user_count_by_op_name(op_name)
@@ -341,7 +341,7 @@ class SimpleTuner:
                     print('error, calc_distance get tensor fail')
                     return None, None
                 value = import_quant_bias(value, threshold)
-                self.module_dq.set_tensor(input, value, False)
+                self.module_dq.set_tensor(input, value)
             target_activations = self.module_dq.invoke_at(evaled_op)
             target_fp32_activations = self.get_ref_tensor(idx, evaled_op)
             total_cosine_similarity += cosine_sim(target_activations, target_fp32_activations)
@@ -573,14 +573,14 @@ class ActivationCalibrator(BaseKldCalibrator):
                 x = np.load(data)
                 for op in self.parser.inputs:
                     assert (op.name in x)
-                    self.module.set_tensor(op.name, x[op.name], False)
+                    self.module.set_tensor(op.name, x[op.name].astype(np.float32))
             elif self.ds.all_npy:
                 inputs = data.split(',')
                 inputs = [s.strip() for s in inputs]
                 assert (self.input_num == len(inputs))
                 for name, input in zip(self.module.input_names, inputs):
                     x = np.load(input)
-                    self.module.set_tensor(name, x, False)
+                    self.module.set_tensor(name, x.astype(np.float32))
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')
@@ -590,7 +590,7 @@ class ActivationCalibrator(BaseKldCalibrator):
                     batched_inputs[i] += '{},'.format(inputs[i])
                     if idx == self.batch_size:
                         x = self.ppa_list[i].run(batched_inputs[i][:-1])
-                        self.module.set_tensor(self.ppa_list[i].input_name, x, False)
+                        self.module.set_tensor(self.ppa_list[i].input_name, x)
                 if idx == self.batch_size:
                     idx = 0
                     batched_inputs = self.input_num * ['']
