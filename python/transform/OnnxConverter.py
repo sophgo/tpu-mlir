@@ -714,6 +714,19 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_upsample_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
+    # when resize by linear or nearst, with float scale_h or float scale_w
+    def resize_to_interp(self, onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode, coordinate_transformation_mode):
+        operands = [op]
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'scale_h': float(scale_h),
+            'scale_w': float(scale_w),
+            'mode': mode,
+            'coordinate_transformation_mode': coordinate_transformation_mode
+        }
+        new_op = self.mlir.create_interp_op(operands, output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_resize_op(self, onnx_node):
         assert (onnx_node.op_type == "Resize")
         mode = onnx_node.attrs.get("mode", "nearest")
@@ -745,11 +758,15 @@ class OnnxConverter(BaseConverter):
         if scale_h == 1.0 and scale_w == 1.0:
             self.addOperand(onnx_node.name, op)
             return
+
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
-        if mode == b'nearest':
-            if scale_h == int(scale_h) and scale_w == int(scale_w):
-                self.resize_to_upsample(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
-                return
+        if mode == b'nearest' and scale_h == int(scale_h) and scale_w == int(scale_w):
+            self.resize_to_upsample(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
+            return
+        else:
+            self.resize_to_interp(onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode, coord_mode)
+            return
+
         raise RuntimeError("[{}] Unsupported mode: {}, coord_mode: {}".format(
             onnx_node.name, mode, coord_mode))
 

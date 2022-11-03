@@ -36,6 +36,13 @@ typedef struct {
   DATA_TYPE_T dtype;
 } leakyrelu_param_t;
 
+typedef struct {
+    float upper_limit;
+    float slope_val;
+    int is_channel_shared;
+    int rshift_bit;
+    int round_mode;
+} prelu_spec_t;
 #ifdef __cplusplus
 }
 #endif
@@ -45,30 +52,24 @@ typedef struct {
 // =========================================
 
 void tpu::LeakyReluOp::codegen_global_bm1684x() {
-  int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
-  leakyrelu_param_t param = {0};
-  param.input_addr = Module::getAddress(input());
-  param.slope_addr = -1;
-  param.output_addr = Module::getAddress(output());
-  param.input_n = static_cast<int32_t>(n);
-  param.input_c = static_cast<int32_t>(c);
-  param.input_h = static_cast<int32_t>(h);
-  param.input_w = static_cast<int32_t>(w);
-  param.channel_shared = 1;
-  param.relu_limit = -1;
-  param.dtype = BM168x::getDataType(input());
+  prelu_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.is_channel_shared = true;
+  spec.upper_limit = -1;
+  spec.round_mode = ROUND_UP;
   if (Quant::isUniformQuantized(input())) {
-    param.slope_val = static_cast<float>(multiplier().value());
-    param.rshift_bit = rshift().value();
-    BM1684x::instance().call_global_func("backend_api_prelu_global", &param,
-                                         sizeof(leakyrelu_param_t));
+    spec.slope_val = static_cast<float>(multiplier().value());
+    spec.rshift_bit = rshift().value();
   } else {
-    param.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
-    param.rshift_bit = 0;
-    BM1684x::instance().call_global_func("backend_api_prelu_global", &param,
-                                         sizeof(leakyrelu_param_t));
+    spec.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
+    spec.rshift_bit = 0;
   }
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
+  BM1684x::instance().call_global_func("backend_api_prelu_global", &spec,
+                                       sizeof(spec), input_spec->data(),
+                                       output_spec->data());
 }
 
 // =========================================
@@ -82,29 +83,40 @@ int64_t tpu::LeakyReluOp::getBufferSize_bm1684x(
 }
 
 void tpu::LeakyReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto op = getOperation();
+  auto input_spec = BM1684x::get_input_spec(op);
+  auto output_spec = BM1684x::get_output_spec(op);
 
-  leakyrelu_param_t param = {0};
-  param.input_addr = in_gi.out_addr;
-  param.slope_addr = -1;
-  param.output_addr = gi.out_addr;
-  param.input_n = static_cast<int32_t>(gi.n_slice);
-  param.input_c = static_cast<int32_t>(c);
-  param.input_h = static_cast<int32_t>(gi.h_slice);
-  param.input_w = static_cast<int32_t>(w);
-  param.channel_shared = 1;
-  param.relu_limit = -1;
-  param.dtype = BM168x::getDataType(input());
+  prelu_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.is_channel_shared = true;
+  spec.upper_limit = -1;
+  spec.round_mode = ROUND_UP;
   if (Quant::isUniformQuantized(input())) {
-    param.slope_val = static_cast<float>(multiplier().value());
-    param.rshift_bit = rshift().value();
+    spec.slope_val = static_cast<float>(multiplier().value());
+    spec.rshift_bit = rshift().value();
   } else {
-    param.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
-    param.rshift_bit = 0;
+    spec.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
+    spec.rshift_bit = 0;
   }
-  BM1684x::instance().call_local_func("backend_api_prelu_local", &param,
-                                      sizeof(leakyrelu_param_t));
+
+  local_sec_info_t sec_info;
+  memset(&sec_info, 0, sizeof(sec_info));
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.d_slice = 1;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = w;
+  BM1684x::instance().call_local_func("backend_api_prelu_local", &spec,
+                                      sizeof(spec), &sec_info,
+                                      input_spec->data(), output_spec->data());
 }

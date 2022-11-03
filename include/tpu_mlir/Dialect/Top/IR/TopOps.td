@@ -796,4 +796,20 @@ def Top_PReluOp : Top_Op<"PRelu", [InOutSameDim]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_InterpOp : Top_Op<"Interp"> {
+  let summary = "Interp operation";
+  let description = [{
+     Perform linear upsample on input
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$scale_h,
+    F64Attr:$scale_w,
+    StrAttr:$mode,
+    StrAttr:$coord_mode
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS
