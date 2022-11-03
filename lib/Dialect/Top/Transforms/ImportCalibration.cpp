@@ -36,8 +36,8 @@ class ImportCalibrationTablePass
 public:
   ImportCalibrationTablePass() {}
   void runOnOperation() override {
-    llvm::errs() << "import calibration table:" << this->tableFile
-                 << ", is asymmetric " << this->isAsymmetric << "\n";
+    // llvm::errs() << "import calibration table:" << this->tableFile
+    //              << ", is asymmetric " << this->isAsymmetric << "\n";
     auto module = getOperation();
     if (!Module::isState(module, Module::State::TOP_F32)) {
       module.dump();
