@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "BatchMatMul", "BroadcastMulConst", "DepthToSpace", "Expand2", "GroupFC", "GRU",
+    "BroadcastMulConst", "DepthToSpace", "Expand2", "GroupFC", "GRU",
     "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Resize2", "Reduce", "Reduce2", "ReduceL2", "Reciprocal",
     "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
     "TorchWhere"
@@ -386,7 +386,7 @@ class ONNX_IR_TESTER(object):
             [output],
         )
         input1_data = np.random.randn(*input1_shape).astype(np.float32)
-        input2_data = np.random.randn(*input1_shape).astype(np.float32)
+        input2_data = np.random.randn(*input2_shape).astype(np.float32)
         self.onnx_and_test({"input1": input1_data, "input2": input2_data}, graph_def)
 
     def MaxPoolBase(self, case_name, input_shape, output_shape, kernel, strides):
