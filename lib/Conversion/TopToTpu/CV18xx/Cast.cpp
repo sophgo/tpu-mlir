@@ -22,5 +22,5 @@ void CastLowering::LoweringBF16(PatternRewriter &rewriter,
   lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                op.output().getType());
 }
-} // namespace bm1684x
+} // namespace cv18xx
 } // namespace tpu_mlir
