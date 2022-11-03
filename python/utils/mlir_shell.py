@@ -7,7 +7,6 @@
 
 import os
 
-
 def _os_system(cmd: list):
     cmd_str = ""
     for s in cmd:
@@ -18,7 +17,6 @@ def _os_system(cmd: list):
         print("[Success]: {}".format(cmd_str))
     else:
         raise RuntimeError("[!Error]: {}".format(cmd_str))
-
 
 def mlir_opt_for_top(mlirfile, opt_mlirfile):
     cmd = [
@@ -33,53 +31,81 @@ def mlir_opt_for_top(mlirfile, opt_mlirfile):
     ]
     _os_system(cmd)
 
-
 def mlir_lowering(top_mlir: str,
                   tpu_mlir: str,
                   mode: str,
                   chip: str,
-                  cali_table: str = None,
+                  cali_table=None,
                   asymmetric: bool = False,
-                  quantize_table: str = None):
+                  quantize_table=None):
     cmd = ["tpuc-opt", top_mlir]
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
         cmd.extend([cali_param])
-    qtable = ""
-    if quantize_table:
-        qtable = "qtable={}".format(quantize_table)
-    lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} chip={}\"".format(
-        mode.upper(), qtable, asymmetric, chip.lower())
-    cmd.extend([
-        lower_param,
-        "--canonicalize",
-        "--save-weight",
-        "--mlir-print-debuginfo",
-        "-o",
-        tpu_mlir,
-    ])
+    lower_param = "--convert-top-to-tpu=\"mode={} asymmetric={} chip={}\"".format(
+        mode.upper(), asymmetric, chip.lower())
+    cmd.extend(
+        [
+            lower_param,
+            "--canonicalize",
+            "--save-weight",
+            "--mlir-print-debuginfo",
+            "-o",
+            tpu_mlir,
+        ]
+    )
     _os_system(cmd)
 
-
-def mlir_to_model(tpu_mlir: str,
-                  model: str,
+def milr_to_final_mlir(tpu_mlir: str,
                   final_mlir: str,
                   quant_input: bool = False,
                   quant_output: bool = False):
-    codegen_param = '--codegen="model_file={}"'.format(model)
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
-        quant_input, quant_output)
+        quant_input, quant_output
+    )
     cmd = [
         "tpuc-opt",
         tpu_mlir,
         strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",
-        "--layer-group",
         "--address-assign",
         "--save-weight",
+        "--mlir-print-debuginfo",
+        "-o",
+        final_mlir,
+    ]
+
+    _os_system(cmd)
+
+def mlir_to_model(model: str,
+                  final_mlir: str):
+    codegen_param = '--codegen="model_file={}"'.format(model)
+    cmd = [
+        "tpuc-opt",
+        final_mlir,
         codegen_param,
+        ">/dev/null",
+    ]
+
+    _os_system(cmd)
+
+def milr_to_cvi_final_mlir(tpu_mlir: str,
+                  final_mlir: str,
+                  quant_input: bool = False,
+                  quant_output: bool = False):
+    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
+        quant_input, quant_output
+    )
+    cmd = [
+        "tpuc-opt",
+        tpu_mlir,
+        strip_io_quant_param,
+        "--weight-reorder",
+        "--subnet-divide",
+        "--cv-address-assign",
+        "--save-weight",
         "--mlir-print-debuginfo",
         "-o",
         final_mlir,
@@ -91,32 +117,43 @@ def mlir_to_model(tpu_mlir: str,
     except RuntimeError:
         pass
 
-
-# tmp for cvitek, remove in the future
-def mlir_to_cvi_model(tpu_mlir: str,
-                      model: str,
-                      final_mlir: str,
-                      quant_input: bool = False,
-                      quant_output: bool = False):
-    codegen_param = '--cv-codegen="model_file={}"'.format(model)
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
-        quant_input, quant_output)
+def mlir_to_cvi_model(model: str,
+                  final_mlir: str):
+    codegen_param = '--codegen="model_file={}"'.format(model)
     cmd = [
         "tpuc-opt",
-        tpu_mlir,
-        strip_io_quant_param,
-        "--weight-reorder",
-        "--subnet-divide",
-        "--cv-address-assign",
-        codegen_param,
-        "--save-weight",
-        "--mlir-print-debuginfo",
-        "-o",
         final_mlir,
+        codegen_param,
+        ">/dev/null",
     ]
 
     _os_system(cmd)
 
+# # tmp for cvitek, remove in the future
+# def mlir_to_cvi_model(tpu_mlir: str,
+#                   model: str,
+#                   final_mlir: str,
+#                   quant_input: bool = False,
+#                   quant_output: bool = False):
+#     codegen_param = '--cv-codegen="model_file={}"'.format(model)
+#     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
+#         quant_input, quant_output
+#     )
+#     cmd = [
+#         "tpuc-opt",
+#         tpu_mlir,
+#         strip_io_quant_param,
+#         "--weight-reorder",
+#         "--subnet-divide",
+#         "--cv-address-assign",
+#         "--save-weight",
+#         codegen_param,
+#         "--mlir-print-debuginfo",
+#         "-o",
+#         final_mlir,
+#     ]
+
+#     _os_system(cmd)
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
