@@ -119,49 +119,6 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   }
 }
 
-Value create_lookup_table(Value in, Value out, activate_f func,
-                          bool asymmetric) {
-  assert(func != nullptr);
-  double in_scale, out_scale;
-  int64_t in_zp, out_zp;
-  bool in_sign, out_sign;
-  Quant::getScaleAndZeroPoint(in, in_scale, in_zp, in_sign, asymmetric);
-  Quant::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, asymmetric);
-  int64_t min = in_sign ? -128 : 0;
-  int64_t max = in_sign ? 127 : 255;
-  auto op = out.getDefiningOp();
-  OpBuilder builder(op->getContext());
-  auto table_type = RankedTensorType::get({1, 1, 1, 256},
-                                          builder.getIntegerType(8, out_sign));
-  if (out_sign) {
-    std::vector<int8_t> table(256, 0);
-    for (auto i = min; i <= max; i++) {
-      double data = (i - in_zp) * in_scale;
-      data = func(data) / out_scale + out_zp;
-      int index = i < 0 ? 256 + i : i;
-      table[index] = Quant::to_int8(data);
-    }
-    return top::WeightOp::create(out.getDefiningOp(), "table", table,
-                                 table_type);
-  } else {
-    std::vector<uint8_t> table(256, 0);
-    for (auto i = min; i <= max; i++) {
-      double data = (i - in_zp) * in_scale;
-      data = func(data) / out_scale + out_zp;
-      int index = i < 0 ? 256 + i : i;
-      table[index] = Quant::to_uint8(data);
-    }
-    return top::WeightOp::create(out.getDefiningOp(), "table", table,
-                                 table_type);
-  }
-}
-
-Value create_lookup_table(Operation *owner, const std::vector<float> &table) {
-  OpBuilder builder(owner->getContext());
-  auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getF32Type());
-  return top::WeightOp::create(owner, "table", table, table_type);
-}
-
 Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
                  tpu::DequantMode mode, int64_t lshift) {
   auto from_stype = Module::getStorageType(input);

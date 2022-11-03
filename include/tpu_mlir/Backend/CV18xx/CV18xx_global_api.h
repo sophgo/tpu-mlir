@@ -64,11 +64,17 @@ void cvi_backend_tg_fixed_fc_kernel(
     int batch_low = 1, bool lstride = false, bool rstride = false,
     bool ostride = false);
 
-void cvi_backend_tg_upsample_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id,
-    gaddr_t ga_ifmap, gaddr_t ga_ofmap, uint32_t input_n, uint32_t input_c,
-    uint32_t input_h, uint32_t input_w, uint32_t h_factor, uint32_t w_factor,
-    cvk_fmt_t fmt);
+void cvi_backend_tg_lut_kernel(const CviBackendContext &ctx, uint32_t layer_id,
+                               gaddr_t bottom_gaddr, gaddr_t top_gaddr,
+                               gaddr_t sg_lut_gaddr, int input_n, int input_c,
+                               int input_h, int input_w, cvk_fmt_t fmt);
+
+void cvi_backend_tg_upsample_kernel(const CviBackendContext &ctx,
+                                    uint32_t layer_id, gaddr_t ga_ifmap,
+                                    gaddr_t ga_ofmap, uint32_t input_n,
+                                    uint32_t input_c, uint32_t input_h,
+                                    uint32_t input_w, uint32_t h_factor,
+                                    uint32_t w_factor, cvk_fmt_t fmt);
 
 void cvi_backend_tg_permute_kernel(const CviBackendContext &ctx,
                                    uint32_t layer_id, gaddr_t ga_input,
@@ -90,12 +96,10 @@ void cvi_backend_tg_bf16_conv_kernel(
     gaddr_t ga_scale = 0, gaddr_t ga_zeropoint = 0);
 
 void cvi_backend_tg_bf16_eltwise_add_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id,
-    gaddr_t ga_inputs[], gaddr_t ga_output,
-    int32_t operand_num, int32_t n, int32_t c,
-    int32_t h, int32_t w, bool do_relu, bool do_early_stride,
-    int32_t stride_h, int32_t stride_w,
-    const float *coeffs);
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_inputs[],
+    gaddr_t ga_output, int32_t operand_num, int32_t n, int32_t c, int32_t h,
+    int32_t w, bool do_relu, bool do_early_stride, int32_t stride_h,
+    int32_t stride_w, const float *coeffs);
 
 void cvi_backend_tg_bf16_fc_kernel(
     const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
@@ -106,6 +110,16 @@ void cvi_backend_tg_bf16_fc_kernel(
     int batch_low = 1, bool lstride = false, bool rstride = false,
     bool ostride = false, bool do_quant_bf16 = 0, gaddr_t ga_scale = 0,
     gaddr_t ga_zeropoint = 0);
+
+void cvi_backend_tg_bf16_lut_mantissa_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t bottom_gaddr,
+    gaddr_t top_gaddr, gaddr_t exp_lut_table, gaddr_t mantissa_lut_table,
+    int input_n, int input_c, int input_h, int input_w, int method);
+
+void cvi_backend_tg_bf16_lut_slope_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t bottom_gaddr,
+    gaddr_t top_gaddr, gaddr_t y0_table_gaddr, gaddr_t slope_gaddr, int input_n,
+    int input_c, int input_h, int input_w, float range_min, float range_max);
 
 void cvi_backend_tg_bf16_pooling_kernel(
     const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ifmap_gaddr,
