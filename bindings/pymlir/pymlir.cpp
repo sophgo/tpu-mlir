@@ -135,12 +135,18 @@ public:
     return getTensorDict(tensorMap_, shapeMap_, ordered_names);
   }
 
-  void
-  set_tensor(std::string name,
-             py::array_t<float, py::array::c_style | py::array::forcecast> data,
-             bool is_integer = false) {
+  void set_tensor(
+      std::string name,
+      py::array_t<float, py::array::c_style | py::array::forcecast> data) {
     interpreter_->setTensor(name, data.data(), data.size() * sizeof(float),
-                            is_integer);
+                            false);
+  }
+
+  void set_tensor_from_int(
+      std::string name,
+      py::array_t<float, py::array::c_style | py::array::forcecast> data) {
+    interpreter_->setTensor(name, data.data(), data.size() * sizeof(float),
+                            true);
   }
 
   py::array get_tensor(std::string name) {
@@ -184,6 +190,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def(py::init<>())
       .def("load", &py_module::load, "load module from IR")
       .def("set_tensor", &py_module::set_tensor)
+      .def("set_tensor_from_int", &py_module::set_tensor_from_int)
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
       .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
       .def("invoke", &py_module::invoke)
