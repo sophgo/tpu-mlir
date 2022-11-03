@@ -56,7 +56,8 @@ static void transposeConvolutionFilter(std::shared_ptr<std::vector<T>> &w,
 
 // for int8 double conv
 static void refactorOddIcConv(std::shared_ptr<std::vector<int8_t>> &w,
-                              std::vector<int64_t> &s, const int32_t g) {
+                              std::vector<int64_t> &s, const int32_t g,
+                              bool &do_ic_alignment) {
   int kn = s[0];
   int kc = s[1];
   int kh = s[2];
@@ -86,6 +87,7 @@ static void refactorOddIcConv(std::shared_ptr<std::vector<int8_t>> &w,
     }
     w = n_w;
     s[1] += 1;
+    do_ic_alignment = true;
   }
 }
 
@@ -199,7 +201,11 @@ void tpu::Conv2DOp::weight_reorder_int8_cv18xx() {
   }
   transposeConvolutionFilter(filter_i8, filter_shape);
   // third padding odd ic to even to enable double conv
-  refactorOddIcConv(filter_i8, filter_shape, attr.groups);
+  bool do_ic_alignment = false;
+  refactorOddIcConv(filter_i8, filter_shape, attr.groups, do_ic_alignment);
+  if (do_ic_alignment) {
+    op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(4));
+  }
   // rewrite weightOp
   auto elem_type = Module::getStorageType(filter());
   auto filter_type = RankedTensorType::get(filter_shape, elem_type);
@@ -224,8 +230,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_cv18xx() {
   }
   transposeConvolutionFilter(filter_u16, filter_shape);
   // rewrite weightOp
-  auto elem_type = Module::getStorageType(filter());
-  auto filter_type = RankedTensorType::get(filter_shape, elem_type);
+  auto filter_type = RankedTensorType::get(filter_shape, builder.getBF16Type());
   auto weight_op =
       top::WeightOp::create(op, "filter_reordered", *filter_u16, filter_type);
   op->setOperand(1, weight_op);
@@ -237,7 +242,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_cv18xx() {
     transposeBiasFp32(bias_f32, bias_new);
     // rewrite biasOp
     auto new_bias_type = RankedTensorType::get(Module::getShape(bias()),
-                                                builder.getIntegerType(32));
+                                               builder.getIntegerType(32));
     // bias().setType(new_bias_type);
     auto lbias_op =
         top::WeightOp::create(op, "bias_reordered", bias_new, new_bias_type);
@@ -262,10 +267,10 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   }
 
   auto fliter_shape = Module::getShape(filter());
-  // WeightCompresser weight_opt(this->getOperation(), do_compress());
-  WeightCompresser weight_opt(this->getOperation(), true); // fix me
+  bool do_compress = attr.groups > 1 ? false : true;
+  WeightCompresser weight_opt(this->getOperation(), do_compress); // fix me
   if (Quant::isUniformQuantized(output())) {
-    bool do_ic_alignment = fliter_shape[1] == attr.ic ? false : true;
+    bool do_ic_alignment = use_3ic_optimize() ? true : false;
     gaddr_t ga_scale_lut = GA_INVALID;
     // todo leakyrelu
     int fused_leakyrelu_pos_rshift = 0;
@@ -305,25 +310,24 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     bool do_quant = false;
     gaddr_t ga_scale = GA_INVALID;
     gaddr_t ga_zeropoint = GA_INVALID;
-    cvi_backend_tg_bf16_conv_kernel(
-        *backend_ctx,
-        layer_id,    // layer_id
-        ga_input,    // input_data_gaddr,
-        ga_output,   // output_data_gaddr,
-        ga_filter,   // weight_data_gaddr,
-        ga_pc_info,  // bias_data_gaddr,
-        attr.n, attr.ic, attr.ih, attr.iw,
-        attr.groups, // group
-        attr.oc, attr.kh, attr.kw, attr.dh, attr.dw, attr.pht, attr.phb,
-        attr.pwl,
-        attr.pwr,               // pad (t, b, l, r)
-        attr.ins_h, attr.ins_w, // ins_h, ins_w
-        attr.sh, attr.sw,
-        attr.has_bias,          // bias_term,
-        attr.do_relu ? 1 : 0,   // do_activation,
-        false,                  // fp32_output
-        &weight_opt.old_data, &weight_opt.new_data,
-        do_quant, ga_scale, ga_zeropoint); // TODO
+    cvi_backend_tg_bf16_conv_kernel(*backend_ctx,
+                                    layer_id,   // layer_id
+                                    ga_input,   // input_data_gaddr,
+                                    ga_output,  // output_data_gaddr,
+                                    ga_filter,  // weight_data_gaddr,
+                                    ga_pc_info, // bias_data_gaddr,
+                                    attr.n, attr.ic, attr.ih, attr.iw,
+                                    attr.groups, // group
+                                    attr.oc, attr.kh, attr.kw, attr.dh, attr.dw,
+                                    attr.pht, attr.phb, attr.pwl,
+                                    attr.pwr,               // pad (t, b, l, r)
+                                    attr.ins_h, attr.ins_w, // ins_h, ins_w
+                                    attr.sh, attr.sw,
+                                    attr.has_bias,        // bias_term,
+                                    attr.do_relu ? 1 : 0, // do_activation,
+                                    false,                // fp32_output
+                                    &weight_opt.old_data, &weight_opt.new_data,
+                                    do_quant, ga_scale, ga_zeropoint); // TODO
   }
 }
 
