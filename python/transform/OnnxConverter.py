@@ -472,13 +472,13 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "DepthToSpace")
         op = self.getOperand(onnx_node.inputs[0])
         blocksize = onnx_node.attrs['blocksize']
-        mode = onnx_node.attrs.get("mode", "DCR")
+        mode = onnx_node.attrs.get("mode", b"DCR")
         output_shape = self.getShape(onnx_node.name)
         p = {
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
             "block_h": blocksize,
             "block_w": blocksize,
-            "is_CRD": mode != "DCR",
+            "is_CRD": mode != b"DCR",
             "is_inversed": False,
         }
         new_op = self.mlir.create_depth2space_op([op], output_shape, **p)
