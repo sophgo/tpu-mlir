@@ -105,7 +105,34 @@ void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
 
 void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MulOp op) const {
-  llvm_unreachable("Not Implemented");
+  if (Quant::isUniformQuantized(op.inputs()[0], op.output()) == false) {
+    llvm_unreachable("input output should be quantized");
+  }
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  assert(nInputs == 2);
+  int64_t zeropoint;
+  double scale, scale_mul;
+  for (int i = 0; i < nInputs; i++) {
+    auto input = op->getOperand(i);
+    Quant::getScaleAndZeroPoint(input, scale, zeropoint, true);
+    scale_mul *= scale;
+  }
+  Quant::getScaleAndZeroPoint(op.output(), scale, zeropoint, true);
+  scale_mul = scale_mul / scale;
+
+  int64_t multiplier;
+  int64_t shift;
+  QuantizeMultiplier(scale_mul, &multiplier, &shift);
+
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
+  attrs.push_back(
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
+  auto newType = Quant::getQuantInt8Type(op.output(), true);
+  rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
 }
 
 } // namespace bm1684x
