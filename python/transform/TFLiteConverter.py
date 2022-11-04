@@ -276,6 +276,10 @@ class TFLiteConverter(BaseConverter):
             "QUANTIZE": lambda _: ("top.Cast", {}),
             "RESHAPE": lambda _: ("top.Reshape", {}),
             "CONCATENATION": self.concat_op,
+            "LOGISTIC": lambda _: ("top.Sigmoid", {}),
+            "MUL": self.mul_op,
+            # "RESIZE_NEAREST_NEIGHBOR": self.resize_nearest_op,
+            # "STRIDED_SLICE": self.stride_slice_op,
         }
         input_types=[]
         for x in self.graph.inputs:
@@ -454,6 +458,18 @@ class TFLiteConverter(BaseConverter):
             )
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
         return Top.AddOp, attr
+
+    def mul_op(self, op):
+        from .tflite.AddOptions import AddOptions
+
+        op_options = op.builtin_options
+        param = AddOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        fused_active = param.FusedActivationFunction()
+        if fused_active not in [0, 1]:
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
+        attr = {"do_relu": BoolAttr.get(fused_active == 1)}
+        return Top.MulOp, attr
 
     def pool_attr(self, op):
         from .tflite.Pool2DOptions import Pool2DOptions

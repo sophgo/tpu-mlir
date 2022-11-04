@@ -45,7 +45,7 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
-  llvm_unreachable("Not Implemented");
+  LoweringINT8(rewriter, op, true);
 }
 
 } // namespace bm1684x
