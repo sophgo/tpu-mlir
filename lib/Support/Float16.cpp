@@ -746,9 +746,18 @@ uint16_t f32_to_f16(float src) {
 void f32_to_f16(float *p_src, float *p_dst, int num) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; i++) {
-    uint16_t tmp = f32_to_f16(p_src[i]);
-    p_dst[i] = f16_to_f32(tmp);
+    p_dst[i] = F16(p_src[i]);
   }
+}
+
+float F16(float src) {
+  uint16_t tmp = f32_to_f16(src);
+  return f16_to_f32(tmp);
+}
+
+float BF16(float src) {
+  uint16_t tmp = bm_f32_to_bf16(src);
+  return bf16_to_f32(tmp);
 }
 
 /*

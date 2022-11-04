@@ -18,6 +18,37 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
+float requant(const float &data, const quant::UniformQuantizedType &qtype) {
+  auto stype = qtype.getExpressedType();
+  if (stype.isF32()) {
+    return std::round(data / qtype.getScale()) + qtype.getZeroPoint();
+  }
+  if (stype.isF16()) {
+    return std::round(F16(data / F16(qtype.getScale()))) + qtype.getZeroPoint();
+  }
+  if (stype.isBF16()) {
+    return std::round(BF16(data / BF16(qtype.getScale()))) +
+           qtype.getZeroPoint();
+  }
+  qtype.dump();
+  llvm_unreachable("Unsupport type");
+}
+
+float dequant(const float &data, const quant::UniformQuantizedType &qtype) {
+  auto stype = qtype.getExpressedType();
+  if (stype.isF32()) {
+    return qtype.getScale() * (data - qtype.getZeroPoint());
+  }
+  if (stype.isF16()) {
+    return F16(F16(qtype.getScale()) * (data - qtype.getZeroPoint()));
+  }
+  if (stype.isBF16()) {
+    return BF16(BF16(qtype.getScale()) * (data - qtype.getZeroPoint()));
+  }
+  qtype.dump();
+  llvm_unreachable("Unsupport type");
+}
+
 LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
 void tpu::CastOp::deinit(InferenceParameter &p) {}
 
@@ -50,8 +81,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
                 cvi_f32_to_fbf16(qtype.getZeroPoint()),
             (qtype.getZeroPoint() != 0));
       } else {
-        v = std::round(p.inputs[0][i] / qtype.getScale()) +
-            qtype.getZeroPoint();
+        v = requant(p.inputs[0][i], qtype);
       }
       if (out_type.isUnsignedInteger(8)) {
         p.outputs[0][i] = Quant::to_uint8(v, round_mode);
@@ -68,8 +98,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (size_t i = 0; i < num_elem; i++) {
-        p.outputs[0][i] =
-            qtype.getScale() * (p.inputs[0][i] - qtype.getZeroPoint());
+        p.outputs[0][i] = dequant(p.inputs[0][i], qtype);
       }
     }
   } else {
