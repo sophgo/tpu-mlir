@@ -62,6 +62,8 @@ convert to f16/bf16 float to f32 float
 */
 float f16_to_f32(uint16_t src);
 float bf16_to_f32(uint16_t src);
+float F16(float src);
+float BF16(float src);
 
 /*
 convert to int8 to bf16 float

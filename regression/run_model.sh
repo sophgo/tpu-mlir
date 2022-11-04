@@ -209,12 +209,14 @@ if [ -f ${CALI_TABLE} ]; then
 fi
 
 qtable_opt=
+quant_io_opt="--quant_input --quant_output"
 if [ x${use_quantize_table} == x1 ]; then
   if [ ! -f ${QTABLE} ]; then
     echo "Error: ${QTABLE} not exist"
     exit 1
   fi
   qtable_opt="--quantize_table ${QTABLE}"
+  quant_io_opt=
 fi
 
 # to symmetric
@@ -234,8 +236,7 @@ model_deploy.py \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
   ${excepts_opt} \
-  --quant_input \
-  --quant_output \
+  ${quant_io_opt} \
   --model ${model_name}_bm1684x_int8_sym.bmodel
 
 fi #do_symmetric
