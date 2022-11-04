@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "BroadcastMulConst", "DepthToSpace", "Expand2", "GroupFC", "GRU",
+    "BroadcastMulConst", "Expand2", "GroupFC", "GRU",
     "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Resize2", "Reduce", "Reduce2", "ReduceL2", "Reciprocal",
     "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
     "TorchWhere"
