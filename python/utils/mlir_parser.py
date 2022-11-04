@@ -12,6 +12,7 @@ import sys
 import mlir
 import re
 from mlir.ir import *
+from mlir.dialects import quant
 
 
 class Operation:
@@ -23,6 +24,7 @@ class Operation:
         self.shape = Operation.shape(op)
         self.opds = Operation.operands(op, body, idx)
         self.attrs = Operation.attrs(op)
+        self.attrs = Operation.append_attr(op, self.attrs)
         self.op = op
 
     def __str__(self):
@@ -71,6 +73,20 @@ class Operation:
         return arr_map
 
     @staticmethod
+    def append_attr(op, attrs):
+        shape_type = mlir.ir.ShapedType(op.results[0].type)
+        element_type = shape_type.element_type
+        if quant.UniformQuantizedType.isinstance(element_type):
+            quant_type = quant.UniformQuantizedType(element_type)
+            attrs["quant_scale"] = str(quant_type.scale)
+            attrs["quant_zero_point"] = str(quant_type.zero_point)
+        if quant.CalibratedQuantizedType.isinstance(element_type):
+            quant_type = quant.CalibratedQuantizedType(element_type)
+            attrs["calibrate_min"] = str(quant_type.min)
+            attrs["calibrate_max"] = str(quant_type.max)
+        return attrs
+
+    @staticmethod
     def dictattr(op, field_name):
         return mlir.ir.DictAttr(op.attributes[field_name])
 
@@ -92,16 +108,17 @@ class Operation:
                 prev_op = body.operations[j]
                 if prev_op.results[0] == opd:
                     if Operation.type(prev_op) not in [
-                        "tpu.None",
-                        "top.None",
-                        "tpu.load_weight",
-                        "tpu.weight_file",
+                            "tpu.None",
+                            "top.None",
+                            "tpu.load_weight",
+                            "tpu.weight_file",
                     ]:
                         opds.append(Operation.name(prev_op))
         return opds
 
 
 class MlirParser:
+
     def __init__(self, mlir_file):
         with open(mlir_file, 'r') as f:
             context = f.read()
@@ -185,11 +202,35 @@ class MlirParser:
             for opd in self.return_op.operands:
                 if op.result == opd:
                     shape_type = mlir.ir.ShapedType(opd.type)
-                    shape = [shape_type.get_dim_size(
-                        i) for i in range(shape_type.rank)]
+                    shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
                     name = Operation.name(op)
                     outputs[name] = shape
         return outputs
+
+    def get_middle_op_names_n_shape_type(self):
+        middles = {}
+        for i in range(len(self.body.operations)):
+            op = self.body.operations[i]
+            type = Operation.type(op)
+            if type in ['top.None', 'top.Input', 'func.return']:
+                continue
+            shape_type = mlir.ir.ShapedType(op.results[0].type)
+            name = Operation.name(op)
+            middles[name] = shape_type
+        return middles
+
+    def get_initializer_op_names_n_shape_type(self):
+
+        initializer = {}
+        for i in range(len(self.body.operations)):
+            op = self.body.operations[i]
+            type = Operation.type(op)
+            if type != 'top.Weight':
+                continue
+            shape_type = mlir.ir.ShapedType(op.results[0].type)
+            name = Operation.name(op)
+            initializer[name] = shape_type
+        return initializer
 
 
 if __name__ == '__main__':
