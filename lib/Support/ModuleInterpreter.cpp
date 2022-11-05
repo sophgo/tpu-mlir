@@ -92,7 +92,7 @@ void ModuleInterpreter::allocate_resources() {
       if (auto infer_op = llvm::dyn_cast<InferenceInterface>(op)) {
         auto name = Module::getName(op).str();
         auto param = std::make_shared<InferenceParameter>();
-        for (auto result: op->getResults()) {
+        for (auto result : op->getResults()) {
           auto o_name = Module::getName(result).str();
           param->outputs.push_back(mem_map[o_name]->data());
         }
@@ -166,7 +166,7 @@ void ModuleInterpreter::invoke(bool express_type) {
       if (Quant::isUniformQuantized(value)) {
         auto qtype = Quant::getUniformQuantizedType(value);
         for (auto &data : *mem) {
-          data = (data - qtype.getZeroPoint()) * qtype.getScale();
+          data = (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
         }
       }
     }
@@ -216,7 +216,8 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
     auto qtype = Quant::getUniformQuantizedType(value);
     float *p = (float *)data;
     for (uint32_t i = 0; i < act->size(); i++) {
-      auto d = p[i] / qtype.getScale() + qtype.getZeroPoint();
+      float d =
+          p[i] * (float)(1 / qtype.getScale()) + (float)qtype.getZeroPoint();
       act->at(i) = qtype.isSigned() ? Quant::to_int8(d) : Quant::to_uint8(d);
     }
   } else {

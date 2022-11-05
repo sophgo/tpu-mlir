@@ -55,7 +55,7 @@ struct Module {
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);
   static void removeUnusedOp(ModuleOp module);
-  static std::string genWeightFileName(ModuleOp module);
+  static std::string genWeightFileName(ModuleOp module, bool &same_name);
   static int64_t getAddress(Value v);
   static void setAddress(Value v, int64_t addr);
   static void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,

@@ -19,10 +19,14 @@ from utils.mlir_parser import MlirParser
 from utils.preprocess import preprocess
 from calibration.data_selector import DataSelector
 
-SKIP_OPERATION = ['top.Input', 'top.Reshape', 'top.Softmax']
+SKIP_OPERATION = [
+    'top.Input', 'top.Reshape', 'top.Softmax', 'top.Weight', 'top.MaxPool', 'top.Slice', 'top.Tile',
+    'top.Permute', 'top.Upsample'
+]
 
 FLOAT_MAP = {
-    "bm1684x": "F16",
+    #"bm1684x": "F16",
+    "bm1684x": "F32",
     "bm1684": "F32",
     "cv183x": "BF16",
     "cv182x": "BF16",
@@ -32,7 +36,7 @@ FLOAT_MAP = {
 
 class MixQuantModel:
 
-    def __init__(self, fp32_mlir, chip: str, calib_table=None, mix_table=None):
+    def __init__(self, fp32_mlir, chip: str, calib_table:str=None, mix_table:str=None):
         self.fp32_mlir = fp32_mlir
         self.chip = chip
         self.calib_table = None
@@ -53,13 +57,6 @@ class MixQuantModel:
         parser = MlirParser(self.quanted_mlir_file)
         self.weight_file = parser.module_weight_file
 
-    def __exit__(self):
-        try:
-            sys.stdout.close()
-            sys.stdout = self.stdout
-        except:
-            pass
-
     def infer(self, data: list):
         for k, v in zip(self.module.input_names, data):
             self.module.set_tensor(k, v)
@@ -71,9 +68,11 @@ class MixQuantModel:
 
     def clean(self):
         try:
+            sys.stdout.close()
+            sys.stdout = self.stdout
             del self.module
             os.remove(self.quanted_mlir_file)
-            os.remove(self.mlir_weight_file)
+            os.remove(self.weight_file)
         except:
             pass
 
@@ -83,7 +82,6 @@ class MixPrecSearcher(object):
     def __init__(self, args):
         self.fp32_mlir = args.mlir_file
         self.calib_table = args.calibration_table
-        self.skip_ops = SKIP_OPERATION
         self.chip = args.chip
         self.mix_mode = FLOAT_MAP[self.chip]
         self.parser = MlirParser(args.mlir_file)
@@ -200,15 +198,15 @@ class MixPrecSearcher(object):
         predictions_gt = list()
 
         # set all layer for float
-        bf16_model = MixQuantModel(self.fp32_mlir, self.chip)
+        float_model = MixQuantModel(self.fp32_mlir, self.chip)
         for idx in range(self.num_sample):
-            outputs = bf16_model.infer(self.input_data_buffer[idx])
+            outputs = float_model.infer(self.input_data_buffer[idx])
             predictions_gt.append(outputs)
-
+        float_model.clean()
         pbar = tqdm(self.parser.ops)
         for op in pbar:
             pbar.set_description("Processing {}".format(op.name))
-            if op.type in self.skip_ops:
+            if op.type in SKIP_OPERATION:
                 continue
 
             mix_table = "tmp_mix_table.txt"
@@ -221,5 +219,4 @@ class MixPrecSearcher(object):
             mix_model.clean()
             loss_list.append((op.name, loss / self.num_sample))
 
-        bf16_model.clean()
         return sorted(loss_list, key=lambda x: x[1], reverse=True)

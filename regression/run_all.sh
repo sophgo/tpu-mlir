@@ -65,6 +65,8 @@ run_onnx_op()
   fi
 }
 
+export -f run_onnx_op
+
 run_basic_test()
 {
   echo "======= basic test ====="
@@ -79,7 +81,7 @@ run_basic_test()
   fi
 }
 
-export -f run_onnx_op
+export -f run_basic_test
 
 run_all()
 {

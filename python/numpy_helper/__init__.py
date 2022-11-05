@@ -5,7 +5,7 @@
 #
 # ==============================================================================
 
-from .npz_compare import npz_compare, load_op_info, dequantize
+from .npz_compare import npz_compare, dequantize
 from .npz_visualize_diff import npz_visualize_diff
 from .npz_dump import npz_dump
 import numpy as np

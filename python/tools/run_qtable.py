@@ -28,7 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--chip', required=True, type=str,
                         choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
                         help='chip platform name')
-    parser.add_argument('--num_layers', type=int, default=10,
+    parser.add_argument('--num_layers', type=int, default=8,
                         help='number of layers for mix quantization')
     parser.add_argument('--loss_table', default='full_loss_table.txt',
                         help="output all loss of layers if each layer is quantized to f16")
@@ -37,16 +37,18 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     searcher = MixPrecSearcher(args)
-    sort_bf16_layers = searcher.run()
+    mix_layers = searcher.run()
 
     with open(args.loss_table, "w") as f:
-        for idx, layer in enumerate(sort_bf16_layers):
+        for idx, layer in enumerate(mix_layers):
             loss_msg = "No.{:<4}: Layer: {:<50}\t\tLoss: {}".format(idx, layer[0], layer[1])
             f.write("{}\n".format(loss_msg))
             print(loss_msg)
 
     with open(args.quantize_table, "w") as f:
-        sort_bf16_layers = sort_bf16_layers[:args.num_layers]
-        for i in sort_bf16_layers:
-            f.write("{}\n".format(i[0]))
-    print("Output bf16 table to {}".format(args.quantize_table))
+        for idx in range(args.num_layers):
+            if idx >= len(mix_layers):
+                break
+            name = mix_layers[idx][0]
+            f.write("{} {}\n".format(name, searcher.mix_mode))
+    print("Output mix quantization table to {}".format(args.quantize_table))

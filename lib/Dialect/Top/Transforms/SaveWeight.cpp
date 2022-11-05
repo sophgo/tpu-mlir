@@ -32,7 +32,7 @@ public:
     std::set<StringRef> all_names;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
-        if (op->getLoc().dyn_cast<NameLoc>()  && !Module::isOpInGroup(op)) {
+        if (op->getLoc().dyn_cast<NameLoc>() && !Module::isOpInGroup(op)) {
           if (op->getUses().empty()) {
             op->erase();
           } else {
@@ -46,13 +46,22 @@ public:
         }
       });
     }
+    bool same_name;
+    auto file_name = Module::genWeightFileName(module, same_name);
     // weight remove unused in npz
     auto dialect = module->getContext()->getLoadedDialect("top");
     auto top_dialect = llvm::cast<top::TopDialect>(dialect);
     if (top_dialect->wFile == nullptr) {
+      if (same_name) {
+        return;
+      }
+      auto weight_file = Module::getWeightFile(module);
+      top_dialect->loadWeightFile(weight_file);
+      top_dialect->wFile->save(file_name);
+      Module::setWeightFile(module, file_name);
       return;
     }
-    if (top_dialect->wFile->changed() == false) {
+    if (top_dialect->wFile->changed() == false && same_name) {
       return;
     }
     std::set<StringRef> weight_names;
@@ -72,10 +81,9 @@ public:
     for (auto &name : dif_names) {
       top_dialect->wFile->deleteTensor(name);
     }
-    if (top_dialect->wFile->changed() == false) {
+    if (top_dialect->wFile->changed() == false && same_name) {
       return;
     }
-    auto file_name = Module::genWeightFileName(module);
     top_dialect->wFile->save(file_name);
     Module::setWeightFile(module, file_name);
   }

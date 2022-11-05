@@ -152,7 +152,7 @@ void Module::removeUnusedOp(ModuleOp module) {
   }
 }
 
-std::string Module::genWeightFileName(ModuleOp module) {
+std::string Module::genWeightFileName(ModuleOp module, bool &same_name) {
   auto name = getName(module);
   auto state = getState(module);
   auto chip = getChip(module);
@@ -162,11 +162,14 @@ std::string Module::genWeightFileName(ModuleOp module) {
   if (std::string(chip) != "ALL") {
     auto mode = getMode(module);
     std::string sym = "";
-    sym = getAsymmetric(module) ? "_asym" : "_sym";
+    if (mode == Quant::Type::INT8) {
+      sym = getAsymmetric(module) ? "_asym" : "_sym";
+    }
     file_name += std::string("_") + mode.lower() + sym;
   }
   auto new_name = file_name + "_weight.npz";
-  if (old_name == new_name) {
+  same_name = (old_name == new_name);
+  if (same_name) {
     new_name = file_name + "_weight_fix.npz";
   }
   return new_name;

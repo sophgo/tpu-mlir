@@ -94,7 +94,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     auto exp_table = p.inputs[1];
     auto o_qtype = Quant::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();
-    auto scale = o_qtype.getScale();
+    float scale = o_qtype.getScale();
     for (int i = 0; i < outer_dim; ++i) {
       int64_t out_offset = i * inner_dim * channel;
 #pragma omp parallel for schedule(static, omp_schedule(inner_dim))

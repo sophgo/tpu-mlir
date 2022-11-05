@@ -172,7 +172,6 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
                                        attr.kw};
   const int IC_PARALLEL = 32;
   auto filter_u16 = filterOp.read<uint16_t>();
-  auto biasOp = bias().getDefiningOp<top::WeightOp>();
   auto filter_type = Module::getStorageType(filter());
 
   auto op = getOperation();
@@ -182,27 +181,29 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
     filter_shape = {1, attr.ic, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
     filter().setType(new_filter_type);
+    if (attr.has_bias) {
+      auto biasOp = bias().getDefiningOp<top::WeightOp>();
+      auto data_fp32 = biasOp.read<float>();
+      auto count = data_fp32->size();
+      auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
 
-    auto data_fp32 = biasOp.read<float>();
-    auto count = data_fp32->size();
-    auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
+      bool isF16 = filter_type.isF16();
+      for (uint32_t i = 0; i < count; i++) {
+        data_u16->at(i) = isF16 ? f32_to_f16(data_fp32->at(i))
+                                : f32_to_bf16(data_fp32->at(i));
+      }
 
-    bool isF16 = filter_type.isF16();
-    for (uint32_t i = 0; i < count; i++) {
-      data_u16->at(i) = isF16 ? f32_to_f16(data_fp32->at(i)) :
-                        f32_to_bf16(data_fp32->at(i));
+      int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+      auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
+      bias().setType(new_bias_type);
+
+      auto newBiasOp =
+          top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
+      op->setOperand(2, newBiasOp);
     }
-
-    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
-    auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
-    bias().setType(new_bias_type);
-
-    auto newBiasOp =
-        top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
-    op->setOperand(2, newBiasOp);
   } else {
     int use_3ic_optimize = 0;
-    if( false) {  // Shut down 3ic optimization temporarily for fp16/bfp16
+    if (false) { // Shut down 3ic optimization temporarily for fp16/bfp16
       if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
           attr.kw > 1) {
         use_3ic_optimize = 3; // merge kh and kw to ic
@@ -221,7 +222,8 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
     }
 
     reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
-    op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
+    op->setAttr("use_3ic_optimize",
+                builder.getI64IntegerAttr(use_3ic_optimize));
     // bias op
     if (attr.has_bias) {
       auto bias_type = Module::getStorageType(bias());
@@ -231,7 +233,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
     }
   }
 
-  if(filter_shape[3] > MAX_TPU_DIM) {
+  if (filter_shape[3] > MAX_TPU_DIM) {
     if (attr.is_dw) {
       filter_shape[2] = ceiling_func(attr.oc, (int64_t)64);
       filter_shape[3] /= filter_shape[2];
@@ -242,7 +244,8 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
   }
 
   auto new_type = RankedTensorType::get(filter_shape, filter_type);
-  auto new_op = top::WeightOp::create(op, "filter_reorderd", *filter_u16, new_type);
+  auto new_op =
+      top::WeightOp::create(op, "filter_reorderd", *filter_u16, new_type);
   op->setOperand(1, new_op);
 }
 
@@ -346,13 +349,14 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   auto eu_num = BM1684x::instance().get_eu_num(in_type_len);
   auto npu_num = BM1684x::NPU_NUM;
   int oc_per_npu = ceiling_func(p.oc, npu_num);
-  int ic_per_npu = ceiling_func(p.ic/p.groups, npu_num);
+  int ic_per_npu = ceiling_func(p.ic / p.groups, npu_num);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
   if (coeff_merged()) {
     sz += int32_size;
   }
   if (p.groups > 1) {
-    sz += in_nslice * ic_per_npu * align_up(in_hslice * p.iw, eu_num) * in_type_len;
+    sz += in_nslice * ic_per_npu * align_up(in_hslice * p.iw, eu_num) *
+          in_type_len;
     sz += ic_per_npu * 2 * in_type_len;
   }
 
