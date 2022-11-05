@@ -100,27 +100,6 @@ def align_type_and_shape(d1, d2):
   d2 = d2.astype(t)
   return d1, d2
 
-def load_op_info(op_info_file):
-  ordered_names = []
-  thresholds = {}
-  operations = {}
-  quant_types = {}
-  with open(op_info_file, mode='r') as mapfile:
-    print("Using op_info file %s"%(op_info_file))
-    reader = csv.reader(mapfile)
-    for row in reader:
-      name, optype, qtype, thres = row
-      ordered_names.append(name)
-      if qtype[:4] == "INT8":
-        thresholds[name] = float(thres)
-        if optype == 'tpu.argmax':
-          thresholds[name] = 127
-      else:
-        thresholds[name] = 0.0
-      operations[name] = optype
-      quant_types[name] = qtype
-  return ordered_names, operations, quant_types, thresholds
-
 def dequantize(d1, threshold):
   scale = threshold / 127.0
   d1 = d1 * scale
@@ -168,10 +147,6 @@ def npz_compare(args_list):
   thresholds = {}
   operations = {}
   quant_types = {}
-  if args.op_info:
-    ordered_names, operations, quant_types, thresholds = load_op_info(args.op_info)
-    if not args.dequant:
-      thresholds = {}
 
   int8_tensor_close = args.int8_tensor_close
   npz1 = np.load(f1)

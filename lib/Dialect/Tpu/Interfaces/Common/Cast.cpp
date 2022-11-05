@@ -21,13 +21,15 @@ using namespace mlir;
 float requant(const float &data, const quant::UniformQuantizedType &qtype) {
   auto stype = qtype.getExpressedType();
   if (stype.isF32()) {
-    return std::round(data / qtype.getScale()) + qtype.getZeroPoint();
+    return std::round(data * (float)(1.0 / qtype.getScale())) +
+           qtype.getZeroPoint();
   }
   if (stype.isF16()) {
-    return std::round(F16(data / F16(qtype.getScale()))) + qtype.getZeroPoint();
+    return std::round(F16(data * F16(1.0 / qtype.getScale()))) +
+           qtype.getZeroPoint();
   }
   if (stype.isBF16()) {
-    return std::round(BF16(data / BF16(qtype.getScale()))) +
+    return std::round(BF16(data * BF16(1.0 / qtype.getScale()))) +
            qtype.getZeroPoint();
   }
   qtype.dump();
@@ -37,13 +39,14 @@ float requant(const float &data, const quant::UniformQuantizedType &qtype) {
 float dequant(const float &data, const quant::UniformQuantizedType &qtype) {
   auto stype = qtype.getExpressedType();
   if (stype.isF32()) {
-    return qtype.getScale() * (data - qtype.getZeroPoint());
+    return (float)qtype.getScale() * (data - (float)qtype.getZeroPoint());
   }
   if (stype.isF16()) {
-    return F16(F16(qtype.getScale()) * (data - qtype.getZeroPoint()));
+    return F16(F16(qtype.getScale()) * F16(data - (float)qtype.getZeroPoint()));
   }
   if (stype.isBF16()) {
-    return BF16(BF16(qtype.getScale()) * (data - qtype.getZeroPoint()));
+    return BF16(BF16(qtype.getScale()) *
+                BF16(data - (float)qtype.getZeroPoint()));
   }
   qtype.dump();
   llvm_unreachable("Unsupport type");

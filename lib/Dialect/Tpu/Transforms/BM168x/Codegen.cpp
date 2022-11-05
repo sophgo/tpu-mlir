@@ -177,7 +177,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
       auto qtype = Quant::getUniformQuantizedType(v);
       scale = qtype.getScale();
       if (isa<top::InputOp>(v.getDefiningOp())) {
-        scale = 1 / scale;
+        scale = 1.0 / qtype.getScale();
       }
       zero_point = qtype.getZeroPoint();
       tb.add_scale(scale);

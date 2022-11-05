@@ -116,9 +116,8 @@ public:
     }
     cnpy::NpyArray &arr = it->second;
     if (arr.num_bytes() != count * sizeof(T)) {
-      llvm::errs() << "size does not match for tensor " << name.str()
-                   << " " <<  count * sizeof(T) << " vs "
-                   << arr.num_bytes() << "\n";
+      llvm::errs() << "size does not match for tensor " << name.str() << " "
+                   << count * sizeof(T) << " vs " << arr.num_bytes() << "\n";
       llvm_unreachable("readTensor failed");
       return failure();
     }
@@ -296,11 +295,13 @@ public:
 
   void save(const std::string &file = "") {
     assert(!readOnly);
-    if (cnt_add + cnt_del + cnt_update == 0) {
-      return;
-    }
-    if (!file.empty()) {
+    bool same_name = true;
+    if (!file.empty() && file != filename) {
+      same_name = false;
       filename = file;
+    }
+    if (cnt_add + cnt_del + cnt_update == 0 && same_name) {
+      return;
     }
     for (auto &it : map) {
       cnpy::NpyArray &array = it.second;

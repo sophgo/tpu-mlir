@@ -133,12 +133,14 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto qtype = Quant::getUniformQuantizedType(inputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
     for (int i = 0; i < lhs_num_elem; i++) {
-      lhs_tmp[i] = (p.inputs[0][i] - qtype.getZeroPoint()) * qtype.getScale();
+      lhs_tmp[i] = (p.inputs[0][i] - (float)qtype.getZeroPoint()) *
+                   (float)qtype.getScale();
     }
     qtype = Quant::getUniformQuantizedType(inputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
     for (int i = 0; i < rhs_num_elem; i++) {
-      rhs_tmp[i] = (p.inputs[1][i] - qtype.getZeroPoint()) * qtype.getScale();
+      rhs_tmp[i] = (p.inputs[1][i] - (float)qtype.getZeroPoint()) *
+                   (float)qtype.getScale();
     }
     auto binary = (Binary *)p.handle;
     (*binary)
@@ -151,7 +153,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto scale = o_qtype.getScale();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = p.outputs[0][i] / scale + zp;
+      p.outputs[0][i] = p.outputs[0][i] * (float)(1.0 / scale) + zp;
       p.outputs[0][i] = out_type.isUnsignedInteger(8)
                             ? Quant::to_uint8(p.outputs[0][i])
                             : Quant::to_int8(p.outputs[0][i]);

@@ -36,10 +36,7 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
     float alpha = static_cast<float>(alphaAttr().getValueAsDouble());
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
     for (int64_t i = 0; i < num_elements; ++i) {
-      dst[i] =
-          src[i] > 0
-              ? src[i]
-              : (alpha * src[i]);
+      dst[i] = src[i] > 0 ? src[i] : (alpha * src[i]);
     }
     if (out_type.isF16()) {
       f32_to_f16(dst, dst, num_elements);
@@ -70,7 +67,7 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       double scale = i_qtype.getScale() / o_qtype.getScale();
       dst = src >= i_qtype.getZeroPoint()
                 ? src
-                : ((src - i_qtype.getZeroPoint()) * scale +
+                : ((src - i_qtype.getZeroPoint()) * (float)(1.0 / scale) +
                    o_qtype.getZeroPoint());
 
       p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(dst)

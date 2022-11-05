@@ -352,6 +352,7 @@ protected:
     std::regex map_pattern("\\S+\\s+\\S+");
     std::regex name_pattern("\\S+");
     std::regex info_pattern("#.*");
+    std::regex empty_pattern("^\\s*$");
     std::ifstream infile(qtable);
     if (!infile) {
       llvm::errs() << "Can't open file: " << qtable << " !\n";
@@ -365,6 +366,9 @@ protected:
       std::istringstream iss(line);
       std::string name;
       std::string mode;
+      if (std::regex_match(line, empty_pattern)) {
+        continue;
+      }
       if (std::regex_match(line, info_pattern)) {
         continue;
       }
