@@ -90,6 +90,9 @@ protected:
     }
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
+        if (isa<func::ReturnOp>(op)) {
+          updateLiveRangeofBMOps(op, 0, ops_loc, liveRange, common_ops, inplace_ops, alignment);
+        }
         int n = op->getNumResults();
         for (int i = 0; i < n; i++) {
           updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops, inplace_ops, alignment);
@@ -232,7 +235,7 @@ protected:
       size = size + aligment_ - (size % aligment_);
     }
     return size;
-}
+  }
 
   StringRef chip;
 };

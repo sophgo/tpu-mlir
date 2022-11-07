@@ -271,7 +271,7 @@ protected:
   bool isOutputOp(Operation *op) {
     for (auto &use : op->getResult(0).getUses()) {
       Operation *next = use.getOwner();
-      if (isa<func::ReturnOp>(op)) {
+      if (isa<func::ReturnOp>(next)) {
         return true;
       }
     }
