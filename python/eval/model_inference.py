@@ -11,7 +11,6 @@
 import numpy as np
 import argparse
 import pymlir
-import pyruntime
 import onnx
 import ast
 import onnxruntime
