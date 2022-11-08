@@ -12,7 +12,6 @@ import numpy as np
 import time
 import argparse
 import pymlir
-import pyruntime
 import onnx
 import onnxruntime
 from utils.mlir_shell import *

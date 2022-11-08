@@ -157,10 +157,12 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     auto typeBytes = type.getIntOrFloatBitWidth() / 8;
     auto data_type = BM168x::getDataType(type);
     auto gmem_stmode = STORE_MODE_1N;
-    if (typeBytes == 1) {
-      gmem_stmode = STORE_MODE_4N;
-    } else if (typeBytes == 2) {
-      gmem_stmode = STORE_MODE_2N;
+    if (chip == Module::Chip::BM1684) {
+      if (typeBytes == 1) {
+        gmem_stmode = STORE_MODE_4N;
+      } else if (typeBytes == 2) {
+        gmem_stmode = STORE_MODE_2N;
+      }
     }
     // shape info
     auto name = builder.CreateString(v_name);

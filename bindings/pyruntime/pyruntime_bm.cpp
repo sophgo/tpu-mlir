@@ -24,39 +24,58 @@ struct PythonTensor {
     name = std::string(name_);
     qscale = scale_;
     qzero_point = zero_point_;
-    dtype = dtype_;
     std::vector<size_t> s(shape.dims, shape.dims + shape.num_dims);
-    data = py::array(getDtype(dtype), s, data_, py::cast(*this));
+    fixDtype(dtype_);
+    data = py::array(pytype, s, data_, py::cast(*this));
   }
 
   std::string name;
+  std::string dtype; // f32/f16/bf16/i8/i16/i32/u8/u16/u32
   float qscale;
   int qzero_point;
   py::array data;
 
 private:
-  bm_data_type_t dtype;
-  py::dtype getDtype(bm_data_type_t fmt) {
+  py::dtype pytype;
+  void fixDtype(bm_data_type_t fmt) {
     switch (fmt) {
     case BM_FLOAT32:
-      return py::dtype("single");
+      pytype = py::dtype("single");
+      dtype = "f32";
+      break;
     case BM_INT8:
-      return py::dtype("int8");
+      pytype = py::dtype("int8");
+      dtype = "i8";
+      break;
     case BM_UINT8:
-      return py::dtype("uint8");
+      pytype = py::dtype("uint8");
+      dtype = "u8";
+      break;
     case BM_INT16:
-      return py::dtype("int16");
+      pytype = py::dtype("int16");
+      dtype = "i16";
+      break;
     case BM_UINT16:
-      return py::dtype("uint16");
+      pytype = py::dtype("uint16");
+      dtype = "u16";
+      break;
     case BM_INT32:
-      return py::dtype("int32");
+      pytype = py::dtype("int32");
+      dtype = "i32";
+      break;
     case BM_UINT32:
-      return py::dtype("uint32");
+      pytype = py::dtype("uint32");
+      dtype = "u32";
+      break;
     case BM_BFLOAT16:
       // numpy has no bf16 type, use uint16 instread of bf16.
-      return py::dtype("uint16");
+      pytype = py::dtype("uint16");
+      dtype = "bf16";
+      break;
     case BM_FLOAT16:
-      return py::dtype("uint16");
+      pytype = py::dtype("float16");
+      dtype = "f16";
+      break;
     default:
       assert(0);
     }
@@ -80,7 +99,8 @@ struct PythonNet {
       void *data = malloc(size);
       assert(data != nullptr);
       inputs.push_back(std::make_shared<PythonTensor>(
-          dtype, info->input_names[i], info->input_scales[i], info->input_zero_point[i], shape, data));
+          dtype, info->input_names[i], info->input_scales[i],
+          info->input_zero_point[i], shape, data));
       input_datas.push_back(data);
     }
     for (int i = 0; i < num_output; i++) {
@@ -91,7 +111,8 @@ struct PythonNet {
       void *data = malloc(size);
       assert(data != nullptr);
       outputs.push_back(std::make_shared<PythonTensor>(
-          dtype, info->output_names[i], info->output_scales[i], info->output_zero_point[i], shape, data));
+          dtype, info->output_names[i], info->output_scales[i],
+          info->output_zero_point[i], shape, data));
       output_datas.push_back(data);
     }
   }
@@ -109,10 +130,9 @@ struct PythonNet {
   }
 
   void forward() {
-    auto ret =
-        bmrt_launch_data(p_bmrt, name.c_str(), input_datas.data(),
-                         input_shapes.data(), num_input, output_datas.data(),
-                         output_shapes.data(), num_output, true);
+    auto ret = bmrt_launch_data(
+        p_bmrt, name.c_str(), input_datas.data(), input_shapes.data(),
+        num_input, output_datas.data(), output_shapes.data(), num_output, true);
     assert(true == ret);
   }
 
@@ -178,6 +198,7 @@ PYBIND11_MODULE(pyruntime_bm, m) {
       .def_readonly("name", &PythonTensor::name)
       .def_readonly("qscale", &PythonTensor::qscale)
       .def_readonly("qzero_point", &PythonTensor::qzero_point)
+      .def_readonly("dtype", &PythonTensor::dtype)
       .def_readwrite("data", &PythonTensor::data);
 
   py::class_<PythonNet, std::shared_ptr<PythonNet>>(m, "Net")

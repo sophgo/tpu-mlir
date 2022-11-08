@@ -92,6 +92,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       auto none = Module::getNoneOp(op);
       operands.push_back(none);
     }
+  } else if (asymmetric) {
+    LoweringF32(rewriter, op);
+    return;
   } else { // mutable tensor or MatMul
     int64_t in_zp = 0, w_zp = 0, out_zp = 0;
     double in_scale = 1, w_scale = 1, out_scale = 1;
@@ -224,8 +227,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (right_zero_point)
     attrs.push_back(rewriter.getNamedAttr(
         "right_zp", rewriter.getI64IntegerAttr(right_zero_point)));
-  attrs.push_back(rewriter.getNamedAttr(
-      "multipliers", rewriter.getI64ArrayAttr(multiplier)));
+  attrs.push_back(rewriter.getNamedAttr("multipliers",
+                                        rewriter.getI64ArrayAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(-shift)));
   attrs.push_back(rewriter.getNamedAttr(

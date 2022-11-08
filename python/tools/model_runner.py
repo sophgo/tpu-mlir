@@ -12,12 +12,30 @@ import importlib
 import numpy as np
 import argparse
 import os
-
+import struct
 
 def round_away_from_zero(x):
     a = np.floor(np.abs(x) + 0.5)
     return np.sign(x) * a
 
+def bf16_to_fp32(d_bf16):
+  s = d_bf16.shape
+  d_bf16 = d_bf16.flatten()
+  assert d_bf16.dtype == np.uint16
+  d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
+  for i in range(len(d_bf16)):
+    d_fp32[i] = struct.unpack('<f', struct.pack('<HH', 0, d_bf16[i]))[0]
+  return d_fp32.reshape(s)
+
+def fp32_to_bf16(d_fp32):
+  s = d_fp32.shape
+  d_fp32 = d_fp32.flatten()
+  assert d_fp32.dtype == np.float32
+  d_bf16 = np.empty_like(d_fp32, dtype=np.uint16)
+  for i in range(len(d_bf16)):
+    bytes = struct.pack('f', d_fp32[i])
+    d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
+  return d_bf16.reshape(s)
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
@@ -38,29 +56,31 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     for i in net.inputs:
         assert i.name in inputs
         assert np.prod(i.data.shape) == np.prod(inputs[i.name].shape)
-        qzero_point = 0
-        if hasattr(i, "qzero_point"):
-            qzero_point = i.qzero_point
+        zp = i.qzero_point
         if i.data.dtype == inputs[i.name].dtype:
             i.data[:] = inputs[i.name].reshape(i.data.shape)
-        elif i.data.dtype == np.int8 and inputs[i.name].dtype == np.float32:
-            if model_file.endswith(".cvimodel"):
-                raise RuntimeError("not support --quant_input now")
-            data = round_away_from_zero(inputs[i.name] * i.qscale + qzero_point)
+        elif i.dtype == "i8" and inputs[i.name].dtype == np.float32:
+            data = round_away_from_zero(inputs[i.name] * i.qscale + zp)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
-        elif i.data.dtype == np.uint8 and inputs[i.name].dtype == np.float32:
-            data = round_away_from_zero(inputs[i.name] * i.qscale + qzero_point)
+        elif i.dtype == "u8" and inputs[i.name].dtype == np.float32:
+            data = round_away_from_zero(inputs[i.name] * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
+        elif i.dtype == "f16" and inputs[i.name].dtype == np.float32:
+            i.data[:] = inputs[i.name].astype(np.float16)
+        elif i.dtype == "bf16" and inputs[i.name].dtype == np.float32:
+            i.data[:] = fp32_to_bf16(inputs[i.name])
         else:
             raise ValueError(f"unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
-            qzero_point = 0
-            if hasattr(i, "qzero_point"):
-                qzero_point = i.qzero_point
-            outputs[i.name] = np.array(
-                (i.data.astype(np.float32) - qzero_point) * np.float32(i.qscale), dtype=np.float32)
+            zp = i.qzero_point
+            outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
+                                       dtype=np.float32)
+        elif (i.dtype == "f16"):
+            outputs[i.name] = np.array(i.data.astype(np.float32))
+        elif (i.dtype == "bf16"):
+            outputs[i.name] = bf16_to_fp32(i.data)
         else:
             outputs[i.name] = np.array(i.data)
     return outputs
