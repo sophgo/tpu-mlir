@@ -25,7 +25,7 @@ table = 2 ** np.arange(64, dtype=np.uint64)
 memmap = {
     "R": (int("0x8000000", 16), int("0x9000000", 16)),  # lmen_base 16M
     "S": (int("0x9000000", 16), int("0x9004000", 16)),  # static memory 16KB
-    "L": (int("0x10000000", 16), int("0x9004000", 16)),  # L2 SRAM  2M
+    "L": (int("0x10000000", 16), int("0x10200000", 16)),  # L2 SRAM  2M
     "G": (int("0x100000000", 16), int("0x300000000", 16)),  # global memory
 }
 
@@ -36,7 +36,7 @@ class DType(Enum):
     f32 = 2
     i16 = 3
     i32 = 4
-    b16 = 5
+    bf16 = 5
     i64 = 6
     # offset 8
     u8 = i8 + 8  # type: ignore
@@ -45,18 +45,33 @@ class DType(Enum):
 
 
 def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
-    if prec in (DType.f32.value, DType.b16.value, DType.f16.value):
+    if prec in (DType.f32.value, DType.bf16.value, DType.f16.value):
         return DType(prec)
     return DType(prec + (sign == 0) * 8)
 
 
 class MemRef:
+    to_np_dtype = {
+        DType.i8: np.int8,
+        DType.u8: np.uint8,
+        DType.f16: np.float16,
+        DType.f32: np.float32,
+        DType.i16: np.int16,
+        DType.u16: np.uint16,
+        DType.i32: np.int32,
+        DType.u32: np.uint32,
+    }
+
     def __init__(self, addr, shape, dtype: DType, stride=None, relative_addr=False):
         self.addr = addr
         self.shape = shape
         self.dtype = dtype
         self.relative_addr = relative_addr
         self.stride = stride
+
+    @property
+    def np_dtype(self):
+        return self.to_np_dtype[self.dtype]
 
     @property
     def addr_str(self):
@@ -67,11 +82,12 @@ class MemRef:
                 if k == "R":
                     return f"%R{self.fmt_lmem(self.addr - v[0])}"
                 return f"%{k}.{self.addr - v[0]}"
+        return f"%?.{self.addr}"
 
     @property
     def shape_str(self):
-        s = self.shape
-        if s == "*":
+        s = list(self.shape)
+        if s == ["*"]:
             s = ["?"] * 4
         elif isinstance(s, list):
             for i, x in enumerate(s):
@@ -92,7 +108,7 @@ class MemRef:
             return f"{i}.{s}"
 
     def __repr__(self):
-        return f"{self.addr_str} {self.shape_str}"
+        return f"{self.addr_str}: {self.shape_str}"
 
 
 def attribute_builder(attr, reg_field):
@@ -104,7 +120,6 @@ def attribute_builder(attr, reg_field):
 
 
 # ------------------------------------------------------------
-
 # utility function
 # ------------------------------------------------------------
 def packbits(arr):
@@ -242,7 +257,7 @@ class bdc_base:
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
 
-    def set_attibute(self, reg_field):
+    def set_attribute(self, reg_field):
         return dict(attribute_builder(self.attr, reg_field))
 
     def __repr__(self):
@@ -312,7 +327,7 @@ class sconv_op(conv_op):
         }
         self.results = self.memref((results,))
         self.operands = self.memref(operands)
-        self.attribute = self.set_attibute(attribute)
+        self.attribute = self.set_attribute(attribute)
 
 
 @registry_bdc("MM")
@@ -438,6 +453,8 @@ class ar_op(bdc_base):
         21: "arith.ashift",  # Arithmetic shift
         22: "arith.cshift",  # Circular shift
         23: "arith.mulDHR",
+        24: "arith.euIdxGen",  # not in HW.spec
+        25: "arith.npuIdxGen",  # not in HW.spec
         26: "arith.abs",
         27: "arith.fsubabs",
         28: "arith.copyMb",
@@ -462,13 +479,13 @@ class sar_op(ar_op):
         operands = (
             (
                 "des_opd0_addr",
-                "*",
+                (f"des_res0_{x}" for x in "nchw"),
                 ("des_opt_opd0_prec", "des_opt_opd0_sign"),
                 (f"des_opd0_{x}_str" for x in "nchw"),
             ),
             (
                 "des_opd1_addr",
-                "*",
+                (f"des_res0_{x}" for x in "nchw"),
                 ("des_opt_opd1_prec", "des_opt_opd1_sign"),
                 (f"des_opd1_{x}_str" for x in "nchw"),
             ),
@@ -743,13 +760,19 @@ class dma_base:
         attribute = ""
         if self.attribute:
             attribute = f" {{{self.attribute}}}"
-        actions = {
-            "G->R": "load",
-            "R->G": "store",
-            "R->R": "copy",
-            "G->G": "copy",
-        }
-        action = actions[opd_str[0][1] + "->" + res_str[0][1]]
+
+        src_mem = opd_str[0][1]
+        des_mem = res_str[0][1]
+
+        if des_mem == src_mem:
+            action = "transfer"
+        elif des_mem == "R":
+            action = "load"
+        elif des_mem == "G":
+            action = "store"
+        else:
+            action = "copy"
+
         return (
             f"{', '.join(res_str)}, %D{self.cmd_id} = \"{self.op_name}.{action}\""
             + f"({', '.join(opd_str)}, %B{self.cmd_id_dep})"
@@ -779,6 +802,11 @@ class dma_tensor(dma_base):
         )
         self.results = self.memref(results)
         self.operands = self.memref(operands)
+        if not all(self.results[0].shape):
+            self.results[0].shape = self.operands[0].shape
+        if not all(self.operands[0].shape):
+            self.operands[0].shape = self.results[0].shape
+
         self.attribute = None
 
 
