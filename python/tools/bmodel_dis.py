@@ -7,7 +7,6 @@
 # third-party components.
 #
 # ==============================================================================
-import sys
 from collections import namedtuple
 import numpy as np
 from utils.bmodel_dis import opdef_1684x
@@ -17,7 +16,7 @@ import itertools
 # Example:
 """
 # bmodel file
-code = TPUCMD(file_name)
+code = Bmodel2MLIR(file_name)
 
 
 # bdc binary file
@@ -53,13 +52,48 @@ class BmodelReader:
         def __init__(self, fbs: bmodel_fbs.CmdGroup, cmd_buf):
             self.bdc_num = fbs.BdcNum()
             self.gdma_num = fbs.GdmaNum()
-            self.binary_bdc = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())  # type: ignore
-            self.binary_gdma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())  # type: ignore
-            self.bdc_cmd = cmd_buf[self.binary_bdc[0] : sum(self.binary_bdc)]
-            self.gdma_cmd = cmd_buf[self.binary_gdma[0] : sum(self.binary_gdma)]
+            binary_bdc = (fbs.BinaryBdc().Start(), fbs.BinaryBdc().Size())
+            binary_gdma = (fbs.BinaryGdma().Start(), fbs.BinaryGdma().Size())
+            self.bdc_cmd = cmd_buf[binary_bdc[0] : sum(binary_bdc)]
+            self.gdma_cmd = cmd_buf[binary_gdma[0] : sum(binary_gdma)]
 
         def __repr__(self):
             return f"bdc_num: {self.bdc_num}\ngdma_num: {self.gdma_num}"
+
+    class data_cls:
+        def __init__(self, fbs: bmodel_fbs.CoeffMem, buffer):
+            self.address = fbs.Address()
+            self.check_code = fbs.CheckCodeAsNumpy()
+            binary_data = (fbs.BinaryCoeff().Start(), fbs.BinaryCoeff().Size())
+            self.data = buffer[binary_data[0] : sum(binary_data)]
+
+        def __repr__(self):
+            check_code = "".join(f"{x:0>2x}" for x in self.check_code)
+            return f"data: {self.address}\nshr256: {check_code}"
+
+    class tensor_cls:
+        to_DType = {
+            0: opdef_1684x.DType.f32,
+            1: opdef_1684x.DType.f16,
+            2: opdef_1684x.DType.i8,
+            3: opdef_1684x.DType.u8,
+            4: opdef_1684x.DType.i16,
+            5: opdef_1684x.DType.u16,
+            6: opdef_1684x.DType.i32,
+            7: opdef_1684x.DType.u32,
+        }
+
+        def __init__(self, fbs: bmodel_fbs.Tensor, buffer):
+            self.name = fbs.Name().decode()
+            self.dtype = self.to_DType[fbs.DataType()]
+            self.device_addr = fbs.DeviceAddr()
+            self.shape = [
+                list(fbs.Shape(i).DimAsNumpy()) for i in range(fbs.ShapeLength())
+            ]
+            self.scale = fbs.Scale()
+
+        def __repr__(self):
+            return f"{self.name}: {self.shape}({self.device_addr})"
 
     def __init__(self, bmodel_file):
         self.head = None
@@ -74,49 +108,148 @@ class BmodelReader:
             self.binary = file_obj.read(self.head["binary_size"][0])
         bmodel = bmodel_fbs.Model.GetRootAsModel(self.binary_desc, 0)
 
-        def get_cmd(param, _fields):
-            field, *_fields = _fields
-            mult = []
-            for s in range(getattr(param, field + "Length")()):
-                cmd = getattr(param, field)(s)
-                # if cmd is None:
-                #     return mult
-                if _fields == []:
-                    mult.append(self.cmd_group_cls(cmd, self.binary))
+        def fbs_adaptor(param, _fields):
+            records = {}
+            for field, _cls in _fields.items():
+                if not hasattr(param, field + "Length"):
+                    cmd = getattr(param, field)()
+                    if isinstance(_cls, dict):
+                        mult = [fbs_adaptor(cmd, _cls)]
+                    elif cmd is None:
+                        mult = []
+                    else:
+                        mult = [_cls(cmd, self.binary)]
                 else:
-                    mult.append(get_cmd(cmd, _fields))
-            return mult
+                    mult = []
+                    for s in range(getattr(param, field + "Length")()):
+                        cmd = getattr(param, field)(s)
+                        if isinstance(_cls, dict):
+                            mult.append(fbs_adaptor(cmd, _cls))
+                        else:
+                            mult.append(_cls(cmd, self.binary))
+                records[field] = mult
+            return records
 
-        # net{ stage{ subnet{ cmdgroup... }... }... }...
-        fields = ["Net", "Parameter", "SubNet", "CmdGroup"]
-        self.nets = get_cmd(bmodel, fields)
+        fields = {  # module
+            "Chip": lambda x, _: x.decode(),
+            "Version": lambda x, _: x.decode(),
+            "Type": lambda x, _: x.decode(),
+            "Net": {  # function
+                "Name": lambda x, _: x.decode(),
+                "Parameter": {  # region
+                    "InputTensor": self.tensor_cls,  # signature
+                    "OutputTensor": self.tensor_cls,
+                    "SubNet": {  # block
+                        "CmdGroup": self.cmd_group_cls,
+                        "InputTensor": self.tensor_cls,  # block-arg
+                        "OutputTensor": self.tensor_cls,  # terminator
+                        "NextSubnetIds": lambda x, _: x,  # successor
+                    },
+                    "CoeffMem": self.data_cls,
+                },
+            },
+        }
+
+        self.nets = fbs_adaptor(bmodel, fields)
 
 
-class TPUCMD:
-    _cmd = namedtuple("cmd", ["bdc", "gdma", "all"])
+# BModel to MLIR
+# ==============================================================================
+def decode_cmd(cmd):
+    CMD = namedtuple("cmd", ["bdc", "gdma", "all"])
+    bdc_cmd = read_buf(cmd.bdc_cmd)
+    gdma_cmd = read_buf(cmd.gdma_cmd)
+    bdc = itertools.islice(Bmodel2MLIR.decode_bdc(bdc_cmd), cmd.bdc_num)
+    gdma = itertools.islice(Bmodel2MLIR.decode_gdma(gdma_cmd), cmd.gdma_num)
+    bdc = list(bdc)
+    gdma = list(gdma)
+    return CMD(bdc, gdma, Bmodel2MLIR.merge_cmd(gdma, bdc))
 
-    def decode_cmd(self, cmd):
-        bdc_cmd = read_buf(cmd.bdc_cmd)
-        gdma_cmd = read_buf(cmd.gdma_cmd)
-        bdc = itertools.islice(self.decode_bdc(bdc_cmd), cmd.bdc_num)
-        gdma = itertools.islice(self.decode_gdma(gdma_cmd), cmd.gdma_num)
-        bdc = list(bdc)
-        gdma = list(gdma)
-        return self._cmd(bdc, gdma, self.merge_cmd(gdma, bdc))
 
+def tensor2memref(tensor: BmodelReader.tensor_cls):
+    return opdef_1684x.MemRef(
+        tensor.device_addr, tensor.shape[0], opdef_1684x.DType(tensor.dtype)
+    )
+
+
+class Block:
+    def __init__(self, id, subnet):
+        self.label = id
+        self.cmds = [decode_cmd(x) for x in subnet["CmdGroup"]]
+        self.operations = []
+        for x in self.cmds:
+            self.operations.extend(x.all)
+        self.args = subnet["InputTensor"]
+        self.terminator = subnet["OutputTensor"]
+        self.successor = subnet["NextSubnetIds"]
+
+    def __repr__(self):
+        ops = "\n  ".join((f"{x}" for x in self.operations))
+        args = [f"%{a.name}: {tensor2memref(a).shape_str}" for a in self.args]
+        args = ", ".join(args)
+        if all((x == -1 for x in self.successor)):
+            tem = [tensor2memref(x) for x in self.terminator]
+            rets = (
+                "return "
+                + ", ".join((x.addr_str for x in tem))
+                + ": "
+                + ", ".join((x.shape_str for x in tem))
+            )
+        else:
+            rets = f"Successor {self.successor}"  # TODO
+        return f"^bb{self.label}({args})\n  {ops}\n  {rets}"
+
+
+class Region:
+    def __init__(self, net_stage):
+        self.blocks = [Block(id, x) for id, x in enumerate(net_stage["SubNet"])]
+        self.signature = (net_stage["InputTensor"], net_stage["OutputTensor"])
+        self.data = net_stage["CoeffMem"][0]
+
+    def __repr__(self):
+        blocks = "\n".join([f"{b}" for b in self.blocks])
+        return f"{{\n{blocks}\n}}"
+
+
+class Function:
+    def __init__(self, net):
+        self.name = net["Name"][0]
+        self.regions = [Region(x) for x in net["Parameter"]]
+        self.signature = self.regions[0].signature
+
+    def __repr__(self):
+        regions = "\n}, {\n".join([f"{r}"[2:-2] for r in self.regions])
+
+        def fmt_names(x):
+            names = (f'"{n.name}"' for n in x)
+            return f"[{', '.join(names)}]"
+
+        arg = f"arg_attrs = {fmt_names(self.signature[0])}"
+        ret = f"res_attrs = {fmt_names(self.signature[1])}"
+        attr = f"{{function_type = {{{arg}, {ret}}}}}"
+        operands = ", ".join((str(tensor2memref(x)) for x in self.signature[0]))
+        returns = ", ".join((tensor2memref(x).shape_str for x in self.signature[1]))
+        return f"func.func @{self.name}({operands}) -> ({returns}) ({{\n{regions}\n}}) {attr}"
+
+
+class Module:
+    def __init__(self, nets):
+        self.functions = [Function(x) for x in nets["Net"]]
+        self.chip = nets["Chip"][0]
+        self.version = nets["Version"][0]
+        self.type = nets["Type"][0]
+
+    def __repr__(self):
+        funs = "\n".join((f"{x}" for x in self.functions))
+        funs = "\n  ".join(funs.split("\n"))
+        attrs = f"attributes {{chip = {self.chip}, version= {self.version}}}"
+        return f"module {attrs} {{\n  {funs}\n}}"
+
+
+class Bmodel2MLIR:
     def __init__(self, bmodel_file):
         self.bmodel = BmodelReader(bmodel_file)
-
-        def get_cmd(cmd, id):
-            for idx, v in enumerate(cmd):
-                id[-1] = idx
-                if isinstance(v, list):
-                    id.append(idx)
-                    yield from get_cmd(v, id)
-                else:
-                    yield (id, self.decode_cmd(v))
-
-        self.cmd = get_cmd(self.bmodel.nets, [0])
+        self.module = Module(self.bmodel.nets)
 
     @staticmethod
     def __decode(cmd_buf, cmd_bits, cmd_set, sys_end):
@@ -155,7 +288,7 @@ class TPUCMD:
 
     @staticmethod
     def decode_bdc(cmd_buf):
-        return TPUCMD.__decode(
+        return Bmodel2MLIR.__decode(
             cmd_buf,
             opdef_1684x.bdc_base.cmd_bits,
             opdef_1684x.bdc_cmd,
@@ -164,7 +297,7 @@ class TPUCMD:
 
     @staticmethod
     def decode_gdma(cmd_buf):
-        return TPUCMD.__decode(
+        return Bmodel2MLIR.__decode(
             cmd_buf,
             opdef_1684x.dma_base.cmd_bits,
             opdef_1684x.dma_cmd,
@@ -185,12 +318,12 @@ class TPUCMD:
 
 def decode_bdc(file_name):
     a = read_file(file_name)
-    return [x for x in TPUCMD.decode_bdc(a)]
+    return [x for x in Bmodel2MLIR.decode_bdc(a)]
 
 
 def decode_gdma(file_name):
     a = read_file(file_name)
-    return [x for x in TPUCMD.decode_gdma(a)]
+    return [x for x in Bmodel2MLIR.decode_gdma(a)]
 
 
 def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
@@ -237,45 +370,39 @@ def unified_diff(a, b, fromfile="", tofile="", n=3, format="mlir"):
         yield ""
 
 
-import argparse
+def __main():
+    import argparse
 
-parser = argparse.ArgumentParser(description="BModel disassembler.")
-parser.add_argument(
-    "bmodels",
-    type=str,
-    nargs="+",
-    help="The path of BModels. If one BModel is provided, the assemble code will be printed. Compare the Bmodels if two models provided.",
-)
-parser.add_argument(
-    "--fmt",
-    dest="format",
-    choices=["mlir", "raw", "bits"],
-    default="mlir",
-    help="The format of format operations.",
-)
-parser.add_argument(
-    "--N",
-    dest="N",
-    type=int,
-    default=3,
-    help="The number of context lines.",
-)
-
-
-if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="BModel disassembler.")
+    parser.add_argument(
+        "bmodels",
+        type=str,
+        nargs="+",
+        help="The path of BModels. If one BModel is provided, the assemble code will be printed. Compare the Bmodels if two models provided.",
+    )
+    parser.add_argument(
+        "--fmt",
+        dest="format",
+        choices=["mlir", "raw", "bits"],
+        default="mlir",
+        help="The format of format operations.",
+    )
+    parser.add_argument(
+        "--N",
+        dest="N",
+        type=int,
+        default=3,
+        help="The number of context lines.",
+    )
     args = parser.parse_args()
-
     if len(args.bmodels) == 1:
-        tpu_cmd = TPUCMD(args.bmodels[0])
-        for idx, cmd in tpu_cmd.cmd:
-            fmt_cmd = ["\n    " + str(x) for x in cmd.all]
-            fmt_cmd = "".join(fmt_cmd) + "\n"
-            fun_name = "graph" + "".join((str(x) for x in idx))
-            print(f"func.func @{fun_name}() {{{fmt_cmd}}}")
+        tpu_cmd = Bmodel2MLIR(args.bmodels[0])
+        print(tpu_cmd.module, flush=True)
+        exit(0)
 
     if len(args.bmodels) == 2:
-        tpu_cmd_a = TPUCMD(args.bmodels[0])
-        tpu_cmd_b = TPUCMD(args.bmodels[1])
+        tpu_cmd_a = Bmodel2MLIR(args.bmodels[0])
+        tpu_cmd_b = Bmodel2MLIR(args.bmodels[1])
         is_same = True
         for (idx, cmd_a), (_, cmd_b) in zip(tpu_cmd_a.cmd, tpu_cmd_b.cmd):
             fmt_cmd = [
@@ -300,3 +427,7 @@ if __name__ == "__main__":
         else:
             exit(1)
     parser.error("Too many BModels.")
+
+
+if __name__ == "__main__":
+    __main()
