@@ -180,9 +180,11 @@ class MixPrecSearcher(object):
     def _loss(self, preds, gt_preds):
         ret = 0
         cnt = 0
-        for op_name in gt_preds:
-            a = gt_preds[op_name]
-            b = preds[op_name]
+        for name1,name2 in zip(gt_preds, preds):
+            a = gt_preds[name1]
+            b = preds[name2]
+            if a.dtype != b.dtype or a.shape != b.shape:
+                raise RuntimeError("Calc loss fail:{} vs {}".format(name1, name2))
             loss = self._cal_sqnr(a, b)
             if not math.isinf(loss):
                 ret += -loss * a.size

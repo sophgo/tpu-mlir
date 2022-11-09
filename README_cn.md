@@ -13,6 +13,7 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 规模化商业落地。
 
 本项目的技术细节可以参考：[TPU-MLIR开发参考手册](http://tpumlir.org/docs/index.html)。
+同时也有论文，介绍整体的设计思路：<https://arxiv.org/abs/2210.15016>
 
 目前该工程支持BM1684x，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
 
