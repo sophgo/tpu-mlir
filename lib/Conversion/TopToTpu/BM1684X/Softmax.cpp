@@ -17,7 +17,9 @@ void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
   std::vector<Value> operands;
   operands.push_back(op.input());
   auto none = Module::getNoneOp(op);
-  operands.push_back(none);
+  for(int i = 0; i < 4; i++) {
+    operands.push_back(none);
+  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -63,7 +65,8 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     attrs.push_back(attr);
   }
   rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
-      op, op.output().getType(), ValueRange{op.input(), table_opd}, attrs);
+      op, op.output().getType(), ValueRange{op.input(), table_opd, Module::getNoneOp(op.getOperation()),
+      Module::getNoneOp(op.getOperation()), Module::getNoneOp(op.getOperation())}, attrs);
 }
 
 } // namespace bm1684x
