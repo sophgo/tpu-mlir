@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "Expand2", "GroupFC", "GRU",
+    "GroupFC", "GRU",
     "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Resize2", "Reduce", "Reduce2", "ReduceL2", "Reciprocal",
     "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
     "TorchWhere"
@@ -1914,8 +1914,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_Expand2(self, case_name):
-        input_shape = [4, 16]
-        output_shape = [4, 16, 16]
+        input_shape = [1, 16]
+        output_shape = [1, 16, 16]
         input_data = np.random.randn(*input_shape).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)

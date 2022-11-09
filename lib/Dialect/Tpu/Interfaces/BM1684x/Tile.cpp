@@ -50,8 +50,10 @@ typedef struct {
 // GloballGenInterface
 // =========================================
 void tpu::TileOp::codegen_global_bm1684x() {
-  auto in_shape = Module::getShape(input());
+  auto in_shape = Module::getShape(input()).vec();
   auto out_shape = Module::getShape(output());
+  if (in_shape.size() < out_shape.size())
+    in_shape.insert(in_shape.begin(), 1);
 
   tile_global_param_t param = {0};
   for (int i = 0; i < in_shape.size(); ++i) {
@@ -83,8 +85,12 @@ void tpu::TileOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   tile_local_param_t param{0};
-  auto in_shape = Module::getShape(input());
+  auto in_shape = Module::getShape(input()).vec();
   auto out_shape = Module::getShape(output());
+
+  if (in_shape.size() < out_shape.size())
+    in_shape.insert(in_shape.begin(), 1);
+
   param.input_local_addr = (uint32_t)in_gi.out_addr;
   param.output_local_addr = (uint32_t)gi.out_addr;
   param.input_shape[0] = in_gi.n_slice;
