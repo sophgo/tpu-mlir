@@ -84,14 +84,15 @@ float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
-void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, double scale,
+template <typename T>
+void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
                     RoundingMode round_mode = ROUNDING_HALF_DOWN);
 // to compitable with tflite
 void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
                         int64_t *shift);
 // cv18xx
-double getQscaleForFilter(float max_filter, float threshold_y, float threshold_x,
-                         int quant_bitwidth = 8);
+double getQscaleForFilter(float max_filter, float threshold_y,
+                          float threshold_x, int quant_bitwidth = 8);
 
 double getQscaleForBias(float max_bias, float threshold_y);
 void getRShiftAndMultiplierFromQScale(double double_multiplier,

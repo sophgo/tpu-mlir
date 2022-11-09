@@ -10,26 +10,26 @@
 #ifndef LIBCVIODEL_HPP_
 #define LIBCVIODEL_HPP_
 
-#include <chrono>
-#include <iomanip>
-#include <ctime>
-#include <string>
-#include <set>
-#include <map>
-#include <vector>
-#include <utility>
-#include <sstream>
-#include <fstream>
 #include "tpu_mlir/Builder/CV18xx/cvimodel_generated.h"
 #include "tpu_mlir/Builder/CV18xx/parameter_generated.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include <chrono>
+#include <ctime>
+#include <fstream>
+#include <iomanip>
+#include <map>
+#include <set>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace tpu_mlir;
 using namespace cvi::model;
 
-using FBStringVector =
-    flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>>;
+using FBStringVector = flatbuffers::Offset<
+    flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>>;
 using FBWeightVector =
     flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<Weight>>>;
 using FBSectionVector =
@@ -55,10 +55,9 @@ struct opInfo {
 
 class CviRoutine {
 public:
-  CviRoutine(flatbuffers::FlatBufferBuilder &fbb,
-             bool isTpuRoutine,
+  CviRoutine(flatbuffers::FlatBufferBuilder &fbb, bool isTpuRoutine,
              std::string chip)
-    : isTpuRoutine(isTpuRoutine), fbb_(fbb), chip(chip) {}
+      : isTpuRoutine(isTpuRoutine), fbb_(fbb), chip(chip) {}
   virtual ~CviRoutine() {}
 
   std::vector<Operation *> ops;
@@ -77,16 +76,26 @@ protected:
 
 class CviTpuRoutine : public CviRoutine {
 public:
-  CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
-                func::CallOp &call, int* layer_id,
-                std::string chip);
+  CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb, func::CallOp &call,
+                int *layer_id, std::string chip);
   flatbuffers::Offset<Routine> build();
 
   std::vector<uint8_t> cmdbuf;
 
 private:
-  int* layer_id;
+  int *layer_id;
   void codeGen();
+};
+
+class CviCpuRoutine : public CviRoutine {
+public:
+  CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb, func::CallOp &call,
+                std::string chip);
+  flatbuffers::Offset<Routine> build();
+
+private:
+  Operation *op_;
+  void serializeFuncArgs(std::vector<uint8_t> &args);
 };
 
 class CviModelBuilder {
@@ -117,14 +126,14 @@ private:
   uint8_t majorVersion_;
   uint8_t minorVersion_;
   uint8_t subMinorVersion_;
-  int* layer_id;
+  int *layer_id;
   std::string chip;
   int64_t coeff_size;
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   std::vector<top::WeightOp> weights;
 
-  void addRoutine(func::CallOp &call, int* layer_id);
+  void addRoutine(func::CallOp &call, int *layer_id);
   FBModel build();
   FBWeightVector buildWeightMap();
   FBTensorVector buildNeuronMap();
@@ -132,10 +141,11 @@ private:
   FBSectionVector buildSections();
   FBSection buildSection(std::string name, cvi::model::SectionType type);
   FBSection buildSection(std::string name, cvi::model::SectionType type,
-                         std::vector<uint8_t>& data);
-  void parseOpInfo(Operation *op, std::string& name, std::vector<int64_t>& shape,
-                   size_t& size, int64_t& offset, DType& dtype);
+                         std::vector<uint8_t> &data);
+  void parseOpInfo(Operation *op, std::string &name,
+                   std::vector<int64_t> &shape, size_t &size, int64_t &offset,
+                   DType &dtype);
   flatbuffers::Offset<Tensor> buildNeuron(opInfo &op);
 };
 
-#endif  // LIBCVIODEL_HPP_
+#endif // LIBCVIODEL_HPP_

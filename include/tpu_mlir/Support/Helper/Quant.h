@@ -64,6 +64,10 @@ struct Quant {
     return v.getType().cast<RankedTensorType>().getElementType().cast<quant::UniformQuantizedType>();
   }
 
+  static inline quant::UniformQuantizedType getUniformQuantizedType(mlir::Type t) {
+    return t.cast<RankedTensorType>().getElementType().cast<quant::UniformQuantizedType>();
+  }
+
   // clang-format on
 
   static inline double getThreshold(Value v) {

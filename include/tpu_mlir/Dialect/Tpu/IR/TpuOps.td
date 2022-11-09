@@ -1071,4 +1071,19 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
 
   let results = (outs AnyTensor:$output);
 }
+
+def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp"> {
+  let summary = "generic cpu operator";
+  let description = [{
+    Generic Cpu Op.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    StrAttr:$operation_name,
+    OptionalAttr<DictionaryAttr>:$param
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

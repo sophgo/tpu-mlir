@@ -72,6 +72,9 @@ public:
         ++loc;
       });
     }
+    std::vector<Value> inputs;
+    std::vector<Value> outputs;
+    Module::getInputsOutputs(module, inputs, outputs);
 
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
@@ -85,25 +88,24 @@ public:
           updateLiveRangeOfOps(op, i, ops_loc, liveRange, chosen,
                                neuron_alignment);
           if (chosen) {
-            if (isOpBelongToIOMemoryRegion(op)) {
+            if (isOpBelongToIOMemoryRegion(op, i, outputs)) {
               if (io_outs.size() < 5) {
                 io_outs.emplace_back((int64_t)op + i);
               } else {
                 private_outs.emplace_back((int64_t)op + i);
               }
-            } else if (isOpBelongToSharedMemoryRegion(op)) {
-              shared_outs.emplace_back((int64_t)op + i);
-            } else {
+            } else if (isOpBelongToPrivateMemoryRegion(op, i)) {
               private_outs.emplace_back((int64_t)op + i);
+            } else {
+              shared_outs.emplace_back((int64_t)op + i);
             }
           }
         }
       });
       // To solve concat opt when axis = 0, it need the operand should be
       // continuous global memory. FIXME if concatN's inp in diff subnet
-      func.walk([&](Operation *op) {
-        updateLiveRangeOfSpecialOp(op, liveRange);
-      });
+      func.walk(
+          [&](Operation *op) { updateLiveRangeOfSpecialOp(op, liveRange); });
       if (!shared_outs.empty()) {
         shared_outs_regions.emplace_back(std::move(shared_outs));
       }
@@ -181,31 +183,27 @@ public:
   }
 
 protected:
-  bool isOpBelongToIOMemoryRegion(Operation *op) {
+  bool isOpBelongToIOMemoryRegion(Operation *op, int index,
+                                  std::vector<Value> &outputs) {
     // Warning, IO memory region can only has capacity to store 5 ops.
     if (isa<top::InputOp>(op)) {
       return true;
-    } else {
-      auto next = getNextOp(op);
-      if (next && isa<ReturnOp>(next)) {
+    }
+    if (isOutput(op, index)) {
+      auto value = op->getResult(index);
+      if (std::find(outputs.begin(), outputs.end(), value) != outputs.end()) {
         return true;
       }
     }
     return false;
   }
 
-  bool isOpBelongToSharedMemoryRegion(Operation *op) {
-    if (isOutputOp(op)) {
-      return false;
+  bool isOpBelongToPrivateMemoryRegion(Operation *op, int index) {
+    if (isa<top::InputOp>(op) || isOutput(op, index) ||
+        isa<tpu::GenericCpuOp>(op)) {
+      return true;
     }
-    for (auto &use : op->getResult(0).getUses()) {
-      Operation *next = use.getOwner();
-      // TODO need traverse next until not InPlaceOp
-      if (isInPlaceOp(next) && isOutputOp(next)) {
-        return false;
-      }
-    }
-    return true;
+    return false;
   }
 
   void updateLiveRangeOfOps(Operation *op, int index,
@@ -269,7 +267,7 @@ protected:
   }
 
   void updateLiveRangeOfSpecialOp(Operation *op,
-                                std::map<int64_t, TensorLive> &liveRange) {
+                                  std::map<int64_t, TensorLive> &liveRange) {
     auto chip = Module::getChip(op);
     if (!Module::isCV18xx(chip)) {
       return;
@@ -359,27 +357,14 @@ protected:
     return false;
   }
 
-  bool isOutputOp(Operation *op) {
-    for (auto &use : op->getResult(0).getUses()) {
+  bool isOutput(Operation *op, int index) {
+    for (auto &use : op->getResult(index).getUses()) {
       Operation *next = use.getOwner();
       if (isa<func::ReturnOp>(next)) {
         return true;
       }
     }
     return false;
-  }
-
-  Operation *getNextOp(Operation *op) {
-    Operation *nextOp = nullptr;
-    if (op->getResult(0).hasOneUse()) {
-      for (auto &use : op->getResult(0).getUses()) {
-        nextOp = use.getOwner();
-        break;
-      }
-      assert(nextOp && "nextOp is nullptr");
-    }
-    // if not found, will return NULL
-    return nextOp;
   }
 
   void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition,

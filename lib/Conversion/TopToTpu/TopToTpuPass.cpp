@@ -316,6 +316,12 @@ protected:
       auto newType = Quant::getQuantInt8Type(v, LoweringConfig::isAsymmetric);
       name += "_" + type_string(newType);
       auto loc = NameLoc::get(builder.getStringAttr(name));
+      if (Module::isCV18xx(LoweringConfig::chip)) {
+        auto parentOp = v.getDefiningOp();
+        if (isa<top::InputOp>(parentOp)) {
+          return insert_18xx_cpu_cast(builder, v, loc, newType);
+        }
+      }
       auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
       return castOp.output();
     }
@@ -323,6 +329,26 @@ protected:
       break;
     }
     return v;
+  }
+
+  Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
+                             Type &newType) {
+    std::vector<NamedAttribute> attrs;
+    std::vector<NamedAttribute> param;
+    attrs.emplace_back(
+        builder.getNamedAttr("operation_name", builder.getStringAttr("quant")));
+    param.emplace_back(
+        builder.getNamedAttr("from", builder.getStringAttr("FP32")));
+    param.emplace_back(
+        builder.getNamedAttr("to", builder.getStringAttr("INT8")));
+    param.emplace_back(builder.getNamedAttr(
+        "scale", builder.getF64FloatAttr(
+                     1. / Quant::getUniformQuantizedType(newType).getScale())));
+    attrs.emplace_back(
+        builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
+    auto castOp = builder.create<tpu::GenericCpuOp>(
+        loc, newType, ValueRange{v}, ArrayRef<NamedAttribute>{attrs});
+    return castOp.output();
   }
 
   static StringRef qmode(const std::string &mode) {

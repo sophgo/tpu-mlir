@@ -218,12 +218,18 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
   return ratio;
 }
 
-void quantizeToInt8(const float *pSrc, int8_t *pDst, int len, double scale,
+template <typename T>
+void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
                     RoundingMode round_mode) {
   for (int i = 0; i < len; i++) {
     pDst[i] = helper::Quant::to_int8(pSrc[i] * scale, round_mode);
   }
 }
+
+template void quantizeToInt8(const float *pSrc, int8_t *pDst, int len,
+                             double scale, RoundingMode round_mode);
+template void quantizeToInt8(const float *pSrc, float *pDst, int len,
+                             double scale, RoundingMode round_mode);
 
 // tensorflow/lite/kernels/internal/quantization_util.cc
 // mlir/lib/Dialect/Tosa/Utils/QuantUtils.cpp
@@ -272,8 +278,8 @@ void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
 }
 
 // CV18xx
-double getQscaleForFilter(float max_filter, float threshold_y, float threshold_x,
-                         int quant_bitwidth) {
+double getQscaleForFilter(float max_filter, float threshold_y,
+                          float threshold_x, int quant_bitwidth) {
   /// get a QScale for Filter (with multiplier)
   ///   Q(W) = W * (threshold_x / threshold_y) * (1 / QScale)
   ///   find a QScale so that Q(max_filter) = 127

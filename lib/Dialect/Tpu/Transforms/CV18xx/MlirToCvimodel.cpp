@@ -102,6 +102,109 @@ static std::string getStrOfCurrentTime() {
   return ssTime.str();
 }
 
+CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
+                             func::CallOp &call, std::string chip)
+    : CviRoutine(fbb, false, chip) {
+  auto func = Module::getFuncOp(Module::getModuleOp(call), call.getCallee());
+  func.walk([&](Operation *op) {
+    if (isa<GlobalGenInterface>(op)) {
+      ops.emplace_back(op);
+      if (isa<tpu::GenericCpuOp>(op)) {
+        op_ = op;
+        name = dyn_cast<tpu::GenericCpuOp>(op).operation_name().str();
+      }
+    }
+  });
+  Module::getInputsOutputs(call, inputs, outputs);
+}
+
+void CviCpuRoutine::serializeFuncArgs(std::vector<uint8_t> &args) {
+  flatbuffers::FlatBufferBuilder fbb(1024);
+  flatbuffers::Offset<cvi::cpu_op::Attribute> attr;
+  std::vector<flatbuffers::Offset<cvi::cpu_op::Attribute>> param;
+  auto paramDictAttr = op_->getAttr("param").cast<DictionaryAttr>();
+  for (auto &iter : paramDictAttr) {
+    auto key = iter.getName().str();
+    auto flatKey = fbb.CreateString(key);
+    if (iter.getValue().isa<StringAttr>()) {
+      auto value = iter.getValue().cast<StringAttr>().getValue();
+      std::string strValue = std::string(value.data(), value.size());
+      auto flatValue = fbb.CreateString(strValue);
+      auto strAttr = cvi::cpu_op::CreateStrAttr(fbb, flatKey, flatValue);
+      attr = cvi::cpu_op::CreateAttribute(fbb, 0, 0, 0, strAttr, 0, 0);
+    } else if (iter.getValue().isa<BoolAttr>()) {
+      auto value = iter.getValue().cast<BoolAttr>().getValue();
+      auto boolAttr = cvi::cpu_op::CreateBoolAttr(fbb, flatKey, value);
+      attr = cvi::cpu_op::CreateAttribute(fbb, 0, boolAttr, 0, 0, 0, 0);
+    } else if (iter.getValue().isa<IntegerAttr>()) {
+      auto value = iter.getValue().cast<IntegerAttr>().getInt();
+      auto intAttr = cvi::cpu_op::CreateIntAttr(fbb, flatKey, value);
+      attr = cvi::cpu_op::CreateAttribute(fbb, 0, 0, intAttr, 0, 0, 0);
+    } else if (iter.getValue().isa<FloatAttr>()) {
+      auto value = iter.getValue().cast<FloatAttr>().getValueAsDouble();
+      auto floatAttr = cvi::cpu_op::CreateFloatAttr(fbb, flatKey, value);
+      attr = cvi::cpu_op::CreateAttribute(fbb, floatAttr, 0, 0, 0, 0, 0);
+    } else if (iter.getValue().isa<DenseFPElementsAttr>()) {
+      std::vector<float> fpArray;
+      auto value = iter.getValue().cast<DenseFPElementsAttr>();
+      for (APFloat realVal : value) {
+        fpArray.push_back(realVal.convertToFloat());
+      }
+      auto flatValue = fbb.CreateVector(fpArray);
+      auto fpArrayAttr =
+          cvi::cpu_op::CreateFloatArrayAttr(fbb, flatKey, flatValue);
+      attr = cvi::cpu_op::CreateAttribute(fbb, 0, 0, 0, 0, fpArrayAttr, 0);
+    } else if (iter.getValue().isa<DenseIntElementsAttr>()) {
+      std::vector<int> intArray;
+      auto value = iter.getValue().cast<DenseIntElementsAttr>();
+      for (APInt intVal : value) {
+        intArray.push_back(intVal.getZExtValue());
+      }
+      auto flatValue = fbb.CreateVector(intArray);
+      auto intArrayAttr =
+          cvi::cpu_op::CreateIntArrayAttr(fbb, flatKey, flatValue);
+      attr = cvi::cpu_op::CreateAttribute(fbb, 0, 0, 0, 0, 0, intArrayAttr);
+    } else if (iter.getValue().isa<ArrayAttr>()) {
+      auto value = iter.getValue().cast<ArrayAttr>();
+      if ((*value.begin()).dyn_cast_or_null<IntegerAttr>()) {
+        std::vector<int> intArray;
+
+        for (auto &intVal : value) {
+          intArray.push_back(intVal.cast<IntegerAttr>().getInt());
+        }
+        auto flatValue = fbb.CreateVector(intArray);
+        auto intArrayAttr =
+            cvi::cpu_op::CreateIntArrayAttr(fbb, flatKey, flatValue);
+        attr = cvi::cpu_op::CreateAttribute(fbb, 0, 0, 0, 0, 0, intArrayAttr);
+      } else {
+        llvm_unreachable("unsupported type, only support i32 array parsing");
+      }
+    } else {
+      llvm_unreachable("unsupported type");
+    }
+    param.push_back(attr);
+  }
+
+  auto fbParam = cvi::cpu_op::CreateParameterDirect(fbb, &param);
+  fbb.Finish(fbParam);
+
+  uint8_t *ptr = fbb.GetBufferPointer();
+  for (uint32_t i = 0; i < fbb.GetSize(); i++) {
+    args.push_back(*ptr++);
+  }
+}
+
+flatbuffers::Offset<Routine> CviCpuRoutine::build() {
+  FBStringVector fbInputs, fbOutputs;
+  buildInputsOutputs(fbb_, inputs, outputs, fbInputs, fbOutputs);
+  std::vector<uint8_t> args;
+  serializeFuncArgs(args);
+  auto fbName = fbb_.CreateString(name);
+  auto fbRoutine = CreateCpuRoutineDirect(fbb_, name.c_str(), &args);
+  return CreateRoutine(fbb_, RoutineType_CPU, fbInputs, fbOutputs, 0,
+                       fbRoutine);
+}
+
 CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
                              func::CallOp &call, int *layer_id,
                              std::string chip)
@@ -173,8 +276,7 @@ void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
   if (tpu) {
     rt = new CviTpuRoutine(fbb_, call, layer_id, chip);
   } else {
-    llvm_unreachable("not support now");
-    // rt = new CviCpuRoutine(fbb_, mainFunc_, funcName);
+    rt = new CviCpuRoutine(fbb_, call, chip);
   }
   routines_.push_back(rt);
 }
@@ -226,9 +328,11 @@ FBSectionVector CviModelBuilder::buildSections() {
   for (auto rt : routines_) {
     if (rt->isTpuRoutine) {
       auto tpuRt = (CviTpuRoutine *)rt;
-      auto cmdbufSec =
-          buildSection(tpuRt->name, SectionType_CMDBUF, tpuRt->cmdbuf);
-      sectionVec.push_back(cmdbufSec);
+      if (tpuRt->cmdbuf.size()) {
+        auto cmdbufSec =
+            buildSection(tpuRt->name, SectionType_CMDBUF, tpuRt->cmdbuf);
+        sectionVec.push_back(cmdbufSec);
+      }
     }
   }
   return fbb_.CreateVector(sectionVec);

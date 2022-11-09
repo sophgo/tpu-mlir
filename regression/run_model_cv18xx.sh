@@ -179,8 +179,8 @@ fi
 if [ ${do_symmetric} == 1 ]; then
 
 tolerance_sym_opt=
-if [ x${int8_sym_tolerance} != x ]; then
-  tolerance_sym_opt="--tolerance ${int8_sym_tolerance}"
+if [ x${int8_sym_tolerance_18xx} != x ]; then
+  tolerance_sym_opt="--tolerance ${int8_sym_tolerance_18xx}"
 fi
 model_deploy.py \
   --mlir ${model_name}.mlir \
