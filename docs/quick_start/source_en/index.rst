@@ -10,6 +10,15 @@ TPU-MLIR Quick Start
    * - Version
      - Release date
      - Explanation
+   * - v0.6.0
+     - 2022.11.05
+     - support mix precision
+   * - v0.5.0
+     - 2022.10.20
+     - support test model_zoo models
+   * - v0.4.0
+     - 2022.09.20
+     - support convert caffe model
    * - v0.3.0
      - 2022.08.24
      - Support TFlite. Add the chapter on TFLite model conversion.
@@ -34,4 +43,5 @@ TPU-MLIR Quick Start
    03_onnx
    04_tflite
    05_caffe
-   06_test_sdk
+   06_mix_precision
+   07_test_sdk
