@@ -55,7 +55,7 @@ class TensorCompare():
   def euclidean_distance(self, x, y):
     return sqrt(sum(pow(a-b,2) for a, b in zip(x, y)))
 
-  def sqnr_similarity(self, signal_raw, signal_dequant, remove_zero=True):
+  def sqnr_similarity(self, signal_raw, signal_dequant, remove_zero=False):
     # SQNR is non-commutative
     # Unlike other distance function
     # Cannot change the order of signal_raw and signal_dequant

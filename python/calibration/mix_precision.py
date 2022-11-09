@@ -13,6 +13,7 @@ import numpy as np
 import os
 import math
 import sys
+import datetime
 from tqdm import tqdm
 from utils.mlir_shell import mlir_lowering
 from utils.mlir_parser import MlirParser
@@ -36,7 +37,7 @@ FLOAT_MAP = {
 
 class MixQuantModel:
 
-    def __init__(self, fp32_mlir, chip: str, calib_table:str=None, mix_table:str=None):
+    def __init__(self, fp32_mlir, chip: str, calib_table: str = None, mix_table: str = None):
         self.fp32_mlir = fp32_mlir
         self.chip = chip
         self.calib_table = None
@@ -82,6 +83,8 @@ class MixPrecSearcher(object):
     def __init__(self, args):
         self.fp32_mlir = args.mlir_file
         self.calib_table = args.calibration_table
+        self.loss_table = args.loss_table
+        self.quantize_table = args.quantize_table
         self.chip = args.chip
         self.mix_mode = FLOAT_MAP[self.chip]
         self.parser = MlirParser(args.mlir_file)
@@ -147,7 +150,7 @@ class MixPrecSearcher(object):
         with open(target_file, 'w') as f:
             f.write("{} {}\n".format(op.name, self.mix_mode))
 
-    def _cal_sqnr(self, signal_raw, signal_dequant, remove_zero=True):
+    def _cal_sqnr(self, signal_raw, signal_dequant, remove_zero=False):
         # SQNR is non-commutative
         # Unlike other distance function
         # Cannot change the order of signal_raw and signal_dequant
@@ -180,7 +183,7 @@ class MixPrecSearcher(object):
     def _loss(self, preds, gt_preds):
         ret = 0
         cnt = 0
-        for name1,name2 in zip(gt_preds, preds):
+        for name1, name2 in zip(gt_preds, preds):
             a = gt_preds[name1]
             b = preds[name2]
             if a.dtype != b.dtype or a.shape != b.shape:
@@ -199,12 +202,26 @@ class MixPrecSearcher(object):
         loss_list = list()
         predictions_gt = list()
 
-        # set all layer for float
+        # set all layer as float
+        print("run float mode: {}".format(self.fp32_mlir))
         float_model = MixQuantModel(self.fp32_mlir, self.chip)
         for idx in range(self.num_sample):
             outputs = float_model.infer(self.input_data_buffer[idx])
             predictions_gt.append(outputs)
         float_model.clean()
+
+        # set all layer as int8
+        print("run int8 mode: {}".format(self.fp32_mlir))
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
+        int8_loss = 0
+        for idx in range(self.num_sample):
+            outputs = int8_model.infer(self.input_data_buffer[idx])
+            int8_loss += self._loss(outputs, predictions_gt[idx])
+        int8_model.clean()
+        int8_loss = int8_loss / self.num_sample
+
+        # set mix layers
+        print("run mix mode: {}".format(self.fp32_mlir))
         pbar = tqdm(self.parser.ops)
         for op in pbar:
             pbar.set_description("Processing {}".format(op.name))
@@ -221,4 +238,31 @@ class MixPrecSearcher(object):
             mix_model.clean()
             loss_list.append((op.name, loss / self.num_sample))
 
-        return sorted(loss_list, key=lambda x: x[1], reverse=True)
+        loss_list = sorted(loss_list, key=lambda x: x[1], reverse=True)
+        num_mix_layers = 0
+        with open(self.loss_table, "w") as f:
+            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+            f.write("# sample number: {}\n".format(self.num_sample))
+            f.write("# all int8 loss: {}\n".format(int8_loss))
+            f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
+            for idx, layer in enumerate(loss_list):
+                loss_msg = "No.{:<4}: Layer: {:<50}\t\tLoss: {}".format(idx, layer[0], layer[1])
+                f.write("{}\n".format(loss_msg))
+                print(loss_msg)
+                if (layer[1] / int8_loss > 0.95 and num_mix_layers == 0):
+                    num_mix_layers = idx
+        max_mix_layers = len(loss_list) // 4  # no more than 1/4 layer to be float
+        num_mix_layers = min(max_mix_layers, num_mix_layers)
+        if num_mix_layers == 0:
+            raise RuntimeError(
+                "Mix layers loss similar to int8 loss. Try quantize {}".format(mix_model))
+        with open(self.quantize_table, "w") as f:
+            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+            f.write("# sample number: {}\n".format(self.num_sample))
+            f.write("# all int8 loss: {}\n".format(int8_loss))
+            f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
+            f.write("# op_name   quantize_mode\n")
+            for idx in range(num_mix_layers):
+                name = loss_list[idx][0]
+                f.write("{} {}\n".format(name, self.mix_mode))
+        print("Output mix quantization table to {}".format(self.quantize_table))

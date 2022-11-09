@@ -54,10 +54,8 @@ run_calibration.py mobilenet_v2.mlir \
 
 run_qtable.py mobilenet_v2.mlir \
   --dataset ${REGRESSION_PATH}/dataset/ILSVRC2012 \
-  --input_num 10 \
   --calibration_table mobilenet_v2_cali_table \
   --chip bm1684x \
-  --num_layers 6 \
   -o mobilenet_qtable
 
 popd
