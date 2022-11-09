@@ -692,6 +692,7 @@ def Tpu_SiLUOp : Tpu_Op<"SiLU",
 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     DeclareOpInterfaceMethods<TypeInterface>,
+    DeclareOpInterfaceMethods<WeightReorderInterface>,
     InOutSameShape]> {
   let summary = "softmax operator";
 
@@ -703,6 +704,9 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$table,
+    AnyTensorOrNone:$slope_table,
+    AnyTensorOrNone:$reciprocal_table,
+    AnyTensorOrNone:$reciprocal_mantissa_table,
     I64Attr:$axis,
     DefaultValuedAttr<F64Attr, "1.0">:$beta
   );

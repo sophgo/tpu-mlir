@@ -24,6 +24,16 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
+#define SIGMOID_BF16_LUT_RANGE 12
+#define TANH_BF16_LUT_RANGE 15
+#define EXP_BF16_LUT_RANGE 15
+#define ELU_BF16_LUT_RANGE 15
+#define MISH_BF16_LUT_RANGE 8
+#define SOFTPLUS_BF16_LUT_RANGE 8
+#define SWISH_BF16_LUT_RANGE 12
+#define LOG_BF16_LUT_RANGE 8
+#define GELU_BF16_LUT_RANGE 8
+
 using namespace llvm;
 using namespace mlir;
 using namespace tpu_mlir;
@@ -47,7 +57,7 @@ void bf16_lut_slope(float *input, float *output, int size, float *base_table,
                     float *slope_table, float range_start, float range_end);
 
 void bf16_gen_exponent_mantissa_table(const std::string &name, float *exp_table,
-                                      float *mantissa_table);
+                                      float *mantissa_table, float param0, float param1);
 
 void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
                        float *mantissa_table, const std::string &method);
