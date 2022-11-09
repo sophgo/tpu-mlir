@@ -28,6 +28,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 LOWERING_CV18XX(Add)
 LOWERING_CV18XX(AvgPool)
 LOWERING_CV18XX(Cast)
+LOWERING_CV18XX(Concat)
 LOWERING_CV18XX(Conv)
 LOWERING_CV18XX(MatMul)
 LOWERING_CV18XX(MaxPool)
@@ -36,5 +37,5 @@ LOWERING_CV18XX(Permute)
 LOWERING_CV18XX(SiLU)
 LOWERING_CV18XX(Softmax)
 LOWERING_CV18XX(Upsample)
-} // namespace bm1684x
+} // namespace cv18xx
 } // namespace tpu_mlir

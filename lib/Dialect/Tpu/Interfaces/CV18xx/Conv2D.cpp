@@ -266,7 +266,6 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     ga_pc_info = Module::getAddress(bias());
   }
 
-  auto fliter_shape = Module::getShape(filter());
   bool do_compress = attr.groups > 1 ? false : true;
   WeightCompresser weight_opt(this->getOperation(), do_compress); // fix me
   if (Quant::isUniformQuantized(output())) {

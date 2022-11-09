@@ -7,16 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/GmemAllocator.hpp"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
-#include <sstream>
 #include <fstream>
 #include <set>
+#include <sstream>
 #include <vector>
 
 using namespace llvm;
@@ -26,19 +26,15 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-GmemAllocator::GmemAllocator(
-    std::map<int64_t, int64_t> &gaddrMap,
-    uint32_t alignment)
-    : gaddrMap_(gaddrMap),
-      alignment(alignment) {
-}
+GmemAllocator::GmemAllocator(std::map<int64_t, int64_t> &gaddrMap,
+                             uint32_t alignment)
+    : gaddrMap_(gaddrMap), alignment(alignment) {}
 
-void GmemAllocator::markGmemReusedOp(
-      std::vector<int64_t> &ops,
-      std::map<int64_t, int64_t> &gaddrMap,
-      std::map<int64_t, TensorLive> &liveRange,
-      std::set<int64_t> &gmemReusedSet,
-      uint32_t alignment) {
+void GmemAllocator::markGmemReusedOp(std::vector<int64_t> &ops,
+                                     std::map<int64_t, int64_t> &gaddrMap,
+                                     std::map<int64_t, TensorLive> &liveRange,
+                                     std::set<int64_t> &gmemReusedSet,
+                                     uint32_t alignment) {
 
   std::vector<int64_t> tmp;
   for (int i = ops.size() - 1; i >= 0; i--) {
@@ -60,23 +56,6 @@ void GmemAllocator::markGmemReusedOp(
   }
 }
 
-int64_t GmemAllocator::assignSpecifiedGmemToOp(
-                                       Operation *op,
-                                       std::map<int64_t, int64_t> &gaddrMap,
-                                       int64_t baseGaddr,
-                                       uint32_t alignment) {
-                                         /*
-  int64_t size = 0;
-  if (auto concatOp = dyn_cast_or_null<tpu::ConcatNOp>(op)) {
-    size = GmemAllocatorMethod::getTensorGmemSize(op, alignment);
-    gaddrMap[op] = baseGaddr;
-  }
-  return size;
-  */
-  return 0;
-}
-
-
 void GmemAllocator::registerMethod(std::string method_name, bool reuse) {
   if (reuse) {
     reuse_methods_.emplace_back(method_name);
@@ -91,13 +70,20 @@ void GmemAllocator::registerAllMethod() {
   registerMethod("OpSizeOrderAssign", true);
 }
 
-int64_t GmemAllocator::assignGaddr(
-    std::vector<int64_t> &ops,
-    std::map<int64_t, TensorLive> &liveRange,
-    bool neuronMemoryReuse, int64_t baseGaddr) {
+int64_t GmemAllocator::assignGaddr(std::vector<int64_t> &ops,
+                                   std::map<int64_t, TensorLive> &liveRange,
+                                   bool neuronMemoryReuse, int64_t baseGaddr) {
   if (ops.empty()) {
     llvm::errs() << "Warning input ops is empty!\n";
     return 0;
+  }
+  // for special op, remove ops which not in liveRange, addr is assigned later
+  for (std::vector<int64_t>::iterator it = ops.begin(); it != ops.end();) {
+    if (liveRange.find(*it) == liveRange.end()) {
+      it = ops.erase(it);
+      continue;
+    }
+    ++it;
   }
 
   if (!reuse_methods_.size() && !methods_.size()) {
@@ -111,8 +97,8 @@ int64_t GmemAllocator::assignGaddr(
     cur_methods = &methods_;
   }
 
-  std::vector<std::unique_ptr<GmemAllocatorMethod> > alloc_methods;
-  for (auto& name : *cur_methods) {
+  std::vector<std::unique_ptr<GmemAllocatorMethod>> alloc_methods;
+  for (auto &name : *cur_methods) {
     auto p = GmemAllocatorMethodFactory::makeMethod(name, gaddrMap_, alignment);
     if (p) {
       alloc_methods.emplace_back(p);
@@ -124,16 +110,16 @@ int64_t GmemAllocator::assignGaddr(
   int64_t min_gmem_size = 0;
   int idx = 0;
   for (uint32_t i = 0; i < alloc_methods.size(); ++i) {
-    int64_t gmem_size = alloc_methods[i]->assignGaddr(ops, liveRange, neuronMemoryReuse, baseGaddr);
+    int64_t gmem_size = alloc_methods[i]->assignGaddr(
+        ops, liveRange, neuronMemoryReuse, baseGaddr);
     if (gmem_size < min_gmem_size || min_gmem_size == 0) {
       min_gmem_size = gmem_size;
       idx = i;
     }
   }
-
   llvm::errs() << "GmemAllocator use " << alloc_methods[idx]->getName() << "\n";
   gaddrMap_.swap(alloc_methods[idx]->gaddrMap_);
   return min_gmem_size;
 }
-} // tpu
-} //tpu_mlir
+} // namespace tpu
+} // namespace tpu_mlir
