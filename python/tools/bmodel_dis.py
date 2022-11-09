@@ -204,7 +204,7 @@ class Region:
     def __init__(self, net_stage):
         self.blocks = [Block(id, x) for id, x in enumerate(net_stage["SubNet"])]
         self.signature = (net_stage["InputTensor"], net_stage["OutputTensor"])
-        self.data = net_stage["CoeffMem"][0]
+        self.data = net_stage["CoeffMem"][0] if net_stage["CoeffMem"] else None
 
     def __repr__(self):
         blocks = "\n".join([f"{b}" for b in self.blocks])

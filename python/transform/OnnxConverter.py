@@ -1293,23 +1293,43 @@ class OnnxConverter(BaseConverter):
         in0 = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         input_shape = self.getShape(onnx_node.inputs[0])
-        if len(output_shape) != len(input_shape):
-            raise RuntimeError("Not support different shape_dims yet.")
-
+        assert len(output_shape) >= len(input_shape)
         # tile one axis each time to avoid gmem buffer
+        count = sum(
+            [
+                input_shape[-i] != output_shape[-i]
+                for i in range(1, len(input_shape) + 1)
+            ]
+        )
+        # remove leading 1
+        len_diff = len(output_shape) - len(input_shape)
+        for i in range(len_diff):
+            if output_shape[i] == 1:
+                len_diff -= 1
+            else:
+                break
+        count += len_diff
+        assert count > 0
         out_shape = copy.deepcopy(input_shape)
-        count = sum([input_shape[i] != output_shape[i] for i in range(len(output_shape))])
-        for i in range(len(output_shape) - 1, 0, -1):
-            if output_shape[i] != input_shape[i]:
-                p = {'axis': i, 'tile': output_shape[i] // input_shape[i]}
+        for i in range(1, len(output_shape) + 1):
+            axis = len(out_shape) - i
+            if axis < 0:
+                out_shape.insert(0, 1)
+            if output_shape[-i] != out_shape[-i]:
+                p = {'axis': axis, 'tile': output_shape[-i] // out_shape[-i]}
                 if count == 1:
                     p['name'] = '{}_{}'.format(onnx_node.name, onnx_node.op_type)
+                    out_shape = output_shape
                 else:
-                    p['name'] = '{}_{}_{}'.format(onnx_node.name, onnx_node.op_type, i)
-                out_shape[i] = output_shape[i]
+                    p["name"] = "{}_{}_{}".format(
+                        onnx_node.name, onnx_node.op_type, count
+                    )
+                    out_shape[-i] = output_shape[-i]
                 new_op = self.mlir.create_tile_op([in0], out_shape, **p)
                 in0 = new_op
                 count -= 1
+            if count == 0:
+                break
         self.addOperand(onnx_node.name, new_op)
 
     def convert_tile_op(self, onnx_node):
