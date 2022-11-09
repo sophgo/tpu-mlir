@@ -16,7 +16,7 @@
 准备工作目录
 ------------------
 
-建立 ``yolov3_tiny`` 目录, 注意是与tpu-mlir同级目录；并把模型文件和图片文件都
+建立 ``yolov3_tiny`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
 放入 ``yolov3_tiny`` 目录中。
 
 操作如下:
@@ -30,6 +30,7 @@
    $ mkdir workspace && cd workspace
 
 这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
+注意如果 ``tiny-yolov3-11.onnx`` 用wget下载失败, 请用其他方式下载后放到 ``yolov3_tiny`` 目录。
 
 验证原始模型
 ----------------
@@ -133,7 +134,7 @@
 
    yolov3_tiny int8对称量化执行效果
 
-可以看出int8对称量化模型相对原始模型, 有一定损失。
+可以看出int8对称量化模型相对原始模型, 只检测出了3个目标, 有一定损失。
 
 转成混精度量化模型
 -----------------------
@@ -166,19 +167,15 @@
      - 输入calibration table文件
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1684x（目前只支持这一种, 后续会支持多款TPU
-       平台
+     - 指定模型将要用到的平台, 支持bm1684x(目前只支持这一种, 后续会支持多款TPU平台)
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
-   * - num_layers
-     - 否
-     - 指定采用浮点计算的op的数量, 默认8个
    * - o
      - 是
      - 输出混精度表
 
-本例中采用默认10张图片校准并8个OP转换成浮点, 执行命令如下:
+本例中采用默认10张图片校准, 执行命令如下:
 
 .. code-block:: console
 
@@ -192,40 +189,32 @@
 
 .. code-block:: console
 
+  # op_name   quantize_mode
   convolution_output11_Conv F32
-  model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu F32
-  model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu F32
-  model_1/concatenate_1/concat:0_Concat F32
-  model_1/leaky_re_lu_10/LeakyRelu:0_LeakyRelu F32
-  convolution_output4_Conv F32
-  model_1/leaky_re_lu_9/LeakyRelu:0_LeakyRelu F32
-  model_1/leaky_re_lu_11/LeakyRelu:0_LeakyRelu F32
 
 
-该表中, 第一列表示相应的operation, 第二列表示类型。
+该表中, 第一列表示相应的layer, 第二列表示类型。
 另外同时也会生成一个loss表文件 ``full_loss_table.txt``, 内容如下:
 
 .. code-block:: console
     :linenos:
 
-    No.0 : Layer: convolution_output11_Conv                     Loss: -15.688898181915283
-    No.1 : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu   Loss: -16.927041554450987
-    No.2 : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu   Loss: -17.018644523620605
-    No.3 : Layer: model_1/concatenate_1/concat:0_Concat         Loss: -17.04096896648407
-    No.4 : Layer: model_1/leaky_re_lu_10/LeakyRelu:0_LeakyRelu  Loss: -17.053492522239686
-    No.5 : Layer: convolution_output4_Conv                      Loss: -17.065047717094423
-    No.6 : Layer: model_1/leaky_re_lu_9/LeakyRelu:0_LeakyRelu   Loss: -17.067219734191895
-    No.7 : Layer: model_1/leaky_re_lu_11/LeakyRelu:0_LeakyRelu  Loss: -17.072936034202577
-    No.8 : Layer: convolution_output1_Conv                      Loss: -17.075703692436218
-    No.9 : Layer: model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu   Loss: -17.07633330821991
-    No.10: Layer: convolution_output3_Conv                      Loss: -17.078122758865355
-    No.11: Layer: convolution_output_Conv                       Loss: -17.080725646018983
-    No.12: Layer: model_1/leaky_re_lu_8/LeakyRelu:0_LeakyRelu   Loss: -17.08555600643158
-    No.13: Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu   Loss: -17.085753679275513
+    # all int8 loss: -17.297552609443663
+    # chip: bm1684x  mix_mode: F32
+    No.0 : Layer: convolution_output11_Conv                    Loss: -15.913658332824706
+    No.1 : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu  Loss: -17.148419880867003
+    No.2 : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu  Loss: -17.241489434242247
+    No.3 : Layer: model_1/concatenate_1/concat:0_Concat        Loss: -17.263980317115784
+    No.4 : Layer: model_1/leaky_re_lu_10/LeakyRelu:0_LeakyRelu Loss: -17.275933575630187
+    No.5 : Layer: convolution_output4_Conv                     Loss: -17.288181042671205
+    No.6 : Layer: model_1/leaky_re_lu_9/LeakyRelu:0_LeakyRelu  Loss: -17.289376521110533
+    No.7 : Layer: model_1/leaky_re_lu_11/LeakyRelu:0_LeakyRelu Loss: -17.295218110084534
     ......
 
-该表按Loss顺利排列, 可以看出混精度量化表取的该Loss表的前8层。如果业务中8层仍然不满足要求,
-可以继续把Loss表逐步添加到混精度表中。
+该表按Loss从小到大顺利排列, 表示该层Layer换成相应的模式后, 最终结果的loss, loss越小说明改善越大。
+``run_qtable.py`` 只会取相对INT8的loss, 改善超过5%的layer做混精度。
+如果混精度表的实际业务效果不好, 则可以按loss顺序多添加几层, 看看效果。
+
 
 第二步: 生成混精度量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -254,10 +243,10 @@
 
 .. code-block:: console
 
-    car:81.9%
-    car:72.4%
-    car:64.5%
-    bus:66.2%
+    car:78.7%
+    car:68.8%
+    car:63.1%
+    bus:65.3%
 
 得到图片yolov3_mix.jpg, 如下( :ref:`yolov3_mix_result` ):
 
