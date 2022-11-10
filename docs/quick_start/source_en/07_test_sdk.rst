@@ -214,7 +214,7 @@ Running the test needs to be done in an environment outside Docker (it is assume
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir --full
+   $ python3 -m tpu_perf.run --mlir --full -l full_cases.txt
 
 2. The SOC device uses the following steps to test the performance of the generated ``bmodel``.
 
@@ -225,7 +225,7 @@ Download the latest ``tpu-perf``, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch6
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir --full
+   $ python3 -m tpu_perf.run --mlir --full -l full_cases.txt
 
 
 After that, performance data is available in ``output/stats.csv``, in which the running time, computing resource utilization, and bandwidth utilization of the relevant models are recorded.

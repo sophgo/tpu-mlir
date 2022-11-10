@@ -224,7 +224,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir --full
+   $ python3 -m tpu_perf.run --mlir --full -l full_cases.txt
 
 2. SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
 
@@ -237,7 +237,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir --full
+   $ python3 -m tpu_perf.run --mlir --full -l full_cases.txt
 
 
 运行结束后, 性能数据在 ``output/stats.csv`` 中可以获得。该文件中记录了相关模型的
