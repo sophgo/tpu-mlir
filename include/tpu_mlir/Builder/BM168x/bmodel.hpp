@@ -6,11 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-/*
- * Written by:
- *   Pengchao Hu <pengchao.hu@bitmain.com>
- * Created Time: 2018-12-07 15:34
- */
+
 #ifndef LIBBMODEL_HPP_
 #define LIBBMODEL_HPP_
 

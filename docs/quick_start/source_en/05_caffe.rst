@@ -21,7 +21,7 @@ Create a ``mobilenet_v2`` directory, note that it is the same level as tpu-mlir,
 
 The operation is as follows:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir mobilenet_v2 && cd mobilenet_v2
@@ -43,7 +43,7 @@ The model in this example has a `BGR` input with mean and scale of ``103.94, 116
 The model conversion command:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name mobilenet_v2 \
@@ -66,7 +66,7 @@ MLIR to F32 bmodel
 
 Convert the mlir file to the bmodel of f32, the operation method is as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -94,7 +94,7 @@ the performance of the asymmetric model will be slightly worse than the symmetri
 Here is an example of the existing 100 images from ILSVRC2012 to perform calibration:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
@@ -109,7 +109,7 @@ Compile to INT8 symmetric quantized model
 
 Execute the following command to convert to the INT8 symmetric quantized model:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -129,7 +129,7 @@ Compile to INT8 asymmetric quantized model
 
 Execute the following command to convert to the INT8 asymmetric quantized model:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \

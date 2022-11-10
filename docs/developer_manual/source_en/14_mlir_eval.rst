@@ -43,7 +43,7 @@ Validation Interface
 
 TPU-MLIR provides the command for accuracy validation:
 
-.. code-block:: console
+.. code-block:: shell
 
     $ model_eval.py \
         --model_file mobilenet_v2.mlir \
@@ -98,7 +98,7 @@ mobilenet_v2
 
    Use the model_transform.py interface to convert the original model to the mobilenet_v2.mlir model, and obtain the mobilenet_v2_cali_table through the run_calibration.py interface. Please refer to the "User Interface" chapter for specific usage. The INT8 model of the tpu layer is obtained by the following command:
 
-.. code-block:: console
+.. code-block:: shell
 
     # INT8 Sym Model
     $ tpuc-opt mobilenet_v2.mlir \
@@ -113,7 +113,7 @@ mobilenet_v2
 
    Use the model_eval.py interface to validate:
 
-.. code-block:: console
+.. code-block:: shell
 
     # F32 model validation
     $ model_eval.py \
@@ -133,7 +133,7 @@ mobilenet_v2
 
 The accuracy validation results of the F32 model and the INT8 symmetric quantization model are as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
     # mobilenet_v2.mlir validation result
     2022/11/08 01:30:29 - INFO : idx:50000, top1:0.710, top5:0.899
@@ -158,7 +158,7 @@ yolov5s
 
    Use the model_eval.py interface to validate:
 
-.. code-block:: console
+.. code-block:: shell
 
     # F32 model validation
     $ model_eval.py \
@@ -180,7 +180,7 @@ yolov5s
 
 The accuracy validation results of the F32 model and the INT8 symmetric quantization model are as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
     # yolov5s.mlir validation result
     Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.369

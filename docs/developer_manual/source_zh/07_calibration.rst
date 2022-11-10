@@ -98,7 +98,7 @@ tpu-mlir实现的kld算法参考tensorRT的实现, 本质上是将abs(fp32_tenso
 这说明在这里截取, 能用int8这128个量化等级最好的模拟fp32的概率分布, 故量化门限设在这里是最合适的。kld算法实现伪码
 如下所示:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    the pseudocode of computing int8 quantize threshold by kld:
@@ -150,7 +150,7 @@ auto-tune算法
 
     在tpu-mlir的docker环境中, 在tpu-mlir目录执行source envsetup.sh初始化环境后, 任意新建目录进入执行如下命令可以完成对yolov5s的校准过程:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ model_transform.py \

@@ -6,11 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-/*
- * Written by:
- *   Pengchao Hu <pengchao.hu@bitmain.com>
- * Created Time: 2018-12-07 15:34
- */
+
 
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include <memory.h>
