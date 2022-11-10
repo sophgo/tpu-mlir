@@ -21,10 +21,9 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GroupFC", "GRU",
-    "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Reduce", "Reduce2", "ReduceL2", "Reciprocal",
-    "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
-    "TorchWhere", "MulConst", "AvgPool1D"
+    "GroupFC", "GRU", "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Reduce", "Reduce2", "ReduceL2",
+    "Reciprocal", "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax",
+    "TorchMaskedFill", "TorchWhere", "AvgPool1D"
 ]
 
 
@@ -73,7 +72,7 @@ class ONNX_IR_TESTER(object):
             "Max": self.test_Max,
             "Mul": self.test_Mul,
             "Min": self.test_Min,
-            #"MulConst": self.test_MulConst,
+            "MulConst": self.test_MulConst,
             "Neg": self.test_Neg,
             "Pad0": self.test_Pad0,  # zero pad
             "Pad1": self.test_Pad1,  # pad val
@@ -745,7 +744,7 @@ class ONNX_IR_TESTER(object):
 
     def test_Transpose(self, case_name):
         input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20], [1, 4, 2, 16, 20, 40]]
-        transpose_orders = {4: [0, 2, 1, 3], 5:[0, 1, 3, 4, 2], 6:[0, 1, 2, 5, 3, 4]}
+        transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2], 6: [0, 1, 2, 5, 3, 4]}
         for input_shape in input_shapes:
             input_data = np.random.randn(*input_shape).astype(np.float32)
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
