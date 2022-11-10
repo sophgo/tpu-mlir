@@ -9,7 +9,7 @@
 并配置Docker。同时, 本章中会使用到 ``git-lfs`` , 如果首次使用 ``git-lfs`` 可执行下述命
 令进行安装和配置(仅首次执行, 同时该配置是在用户自己系统中, 并非Docker container中):
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
@@ -21,7 +21,7 @@
 
 在 ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir的发布包)的同级目录下, 使用以下命令克隆 ``model-zoo`` 工程:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ git clone --depth=1 https://github.com/sophgo/model-zoo
@@ -31,7 +31,7 @@
 
 如果已经克隆过 ``model-zoo`` 可以执行以下命令同步模型到最新状态:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ cd model-zoo
@@ -78,7 +78,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 在 ``tpu-mlir_xxxx.tar.gz`` 目录下(注意, ``tpu-mlir_xxxx.tar.gz`` 和
 ``model-zoo`` 需要在同一级目录), 执行以下命令:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
@@ -93,7 +93,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 使用以下命令完成设置运行测试所需的环境变量:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ cd tpu-mlir_xxxx
@@ -101,7 +101,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 该过程结束后不会有任何提示。之后使用以下命令安装 ``tpu-perf``:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ pip3 install ../tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
 
@@ -119,7 +119,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 
 执行以下命令, 运行全部测试样例:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ cd ../model-zoo
@@ -143,7 +143,7 @@ wheel安装包。例如: tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl 。并
 修改 ``output`` 文件夹的属性, 以保证其可以被Docker外系统访问。
 
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ chmod -R a+rw output
@@ -165,7 +165,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 首先, 在工具链环境服务器『host 系统』安装 nfs 服务:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ sudo apt install nfs-kernel-server
 
@@ -184,20 +184,20 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 然后执行如下命令使配置生效:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ sudo exportfs -a
    $ sudo systemctl restart nfs-kernel-server
 
 另外, 需要为 dataset 目录下的图片添加读取权限:
 
-.. code-block:: console
+.. code-block:: shell
 
    chmod -R +r path/to/model-zoo/dataset
 
 在 SOC 设备上安装客户端并挂载该共享目录:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ mkdir model-zoo
    $ sudo apt-get install -y nfs-common
@@ -219,7 +219,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 
 1. PCIE 板卡下运行以下命令, 测试生成的 ``bmodel`` 性能。
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
@@ -232,7 +232,7 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
 ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl`` 文件到SOC设备上并执行
 以下操作:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl

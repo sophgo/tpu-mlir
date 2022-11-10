@@ -245,6 +245,7 @@ class MixPrecSearcher(object):
             f.write("# sample number: {}\n".format(self.num_sample))
             f.write("# all int8 loss: {}\n".format(int8_loss))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
+            f.write("###\n")
             for idx, layer in enumerate(loss_list):
                 loss_msg = "No.{:<4}: Layer: {:<50}\t\tLoss: {}".format(idx, layer[0], layer[1])
                 f.write("{}\n".format(loss_msg))
@@ -261,6 +262,7 @@ class MixPrecSearcher(object):
             f.write("# sample number: {}\n".format(self.num_sample))
             f.write("# all int8 loss: {}\n".format(int8_loss))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
+            f.write("###\n")
             f.write("# op_name   quantize_mode\n")
             for idx in range(num_mix_layers):
                 name = loss_list[idx][0]

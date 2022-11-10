@@ -33,7 +33,7 @@ AddOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Add"(%0, %1) {do_relu = false} : (tensor<1x3x27x27xf32>, tensor<1x3x27x27xf32>) -> tensor<1x3x27x27xf32> loc("add")
 
@@ -63,7 +63,7 @@ AvgPoolOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %90 = "top.AvgPool"(%89) {do_relu = false, kernel_shape = [5, 5], pads = [2, 2, 2, 2], strides = [1, 1]} : (tensor<1x256x20x20xf32>) -> tensor<1x256x20x20xf32> loc("resnetv22_pool1_fwd_GlobalAveragePool")
 
@@ -92,7 +92,7 @@ Depth2SpaceOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Depth2Space"(%0) {block_h = 2, block_w = 2, is_CRD = true, is_inversed = false} : (tensor<1x8x2x3xf32>) -> tensor<1x2x4x6xf32> loc("add")
 
@@ -128,7 +128,7 @@ BatchNormOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %5 = "top.BatchNorm"(%0, %1, %2, %3, %4) {epsilon = 1e-05, do_relu = false} : (tensor<1x3x27x27xf32>, tensor<3xf32>, tensor<3xf32>, tensor<3xf32>, tensor<3xf32>) -> tensor<1x3x27x27xf32> loc("BatchNorm")
 
@@ -157,7 +157,7 @@ ClipOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %3 = "top.Clip"(%0) {max = 1%: f64,min = 2%: f64} : (tensor<1x3x32x32xf32>) -> tensor<1x3x32x32xf32> loc("Clip")
 
@@ -182,7 +182,7 @@ ConcatOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Concat"(%0, %1) {axis = 1, do_relu = false} : (tensor<1x3x27x27xf32>, tensor<1x3x27x27xf32>)  -> tensor<1x6x27x27xf32> loc("Concat")
 
@@ -225,7 +225,7 @@ ConvOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Conv"(%0, %1) {kernel_shape = [3, 5], strides = [2, 1], pads = [4, 2]} : (tensor<20x16x50x100xf32>, tensor<33x3x5xf32>)  -> tensor<20x33x28x49xf32> loc("Conv")
 
@@ -261,7 +261,7 @@ DeconvOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Deconv"(%0, %1) {kernel_shape = (3, 5), strides = (2, 1), pads = (4, 2)} : (tensor<20x16x50x100xf32>, tensor<33x3x5xf32>)  -> tensor<20x33x28x49xf32> loc("Deconv")
 
@@ -291,7 +291,7 @@ DivOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Div"(%0, %1) {do_relu = false, relu_limit = -1.0, multiplier = 1, rshift = 0} : (tensor<1x3x27x27xf32>, tensor<1x3x27x27xf32>) -> tensor<1x3x27x27xf32> loc("div")
 
@@ -320,7 +320,7 @@ LeakyReluOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %4 = "top.LeakyRelu"(%3) {alpha = 0.67000001668930054 : f64} : (tensor<1x32x100x100xf32>) -> tensor<1x32x100x100xf32> loc("LeakyRelu")
 
@@ -354,7 +354,7 @@ LSTMOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
      %6 = "top.LSTM"(%0, %1, %2, %3, %4, %5) {batch_first = false, bidirectional = true, have_bias = true} : (tensor<75x2x128xf32>,tensor<2x256x128xf32>, tensor<2x256x64xf32>, tensor<2x512xf32>, tensor<2x2x64xf32>, tensor<2x2x64xf32>) -> tensor<75x2x2x64xf32> loc("LSTM")
 
@@ -379,7 +379,7 @@ LogOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
      %1 = "top.Log"(%0) : (tensor<1x3x32x32xf32>) -> tensor<1x3x32x32xf32> loc("Log")
 
@@ -406,7 +406,7 @@ MaxPoolOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %8 = "top.MaxPool"(%7) {do_relu = false, kernel_shape = [5, 5], pads = [2, 2, 2, 2], strides = [1, 1]} : (tensor<1x256x20x20xf32>) -> tensor<1x256x20x20xf32> loc("resnetv22_pool0_fwd_MaxPool")
 
@@ -435,7 +435,7 @@ MatMulOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.MatMul"(%0, %1) {do_relu = false, relu_limit = -1.0} : (tensor<3x4xf32>, tensor<4x5xf32>) -> tensor<3x5xf32> loc("matmul")
 
@@ -465,7 +465,7 @@ MulOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Mul"(%0, %1) {do_relu = false, relu_limit = -1.0, multiplier = 1, rshift = 0} : (tensor<1x3x27x27xf32>, tensor<1x3x27x27xf32>) -> tensor<1x3x27x27xf32> loc("mul")
 
@@ -494,7 +494,7 @@ MulConstOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %1 = arith.constant 4.7 : f64
       %2 = "top.MulConst"(%0) {do_relu = false, relu_limit = -1.0} : (tensor<1x3x27x27xf64>, %1) -> tensor<1x3x27x27xf64> loc("mulconst")
@@ -520,7 +520,7 @@ PermuteOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Permute"(%1) {order = [0, 1, 3, 4, 2]} : (tensor<4x3x85x20x20xf32>) -> tensor<4x3x20x20x85xf32> loc("output_Transpose")
 
@@ -546,7 +546,7 @@ ReluOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %1 = "top.Relu"(%0) {relu_limit = 6.000000e+00 : f64} : (tensor<1x3x32x32xf32>) -> tensor<1x3x32x32xf32> loc("Clip")
 
@@ -567,7 +567,7 @@ ReshapeOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %133 = "top.Reshape"(%132) : (tensor<1x255x20x20xf32>) -> tensor<1x3x85x20x20xf32> loc("resnetv22_flatten0_reshape0_Reshape")
 
@@ -593,7 +593,7 @@ ScaleOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %3 = "top.Scale"(%0, %1, %2) {do_relu = false} : (tensor<1x3x27x27xf32>, tensor<1x3x1x1xf32>, tensor<1x3x1x1xf32>) -> tensor<1x3x27x27xf32> loc("Scale")
 
@@ -622,7 +622,7 @@ SigmoidOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %2 = "top.Sigmoid"(%1) {bias = 0.000000e+00 : f64, scale = 1.000000e+00 : f64} : (tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32> loc("output_Sigmoid")
 
@@ -648,7 +648,7 @@ SiLUOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
         %1 = "top.SiLU"(%0) : (tensor<1x16x64x64xf32>) -> tensor<1x16x64x64xf32> loc("output_Mul")
 
@@ -675,7 +675,7 @@ SliceOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
         %1 = "top.Slice"(%0) {offset = [2, 10, 10, 12], steps = [1, 2, 2, 3]} : (tensor<5x116x64x64xf32>) -> tensor<3x16x16x8xf32> loc("output_Slice")
 
@@ -712,7 +712,7 @@ SoftmaxOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %1 = "top.Softmax"(%0) {axis = 1 : i64} : (tensor<1x1000x1x1xf32>) -> tensor<1x1000x1x1xf32> loc("output_Softmax")
 
@@ -734,7 +734,7 @@ SqueezeOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %133 = "top.Squeeze"(%132) {axes = [-1]} : (tensor<1x255x20x20xf32) -> tensor<1x255x20xf32> loc(#loc278)
 
@@ -760,7 +760,7 @@ UpsampleOp
     None
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %179 = "top.Upsample"(%178) {scale_h = 2 : i64, scale_w = 2 : i64} : (tensor<1x128x40x40xf32>) -> tensor<1x128x80x80xf32> loc("268_Resize")
 
@@ -788,7 +788,7 @@ WeightOp
     - clone_f16: convert the current weight to f16 and create a weight Op
 
 :Example:
-    .. code-block:: console
+    .. code-block:: shell
 
       %1 = "top.Weight"() : () -> tensor<32x16x3x3xf32> loc("filter")
 

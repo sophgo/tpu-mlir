@@ -22,7 +22,7 @@
 
 操作如下:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir model_resnet50_tf && cd model_resnet50_tf
@@ -42,7 +42,7 @@ TFLite转MLIR
 模型转换命令如下:
 
 
-.. code-block:: console
+.. code-block:: shell
 
     $ model_transform.py \
         --model_name resnet50_tf \
@@ -64,7 +64,7 @@ MLIR转模型
 
 该模型是tflite非对称量化模型, 可以按如下参数转成模型:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \

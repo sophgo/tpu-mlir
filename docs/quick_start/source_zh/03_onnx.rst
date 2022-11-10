@@ -24,7 +24,7 @@
 
 操作如下:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir model_yolov5s && cd model_yolov5s
@@ -54,7 +54,7 @@ ONNX转MLIR
 模型转换命令如下:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name yolov5s \
@@ -129,7 +129,7 @@ MLIR转F32模型
 
 将mlir文件转换成f32的bmodel, 操作方法如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -159,8 +159,7 @@ MLIR转F32模型
      - 指定默认量化类型, 支持F32/F16/BF16/INT8
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1684x(目前只支持这一种, 后续会支持多款TPU
-       平台)
+     - 指定模型将要用到的平台, 支持bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x
    * - calibration_table
      - 否
      - 指定校准表路径, 当存在INT8量化的时候需要校准表
@@ -201,7 +200,7 @@ MLIR转INT8模型
 这里用现有的100张来自COCO2017的图片举例, 执行calibration:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py yolov5s.mlir \
        --dataset ../COCO2017 \
@@ -217,7 +216,7 @@ MLIR转INT8模型
 
 转成INT8对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -237,7 +236,7 @@ MLIR转INT8模型
 
 转成INT8非对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -265,7 +264,7 @@ MLIR转INT8模型
 
 onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -275,7 +274,7 @@ onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
 
 f32 bmodel的执行方式如下, 得到 ``dog_f32.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -286,7 +285,7 @@ f32 bmodel的执行方式如下, 得到 ``dog_f32.jpg`` :
 
 int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -296,7 +295,7 @@ int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
 int8非对称bmodel的执行方式如下, 得到 ``dog_int8_asym.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -333,7 +332,7 @@ int8非对称bmodel的执行方式如下, 得到 ``dog_int8_asym.jpg`` :
 安装好 ``libsophon`` 后, 可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确
 性及性能。可以根据 ``bmrt_test`` 输出的性能结果, 来估算模型最大的fps, 来选择合适的模型。
 
-.. code-block:: console
+.. code-block:: shell
 
    # 下面测试上面编译出的bmodel
    # --bmodel参数后面接bmodel文件,
@@ -346,7 +345,7 @@ int8非对称bmodel的执行方式如下, 得到 ``dog_int8_asym.jpg`` :
 
 以最后一个命令输出为例(此处对日志做了部分截断处理):
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    [BMRT][load_bmodel:983] INFO:pre net num: 0, load net num: 1

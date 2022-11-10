@@ -5,6 +5,8 @@ TPU-MLIR是AI芯片的TPU编译器工程。该工程提供了一套完整的工�
 不同框架下预训练的神经网络, 转化为可以在算能TPU上高效运算的文件 ``bmodel``。
 代码已经开源到github: https://github.com/sophgo/tpu-mlir 。
 
+论文<https://arxiv.org/abs/2210.15016> 描述了TPU-MLIR的整体设计思路。
+
 TPU-MLIR的整体架构如下:
 
 .. figure:: ../assets/framework.png

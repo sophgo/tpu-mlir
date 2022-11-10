@@ -22,7 +22,7 @@ TPU-MLIR is developed in the Docker environment, and it can be compiled and run 
 Download the required image from DockerHub https://hub.docker.com/r/sophgo/tpuc_dev :
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ docker pull sophgo/tpuc_dev:latest
 
@@ -32,7 +32,7 @@ If you are using docker for the first time, you can execute the following comman
 
 .. _docker configuration:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ sudo apt install docker.io
@@ -45,7 +45,7 @@ If you are using docker for the first time, you can execute the following comman
 
 Make sure the installation package is in the current directory, and then create a container in the current directory as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
   # "myname" is just an example, you can use any name you want
@@ -70,7 +70,7 @@ Compilation
 
 In the docker container, the code is compiled as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ cd tpu-mlir
    $ source ./envsetup.sh
@@ -78,7 +78,7 @@ In the docker container, the code is compiled as follows:
 
 Regression validation:
 
-.. code-block:: console
+.. code-block:: shell
 
    # This project contains the yolov5s.onnx model, which can be used directly for validation
    $ pushd regression
@@ -87,7 +87,7 @@ Regression validation:
 
 You can validate more networks with model-zoo, but the whole regression takes a long time:
 
-.. code-block:: console
+.. code-block:: shell
 
    # The running time is very long, so it is not necessary
    $ pushd regression

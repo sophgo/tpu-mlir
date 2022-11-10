@@ -6,18 +6,11 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-// Written by:
-//     Pengchao Hu <pengchao.hu@bitmain.com>
-// Created Time: 2018-12-07 15:34
-// Description: this file is model definition file.
-//
+
 // Rules:
 // 1. Don't remove any item, or change any type or id number. If must, you can only change item name.
 // 2. You can add new item, but don't set it as required.
 //    If new item is a Vector, check whether it is NULL first and then access its elements in bmruntime.
-// 3. If this file changed, gen_model_header.sh need to be called manually to update model header files
-//
-// If you have any doubts, you can contact me (pengchao.hu@bitmain.com).
 
 namespace bmodel;
 

@@ -22,7 +22,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 从 DockerHub https://hub.docker.com/r/sophgo/tpuc_dev 下载所需的镜像:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ docker pull sophgo/tpuc_dev:latest
 
@@ -32,7 +32,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 
 .. _docker configuration:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ sudo apt install docker.io
@@ -46,7 +46,7 @@ TPU-MLIR在Docker环境开发, 配置好Docker就可以编译和运行了。
 确保安装包在当前目录, 然后在当前目录创建容器如下:
 
 
-.. code-block:: console
+.. code-block:: shell
 
   $ docker run --privileged --name myname -v $PWD:/workspace -it sophgo/tpuc_dev:latest
   # myname只是举个名字的例子, 请指定成自己想要的容器的名字
@@ -71,7 +71,7 @@ https://github.com/sophgo/model-zoo
 
 在docker的容器中, 代码编译方式如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ cd tpu-mlir
    $ source ./envsetup.sh
@@ -79,7 +79,7 @@ https://github.com/sophgo/model-zoo
 
 回归验证, 如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    # 本工程包含yolov5s.onnx模型, 可以直接用来验证
    $ pushd regression
@@ -90,7 +90,7 @@ https://github.com/sophgo/model-zoo
 
 操作如下: (可选)
 
-.. code-block:: console
+.. code-block:: shell
 
    # 执行时间很长, 该步骤也可以跳过
    $ pushd regression

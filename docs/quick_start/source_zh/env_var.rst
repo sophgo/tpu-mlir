@@ -2,7 +2,7 @@
 :ref:`启动Docker Container <docker container_setup>` 。
 
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz

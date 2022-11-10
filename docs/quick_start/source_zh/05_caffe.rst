@@ -22,7 +22,7 @@
 
 操作如下:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir mobilenet_v2 && cd mobilenet_v2
@@ -44,7 +44,7 @@ Caffe转MLIR
 模型转换命令如下:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name mobilenet_v2 \
@@ -67,7 +67,7 @@ MLIR转F32模型
 
 将mlir文件转换成f32的bmodel, 操作方法如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -95,7 +95,7 @@ MLIR转INT8模型
 这里用现有的100张来自ILSVRC2012的图片举例, 执行calibration:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
@@ -111,7 +111,7 @@ MLIR转INT8模型
 
 转成INT8对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -131,7 +131,7 @@ MLIR转INT8模型
 
 转成INT8非对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \

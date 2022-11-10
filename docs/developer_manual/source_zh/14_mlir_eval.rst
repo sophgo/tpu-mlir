@@ -42,7 +42,7 @@ TPU-MLIR中的精度验证主要针对mlir模型, fp32采用top层的mlir模型�
 
 TPU-MLIR的精度验证命令参考如下:
 
-.. code-block:: console
+.. code-block:: shell
 
     $ model_eval.py \
         --model_file mobilenet_v2.mlir \
@@ -97,7 +97,7 @@ mobilenet_v2
 
    使用model_transform.py接口将原模型转换为mobilenet_v2.mlir模型, 并通过run_calibration.py接口获得mobilenet_v2_cali_table。具体使用方法请参照“用户界面”章节。tpu层的INT8模型则通过以下命令获得:
 
-.. code-block:: console
+.. code-block:: shell
 
     # INT8 对称量化模型
     $ tpuc-opt mobilenet_v2.mlir \
@@ -112,7 +112,7 @@ mobilenet_v2
 
    使用model_eval.py接口进行精度验证:
 
-.. code-block:: console
+.. code-block:: shell
 
     # F32 模型精度验证
     $ model_eval.py \
@@ -132,7 +132,7 @@ mobilenet_v2
 
 F32模型与INT8对称量化模型的精度验证结果如下:
 
-.. code-block:: console
+.. code-block:: shell
 
     # mobilenet_v2.mlir精度验证结果
     2022/11/08 01:30:29 - INFO : idx:50000, top1:0.710, top5:0.899
@@ -157,7 +157,7 @@ yolov5s
 
    使用model_eval.py接口进行精度验证:
 
-.. code-block:: console
+.. code-block:: shell
 
     # F32 模型精度验证
     $ model_eval.py \
@@ -179,7 +179,7 @@ yolov5s
 
 F32模型与INT8对称量化模型的精度验证结果如下:
 
-.. code-block:: console
+.. code-block:: shell
 
     # yolov5s.mlir精度验证结果
     Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.369
