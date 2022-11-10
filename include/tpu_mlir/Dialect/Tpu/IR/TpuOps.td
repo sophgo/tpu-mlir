@@ -1086,4 +1086,43 @@ def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_ResizeMode : I32EnumAttr<"ResizeMode",
+    "Resize mode",
+    [
+      I32EnumAttrCase<"nearest", 0>,
+      I32EnumAttrCase<"linear", 1>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ResizeModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeMode, "mode">;
+
+def Tpu_ResizeCoordMode : I32EnumAttr<"ResizeCoordMode",
+    "Resize coord mode",
+    [
+      I32EnumAttrCase<"align_corners", 0>,
+      I32EnumAttrCase<"half_pixel", 1>,
+      I32EnumAttrCase<"pytorch_half_pixel", 2>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ResizeCoordModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeCoordMode, "coord_mode">;
+
+def Tpu_InterpOp: Tpu_Op<"Interp"> {
+  let summary = "Interp operation";
+  let description = [{
+    Perform Interp on input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$scale_h,
+    F64Attr:$scale_w,
+    Tpu_ResizeModeAttr:$mode,
+    Tpu_ResizeCoordModeAttr:$coord_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

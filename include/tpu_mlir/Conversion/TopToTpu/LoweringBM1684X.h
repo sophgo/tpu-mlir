@@ -65,6 +65,6 @@ LOWERING_BM1684X(Softmax)
 LOWERING_BM1684X(Squeeze)
 LOWERING_BM1684X(Tile)
 LOWERING_BM1684X(Upsample)
-
+LOWERING_BM1684X(Interp)
 } // namespace bm1684x
 } // namespace tpu_mlir
