@@ -44,7 +44,7 @@
         --input ../COCO2017/000000124798.jpg \
         --output yolov3_onnx.jpg
 
-执行完后打印检测到的结果如下：
+执行完后打印检测到的结果如下:
 
 .. code-block:: console
 
@@ -117,7 +117,7 @@
         --input ../COCO2017/000000124798.jpg \
         --output yolov3_int8.jpg
 
-执行完后打印结果为：
+执行完后打印结果为:
 
 .. code-block:: console
 
@@ -173,7 +173,7 @@
      - 指定输入样本数量, 默认用10个
    * - o
      - 是
-     - 输出混精度表
+     - 输出混精度量化表
 
 本例中采用默认10张图片校准, 执行命令如下:
 
@@ -193,7 +193,7 @@
   convolution_output11_Conv F32
 
 
-该表中, 第一列表示相应的layer, 第二列表示类型。
+该表中, 第一列表示相应的layer, 第二列表示类型, 支持的类型有F32/F16/BF16/INT8。
 另外同时也会生成一个loss表文件 ``full_loss_table.txt``, 内容如下:
 
 .. code-block:: console
@@ -213,7 +213,7 @@
 
 该表按Loss从小到大顺利排列, 表示该层Layer换成相应的模式后, 最终结果的loss, loss越小说明改善越大。
 ``run_qtable.py`` 只会取相对INT8的loss, 改善超过5%的layer做混精度。
-如果混精度表的实际业务效果不好, 则可以按loss顺序多添加几层, 看看效果。
+如果混精度量化表的实际业务效果不好, 则可以按loss顺序多添加几层, 看看效果。
 
 
 第二步: 生成混精度量化模型
@@ -239,7 +239,7 @@
         --input ../COCO2017/000000124798.jpg \
         --output yolov3_mix.jpg
 
-执行完后打印结果为：
+执行完后打印结果为:
 
 .. code-block:: console
 

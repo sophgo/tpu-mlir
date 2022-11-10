@@ -37,7 +37,7 @@ b. 流程介绍:
 
     * **遍历每个Op, 在遍历Op时,判断Op的输入tensor是否位于rec_tbl**
 
-      **中，如果yes,判断ref_cnt是否>=1, 如果yes,则ref_cnt--,表示输**
+      **中, 如果yes,判断ref_cnt是否>=1, 如果yes,则ref_cnt--,表示输**
 
       **入tensor的引用数降低1个。**
 

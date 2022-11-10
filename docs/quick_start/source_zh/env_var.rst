@@ -1,4 +1,4 @@
-以下操作需要在Docker容器中。关于Docker的使用，请参考
+以下操作需要在Docker容器中。关于Docker的使用, 请参考
 :ref:`启动Docker Container <docker container_setup>` 。
 
 
@@ -8,7 +8,7 @@
    $ tar zxf tpu-mlir_xxxx.tar.gz
    $ source tpu-mlir_xxxx/envsetup.sh
 
-``envsetup.sh`` 会添加以下环境变量：
+``envsetup.sh`` 会添加以下环境变量:
 
 .. list-table:: 环境变量
    :widths: 25 30 30
@@ -22,9 +22,9 @@
      - 解压后SDK包的位置
    * - MODEL_ZOO_PATH
      - ${TPUC_ROOT}/../model-zoo
-     - model-zoo文件夹位置，与SDK在同一级目录
+     - model-zoo文件夹位置, 与SDK在同一级目录
 
-``envsetup.sh`` 对环境变量的修改内容为：
+``envsetup.sh`` 对环境变量的修改内容为:
 
 .. code-block:: shell
    :linenos:

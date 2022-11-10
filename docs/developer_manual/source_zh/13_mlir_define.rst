@@ -1,7 +1,7 @@
 MLIR定义
 ============
 
-本章介绍MLIR各个元素的定义，包括Dialect、Interface等等
+本章介绍MLIR各个元素的定义, 包括Dialect、Interface等等
 
 Top Dialect
 ---------------
@@ -13,18 +13,18 @@ AddOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    加法操作，:math:`Y = coeff_0 * X_0 + coeff_1 * X_1`
+    加法操作, :math:`Y = coeff_0 * X_0 + coeff_1 * X_1`
 
 :输入:
-    - inputs: tensor数组，对应2个或多个输入tensor
+    - inputs: tensor数组, 对应2个或多个输入tensor
 
 :输出:
     - output: tensor
 
 :属性:
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
-    - coeff: 对应每个tensor的系数，默认为1.0
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
+    - coeff: 对应每个tensor的系数, 默认为1.0
 
 :输出:
     - output: 输出tensor
@@ -42,7 +42,7 @@ AvgPoolOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    将输入的tensor进行均值池化，:math:`S=\frac{1}{width\ *\ height}\sum_{i,j}a_{ij}` 。大小给定的滑动窗口会依次将输入tensor进行池化
+    将输入的tensor进行均值池化, :math:`S=\frac{1}{width\ *\ height}\sum_{i,j}a_{ij}` 。大小给定的滑动窗口会依次将输入tensor进行池化
 
     其中 :math:`width` 和 :math:`height` 表示kernel_shape的宽度和高度。 :math:`\sum_{i,j}a_{ij}` 则表示对kernel_shape进行求和
 :输入:
@@ -53,12 +53,12 @@ AvgPoolOp
 
 :属性:
     - kernel_shape: 控制均值池化滑动窗口的大小
-    - strides: 步长，控制滑动窗口每次滑动的距离
-    - pads: 控制填充形状，方便池化
-    - pad_value: 填充内容，常数，默认为0
+    - strides: 步长, 控制滑动窗口每次滑动的距离
+    - pads: 控制填充形状, 方便池化
+    - pad_value: 填充内容, 常数, 默认为0
     - count_include_pad: 结果是否需要对填充的pad进行计数
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -72,7 +72,7 @@ Depth2SpaceOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    深度转空间操作，:math:`Y = Depth2Space(X)`
+    深度转空间操作, :math:`Y = Depth2Space(X)`
 
 :输入:
     - inputs: tensor
@@ -81,11 +81,11 @@ Depth2SpaceOp
     - output: tensor
 
 :属性:
-    - block_h：tensor 高度改变的参数，i64类型
-    - block_w：tensor 宽度改变的参数，i64类型
-    - is_CRD：column-row-depth，如果true，则数据沿深度方向的排布按照HWC，否则为CHW，bool类型
-    - is_inversed：如果true，那么结果的形状为： :math:`[n, c * block_h * block_w, h / block_h, w / block_w]`,
-                    否则结果的形状为：:math:`[n, c / (block_h * block_w), h * block_h, w * block_w]`
+    - block_h: tensor 高度改变的参数, i64类型
+    - block_w: tensor 宽度改变的参数, i64类型
+    - is_CRD: column-row-depth, 如果true, 则数据沿深度方向的排布按照HWC, 否则为CHW, bool类型
+    - is_inversed: 如果true, 那么结果的形状为:  :math:`[n, c * block_h * block_w, h / block_h, w / block_w]`,
+                    否则结果的形状为: :math:`[n, c / (block_h * block_w), h * block_h, w * block_w]`
 
 :输出:
     - output: 输出tensor
@@ -106,7 +106,7 @@ BatchNormOp
     在一个四维输入tensor上执行批标准化(Batch Normalization)。关于批标准化的更多细节可以参考论文《`Batch Normalization: Accelerating Deep Network Training by Reducing
     Internal Covariate Shift <https://arxiv.org/abs/1502.03167>`__ 》。
 
-    具体计算公式如下：
+    具体计算公式如下:
 
     .. math::
 
@@ -123,9 +123,9 @@ BatchNormOp
     - output: 结果tensor
 
 :属性:
-    - epsilon: 公式中的 :math:`\epsilon` 常量，默认为1e-05
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - epsilon: 公式中的 :math:`\epsilon` 常量, 默认为1e-05
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -168,18 +168,18 @@ ConcatOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    将给定的tensor序列在给定的维度上连接起来。所有的输入tensor或者都具有相同的shape(待连接的维度除外)，或者都为空。
+    将给定的tensor序列在给定的维度上连接起来。所有的输入tensor或者都具有相同的shape(待连接的维度除外), 或者都为空。
 
 :输入:
-    - inputs: tensor数组，对应2个或多个输入tensor
+    - inputs: tensor数组, 对应2个或多个输入tensor
 
 :输出:
     - output: 结果tensor
 
 :属性:
     - axis: 待连接的维度的下标
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -195,18 +195,18 @@ ConvOp
 :简述:
     对输入tensor执行二维卷积操作。
 
-    简单来说，给定输入大小为 :math:`(N, C_{\text{in}}, H, W)`，输出 :math:`(N, C_{\text{out}}, H_{\text{out}}, W_{\text{out}})` 的计算方法为：
+    简单来说, 给定输入大小为 :math:`(N, C_{\text{in}}, H, W)`, 输出 :math:`(N, C_{\text{out}}, H_{\text{out}}, W_{\text{out}})` 的计算方法为:
 
     .. math::
 
       \text{out}(N_i, C_{\text{out}_j}) = \text{bias}(C_{\text{out}_j}) + \sum_{k = 0}^{C_{\text{in}} - 1} \text{weight}(C_{\text{out}_j}, k) \star \text{input}(N_i, k)
 
-    其中 :math:`\star` 是有效的cross-correlation操作， :math:`N` 是batch的大小， :math:`C` 是channel的数量， :math:`H, W` 是输入图片的高和宽。
+    其中 :math:`\star` 是有效的cross-correlation操作,  :math:`N` 是batch的大小,  :math:`C` 是channel的数量,  :math:`H, W` 是输入图片的高和宽。
 
 :输入:
     - input: 输入tensor
-    - filter: 参数tensor，其形状为 :math:`(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size[0]}, \text{kernel\_size[1]})`:
-    - bias: 可学习的偏差tensor，形状为 :math:`(out\_channels)`.
+    - filter: 参数tensor, 其形状为 :math:`(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size[0]}, \text{kernel\_size[1]})`:
+    - bias: 可学习的偏差tensor, 形状为 :math:`(out\_channels)`.
 
 :输出:
     - output: 结果tensor
@@ -215,11 +215,11 @@ ConvOp
     - kernel_shape: 卷积核的尺寸
     - strides: 卷积的步长
     - pads: 输入的每一条边补充0的层数
-    - group: 从输入通道到输出通道的阻塞连接数，默认为1
-    - dilations: 卷积核元素之间的间距，可选
+    - group: 从输入通道到输出通道的阻塞连接数, 默认为1
+    - dilations: 卷积核元素之间的间距, 可选
     - inserts: 可选
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -238,8 +238,8 @@ DeconvOp
 
 :输入:
     - input: 输入tensor
-    - filter: 参数tensor，其形状为 :math:`(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size[0]}, \text{kernel\_size[1]})`:
-    - bias: 可学习的偏差tensor，形状为 :math:`(out\_channels)`.
+    - filter: 参数tensor, 其形状为 :math:`(\text{out\_channels}, \frac{\text{in\_channels}}{\text{groups}}, \text{kernel\_size[0]}, \text{kernel\_size[1]})`:
+    - bias: 可学习的偏差tensor, 形状为 :math:`(out\_channels)`.
 
 :输出:
     - output: 结果tensor
@@ -248,11 +248,11 @@ DeconvOp
     - kernel_shape: 卷积核的尺寸
     - strides: 卷积的步长
     - pads: 输入的每一条边补充0的层数
-    - group: 从输入通道到输出通道的阻塞连接数，默认为1
-    - dilations: 卷积核元素之间的间距，可选
+    - group: 从输入通道到输出通道的阻塞连接数, 默认为1
+    - dilations: 卷积核元素之间的间距, 可选
     - inserts: 可选
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -267,19 +267,19 @@ DivOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    除法操作，:math:`Y = X_0 / X_1`
+    除法操作, :math:`Y = X_0 / X_1`
 
 :输入:
-    - inputs: tensor数组，对应2个或多个输入tensor
+    - inputs: tensor数组, 对应2个或多个输入tensor
 
 :输出:
     - output: tensor
 
 :属性:
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
-    - multiplier: 量化用的乘数，默认为1
-    - rshift: 量化用的右移，默认为0
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
+    - multiplier: 量化用的乘数, 默认为1
+    - rshift: 量化用的右移, 默认为0
 
 :输出:
     - output: 输出tensor
@@ -300,7 +300,7 @@ InputOp
 LeakyReluOp
 ^^^^^^^^^^^^^^^
 :简述:
-    tensor中每个元素执行LeakyRelu函数，函数可表示为：f(x) = alpha * x for x < 0, f(x) = x for x >= 0
+    tensor中每个元素执行LeakyRelu函数, 函数可表示为: f(x) = alpha * x for x < 0, f(x) = x for x >= 0
 :输入:
     - input: tensor
 
@@ -335,14 +335,14 @@ LSTMOp
 
 :属性:
     - filter:卷积核
-    - recurrence：循环单元
-    - bias：LSTM的参数：偏置
-    - initial_h：LSTM中的每句话经过当前cell后会得到一个state,state 是个tuple(c, h)，其中h=[batch_size, hidden_size]
-    - initial_c：c=[batch_size, hidden_size]
-    - have_bias：是否设置偏置bias，默认为false
-    - bidirectional：设置双向循环的LSTM，默认为false
-    - batch_first：是否将batch放在第一维，默认为false
-    - num_layers：LSTM堆叠层数，默认为1
+    - recurrence: 循环单元
+    - bias: LSTM的参数: 偏置
+    - initial_h: LSTM中的每句话经过当前cell后会得到一个state,state 是个tuple(c, h), 其中h=[batch_size, hidden_size]
+    - initial_c: c=[batch_size, hidden_size]
+    - have_bias: 是否设置偏置bias, 默认为false
+    - bidirectional: 设置双向循环的LSTM, 默认为false
+    - batch_first: 是否将batch放在第一维, 默认为false
+    - num_layers: LSTM堆叠层数, 默认为1
 
 :输出:
     - output: 输出tensor
@@ -392,12 +392,12 @@ MaxPoolOp
 
 :属性:
     - kernel_shape: 控制均值池化滑动窗口的大小
-    - strides: 步长，控制滑动窗口每次滑动的距离
-    - pads: 控制填充形状，方便池化
-    - pad_value: 填充内容，常数，默认为0
+    - strides: 步长, 控制滑动窗口每次滑动的距离
+    - pads: 控制填充形状, 方便池化
+    - pad_value: 填充内容, 常数, 默认为0
     - count_include_pad: 结果是否需要对填充的pad进行计数
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -411,7 +411,7 @@ MatMulOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    二维矩阵乘法操作，:math:`C = A * B`
+    二维矩阵乘法操作, :math:`C = A * B`
 
 :输入:
     - input: tensor: m*k 大小的矩阵
@@ -421,9 +421,9 @@ MatMulOp
     - output: tensor m*n 大小的矩阵
 
 :属性:
-    - bias: 偏差，量化的时候会根据bias计算 bias_scale，可以为空
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - bias: 偏差, 量化的时候会根据bias计算 bias_scale, 可以为空
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :输出:
     - output: 输出tensor
@@ -441,19 +441,19 @@ MulOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    乘法操作，:math:`Y = X_0 * X_1`
+    乘法操作, :math:`Y = X_0 * X_1`
 
 :输入:
-    - inputs: tensor数组，对应2个或多个输入tensor
+    - inputs: tensor数组, 对应2个或多个输入tensor
 
 :输出:
     - output: tensor
 
 :属性:
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
-    - multiplier: 量化用的乘数，默认为1
-    - rshift: 量化用的右移，默认为0
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
+    - multiplier: 量化用的乘数, 默认为1
+    - rshift: 量化用的右移, 默认为0
 
 :输出:
     - output: 输出tensor
@@ -471,7 +471,7 @@ MulConstOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    和常数做乘法操作，:math:`Y = X * Const_Val`
+    和常数做乘法操作, :math:`Y = X * Const_Val`
 
 :输入:
     - inputs: tensor
@@ -481,8 +481,8 @@ MulConstOp
 
 :属性:
     - const_val: f64类型的常量
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :输出:
     - output: 输出tensor
@@ -500,10 +500,10 @@ MulConstOp
 PermuteOp
 ^^^^^^^^^^^^^^^
 :简述:
-    改变tensor布局，变化tensor数据维度的顺序，将输入的tensor按照order给定的顺序重新布局
+    改变tensor布局, 变化tensor数据维度的顺序, 将输入的tensor按照order给定的顺序重新布局
 
 :输入:
-    - inputs: tensor数组，任意类型的tensor
+    - inputs: tensor数组, 任意类型的tensor
 
 
 :属性:
@@ -511,7 +511,7 @@ PermuteOp
 
 
 :输出:
-    - output: 输出tensor，按order的顺序重新布局后的tensor
+    - output: 输出tensor, 按order的顺序重新布局后的tensor
 
 :接口:
     无
@@ -526,7 +526,7 @@ PermuteOp
 ReluOp
 ^^^^^^^^^^^^^^^
 :简述:
-    tensor中每个元素执行ReLU函数，如果极限为零，则不使用上限
+    tensor中每个元素执行ReLU函数, 如果极限为零, 则不使用上限
 :输入:
     - input: tensor
 
@@ -534,7 +534,7 @@ ReluOp
     - output: tensor
 
 :属性:
-   - relu_limit：如果做Relu，指定上限值，如果是负数，则认为没有上限。
+   - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限。
 
 :输出:
     - output: 输出tensor
@@ -550,7 +550,7 @@ ReluOp
 ReshapeOp
 ^^^^^^^^^^^^^^^
 :简述:
-    Reshape算子，返回一个给定形状的tensor，该tensor的类型和内部的值与输入tensor相同。reshape可能会对tensor的任何一行进行操作。在reshape过程中不会有任何数据的值被修改
+    Reshape算子, 返回一个给定形状的tensor, 该tensor的类型和内部的值与输入tensor相同。reshape可能会对tensor的任何一行进行操作。在reshape过程中不会有任何数据的值被修改
 :输入:
     - input: tensor
 
@@ -572,7 +572,7 @@ ScaleOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    Scale操作 :math:`Y = X * S + B`，其中X/Y的shape为[N, C, H, W]，S/B的shape为[1, C, 1, ,1]。
+    Scale操作 :math:`Y = X * S + B`, 其中X/Y的shape为[N, C, H, W], S/B的shape为[1, C, 1, ,1]。
 
 :输入:
     - input: 输入tensor
@@ -583,8 +583,8 @@ ScaleOp
     - output: 结果tensor
 
 :属性:
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :接口:
     无
@@ -598,18 +598,18 @@ ScaleOp
 SigmoidOp
 ^^^^^^^^^^^^^^^
 :简述:
-    激活函数，将tensor中元素映射到特定区间，默认映射到[0，1]，计算方法为:
+    激活函数, 将tensor中元素映射到特定区间, 默认映射到[0, 1], 计算方法为:
 
     .. math::
         Y = \frac{scale}{1 + e^{-X}} + bias
 
 :输入:
-    - inputs: tensor数组，任意类型的tensor
+    - inputs: tensor数组, 任意类型的tensor
 
 
 :属性:
-    - scale: 倍数，默认是1
-    - bias: 偏置，默认是0
+    - scale: 倍数, 默认是1
+    - bias: 偏置, 默认是0
 
 
 :输出:
@@ -628,10 +628,10 @@ SigmoidOp
 SiLUOp
 ^^^^^^^^^^^^^^^
 :简述:
-    激活函数，:math:`Y = \frac{X}{1 + e^{-X}}` 或 :math:`Y = X * Sigmoid(X)`
+    激活函数, :math:`Y = \frac{X}{1 + e^{-X}}` 或 :math:`Y = X * Sigmoid(X)`
 
 :输入:
-    - input: tensor数组，任意类型的tensor
+    - input: tensor数组, 任意类型的tensor
 
 
 :属性:
@@ -653,16 +653,16 @@ SiLUOp
 
 SliceOp
 ^^^^^^^^^^^^^^^
-:简述: tensor切片，将输入的tensor的各个维度，根据offset和steps数组中的偏移和步长进行切片，生成新的tensor
+:简述: tensor切片, 将输入的tensor的各个维度, 根据offset和steps数组中的偏移和步长进行切片, 生成新的tensor
 
 
 :输入:
-    - input: tensor数组，任意类型的tensor
+    - input: tensor数组, 任意类型的tensor
 
 
 :属性:
-    - offset: 存储切片偏移的数组，offset数组的索引和输入tensor的维度索引对应
-    - steps: 存储切片步长的数组，steps数组的索引和输入tensor维度索引对应
+    - offset: 存储切片偏移的数组, offset数组的索引和输入tensor的维度索引对应
+    - steps: 存储切片步长的数组, steps数组的索引和输入tensor维度索引对应
 
 
 :输出:
@@ -682,28 +682,28 @@ SliceOp
 SoftmaxOp
 ^^^^^^^^^^^^^^^
 :简述:
-    对输入tensor，在指定axis的维度上计算归一化指数值，计算的方法如下：
+    对输入tensor, 在指定axis的维度上计算归一化指数值, 计算的方法如下:
 
     .. math::
         \sigma(Z)_i = \frac{e^{\beta{Z_i}}}{\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}}
 
-    其中， :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` ，在axis维度上做指数值求和，j从0到K-1，K是输入tensor在axis维度上的尺寸。
+    其中,  :math:`\sum_{j=0}^{K-1}{e^{\beta{Z_j}}}` , 在axis维度上做指数值求和, j从0到K-1, K是输入tensor在axis维度上的尺寸。
 
-    例如：输入tensor的尺寸为 :math:`（N, C, W, H）`,在axis=1的通道上计算Softmax，计算方法为：
+    例如: 输入tensor的尺寸为 :math:`(N, C, W, H)`,在axis=1的通道上计算Softmax, 计算方法为:
 
     .. math::
         Y_{n,i,w,h} = \frac{e^{\beta{X_{n,i,w,h}}}}{\sum_{j=0}^{C-1}{e^{\beta{X_{n,j,w,h}}}}}
 :输入:
-    - input: tensor数组，任意类型的tensor
+    - input: tensor数组, 任意类型的tensor
 
 
 :属性:
-    - axis: 维度索引，用于指定对输入tensor执行Softmax对应的维度，axis可以取值[-r， r-1], r 为输入tensor维度的数量, 当axis为负数时，表示倒序维度
-    - beta: tflite模型中对输入的缩放系数，非tflite模型无效，默认值为1.0
+    - axis: 维度索引, 用于指定对输入tensor执行Softmax对应的维度, axis可以取值[-r,  r-1], r 为输入tensor维度的数量, 当axis为负数时, 表示倒序维度
+    - beta: tflite模型中对输入的缩放系数, 非tflite模型无效, 默认值为1.0
 
 
 :输出:
-    - output: 输出tensor，在指定维度做归一化指数值后的tensor
+    - output: 输出tensor, 在指定维度做归一化指数值后的tensor
 
 :接口:
     无
@@ -725,7 +725,7 @@ SqueezeOp
     - output: tensor
 
 :属性:
-    - axes: 指定需要裁剪的维度，0代表第一个维度，-1代表最后一个维度
+    - axes: 指定需要裁剪的维度, 0代表第一个维度, -1代表最后一个维度
 
 :接口:
     无
@@ -739,7 +739,7 @@ UpsampleOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    上采样op，将输入tensor进行nearest上采样并返回tensor
+    上采样op, 将输入tensor进行nearest上采样并返回tensor
 
 :输入:
     tensor
@@ -747,8 +747,8 @@ UpsampleOp
 :属性:
     - scale_h: 目标图像与原图像的高度之比
     - scale_w: 目标图像与原图像的宽度之比
-    - do_relu: 结果是否做Relu，默认为False
-    - relu_limit: 如果做Relu，指定上限值，如果是负数，则认为没有上限
+    - do_relu: 结果是否做Relu, 默认为False
+    - relu_limit: 如果做Relu, 指定上限值, 如果是负数, 则认为没有上限
 
 :输出:
     - output: tensor
@@ -765,7 +765,7 @@ WeightOp
 ^^^^^^^^^^^^^^^
 
 :简述:
-    权重op，包括权重的读取和创建，权重会存到npz文件中。权重的location与npz中的tensor名称是对应关系。
+    权重op, 包括权重的读取和创建, 权重会存到npz文件中。权重的location与npz中的tensor名称是对应关系。
 
 :输入:
     无
@@ -777,12 +777,12 @@ WeightOp
     - output: 权重Tensor
 
 :接口:
-    - read: 读取权重数据，类型由模型指定
+    - read: 读取权重数据, 类型由模型指定
     - read_as_float: 将权重数据转换成float类型读取
     - read_as_byte: 将权重数据按字节类型读取
     - create: 创建权重op
-    - clone_bf16: 将当前权重转换成bf16，并创建权重Op
-    - clone_f16: 将当前权重转换成f16，并创建权重Op
+    - clone_bf16: 将当前权重转换成bf16, 并创建权重Op
+    - clone_f16: 将当前权重转换成f16, 并创建权重Op
 
 :范例:
     .. code-block:: console
