@@ -10,15 +10,26 @@ TPU-MLIR中的精度验证主要针对mlir模型, fp32采用top层的mlir模型�
 
 评估指标
 ~~~~~~~~~~~~
-当前主要用于测试的网络有分类网络与目标检测网络, 分类网络的精度指标采用Top-1与Top-5准确率, 而目标检测网络采用COCO的12个评估指标, 如图(:ref:`coco_eval`)。通常记录精度时采用IoU=0.5时的Average Precision(即PASCAL VOC metric)。
+当前主要用于测试的网络有分类网络与目标检测网络，分类网络的精度指标采用Top-1与Top-5准确率，而目标检测网络采用COCO的12个评估指标，如下所示。通常记录精度时采用IoU=0.5时的Average Precision（即PASCAL VOC metric）。
 
-.. _coco_eval:
-.. figure:: ../assets/coco_eval.png
-   :height: 9.5cm
-   :align: center
+.. math::
 
-   COCO评估指标
-
+   \boldsymbol{Average Precision (AP):} & \\
+   AP\quad & \text{\% AP at IoU=.50:.05:.95 (primary challenge metric)} \\
+   AP^{IoU}=.50\quad & \text{\% AP at IoU=.50 (PASCAL VOC metric)} \\
+   AP^{IoU}=.75\quad & \text{\% AP at IoU=.75 (strict metric)} \\
+   \boldsymbol{AP Across Scales:} & \\
+   AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
+   AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
+   AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$} \\
+   \boldsymbol{Average Recall (AR):} & \\ 
+   AR^{max=1}\quad & \text{\% AR given 1 detection per image} \\
+   AR^{max=10}\quad & \text{\% AR given 10 detections per image} \\
+   AR^{max=100}\quad & \text{\% AR given 100 detections per image} \\
+   \boldsymbol{AP Across Scales:} & \\
+   AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
+   AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
+   AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$}
 
 数据集
 ~~~~~~~~~~~~
