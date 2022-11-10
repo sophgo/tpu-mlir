@@ -46,7 +46,7 @@ The preprocessing process is formulated as follows ( :math:`x` represents the in
 
 .. math::
 
-   y = （x - mean） \times scale
+   y = (x - mean) \times scale
 
 
 The image of the official yolov5 is rgb. Each value will be multiplied by ``1/255``, respectively corresponding to
