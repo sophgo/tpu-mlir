@@ -23,7 +23,7 @@ import onnxruntime
 Failed_Cases = [
     "GroupFC", "GRU", "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Reduce", "Reduce2", "ReduceL2",
     "Reciprocal", "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax",
-    "TorchMaskedFill", "TorchWhere", "AvgPool1D"
+    "TorchMaskedFill", "TorchWhere"
 ]
 
 
@@ -37,7 +37,7 @@ class ONNX_IR_TESTER(object):
             "Abs": self.test_Abs,
             "Add": self.test_Add,
             "AddConst": self.test_AddConst,
-            #"AvgPool1D": self.test_AvgPool1D,
+            "AvgPool1D": self.test_AvgPool1D,
             "AvgPool2D": self.test_AvgPool2D,
             "AvgPool3D": self.test_AvgPool3D,
             "BatchMatMul": self.test_BatchMatMul,
