@@ -10,14 +10,26 @@ The accuracy validation in TPU-MLIR is mainly for the mlir model, fp32 uses the 
 
 Metrics
 ~~~~~~~~~~~~
-Currently, the validation is mainly used for classification and object detection networks. The metrics for classification networks are Top-1 and Top-5 accuracy, while the object detection networks use 12 metrics of COCO, as shown in the figure (:ref:` coco_eval`). Generally, we record the Average Precision when IoU=0.5 (i.e., PASCAL VOC metric).
+Currently, the validation is mainly used for classification and object detection networks. The metrics for classification networks are Top-1 and Top-5 accuracy, while the object detection networks use 12 metrics of COCO, as shown below. Generally, we record the Average Precision when IoU=0.5 (i.e., PASCAL VOC metric).
 
-.. _coco_eval:
-.. figure:: ../assets/coco_eval.png
-   :height: 9.5cm
-   :align: center
+.. math::
 
-   COCO Evaluation Metrics
+   \boldsymbol{Average Precision (AP):} & \\
+   AP\quad & \text{\% AP at IoU=.50:.05:.95 (primary challenge metric)} \\
+   AP^{IoU}=.50\quad & \text{\% AP at IoU=.50 (PASCAL VOC metric)} \\
+   AP^{IoU}=.75\quad & \text{\% AP at IoU=.75 (strict metric)} \\
+   \boldsymbol{AP Across Scales:} & \\
+   AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
+   AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
+   AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$} \\
+   \boldsymbol{Average Recall (AR):} & \\ 
+   AR^{max=1}\quad & \text{\% AR given 1 detection per image} \\
+   AR^{max=10}\quad & \text{\% AR given 10 detections per image} \\
+   AR^{max=100}\quad & \text{\% AR given 100 detections per image} \\
+   \boldsymbol{AP Across Scales:} & \\
+   AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
+   AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
+   AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$}
 
 
 Datasets
