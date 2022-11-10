@@ -45,6 +45,7 @@ class Top:
     MinOp = 'top.Min'
     AbsOp = 'top.Abs'
     PReluOp = 'top.PRelu'
+    InterpOp = 'top.Interp'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -419,6 +420,17 @@ class MLIRImporter(object):
             'scale_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['scale_w']),
         }
         return self.buildOp(Top.UpsampleOp, operands, [output_type], **param)
+
+    def create_interp_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'scale_h': FloatAttr.get_f64(kargs['scale_h']),
+            'scale_w': FloatAttr.get_f64(kargs['scale_w']),
+            'mode': StringAttr.get(kargs['mode']),
+            'coord_mode': StringAttr.get(kargs['coordinate_transformation_mode'])
+        }
+        return self.buildOp(Top.InterpOp, operands, [output_type], **param)
 
     def create_maxunpool_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
