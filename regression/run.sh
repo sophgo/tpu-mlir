@@ -18,11 +18,26 @@ model_list_basic=(
   "yolov5s"
 )
 
+# run cv18xx models
+model_list_cv18xx_basic=(
+# classification
+  "mobilenet_v2"
+  "resnet50_v2"
+  "resnet18_v1"
+# object detection
+  "yolov5s"
+)
+
 run_regression_net()
 {
   local net=$1
-  echo "======= test $net ====="
-  $REGRESSION_PATH/run_model.sh $net 0 > $net.log 2>&1 | true
+  local chip=$2
+  echo "======= test $net $chip ====="
+  if [ x$chip == "xcv18xx" ]; then
+    $REGRESSION_PATH/run_model_cv18xx.sh $net 0 > $net.log 2>&1 | true
+  else
+    $REGRESSION_PATH/run_model.sh $net 0 > $net.log 2>&1 | true
+  fi
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
     echo "$net regression FAILED" >> result.log
     cat $net.log >> fail.log
@@ -76,6 +91,10 @@ run_all()
   for net in ${model_list_basic[@]}
   do
     echo "run_regression_net $net" >> cmd.txt
+  done
+  for net in ${model_list_cv18xx_basic[@]}
+  do
+    echo "run_regression_net $net cv18xx" >> cmd.txt
   done
   cat cmd.txt
   parallel -j8 --delay 5  --joblog job_regression.log < cmd.txt
