@@ -15,6 +15,7 @@ import argparse
 from transform.BaseConverter import BaseConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
+from utils.misc import *
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
@@ -143,26 +144,8 @@ class TFLiteTransformer(ModelTransformer):
         return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw)
 
 
-def str2shape(v):
-    _shape = eval(v)
-    if not isinstance(_shape, list):
-        raise KeyError("not shape list:{}".format(v))
-    if len(_shape) == 0:
-        return []
-    dim = np.array(_shape).ndim
-    if dim == 1:
-        return [_shape]
-    if dim != 2:
-        raise KeyError("not shape list:{}".format(v))
-    return _shape
 
 
-def str2list(v):
-    files = v.split(',')
-    files = [s.strip() for s in files]
-    while files.count('') > 0:
-        files.remove('')
-    return files
 
 
 def get_model_transform(args):

@@ -29,7 +29,7 @@ class mlir_inference(object):
         self.batch_size = self.module_parsered.get_batch_size()
         args.batch_size = self.batch_size
         self.input_num = self.module_parsered.get_input_num()
-        self.img_proc = preprocess()
+        self.img_proc = preprocess(args.debug_cmd)
         self.img_proc.load_config(self.module_parsered.get_input_op_by_idx(0))
         args.net_input_dims = self.img_proc.net_input_dims
         self.batched_labels = []
@@ -76,7 +76,7 @@ class mlir_inference(object):
         for i in self.module.output_names:
             outputs.append(self.module.get_all_tensor()[i])
         if len(self.batched_labels) > 0:
-            self.score.update(self.idx, outputs, labels = self.batched_labels)
+            self.score.update(self.idx, outputs, labels = self.batched_labels, ratios = ratio_list)
         else:
             self.score.update(self.idx, outputs, img_paths = self.batched_imgs, ratios = ratio_list)
         self.batched_labels.clear()
@@ -89,12 +89,14 @@ class onnx_inference(object):
         self.img_proc = preprocess()
         self.img_proc.config(**vars(args))
         self.batched_labels = []
+        args.batch_size = self.img_proc.batch_size
+        args.net_input_dims = self.img_proc.net_input_dims
         self.batched_imgs = ''
-        self.net = onnxruntime.InferenceSession(args.model_file)
+        self.net = onnxruntime.InferenceSession(args.model_file,providers=['CPUExecutionProvider'])
         exec('from eval.postprocess_and_score_calc.{name} import {name}'.format(name = args.postprocess_type))
         self.score = eval('{}(args)'.format(args.postprocess_type))
-        model = onnx.load(args.model_file)
-        self.batch_size = int(str(onnxsim.get_inputs(model)[0].type.tensor_type.shape.dim[0]).split(':')[-1].strip())
+        self.batch_size = args.batch_size
+        self.debug_cmd = parse_debug_cmd(args.debug_cmd)
         print('onnx batch size:', self.batch_size)
 
     def run(self, idx, img_path, target = None):
@@ -107,16 +109,19 @@ class onnx_inference(object):
             self.model_invoke()
 
     def model_invoke(self):
-        img = self.score.preproc(self.batched_imgs)
-        if img is None:
+        ratio_list = None
+        if 'not_use_preprocess' in self.debug_cmd:
+            img = self.score.preproc(self.batched_imgs)
+        else:
             img= self.img_proc.run(self.batched_imgs)
+            ratio_list = self.img_proc.get_config('ratio')
         input_name = self.net.get_inputs()[0].name
         outs = self.net.run(None, {input_name:img})
-        output = outs[0] if type(outs) == list and len(outs) == 1 else outs
+        output = outs[0:1] if type(outs) == list else [outs]
         if len(self.batched_labels) > 0:
-            self.score.update(self.idx, output, self.batched_imgs, labels = self.batched_labels)
+            self.score.update(self.idx, output, self.batched_imgs, labels = self.batched_labels, ratios = ratio_list)
         else:
-            self.score.update(self.idx, output, self.batched_imgs)
+            self.score.update(self.idx, output, self.batched_imgs, ratios = ratio_list)
         self.batched_imgs = ''
         self.batched_labels.clear()
         if (self.idx + 1) % 5 == 0:
@@ -155,6 +160,7 @@ class model_inference(object):
             engine = mlir_inference(args)
         elif args.model_file.endswith('.onnx'):
             parser = get_preprocess_parser(existed_parser=new_parser)
+            parser.add_argument("--input_shapes", type=str, help="input_shapes")
             args = parser.parse_args()
             engine = onnx_inference(args)
         else:

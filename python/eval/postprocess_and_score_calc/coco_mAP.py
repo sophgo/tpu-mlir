@@ -361,7 +361,7 @@ def preproc(img, input_size, swap=(2, 0, 1)):
     resized_img = cv2.resize(
         img,
         (int(img.shape[1] * r), int(img.shape[0] * r)),
-        interpolation=cv2.INTER_AREA
+        interpolation=cv2.INTER_LINEAR  #INTER_AREA
     ).astype(np.uint8)
     padded_img[: int(img.shape[0] * r), : int(img.shape[1] * r)] = resized_img
 
@@ -444,7 +444,7 @@ class coco_mAP(base_class):
 
     def update(self, idx, outputs, img_paths = None, labels = None, ratios = None):
         img_path_list = img_paths.split(',')
-        print(img_path_list, outputs[0].shape, outputs[1].shape, outputs[2].shape, self.args.net_input_dims)
+        # print(img_path_list, outputs[0].shape, outputs[1].shape, outputs[2].shape, self.args.net_input_dims)
         for i in range(outputs[0].shape[0]):
             batch1_output = []
             for output in outputs:
@@ -455,10 +455,8 @@ class coco_mAP(base_class):
                 final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
                 if ratios is not None:
                     final_boxes /= ratios[i]
-                    print(ratios[i])
                 else:
                     final_boxes /= self.ratio_list[i]
-                    print(self.ratio_list[i])
                 if idx < self.args.draw_image_count:
                     out_path = "vis_outout"
                     mkdir(out_path)
