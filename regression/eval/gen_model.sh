@@ -79,6 +79,10 @@ if [ x${pad_type} != x ]; then
   pad_type_opt="--pad_type=${pad_type}"
 fi
 
+debug_cmd_opt=
+if [ x${debug_cmd} != x ]; then
+  debug_cmd_opt="--debug_cmd=${debug_cmd}"
+fi
 test_input_opt=
 test_result_opt=
 test_innpz_opt=
@@ -103,6 +107,7 @@ model_transform.py \
   ${pixel_format_opt} \
   ${pad_value_opt} \
   ${pad_type_opt} \
+  ${debug_cmd_opt} \
   ${test_input_opt} \
   ${test_result_opt} \
   --mlir ${model_name}.mlir
