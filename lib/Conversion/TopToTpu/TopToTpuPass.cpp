@@ -34,14 +34,13 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
     if (!Quant::isCalibratedType(in)) {
       return failure();
     }
-    if (!Quant::isCalibratedType(out)) {
-      return failure();
-    }
     auto in_qtype = Quant::getCalibratedType(in);
-    auto out_qtype = Quant::getCalibratedType(out);
-    if (in_qtype.getMax() == out_qtype.getMax() &&
-        in_qtype.getMin() == out_qtype.getMin()) {
-      return failure();
+    if (Quant::isCalibratedType(out)) {
+      auto out_qtype = Quant::getCalibratedType(out);
+      if (in_qtype.getMax() == out_qtype.getMax() &&
+          in_qtype.getMin() == out_qtype.getMin()) {
+        return failure();
+      }
     }
     auto out_type = out.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
@@ -58,9 +57,6 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op->getOperand(0);
     Value out = op.output();
-    if (!Quant::isCalibratedType(in)) {
-      return failure();
-    }
     if (!Quant::isCalibratedType(out)) {
       return failure();
     }
@@ -68,11 +64,13 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
       return failure();
     }
 
-    auto in_qtype = Quant::getCalibratedType(in);
     auto out_qtype = Quant::getCalibratedType(out);
-    if (in_qtype.getMax() == out_qtype.getMax() &&
-        in_qtype.getMin() == out_qtype.getMin()) {
-      return failure();
+    if (Quant::isCalibratedType(in)) {
+      auto in_qtype = Quant::getCalibratedType(in);
+      if (in_qtype.getMax() == out_qtype.getMax() &&
+          in_qtype.getMin() == out_qtype.getMin()) {
+        return failure();
+      }
     }
     auto in_type = in.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);

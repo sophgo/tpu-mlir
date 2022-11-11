@@ -715,7 +715,8 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     # when resize by linear or nearst, with float scale_h or float scale_w
-    def resize_to_interp(self, onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode, coordinate_transformation_mode):
+    def resize_to_interp(self, onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode,
+                         coordinate_transformation_mode):
         operands = [op]
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
@@ -764,7 +765,8 @@ class OnnxConverter(BaseConverter):
             self.resize_to_upsample(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
             return
         else:
-            self.resize_to_interp(onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode, coord_mode)
+            self.resize_to_interp(onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode,
+                                  coord_mode)
             return
 
         raise RuntimeError("[{}] Unsupported mode: {}, coord_mode: {}".format(
@@ -1312,12 +1314,7 @@ class OnnxConverter(BaseConverter):
         input_shape = self.getShape(onnx_node.inputs[0])
         assert len(output_shape) >= len(input_shape)
         # tile one axis each time to avoid gmem buffer
-        count = sum(
-            [
-                input_shape[-i] != output_shape[-i]
-                for i in range(1, len(input_shape) + 1)
-            ]
-        )
+        count = sum([input_shape[-i] != output_shape[-i] for i in range(1, len(input_shape) + 1)])
         # remove leading 1
         len_diff = len(output_shape) - len(input_shape)
         for i in range(len_diff):
@@ -1338,9 +1335,7 @@ class OnnxConverter(BaseConverter):
                     p['name'] = '{}_{}'.format(onnx_node.name, onnx_node.op_type)
                     out_shape = output_shape
                 else:
-                    p["name"] = "{}_{}_{}".format(
-                        onnx_node.name, onnx_node.op_type, count
-                    )
+                    p["name"] = "{}_{}_{}".format(onnx_node.name, onnx_node.op_type, count)
                     out_shape[-i] = output_shape[-i]
                 new_op = self.mlir.create_tile_op([in0], out_shape, **p)
                 in0 = new_op
