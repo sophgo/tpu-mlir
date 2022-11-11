@@ -47,7 +47,17 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
-  LoweringINT8(rewriter, op, true);
+  auto stype = Module::getStorageType(op.output());
+  Value table =
+      create_lookup_table(op.input(), op.output(), active_sigmoid, true);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(
+      op, op.output().getType(),
+      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
+      attrs);
 }
 
 } // namespace bm1684x

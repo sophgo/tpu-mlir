@@ -707,4 +707,126 @@ int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
   return 0;
 }
 
+void stride_slice_gen_params(const int64_t *input_shape_, int input_dim_,
+                             const float *begin_index_, const float *end_index_,
+                             const float *strides_, int strides_size,
+                             int begin_mask_, int end_mask_, int ellipsis_mask_,
+                             int new_axis_mask_, int shrink_axis_mask_,
+                             int *input_shape, int *input_dim, int *begin_index,
+                             int *end_index, int *strides, int *begin_mask,
+                             int *end_mask, int *shrink_axis_mask) {
+  int sdim = strides_size;
+  bool ellipsis_seen = false;
+  int num_add_axis_after_ellipsis = 0;
+  for (int i = 0; i < sdim; ++i) {
+    if (ellipsis_seen && ((1 << i) & new_axis_mask_) != 0x0)
+      ++num_add_axis_after_ellipsis;
+    if (((1 << i) & ellipsis_mask_) != 0x0)
+      ellipsis_seen = true;
+  }
+  if (!ellipsis_seen) {
+    ellipsis_mask_ |= (1 << sdim);
+    ++sdim;
+  }
+  int ddim = input_dim_;
+  *begin_mask = 0x0;
+  *end_mask = 0x0;
+  *shrink_axis_mask = 0x0;
+  int fidx = 0;
+  int iidx = 0;
+  int tidx = 0;
+  for (int i = 0; i < sdim; ++i) {
+    if ((1 << i) & ellipsis_mask_) {
+      int nidx =
+          std::min(ddim - (sdim - i) + 1 + num_add_axis_after_ellipsis, ddim);
+      for (; tidx < nidx; ++tidx, ++fidx) {
+        begin_index[fidx] = 0;
+        end_index[fidx] = 0;
+        strides[fidx] = 1;
+        input_shape[fidx] = input_shape_[iidx++];
+        *begin_mask |= (1 << fidx);
+        *end_mask |= (1 << fidx);
+      }
+    } else if ((1 << i) & new_axis_mask_) {
+      begin_index[fidx] = 0;
+      end_index[fidx] = 0;
+      strides[fidx] = 1;
+      input_shape[fidx] = 1;
+      *begin_mask |= (1 << fidx);
+      *end_mask |= (1 << fidx);
+      ++fidx;
+    } else {
+      begin_index[fidx] = begin_index_[i];
+      end_index[fidx] = end_index_[i];
+      strides[fidx] = strides_[i];
+      input_shape[fidx] = input_shape_[iidx++];
+      if (begin_mask_ & (1 << i))
+        *begin_mask |= (1 << fidx);
+      if (end_mask_ & (1 << i))
+        *end_mask |= (1 << fidx);
+      if (shrink_axis_mask_ & (1 << i)) {
+        *shrink_axis_mask |= (1 << fidx);
+      }
+      ++fidx;
+      ++tidx;
+    }
+  }
+  *input_dim = fidx;
+}
+
+inline int Clamp(int value, int min, int max) {
+  value = value >= min ? value : min;
+  value = value <= max ? value : max;
+  return value;
+}
+
+int StartForAxis(const int *start_indices, const int *strides,
+                 const int mask, const int *shape, const int axis) {
+  const int axis_size = shape[axis];
+  if (axis_size == 0) {
+    return 0;
+  }
+  int start = start_indices[axis];
+
+  if (mask & 1 << axis) {
+    start = strides[axis] > 0 ? 0 : axis_size;
+  }
+  start = (start < 0) ? start + axis_size : start;
+
+  if (strides[axis] > 0) {
+    start = Clamp(start, 0, axis_size);
+  } else {
+    start = Clamp(start, -1, axis_size - 1);
+  }
+  return start;
+}
+
+int StopForAxis(const int *stop_indices, const int *strides,
+                const int mask, const int shrink_mask,
+                const int *shape, const int axis,
+                int start_for_axis) {
+  const int axis_size = shape[axis];
+  if (axis_size == 0) {
+    return 0;
+  }
+  const bool shrink_axis = shrink_mask & (1 << axis);
+  int stop = stop_indices[axis];
+
+  if (shrink_axis) {
+    return start_for_axis + 1;
+  }
+  if (mask & (1 << axis)) {
+    stop = strides[axis] < 0 ? 0 : axis_size;
+  }
+  stop = (stop < 0) ? stop + axis_size : stop;
+
+  if (strides[axis] > 0) {
+    stop = Clamp(stop, 0, axis_size);
+  } else {
+    stop = Clamp(stop, -1, axis_size - 1);
+  }
+  return stop;
+}
+
+
 } // namespace tpu_mlir

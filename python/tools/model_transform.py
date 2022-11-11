@@ -130,13 +130,14 @@ class CaffeTransformer(ModelTransformer):
 
 class TFLiteTransformer(ModelTransformer):
 
-    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor=None):
+    def __init__(self, model_name, model_def, input_shapes: list = [],
+                 output_names=[], preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         self.do_mlir_infer = False
         from transform.TFLiteConverter import TFLiteConverter
         self.converter = TFLiteConverter(self.model_name, self.model_def, input_shapes,
-                                         preprocessor)
+                                         output_names, preprocessor)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
@@ -162,7 +163,7 @@ def get_model_transform(args):
                                 args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.tflite'):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
-                                 preprocessor.to_dict())
+                                 args.output_names, preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
