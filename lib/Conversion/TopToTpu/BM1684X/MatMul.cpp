@@ -27,13 +27,21 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   double relu_limit;
   op.parseParam(batch, M, K, N, with_bias, relu, relu_limit);
   int scale = 1, shift = 0;
+  if (batch > 1 && with_bias != 0) {
+    auto bias_size = Module::getNumElements(op.bias());
+    if (bias_size > N)
+      llvm_unreachable("BatchMatMul does not support batch-bias yet.");
+  }
   if (auto filterOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
-    assert(batch == 1); //  fullyconnected
     auto filter_f32 = filterOp.read<float>();
     int64_t in_zp = 0, out_zp = 0;
     double in_scale = 1, out_scale = 1, w_scale = 1;
     Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
     Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
+    if (batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
+      LoweringF32(rewriter, op);
+      return;
+    }
     std::shared_ptr<std::vector<double>> weight_scale_v;
     if (filterOp.weight_scale().has_value() && weight_scale_v->size()) {
       weight_scale_v = Module::getF64Array(filterOp.weight_scale().value());
