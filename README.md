@@ -6,7 +6,7 @@ TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This
 
 TPU-MLIR is originally developed by SOPHGO. This company is committed to becoming the world's leading general computing power provider. SOPHGO has inherited the technology, patents, products and customers of BITMAIN in the AI field for many years and focused on the R&D, promotion and application of artificial intelligence chips and related products. It has two major brands: SOPHON and CVITEK. With the self-developed chips as the core, SOPHGO has created a matrix of computing power products, which covers the whole scene of "cloud, edge and terminal" and provides computing power products and overall solutions for urban brains, intelligent computing centers, intelligent security, intelligent transportation, safety production, industrial quality inspection, intelligent terminals and others.
 
-For technical details of this project, please refer to: [TPU-MLIR Technical Reference Manual](https://tpumlir.org/en/docs/index.html). We also have a paper introducing the design, <https://arxiv.org/abs/2210.15016>.
+For technical details of this project, please refer to: [TPU-MLIR Technical Reference Manual](https://tpumlir.org/en/docs/developer_manual/index.html). We also have a paper introducing the design, <https://arxiv.org/abs/2210.15016>.
 
 Currently, the project supports BM1684x. BM1684, CV183x, CV182x, Mars, and other chips will be supported in the future.
 
