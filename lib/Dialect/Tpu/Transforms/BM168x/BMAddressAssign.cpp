@@ -71,6 +71,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &module) {
       }
       int n = op->getNumResults();
       for (int i = 0; i < n; i++) {
+        if (op->getResult(i).getType().isa<mlir::NoneType>()) {
+          continue;
+        }
         updateLiveRangeofBMOps(op, i, ops_loc, liveRange, common_ops,
                                inplace_ops, alignment);
       }

@@ -234,6 +234,9 @@ void Module::setAddress(Value v, int64_t addr) {
 }
 
 size_t Module::getBytes(Value v) {
+  if (v.getType().isa<mlir::NoneType>()) {
+    return 0;
+  }
   auto type = v.getType().cast<RankedTensorType>();
   auto elm_count = type.getNumElements();
   auto etype = getStorageType(v);

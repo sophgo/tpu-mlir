@@ -62,6 +62,9 @@ void ModuleInterpreter::allocate_resources() {
         }
       } else {
         for (auto result : op->getResults()) {
+          if (result.getType().isa<NoneType>()) {
+            continue;
+          }
           auto type = result.getType().cast<RankedTensorType>();
           auto count = type.getNumElements();
           auto name = Module::getName(result).str();
@@ -93,8 +96,12 @@ void ModuleInterpreter::allocate_resources() {
         auto name = Module::getName(op).str();
         auto param = std::make_shared<InferenceParameter>();
         for (auto result : op->getResults()) {
-          auto o_name = Module::getName(result).str();
-          param->outputs.push_back(mem_map[o_name]->data());
+          if (result.getType().isa<NoneType>()) {
+            param->outputs.push_back(nullptr);
+          } else {
+            auto o_name = Module::getName(result).str();
+            param->outputs.push_back(mem_map[o_name]->data());
+          }
         }
         for (auto input : op->getOperands()) {
           if (input.getType().isa<NoneType>()) {

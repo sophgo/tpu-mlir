@@ -342,7 +342,6 @@ LSTMOp
     - have_bias: 是否设置偏置bias, 默认为false
     - bidirectional: 设置双向循环的LSTM, 默认为false
     - batch_first: 是否将batch放在第一维, 默认为false
-    - num_layers: LSTM堆叠层数, 默认为1
 
 :输出:
     - output: 输出tensor

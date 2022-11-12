@@ -107,6 +107,7 @@ class OnnxConverter(BaseConverter):
         self.load_onnx_model(onnx_file, input_shapes, output_names)
         self.init_MLIRImporter()
         self.preprocess_args = preprocess_args
+        self.converted_nodes = list()
 
         self.onnxop_factory = {
             #pls add the Op alphabetically
@@ -157,6 +158,15 @@ class OnnxConverter(BaseConverter):
         if self.mlir != None:
             del self.mlir
             self.mlir = None
+
+    def check_need(self, name):
+        for node in self.converted_nodes:
+            for i in node.inputs:
+                if i == name:
+                    return True
+        for name in self.output_names:
+            return True
+        return False
 
     def select_unuse(self, names):
         for name in names:
@@ -346,8 +356,10 @@ class OnnxConverter(BaseConverter):
 
         for n in self.model.graph.node:
             node = OnnxNode(n)
-            self.onnxop_factory.get(node.op_type, lambda x: NoneAndRaise(x))(node)
+            self.converted_nodes.append(node)
 
+        for n in self.converted_nodes:
+            self.onnxop_factory.get(n.op_type, lambda x: NoneAndRaise(x))(n)
         # add return op
         return_op = list()
         # Set output
@@ -1085,11 +1097,10 @@ class OnnxConverter(BaseConverter):
         # yapf: disable
         #if reducemean the h, w, or h & w, replace it with avgpool
         if (onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_w and reduce_h):
-            onnx_node.op_type = "GlobalAveragePool"
             name = "reduce_w_h"
             num_dims = len(input_shape) - 2
             p = {
-                'name': "{}_{}".format(name if (reduce_n or reduce_c) else onnx_node.name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if (reduce_n or reduce_c) else onnx_node.op_type),
                 'kernel_shape': input_shape[2:],
                 'strides': num_dims * [1],
                 'pads': num_dims * 2 * [0],
@@ -1097,13 +1108,12 @@ class OnnxConverter(BaseConverter):
                 'do_relu': False,
             }
         elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_w:
-            onnx_node.op_type = "GlobalAveragePool"
             num_dims = len(input_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[1] = input_shape[3]
             name = "reduce_w"
             p = {
-                'name': "{}_{}".format(name if (reduce_n or reduce_c) else onnx_node.name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if (reduce_n or reduce_c) else onnx_node.op_type),
                 'kernel_shape': kernel_shape,
                 'strides': stride,
                 'pads': num_dims * 2 * [0],
@@ -1111,13 +1121,13 @@ class OnnxConverter(BaseConverter):
                 'do_relu': False,
             }
         elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_h:
-            onnx_node.op_type = "GlobalAveragePool"
+
             num_dims = len(input_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[0] = input_shape[2]
             name = "reduce_h"
             p = {
-                'name': "{}_{}".format(name if (reduce_n or reduce_c) else onnx_node.name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if (reduce_n or reduce_c) else onnx_node.op_type),
                 'kernel_shape': kernel_shape,
                 'strides': stride,
                 'pads': num_dims * 2 * [0],
@@ -1139,46 +1149,38 @@ class OnnxConverter(BaseConverter):
 
         #reduce h、w or h & w firstly
         if (reduce_w or reduce_h):
-            new_op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
-            self.addOperand(name if (reduce_n or reduce_c) else onnx_node.name, new_op)
-            op = new_op
+            op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
+            if (not (reduce_n or reduce_c)):
+                self.addOperand(onnx_node.name, op)
+                return
 
         # reduce_c
         if reduce_c:
             #tranpose the c/w firstly
-            onnx_node.op_type = "Transpose"
-            name = "transpose_c"
             transpose_perm = [0, 3, 2, 1]
             assert (len(new_out_shape) == len(transpose_perm))
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
             tranpose_new_output_shape[1] = new_out_shape[3]
             tranpose_new_output_shape[3] = new_out_shape[1]
             p = {
-                'name': "{}_{}".format(name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, "transpose_c"),
                 'order': transpose_perm,
             }
-            new_op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            self.addOperand(name, new_op)
-
-            name = "reduce_c"
-            op = new_op
-            onnx_node.op_type = "GlobalAveragePool"
+            op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
             num_dims = len(tranpose_new_output_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[1] = tranpose_new_output_shape[3]
             new_out_shape = copy.deepcopy(tranpose_new_output_shape)
             new_out_shape[3] = 1
             p = {
-                'name': "{}_{}".format(name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, "reduce_c"),
                 'kernel_shape': kernel_shape,
                 'strides': stride,
                 'pads': num_dims * 2 * [0],
                 'count_include_pad': True,
                 'do_relu': False,
             }
-            new_op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
-            self.addOperand(name, new_op)
-            op = new_op
+            op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
 
             #tranpose w/c again
             transpose_perm = [0, 3, 2, 1]
@@ -1188,18 +1190,17 @@ class OnnxConverter(BaseConverter):
             tranpose_new_output_shape[3] = new_out_shape[1]
             name = "tranpose_c_back"
             p = {
-                'name': "{}_{}".format(name if reduce_n else onnx_node.name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if reduce_n else onnx_node.op_type),
                 'order': transpose_perm,
             }
-            new_op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            self.addOperand(name if reduce_n else onnx_node.name, new_op)
-            op = new_op
+            op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
+            if not reduce_n:
+                self.addOperand(onnx_node.name, op)
+                return
 
         #reduce_n
         if reduce_n:
             #tranpose the n/w firstly
-            onnx_node.op_type = "Transpose"
-            name = "transpose_n"
             transpose_perm = [3, 1, 2, 0]
             new_out_shape = copy.deepcopy(input_shape)
             if reduce_w:
@@ -1213,31 +1214,24 @@ class OnnxConverter(BaseConverter):
             tranpose_new_output_shape[0] = new_out_shape[3]
             tranpose_new_output_shape[3] = new_out_shape[0]
             p = {
-                'name': "{}_{}".format(name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, "transpose_n"),
                 'order': transpose_perm,
             }
-            new_op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            self.addOperand(name, new_op)
-
-            name = "reduce_n"
-            op = new_op
-            onnx_node.op_type = "GlobalAveragePool"
+            op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
             num_dims = len(tranpose_new_output_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[1] = tranpose_new_output_shape[3]
             new_out_shape = copy.deepcopy(tranpose_new_output_shape)
             new_out_shape[3] = 1
             p = {
-                'name': "{}_{}".format(name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, "avgpool_n"),
                 'kernel_shape': kernel_shape,
                 'strides': stride,
                 'pads': num_dims * 2 * [0],
                 'count_include_pad': True,
                 'do_relu': False,
             }
-            new_op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
-            self.addOperand(name, new_op)
-            op = new_op
+            op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
 
             #tranpose w/c again
             transpose_perm = [3, 1, 2, 0]
@@ -1249,8 +1243,8 @@ class OnnxConverter(BaseConverter):
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
                 'order': transpose_perm,
             }
-            new_op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            self.addOperand(onnx_node.name, new_op)
+            op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
+            self.addOperand(onnx_node.name, op)
 
 
     def convert_lrn_op(self, onnx_node):
@@ -1275,45 +1269,43 @@ class OnnxConverter(BaseConverter):
 
     def convert_lstm_op(self, onnx_node):
         assert (onnx_node.op_type == "LSTM")
-        direction = onnx_node.attrs.get("direction")
-        bidirectional = True if onnx_node.attrs.get("direction",
-                                                    'forward') == b'bidirectional' else False
-        layout = onnx_node.attrs.get("layout")
+        direction = onnx_node.attrs.get("direction", 'forward')
+        bidirectional = (direction == b'bidirectional')
+        layout = onnx_node.attrs.get("layout", 0)
         batch_first = True if layout == 1 else False
-        hidden_size = onnx_node.attrs.get("hidden_size")
-        input_size = len(onnx_node.inputs)
         operands = list()
         operands.append(self.getOperand(onnx_node.inputs[0]))  # in
         operands.append(self.getWeightOp(onnx_node.inputs[1]))  # W
         operands.append(self.getWeightOp(onnx_node.inputs[2]))  # R
-        have_bias = False
-        if len(onnx_node.inputs) > 3:
-            have_bias = True
-            operands.append(self.getWeightOp(onnx_node.inputs[3]))
-        if len(onnx_node.inputs) > 4:
-            if onnx_node.inputs[4] in self.tensors:
-                sequence_lens = self.getWeightOp(onnx_node.inputs[4])
-        if len(onnx_node.inputs) > 5:
-            initial_h = self.getWeightOp(onnx_node.inputs[5])
-            operands.append(initial_h)
-        if len(onnx_node.inputs) > 6:
-            initial_c = self.getWeightOp(onnx_node.inputs[6])
-            operands.append(initial_c)
+        num_inputs = len(onnx_node.inputs)
+        bias_op, init_h_op, init_c_op = self.mlir.none_op, self.mlir.none_op, self.mlir.none_op
+        if num_inputs > 3:
+            bias_op = self.getWeightOp(onnx_node.inputs[3])
+        if num_inputs > 4 and len(onnx_node.inputs[4]) != 0:
+            raise RuntimeError("LSTM does not test the case of specify the sequence_lens.")
+        if num_inputs > 5:
+            init_h_op = self.getOp(onnx_node.inputs[5])
+        if num_inputs > 6:
+            init_c_op = self.getOp(onnx_node.inputs[6])
+        operands.extend([bias_op, init_h_op, init_c_op])
         p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            "have_bias": have_bias,
+            "name": [onnx_node.name + '_0',onnx_node.name + '_1', onnx_node.name +'_2'],
             "bidirectional": bidirectional,
             "batch_first": batch_first,
         }
-        input_shape = self.getShape(onnx_node.inputs[0])
-        weight_shape = self.getShape(onnx_node.inputs[1])
-        seq_length = input_shape[1] if layout == 1 else input_shape[0]
-        batch_size = input_shape[0] if layout == 1 else input_shape[1]
-        input_size = input_shape[2]
-        num_direction = weight_shape[0]
-        output_shape = [seq_length, num_direction, batch_size, hidden_size]
-        new_op = self.mlir.create_lstm_op(operands, output_shape, **p)
-        self.addOperand(onnx_node.name, new_op)
+        out_shapes = [[], [], []]
+        out_needs = [False, False, False]
+        for idx, out in enumerate(onnx_node.outputs):
+            need = len(out) > 0 and self.check_need(out)
+            p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
+            if need:
+                out_needs[idx] = True
+                out_shapes[idx] = self.getShape(out)
+        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, out_shapes, **p)
+        out_ops = [new_op, h_op, c_op]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
 
     def convert_gather_op(self, onnx_node):
         assert (onnx_node.op_type == "Gather")
