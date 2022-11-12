@@ -766,14 +766,29 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$initial_c,
-
-    DefaultValuedAttr<BoolAttr, "false">:$have_bias,
-    DefaultValuedAttr<BoolAttr, "false">:$bidirectional,
-    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
-    DefaultValuedAttr<I64Attr, "1">:$num_layers
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
 
-  let results = (outs AnyTensor:$output);
+  let results = (outs
+    AnyTensor:$Y,
+    AnyTensorOrNone:$Y_h,
+    AnyTensorOrNone:$Y_c);
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool have_c0;
+      bool output_h;
+      bool output_c;
+    } lstm_attr_t;
+    lstm_attr_t parseParam();
+  }];
 }
 
 def Top_GatherOp: Top_Op<"Gather"> {

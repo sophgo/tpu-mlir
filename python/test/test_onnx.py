@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "LSTM", "LSTM2", "Neg", "Reduce", "Reduce2", "ReduceL2",
+    "GRU", "GRU2", "LSTM2", "Neg", "Reduce", "Reduce2", "ReduceL2",
     "Reciprocal", "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax",
     "TorchMaskedFill", "TorchWhere"
 ]
@@ -292,11 +292,9 @@ class ONNX_IR_TESTER(object):
                 onnx_output = onnx_outs[name].flatten()
                 np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=1e-5, atol=1e-1)
                 counter += 1
-        if counter > 0:
-            print("* Onnx and TOP result compared *")
-        else:
-            print("* No comparison between Onnx and TOP result *")
-
+        if counter == 0:
+            raise RuntimeError("No compare between onnx outs and mlir outts")
+        print("Success: ONNX outs and Mlir outs are equal\n")
         for quant_mode in self.quant_modes:
             if quant_mode == "int8":
                 for isAsym in [False, True]:
@@ -348,12 +346,10 @@ class ONNX_IR_TESTER(object):
                                        data_type=TensorProto.FLOAT,
                                        dims=[],
                                        vals=[2.0])
-        initializer = list()
-        initializer.append(mul_const)
         mul_def = helper.make_node('Mul', ['pool_output', 'const_mul'], ['output'])
 
         graph_def = helper.make_graph([pool_def, mul_def], case_name, [input], [output],
-                                      initializer)
+                                      initializer = [mul_const])
         self.onnx_and_test({"input": input_data}, graph_def)
 
     def test_AvgPool2D(self, case_name):
@@ -561,64 +557,6 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[w_value, r_value, b_value, h_value])
         self.onnx_and_test({"input": input_data}, graph_def)
-
-    def test_LSTM2(self, case_name):
-        seq_length = 75
-        batch_size = 2
-        num_dir = 2
-        input_size = 128
-        hidden_size = 64
-        direction = 'forward' if num_dir == 1 else 'bidirectional'
-        input_data = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
-        h0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
-        c0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
-        w_data = np.random.rand(num_dir, 4 * hidden_size, input_size).astype(np.float32)
-        r_data = np.random.rand(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
-        b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, list(input_data.shape))
-        h0 = helper.make_tensor_value_info('h0', TensorProto.FLOAT, list(h0_data.shape))
-        c0 = helper.make_tensor_value_info('c0', TensorProto.FLOAT, list(c0_data.shape))
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
-                                               [seq_length, num_dir, batch_size, hidden_size])
-        Y_h = helper.make_tensor_value_info('Y_h', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
-        Y_c = helper.make_tensor_value_info('Y_c', TensorProto.FLOAT,
-                                            [num_dir, batch_size, hidden_size])
-        w_value = helper.make_tensor(
-            name='w',
-            data_type=onnx.TensorProto.FLOAT,
-            dims=w_data.shape,
-            vals=w_data.flatten(),
-        )
-        r_value = helper.make_tensor(
-            name='r',
-            data_type=onnx.TensorProto.FLOAT,
-            dims=r_data.shape,
-            vals=r_data.flatten(),
-        )
-        b_value = helper.make_tensor(
-            name='b',
-            data_type=onnx.TensorProto.FLOAT,
-            dims=b_data.shape,
-            vals=b_data.flatten(),
-        ),
-        lstm_def = helper.make_node(
-            "LSTM",
-            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
-            outputs=['output', 'Y_h', 'Y_c'],
-            direction=direction,
-            hidden_size=hidden_size,
-        )
-        graph_def = helper.make_graph([lstm_def],
-                                      case_name, [input, h0, c0], [output, Y_h, Y_c],
-                                      initializer=[w_value, r_value, b_value])
-        inputs = {
-            "input": input_data,
-            "h0": h0_data,
-            "c0": c0_data,
-        }
-        self.onnx_and_test(inputs, graph_def)
 
     def test_MaxPool1D(self, case_name):
         self.MaxPoolBase(case_name, [1, 32, 128], [1, 32, 64], [2], [2])
@@ -1690,19 +1628,18 @@ class ONNX_IR_TESTER(object):
 
     def test_LSTM(self, case_name):
         seq_length = 75
-        batch_size = 2
+        batch_size = 4
         num_dir = 2
         input_size = 128
         hidden_size = 64
         direction = 'forward' if num_dir == 1 else 'bidirectional'
         #layout = 0
-        np.random.seed(0)
-        input_data = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
-        w_data = np.random.rand(num_dir, 4 * hidden_size, input_size).astype(np.float32)
-        r_data = np.random.rand(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
-        b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
-        h0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
-        c0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
+        input_data = np.random.randn(seq_length, batch_size, input_size).astype(np.float32)
+        w_data = np.random.randn(num_dir, 4 * hidden_size, input_size).astype(np.float32)
+        r_data = np.random.randn(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
+        b_data = np.random.randn(num_dir, 8 * hidden_size).astype(np.float32)
+        h0_data = np.random.randn(num_dir, batch_size, hidden_size).astype(np.float32)
+        c0_data = np.random.randn(num_dir, batch_size, hidden_size).astype(np.float32)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, list(input_data.shape))
 
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
@@ -1713,10 +1650,6 @@ class ONNX_IR_TESTER(object):
         b = helper.make_tensor('b', TensorProto.FLOAT, b_data.shape, b_data)
         h0 = helper.make_tensor('h0', TensorProto.FLOAT, h0_data.shape, h0_data)
         c0 = helper.make_tensor('c0', TensorProto.FLOAT, c0_data.shape, c0_data)
-        sequence_lens = helper.make_tensor('sequence_lens',
-                                           TensorProto.FLOAT,
-                                           dims=[],
-                                           vals=[seq_length])
 
         node_def = helper.make_node(
             "LSTM",
@@ -1727,8 +1660,67 @@ class ONNX_IR_TESTER(object):
         )
         graph_def = helper.make_graph([node_def],
                                       case_name, [input], [output],
-                                      initializer=[w, r, b, sequence_lens, h0, c0])
+                                      initializer=[w, r, b, h0, c0])
         self.onnx_and_test({'input': input_data}, graph_def)
+
+
+    def test_LSTM2(self, case_name):
+        seq_length = 75
+        batch_size = 2
+        num_dir = 2
+        input_size = 128
+        hidden_size = 64
+        direction = 'forward' if num_dir == 1 else 'bidirectional'
+        input_data = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
+        h0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
+        c0_data = np.random.rand(num_dir, batch_size, hidden_size).astype(np.float32)
+        w_data = np.random.rand(num_dir, 4 * hidden_size, input_size).astype(np.float32)
+        r_data = np.random.rand(num_dir, 4 * hidden_size, hidden_size).astype(np.float32)
+        b_data = np.random.rand(num_dir, 8 * hidden_size).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, list(input_data.shape))
+        h0 = helper.make_tensor_value_info('h0', TensorProto.FLOAT, list(h0_data.shape))
+        c0 = helper.make_tensor_value_info('c0', TensorProto.FLOAT, list(c0_data.shape))
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
+                                               [seq_length, num_dir, batch_size, hidden_size])
+        Y_h = helper.make_tensor_value_info('Y_h', TensorProto.FLOAT,
+                                            [num_dir, batch_size, hidden_size])
+        Y_c = helper.make_tensor_value_info('Y_c', TensorProto.FLOAT,
+                                            [num_dir, batch_size, hidden_size])
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+        r_value = helper.make_tensor(
+            name='r',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=r_data.shape,
+            vals=r_data.flatten(),
+        )
+        b_value = helper.make_tensor(
+            name='b',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=b_data.shape,
+            vals=b_data.flatten(),
+        )
+        lstm_def = helper.make_node(
+            "LSTM",
+            inputs=['input', 'w', 'r', 'b', '', 'h0', 'c0'],
+            outputs=['output', 'Y_h', 'Y_c'],
+            direction=direction,
+            hidden_size=hidden_size,
+        )
+        graph_def = helper.make_graph([lstm_def],
+                                      case_name, [input, h0, c0], [output, Y_h, Y_c],
+                                      initializer=[w_value, r_value, b_value])
+        inputs = {
+            "input": input_data,
+            "h0": h0_data,
+            "c0": c0_data,
+        }
+        self.onnx_and_test(inputs, graph_def)
 
     def test_BroadcastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}

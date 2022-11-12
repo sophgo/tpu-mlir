@@ -21,25 +21,31 @@ using namespace tpu_mlir::backend;
 // ======================================
 // WeightReorderInterface
 // ======================================
-
-// merge W&R => filter
+// W =  [num_directions, 4, hidden_size, input_size]
+// R =  [num_directions, 4, hidden_size, hidden_size]
+// => W0 = [num_directions, input_size,4, hidden_size] (0,3,2,1)
+//    R0 = [num_directions, hidden_size,4, hidden_size] (0,3,2,1)
+// => Merge in axis num_directions
+// i o f g => i f o g
 template <typename T>
 static void filter_merge(std::shared_ptr<std::vector<T>> &filter,
                          std::shared_ptr<std::vector<T>> &W,
                          std::shared_ptr<std::vector<T>> &R, int num_dir,
                          int input_size, int hidden_size) {
+  int w_size = input_size * hidden_size;
+  int r_size = hidden_size * hidden_size;
+  int w_offset = 0, r_offset = 0;
   for (int d = 0; d < num_dir; d++) {
-    int w_size = input_size * hidden_size;
-    int r_size = hidden_size * hidden_size;
     // apple W
     for (int i = 0; i < 4; i++) {
       for (int h = 0; h < hidden_size; h++) {
         for (int x = 0; x < input_size; x++) {
-          int src_offset =
-              d * w_size + i * input_size * hidden_size + h * input_size + x;
-          int dst_offset = d * (w_size + r_size) +
-                           i * input_size * hidden_size + x * hidden_size + h;
-          filter->at(dst_offset) = W->at(src_offset);
+          // gate i o f g => i f o g
+          int gate = (i == 1) ? 2 : (i == 2 ? 1 : i);
+          int dst_offset = d * 4 * (w_size + r_size) + gate * hidden_size +
+                           x * 4 * hidden_size + h;
+          filter->at(dst_offset) = W->at(w_offset);
+          w_offset++;
         }
       }
     }
@@ -48,125 +54,96 @@ static void filter_merge(std::shared_ptr<std::vector<T>> &filter,
     for (int i = 0; i < 4; i++) {
       for (int h = 0; h < hidden_size; h++) {
         for (int x = 0; x < hidden_size; x++) {
-          int src_offset =
-              d * r_size + i * hidden_size * hidden_size + h * hidden_size + x;
-          int dst_offset = d * (w_size + r_size) + 4 * w_size +
-                           i * hidden_size * hidden_size + x * hidden_size + h;
-          filter->at(dst_offset) = R->at(src_offset);
+          // gate i o f g => i f o g
+          int gate = (i == 1) ? 2 : (i == 2 ? 1 : i);
+          int dst_offset = d * 4 * (w_size + r_size) + 4 * w_size +
+                           gate * hidden_size + x * 4 * hidden_size + h;
+          filter->at(dst_offset) = R->at(r_offset);
+          r_offset++;
         }
       }
     }
   }
 }
 
-// weight&&bias layout:
+// bias [num_dir, 8, hidden_size]
 // onnx: i o f g
 // pytorch: i f g o
 // for comput easy, 1684&1684x pytorch lstm reshaped as: i f o g
 // so need reorder as: i o f g => i f o g
 template <typename T>
-static void filter_reorder(std::shared_ptr<std::vector<T>> &filter, int offset,
-                           int xsize, int hsize) {
-  auto filter_new = filter;
-  for (int i = 0; i < 4; ++i) {
-    int l = i == 1 ? 2 : (i == 2 ? 1 : i);
-    for (int x = 0; x < xsize; ++x) {
-      for (int h = 0; h < hsize; ++h) {
-        int src_offset = offset + i * xsize * hsize + x * hsize + h;
-        int dst_offset = offset + l * xsize * hsize + x * hsize + h;
-        filter_new->at(dst_offset) = filter->at(src_offset);
-      }
+static void iofg2ifog(std::shared_ptr<std::vector<T>> &filter, int num_dir,
+                      int hsize) {
+  auto filter_new = std::make_shared<std::vector<T>>(filter->size(), 0);
+  int older[8] = {0, 2, 1, 3, 4, 6, 5, 7};
+  for (int d = 0; d < num_dir; d++) {
+    for (int i = 0; i < 8; ++i) {
+      int l = older[i];
+      int src_offset = d * 8 * hsize + l * hsize;
+      int dst_offset = d * 8 * hsize + i * hsize;
+      memcpy(filter_new->data() + dst_offset, filter->data() + src_offset,
+             hsize * sizeof(T));
     }
   }
   filter = filter_new;
 }
 
 void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
+  auto attr = parseParam();
   auto op = getOperation();
   OpBuilder builder(getContext());
-  int64_t in0_n, in0_c, in0_h, in0_w;
-  int64_t in1_n, in1_c, in1_h, in1_w;
-  int64_t in2_n, in2_c, in2_h, in2_w;
-  Module::getNCHW(input(), in0_n, in0_c, in0_h, in0_w);
-  Module::getNCHW(filter(), in1_n, in1_c, in1_h, in1_w);
-  Module::getNCHW(recurrence(), in2_n, in2_c, in2_h, in2_w);
-  int num_dir = bidirectional() ? 2 : 1;
-  int batch_size = batch_first() ? in0_n : in0_h;
-  int input_size = in0_h;
-  int hidden_size = in2_h;
 
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
 
   auto recurrenceOp = recurrence().getDefiningOp<top::WeightOp>();
   auto recurrence_f32 = recurrenceOp.read<float>();
+  auto num_filter = Module::getNumElements(filter());
+  auto num_recur = Module::getNumElements(recurrence());
+  auto filter_merged =
+      std::make_shared<std::vector<float>>(num_filter + num_recur, 0);
+  filter_merge(filter_merged, filter_f32, recurrence_f32, attr.num_direction,
+               attr.input_size, attr.hidden_size);
 
-  auto filter_merged = std::make_shared<std::vector<float>>(
-      Module::getNumElements(filter()) + Module::getNumElements(recurrence()),
-      0);
-  filter_merge(filter_merged, filter_f32, recurrence_f32, num_dir, input_size,
-               hidden_size);
-
-  int filter_offset = 0;
-  for (int i = 0; i < num_layers() * num_dir; i++) {
-    // trans w_x
-    filter_reorder(filter_merged, filter_offset,
-                   i < num_dir ? input_size : hidden_size * num_dir,
-                   hidden_size);
-    filter_offset +=
-        (i < num_dir ? input_size : hidden_size * num_dir) * hidden_size * 4;
-    // trans w_h
-    filter_reorder(filter_merged, filter_offset, hidden_size, hidden_size);
-    filter_offset += hidden_size * hidden_size * 4;
-  }
   std::vector<int64_t> filter_reordered_shape = {
-      num_dir, (in0_c * in0_h + in1_c * in1_h) / hidden_size, hidden_size};
+      attr.num_direction, 4 * attr.input_size + 4 * attr.hidden_size,
+      attr.hidden_size};
   auto filter_type = Module::getStorageType(filter());
   auto new_filter_type =
       RankedTensorType::get(filter_reordered_shape, filter_type);
   auto newFilterOp = top::WeightOp::create(op, "reordered_filter",
                                            *filter_merged, new_filter_type);
   op->setOperand(1, newFilterOp);
-
-  if (have_bias()) {
+  op->setOperand(2, Module::getNoneOp(op));
+  if (attr.have_bias) {
     auto biasOp = bias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
-    auto bias_type = Module::getStorageType(bias());
-    std::vector<int64_t> bias_shape = {num_dir, 8, hidden_size};
-
-    int bias_offset = 0;
-    for (int i = 0; i < num_layers() * num_dir * 2; i++) {
-      filter_reorder(bias_f32, bias_offset, 1, hidden_size);
-      bias_offset += 4 * hidden_size;
-    }
-    auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
+    auto type = bias().getType().cast<RankedTensorType>();
+    iofg2ifog(bias_f32, attr.num_direction, attr.hidden_size);
     auto newBiasOp =
-        top::WeightOp::create(op, "reordered_bias", *bias_f32, new_bias_type);
+        top::WeightOp::create(op, "reordered_bias", *bias_f32, type);
     op->setOperand(3, newBiasOp);
   }
 
-  bool has_initial_h = !initial_h().getType().isa<NoneType>();
-  bool has_initial_c = !initial_c().getType().isa<NoneType>();
-  std::vector<int64_t> initial_hc_shape = {num_dir, batch_size, hidden_size};
-  if (!has_initial_h) {
-    auto initial_h_type = Module::getStorageType(initial_h());
+  std::vector<int64_t> init_shape = {attr.num_direction, attr.batch_size,
+                                     attr.hidden_size};
+  if (!attr.have_h0) {
+    auto stype = Module::getStorageType(input());
     auto initial_h = std::make_shared<std::vector<float>>(
-        num_dir * batch_size * hidden_size, 0.0f);
-    auto new_initial_h_type =
-        RankedTensorType::get(initial_hc_shape, initial_h_type);
+        attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
+    auto new_type = RankedTensorType::get(init_shape, stype);
     auto initial_h_Op =
-        top::WeightOp::create(op, "initial_h", *initial_h, new_initial_h_type);
-    op->setOperand(have_bias() ? 3 : 4, initial_h_Op);
+        top::WeightOp::create(op, "initial_h", *initial_h, new_type);
+    op->setOperand(4, initial_h_Op);
   }
-  if (!has_initial_c) {
-    auto initial_c_type = Module::getStorageType(initial_c());
+  if (!attr.have_c0) {
+    auto stype = Module::getStorageType(input());
     auto initial_c = std::make_shared<std::vector<float>>(
-        num_dir * batch_size * hidden_size, 0.0f);
-    auto new_initial_c_type =
-        RankedTensorType::get(initial_hc_shape, initial_c_type);
+        attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
+    auto new_type = RankedTensorType::get(init_shape, stype);
     auto initial_c_Op =
-        top::WeightOp::create(op, "initial_c", *initial_c, new_initial_c_type);
-    op->setOperand(have_bias() ? 4 : 5, initial_c_Op);
+        top::WeightOp::create(op, "initial_c", *initial_c, new_type);
+    op->setOperand(5, initial_c_Op);
   }
 }
 
@@ -177,6 +154,16 @@ void tpu::LSTMOp::weight_reorder_int8_bm1684x() {}
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// BATCH_FIRST: x = [batch, seq_len, input_size], y = [batch, seq_len, num_dir,
+// hidden_size] BATCH_TORCH: x = [seq_len, batch, input_size], y = [seq_len,
+// batch, num_dir, hidden_size] BATCH_ONNX:  x = [seq_len, batch, input_size], y
+// = [seq_len, num_dir, batch, hidden_size]
+typedef enum {
+  BATCH_TORCH = 0,
+  BATCH_FIRST = 1,
+  BATCH_ONNX = 2,
+} lstm_batch_t;
 
 typedef struct {
   unsigned long long x_global_addr;
@@ -189,11 +176,13 @@ typedef struct {
   unsigned long long b_global_addr;
   unsigned long long z_global_addr;
   bool bias;
+  bool output_h;
+  bool output_c;
   int sequence;
   int batch;
   int x_size;
   int h_size;
-  bool batch_first;
+  lstm_batch_t batch_mode;
   bool bidirection;
   int num_layers;
   int dtype;
@@ -206,40 +195,41 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 void tpu::LSTMOp::codegen_global_bm1684x() {
+  auto attr = parseParam();
   auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op);
-  auto output_spec = BM168x::get_output_spec(op);
+  auto input_spec = BM1684x::get_spec(
+      ValueRange{input(), initial_h(), initial_c(), filter()});
+  auto output_spec = BM1684x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
-  int64_t in0_n, in0_c, in0_h, in0_w;
-  int64_t in1_n, in1_c, in1_h, in1_w;
-  int64_t out_n, out_c, out_h, out_w;
-  Module::getNCHW(input(), in0_n, in0_c, in0_h, in0_w);
-  Module::getNCHW(filter(), in1_n, in1_c, in1_h, in1_w);
-  Module::getNCHW(output(), out_n, out_c, out_h, out_w);
   pytorch_lstm_param_t p = {0};
   p.x_global_addr = Module::getAddress(input());
   p.w_global_addr = Module::getAddress(filter());
-  p.b_global_addr = have_bias() ? Module::getAddress(bias()) : 0;
+  p.b_global_addr = attr.have_bias ? Module::getAddress(bias()) : 0;
   p.h0_global_addr = Module::getAddress(initial_h());
   p.c0_global_addr = Module::getAddress(initial_c());
-  p.y_global_addr = Module::getAddress(output());
-  // (TODO)hn, cn, z(global_buffer) use true addr after
-  p.hn_global_addr =
-      p.y_global_addr + Module::getNumElements(output()) * sizeof(float);
-  p.cn_global_addr =
-      p.hn_global_addr + Module::getNumElements(initial_h()) * sizeof(float);
-  p.z_global_addr =
-      p.cn_global_addr + Module::getNumElements(initial_c()) * sizeof(float);
-  p.bias = have_bias();
-  p.sequence = batch_first() ? in0_c : in0_n;
-  p.batch = batch_first() ? in0_n : in0_c;
-  p.x_size = in0_h;
-  p.h_size = in1_h;
-  p.batch_first = batch_first();
-  p.bidirection = bidirectional();
-  p.num_layers = num_layers();
+  p.y_global_addr = Module::getAddress(Y());
+  if (attr.output_h) {
+    p.hn_global_addr = Module::getAddress(Y_h());
+  }
+  if (attr.output_c) {
+    p.cn_global_addr = Module::getAddress(Y_c());
+  }
+  if (buffer().getType().isa<NoneType>() == false) {
+    p.z_global_addr = Module::getAddress(buffer());
+  }
+  p.bias = attr.have_bias;
+  p.output_h = attr.output_h;
+  p.output_c = attr.output_c;
+  p.sequence = attr.seq_len;
+  p.batch = attr.batch_size;
+  p.x_size = attr.input_size;
+  p.h_size = attr.hidden_size;
+  p.batch_mode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.bidirection = (attr.num_direction == 2);
+  p.num_layers = 1;
   p.dtype = BM168x::getDataType(input());
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pytorch_lstm", &p,
-                                       sizeof(pytorch_lstm_param_t),
-                                       input_spec->data(), output_spec->data());
+  BM168x::instance(Module::getChip(op))
+      ->call_global_func("backend_api_pytorch_lstm", &p,
+                         sizeof(pytorch_lstm_param_t), input_spec->data(),
+                         output_spec->data());
 }

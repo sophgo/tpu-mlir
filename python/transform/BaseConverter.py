@@ -44,6 +44,11 @@ class BaseConverter(object):
             raise KeyError("operand {} not found".format(name))
         return self.operands[name]
 
+    def getOp(self, name):
+        if self.isWeight(name):
+            return self.getWeightOp(name)
+        return self.getOperand(name)
+
     def addWeight(self, name, data):
         if name in self.tensors:
             raise KeyError("tensor {} conflict".format(name))
