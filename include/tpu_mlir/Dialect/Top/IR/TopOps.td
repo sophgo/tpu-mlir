@@ -326,7 +326,7 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
+def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
   let summary = "add operator";
 
   let description = [{
@@ -344,7 +344,7 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu, InOutSameDim]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu, InOutSameDim]> {
+def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu]> {
   let summary = "Mul operator";
 
   let description = [{
@@ -541,6 +541,27 @@ def Top_SliceOp: Top_Op<"Slice"> {
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
+  let summary = "Strided Slice operator";
+
+  let description = [{
+    Strided Slice Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$starts,
+    AnyTensor:$ends,
+    AnyTensor:$strides,
+    I64Attr:$begin_mask,
+    I64Attr:$end_mask,
+    I64Attr:$ellipsis_mask,
+    I64Attr:$new_axis_mask,
+    I64Attr:$shrink_axis_mask
+  );
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {

@@ -267,7 +267,7 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
 }
 
 def Tpu_AddOp: Tpu_Op<"Add", [
-  SupportFuseRelu, InOutSameDim,
+  SupportFuseRelu,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "add operator";
 
@@ -314,7 +314,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
 }
 
 def Tpu_MulOp: Tpu_Op<"Mul",
-    [SupportFuseRelu, InOutSameDim,
+    [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "mul operator";
 
@@ -902,6 +902,27 @@ def Tpu_SliceOp: Tpu_Op<"Slice"> {
     ins AnyTensor:$input,
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_StridedSliceOp: Tpu_Op<"StridedSlice"> {
+  let summary = "Strided Slice operator";
+
+  let description = [{
+    Strided Slice Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$starts,
+    AnyTensor:$ends,
+    AnyTensor:$strides,
+    I64Attr:$begin_mask,
+    I64Attr:$end_mask,
+    I64Attr:$ellipsis_mask,
+    I64Attr:$new_axis_mask,
+    I64Attr:$shrink_axis_mask
   );
   let results = (outs AnyTensor:$output);
 }

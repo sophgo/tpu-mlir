@@ -63,10 +63,10 @@ LogicalResult tpu::Pool3DOp::init(InferenceParameter &p) {
 
   int izp = 0;
   auto dtype = input().getType().cast<RankedTensorType>().getElementType();
-  if (dtype.isa<quant::UniformQuantizedType>()) {
+  bool is_avg_pooling = pool_mode() == tpu::PoolMode::Avg;
+  if (dtype.isa<quant::UniformQuantizedType>() && is_avg_pooling) {
     izp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
   }
-  bool is_avg_pooling = pool_mode() == tpu::PoolMode::Avg;
   pooling->setup(p.inputs[0], p.outputs[0], attrs, is_avg_pooling, izp);
   p.handle = (void *)pooling;
   return success();
