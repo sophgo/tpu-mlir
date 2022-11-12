@@ -144,4 +144,20 @@ static inline int32_t saturate(int32_t input, mlir::Type stype) {
     output = input;
   return output;
 }
+
+// to compilable with tflite stride slice
+void stride_slice_gen_params(const int64_t *input_shape_, int input_dim_,
+                             const float *begin_index_, const float *end_index_,
+                             const float *strides_, int strides_size,
+                             int begin_mask_, int end_mask_, int ellipsis_mask_,
+                             int new_axis_mask_, int shrink_axis_mask_,
+                             int *input_shape, int *input_dim, int *begin_index,
+                             int *end_index, int *strides, int *begin_mask,
+                             int *end_mask, int *shrink_axis_mask);
+int StartForAxis(const int *start_indices, const int *strides,
+                 const int mask, const int *shape, const int axis);
+int StopForAxis(const int *stop_indices, const int *strides,
+                const int mask, const int shrink_mask,
+                const int *shape, const int axis,
+                int start_for_axis);
 } // namespace tpu_mlir

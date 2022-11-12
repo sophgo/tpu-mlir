@@ -49,7 +49,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SqueezeLowering,
       TileLowering,
       UpsampleLowering,
-      InterpLowering
+      InterpLowering,
+      StridedSliceLowering
       // clang-format on
       >(patterns->getContext());
 }

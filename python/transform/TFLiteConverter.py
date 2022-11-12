@@ -235,7 +235,8 @@ class TFLiteConverter(BaseConverter):
         TensorType.UINT64: None,
     }
 
-    def __init__(self, model_name: str, tflite_file: str, input_shapes=None, preprocess_args = None):
+    def __init__(self, model_name: str, tflite_file: str, input_shapes=None,
+                 output_names: list=[], preprocess_args = None):
         super().__init__()
         self.model_name = model_name
         self.tflite_file = tflite_file
@@ -246,12 +247,22 @@ class TFLiteConverter(BaseConverter):
 
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
-        for x in self.graph.outputs:
-            self.__nhwc2nchw(x)
+
         self.input_names = [x.name for x in self.graph.inputs]
-        self.output_names = [x.name for x in self.graph.outputs]
+        if len(output_names) == 0:
+            self.output_names = [x.name for x in self.graph.outputs]
+        else:
+            self.output_names = output_names
         self.input_shapes = [x.shape for x in self.graph.inputs]
-        self.output_shapes = [x.shape for x in self.graph.outputs]
+        self.output_shapes = []
+        self.outputs = []
+        for op in self.graph.operators:
+            for out in op.outputs:
+                if out.name in self.output_names:
+                    self.outputs.append(out)
+                    self.__nhwc2nchw(out)
+                    self.output_shapes.append(out.shape)
+
         self.mlir = MLIRImporter(
             self.input_shapes,
             self.output_shapes,
@@ -278,8 +289,8 @@ class TFLiteConverter(BaseConverter):
             "CONCATENATION": self.concat_op,
             "LOGISTIC": lambda _: ("top.Sigmoid", {}),
             "MUL": self.mul_op,
-            # "RESIZE_NEAREST_NEIGHBOR": self.resize_nearest_op,
-            # "STRIDED_SLICE": self.stride_slice_op,
+            "RESIZE_NEAREST_NEIGHBOR": self.resize_nearest_op,
+            "STRIDED_SLICE": self.stride_slice_op,
         }
         input_types=[]
         for x in self.graph.inputs:
@@ -288,7 +299,7 @@ class TFLiteConverter(BaseConverter):
             else:
                 input_types.append(self.TFLType2MLIRImporterTypeStr[x.type])
         output_types=[]
-        for x in self.graph.outputs:
+        for x in self.outputs:
             if x.is_quantized:
                 output_types.append(self.get_quantized_type(x))
             else:
@@ -641,6 +652,51 @@ class TFLiteConverter(BaseConverter):
             "do_relu": BoolAttr.get(fused_active == 1),
         }
 
+    def resize_nearest_op(self, op):
+        from .tflite.ResizeNearestNeighborOptions import ResizeNearestNeighborOptions
+        op_options = op.builtin_options
+        param = ResizeNearestNeighborOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        align_corner = param.AlignCorners()
+        half_piexl = param.HalfPixelCenters()
+        scale = op.inputs[1].buffer
+        op.inputs = [op.inputs[0]]
+        coord_mode = "asymmetric"
+        # round_mode = "down"
+        if align_corner is True :
+            coord_mode = "align_corners"
+        if half_piexl is True:
+            coord_mode = "half_pixel"
+            # round_mode = "half_up"
+        # elif align_corner is False and half_piexl is False:
+        #     coord_mode = 2
+        else:
+            raise Exception("Not supported : Param {} {}!".format(align_corner, half_piexl))
+        return "top.Interp", {
+            "coord_mode": StringAttr.get(coord_mode),
+            "mode": StringAttr.get("nearest"),
+            "scale_h": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[0]),
+            "scale_w": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[1]),
+        }
+
+    def stride_slice_op(self, op):
+        from .tflite.StridedSliceOptions import StridedSliceOptions
+        op_options = op.builtin_options
+        param = StridedSliceOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        begin_mask = param.BeginMask()
+        end_mask = param.EndMask()
+        ellipsis_mask = param.EllipsisMask()
+        new_axis_mask = param.NewAxisMask()
+        shrink_axis_mask = param.ShrinkAxisMask()
+        return "top.StridedSlice", {
+            "begin_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], begin_mask),
+            "end_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], end_mask),
+            "ellipsis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], ellipsis_mask),
+            "new_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], new_axis_mask),
+            "shrink_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], shrink_axis_mask),
+        }
+
     def convert_subgraph(self, subgraph):
         class symbolTable:
             symbol_table = {}
@@ -705,10 +761,14 @@ class TFLiteConverter(BaseConverter):
             self.mlir.insert_point.insert(op)
             symbol_table.update(dict(zip((x.id for x in operation.outputs), op.results)))  # type: ignore
 
+        return_op = []
         for op in subgraph.operators:
             add_operation(op)
+            for out in op.outputs:
+                if out.name in self.output_names:
+                    return_op.append(symbol_table[out])
 
-        return [symbol_table[x] for x in subgraph.outputs]
+        return return_op
 
     def generate_mlir(self, mlir_file: str):
         return_op = self.convert_subgraph(self.graph)
