@@ -238,6 +238,18 @@ void CviBackendContext::tdma_load(cvk_tl_t *tlp, uint64_t ga_src,
   tdma_load_stride(tlp, ga_src, ts_data.stride);
 }
 
+void CviBackendContext::tdma_load_table(cvk_tl_t *tlp, uint64_t ga_src,
+                                      uint8_t do_transpose) const {
+  assert(tlp != nullptr);
+  cvk_tg_t ts_data = {0};
+  ts_data.fmt = tlp->fmt;
+  ts_data.shape = {tlp->shape.n, tlp->shape.c, tlp->shape.h, tlp->shape.w};
+  ts_data.stride = tg_default_stride(ts_data.shape, ts_data.fmt);
+  //set stride.c=0 so that load the same one table.
+  ts_data.stride.c = 0;
+  tdma_load_stride(tlp, ga_src, ts_data.stride);
+}
+
 //
 // Implement 1880 gdma_store_stride, tensor format
 //

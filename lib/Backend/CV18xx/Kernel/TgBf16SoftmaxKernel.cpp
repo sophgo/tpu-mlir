@@ -1131,8 +1131,8 @@ void TgSoftmaxKernel::init_table() {
   ASSERT(tl_exponential_table_answer);
   ASSERT(tl_exponential_table_answer_slope);
 
-  ctx.tdma_load(tl_exponential_table_answer, ga_exponential_table_data_lut);
-  ctx.tdma_load(tl_exponential_table_answer_slope, ga_exponential_slope_table_data_lut);
+  ctx.tdma_load_table(tl_exponential_table_answer, ga_exponential_table_data_lut);
+  ctx.tdma_load_table(tl_exponential_table_answer_slope, ga_exponential_slope_table_data_lut);
   //Load reciprocal table
 
   tl_reciprocal_table_answer =
@@ -1143,8 +1143,8 @@ void TgSoftmaxKernel::init_table() {
   ASSERT(tl_reciprocal_table_answer);
   ASSERT(tl_reciprocal_mantissa_table_answer);
 
-  ctx.tdma_load(tl_reciprocal_table_answer, ga_reciprocal_table_data_lut);
-  ctx.tdma_load(tl_reciprocal_mantissa_table_answer, ga_reciprocal_table_mantissa_data_lut);
+  ctx.tdma_load_table(tl_reciprocal_table_answer, ga_reciprocal_table_data_lut);
+  ctx.tdma_load_table(tl_reciprocal_mantissa_table_answer, ga_reciprocal_table_mantissa_data_lut);
 }
 
 void TgSoftmaxKernel::free_table() {
