@@ -22,15 +22,6 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-
-void tpu::LutOp::weight_reorder_bf16_cv18xx() {
-
-}
-
-void tpu::LutOp::weight_reorder_int8_cv18xx() {
-
-}
-
 void tpu::LutOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
   int64_t n, c, h, w;

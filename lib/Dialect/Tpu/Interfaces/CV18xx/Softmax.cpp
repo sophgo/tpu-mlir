@@ -20,17 +20,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-// =========================================
-// GloballGenInterface
-// =========================================
-
-void tpu::SoftmaxOp::weight_reorder_int8_cv18xx() {
-
-}
-
-void tpu::SoftmaxOp::weight_reorder_bf16_cv18xx() {
-
-}
 
 void tpu::SoftmaxOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
    CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
