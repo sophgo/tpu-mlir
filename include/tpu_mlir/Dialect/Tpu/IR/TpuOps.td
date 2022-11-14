@@ -415,7 +415,6 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
 def Tpu_LutOp: Tpu_Op<"Lut",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
-    DeclareOpInterfaceMethods<WeightReorderInterface>,
     InOutSameShape]>{
   let summary = "Lut operator";
 
@@ -692,7 +691,6 @@ def Tpu_SiLUOp : Tpu_Op<"SiLU",
 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<WeightReorderInterface>,
     InOutSameShape]> {
   let summary = "softmax operator";
 

@@ -64,10 +64,6 @@ typedef struct {
 #ifdef __cplusplus
 }
 #endif
-void tpu::SoftmaxOp::weight_reorder_int8_bm1684x() {}
-void tpu::SoftmaxOp::weight_reorder_f16_bm1684x() {}
-void tpu::SoftmaxOp::weight_reorder_f32_bm1684x() {}
-void tpu::SoftmaxOp::weight_reorder_bf16_bm1684x() {}
 // =========================================
 // GloballGenInterface
 // =========================================
