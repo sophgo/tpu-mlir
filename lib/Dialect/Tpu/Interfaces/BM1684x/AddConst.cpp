@@ -95,7 +95,7 @@ void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.common.relu_upper_limit = relu_limit().convertToDouble();
   if (Quant::isUniformQuantized(input())) {
     param.common.B_const_val = const_val().convertToDouble();
-    param.common.B_dtype = DTYPE_INT8;
+    param.common.B_dtype = DTYPE_INT32;
     param.common.inversed = 0;
     param.common.scale_A = multiplier();
     param.common.rshift_A = rshift();
