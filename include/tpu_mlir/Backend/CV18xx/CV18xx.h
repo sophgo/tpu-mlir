@@ -1244,7 +1244,7 @@ public:
     return inst;
   }
   static cvk_fmt_t getDataType(mlir::Type type);
-  static cvk_fmt_t getDataType(mlir::Value v); 
+  static cvk_fmt_t getDataType(mlir::Value v);
   static const int64_t START_ADDR = (uint64_t)1 << 40;
   static const int64_t WEIGHT_ALIGNMENT = 16;
   static const int64_t NEURON_ALIGNMENT = 64;
@@ -1550,6 +1550,7 @@ public:
   // tdma simple api
   //
   void tdma_load(cvk_tl_t *tlp, uint64_t ga_src, uint8_t do_transpose = 0) const;
+  void tdma_load_table(cvk_tl_t *tlp, uint64_t ga_src, uint8_t do_transpose = 0) const;
   void tdma_load_stride(cvk_tl_t *tlp, uint64_t ga_src, cvk_tg_stride_t ts_stride,
                         bool do_transpose = false, bool do_decompress = false) const;
   void tdma_store(cvk_tl_t *tlp, uint64_t ga_dst, uint8_t do_transpose = 0) const;

@@ -27,7 +27,7 @@ void cvi_backend_tg_lut_kernel(const CviBackendContext &ctx, uint32_t layer_id,
 
   cvk_tl_shape_t table_shape = ctx.lut_table_shape(fmt);
   cvk_tl_t *sg_lut_table = ctx.lmem_alloc_tensor(table_shape, fmt, 1);
-  ctx.tdma_load(sg_lut_table, sg_lut_gaddr);
+  ctx.tdma_load_table(sg_lut_table, sg_lut_gaddr);
 
   int blob_num = 1;
   uint32_t lmem_used = ctx.lmem_tensor_to_size(table_shape, fmt, 1);
@@ -205,8 +205,8 @@ void cvi_backend_tg_bf16_lut_slope_kernel(
   cvk_tl_t *tl_table_answer_slope =
       ctx.lmem_alloc_tensor(table_shape, CVK_FMT_BF16, 1);
 
-  ctx.tdma_load(tl_table_answer, y0_table_gaddr);
-  ctx.tdma_load(tl_table_answer_slope, slope_gaddr);
+  ctx.tdma_load_table(tl_table_answer, y0_table_gaddr);
+  ctx.tdma_load_table(tl_table_answer_slope, slope_gaddr);
 
   int blob_num = 3;
   uint32_t lmem_used =
@@ -238,8 +238,8 @@ void cvi_backend_tg_bf16_lut_mantissa_kernel(
       ctx.lmem_alloc_tensor(table_shape, fmt, 1);
 
   // load exp / mantissa table
-  ctx.tdma_load(tl_table_answer, exp_lut_table);
-  ctx.tdma_load(tl_table_answer_mantissa, mantissa_lut_table);
+  ctx.tdma_load_table(tl_table_answer, exp_lut_table);
+  ctx.tdma_load_table(tl_table_answer_mantissa, mantissa_lut_table);
 
   int blob_num = 3;
   uint32_t lmem_used =
