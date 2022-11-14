@@ -197,4 +197,24 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   return newOp.output();
 }
 
+Value do_add_zp(Value input, Type to_type, int64_t zero_point) {
+  auto from_stype = Module::getStorageType(input);
+  auto to_stype = Module::getStorageType(to_type);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  auto newType = to_type;
+  newType = RankedTensorType::get(Module::getShape(input), to_stype);
+
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(builder.getNamedAttr("const_val", builder.getF64FloatAttr(zero_point)));
+
+  std::string new_name =
+      Module::getName(input.getDefiningOp()).str() + "_add_zp";
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp = builder.create<tpu::AddConstOp>(name_loc, newType,
+                                               ValueRange{input}, attrs);
+  return newOp.output();
+}
+
 } // namespace tpu_mlir

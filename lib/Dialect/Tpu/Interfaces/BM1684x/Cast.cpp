@@ -116,7 +116,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.mode = 0;
       BM1684x::instance().call_global_func("backend_api_requant_float_global",
                                            &param, sizeof(param));
-    } else {
+    } else if (qInput && !qOutput) {
       auto qtype = Quant::getUniformQuantizedType(input());
       dequant_fp_param_t param = {0};
       param.input_addr = Module::getAddress(input());

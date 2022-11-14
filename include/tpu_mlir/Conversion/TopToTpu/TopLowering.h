@@ -181,4 +181,5 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
 
+Value do_add_zp(Value input, Type to_type, int64_t zero_point);
 } // namespace tpu_mlir
