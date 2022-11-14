@@ -62,26 +62,17 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   auto asym = Module::getAsymmetric(module);
+  auto binary = (Binary *)p.handle;
+  binary->run();
   if (out_type.isa<FloatType>()) {
-    auto binary = (Binary *)p.handle;
-    binary->run();
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (out_type.isInteger(32)) {
-    auto in0_qtype = Quant::getUniformQuantizedType(inputs()[0]);
-    auto in1_qtype = Quant::getUniformQuantizedType(inputs()[1]);
-    int in0_zp = in0_qtype.getZeroPoint();
-    int in1_zp = in1_qtype.getZeroPoint();
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-    for (int i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = (p.inputs[0][i] - in0_zp) * (p.inputs[1][i] - in1_zp);
-    }
+    return success();
   } else if (asym == false) {
-    auto binary = (Binary *)p.handle;
-    binary->run();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];

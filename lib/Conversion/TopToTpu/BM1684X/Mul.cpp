@@ -125,12 +125,11 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
         is_const = true;
         auto constF32 = constOp.read_as_float();
         const_val = constF32->data()[0] - zeropoint;
-      } else {
-        operands.push_back(input);
+        continue;
       }
-    } else {
-      operands.push_back(input);
     }
+    auto input_sub_zp = do_add_zp(input, rewriter.getI16Type(), -zeropoint);
+    operands.push_back(input_sub_zp);
   }
   Quant::getScaleAndZeroPoint(op.output(), scale, zeropoint, true);
   scale_mul = scale_mul / scale;
@@ -141,10 +140,6 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-  // attrs.push_back(rewriter.getNamedAttr(
-  //     "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
-  // attrs.push_back(
-  //     rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
   std::string suffix = "_mul";
   std::string new_name = Module::getName(op.getOperation()).str() + suffix;
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
@@ -152,7 +147,6 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto newType = RankedTensorType::get(Module::getShape(op.output()),
                                        rewriter.getI32Type());
   if (is_const == false) {
-    // rewriter.replaceOpWithNewOp<tpu::MulOp>(op, op.output().getType(), operands, attrs);
     auto newOp = rewriter.create<tpu::MulOp>(name_loc, newType, operands, attrs);
     // requant to int8
     auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
@@ -160,7 +154,6 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.replaceOp(op, {v});
   } else {
     attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
-    // rewriter.replaceOpWithNewOp<tpu::MulConstOp>(op, op.output().getType(), operands, attrs);
     auto newOp = rewriter.create<tpu::MulConstOp>(name_loc, newType, operands, attrs);
     // requant to int8
     auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),

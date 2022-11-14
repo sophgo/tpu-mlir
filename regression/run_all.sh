@@ -32,6 +32,7 @@ model_list_basic=(
   "ssd-12"
   "yolov5s"
   "yolov3_tiny"
+  "yolov5s_tf"
 )
 
 # run models

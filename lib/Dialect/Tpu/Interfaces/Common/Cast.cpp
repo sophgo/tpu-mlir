@@ -104,30 +104,30 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
         p.outputs[0][i] = dequant(p.inputs[0][i], qtype);
       }
     }
-  } else if (isInQuant && isOutQuant)  {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
-    auto out_qtype = Quant::getUniformQuantizedType(output());
-    if (in_qtype.getScale() == out_qtype.getScale() &&
-        in_type.isInteger(8) && out_type.isInteger(8)) {
-      int zero_diff = in_qtype.getZeroPoint() - out_qtype.getZeroPoint();
-      if (zero_diff == 0) {
-        std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
-      } else {
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-        for (int64_t i = 0; i < num_elem; i++) {
-          p.outputs[0][i] = (p.inputs[0][i] - zero_diff);
-        }
-      }
-    } else {
-      int64_t multi, shift_val;
-      QuantizeMultiplier(in_qtype.getScale() / out_qtype.getScale(), &multi, &shift_val);
-      for (int64_t i = 0; i < num_elem; ++i) {
-        auto v = out_qtype.getZeroPoint() + MultiplyByQuantizedMultiplier(
-                                    (int32_t)(p.inputs[0][i]) - in_qtype.getZeroPoint(),
-                                    (int32_t)multi, (int32_t)shift_val);
-        p.outputs[0][i] = saturate(v, out_type);
-      }
-    }
+//   } else if (isInQuant && isOutQuant)  {
+//     auto in_qtype = Quant::getUniformQuantizedType(input());
+//     auto out_qtype = Quant::getUniformQuantizedType(output());
+//     if (in_qtype.getScale() == out_qtype.getScale() &&
+//         in_type.isInteger(8) && out_type.isInteger(8)) {
+//       int zero_diff = in_qtype.getZeroPoint() - out_qtype.getZeroPoint();
+//       if (zero_diff == 0) {
+//         std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
+//       } else {
+// #pragma omp parallel for schedule(static, omp_schedule(num_elem))
+//         for (int64_t i = 0; i < num_elem; i++) {
+//           p.outputs[0][i] = (p.inputs[0][i] - zero_diff);
+//         }
+//       }
+//     } else {
+//       int64_t multi, shift_val;
+//       QuantizeMultiplier(in_qtype.getScale() / out_qtype.getScale(), &multi, &shift_val);
+//       for (int64_t i = 0; i < num_elem; ++i) {
+//         auto v = out_qtype.getZeroPoint() + MultiplyByQuantizedMultiplier(
+//                                     (int32_t)(p.inputs[0][i]) - in_qtype.getZeroPoint(),
+//                                     (int32_t)multi, (int32_t)shift_val);
+//         p.outputs[0][i] = saturate(v, out_type);
+//       }
+//     }
   } else {
     std::copy(p.inputs[0], p.inputs[0] + num_elem, p.outputs[0]);
   }
