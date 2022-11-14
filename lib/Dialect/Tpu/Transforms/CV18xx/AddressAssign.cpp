@@ -76,6 +76,7 @@ public:
     std::vector<Value> outputs;
     Module::getInputsOutputs(module, inputs, outputs);
 
+    // cal live range for each op
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
@@ -85,31 +86,39 @@ public:
         int n = op->getNumResults();
         for (int i = 0; i < n; i++) {
           bool chosen = false;
-          updateLiveRangeOfOps(op, i, ops_loc, liveRange, chosen,
-                               neuron_alignment);
-          if (chosen) {
-            if (isOpBelongToIOMemoryRegion(op, i, outputs)) {
-              if (io_outs.size() < 5) {
-                io_outs.emplace_back((int64_t)op + i);
-              } else {
+          updateLiveRangeOfOps(op, i, ops_loc, liveRange, neuron_alignment);
+          updateLiveRangeOfSpecialOp(op, liveRange, i);
+        }
+      });
+    }
+    // determin the addr type
+    for (auto func : module.getOps<FuncOp>()) {
+      func.walk([&](Operation *op) {
+        if (liveRange.find((int64_t)op) != liveRange.end()) {
+          int n = op->getNumResults();
+          for (int i = 0; i < n; i++) {
+            auto save_op = (int64_t)op + i;
+            if (i == 0 || liveRange.find(save_op) != liveRange.end()) {
+              if (isOpBelongToIOMemoryRegion(op, i, outputs)) {
+                if (io_outs.size() < 5) {
+                  io_outs.emplace_back((int64_t)op + i);
+                } else {
+                  private_outs.emplace_back((int64_t)op + i);
+                }
+              } else if (isOpBelongToPrivateMemoryRegion(op, i)) {
                 private_outs.emplace_back((int64_t)op + i);
+              } else {
+                shared_outs.emplace_back((int64_t)op + i);
               }
-            } else if (isOpBelongToPrivateMemoryRegion(op, i)) {
-              private_outs.emplace_back((int64_t)op + i);
-            } else {
-              shared_outs.emplace_back((int64_t)op + i);
             }
           }
         }
       });
-      // To solve concat opt when axis = 0, it need the operand should be
-      // continuous global memory. FIXME if concatN's inp in diff subnet
-      func.walk(
-          [&](Operation *op) { updateLiveRangeOfSpecialOp(op, liveRange); });
       if (!shared_outs.empty()) {
         shared_outs_regions.emplace_back(std::move(shared_outs));
       }
     }
+
     int64_t sharedGmemOffset = 0;
     int64_t sharedGmemSize = 0;
     // key: the operation pointer + output index, convert the result to type
@@ -124,19 +133,6 @@ public:
         sharedGmemSize = sharedGmemOffset + gmemUsed;
       }
     }
-    // To solve concat opt when axis = 0, it need the operand should be
-    // continuous global memory.
-    // auto assignedGaddr = sharedGmemSize;
-    // for (auto &targetOps : shared_outs_regions) {
-    //   for (auto &op : targetOps) {
-    //     auto size  = GmemAllocator::assignSpecifiedGmemToOp((Operation*)op,
-    //     gaddrMap,
-    //                                                    assignedGaddr,
-    //                                                    neuron_alignment);
-    //     assignedGaddr += size;
-    //   }
-    // }
-    // sharedGmemSize = assignedGaddr ;
 
     int64_t baseGaddr = (((uint64_t)2) << 40);
     int64_t privateGmemSize = 0;
@@ -200,8 +196,21 @@ protected:
 
   bool isOpBelongToPrivateMemoryRegion(Operation *op, int index) {
     if (isa<top::InputOp>(op) || isOutput(op, index) ||
-        isa<tpu::GenericCpuOp>(op)) {
+        isa<tpu::GenericCpuOp>(op) ||
+        isSpecialOpBelongToPrivateMemoryRegion(op, index)) {
       return true;
+    }
+    return false;
+  }
+
+  bool isSpecialOpBelongToPrivateMemoryRegion(Operation *op, int index) {
+    for (auto &use : op->getResult(index).getUses()) {
+      Operation *next = use.getOwner();
+      if (auto concatOp = dyn_cast<tpu::ConcatOp>(next)) {
+        if (concatOp.only_merge() && isOutput(next, 0)) {
+          return true;
+        }
+      }
     }
     return false;
   }
@@ -209,7 +218,7 @@ protected:
   void updateLiveRangeOfOps(Operation *op, int index,
                             std::map<Operation *, uint32_t> &ops_loc,
                             std::map<int64_t, TensorLive> &liveRange,
-                            bool &chosen, int64_t alignment = 64) {
+                            int64_t alignment = 64) {
     auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
       for (uint32_t i = 0; i < op->getNumOperands(); i++) {
         auto operand = op->getOperand(i);
@@ -244,35 +253,34 @@ protected:
       assert(liveRange.count(save_op) == 0);
       // TensorLive tl = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
       liveRange[save_op] = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
-      chosen = true;
     } else if (Module::isOpInGroup(op)) {
       updateOperandsLiveRange(op, endPosition);
-      chosen = false;
     } else if (isInPlaceOp(op)) {
       uint32_t maxPosition = endPosition;
       findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
       updateOperandsLiveRange(op, maxPosition);
-      chosen = false;
     } else if (op->getDialect()->getNamespace() == "tpu") {
       uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
       assert(liveRange.count(save_op) == 0);
       // TensorLive tl = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
       liveRange[save_op] = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
       updateOperandsLiveRange(op, endPosition);
-      chosen = true;
     } else {
       updateOperandsLiveRange(op, endPosition);
-      chosen = false;
     }
   }
 
   void updateLiveRangeOfSpecialOp(Operation *op,
-                                  std::map<int64_t, TensorLive> &liveRange) {
+                                  std::map<int64_t, TensorLive> &liveRange,
+                                  int i) {
     auto chip = Module::getChip(op);
     if (!Module::isCV18xx(chip)) {
       return;
     }
+
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
+      // For ConcatN. To solve concat opt when axis = 0,
+      // it need the operand should be continuous global memory.
       if (!concatOp.only_merge()) {
         return;
       }
@@ -281,11 +289,9 @@ protected:
       int64_t max_end = liveRange[min_start_op].end;
       uint32_t tensor_size = liveRange[min_start_op].tensor_size;
       for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-        auto operand = op->getOperand(i);
+        auto operand = Module::getOperand(op, i);
         auto opd = operand.getDefiningOp();
-        if (opd == 0x0) {
-          continue;
-        }
+        assert(opd != 0x0);
         int64_t save_opd = (int64_t)opd;
         if (opd->getNumResults() > 1) {
           int this_index = getOutIndex(opd, operand);
@@ -320,7 +326,7 @@ protected:
       int64_t base_addr = -1;
       uint32_t nof_found = 0;
       for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-        auto operand = op->getOperand(i);
+        auto operand = Module::getOperand(op, i);
         if (operand.getType().cast<RankedTensorType>().getEncoding()) {
           base_addr = Module::getAddress(operand);
           ++nof_found;
@@ -330,7 +336,7 @@ protected:
       int64_t offset = 0;
       Module::setAddress(op->getResult(0), base_addr + offset);
       for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-        auto operand = op->getOperand(i);
+        auto operand = Module::getOperand(op, i);
         auto opd = operand.getDefiningOp();
         if (opd == 0x0) {
           continue;

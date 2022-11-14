@@ -70,6 +70,33 @@ top::NoneOp Module::getNoneOp(Operation *op) {
   return NoneOp;
 }
 
+Value Module::getOperand(Operation* op, int i) {
+  auto v = op->getOperand(i);
+  if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
+    int idx = block_arg.getArgNumber();
+    auto parent_op = v.getParentBlock()->getParentOp();
+    if (auto func_op = dyn_cast_or_null<FuncOp>(parent_op)) {
+      auto module = getModuleOp(parent_op);
+      // cur call op
+      auto call_op = getCallOp(module, func_op);
+      // pre call op
+      auto operand = call_op.getOperand(idx);
+      auto result = operand.cast<OpResult>();
+      auto opd = result.getDefiningOp();
+      if (isa<top::InputOp>(opd)) {
+        return operand;
+      }
+      auto pre_call_op = dyn_cast<func::CallOp>(opd);
+      auto pre_func_op = getFuncOp(module, pre_call_op.getCallee());
+      auto return_op = dyn_cast<func::ReturnOp>(pre_func_op.front().back());
+      return return_op.getOperand(result.getResultNumber());
+    }
+  } else if (v.getDefiningOp() != 0x0){
+    return v;
+  }
+  llvm_unreachable("Failed to get preOperation.FIx me");
+}
+
 ModuleOp Module::getModuleOp(Operation *op) {
   auto moduleOp = op;
   while (moduleOp && !isa<ModuleOp>(moduleOp)) {

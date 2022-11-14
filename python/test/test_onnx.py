@@ -725,8 +725,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_Concat(self, case_name):
-        input_shape = {"input1": [1, 4, 32], "input2": [1, 4, 64], "input3": [1, 4, 64]}
-        output_shape = [1, 4, 32 + 64 + 64]
+        input_shape = {"input1": [1, 2, 64], "input2": [1, 3, 64], "input3": [1, 4, 64]}
+        output_shape = [1, 2+3+4, 64]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
 
         inputs = [
@@ -737,7 +737,7 @@ class ONNX_IR_TESTER(object):
         concat_def = helper.make_node("Concat",
                                       inputs=list(input_shape.keys()),
                                       outputs=["output"],
-                                      axis=2)
+                                      axis=1)
 
         graph_def = helper.make_graph([concat_def], case_name, inputs, [output])
         self.onnx_and_test(input_data, graph_def)
