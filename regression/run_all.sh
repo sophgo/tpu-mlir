@@ -60,11 +60,11 @@ run_regression_net()
     $REGRESSION_PATH/run_model.sh $net 0 > $net.log 2>&1 | true
   fi
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-    echo "$net regression FAILED" >> result.log
+    echo "$net $chip regression FAILED" >> result.log
     cat $net.log >> fail.log
     return 1
   else
-    echo "$net regression PASSED" >> result.log
+    echo "$net $chip regression PASSED" >> result.log
     return 0
   fi
 }

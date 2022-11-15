@@ -26,6 +26,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       PermuteLowering,
       SigmoidLowering, 
       SiLULowering,
+      SliceLowering,
       SoftmaxLowering,
       UpsampleLowering
       // clang-format on
