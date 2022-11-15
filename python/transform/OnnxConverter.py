@@ -129,6 +129,7 @@ class OnnxConverter(BaseConverter):
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
+            "LRN": lambda node: self.convert_lrn_op(node),
             "LSTM": lambda node: self.convert_lstm_op(node),
             "MatMul": lambda node: self.convert_gemm_op(node),
             "Max": lambda node: self.convert_max_op(node),
@@ -1243,6 +1244,27 @@ class OnnxConverter(BaseConverter):
             }
             new_op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
             self.addOperand(onnx_node.name, new_op)
+
+
+    def convert_lrn_op(self, onnx_node):
+        assert onnx_node.op_type == "LRN"
+        op = self.getOperand(onnx_node.inputs[0])
+
+        size = onnx_node.attrs.get("size")
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "size": size}
+
+        def add_if_valid(key):
+            value = onnx_node.attrs.get(key)
+            if value:
+                p[key] = value
+
+        add_if_valid("alpha")
+        add_if_valid("beta")
+        add_if_valid("bias")
+        output_shape = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_lrn_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
 
     def convert_lstm_op(self, onnx_node):
         assert (onnx_node.op_type == "LSTM")

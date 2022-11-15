@@ -38,6 +38,7 @@ class Top:
     ClipOp = 'top.Clip'
     DeconvOp = 'top.Deconv'
     ScaleOp = 'top.Scale'
+    LRNOp = 'top.LRN'
     LSTMOp = 'top.LSTM'
     GatherOp = 'top.Gather'
     TileOp = 'top.Tile'
@@ -518,6 +519,25 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.ScaleOp, operands, [output_type], **param)
+
+    def create_lrn_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(
+            tuple(output_shape), self.get_value_type(operands[0])
+        )
+        param = {
+            "name": kargs["name"],
+            "size": IntegerAttr.get(self.mlir_type["INT64"], kargs["size"]),
+        }
+
+        def add_if_has(key):
+            if key in kargs:
+                param[key] = FloatAttr.get_f64(kargs[key])
+
+        add_if_has("alpha")
+        add_if_has("beta")
+        add_if_has("bias")
+
+        return self.buildOp(Top.LRNOp, operands, [output_type], **param)
 
     def create_lstm_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
