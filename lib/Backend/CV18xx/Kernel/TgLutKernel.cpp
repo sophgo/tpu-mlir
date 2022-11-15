@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/CV18xx/Kernel/TgFcKernel.hpp"
+#include <llvm/Support/Debug.h>
 #include "tpu_mlir/Support/TPUCompressUtil.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #define DEBUG_TYPE "lut_kernel"

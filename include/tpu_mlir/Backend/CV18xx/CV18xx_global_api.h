@@ -129,19 +129,28 @@ void cvi_backend_tg_bf16_pooling_kernel(
     float avg_const, int do_relu, const bool ceil_mode);
 
 void cvi_backend_tg_bf16_softmax_kernel(
-                const CviBackendContext &ctx, uint32_t layer_id,
-                gaddr_t ga_input,
-                gaddr_t ga_exponential_table_data_lut, gaddr_t ga_exponential_slope_table_data_lut,
-                gaddr_t ga_reciprocal_table_data_lut, gaddr_t ga_reciprocal_table_mantissa_data_lut,
-                gaddr_t ga_output,
-                int64_t* shape, int axis, int dimension, bool do_log);
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+    gaddr_t ga_exponential_table_data_lut,
+    gaddr_t ga_exponential_slope_table_data_lut,
+    gaddr_t ga_reciprocal_table_data_lut,
+    gaddr_t ga_reciprocal_table_mantissa_data_lut, gaddr_t ga_output,
+    int64_t *shape, int axis, int dimension, bool do_log);
 
 //////// fixed & bf16 kernel api ////////////////
-void cvi_backend_tg_concat_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id,
-    int input_num, gaddr_t input_gaddrs[], gaddr_t output_gaddr,
-    int axis_dims[], int concat_axis, int output_dim_size, int *output_dim,
-    bool do_relu, const int *right_shift_width,
-    const int *threshold_x_quantized, cvk_fmt_t fmt);
+void cvi_backend_tg_concat_kernel(const CviBackendContext &ctx,
+                                  uint32_t layer_id, int input_num,
+                                  gaddr_t input_gaddrs[], gaddr_t output_gaddr,
+                                  int axis_dims[], int concat_axis,
+                                  int output_dim_size, int *output_dim,
+                                  bool do_relu, const int *right_shift_width,
+                                  const int *threshold_x_quantized,
+                                  cvk_fmt_t fmt);
+
+void cvi_backend_tg_crop_kernel(const CviBackendContext &ctx, uint32_t layer_id,
+                                gaddr_t ga_input, gaddr_t ga_output,
+                                std::vector<int64_t> is_4,
+                                std::vector<int64_t> os_4,
+                                std::vector<int> offsets,
+                                std::vector<int> steps, cvk_fmt_t fmt);
 } // namespace backend
 } // namespace tpu_mlir

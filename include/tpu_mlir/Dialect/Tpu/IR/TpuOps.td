@@ -902,6 +902,13 @@ def Tpu_SliceOp: Tpu_Op<"Slice"> {
     I64ArrayAttr:$steps
   );
   let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void parseParam(std::vector<int64_t> &is_4,
+                    std::vector<int64_t> &os_4,
+                    std::vector<int> &offset_4,
+                    std::vector<int> &step_4,
+                    bool &fusible);
+  }];
 }
 
 def Tpu_StridedSliceOp: Tpu_Op<"StridedSlice"> {
