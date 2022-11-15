@@ -1009,6 +1009,24 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LRNOp: Tpu_Op<"LRN", [InOutSameShape]> {
+  let summary = "Local Response Normalization";
+
+  let description = [{
+    It normalizes over local input regions. The local region is defined across the channels.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$size,
+    DefaultValuedAttr<F64Attr, "0.0001">:$alpha,
+    DefaultValuedAttr<F64Attr, "0.75">:$beta,
+    DefaultValuedAttr<F64Attr, "1.0">:$bias
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_LSTMOp: Tpu_Op<"LSTM",[
     DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "LSTM operator";

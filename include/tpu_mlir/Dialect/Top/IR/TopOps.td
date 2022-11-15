@@ -635,6 +635,24 @@ def Top_LogOp: Top_Op<"Log", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_LRNOp: Top_Op<"LRN", [InOutSameShape]> {
+  let summary = "Local Response Normalization";
+
+  let description = [{
+    It normalizes over local input regions. The local region is defined across the channels.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$size,
+    DefaultValuedAttr<F64Attr, "0.0001">:$alpha,
+    DefaultValuedAttr<F64Attr, "0.75">:$beta,
+    DefaultValuedAttr<F64Attr, "1.0">:$bias
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
   let summary = "Div operator";
 
