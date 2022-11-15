@@ -87,6 +87,7 @@ class ONNX_IR_TESTER(object):
             "ReduceL2": self.test_ReduceL2,
             "ReduceMean": self.test_ReduceMean,
             "Reciprocal": self.test_Reciprocal,
+            "Relu": self.test_Relu,
             "SiLU": self.test_SiLU,
             "Softmax": self.test_Softmax,
             "Squeeze": self.test_Squeeze,
@@ -794,6 +795,40 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output])
         input_data = np.random.rand(*input_shape).astype(np.float32)
         self.onnx_and_test({"input": input_data}, graph_def)
+
+    def test_Relu(self, case_name):
+        oc = 64
+        input_shape = [1, 16, 128, 128]
+        filter_shape = [oc, 16, 3, 3]
+        output_shape = [1, oc, 128, 128]
+        input_data = np.random.randn(*input_shape).astype(np.float32)
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(oc).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'weight', 'bias'],
+            outputs=['conv_output'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+
+        relu_def = helper.make_node("Relu",
+                                    inputs=['conv_output'],
+                                    outputs=['output'])
+
+        graph_def = helper.make_graph([conv_def, relu_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias])
+        self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_LeakyRelu(self, case_name):
         oc = 32
