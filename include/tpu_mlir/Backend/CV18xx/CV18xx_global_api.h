@@ -64,10 +64,26 @@ void cvi_backend_tg_fixed_fc_kernel(
     int batch_low = 1, bool lstride = false, bool rstride = false,
     bool ostride = false);
 
+// i8 leakyrelu
+void cvi_backend_tg_fixed_leakyrelu_kernel(const CviBackendContext &ctx,
+                                           uint32_t layer_id, uint64_t ga_input,
+                                           uint64_t ga_output, int n, int c,
+                                           int h, int w, int GT_rshift,
+                                           int LE_rshift, int GT_scale,
+                                           int LE_scale);
+
 void cvi_backend_tg_lut_kernel(const CviBackendContext &ctx, uint32_t layer_id,
                                gaddr_t bottom_gaddr, gaddr_t top_gaddr,
                                gaddr_t sg_lut_gaddr, int input_n, int input_c,
                                int input_h, int input_w, cvk_fmt_t fmt);
+
+// i8 prelu
+void cvi_backend_tg_fixed_prelu_kernel(const CviBackendContext &ctx,
+                                       uint32_t layer_id, uint64_t ga_input,
+                                       uint64_t ga_output,
+                                       uint64_t negative_scope_gaddr, int n,
+                                       int c, int h, int w, int GT_rshift,
+                                       int GT_scale, int LE_rshift);
 
 void cvi_backend_tg_upsample_kernel(const CviBackendContext &ctx,
                                     uint32_t layer_id, gaddr_t ga_ifmap,
@@ -111,6 +127,13 @@ void cvi_backend_tg_bf16_fc_kernel(
     bool ostride = false, bool do_quant_bf16 = 0, gaddr_t ga_scale = 0,
     gaddr_t ga_zeropoint = 0);
 
+// bf16 leakyrelu
+void cvi_backend_tg_bf16_leakyrelu_kernel(const CviBackendContext &ctx,
+                                          uint32_t layer_id, gaddr_t ga_input,
+                                          gaddr_t ga_output,
+                                          float negative_slope, int n, int c,
+                                          int h, int w);
+
 void cvi_backend_tg_bf16_lut_mantissa_kernel(
     const CviBackendContext &ctx, uint32_t layer_id, gaddr_t bottom_gaddr,
     gaddr_t top_gaddr, gaddr_t exp_lut_table, gaddr_t mantissa_lut_table,
@@ -127,6 +150,11 @@ void cvi_backend_tg_bf16_pooling_kernel(
     int c, int h, int w, int kh, int kw, int pad_top, int pad_bot, int pad_left,
     int pad_right, int stride_h, int stride_w, int is_avg_pooling,
     float avg_const, int do_relu, const bool ceil_mode);
+
+void cvi_backend_tg_bf16_prelu_kernel(const CviBackendContext &ctx,
+                                      uint32_t layer_id, gaddr_t ga_input,
+                                      gaddr_t ga_output, gaddr_t ga_slope,
+                                      int n, int c, int h, int w);
 
 void cvi_backend_tg_bf16_softmax_kernel(
     const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
@@ -152,5 +180,10 @@ void cvi_backend_tg_crop_kernel(const CviBackendContext &ctx, uint32_t layer_id,
                                 std::vector<int64_t> os_4,
                                 std::vector<int> offsets,
                                 std::vector<int> steps, cvk_fmt_t fmt);
+// i8/bf16 relu
+void cvi_backend_tg_relu_kernel(const CviBackendContext &ctx, uint32_t layer_id,
+                                uint64_t ga_input, uint64_t ga_output, int n,
+                                int c, int h, int w, cvk_fmt_t fmt);
+
 } // namespace backend
 } // namespace tpu_mlir
