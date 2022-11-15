@@ -13,33 +13,13 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 static bool slice_fusible(tpu::SliceOp op) {
-  auto is = Module::getShape(op.input());
-  auto os = Module::getShape(op.output());
-  int num_dims = is.size();
-  auto crop_offset = Module::getI64Array(op.offset());
-  auto steps = Module::getI64Array(op.steps());
-  assert(crop_offset->size() == steps->size());
-  assert(is.size() == steps->size());
-  assert(is.size() == os.size());
-  std::vector<int> real_axes;
-  bool no_step = true;
-  for (int idx = 0; idx < num_dims; ++idx) {
-    if (no_step && steps->at(idx) != 1) {
-      no_step = false;
-    }
-    if (is[idx] != os[idx]) {
-      real_axes.push_back(idx);
-    }
-  }
-  if (no_step && real_axes.size() == 1) {
-    int axis = real_axes[0];
-    int outer_dim = std::accumulate(is.begin(), is.begin() + axis, 1,
-                                    std::multiplies<int64_t>());
-    if (outer_dim == 1) {
-      return true;
-    }
-  }
-  return false;
+  std::vector<int64_t> i_s;
+  std::vector<int64_t> o_s;
+  std::vector<int> offset_4;
+  std::vector<int> step_4;
+  bool fusible = false;
+  op.parseParam(i_s, o_s, offset_4, step_4, fusible);
+  return fusible;
 }
 
 static bool is_fusible_op(Operation *op) {

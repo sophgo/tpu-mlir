@@ -239,6 +239,13 @@ size_t Module::getBytes(Value v) {
   return elm_count * elm_bytes;
 }
 
+int Module::getDtypeSize(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto etype = getStorageType(v);
+  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
+  return elm_bytes;
+}
+
 int64_t Module::getNumElements(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   return type.getNumElements();
