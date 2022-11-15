@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/GmemAllocator.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/GmemAllocator.hpp"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -26,17 +26,17 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-GmemAllocator::GmemAllocator(std::map<int64_t, int64_t> &gaddrMap,
+GmemAllocator::GmemAllocator(std::map<ValueInfo, int64_t> &gaddrMap,
                              uint32_t alignment)
     : gaddrMap_(gaddrMap), alignment(alignment) {}
 
-void GmemAllocator::markGmemReusedOp(std::vector<int64_t> &ops,
-                                     std::map<int64_t, int64_t> &gaddrMap,
-                                     std::map<int64_t, TensorLive> &liveRange,
-                                     std::set<int64_t> &gmemReusedSet,
+void GmemAllocator::markGmemReusedOp(std::vector<ValueInfo> &ops,
+                                     std::map<ValueInfo, int64_t> &gaddrMap,
+                                     std::map<ValueInfo, TensorLive> &liveRange,
+                                     std::set<ValueInfo> &gmemReusedSet,
                                      uint32_t alignment) {
 
-  std::vector<int64_t> tmp;
+  std::vector<ValueInfo> tmp;
   for (int i = ops.size() - 1; i >= 0; i--) {
     if (gaddrMap.find(ops[i]) == gaddrMap.end())
       continue;
@@ -70,15 +70,15 @@ void GmemAllocator::registerAllMethod() {
   registerMethod("OpSizeOrderAssign", true);
 }
 
-int64_t GmemAllocator::assignGaddr(std::vector<int64_t> &ops,
-                                   std::map<int64_t, TensorLive> &liveRange,
+int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
+                                   std::map<ValueInfo, TensorLive> &liveRange,
                                    bool neuronMemoryReuse, int64_t baseGaddr) {
   if (ops.empty()) {
     llvm::errs() << "Warning input ops is empty!\n";
     return 0;
   }
   // for special op, remove ops which not in liveRange, addr is assigned later
-  for (std::vector<int64_t>::iterator it = ops.begin(); it != ops.end();) {
+  for (auto it = ops.begin(); it != ops.end();) {
     if (liveRange.find(*it) == liveRange.end()) {
       it = ops.erase(it);
       continue;

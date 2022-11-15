@@ -1,4 +1,4 @@
-#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/GmemAllocatorMethod.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/GmemAllocatorMethod.h"
 #include <limits>
 #include <llvm/Support/Debug.h>
 
@@ -8,13 +8,13 @@ using namespace tpu_mlir::tpu;
 namespace tpu_mlir {
 namespace tpu {
 
-GmemAllocatorMethod::GmemAllocatorMethod(std::map<int64_t, int64_t> &gaddrMap,
+GmemAllocatorMethod::GmemAllocatorMethod(std::map<ValueInfo, int64_t> &gaddrMap,
                                          uint32_t aligment)
     : gaddrMap_(gaddrMap), aligment_(aligment) {
   GmemBlock block;
   block.start = 0;
   block.size = 0xFFFFFFFF;
-  block.op = 0;
+  block.v_info = ValueInfo(0, -1);
   std::list<GmemBlock> snapshot;
   snapshot.emplace_back(block);
   album_.emplace_back(snapshot);
@@ -23,19 +23,19 @@ GmemAllocatorMethod::~GmemAllocatorMethod() {}
 
 std::string GmemAllocatorMethod::getName() { return name_; }
 
-void GmemAllocatorMethod::reuseGmemBlock(std::list<GmemBlock> &snapshot,
-                                         int64_t op,
-                                         std::map<int64_t, TensorLive> &liveRange) {
-  //int tensor_idx = findValueRange(liveRange, tensor);
+void GmemAllocatorMethod::reuseGmemBlock(
+    std::list<GmemBlock> &snapshot, ValueInfo &v,
+    std::map<ValueInfo, TensorLive> &liveRange) {
+  // int tensor_idx = findValueRange(liveRange, tensor);
   for (auto &blk : snapshot) {
-    if (!blk.op) {
+    if (!blk.v_info.op) {
       continue;
     }
     // free the block if end position of block's op
     // is same as current op's start position
-    if (liveRange[blk.op].end <= liveRange[op].start ||
-        liveRange[blk.op].start >= liveRange[op].end) {
-      blk.op = 0;
+    if (liveRange[blk.v_info].end <= liveRange[v].start ||
+        liveRange[blk.v_info].start >= liveRange[v].end) {
+      blk.v_info.op = 0;
     }
   }
   // merge contiguous free blocks into one
@@ -43,7 +43,8 @@ void GmemAllocatorMethod::reuseGmemBlock(std::list<GmemBlock> &snapshot,
 }
 
 int64_t GmemAllocatorMethod::allocGmemBlock(std::list<GmemBlock> &snapshot,
-                                            int64_t op, uint32_t tensor_size) {
+                                            ValueInfo &v,
+                                            uint32_t tensor_size) {
   auto last = --snapshot.end();
   auto selected = last;
 
@@ -51,12 +52,12 @@ int64_t GmemAllocatorMethod::allocGmemBlock(std::list<GmemBlock> &snapshot,
   // TODO, we can try other policy here.
   uint32_t max_free_size = 0;
   for (auto iter = snapshot.begin(); iter != last; ++iter) {
-    if (!iter->op && iter->size > max_free_size) {
+    if (!iter->v_info.op && iter->size > max_free_size) {
       selected = iter;
       max_free_size = iter->size;
     }
   }
-  gaddrMap_[op] = -1;
+  gaddrMap_[v] = -1;
 
   auto gsize = tensor_size;
   auto s_addr = selected->start;
@@ -68,13 +69,13 @@ int64_t GmemAllocatorMethod::allocGmemBlock(std::list<GmemBlock> &snapshot,
     GmemBlock blk;
     blk.start = selected->start + gsize;
     blk.size = selected->size - gsize;
-    blk.op = 0;
+    blk.v_info.op = 0;
 
-    selected->op = op;
+    selected->v_info = v;
     selected->size = gsize;
     snapshot.insert(++selected, blk);
   } else {
-    selected->op = op;
+    selected->v_info = v;
     selected->size = gsize;
 
     // Enlarge the block to match the size of tensor,
@@ -92,7 +93,7 @@ void GmemAllocatorMethod::mergeFreeGmemBlocks(std::list<GmemBlock> &snapshot) {
   auto iter = snapshot.begin();
   while (iter != snapshot.end()) {
     auto cur = iter++;
-    while (iter != snapshot.end() && !cur->op && !iter->op) {
+    while (iter != snapshot.end() && !cur->v_info.op && !iter->v_info.op) {
       cur->size += iter->size;
       snapshot.erase(iter++);
     }
@@ -104,14 +105,14 @@ void GmemAllocatorMethod::backPropagateToAssignGaddr() {
     auto &snapshot = album_[i];
     int64_t offset = 0;
     for (auto &blk : snapshot) {
-      if (!blk.op) {
+      if (!blk.v_info.op) {
         blk.start = offset;
         offset += blk.size;
         continue;
       }
-      auto op = blk.op;
+      auto v = blk.v_info;
       // if tensor was allocated, relocate the start offset of block.
-      blk.start = (gaddrMap_[op] == -1) ? blk.start : gaddrMap_[op];
+      blk.start = (gaddrMap_[v] == -1) ? blk.start : gaddrMap_[v];
       // if start offset of block is already allocated,
       // relocate it to current offset point.
       if (blk.start <= offset) {
@@ -119,16 +120,15 @@ void GmemAllocatorMethod::backPropagateToAssignGaddr() {
       }
       offset = blk.start + blk.size;
 
-      if (gaddrMap_[op] == -1) {
-        gaddrMap_[op] = blk.start;
+      if (gaddrMap_[v] == -1) {
+        gaddrMap_[v] = blk.start;
       }
     }
   }
 }
 
-int64_t
-GmemAllocatorMethod::updateGmemUsedStatistic(std::vector<int64_t> &ops,
-              std::map<int64_t, TensorLive> &liveRange) {
+int64_t GmemAllocatorMethod::updateGmemUsedStatistic(
+    std::vector<ValueInfo> &ops, std::map<ValueInfo, TensorLive> &liveRange) {
   int64_t totalNeuronSize = 0;
   int64_t totalGmemUsed = 0;
   for (int i = ops.size() - 1; i >= 0; i--) {
@@ -152,15 +152,16 @@ GmemAllocatorMethod::updateGmemUsedStatistic(std::vector<int64_t> &ops,
   return totalGmemUsed;
 }
 
-GmemAllocFitFirst::GmemAllocFitFirst(std::map<int64_t, int64_t> &gaddrMap,
+GmemAllocFitFirst::GmemAllocFitFirst(std::map<ValueInfo, int64_t> &gaddrMap,
                                      uint32_t aligment)
     : GmemAllocatorMethod(gaddrMap, aligment) {
   name_ = "FitFirstAssign";
 }
 
-int64_t GmemAllocFitFirst::assignGaddr(std::vector<int64_t> &ops,
-                      std::map<int64_t, TensorLive> &liveRange,
-                      bool neuronMemoryReuse, int64_t baseGaddr) {
+int64_t
+GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
+                               std::map<ValueInfo, TensorLive> &liveRange,
+                               bool neuronMemoryReuse, int64_t baseGaddr) {
   for (auto op : ops) {
     // llvm::errs() << "loop #" << album_.size() - 1 << "\n";
     auto snapshot = album_[album_.size() - 1];
@@ -200,28 +201,28 @@ int64_t GmemAllocFitFirst::assignGaddr(std::vector<int64_t> &ops,
   for (auto op : ops) {
     auto out_index = liveRange[op].out_index;
     auto tensor_size = liveRange[op].tensor_size;
-    auto real_op = (Operation *)(op - out_index);
-    llvm::errs() << "op:" << real_op->getName() << ", name:" << Module::getName(real_op->getResult(out_index))
-                 << ", addr:" << gaddrMap_[op]
-                 << ", baseGaddr:" << baseGaddr
+    auto real_op = (Operation *)(op.op);
+    llvm::errs() << "op:" << real_op->getName()
+                 << ", name:" << Module::getName(real_op->getResult(out_index))
+                 << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
                  << ", size:" << tensor_size
-                 << ", end:"
-                 << gaddrMap_[op] + tensor_size
+                 << ", end:" << gaddrMap_[op] + tensor_size
                  << ", range:" << liveRange[op].start << " ~ "
                  << liveRange[op].end << "\n";
   }
   return totalGmemUsed;
 }
 
-GmemAllocOpSizeOrder::GmemAllocOpSizeOrder(std::map<int64_t, int64_t> &gaddrMap,
-                                           uint32_t aligment)
+GmemAllocOpSizeOrder::GmemAllocOpSizeOrder(
+    std::map<ValueInfo, int64_t> &gaddrMap, uint32_t aligment)
     : GmemAllocatorMethod(gaddrMap, aligment) {
   name_ = "OpSizeOrderAssign";
 }
 
-int64_t GmemAllocOpSizeOrder::assignGaddr(std::vector<int64_t> &ops,
-                      std::map<int64_t, TensorLive> &liveRange,
-                      bool neuronMemoryReuse, int64_t baseGaddr) {
+int64_t
+GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
+                                  std::map<ValueInfo, TensorLive> &liveRange,
+                                  bool neuronMemoryReuse, int64_t baseGaddr) {
 
   std::list<std::shared_ptr<OpAddr>> op_list;
   std::list<std::shared_ptr<OpAddr>> allocated_op_list;
@@ -297,17 +298,16 @@ int64_t GmemAllocOpSizeOrder::assignGaddr(std::vector<int64_t> &ops,
   for (auto op : ops) {
     auto out_index = liveRange[op].out_index;
     auto tensor_size = liveRange[op].tensor_size;
-    auto real_op = (Operation *)(op - out_index);
-    llvm::errs() << "op:" << real_op->getName() << ", name:" << Module::getName(real_op->getResult(out_index))
-                 << ", addr:" << gaddrMap_[op]
-                 << ", baseGaddr:" << baseGaddr
+    auto real_op = (Operation *)(op.op);
+    llvm::errs() << "op:" << real_op->getName()
+                 << ", name:" << Module::getName(real_op->getResult(out_index))
+                 << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
                  << ", size:" << tensor_size
-                 << ", end:"
-                 << gaddrMap_[op] + tensor_size
+                 << ", end:" << gaddrMap_[op] + tensor_size
                  << ", range:" << liveRange[op].start << " ~ "
                  << liveRange[op].end << "\n";
   }
   return total_consumption;
 }
-} //namespace tpu
-} //namespace tpu_mlir
+} // namespace tpu
+} // namespace tpu_mlir

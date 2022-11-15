@@ -46,12 +46,6 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   ];
 }
 
-def CVAddressAssign : Pass<"cv-address-assign", "ModuleOp"> {
-  let summary = "assign address CV18xx in tpu by tpuc-opt";
-  let constructor = "createCVAddressAssignPass()";
-  let dependentDialects = ["TpuDialect"];
-}
-
 def CVCodegen : Pass<"cv-codegen", "ModuleOp"> {
   let summary = "codegen for CV18xx in tpu by tpuc-opt";
   let constructor = "createCVCodegenPass()";
