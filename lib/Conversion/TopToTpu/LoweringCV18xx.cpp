@@ -20,11 +20,12 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CastLowering,
       ConcatLowering,
       ConvLowering,
+      DeconvLowering,
       MatMulLowering,
       MaxPoolLowering,
       ReshapeLowering,
       PermuteLowering,
-      SigmoidLowering, 
+      SigmoidLowering,
       SiLULowering,
       SliceLowering,
       SoftmaxLowering,
@@ -32,5 +33,5 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       // clang-format on
       >(patterns->getContext());
 }
-} // namespace CV18xx
+} // namespace cv18xx
 } // namespace tpu_mlir

@@ -976,6 +976,12 @@ class OnnxConverter(BaseConverter):
 
         operands = list()
         input_opd = self.getOperand(onnx_node.inputs[0])
+        weight_name = onnx_node.inputs[1]
+        # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
+        old_weight = self.tensors[weight_name]
+        order = [1, 0] + list(range(len(old_weight.shape))[2:])
+        self.tensors[weight_name] = np.ascontiguousarray(np.transpose(old_weight, order))
+        self.shapes[weight_name] = self.tensors[weight_name].shape
         filter_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
             bias_opd = self.getWeightOp(onnx_node.inputs[2])
@@ -986,6 +992,7 @@ class OnnxConverter(BaseConverter):
         operands.append(bias_opd)
 
         # handle ConvTranspose1d case
+        new_name = onnx_node.name
         is_shape_3 = len(input_shape) == 3
         if is_shape_3:
             assert (dim == 1)
@@ -998,9 +1005,9 @@ class OnnxConverter(BaseConverter):
             p = {'name': '{}_to4dim'.format(onnx_node.name)}
             reshape0_op = self.mlir.create_reshape_op([input_opd], input_shape, **p)
             operands[0] = reshape0_op
-
+            new_name += "_reshape"
         p = {
-            'name': '{}_{}'.format(onnx_node.name + '_reshape', onnx_node.op_type),
+            'name': '{}_{}'.format(new_name, onnx_node.op_type),
             'kernel_shape': kernel_shape,
             'strides': strides,
             'dilations': dilations,
@@ -1014,7 +1021,7 @@ class OnnxConverter(BaseConverter):
 
         if is_shape_3:
             output_shape = [output_shape[0], output_shape[1], output_shape[3]]
-            p = {'name': '{}_backto3dim'.format(onnx_node.name)}
+            p = {'name': onnx_node.name}
             reshape1_op = self.mlir.create_reshape_op([new_op], output_shape, **p)
             self.addOperand(onnx_node.name, reshape1_op)
         else:
