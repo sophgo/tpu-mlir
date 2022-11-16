@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "LSTM2", "Neg", "Reduce", "Reduce2", "ReduceL2",
+    "GRU", "GRU2", "LSTM2", "Neg", "Reduce2", "ReduceL2",
     "Reciprocal", "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax",
     "TorchMaskedFill", "TorchWhere"
 ]
@@ -1410,7 +1410,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min], case_name, [input],
                                       [output0, output1, output2])
         input_data = np.random.randn(*input_shape).astype(np.float32)
-        self.onnx_and_test(input_data, graph_def)
+        self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_Reduce2(self, case_name):
         input_shape = [4, 4, 4, 16, 64]
@@ -1449,8 +1449,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test({"input": input_data}, graph_def)
 
     def test_ReduceMean(self, case_name):
-        input_shape = [2, 200, 7, 7]
-        output_shape = [2, 1, 1, 7]
+        input_shape = [2, 200, 1, 7, 7]
+        output_shape = [2, 200, 1, 7, 1]
         input_data = np.random.randn(*input_shape).astype(np.float32)
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
@@ -1460,7 +1460,7 @@ class ONNX_IR_TESTER(object):
             "ReduceMean",
             inputs=['input'],
             outputs=['output'],
-            axes=[1, 2],
+            axes=[4],
             keepdims=1,
         )
 
