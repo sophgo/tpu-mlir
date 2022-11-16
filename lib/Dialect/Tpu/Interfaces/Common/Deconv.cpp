@@ -9,10 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Float16.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
@@ -64,7 +64,8 @@ LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
   if (Quant::isUniformQuantized(input())) {
     izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
-  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attrs, izp);
+  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attrs,
+                izp);
   p.handle = (void *)deconv;
   return success();
 }
@@ -83,14 +84,37 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
   }
   auto deconv = (Deconv *)p.handle;
   deconv->run();
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
   // requant
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+    }
+  } else if (is_cv18xx && Quant::isUniformQuantized(output())) {
+    // apply multiplier && rshift inplace
+    int64_t n, c, h, w;
+    Module::getNCHW(output(), n, c, h, w);
+    auto rshift_v = Module::getI64Array(rshift().value());
+    auto multiplier_v = Module::getI64Array(multiplier().value());
+    assert(rshift_v->size() == c && "CV18xx must be per_axis.");
+#pragma omp parallel for schedule(static, omp_schedule(c))
+    for (int oc = 0; oc < c; oc++) {
+      int64_t shift = rshift_v->at(oc);
+      int64_t multi = multiplier_v->at(oc);
+      for (int on = 0; on < n; on++) {
+        for (int hw = 0; hw < h * w; hw++) {
+          int offset = (on * c + oc) * h * w + hw;
+          int64_t v = 0;
+          v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
+                                       CVI_QDM_QUANT);
+          p.outputs[0][offset] = Quant::to_int8(v);
+        }
+      }
     }
   }
 
@@ -98,7 +122,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
-                                     int64_t out_idx, int64_t out_slice) {
+                                       int64_t out_idx, int64_t out_slice) {
   deconv_attr_t attrs;
   parseParam(&attrs);
   int kh_ext = (attrs.kh - 1) * attrs.dh + 1;
@@ -107,7 +131,8 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   in_idx = in_idx <= 0 ? in_idx : std::ceil((float)in_idx / attrs.sh);
   if (in_idx <= 0) {
     pad_h = -in_idx;
-    in_slice = std::ceil((out_slice - pad_h + kh_ext - 1) / (float)(attrs.sh)) + pad_h;
+    in_slice =
+        std::ceil((out_slice - pad_h + kh_ext - 1) / (float)(attrs.sh)) + pad_h;
   } else {
     pad_h = in_idx * attrs.sh + pad_h - out_idx;
     in_slice = std::ceil((out_slice - pad_h + kh_ext - 1) / (float)attrs.sh);

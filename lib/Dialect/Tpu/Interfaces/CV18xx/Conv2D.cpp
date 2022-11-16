@@ -267,7 +267,7 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   }
 
   bool do_compress = attr.groups > 1 ? false : true;
-  WeightCompresser weight_opt(this->getOperation(), do_compress); // fix me
+  WeightCompresser weight_opt(this->getOperation(), do_compress);
   if (Quant::isUniformQuantized(output())) {
     bool do_ic_alignment = use_3ic_optimize() ? true : false;
     gaddr_t ga_scale_lut = GA_INVALID;

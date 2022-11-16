@@ -674,20 +674,6 @@ class ONNX_IR_TESTER(object):
                       dilation=[1, 1],
                       groups=1)
 
-    # def test_Conv2d(self, case_name):
-    #     input_shape = [4, 3, 10, 10]
-    #     filter_shape = [8, 3, 3, 3]
-    #     output_shape = [4, 8, 10, 10]
-    #     self.ConvBase(case_name,
-    #                   input_shape,
-    #                   filter_shape,
-    #                   output_shape,
-    #                   kernel=[3, 3],
-    #                   padding=[1, 1, 1, 1],
-    #                   stride=[1, 1],
-    #                   dilation=[1, 1],
-    #                   groups=1)
-
     def test_Conv3d(self, case_name):
         oc = 32
         input_shape = [1, 16, 10, 30, 50]
