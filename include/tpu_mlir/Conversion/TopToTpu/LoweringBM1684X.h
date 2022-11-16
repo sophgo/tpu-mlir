@@ -68,5 +68,6 @@ LOWERING_BM1684X(Tile)
 LOWERING_BM1684X(Upsample)
 LOWERING_BM1684X(Interp)
 LOWERING_BM1684X(StridedSlice)
+LOWERING_BM1684X(Reduce)
 } // namespace bm1684x
 } // namespace tpu_mlir
