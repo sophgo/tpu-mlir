@@ -93,8 +93,22 @@ Value Module::getOperand(Operation* op, int i) {
       auto return_op = dyn_cast<func::ReturnOp>(pre_func_op.front().back());
       return return_op.getOperand(result.getResultNumber());
     }
-  } else if (v.getDefiningOp() != 0x0){
-    return v;
+  } else if (auto pre_op = v.getDefiningOp()) {
+    if (isa<func::CallOp>(pre_op)) {
+      auto module = getModuleOp(op);
+      auto call_op = dyn_cast<func::CallOp>(pre_op);
+      int index = v.cast<OpResult>().getResultNumber();
+      for (auto func : module.getOps<FuncOp>()) {
+        if (call_op.getCallee() == func.getName()) {
+          Block &entryBlock = func.front();
+          auto returnOp =
+              dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+          return returnOp->getOperand(index);
+        }
+      }
+    } else {
+      return v;
+    }
   }
   llvm_unreachable("Failed to get preOperation.FIx me");
 }

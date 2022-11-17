@@ -42,9 +42,10 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
 
   std::map<Operation *, uint32_t> ops_loc;
   std::map<ValueInfo, TensorLive> liveRange;
+  std::map<ValueInfo, OpElement> op_infos;
+  std::vector<Operation *> ops;
   std::vector<ValueInfo> inplace_ops;
-  std::vector<ValueInfo> shared_outs;
-  std::vector<std::vector<ValueInfo>> shared_outs_regions;
+  std::map<std::string, std::vector<ValueInfo>> shared_outs_regions;
   std::vector<ValueInfo> private_outs;
   std::vector<ValueInfo> io_outs;
 
@@ -54,55 +55,48 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
     func.walk([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
+      if (isa<FuncOp, top::NoneOp, top::WeightOp, func::CallOp, tpu::YieldOp>(
+              op)) {
+        return;
+      }
+      ops.emplace_back(op);
     });
   }
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   Module::getInputsOutputs(module, inputs, outputs);
-
-  // cal live range for each op
-  for (auto func : module.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
-      if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp, func::CallOp,
-              tpu::YieldOp>(op)) {
-        return;
-      }
-      int n = op->getNumResults();
-      for (int i = 0; i < n; i++) {
-        if (op->getResult(i).getType().isa<mlir::NoneType>()) {
-          return;
-        }
-        updateLiveRangeOfOps(op, i, ops_loc, liveRange, inplace_ops,
-                             neuron_alignment);
-      }
-    });
+  for (auto iter = ops.rbegin(); iter != ops.rend(); ++iter) {
+    updateLiveRange(*iter, ops_loc, op_infos, outputs, neuron_alignment);
   }
-  // determin the addr type
-  for (auto func : module.getOps<FuncOp>()) {
-    func.walk([&](Operation *op) {
-      int n = op->getNumResults();
-      for (int i = 0; i < n; i++) {
-        if (op->getResult(i).getType().isa<mlir::NoneType>()) {
-          continue;
+
+  for (auto iter = ops.begin(); iter != ops.end(); ++iter) {
+    auto op = *iter;
+    int n = op->getNumResults();
+    for (int i = 0; i < n; ++i) {
+      if (op->getResult(i).getType().isa<mlir::NoneType>()) {
+        continue;
+      }
+      ValueInfo v_info(op, i);
+      assert(op_infos.find(v_info) != op_infos.end());
+      if (op_infos[v_info].need_alloc) {
+        liveRange[v_info] = op_infos[v_info].live;
+        switch (op_infos[v_info].mem_type) {
+        case MEM_IOMEM:
+          io_outs.emplace_back(v_info);
+          break;
+        case MEM_PRIVATE:
+          private_outs.emplace_back(v_info);
+          break;
+        case MEM_SHARED:
+          auto func_name = dyn_cast<FuncOp>(op->getParentOp()).getName().str();
+          shared_outs_regions[func_name].emplace_back(v_info);
+          break;
         }
-        ValueInfo v_info(op, i);
-        if (liveRange.find(v_info) != liveRange.end()) {
-          if (isOpBelongToIOMemoryRegion(op, i, outputs)) {
-            if (io_outs.size() < 5) {
-              io_outs.emplace_back(v_info);
-            } else {
-              private_outs.emplace_back(v_info);
-            }
-          } else if (isOpBelongToPrivateMemoryRegion(op, i)) {
-            private_outs.emplace_back(v_info);
-          } else {
-            shared_outs.emplace_back(v_info);
-          }
+      } else {
+        if (op_infos[v_info].inplace) {
+          inplace_ops.emplace_back(v_info);
         }
       }
-    });
-    if (!shared_outs.empty()) {
-      shared_outs_regions.emplace_back(std::move(shared_outs));
     }
   }
 
@@ -113,8 +107,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
 
   for (auto &targetOuts : shared_outs_regions) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
-    auto gmemUsed =
-        allocator.assignGaddr(targetOuts, liveRange, true, sharedGmemOffset);
+    auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange, true,
+                                          sharedGmemOffset);
     if (sharedGmemSize < sharedGmemOffset + gmemUsed) {
       sharedGmemSize = sharedGmemOffset + gmemUsed;
     }
@@ -139,7 +133,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
     Module::setAddress(op->getResult(op_addr.first.index), op_addr.second);
   }
   for (auto &v_info : inplace_ops) {
-    updateAddressOfInPlaceOp(v_info);
+    updateAddressOfInPlaceOp(v_info, op_infos, neuron_alignment);
   }
 
   // TODO markGmemReusedOp
@@ -151,151 +145,134 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
   Module::setState(module, Module::State::TPU_ADDRESSED);
 }
 
-bool CVAddressAssign::isOpBelongToIOMemoryRegion(Operation *op, int index,
-                                                 std::vector<Value> &outputs) {
-  // Warning, IO memory region can only has capacity to store 5 ops.
-  if (isa<top::InputOp>(op)) {
-    return true;
-  }
-  if (isOutput(op, index)) {
-    auto value = op->getResult(index);
-    if (std::find(outputs.begin(), outputs.end(), value) != outputs.end()) {
-      return true;
+void CVAddressAssign::updateLiveRangeofPreOp(
+    std::map<ValueInfo, OpElement> &op_infos, Operation *op, uint32_t end,
+    std::map<Operation *, uint32_t> &ops_loc, MemType mem_type,
+    int64_t alignment) {
+  for (int i = 0; i < op->getNumOperands(); ++i) {
+    auto operand = Module::getOperand(op, i);
+    if (operand.getType().isa<mlir::NoneType>()) {
+      continue;
     }
-  }
-  return false;
-}
-
-bool CVAddressAssign::isOpBelongToPrivateMemoryRegion(Operation *op,
-                                                      int index) {
-  if (isa<top::InputOp>(op) || isOutput(op, index) ||
-      isa<tpu::GenericCpuOp>(op) ||
-      isInPlaceOpBelongToPrivateMemoryRegion(op, index)) {
-    return true;
-  }
-  return false;
-}
-
-bool CVAddressAssign::isInPlaceOpBelongToPrivateMemoryRegion(Operation *op,
-                                                             int index) {
-  for (auto &use : op->getResult(index).getUses()) {
-    Operation *next = use.getOwner();
-    if (isInPlaceOp(next) && isOutput(next, 0)) {
-      return true;
+    auto preOp = operand.getDefiningOp();
+    if (isa<top::WeightOp, top::NoneOp>(preOp)) {
+      continue;
     }
-  }
-  return false;
-}
-
-void CVAddressAssign::updateLiveRangeOfOps(
-    Operation *op, int index, std::map<Operation *, uint32_t> &ops_loc,
-    std::map<ValueInfo, TensorLive> &liveRange,
-    std::vector<ValueInfo> &inplace_ops, int64_t alignment) {
-  auto updateOperandsLiveRange = [&](Operation *op, uint32_t endPosition) {
-    for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-      auto operand = Module::getOperand(op, i);
-      auto opd = operand.getDefiningOp();
-      if (opd == 0x0) {
-        assert(0);
-      }
-      ValueInfo v_info(opd, operand.cast<OpResult>().getResultNumber());
-      if (liveRange.find(v_info) != liveRange.end()) {
-        if (isa<top::InputOp>(opd) && liveRange[v_info].end == 0xFFFFFFFF) {
-          continue;
-        }
-        if (liveRange[v_info].end == 0xFFFFFFFF ||
-            liveRange[v_info].end < endPosition) {
-          liveRange[v_info].end = endPosition;
-        }
-      }
+    ValueInfo v_info(preOp, operand.cast<OpResult>().getResultNumber());
+    if (isa<GenericCpuOp>(preOp)) {
+      op_infos[v_info].mem_type = MEM_PRIVATE;
     }
-  };
-
-  ValueInfo value_info(op, index);
-  uint32_t loc = ops_loc[op];
-  uint32_t endPosition = loc + 1;
-  // TODO refer to tpu_compiler AssignNeuronAddress.cpp
-  if (isa<top::InputOp>(op)) {
-    uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
-    assert(liveRange.count(value_info) == 0);
-    // TensorLive tl = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
-    liveRange[value_info] = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
-  } else if (Module::isOpInGroup(op)) {
-    updateOperandsLiveRange(op, endPosition);
-  } else if (isInPlaceOp(op)) {
-    uint32_t maxPosition = endPosition;
-    uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
-    findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
-    updateOperandsLiveRange(op, maxPosition);
-    updateLiveRangeOfInPlaceOp(op, index, liveRange, loc, maxPosition,
-                               tensor_size);
-    inplace_ops.emplace_back(op, index);
-  } else if (op->getDialect()->getNamespace() == "tpu") {
-    uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
-    assert(liveRange.count(value_info) == 0);
-    // TensorLive tl = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
-    liveRange[value_info] = TensorLive(index, loc, 0xFFFFFFFF, tensor_size);
-    updateOperandsLiveRange(op, endPosition);
-  } else {
-    updateOperandsLiveRange(op, endPosition);
+    op_infos[v_info].live.start =
+        std::min(ops_loc[preOp], op_infos[v_info].live.start);
+    op_infos[v_info].live.end = std::max(end, op_infos[v_info].live.end);
+    op_infos[v_info].live.out_index = v_info.index;
+    if (0 == op_infos[v_info].live.tensor_size) {
+      op_infos[v_info].live.tensor_size =
+          getTensorGmemSize(preOp, v_info.index, alignment);
+    }
+    op_infos[v_info].mem_type = std::min(op_infos[v_info].mem_type, mem_type);
   }
 }
 
 void CVAddressAssign::updateLiveRangeOfInPlaceOp(
-    Operation *op, int i, std::map<ValueInfo, TensorLive> &liveRange,
-    int64_t start, int64_t end, uint32_t tensor_size) {
+    std::map<ValueInfo, OpElement> &op_infos, Operation *op, uint32_t end,
+    std::map<Operation *, uint32_t> &ops_loc, MemType mem_type,
+    int64_t alignment) {
   if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
     // For ConcatN. To solve concat opt when axis = 0,
     // it need the operand should be continuous global memory.
-    int64_t min_start = start;
-    int64_t max_end = end;
-    auto min_start_op = ValueInfo(op, i);
-    for (uint32_t i = 0; i < op->getNumOperands(); i++) {
+    uint32_t tensor_size = getTensorGmemSize(op, 0, alignment);
+    uint32_t max_end = end;
+    uint32_t min_start = end;
+    auto target_v = ValueInfo(0, 0);
+    for (int i = 0; i < op->getNumOperands(); ++i) {
       auto operand = Module::getOperand(op, i);
-      auto opd = operand.getDefiningOp();
-      assert(opd != 0x0);
-      ValueInfo opd_info(opd, operand.cast<OpResult>().getResultNumber());
-      assert(liveRange.find(opd_info) != liveRange.end());
-      assert(max_end >= liveRange[opd_info].end);
-      if (liveRange[opd_info].start < min_start) {
-        if (liveRange.find(min_start_op) != liveRange.end()) {
-          liveRange.erase(min_start_op);
-        }
-        min_start_op = opd_info;
-        min_start = liveRange[min_start_op].start;
-        liveRange[min_start_op].end = max_end;
-        liveRange[min_start_op].tensor_size = tensor_size;
-      } else {
-        liveRange.erase(opd_info);
+      auto preOp = operand.getDefiningOp();
+      ValueInfo v_info(preOp, operand.cast<OpResult>().getResultNumber());
+      op_infos[v_info].live.start =
+          std::min(ops_loc[preOp], op_infos[v_info].live.start);
+      max_end = std::max(end, op_infos[v_info].live.end);
+      op_infos[v_info].live.end = max_end;
+      op_infos[v_info].live.out_index = v_info.index;
+      op_infos[v_info].live.tensor_size = 0;
+      op_infos[v_info].mem_type = std::min(op_infos[v_info].mem_type, mem_type);
+      op_infos[v_info].need_alloc = false;
+      if (op_infos[v_info].live.start < min_start) {
+        target_v = v_info;
+        min_start = op_infos[v_info].live.start;
       }
     }
+    op_infos[target_v].live.end = max_end;
+    op_infos[target_v].live.tensor_size = tensor_size;
+    op_infos[target_v].need_alloc = true;
+    op_infos[ValueInfo(op, 0)].target_v = target_v;
+  } else {
+    updateLiveRangeofPreOp(op_infos, op, end, ops_loc, mem_type, alignment);
   }
 }
 
-void CVAddressAssign::updateAddressOfInPlaceOp(ValueInfo &v_info) {
+//  backward update
+//  each step do
+//  1. update cur op's (mem_type)
+//  2. update pre op's (live.start live.end, mem_type, need_alloc)
+
+void CVAddressAssign::updateLiveRange(Operation *op,
+                                      std::map<Operation *, uint32_t> &ops_loc,
+                                      std::map<ValueInfo, OpElement> &op_infos,
+                                      std::vector<mlir::Value> &outputs,
+                                      int64_t alignment) {
+  if (isa<top::InputOp>(op)) {
+    ValueInfo v_info(op, 0);
+    op_infos[v_info].mem_type = MEM_IOMEM;
+  } else if (isa<func::ReturnOp>(op)) {
+    MemType mem_type = MEM_PRIVATE;
+    auto func_op = dyn_cast<FuncOp>(op->getParentOp());
+    assert(func_op);
+    if (func_op.getName() == "main") {
+      mem_type = MEM_IOMEM;
+    }
+    updateLiveRangeofPreOp(op_infos, op, ops_loc[op] + 1, ops_loc, mem_type,
+                           alignment);
+  } else if (Module::isOpInGroup(op)) {
+  } else if (isInPlaceOp(op)) {
+    ValueInfo cur_info(op, 0);
+    assert(op_infos.find(cur_info) != op_infos.end());
+    op_infos[cur_info].need_alloc = false;
+    op_infos[cur_info].inplace = true;
+    updateLiveRangeOfInPlaceOp(op_infos, op, op_infos[cur_info].live.end,
+                               ops_loc, op_infos[cur_info].mem_type, alignment);
+  } else if (op->getDialect()->getNamespace() == "tpu") {
+    uint32_t max_end = 0;
+    for (int i = 0; i < op->getNumResults(); ++i) {
+      ValueInfo cur_info(op, i);
+      assert(op_infos.find(cur_info) != op_infos.end());
+    }
+    updateLiveRangeofPreOp(op_infos, op, ops_loc[op] + 1, ops_loc, MEM_SHARED,
+                           alignment);
+  } else {
+  }
+}
+
+void CVAddressAssign::updateAddressOfInPlaceOp(
+    ValueInfo &v_info, std::map<ValueInfo, OpElement> &op_infos,
+    int64_t alignment) {
   auto op = static_cast<Operation *>(v_info.op);
   if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
     int64_t base_addr = -1;
-    uint32_t nof_found = 0;
-    for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-      auto operand = Module::getOperand(op, i);
-      if (operand.getType().cast<RankedTensorType>().getEncoding()) {
-        base_addr = Module::getAddress(operand);
-        ++nof_found;
-      }
-    }
-    assert(nof_found == 1);
+    ValueInfo cur_v(op, 0);
+    auto target_v = op_infos[cur_v].target_v;
+    base_addr = Module::getAddress(
+        static_cast<Operation *>(target_v.op)->getResult(target_v.index));
     int64_t offset = 0;
     Module::setAddress(op->getResult(0), base_addr + offset);
     for (uint32_t i = 0; i < op->getNumOperands(); i++) {
       auto operand = Module::getOperand(op, i);
       auto opd = operand.getDefiningOp();
       if (opd == 0x0) {
-        continue;
+        assert(0);
       }
       int this_index = operand.cast<OpResult>().getResultNumber();
-      // assert(liveRange[save_opd].tensor_size == 0);
-      uint32_t tensor_size = Module::getBytes(opd->getResult(this_index));
+      uint32_t tensor_size = getTensorGmemSize(opd, this_index, alignment);
       Module::setAddress(opd->getResult(this_index), base_addr + offset);
       offset += tensor_size;
     }
@@ -359,22 +336,6 @@ bool CVAddressAssign::isOutput(Operation *op, int index) {
     }
   }
   return false;
-}
-
-void CVAddressAssign::findInPlaceOpMaxUsePosition(
-    Operation *op, uint32_t &maxPosition,
-    std::map<Operation *, uint32_t> &ops_loc) {
-  for (auto &use : op->getResult(0).getUses()) {
-    Operation *next = use.getOwner();
-    if (isInPlaceOp(next)) {
-      findInPlaceOpMaxUsePosition(next, maxPosition, ops_loc);
-    } else {
-      uint32_t curPosition = ops_loc[next] + 1;
-      if (maxPosition < curPosition) {
-        maxPosition = curPosition;
-      }
-    }
-  }
 }
 
 uint32_t CVAddressAssign::getTensorGmemSize(Operation *op, int index,
