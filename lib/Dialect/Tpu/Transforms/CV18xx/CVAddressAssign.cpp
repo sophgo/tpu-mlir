@@ -69,6 +69,9 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
       }
       int n = op->getNumResults();
       for (int i = 0; i < n; i++) {
+        if (op->getResult(i).getType().isa<mlir::NoneType>()) {
+          return;
+        }
         updateLiveRangeOfOps(op, i, ops_loc, liveRange, inplace_ops,
                              neuron_alignment);
       }
@@ -79,6 +82,9 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
     func.walk([&](Operation *op) {
       int n = op->getNumResults();
       for (int i = 0; i < n; i++) {
+        if (op->getResult(i).getType().isa<mlir::NoneType>()) {
+          continue;
+        }
         ValueInfo v_info(op, i);
         if (liveRange.find(v_info) != liveRange.end()) {
           if (isOpBelongToIOMemoryRegion(op, i, outputs)) {

@@ -118,8 +118,11 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
 
 template <typename ElemTy = Float32Type>
 static mlir::Type getQuantFloatType(Value v) {
-  auto sType = Module::getStorageType(v);
   Type newType = v.getType();
+  if (newType.isa<mlir::NoneType>()) {
+    return newType;
+  }
+  auto sType = Module::getStorageType(v);
   if (sType.isa<ElemTy>() == false) {
     auto shape = Module::getShape(v);
     auto ctx = v.getContext();

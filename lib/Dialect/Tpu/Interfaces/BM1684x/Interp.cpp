@@ -31,39 +31,25 @@ typedef enum {
   ONNX_NEAREST = 7,
 } PLATFORM_SUPPORT;
 
-typedef struct {
-    unsigned int       input_addr;
-    unsigned int       output_addr;
-    int                input_n;
-    int                input_c;
-    int                input_h;
-    int                input_w;
-    int                output_h;
-    int                output_w;
-    int                pad_bag;
-    int                pad_end;
-    bool               align_corners;
-    bool               half_pixel_centers;
-    PLATFORM_SUPPORT   platform_sp;
-    DATA_TYPE_T        dtype;
-} interp_local_param_t;
+typedef struct interp_common_spec {
+  int pad_bag;
+  int pad_end;
+  bool align_corners;
+  bool half_pixel_centers;
+  int platform_sp;
+} interp_common_spec_t;
 
-typedef struct {
-    unsigned long long input_addr;
-    unsigned long long output_addr;
-    int                input_n;
-    int                input_c;
-    int                input_h;
-    int                input_w;
-    int                output_h;
-    int                output_w;
-    int                pad_bag;
-    int                pad_end;
-    bool               align_corners;
-    bool               half_pixel_centers;
-    PLATFORM_SUPPORT   platform_sp;
-    DATA_TYPE_T        dtype;
-} interp_global_param_t;
+typedef struct interp_global_spec {
+  interp_common_spec_t common;
+  int shape_is_fixed;
+  int shape[MAX_SHAPE_DIMS];
+  int dims;
+} interp_global_spec_t;
+
+typedef struct interp_local_spec {
+  interp_common_spec_t common;
+} interp_local_spec_t;
+
 #ifdef __cplusplus
 }
 #endif
@@ -72,21 +58,13 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 void tpu::InterpOp::codegen_global_bm1684x() {
-  int64_t n, c, ih, iw, oh, ow;
-  Module::getNCHW(input(), n, c, ih, iw);
-  interp_global_param_t param = {0};
-  param.input_addr = Module::getAddress(input());
-  param.output_addr = Module::getAddress(output());
-  param.input_n = n;
-  param.input_c = c;
-  param.input_h = ih;
-  param.input_w = iw;
-  Module::getNCHW(output(), n, c, oh, ow);
-  param.output_h = oh;
-  param.output_w = ow;
-  param.pad_bag = 0;
-  param.pad_end = 0;
-  param.dtype = BM168x::getDataType(input());
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  interp_global_spec_t param = {0};
+  auto &common = param.common;
+  common.pad_bag = 0;
+  common.pad_end = 0;
   int coord = 0;
   bool align_corners = (coord_mode() == tpu::ResizeCoordMode::align_corners);
   bool half_pixel = (coord_mode() == tpu::ResizeCoordMode::half_pixel);
@@ -97,17 +75,17 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   else if (coord_mode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
   if (mode() == tpu::ResizeMode::nearest) {
-    param.platform_sp = ONNX_NEAREST;
-    param.align_corners = true;
-    param.half_pixel_centers = false;
+    common.platform_sp = ONNX_NEAREST;
+    common.align_corners = true;
+    common.half_pixel_centers = false;
   } else if (mode() == tpu::ResizeMode::linear) {
-    param.platform_sp = PYTORCH_SUPPORT;
-    param.align_corners = (coord == 2) ? 1: 0;
-    param.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
+    common.platform_sp = PYTORCH_SUPPORT;
+    common.align_corners = (coord == 2) ? 1 : 0;
+    common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_interp_global", &param,
-                                         sizeof(interp_global_param_t));
+  BM168x::instance(Module::getChip(op))
+      ->call_global_func("backend_api_interp_global", &param, sizeof(param),
+                         input_spec->data(), output_spec->data());
 }
 #if 0
 // =========================================

@@ -147,12 +147,13 @@ class MLIRImporter(object):
             kargs: Dict
         """
         num_output = len(output_types)
-        if num_output == 1:
-            loc = Location.fused([Location.name(kargs['name'])])
+        names = kargs['name']
+        if isinstance(names, str):
+            loc = Location.fused([Location.name(names)])
+        elif isinstance(names, list):
+            loc = Location.fused([Location.name(n) for n in names])
         else:
-            assert (isinstance(kargs["name"], list))
-            assert (num_output == len(kargs["name"]))
-            loc = Location.fused([Location.name(n) for n in kargs["name"]])
+            raise RuntimeError("Unknown names:{}".format(names))
         del kargs["name"]
         op = Operation.create(
             op_type,
@@ -539,15 +540,20 @@ class MLIRImporter(object):
 
         return self.buildOp(Top.LRNOp, operands, [output_type], **param)
 
-    def create_lstm_op(self, operands, output_shape, **kargs):
-        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+    def create_lstm_op(self, operands, out_shapes, **kargs):
+        out_types = list()
+        for s in out_shapes:
+            if len(s) == 0:
+                out_types.append(NoneType.get())
+            else:
+                t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
+                out_types.append(t)
         param = {
             'name': kargs['name'],
-            'have_bias': BoolAttr.get(kargs['have_bias']),
             'bidirectional': BoolAttr.get(kargs['bidirectional']),
             'batch_first': BoolAttr.get(kargs['batch_first']),
         }
-        return self.buildOp(Top.LSTMOp, operands, [output_type], **param)
+        return self.buildOp(Top.LSTMOp, operands, out_types, **param)
 
     def create_gather_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

@@ -92,6 +92,9 @@ public:
       func.walk([&](Operation *op) {
         if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
           for (auto value : op->getResults()) {
+            if (value.getType().isa<mlir::NoneType>()) {
+              continue;
+            }
             auto type = value.getType().cast<RankedTensorType>();
             if (type.getElementType().isIntOrIndex()) {
               continue;

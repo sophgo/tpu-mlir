@@ -345,7 +345,6 @@ LSTMOp
     - have_bias: whether to set bias, the default is false
     - bidirectional: set the LSTM of the bidirectional loop, the default is false
     - batch_first: whether to put the batch in the first dimension, the default is false
-    - num_layers: The number of LSTM stack layers, the default is 1
 
 :Output:
     - output: tensor

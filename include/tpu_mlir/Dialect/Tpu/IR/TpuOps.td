@@ -135,6 +135,20 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
        DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
+def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
+  let summary = "buffer operator";
+
+  let description = [{
+    A global buffer for operation, and free after op
+  }];
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    static mlir::Value create(mlir::Operation * OwnerOp,
+                              mlir::RankedTensorType& type);
+  }];
+}
+
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
@@ -1050,19 +1064,34 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$filter,
-    AnyTensor:$recurrence,
+    AnyTensorOrNone:$recurrence,
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$initial_c,
-
-    DefaultValuedAttr<BoolAttr, "false">:$have_bias,
-    DefaultValuedAttr<BoolAttr, "false">:$bidirectional,
-    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
-    DefaultValuedAttr<I64Attr, "1">:$num_layers,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
 
-  let results = (outs AnyTensor:$output);
+  let results = (outs
+    AnyTensor:$Y,
+    AnyTensorOrNone:$Y_h,
+    AnyTensorOrNone:$Y_c);
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool have_c0;
+      bool output_h;
+      bool output_c;
+    } lstm_attr_t;
+    lstm_attr_t parseParam();
+  }];
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
