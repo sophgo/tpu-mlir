@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "tpu_mlir/Backend/BM168x/Athena2.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
@@ -352,6 +352,8 @@ BM168x *BM168x::instance(const StringRef chip) {
     return &BM1684::instance();
   } else if (chip == Module::Chip::BM1684x) {
     return &BM1684x::instance();
+  } else if(chip == Module::Chip::ATHENA2) {
+    return &Athena2::instance();
   } else {
     llvm_unreachable("unsupport chip");
   }

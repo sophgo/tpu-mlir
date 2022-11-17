@@ -44,7 +44,8 @@ void tpu::DequantIntOp::codegen_global_bm1684x() {
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = quant_mode() == tpu::DequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
-  BM1684x::instance().call_global_func("backend_api_dequant_int_global", &param,
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_dequant_int_global", &param,
                                        sizeof(param));
 }
 
@@ -55,7 +56,7 @@ void tpu::DequantIntOp::codegen_global_bm1684x() {
 int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto input_dtype = BM1684x::getDataType(input());
+  auto input_dtype = BM168x::getDataType(input());
   if (quant_mode() == DequantMode::TFlite) {
     return out_lmem_bytes;
   }
@@ -88,6 +89,7 @@ void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
 
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  BM1684x::instance().call_local_func("backend_api_dequant_int_local", &param,
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_dequant_int_local", &param,
                                       sizeof(param));
 }

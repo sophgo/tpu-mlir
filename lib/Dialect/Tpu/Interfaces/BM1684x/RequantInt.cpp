@@ -46,7 +46,8 @@ void tpu::RequantIntOp::codegen_global_bm1684x() {
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
-  BM1684x::instance().call_global_func("backend_api_requant_int_global", &param,
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_requant_int_global", &param,
                                        sizeof(param));
 }
 
@@ -58,7 +59,7 @@ int64_t tpu::RequantIntOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t buffer_size = 0;
-  auto input_dtype = BM1684x::getDataType(input());
+  auto input_dtype = BM168x::getDataType(input());
   if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
     // store INT16:(X - Zx)
     buffer_size = in_lmem_bytes * 2;
@@ -97,6 +98,7 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.mode = static_cast<int>(quant_mode());
   param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
-  BM1684x::instance().call_local_func("backend_api_requant_int_local", &param,
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }

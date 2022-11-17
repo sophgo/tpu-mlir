@@ -46,9 +46,9 @@ void tpu::GatherOp::codegen_global_bm1684x() {
   param.common.axis = axis();
   param.common.index_is_coeff = false;
   // assert(Module::getStorageType(indices()).isInteger(32));
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  BM1684x::instance().call_global_func("backend_api_index_select", &param,
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_index_select", &param,
                                        sizeof(param), input_spec->data(),
                                        output_spec->data());
 }

@@ -6,6 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
+#pragma once
 
 #include "tpu_mlir/Backend/BM168x/BM1684x.h"
 #include "tpu_mlir/Support/Helper/Module.h"
@@ -17,22 +18,31 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace tpu {
 
+static int g_NPU_NUM = 0;
+static int g_EU_BYTES = 0;
+static void save_TPU_info(int npu_num, int eu_bytes) {
+  g_NPU_NUM = npu_num;
+  g_EU_BYTES = eu_bytes;
+}
+
+
+
 // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
 template <typename T>
 static void
 reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
                                     std::vector<int64_t> &shape,
                                     bool align = false) {
-  int64_t n, c, h, w;
+  int64_t n, c, h, w, eu_num;
   Module::getNCHW(shape, n, c, h, w);
-  if (n != 1 || h != 1 || c <= BM1684x::NPU_NUM) {
+  if (n != 1 || h != 1 || c <= g_NPU_NUM) {
     return;
   }
-  int in_type_len = sizeof(T);
-  auto old_w_align = align_up(w, BM1684x::instance().get_eu_num(in_type_len));
+  eu_num = g_EU_BYTES/sizeof(T);
+  auto old_w_align = align_up(w, eu_num);
 
   // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
-  int64_t new_c = BM1684x::NPU_NUM;
+  int64_t new_c = g_NPU_NUM;
   auto c2w = ceiling_func(c, new_c);
   int64_t new_w = (align ? old_w_align : w) * (c2w - 1) + w;
   auto coeff_new = std::make_shared<std::vector<T>>(new_w * new_c, 0);

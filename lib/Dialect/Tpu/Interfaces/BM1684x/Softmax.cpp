@@ -81,8 +81,8 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     inner_num *= in_shape[i];
   }
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   bool has_table = !table().getType().isa<NoneType>();
   float in_scale = 0;
   if (Quant::isUniformQuantized(input())) {
@@ -103,7 +103,7 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     param.zero_point = out_qtype.getZeroPoint();
     param.scale_val = out_qtype.getScale();
     param.dtype = BM168x::getDataType(input());
-    BM1684x::instance().call_global_func(
+    BM168x::instance(Module::getChip(op))->call_global_func(
         "backend_api_softmax_tflite_fix8b", &param, sizeof(param),
         input_spec->data(), output_spec->data());
   } else {
@@ -118,7 +118,7 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     param.log = false;
     param.dtype = BM168x::getDataType(input());
     param.scale_val = in_scale;
-    BM1684x::instance().call_global_func("backend_api_softmax_global", &param,
+    BM168x::instance(Module::getChip(op))->call_global_func("backend_api_softmax_global", &param,
                                          sizeof(param), input_spec->data(),
                                          output_spec->data());
   }

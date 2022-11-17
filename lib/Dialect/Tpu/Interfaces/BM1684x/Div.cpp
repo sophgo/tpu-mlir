@@ -32,8 +32,8 @@ extern "C" {
 // int8
 void tpu::DivOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   bcbinary_common_spec_t spec;
   memset(&spec, 0, sizeof(bcbinary_common_spec_t));
   spec.binary_type = BINARY_DIV;
@@ -43,6 +43,6 @@ void tpu::DivOp::codegen_global_bm1684x() {
   spec.scale_B = 1;
   spec.rshift_A = 0;
   spec.rshift_B = 0;
-  BM1684x::instance().call_global_func("backend_api_eltbinary_global", &spec,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_eltbinary_global", &spec,
                                        sizeof(spec), input_spec->data(), output_spec->data());
 }

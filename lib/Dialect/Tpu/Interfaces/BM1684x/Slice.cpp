@@ -48,8 +48,8 @@ typedef struct strideslice_local_spec {
 
 void tpu::SliceOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
 
   strideslice_common_spec_t param = {0};
   param.begin_mask = 0;
@@ -69,7 +69,7 @@ void tpu::SliceOp::codegen_global_bm1684x() {
     param.end_index[i] = output_shape[i] * steps_v->at(i) + offset_v->at(i);
     param.strides[i] = steps_v->at(i);
   }
-  BM1684x::instance().call_global_func("backend_api_strideslice_global", &param,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_strideslice_global", &param,
                                        sizeof(param), input_spec->data(),
                                        output_spec->data());
 }

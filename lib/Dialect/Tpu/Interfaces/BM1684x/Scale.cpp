@@ -91,6 +91,7 @@ typedef struct {
 void tpu::ScaleOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
+  auto op = getOperation();
   scale_global_param_t p = {0};
   p.input_global_addr = Module::getAddress(input());
   p.scale_global_addr = Module::getAddress(scale());
@@ -114,10 +115,10 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
     p.scale_sign = Module::getStorageType(scale()).isSignedInteger();
     p.bias_sign = Module::getStorageType(bias()).isSignedInteger();
     p.version = 10;
-    BM1684x::instance().call_global_func("backend_api_scale_global", &p,
+    BM168x::instance(Module::getChip(op))->call_global_func("backend_api_scale_global", &p,
                                          sizeof(scale_global_param_t));
   } else {
-    BM1684x::instance().call_global_func("backend_api_scale_global", &p,
+    BM168x::instance(Module::getChip(op))->call_global_func("backend_api_scale_global", &p,
                                          sizeof(scale_global_param_t));
   }
 }
@@ -143,6 +144,7 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   // out_zp is should be passed to backend
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
+  auto op = getOperation();
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto scale_gi = LocalGenInterface::getGroupInfo(scale(), n_step, h_step);
   auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
@@ -171,7 +173,7 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     p.bdtype = BM168x::getDataType(bias());
     p.round_mode = ROUND_UP;
     p.version = 10;
-    BM1684x::instance().call_local_func("backend_api_scale_fixed_local", &p,
+    BM168x::instance(Module::getChip(op))->call_local_func("backend_api_scale_fixed_local", &p,
                                         sizeof(scale_fixed_local_param_t));
   } else {
     scale_float_local_param_t p = {0};
@@ -187,7 +189,7 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     p.is_scale_coeff = 1;
     p.is_bias_coeff = 1;
     p.dtype = BM168x::getDataType(input());
-    BM1684x::instance().call_local_func("backend_api_scale_float_local", &p,
+    BM168x::instance(Module::getChip(op))->call_local_func("backend_api_scale_float_local", &p,
                                         sizeof(scale_float_local_param_t));
   }
 }

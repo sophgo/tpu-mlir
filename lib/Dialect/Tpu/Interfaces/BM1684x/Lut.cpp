@@ -48,9 +48,9 @@ void tpu::LutOp::codegen_global_bm1684x() {
   p.input_addr = Module::getAddress(input());
   p.table_addr = Module::getAddress(table());
   p.output_addr = Module::getAddress(output());
-  p.input_dtype = BM1684x::getDataType(input());
-  p.table_dtype = BM1684x::getDataType(table());
-  p.output_dtype = BM1684x::getDataType(output());
+  p.input_dtype = BM168x::getDataType(input());
+  p.table_dtype = BM168x::getDataType(table());
+  p.output_dtype = BM168x::getDataType(output());
   p.table_length = 256;
   p.is_local_layer = 0;
   p.shape_dim = 4;
@@ -60,7 +60,8 @@ void tpu::LutOp::codegen_global_bm1684x() {
   p.shape[1] = c;
   p.shape[2] = h;
   p.shape[3] = w;
-  BM1684x::instance().call_global_func("backend_api_lut", &p, sizeof(p));
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_lut", &p, sizeof(p));
 }
 
 // =========================================
@@ -83,9 +84,9 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   p.input_addr = in_gi.out_addr;
   p.table_addr = table_gi.out_addr;
   p.output_addr = gi.out_addr;
-  p.input_dtype = BM1684x::getDataType(input());
-  p.table_dtype = BM1684x::getDataType(table());
-  p.output_dtype = BM1684x::getDataType(output());
+  p.input_dtype = BM168x::getDataType(input());
+  p.table_dtype = BM168x::getDataType(table());
+  p.output_dtype = BM168x::getDataType(output());
   p.table_length = 256;
   p.is_local_layer = 1;
   p.shape_dim = 4;
@@ -95,5 +96,6 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   p.shape[1] = c;
   p.shape[2] = gi.h_slice;
   p.shape[3] = w;
-  BM1684x::instance().call_local_func("backend_api_lut", &p, sizeof(p));
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_lut", &p, sizeof(p));
 }

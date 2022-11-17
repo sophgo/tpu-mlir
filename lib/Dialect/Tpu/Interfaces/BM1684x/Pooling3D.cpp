@@ -128,7 +128,7 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
     }
   }
 
-  BM1684x::instance().call_global_func("backend_api_pool3d_global", &spec,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pool3d_global", &spec,
                                        sizeof(pooling3d_spec_t));
 }
 
@@ -144,7 +144,10 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
   auto out_dtype = output().getType();
   pool_attr_t attrs;
   parseParam(&attrs);
-  int c_per_npu = ceiling_func(attrs.c, BM1684x::instance().get_npu_num());
+
+  auto op = getOperation();
+  auto *instance = BM168x::instance(Module::getChip(op));
+  int c_per_npu = ceiling_func(attrs.c, instance->get_npu_num());
 
   if (attrs.kd > 1 || attrs.sd > 1 || attrs.pad_d > 0 ||
       attrs.pad_d_after > 0) {
@@ -152,12 +155,12 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     if (out_dtype.isInteger(8) && pool_mode() == tpu::PoolMode::Avg) {
       int64_t dtype_bytes =
           attrs.kd * attrs.kh * attrs.kw > 256 ? sizeof(int) : sizeof(short);
-      int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
+      int64_t eu_num = instance->get_eu_num(dtype_bytes);
       buffer_size = (1 + attrs.od) * align_up(out_hslice * attrs.ow, eu_num) *
                     c_per_npu * dtype_bytes;
     } else {
-      int64_t dtype_bytes = BM1684x::getFmtBytes(BM168x::getDataType(output()));
-      int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
+      int64_t dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(output()));
+      int64_t eu_num = instance->get_eu_num(dtype_bytes);
       buffer_size =
           align_up(out_hslice * attrs.ow, eu_num) * c_per_npu * dtype_bytes;
     }
@@ -165,8 +168,8 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     int64_t dtype_bytes = attrs.kd * attrs.kh * attrs.kw > 256
                               ? sizeof(int32_t)
                               : sizeof(int16_t);
-    int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
-    int64_t npu_num = BM1684x::instance().get_npu_num();
+    int64_t eu_num = instance->get_eu_num(dtype_bytes);
+    int64_t npu_num = instance->get_npu_num();
     buffer_size = align_up(out_hslice * attrs.ow, eu_num) *
                   ceiling_func(attrs.c, npu_num) * dtype_bytes;
   }
@@ -238,6 +241,6 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   spec.if_relu = attrs.do_relu;
   spec.relu_limit = attrs.relu_limit;
 
-  BM1684x::instance().call_local_func("backend_api_pool3d_local", &spec,
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_pool3d_local", &spec,
                                       sizeof(pooling3d_spec_t));
 }

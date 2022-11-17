@@ -319,17 +319,17 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         // add prefix to each cmd in profile.txt
         std::string prefix = Module::getName(group_ops[id]).str();
         if (ginfo.overstepped == false) {
-          if (chip == Module::Chip::BM1684) {
+          if (Module::isBM1684Family(chip)) {
             lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
-          } else if (chip == Module::Chip::BM1684x) {
+          } else if (Module::isBM1684xFamily(chip)) {
             auto pid_node =
-                (CMD_ID_NODE *)BM168x::instance(Module::Chip::BM1684x)
+                (CMD_ID_NODE *)BM168x::instance(chip)
                     ->bdc_node;
             if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
-              pid_node = (CMD_ID_NODE *)BM168x::instance(Module::Chip::BM1684x)
+              pid_node = (CMD_ID_NODE *)BM168x::instance(chip)
                              ->gdma_node;
             }
-            BM168x::instance(Module::Chip::BM1684x)
+            BM168x::instance(chip)
                 ->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
             lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep);
           } else {
@@ -367,9 +367,9 @@ void CodegenPass::codegen(Operation *op) {
   } else if (Module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (chip == Module::Chip::BM1684) {
+    if (Module::isBM1684Family(chip)) {
       castOp.codegen_global_bm1684();
-    } else if (chip == Module::Chip::BM1684x) {
+    } else if (Module::isBM1684xFamily(chip)) {
       castOp.codegen_global_bm1684x();
     } else {
       llvm_unreachable("chip not support");

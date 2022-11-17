@@ -29,10 +29,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &module) {
   int64_t alignment = BM168x::ALIGNMENT;
   // bool check = false;
   chip = Module::getChip(module);
-  if (chip == Module::Chip::BM1684) {
-    start_addr = BM1684::instance().get_ctx_start_addr();
-  } else if (chip == Module::Chip::BM1684x) {
-    start_addr = BM1684x::instance().get_ctx_start_addr();
+  auto *instance = BM168x::instance(chip);
+  if (Module::isBM1684xFamily(chip) || Module::isBM1684Family(chip)) {
+    start_addr = instance->get_ctx_start_addr();
   } else {
     llvm_unreachable("chip not support now");
   }
@@ -113,7 +112,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module) {
   // 3.set inplace_ops address
   for (auto op : inplace_ops) {
     if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op.op)) {
-      if (chip == Module::Chip::BM1684x) {
+      if (Module::isBM1684xFamily(chip)) {
         auto addr = Module::getAddress(reshapeOp.input());
         Module::setAddress(reshapeOp.output(), addr);
       }

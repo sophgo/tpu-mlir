@@ -44,8 +44,8 @@ typedef struct transpose_param {
 // =========================================
 void tpu::PermuteOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   transpose_param_t param = {0};
   param.if_getting_buffer_size = 0;
 
@@ -57,6 +57,6 @@ void tpu::PermuteOp::codegen_global_bm1684x() {
     param.spec.order[i] =perm->at(i);
   }
   param.buffer_size_ptr = 0;
-  BM1684x::instance().call_global_func("backend_api_transpose", &param,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_transpose", &param,
                                        sizeof(param), input_spec->data(), output_spec->data());
 }
