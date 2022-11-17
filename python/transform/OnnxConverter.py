@@ -880,7 +880,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_pad_op(self, onnx_node):
         assert (onnx_node.op_type == "Pad")
-        pad_mode = {"constant": 0, "reflect": 1}
+        pad_mode = {"constant": 0, "reflect": 1, "edge": 3}
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)

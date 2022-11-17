@@ -208,10 +208,20 @@ void cvi_backend_tg_crop_kernel(const CviBackendContext &ctx, uint32_t layer_id,
                                 std::vector<int64_t> os_4,
                                 std::vector<int> offsets,
                                 std::vector<int> steps, cvk_fmt_t fmt);
-// i8/bf16 relu
+
+void cvi_backend_tg_pad_kernel(
+    const CviBackendContext& ctx,
+    uint32_t layer_id, gaddr_t ga_ifmap, gaddr_t ga_ofmap, int input_n,
+    int input_c, int input_h, int input_w, int *pads, float const_val,
+    const char* mode, cvk_fmt_t fmt);
+
+void cvi_backend_tg_reflectionpad_kernel(
+    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+    gaddr_t ga_output, gaddr_t ga_left, gaddr_t ga_right, int outer_size,
+    int ih, int iw, std::vector<int> &pads, cvk_fmt_t fmt);
+
 void cvi_backend_tg_relu_kernel(const CviBackendContext &ctx, uint32_t layer_id,
                                 uint64_t ga_input, uint64_t ga_output, int n,
                                 int c, int h, int w, cvk_fmt_t fmt);
-
 } // namespace backend
 } // namespace tpu_mlir
