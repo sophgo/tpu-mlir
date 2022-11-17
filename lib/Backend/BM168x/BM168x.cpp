@@ -162,23 +162,23 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
 }
 std::shared_ptr<std::vector<tensor_spec_t>>
 BM168x::get_input_spec(Operation *op) {
-  std::vector<Value> inputs;
-  for (auto in : op->getOperands()) {
-    if (in.getType().isa<NoneType>()) {
-      continue;
-    }
-    inputs.push_back(in);
-  }
-  auto specs = std::make_shared<std::vector<tensor_spec_t>>(inputs.size());
-  std::transform(inputs.begin(), inputs.end(), specs->begin(), value_to_spec);
-  return std::move(specs);
+  return get_spec(op->getOperands());
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
 BM168x::get_output_spec(Operation *op) {
-  auto outputs = op->getResults();
-  auto specs = std::make_shared<std::vector<tensor_spec_t>>(outputs.size());
-  std::transform(outputs.begin(), outputs.end(), specs->begin(), value_to_spec);
+  return get_spec(op->getResults());
+}
+
+std::shared_ptr<std::vector<tensor_spec_t>>
+BM168x::get_spec(ValueRange values) {
+  auto specs = std::make_shared<std::vector<tensor_spec_t>>();
+  for (auto v : values) {
+    if (v.getType().isa<mlir::NoneType>()) {
+      continue;
+    }
+    specs->push_back(value_to_spec(v));
+  }
   return std::move(specs);
 }
 

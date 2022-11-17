@@ -456,6 +456,8 @@ public:
   get_input_spec(mlir::Operation *op);
   static std::shared_ptr<std::vector<tensor_spec_t>>
   get_output_spec(mlir::Operation *op);
+  static std::shared_ptr<std::vector<tensor_spec_t>>
+  get_spec(mlir::ValueRange values);
   static void fix_shape(tensor_spec_t &spec,
                         const std::vector<int32_t> &new_shape);
 
