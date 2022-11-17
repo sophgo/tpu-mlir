@@ -42,9 +42,9 @@ void tpu::UpsampleOp::codegen_global_bm1684x() {
   upsample_spec_t spec = {0};
   spec.size = scale_h();
   spec.if_relu = do_relu();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  BM1684x::instance().call_global_func("backend_api_upsample_global", &spec,
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_upsample_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -70,8 +70,8 @@ void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   upsample_spec_t spec = {0};
   spec.size = scale_h();
   spec.if_relu = do_relu();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
   sec_info.n_slice = in_gi.n_slice;
@@ -85,7 +85,7 @@ void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = ow;
-  BM1684x::instance().call_local_func("backend_api_upsample_local", &spec,
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_upsample_local", &spec,
                                       sizeof(spec), &sec_info, input_spec->data(),
                                       output_spec->data());
 }

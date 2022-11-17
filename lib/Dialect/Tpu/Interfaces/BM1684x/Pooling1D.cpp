@@ -104,8 +104,8 @@ static bool has_pad(const pool_attr_t &attrs) {
 void tpu::Pool1DOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto module = Module::getModuleOp(op);
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   (*input_spec)[0].dims = 4;
   (*input_spec)[0].shape[3] = 1;
   (*output_spec)[0].dims = 4;
@@ -130,7 +130,7 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
       }
     }
   }
-  BM1684x::instance().call_global_func("backend_api_pooling_global", &spec,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pooling_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -151,8 +151,10 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
     if (Module::getAsymmetric(module)) {
       auto kernel = Module::getI64Array(kernel_shape());
       int64_t dtype_bytes = kernel->at(0) ? sizeof(int) : sizeof(short);
-      int64_t eu_num = BM1684x::instance().get_eu_num(dtype_bytes);
-      int64_t npu_num = BM1684x::instance().get_npu_num();
+      auto op = getOperation();
+      auto *instance = BM168x::instance(Module::getChip(op));
+      int64_t eu_num = instance->get_eu_num(dtype_bytes);
+      int64_t npu_num = instance->get_npu_num();
 
       int64_t N, C, H, W;
       Module::getNCHW(input(), N, C, H, W);
@@ -167,8 +169,8 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
 void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
   auto module = Module::getModuleOp(op);
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
 
@@ -217,7 +219,7 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attrs.ow;
-  BM1684x::instance().call_local_func("backend_api_pooling_local", &spec,
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_pooling_local", &spec,
                                       sizeof(spec), &sec_info,
                                       input_spec->data(), output_spec->data());
 }

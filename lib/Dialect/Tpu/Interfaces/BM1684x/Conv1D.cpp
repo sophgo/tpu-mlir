@@ -35,6 +35,11 @@ void tpu::Conv1DOp::weight_reorder_int8_bm1684x() {
     merge = false;
   }
   auto op = getOperation();
+  auto chip = Module::getChip(op);
+  int64_t npu_num = BM168x::instance(chip)->get_npu_num();
+  int64_t eu_bytes = BM168x::instance(chip)->get_eu_bytes();
+  save_TPU_info(npu_num, eu_bytes);
+
   OpBuilder builder(getContext());
   // filter
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
@@ -107,7 +112,8 @@ void tpu::Conv1DOp::weight_reorder_int8_bm1684x() {
 
   // merge
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
-  int64_t filter_align = attr.is_dw ? 1 : BM1684x::EU_BYTES;
+  int64_t filter_align = attr.is_dw ? 1 : BM168x::instance(chip)->get_eu_bytes();
+
   if (attr.has_bias) {
     bias_offset =
         align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
@@ -212,8 +218,8 @@ void tpu::Conv1DOp::codegen_global_bm1684x() {
   conv_attr_t attr = {0};
   parseParam(&attr);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   (*input_spec)[0].dims = 4;
   (*input_spec)[0].shape[3] = 1;
   (*output_spec)[0].dims = 4;
@@ -253,7 +259,7 @@ void tpu::Conv1DOp::codegen_global_bm1684x() {
     common.ipad_value = in_qtype.getZeroPoint();
     common.use_3ic_optimize = use_3ic_optimize();
   }
-  BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_conv_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -272,8 +278,11 @@ int64_t tpu::Conv1DOp::getBufferSize_bm1684x(
   auto out_type = BM168x::getDataType(output());
   int in_type_len = BM168x::getFmtBytes(in_type);
   int out_type_len = BM168x::getFmtBytes(out_type);
-  auto eu_num = BM1684x::instance().get_eu_num(in_type_len);
-  auto npu_num = BM1684x::NPU_NUM;
+
+  auto chip = Module::getChip(getOperation());
+  auto eu_num = BM168x::instance(chip)->get_eu_num(in_type_len);
+  auto npu_num = BM168x::instance(chip)->get_npu_num();
+
   int oc_per_npu = ceiling_func(p.oc, npu_num);
   int ic_per_npu = ceiling_func(p.ic / p.groups, npu_num);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
@@ -305,8 +314,8 @@ void tpu::Conv1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   conv_attr_t attr = {0};
   parseParam(&attr);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   conv_local_param_t p;
@@ -364,7 +373,7 @@ void tpu::Conv1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attr.ow;
-  BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_conv_local", &p, sizeof(p),
                                       &sec_info, input_spec->data(),
                                       output_spec->data());
 }

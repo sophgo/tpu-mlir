@@ -45,9 +45,9 @@ void tpu::ReluOp::codegen_global_bm1684x() {
   spec.upper_limit = relu_limit().convertToDouble();
   spec.round_mode = ROUND_UP;
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  BM1684x::instance().call_global_func("backend_api_prelu_global", &spec,
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_prelu_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -70,8 +70,8 @@ void tpu::ReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
 
   prelu_spec_t spec;
   memset(&spec, 0, sizeof(spec));
@@ -93,7 +93,7 @@ void tpu::ReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = w;
-  BM1684x::instance().call_local_func("backend_api_prelu_local", &spec,
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_prelu_local", &spec,
                                       sizeof(spec), &sec_info,
                                       input_spec->data(), output_spec->data());
 }

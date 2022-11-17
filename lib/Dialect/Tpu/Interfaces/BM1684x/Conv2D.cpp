@@ -35,14 +35,25 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
   if (out_stype.isInteger(32)) {
     merge = false;
   }
+
   auto op = getOperation();
+  auto chip = Module::getChip(op);
+  int64_t npu_num = BM168x::instance(chip)->get_npu_num();
+  int64_t eu_bytes = BM168x::instance(chip)->get_eu_bytes();
+  save_TPU_info(npu_num, eu_bytes);
+
   OpBuilder builder(getContext());
   // filter
   auto filterOp = filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
-  int IC_PARALLEL = 64;
+  int IC_PARALLEL = 0;
+  if(Module::isAthena2(chip)) {
+    IC_PARALLEL = 32;
+  } else {
+    IC_PARALLEL = 64;
+  }
   int use_3ic_optimize = 0;
   if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
       attr.kw > 1) {
@@ -118,7 +129,7 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
 
   // merge
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
-  int64_t filter_align = attr.is_dw ? 1 : BM1684x::EU_BYTES;
+  int64_t filter_align = attr.is_dw ? 1 : BM168x::instance(chip)->get_eu_bytes();
   if (attr.has_bias) {
     bias_offset =
         align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
@@ -290,8 +301,8 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
   conv_attr_t attr = {0};
   parseParam(&attr);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   conv_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   auto &common = spec.common;
@@ -327,7 +338,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
   }
-  BM1684x::instance().call_global_func("backend_api_conv_global", &spec,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_conv_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -346,8 +357,9 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   auto out_type = BM168x::getDataType(output());
   int in_type_len = BM168x::getFmtBytes(in_type);
   int out_type_len = BM168x::getFmtBytes(out_type);
-  auto eu_num = BM1684x::instance().get_eu_num(in_type_len);
-  auto npu_num = BM1684x::NPU_NUM;
+  auto chip = Module::getChip(getOperation());
+  auto eu_num = BM168x::instance(chip)->get_eu_num(in_type_len);
+  auto npu_num = BM168x::instance(chip)->get_npu_num();
   int oc_per_npu = ceiling_func(p.oc, npu_num);
   int ic_per_npu = ceiling_func(p.ic / p.groups, npu_num);
   int int32_size = out_lmem_bytes * sizeof(int32_t) / out_type_len;
@@ -390,8 +402,8 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   conv_attr_t attr = {0};
   parseParam(&attr);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   conv_local_param_t p;
@@ -449,7 +461,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attr.ow;
-  BM1684x::instance().call_local_func("backend_api_conv_local", &p, sizeof(p),
+  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_conv_local", &p, sizeof(p),
                                       &sec_info, input_spec->data(),
                                       output_spec->data());
 }

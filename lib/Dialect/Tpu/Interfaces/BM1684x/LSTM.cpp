@@ -207,8 +207,8 @@ typedef struct {
 // =========================================
 void tpu::LSTMOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
   int64_t in0_n, in0_c, in0_h, in0_w;
   int64_t in1_n, in1_c, in1_h, in1_w;
@@ -239,7 +239,7 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
   p.bidirection = bidirectional();
   p.num_layers = num_layers();
   p.dtype = BM168x::getDataType(input());
-  BM1684x::instance().call_global_func("backend_api_pytorch_lstm", &p,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pytorch_lstm", &p,
                                        sizeof(pytorch_lstm_param_t),
                                        input_spec->data(), output_spec->data());
 }

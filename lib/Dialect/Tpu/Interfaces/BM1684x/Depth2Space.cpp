@@ -54,6 +54,7 @@ void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
   param.is_inversed = is_inversed();
   param.out_is_nchw = 1;
   param.is_crd_mode = is_CRD();
-  BM1684x::instance().call_global_func("backend_api_depth2space_global", &param,
+  auto op = getOperation();
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_depth2space_global", &param,
                                        sizeof(param));
 }

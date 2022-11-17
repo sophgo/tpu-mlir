@@ -66,14 +66,14 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   double relu_limit;
   parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp);
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   if (batch != 1) {
-    BM1684x::fix_shape(input_spec->at(0),
+    BM168x::fix_shape(input_spec->at(0),
                        {(int32_t)batch, (int32_t)M, (int32_t)K});
-    BM1684x::fix_shape(input_spec->at(1),
+    BM168x::fix_shape(input_spec->at(1),
                        {(int32_t)batch, (int32_t)K, (int32_t)N});
-    BM1684x::fix_shape(output_spec->at(0),
+    BM168x::fix_shape(output_spec->at(0),
                        {(int32_t)batch, (int32_t)M, (int32_t)N});
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
@@ -96,14 +96,14 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.offset_val = output_type.getZeroPoint();
     }
 
-    BM1684x::instance().call_global_func(
+    BM168x::instance(Module::getChip(op))->call_global_func(
         "backend_api_batch_matmul_global", &spec, sizeof(spec),
         input_spec->data(), output_spec->data());
     return;
   }
-  BM1684x::fix_shape(input_spec->at(0), {(int32_t)M, (int32_t)K});
-  BM1684x::fix_shape(input_spec->at(1), {(int32_t)K, (int32_t)N});
-  BM1684x::fix_shape(output_spec->at(0), {(int32_t)M, (int32_t)N});
+  BM168x::fix_shape(input_spec->at(0), {(int32_t)M, (int32_t)K});
+  BM168x::fix_shape(input_spec->at(1), {(int32_t)K, (int32_t)N});
+  BM168x::fix_shape(output_spec->at(0), {(int32_t)M, (int32_t)N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.if_relu = relu;
@@ -125,7 +125,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.offset_val = output_type.getZeroPoint();
     spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
   }
-  BM1684x::instance().call_global_func("backend_api_fc_global", &spec,
+  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_fc_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }

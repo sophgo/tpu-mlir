@@ -435,6 +435,12 @@ public:
     return get_eu_bytes() / dtype_bytes;
   }
   virtual int64_t get_n_align(int64_t dtype_bytes) { return 1; }
+  virtual void call_global_func(const char *symbolName, void *params, int param_size){}
+  virtual void call_local_func(const char *symbolName, void *params, int param_size){}
+  virtual void call_global_func(const char *symbolName, void *params, int param_size,
+                        void *input, void *output){}
+  virtual void call_local_func(const char *symbolName, void *params, int param_size,
+                       void *info, void *input, void *output){}
   int64_t get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
                          mlir::Type type, bool eu_align = true,
                          bool is_4N = false);
