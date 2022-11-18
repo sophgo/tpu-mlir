@@ -23,7 +23,7 @@ using namespace mlir;
 // clang-format on
 void top::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                                int64_t &N, bool &with_bias, bool &relu,
-                               double &limit) {
+                               double &limit, bool &transpose) {
   auto a_s = Module::getShape(input());
   auto b_s = Module::getShape(right());
   auto o_s = Module::getShape(output());
@@ -32,10 +32,11 @@ void top::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
   limit = this->relu_limit().convertToDouble();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
+  transpose = right_transpose();
   assert(b_dims >= 2);
-  N = b_s[b_dims - 1];
+  N = transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
   assert(N == o_s[o_dims - 1]);
-  K = b_s[b_dims - 2];
+  K = transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   batch = 1;
   for (int i = 0; i < b_dims - 2; i++) {
     batch *= b_s[i];
@@ -50,9 +51,9 @@ void top::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
 
 int64_t top::MatMulOp::getFLOPs() {
   int64_t batch, M, K, N;
-  bool has_relu, with_bias;
+  bool has_relu, with_bias, transpose;
   double limit;
-  parseParam(batch, M, K, N, with_bias, has_relu, limit);
+  parseParam(batch, M, K, N, with_bias, has_relu, limit, transpose);
   auto extra = with_bias ? 1 : 0 + has_relu ? 1 : 0;
   return batch * (2 * K + extra) * N * M;
 }
@@ -60,11 +61,11 @@ int64_t top::MatMulOp::getFLOPs() {
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   int64_t batch, M, K, N;
-  bool with_bias, relu;
+  bool with_bias, relu, right_transpose;
   double limit;
-  parseParam(batch, M, K, N, with_bias, relu, limit);
+  parseParam(batch, M, K, N, with_bias, relu, limit, right_transpose);
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, relu, limit, 0);
+                K, N, relu, limit, 0, right_transpose);
   p.handle = (void *)matmul;
   return success();
 }

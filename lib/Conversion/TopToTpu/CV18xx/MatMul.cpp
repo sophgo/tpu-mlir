@@ -78,9 +78,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
-  bool with_bias, relu;
+  bool with_bias, relu, transpose;
   double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit);
+  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
   auto th_output = Quant::getThreshold(op.output());
   auto th_input = Quant::getThreshold(op.input());
   std::vector<int64_t> multipliers;

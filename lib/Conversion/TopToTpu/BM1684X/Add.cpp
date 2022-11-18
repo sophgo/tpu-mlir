@@ -112,6 +112,9 @@ void AddLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::AddOp>(rewriter, addOp.getOperation());
 }
 
+//                / input0 -> dequant \
+// quant add ==> |                      add -> requant
+//                \ input1 -> dequant /
 void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::AddOp addOp) const {
   if (Quant::isUniformQuantized(addOp.inputs()[0], addOp.output()) == false) {

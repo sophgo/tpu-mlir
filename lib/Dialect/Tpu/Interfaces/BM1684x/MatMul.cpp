@@ -62,9 +62,9 @@ typedef struct batch_matmul_common_spec {
 
 void tpu::MatMulOp::codegen_global_bm1684x() {
   int64_t batch, M, K, N, right_zp;
-  bool with_bias, relu;
+  bool with_bias, relu, right_transpose;
   double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp);
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp, right_transpose);
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

@@ -15,10 +15,11 @@ class MatMul {
 public:
   MatMul();
 
-  void right_init(float *right, int64_t right_zp, int64_t len);
+  void right_init(float *right, int64_t right_zp, int64_t batch,
+                  int64_t K, int64_t N, bool right_transpose);
   void setup(float *left, float *right, float *bias, float *output,
              int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
-             double relu_limit, int64_t right_zp);
+             double relu_limit, int64_t right_zp, bool right_transpose);
 
   void run();
 

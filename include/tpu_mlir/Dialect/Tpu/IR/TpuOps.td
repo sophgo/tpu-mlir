@@ -474,6 +474,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$input,
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
@@ -487,7 +488,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit, int64_t &zp);
+      double &relu_limit, int64_t &zp, bool &right_transpose);
   }];
 }
 
