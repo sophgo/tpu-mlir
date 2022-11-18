@@ -1211,4 +1211,20 @@ def Tpu_InterpOp: Tpu_Op<"Interp"> {
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
+  let summary = "Reduce operator";
+  let description = [{
+      Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$axes,
+    I64Attr:$keepdims,
+    I64Attr: $type
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS
