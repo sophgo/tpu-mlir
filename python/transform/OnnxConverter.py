@@ -17,6 +17,7 @@ import onnxsim.onnx_simplifier as onnxsim
 import onnx
 import onnxruntime
 import numpy as np
+import random
 from utils.pad_setting import get_TF_SAME_Padding, set_auto_pad
 import copy
 
@@ -141,6 +142,8 @@ class OnnxConverter(BaseConverter):
             "Pad": lambda node: self.convert_pad_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
             "ReduceMean": lambda node: self.convert_reduce_op(node),
+            "ReduceMax": lambda node: self.convert_reduce_op(node),
+            "ReduceMin": lambda node: self.convert_reduce_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
@@ -1068,12 +1071,83 @@ class OnnxConverter(BaseConverter):
             self.addOperand(name, new_op)
             offset = offset + i
 
+    #support max ndims to 6
     def convert_reduce_op(self, onnx_node):
+        assert(onnx_node.op_type == "ReduceMin"
+                or onnx_node.op_type == "ReduceMax"
+                or onnx_node.op_type == "ReduceMean")
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        num_dims = len(input_shape)
+        assert(num_dims <= 6)
+        reduce_n = reduce_c = reduce_x = reduce_d = reduce_h = reduce_w = 0
+        axes = onnx_node.attrs['axes']
+        keepdims = onnx_node.attrs['keepdims']
+        for i in range(len(axes)):
+            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + num_dims
+            if axes[i] == 0:
+                reduce_n = 1
+            elif axes[i] == 1:
+                reduce_c = 1
+            elif (axes[i] == 2 and num_dims == 6):
+                reduce_x = 1
+            elif (axes[i] == 2 and num_dims == 5) or (axes[i] == 3 and num_dims == 6):
+                reduce_d = 1
+            elif ((axes[i] == 2 and num_dims == 4)
+                   or (axes[i] == 3 and num_dims == 5)
+                    or (axes[i] == 4 and num_dims == 6)):
+                reduce_h = 1
+            elif ((axes[i] == 3 and num_dims == 4)
+                   or (axes[i] == 4 and num_dims == 5)
+                    or (axes[i] == 5 and num_dims == 6)):
+                reduce_w = 1
+        new_out_shape = copy.deepcopy(output_shape)
+        if keepdims:
+            if reduce_w:
+                new_out_shape.pop()
+            if reduce_h and num_dims <= 5:
+                new_out_shape.pop(2 if num_dims == 4 else 3)
+            if reduce_h and num_dims == 6:
+                new_out_shape.pop(4)
+            if reduce_d:
+                new_out_shape.pop(2 if num_dims == 5 else 3)
+            if reduce_x:
+                new_out_shape.pop(2)
+            if reduce_c:
+                new_out_shape.pop(1)
+            if reduce_n:
+                new_out_shape.pop(0)
+
+        op = self.getOperand(onnx_node.inputs[0])
+        type = 0
+        name = "reduce" + str(random.randrange(1,1000,1))
+        #handle the all reduce type here
+        if onnx_node.op_type == "ReduceMin":
+            type = 3
+        elif onnx_node.op_type == "ReduceMax":
+            type = 2
+        elif onnx_node.op_type == "ReduceMean":
+            type = 0
+        p = {
+            "name": "{}_{}".format(name if (keepdims) else onnx_node.name, onnx_node.op_type),
+            "axes": axes,
+            "keepdims" : 0,
+            "type" : type
+        }
+        new_op = self.mlir.create_reduce_op([op], new_out_shape if keepdims else output_shape, **p)
+        self.addOperand(name if (keepdims) else onnx_node.name, new_op)
+        if keepdims:
+            op = new_op
+            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+            new_op = self.mlir.create_reshape_op([op], output_shape, **p)
+            self.addOperand(onnx_node.name, new_op)
+
+    def convert_other_reduce_op(self, onnx_node):
         assert (onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceMax"
-                or onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceProd"
-                or onnx_node.op_type == "ReduceSum" or onnx_node.op_type == "ReduceSumSquare"
-                or onnx_node.op_type == "ReduceL1" or onnx_node.op_type == "ReduceL2"
-                or onnx_node.op_type == "ReduceLogSum" or onnx_node.op_type == "ReduceLogSumExp")
+            or onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceProd"
+            or onnx_node.op_type == "ReduceSum" or onnx_node.op_type == "ReduceSumSquare"
+            or onnx_node.op_type == "ReduceL1" or onnx_node.op_type == "ReduceL2"
+            or onnx_node.op_type == "ReduceLogSum" or onnx_node.op_type == "ReduceLogSumExp")
 
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
@@ -1121,7 +1195,6 @@ class OnnxConverter(BaseConverter):
                 'do_relu': False,
             }
         elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_h:
-
             num_dims = len(input_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[0] = input_shape[2]
@@ -1245,7 +1318,6 @@ class OnnxConverter(BaseConverter):
             }
             op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
             self.addOperand(onnx_node.name, op)
-
 
     def convert_lrn_op(self, onnx_node):
         assert onnx_node.op_type == "LRN"

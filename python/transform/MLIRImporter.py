@@ -47,6 +47,7 @@ class Top:
     AbsOp = 'top.Abs'
     PReluOp = 'top.PRelu'
     InterpOp = 'top.Interp'
+    ReduceOp = 'top.Reduce'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -598,6 +599,22 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name']}
         return self.buildOp(Top.PReluOp, operands, [output_type], **param)
+
+    def create_reduce_op(self, operands, output_shape, **kargs):
+        """
+            operands: List[pybind.op]
+            output_tensorshape: List[int] output tensor type
+            attrs: Dict, about op attrs
+        """
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'axes': self.ArrayAttr(kargs['axes']),
+            'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
+            'type': IntegerAttr.get(self.mlir_type['INT64'], kargs['type']),
+        }
+        return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
