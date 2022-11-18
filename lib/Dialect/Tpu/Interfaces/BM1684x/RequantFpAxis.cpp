@@ -58,7 +58,7 @@ void tpu::RequantFpAxisOp::codegen_global_bm1684x() {
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUNDING_AWAY_FROM_ZERO;
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_requant_float_global", &param,
+  BM168x::call_global_func("backend_api_requant_float_global", &param,
                                        sizeof(param));
 }
 
@@ -98,6 +98,6 @@ void tpu::RequantFpAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step)
   param.mode = static_cast<int>(quant_mode()) / 2;
   param.round_mode = ROUNDING_AWAY_FROM_ZERO;
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_requant_float_local", &param,
+  BM168x::call_local_func("backend_api_requant_float_local", &param,
                                       sizeof(param));
 }

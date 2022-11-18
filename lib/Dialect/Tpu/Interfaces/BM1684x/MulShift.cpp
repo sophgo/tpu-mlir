@@ -64,7 +64,7 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
       param.mode = 2;
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
-      BM168x::instance(Module::getChip(op))->call_global_func("backend_api_requant_int_global",
+      BM168x::call_global_func("backend_api_requant_int_global",
                                            &param, sizeof(param));
       return;
     }
@@ -82,7 +82,7 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
   param.scale_dtype = param.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUND_UP;
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_mulshift_global", &param,
+  BM168x::call_global_func("backend_api_mulshift_global", &param,
                                        sizeof(param));
 }
 
@@ -133,7 +133,7 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
       param.mode = 2;
-      BM168x::instance(Module::getChip(op))->call_local_func("backend_api_requant_int_local",
+      BM168x::call_local_func("backend_api_requant_int_local",
                                           &param, sizeof(param));
       return;
     }
@@ -152,6 +152,6 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
   param.scale_dtype = param.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUND_UP;
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_mulshift_local", &param,
+  BM168x::call_local_func("backend_api_mulshift_local", &param,
                                       sizeof(param));
 }

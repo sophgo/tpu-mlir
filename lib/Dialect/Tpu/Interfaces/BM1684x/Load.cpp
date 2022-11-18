@@ -32,8 +32,7 @@ int64_t tpu::LoadOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 
 void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto chip = Module::getChip(getOperation());
-  auto *instance = BM168x::instance(chip);
-  auto pid_node = (CMD_ID_NODE *)instance->gdma_node;
+  auto pid_node = (CMD_ID_NODE *)BM168x::inst->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
   auto data_type = BM168x::getDataType(output());
@@ -41,16 +40,16 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
   Module::getNCHW(output(), N, C, H, W);
-  auto g_stride = instance->getGlobalStride(N, C, H, W);
+  auto g_stride = BM168x::inst->getGlobalStride(N, C, H, W);
 
   if (do_bcast() == true) {
-    C = instance->get_npu_num();
+    C = BM168x::NPU_NUM;
     g_stride.N = 0;
     g_stride.C = 0;
     g_stride.H = 0;
   }
-  auto s_stride = instance->getLocalStride(gi.n_slice, C, gi.h_slice,
-                                                     W, fmt_bytes, gi.eu_align);
+  auto s_stride = BM168x::inst->getLocalStride(gi.n_slice, C, gi.h_slice, W,
+                                           fmt_bytes, gi.eu_align);
   auto g_addr = Module::getAddress(input());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;
@@ -64,13 +63,13 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
             ? kernel->at(0)
             : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
     for (int i = 0; i < C; ++i) {
-      instance->dl_tensor_broadcast_move_gen_cmd(
+      BM168x::inst->dl_tensor_broadcast_move_gen_cmd(
           g_addr + g_offset + i * W * H * fmt_bytes, 0, gi.out_addr, i * to_ic,
           gi.n_slice, gi.h_slice, W, to_ic, g_stride.N, g_stride.H, s_stride.N,
           s_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L, pid_node);
     }
   } else {
-    instance->dl_tensor_stride_move_gen_cmd(
+    BM168x::inst->dl_tensor_stride_move_gen_cmd(
         gi.out_addr, 0, g_addr + g_offset, gi.n_slice, C, gi.h_slice, W,
         g_stride.N, g_stride.C, g_stride.H, g_stride.W, s_stride.N, s_stride.C,
         s_stride.H, s_stride.W, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);

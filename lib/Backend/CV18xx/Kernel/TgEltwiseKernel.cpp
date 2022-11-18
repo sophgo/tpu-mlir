@@ -134,7 +134,7 @@ void TgEltwiseKernel::doTileForNormalCase() {
 
 void TgEltwiseKernel::doTileForStrideCase() {
   int n_step = 1;
-  int c_step = std::min(c, NPU_NUM);
+  int c_step = std::min(c, CVI_NPU_NUM);
   int h_step = h / stride_h;
   cvk_tl_shape_t input_shape = ctx.tl_shape_t4(n_step, c_step, h_step, w);
   cvk_tl_shape_t output_shape = ctx.tl_shape_t4(n_step, c_step, h_step, w / stride_w);

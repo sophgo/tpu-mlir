@@ -89,7 +89,7 @@ cvk_tl_stride_t TgQuantKernel::tl_fp32_stride(const cvk_tl_shape_t &shape,
   if (eu_align) {
     s.c = align_up(s.c, EU_NUM);
   }
-  s.n = s.c * ceiling_func(shape.c, NPU_NUM);
+  s.n = s.c * ceiling_func(shape.c, CVI_NPU_NUM);
   return s;
 }
 

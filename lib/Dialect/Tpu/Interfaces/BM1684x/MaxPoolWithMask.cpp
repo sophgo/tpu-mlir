@@ -96,7 +96,7 @@ void tpu::MaxPoolWithMaskOp::codegen_global_bm1684x() {
   parseParam(&attrs);
   pooling_common_spec_t spec = {0};
   SpecAssign(attrs, spec);
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pooling_global", &spec,
+  BM168x::call_global_func("backend_api_pooling_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -147,7 +147,7 @@ void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step, int64_t h_ste
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attrs.ow;
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_pooling_local", &spec,
+  BM168x::call_local_func("backend_api_pooling_local", &spec,
                                       sizeof(spec), &sec_info,
                                       input_spec->data(), output_spec->data());
 }

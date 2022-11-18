@@ -28,7 +28,7 @@ static void upsample_split(
 
   for (; h_step > 0; --h_step) {
     uint32_t total_size;
-    for (c_step = input_c; c_step >= (uint32_t)NPU_NUM ; --c_step) { //at least c = NPU_NUM
+    for (c_step = input_c; c_step >= (uint32_t)CVI_NPU_NUM ; --c_step) { //at least c = CVI_NPU_NUM
       cvk_tl_shape_t tiled_ifmap_shape = {1, c_step, h_step, input_w};
       uint32_t tiled_ifmap_size =
           ctx.lmem_tensor_to_size(tiled_ifmap_shape, fmt, eu_align);

@@ -30,10 +30,12 @@ public:
       llvm_unreachable("module should be divided");
     }
     Module::removeUnusedOp(module);
-    if (Module::isCV18xx(Module::getChip(module))) {
+    auto chip = Module::getChip(module);
+    if (Module::isCV18xx(chip)) {
       CVAddressAssign addr_assign;
       addr_assign.assign(module);
     } else {
+      BM168x::init_instance(chip);
       BMAddressAssign addr_assign;
       addr_assign.assign(module);
     }
