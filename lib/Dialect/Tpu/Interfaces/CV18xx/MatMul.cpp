@@ -62,9 +62,9 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
   OpBuilder builder(getContext());
   int64_t batch, M, K, N, right_zp;
-  bool with_bias, relu;
+  bool with_bias, relu, right_transpose;
   double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp);
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp, right_transpose);
   assert(batch == 1);
   // TODO get batch_high and batch_low, group_fc bias transpose
   int batch_high = 1;    // fixme

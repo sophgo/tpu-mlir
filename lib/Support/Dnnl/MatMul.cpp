@@ -21,18 +21,24 @@ MatMul::MatMul() {
   engine_stream = dnnl::stream(eng);
 }
 
-void MatMul::right_init(float *right, int64_t right_zp, int64_t len) {
+void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
+                        int64_t K, int64_t N, bool right_transpose) {
+  int64_t weight_len = batch * K * N;
   p_right = right;
   if (right_zp != 0 ) {
-    right_after_zp = std::make_shared<std::vector<float>>(len);
+    right_after_zp = std::make_shared<std::vector<float>>(weight_len);
     p_right = right_after_zp->data();
-    tensor_sub_zp(right_after_zp->data(), right, len, right_zp);
+    tensor_sub_zp(right_after_zp->data(), right, weight_len, right_zp);
+  }
+  if (right_transpose) {
+    tensor_hw_transpose(p_right, p_right, 1, batch, N, K);
   }
 }
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, double relu_limit, int64_t right_zp) {
+                   bool do_relu, double relu_limit, int64_t right_zp,
+                   bool right_transpose) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
@@ -40,7 +46,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch, M, N};
   int64_t weight_len = batch * K * N;
-  right_init(right, right_zp, weight_len);
+  right_init(right, right_zp, batch, K, N, right_transpose);
   net.clear();
   net_args.clear();
   auto src_md = memory::desc(src_dims, memory::data_type::f32, tag::abc);

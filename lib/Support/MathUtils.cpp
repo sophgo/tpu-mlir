@@ -583,6 +583,21 @@ void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
   }
 }
 
+void tensor_hw_transpose(float * dst, float *src, int64_t N, int64_t C,
+                         int64_t H, int64_t W) {
+#pragma omp parallel for schedule(static, omp_schedule(N * C))
+  for (int64_t nc = 0 ; nc < N * C; ++nc) {
+    int64_t nc_offset = nc * H * W;
+    for (int w = 0; w < W; ++w) {
+      for (int h = 0; h < H; ++h) {
+        int64_t d_offset = nc_offset + w * H + h;
+        int64_t s_offset = nc_offset + h * W + w;
+        dst[d_offset] = src[s_offset];
+      }
+    }
+  }
+}
+
 int omp_schedule(int count) {
   return (count + omp_get_num_threads() - 1) / omp_get_num_threads();
 }
