@@ -18,15 +18,6 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace tpu {
 
-static int g_NPU_NUM = 0;
-static int g_EU_BYTES = 0;
-static void save_TPU_info(int npu_num, int eu_bytes) {
-  g_NPU_NUM = npu_num;
-  g_EU_BYTES = eu_bytes;
-}
-
-
-
 // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
 template <typename T>
 static void
@@ -35,14 +26,14 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
                                     bool align = false) {
   int64_t n, c, h, w, eu_num;
   Module::getNCHW(shape, n, c, h, w);
-  if (n != 1 || h != 1 || c <= g_NPU_NUM) {
+  if (n != 1 || h != 1 || c <= BM168x::NPU_NUM) {
     return;
   }
-  eu_num = g_EU_BYTES/sizeof(T);
+  eu_num = BM168x::eu_num(sizeof(T));
   auto old_w_align = align_up(w, eu_num);
 
   // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
-  int64_t new_c = g_NPU_NUM;
+  int64_t new_c = BM168x::NPU_NUM;
   auto c2w = ceiling_func(c, new_c);
   int64_t new_w = (align ? old_w_align : w) * (c2w - 1) + w;
   auto coeff_new = std::make_shared<std::vector<T>>(new_w * new_c, 0);
@@ -71,7 +62,7 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   int64_t oc, ic, kh, kw;
   Module::getNCHW(shape, oc, ic, kh, kw);
   auto type_bytes = sizeof(T);
-  int64_t IC_PARALLEL = 64 / type_bytes;
+  int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
   auto kernel_hw = kh * kw;
   int64_t new_ic = ceiling_func(ic, IC_PARALLEL);
   int64_t new_hw = kernel_hw * IC_PARALLEL;
@@ -152,7 +143,7 @@ static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
 extern "C" {
 #endif
 
-#define  MAX_TPU_DIM   65535
+#define MAX_TPU_DIM 65535
 
 typedef struct conv_common_spec {
   int32_t groups;

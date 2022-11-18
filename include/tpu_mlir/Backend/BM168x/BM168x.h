@@ -10,6 +10,7 @@
 #pragma once
 #include "mlir/IR/Builders.h"
 #include "llvm/Support/DynamicLibrary.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -370,16 +371,64 @@ typedef void (*sg_set_profile_dump)(bool enable);
 typedef void (*sg_stas_dump)(void *pid_node);
 typedef void (*sg_flops_dump)(long long flops, void *pid_node);
 
+using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace backend {
 class BM168x {
 
 public:
+  // -------------------------------------------------------------------
+  // functions for global
+  // -------------------------------------------------------------------
+  static BM168x *inst;
+  static void init_instance(const llvm::StringRef chip);
+  static void call_global_func(const char *symbolName, void *params,
+                               int param_size);
+  static void call_local_func(const char *symbolName, void *params,
+                              int param_size);
+  static void call_global_func(const char *symbolName, void *params,
+                               int param_size, void *input, void *output);
+  static void call_local_func(const char *symbolName, void *params,
+                              int param_size, void *info, void *input,
+                              void *output);
+  static DATA_TYPE_T getDataType(mlir::Type type);
+  static DATA_TYPE_T getDataType(mlir::Value v);
+  static int getGdmaFormat(DATA_TYPE_T data_type);
+  static int getFmtBytes(DATA_TYPE_T data_type);
+  static tensor_spec_t value_to_spec(mlir::Value v);
+  static std::shared_ptr<std::vector<tensor_spec_t>>
+  get_input_spec(mlir::Operation *op);
+  static std::shared_ptr<std::vector<tensor_spec_t>>
+  get_output_spec(mlir::Operation *op);
+  static std::shared_ptr<std::vector<tensor_spec_t>>
+  get_spec(mlir::ValueRange values);
+  static void fix_shape(tensor_spec_t &spec,
+                        const std::vector<int32_t> &new_shape);
+  // Chip parameters
+  static int64_t NPU_NUM;
+  static int64_t EU_BYTES;
+  static int64_t LMEM_BYTES;
+  static int64_t LMEM_BANKS;
+  static int64_t IC_PARALLEL;
+  static int64_t LMEM_BANK_BYTES;
+  static llvm::StringRef LIB_NAME;
+  static const int64_t ALIGNMENT = 0x1000;
+  static const uint64_t GMEM_START_ADDR = 0x100000000ull;
+  static uint64_t CTX_START_ADDR;
+  // dbytes is 0.5 for INT4
+  static int64_t eu_num(double dbytes) { return EU_BYTES / dbytes; }
+  static int64_t ic_num(double dbytes) { return IC_PARALLEL / dbytes; }
+
+public:
+  // -------------------------------------------------------------------
+  // functions for codegen
+  // -------------------------------------------------------------------
   virtual void init();
   virtual void before_codegen();
   virtual void after_codegen(int64_t flops = 0);
   virtual void deinit();
-  static BM168x *instance(const llvm::StringRef chip);
+
   // -------------------------------------------------------------------
   // functions from nodechip
   // -------------------------------------------------------------------
@@ -419,47 +468,17 @@ public:
   void merge_sync_id();
 
   // arch info
-  virtual uint64_t get_gmem_start() = 0;
-  virtual uint64_t get_ctx_start_addr() = 0;
-  virtual int64_t get_npu_num() = 0;
-  virtual int64_t get_eu_bytes() = 0;
-  virtual int64_t get_lmem_bytes() = 0;
-  virtual int64_t get_lmem_banks() = 0;
-  virtual int64_t get_lmem_bank_bytes() {
-    return get_lmem_bytes() / get_lmem_banks();
-  }
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
   uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }
-  int64_t get_eu_num(int64_t dtype_bytes) {
-    return get_eu_bytes() / dtype_bytes;
-  }
+
   virtual int64_t get_n_align(int64_t dtype_bytes) { return 1; }
-  virtual void call_global_func(const char *symbolName, void *params, int param_size){}
-  virtual void call_local_func(const char *symbolName, void *params, int param_size){}
-  virtual void call_global_func(const char *symbolName, void *params, int param_size,
-                        void *input, void *output){}
-  virtual void call_local_func(const char *symbolName, void *params, int param_size,
-                       void *info, void *input, void *output){}
   int64_t get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
                          mlir::Type type, bool eu_align = true,
                          bool is_4N = false);
   int64_t get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n, int64_t slice_h,
                                 bool eu_align = true);
   int64_t get_weight_lmem_bytes(mlir::Value v, bool eu_align = true);
-  static DATA_TYPE_T getDataType(mlir::Type type);
-  static DATA_TYPE_T getDataType(mlir::Value v);
-  static int getGdmaFormat(DATA_TYPE_T data_type);
-  static int getFmtBytes(DATA_TYPE_T data_type);
-  static tensor_spec_t value_to_spec(mlir::Value v);
-  static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_input_spec(mlir::Operation *op);
-  static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_output_spec(mlir::Operation *op);
-  static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_spec(mlir::ValueRange values);
-  static void fix_shape(tensor_spec_t &spec,
-                        const std::vector<int32_t> &new_shape);
 
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
@@ -480,10 +499,7 @@ public:
   void *bdc_node;
   void *gdma_node;
 
-  static const int64_t ALIGNMENT = 0x1000;
-
 protected:
-  virtual const char *get_lib_name() = 0;
   virtual void load_functions();
   void set_command_issue_flag(bool value);
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);

@@ -38,7 +38,7 @@ void tpu::MulConstOp::codegen_global_bm1684x() {
     param.common.inversed = 0;
     param.common.scale_A = multiplier();
     param.common.rshift_A = rshift();
-    BM168x::instance(Module::getChip(op))->call_global_func(
+    BM168x::call_global_func(
         "backend_api_constbinary_global", &param, sizeof(param),
         input_spec->data(), output_spec->data());
   } else {
@@ -46,7 +46,7 @@ void tpu::MulConstOp::codegen_global_bm1684x() {
     param.common.B_dtype = DTYPE_FP32;
     param.common.inversed = 0;
 
-    BM168x::instance(Module::getChip(op))->call_global_func(
+    BM168x::call_global_func(
         "backend_api_constbinary_global", &param, sizeof(param),
         input_spec->data(), output_spec->data());
   }
@@ -108,7 +108,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = w;
 
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_constbinary_local", &param,
+  BM168x::call_local_func("backend_api_constbinary_local", &param,
                                       sizeof(param), &sec_info,
                                       input_spec->data(), output_spec->data());
 }

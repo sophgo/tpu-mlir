@@ -59,9 +59,8 @@ void tpu::ConcatOp::codegen_global_bm1684x() {
   SmallVector<int> is_st_concat_way(num_input, 0);
   spec.is_st_concat_way = is_st_concat_way.data();
 
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_concat_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
+  BM168x::call_global_func("backend_api_concat_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }
 
 // =========================================
@@ -101,7 +100,6 @@ void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_slice = gi.h_slice;
   sec_info.is_w_split = false;
   sec_info.out_w_slice = w;
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_concat_local", &spec,
-                                      sizeof(spec), &sec_info,
-                                      input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_concat_local", &spec, sizeof(spec),
+                          &sec_info, input_spec->data(), output_spec->data());
 }

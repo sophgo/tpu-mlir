@@ -25,7 +25,7 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   int64_t oc, ic, kh, kw;
   Module::getNCHW(shape, oc, ic, kh, kw);
   auto type_bytes = sizeof(T);
-  int64_t IC_PARALLEL = 64 / type_bytes;
+  int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
   auto kernel_hw = kh * kw;
   int64_t new_ic = ceiling_func(ic, IC_PARALLEL);
   int64_t new_hw = kernel_hw * IC_PARALLEL;
@@ -66,7 +66,7 @@ void tpu::DeconvOp::weight_reorder_int8_bm1684x() {
   auto filter_type = Module::getStorageType(filter());
   std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh,
                                        attrs.kw};
-  int64_t IC_PARALLEL = 64;
+  int64_t IC_PARALLEL = BM168x::ic_num(1);
   if (attrs.is_dw) {
     filter_shape = {1, attrs.oc, attrs.kh, attrs.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -101,7 +101,7 @@ void tpu::DeconvOp::weight_reorder_bf16_bm1684x() {
   auto filter_type = Module::getStorageType(filter());
   std::vector<int64_t> filter_shape = {attrs.oc, attrs.ic / attrs.g, attrs.kh,
                                        attrs.kw};
-  int64_t IC_PARALLEL = 32;
+  int64_t IC_PARALLEL = BM168x::ic_num(2);
   if (attrs.is_dw) {
     filter_shape = {1, attrs.oc, attrs.kh, attrs.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -282,8 +282,7 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
     param.kzp_dtype = param.input_dtype;
   }
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_deconv_global", &param,
-                                       sizeof(param));
+  BM168x::call_global_func("backend_api_deconv_global", &param, sizeof(param));
 }
 
 // ======================================
@@ -300,10 +299,10 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   auto idtype = BM168x::getDataType(input());
   int type_len = BM168x::getFmtBytes(idtype);
   auto op = getOperation();
-  int64_t eu_num = BM168x::instance(Module::getChip(op))->get_eu_num(type_len);
+  int64_t eu_num = BM168x::eu_num(type_len);
 
   auto chip = Module::getChip(getOperation());
-  int ic_per_npu = ceiling_func(attrs.ic / attrs.g, BM168x::instance(chip)->get_npu_num());
+  int ic_per_npu = ceiling_func(attrs.ic / attrs.g, BM168x::NPU_NUM);
   // fp part 2: used for group > 1, input must start from npu 0
   if (attrs.g > 1 &&
       (idtype == DTYPE_FP32 || idtype == DTYPE_BFP16 || idtype == DTYPE_FP16)) {
@@ -373,6 +372,5 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     param.kzp_dtype = param.weight_dtype;
   }
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_deconv_local", &param,
-                                      sizeof(param));
+  BM168x::call_local_func("backend_api_deconv_local", &param, sizeof(param));
 }

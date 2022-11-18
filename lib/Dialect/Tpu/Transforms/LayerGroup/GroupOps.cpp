@@ -165,7 +165,7 @@ GroupOps::GroupOps(::mlir::func::FuncOp func_) {
   func = func_;
   ctx = func.getContext();
   auto chip = Module::getChip(Module::getModuleOp(func.getOperation()));
-  bm168x = BM168x::instance(chip);
+  bm168x = BM168x::inst;
   n_align = bm168x->get_n_align(1);
   func.walk([&](Operation *op) {
     if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
@@ -1020,7 +1020,7 @@ lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t &group_lmem,
 
 bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
                                 int64_t hsecs) {
-  int64_t start_addr = 0, end_addr = bm168x->get_lmem_bytes();
+  int64_t start_addr = 0, end_addr = BM168x::LMEM_BYTES;
   allocated_lmems.clear();
   if (nsecs != 1 || hsecs != 1) {
     // weight first
@@ -1053,11 +1053,11 @@ bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
 
 int64_t GroupOps::alloc_lmem(int64_t size) {
   bool in_bank[] = {true, false};
-  if (size > bm168x->get_lmem_bytes()) {
+  if (size > BM168x::LMEM_BYTES) {
     return -1;
   }
   for (auto align_bank : in_bank) {
-    if (align_bank && size > bm168x->get_lmem_bank_bytes()) {
+    if (align_bank && size > BM168x::LMEM_BANK_BYTES) {
       continue;
     }
     int64_t addr = 0;
@@ -1067,19 +1067,17 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
         allocated_lmems.insert(it, pair);
         return addr;
       }
-      int64_t addr_tmp =
-          align_up(it->first + it->second, bm168x->get_eu_bytes());
+      int64_t addr_tmp = align_up(it->first + it->second, BM168x::EU_BYTES);
       if (align_bank) {
-        auto bank0 = ceiling_func(addr_tmp, bm168x->get_lmem_bank_bytes());
-        auto bank1 =
-            ceiling_func(addr_tmp + size - 1, bm168x->get_lmem_bank_bytes());
+        auto bank0 = ceiling_func(addr_tmp, BM168x::LMEM_BANK_BYTES);
+        auto bank1 = ceiling_func(addr_tmp + size - 1, BM168x::LMEM_BANK_BYTES);
         if (bank0 != bank1) {
-          addr_tmp = align_up(addr_tmp, bm168x->get_lmem_bank_bytes());
+          addr_tmp = align_up(addr_tmp, BM168x::LMEM_BANK_BYTES);
         }
       }
       addr = std::max(addr, addr_tmp);
     }
-    if (addr + size > bm168x->get_lmem_bytes()) {
+    if (addr + size > BM168x::LMEM_BYTES) {
       continue;
     }
     auto pair = addr_pair_t(addr, size);

@@ -16,12 +16,6 @@ using namespace tpu_mlir::backend;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-constexpr llvm::StringRef BM1684x::LIB_NAME;
-
-uint64_t BM1684x::get_gmem_start() { return 0x100000000ull; }
-
-uint64_t BM1684x::get_ctx_start_addr() { return get_gmem_start(); }
-
 uint32_t BM1684x::get_bdc_len(int bdc_num, int group_id) {
   if (bdc_num == 0) {
     return 0;
@@ -38,8 +32,6 @@ uint32_t BM1684x::get_gdma_len(int gdma_num, int group_id) {
   return gdma_bytes[group_id];
 }
 
-BM1684x::BM1684x() { chip = Module::Chip::BM1684x; }
-
 template <typename FPtrTy> FPtrTy BM1684x::CastToFPtr(const char *symbolName) {
   assert(DL.isValid());
   auto fPtr = DL.getAddressOfSymbol(symbolName);
@@ -48,36 +40,6 @@ template <typename FPtrTy> FPtrTy BM1684x::CastToFPtr(const char *symbolName) {
     llvm_unreachable(symbolName);
   }
   return reinterpret_cast<FPtrTy>(fPtr);
-}
-
-typedef int (*backend_api_t)(void *params, int param_size, void *pid_node);
-void BM1684x::call_global_func(const char *symbolName, void *params,
-                              int param_size) {
-  auto func = CastToFPtr<backend_api_t>(symbolName);
-  func(params, param_size, cmdid_node);
-}
-
-void BM1684x::call_local_func(const char *symbolName, void *params,
-                             int param_size) {
-  auto func = CastToFPtr<backend_api_t>(symbolName);
-  func(params, param_size, bdc_node);
-}
-
-typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
-                                    void *output, void *pid_node);
-void BM1684x::call_global_func(const char *symbolName, void *params,
-                              int param_size, void *input, void *output) {
-  auto func = CastToFPtr<global_backend_api_t>(symbolName);
-  func(params, param_size, input, output, cmdid_node);
-}
-
-typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
-                                   void *info, void *output, void *pid_node);
-void BM1684x::call_local_func(const char *symbolName, void *params,
-                             int param_size, void *info, void *input,
-                             void *output) {
-  auto func = CastToFPtr<local_backend_api_t>(symbolName);
-  func(params, param_size, info, input, output, bdc_node);
 }
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)

@@ -47,7 +47,7 @@ void tpu::RequantIntOp::codegen_global_bm1684x() {
   param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_requant_int_global", &param,
+  BM168x::call_global_func("backend_api_requant_int_global", &param,
                                        sizeof(param));
 }
 
@@ -99,6 +99,6 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_requant_int_local", &param,
+  BM168x::call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }

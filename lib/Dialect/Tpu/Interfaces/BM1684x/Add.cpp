@@ -45,9 +45,8 @@ void tpu::AddOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_bcbinary_global", &param,
-                                       sizeof(param), input_spec->data(),
-                                       output_spec->data());
+  BM168x::call_global_func("backend_api_bcbinary_global", &param, sizeof(param),
+                           input_spec->data(), output_spec->data());
 }
 
 // =========================================
@@ -116,7 +115,6 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;
   param.B_is_coeff = false;
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_bcbinary_local", &param,
-                                      sizeof(param), &sec_info,
-                                      input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_bcbinary_local", &param, sizeof(param),
+                          &sec_info, input_spec->data(), output_spec->data());
 }
