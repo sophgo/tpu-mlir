@@ -25,7 +25,7 @@
 #define MAX_ROW (4095 - 32)
 #define MAX_COL (4095 - 32)
 
-#define NPU_NUM ctx.cvi_chip_info_context(CVI_CHIP_LANE_NUM)
+#define CVI_NPU_NUM ctx.cvi_chip_info_context(CVI_CHIP_LANE_NUM)
 #define EU_NUM ctx.cvi_chip_info_context(CVI_CHIP_EU_NUM)
 #define LOCAL_MEM_SIZE ctx.cvi_chip_info_context(CVI_CHIP_LMEM_SIZE)
 #define LOCAL_MEM_BANKS ctx.cvi_chip_info_context(CVI_CHIP_LMEM_BANK)

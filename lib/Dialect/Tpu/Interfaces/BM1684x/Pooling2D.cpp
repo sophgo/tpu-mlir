@@ -129,7 +129,7 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
       }
     }
   }
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pooling_global", &spec,
+  BM168x::call_global_func("backend_api_pooling_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }
@@ -152,8 +152,8 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
       int64_t dtype_bytes =
           kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
       auto op = getOperation();
-      int64_t eu_num = BM168x::instance(Module::getChip(op))->get_eu_num(dtype_bytes);
-      int64_t npu_num = BM168x::instance(Module::getChip(op))->get_npu_num();
+      int64_t eu_num = BM168x::eu_num(dtype_bytes);
+      int64_t npu_num = BM168x::NPU_NUM;
 
       int64_t N, C, H, W;
       Module::getNCHW(input(), N, C, H, W);
@@ -219,7 +219,7 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attrs.ow;
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_pooling_local", &spec,
+  BM168x::call_local_func("backend_api_pooling_local", &spec,
                                       sizeof(spec), &sec_info,
                                       input_spec->data(), output_spec->data());
 }

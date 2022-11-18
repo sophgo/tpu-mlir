@@ -137,9 +137,9 @@ static int pooling_aligned_out_h(const pooling_t *p) {
 static int pooling_size_lmem(const CviBackendContext &ctx, const pooling_t *p) {
   int out_h = pooling_out_h(p);
   int out_w = pooling_out_w(p);
-  int in_size = p->n * ALIGN(p->c, NPU_NUM) *
+  int in_size = p->n * ALIGN(p->c, CVI_NPU_NUM) *
                 ctx.lmem_tensor_to_size(1, 1, p->h, p->w, CVK_FMT_BF16);
-  int out_size = p->n * ALIGN(p->c, NPU_NUM) *
+  int out_size = p->n * ALIGN(p->c, CVI_NPU_NUM) *
                  ctx.lmem_tensor_to_size(1, 1, out_h, out_w, CVK_FMT_BF16);
 
   return in_size + out_size;
@@ -148,8 +148,8 @@ static int pooling_size_lmem(const CviBackendContext &ctx, const pooling_t *p) {
 static int split_pooling_forward(const CviBackendContext &ctx,
                                  const pooling_t *_p, int *step_c,
                                  int *step_h) {
-  int target_size = NPU_NUM * LOCAL_MEM_SIZE;
-  int npu_num = NPU_NUM;
+  int target_size = CVI_NPU_NUM * LOCAL_MEM_SIZE;
+  int npu_num = CVI_NPU_NUM;
   *step_c = _p->c;
   *step_h = _p->h;
   if (pooling_size_lmem(ctx, _p) <= target_size) {

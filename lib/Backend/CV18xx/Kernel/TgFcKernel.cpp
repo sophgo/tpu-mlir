@@ -47,7 +47,7 @@ void TgFcKernel::init(
   this->r_fmt = do_quant_bf16 ? CVK_FMT_I8 : fmt;
   this->r_fmt_size = ctx.bytesize_of_fmt(r_fmt);
   this->opt_offset = 0;
-  TOTAL_EU = NPU_NUM * ctx.tiu_eu_num(fmt);
+  TOTAL_EU = CVI_NPU_NUM * ctx.tiu_eu_num(fmt);
   uint32_t max_tiu = MAX_TIU_CHL; // 1880v2: 12 bit
   this->maxM = std::min(this->M, max_tiu);
   this->maxK = std::min(this->K, max_tiu);
@@ -317,7 +317,7 @@ parallel_mn_success:
 
 bool TgFcKernel::try_tiling_no_parallel() {
   mode = FC_NO_PARALLEL;
-  int align_num = NPU_NUM * ctx.tiu_eu_num(fmt);
+  int align_num = CVI_NPU_NUM * ctx.tiu_eu_num(fmt);
   // try parallel first
   for (tile_M = maxM; tile_M > 0; tile_M--) {
     for (tile_K = maxK; tile_K > 0; tile_K--) {

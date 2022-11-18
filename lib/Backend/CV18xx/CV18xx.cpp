@@ -29,11 +29,11 @@ namespace tpu_mlir {
 namespace backend {
 // constexpr llvm::StringRef CV18xx::LIB_NAME;
 // use local
-#undef NPU_NUM
+#undef CVI_NPU_NUM
 #undef EU_NUM
 #undef LOCAL_MEM_SIZE
 #undef LOCAL_MEM_BANKS
-#define NPU_NUM cvi_chip_info_context(CVI_CHIP_LANE_NUM)
+#define CVI_NPU_NUM cvi_chip_info_context(CVI_CHIP_LANE_NUM)
 #define EU_NUM cvi_chip_info_context(CVI_CHIP_EU_NUM)
 #define LOCAL_MEM_SIZE cvi_chip_info_context(CVI_CHIP_LMEM_SIZE)
 #define LOCAL_MEM_BANKS cvi_chip_info_context(CVI_CHIP_LMEM_BANK)
@@ -507,8 +507,8 @@ int CviBackendContext::bitsize_of_fmt(uint32_t fmt) const {
 }
 
 const cvk_tl_shape_t &CviBackendContext::lut_table_shape(cvk_fmt_t fmt) const {
-  static const cvk_tl_shape_t table_fixed = tl_shape_t4(1, NPU_NUM, 16, 16);
-  static const cvk_tl_shape_t table_bf16 = tl_shape_t4(1, NPU_NUM, 32, 8);
+  static const cvk_tl_shape_t table_fixed = tl_shape_t4(1, CVI_NPU_NUM, 16, 16);
+  static const cvk_tl_shape_t table_bf16 = tl_shape_t4(1, CVI_NPU_NUM, 32, 8);
   assert_support_fmt(fmt);
   if (fmt == CVK_FMT_BF16) {
     return table_bf16;
@@ -541,7 +541,7 @@ void CviBackendContext::tiling_all(std::vector<tiling_info_t> &tiling_result,
   tiling_info_t tile;
   memset(&tile, 0, sizeof(tile));
   tile.n = 1;
-  tile.c = NPU_NUM;
+  tile.c = CVI_NPU_NUM;
   tile.w = tiu_eu_num(fmt);
   tile.h = std::min(ceiling_func(total, tile.c * tile.w), MAX_HEIGHT);
   bool lmem_ok = false;
@@ -611,10 +611,10 @@ void CviBackendContext::tiling_nchw(std::vector<tiling_info_t> &tiling_result,
           if (lmem_required <= lmem_size) {
             goto after_loop;
           }
-          if (step_c % NPU_NUM) {
-            step_c -= step_c % NPU_NUM;
+          if (step_c % CVI_NPU_NUM) {
+            step_c -= step_c % CVI_NPU_NUM;
           } else {
-            step_c -= NPU_NUM;
+            step_c -= CVI_NPU_NUM;
           }
         }
       }
@@ -695,8 +695,8 @@ uint32_t CviBackendContext::ga_cmpr_offset(int n, int c, int h, int w,
 
 uint32_t CviBackendContext::addr_after_right_shift(int addr, uint32_t step,
                                                    int c_str) const {
-  uint32_t lmem_i = (addr / LOCAL_MEM_SIZE + step) % NPU_NUM;
-  uint32_t offset = addr % LOCAL_MEM_SIZE + (lmem_i + step) / NPU_NUM * c_str;
+  uint32_t lmem_i = (addr / LOCAL_MEM_SIZE + step) % CVI_NPU_NUM;
+  uint32_t offset = addr % LOCAL_MEM_SIZE + (lmem_i + step) / CVI_NPU_NUM * c_str;
   return lmem_i * LOCAL_MEM_SIZE + offset;
 }
 

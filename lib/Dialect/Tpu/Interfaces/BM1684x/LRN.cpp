@@ -61,6 +61,6 @@ void tpu::LRNOp::codegen_global_bm1684x() {
 
   p.dtype = BM168x::getDataType(input());
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_lrn_global", &p,
-                                       sizeof(lrn_global_param_t));
+  BM168x::call_global_func("backend_api_lrn_global", &p,
+                           sizeof(lrn_global_param_t));
 }

@@ -16,14 +16,6 @@ using namespace tpu_mlir::backend;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-constexpr llvm::StringRef BM1684::LIB_NAME;
-
-uint64_t BM1684::get_gmem_start() { return 0x100000000ull; }
-
-uint64_t BM1684::get_ctx_start_addr() {
-  return get_gmem_start() + 0x5000000 + 0x100000;
-}
-
 uint32_t BM1684::get_bdc_len(int bdc_num, int group_id) {
   return bdc_num * BDC_CMD_ALIGNED_NUM * sizeof(uint32_t);
 }
@@ -41,8 +33,6 @@ template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
   }
   return reinterpret_cast<FPtrTy>(fPtr);
 }
-
-BM1684::BM1684() { chip = Module::Chip::BM1684; }
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 #define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)

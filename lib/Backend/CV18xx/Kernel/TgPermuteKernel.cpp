@@ -36,7 +36,7 @@ void TgPermuteKernel::convert_order() {
   }
 
   if (is_order(0, 2, 3, 1)) {
-    if (n < NPU_NUM) {
+    if (n < CVI_NPU_NUM) {
       n_loop = n;
       reshape(c, h * w);
     } else {
@@ -52,7 +52,7 @@ void TgPermuteKernel::convert_order() {
     return;
   }
   if (is_order(0, 3, 1, 2)) {
-    if (n < NPU_NUM) {
+    if (n < CVI_NPU_NUM) {
       n_loop = n;
       reshape(c * h, w);
     } else {
@@ -74,7 +74,7 @@ void TgPermuteKernel::convert_order() {
     reshape(h);
     return;
   }
-  if (is_order(0, 2, 1, 3) && n < NPU_NUM) {
+  if (is_order(0, 2, 1, 3) && n < CVI_NPU_NUM) {
     n_loop = n;
     if (c >= h) {
       update_NCHW(1, c, h, w);
@@ -250,10 +250,10 @@ void TgPermuteKernel::selectTilePolicy() {
           if (lmem_need <= (uint32_t)LOCAL_MEM_SIZE) {
             goto after_loop;
           }
-          if (step_c % NPU_NUM == 0) {
-            step_c -= NPU_NUM;
+          if (step_c % CVI_NPU_NUM == 0) {
+            step_c -= CVI_NPU_NUM;
           } else {
-            step_c -= step_c % NPU_NUM;
+            step_c -= step_c % CVI_NPU_NUM;
           }
         }
       }

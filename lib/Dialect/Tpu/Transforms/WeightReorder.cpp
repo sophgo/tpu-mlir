@@ -24,6 +24,7 @@
 using namespace llvm;
 using namespace mlir;
 using namespace tpu_mlir::helper;
+using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
@@ -35,6 +36,11 @@ public:
     auto state = Module::getState(module);
     if (state != Module::State::TPU_LOWERED) {
       llvm_unreachable("module should be tpu quantized");
+    }
+    auto chip = Module::getChip(module);
+    if (Module::isCV18xx(chip)) {
+    } else {
+      BM168x::init_instance(chip);
     }
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](WeightReorderInterface op) {

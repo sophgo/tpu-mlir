@@ -40,11 +40,12 @@ void tpu::DequantIntAxisOp::codegen_global_bm1684x() {
   param.mode = static_cast<int>(quant_mode());
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  param.round_mode = quant_mode() == tpu::DequantMode::Normal ?
-                     ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.round_mode = quant_mode() == tpu::DequantMode::Normal
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_dequant_int_global", &param,
-                                       sizeof(param));
+  BM168x::call_global_func("backend_api_dequant_int_global", &param,
+                                 sizeof(param));
 }
 
 // =========================================
@@ -60,7 +61,8 @@ int64_t tpu::DequantIntAxisOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::DequantIntAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::DequantIntAxisOp::codegen_local_bm1684x(int64_t n_step,
+                                                  int64_t h_step) {
   dequant_int_param_t param = {0};
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
@@ -84,9 +86,10 @@ void tpu::DequantIntAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step
   param.output_dtype = BM168x::getDataType(output());
   param.lshift = lshift();
   param.mode = static_cast<int>(quant_mode());
-  param.round_mode = quant_mode() == tpu::DequantMode::Normal ?
-                     ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.round_mode = quant_mode() == tpu::DequantMode::Normal
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_dequant_int_local", &param,
-                                      sizeof(param));
+  BM168x::call_local_func("backend_api_dequant_int_local", &param,
+                                sizeof(param));
 }

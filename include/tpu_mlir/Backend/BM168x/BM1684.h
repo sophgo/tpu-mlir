@@ -345,38 +345,34 @@ public:
   nodechip_const_binary_local dl_nodechip_const_binary_local;
   // clang-format on
 public:
-  virtual uint64_t get_gmem_start() override;
-  virtual uint64_t get_ctx_start_addr() override;
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) override;
-  virtual int64_t get_npu_num() override { return 64; }
-  virtual int64_t get_eu_bytes() override { return 128; }
-  virtual int64_t get_lmem_bytes() override { return (1 << 19); } // 512KB
-  virtual int64_t get_lmem_banks() override { return 8; }
   virtual int64_t get_n_align(int64_t dtype_bytes) override {
     // for 4N mode
     return 4 / dtype_bytes;
   }
 
 public:
-  static const int64_t NPU_NUM = 64;
-  static const int64_t EU_BYTES = 128;
-  static const int64_t LMEM_BYTES = 1 << 19; // 512KB
-  static const int64_t LMEM_BANKS = 8;
-  static const int64_t LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
   static const int64_t BDC_CMD_ALIGNED_BIT = 7;
   static const int64_t BDC_CMD_ALIGNED_NUM =
       (1 << BDC_CMD_ALIGNED_BIT) / sizeof(uint32_t);
   static const int64_t GDMA_CMD_ALIGNED_BIT = 7;
   static const int64_t GDMA_CMD_ALIGNED_NUM =
       (1 << GDMA_CMD_ALIGNED_BIT) / sizeof(uint32_t);
-  static constexpr llvm::StringRef LIB_NAME = "libbackend_1684.so";
 
 protected:
-  BM1684();
+  BM1684() {
+    chip = Module::Chip::BM1684;
+    NPU_NUM = 64;
+    EU_BYTES = 128;
+    LMEM_BYTES = 1 << 19; // 512KB
+    LMEM_BANKS = 8;
+    LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
+    CTX_START_ADDR = GMEM_START_ADDR + 0x5000000 + 0x100000;
+    LIB_NAME = "libbackend_1684.so";
+  };
   ~BM1684(){};
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
-  virtual const char *get_lib_name() override { return LIB_NAME.data(); };
   virtual void load_functions() override;
 };
 } // namespace backend

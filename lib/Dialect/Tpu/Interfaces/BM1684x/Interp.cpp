@@ -83,9 +83,8 @@ void tpu::InterpOp::codegen_global_bm1684x() {
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
-  BM168x::instance(Module::getChip(op))
-      ->call_global_func("backend_api_interp_global", &param, sizeof(param),
-                         input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_interp_global", &param, sizeof(param),
+                           input_spec->data(), output_spec->data());
 }
 #if 0
 // =========================================
@@ -136,7 +135,7 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     param.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
   auto op = getOperation();
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_interp_local", &param,
+  BM168x::call_local_func("backend_api_interp_local", &param,
                                       sizeof(param));
 }
 #endif

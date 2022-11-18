@@ -69,7 +69,7 @@ void tpu::SliceOp::codegen_global_bm1684x() {
     param.end_index[i] = output_shape[i] * steps_v->at(i) + offset_v->at(i);
     param.strides[i] = steps_v->at(i);
   }
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_strideslice_global", &param,
+  BM168x::call_global_func("backend_api_strideslice_global", &param,
                                        sizeof(param), input_spec->data(),
                                        output_spec->data());
 }

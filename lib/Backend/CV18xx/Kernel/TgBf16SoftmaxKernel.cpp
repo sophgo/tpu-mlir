@@ -47,7 +47,7 @@ unsigned int TgSoftmaxKernel::doSplitHeightBf16softmax2DParallelInnerSize() {
         cvk_tl_shape_t enlargeInputShape = ctx.tl_shape_t4(tiledOuterSize,1,1,parallelC * bf16_euWorkingOneLane);
         int enlargeInputSize = ctx.lmem_tensor_to_size(enlargeInputShape, fmt, eu_align);
 
-        cvk_tl_shape_t maxValue_shape = ctx.tl_shape_t4(tiledOuterSize,1,NPU_NUM,1);
+        cvk_tl_shape_t maxValue_shape = ctx.tl_shape_t4(tiledOuterSize,1,CVI_NPU_NUM,1);
         int maxValueSize = ctx.lmem_tensor_to_size(maxValue_shape, fmt, eu_align);
 
         cvk_tl_shape_t parallel_input_shape = ctx.tl_shape_t4(tiledOuterSize,parallelC,1,bf16_euWorkingOneLane);
@@ -109,7 +109,7 @@ unsigned int TgSoftmaxKernel::doSplitHeightBf16softmax2DParallelOuterSize() {
 void TgSoftmaxKernel::softmaxLargeSizeHandler() {
     const unsigned int tiledOutputSize = 1;
     uint8_t eu_align = 1; // hardware constrainst
-    int sizePerLane = ceiling_func(inner_size, NPU_NUM);
+    int sizePerLane = ceiling_func(inner_size, CVI_NPU_NUM);
 
     int outerSizeStep = ceiling_func(outer_size, (int)tiledOutputSize);
     for(int outerSizeCounter = 0; outerSizeCounter < outerSizeStep; outerSizeCounter++) {
@@ -118,8 +118,8 @@ void TgSoftmaxKernel::softmaxLargeSizeHandler() {
 
         cvk_ml_shape_t input_shape = {
                 (uint32_t)workingOutputSize,
-                (uint32_t)NPU_NUM,
-                (uint32_t)ceiling_func(inner_size, NPU_NUM),
+                (uint32_t)CVI_NPU_NUM,
+                (uint32_t)ceiling_func(inner_size, CVI_NPU_NUM),
                 (uint32_t)inner_size}; //n, c, w, col
         cvk_ml_t *ml_input =
             ctx.lmem_alloc_matrix(input_shape, fmt, eu_align);
@@ -179,8 +179,8 @@ void TgSoftmaxKernel::softmaxLargeSizeHandler() {
         // Get max value
         max_per_lane_value(&tl_concatMaxValue, &tl_maxValue);
 
-        // Broadcast maxValue (n, 1, 1, 1) -> (n, NPU_NUM, 1, 1)
-        // (n, 1, NPU_NUM, 1)->(n, NPU_NUM, 1, 1)
+        // Broadcast maxValue (n, 1, 1, 1) -> (n, CVI_NPU_NUM, 1, 1)
+        // (n, 1, CVI_NPU_NUM, 1)->(n, CVI_NPU_NUM, 1, 1)
         //                 h_str = 0
         broadcast_one_data_to_all_lane(&tl_maxValue, tl_maxValueBroadcasted);
 
@@ -235,7 +235,7 @@ void TgSoftmaxKernel::softmaxLargeSizeHandler() {
         } else {
             log(&tl_maxValue, tl_lut_reciprocal_result, tl_lut_working);
         }
-        // Broadcast reciprocal value  (n, 1, 1, 1) -> (n, NPU_NUM, 1, 1)
+        // Broadcast reciprocal value  (n, 1, 1, 1) -> (n, CVI_NPU_NUM, 1, 1)
         broadcast_one_data_to_all_lane(tl_lut_reciprocal_result, tl_maxValueBroadcasted);
 
         //ans = exp(input - maxInput) *  reciprocal value
@@ -252,7 +252,7 @@ void TgSoftmaxKernel::softmaxLargeSizeHandler() {
             tl_golden.start_address = (do_log == false ? tl_lut_result->start_address : tl_input.start_address);
             tl_golden.shape = {
                 (uint32_t)workingOutputSize,
-                (uint32_t)NPU_NUM,
+                (uint32_t)CVI_NPU_NUM,
                 (uint32_t)sizePerLane,
                 (uint32_t)inner_size}; //n, c, w, col
             tl_golden.stride = ctx.ml_default_stride(tl_golden.shape, tl_golden.fmt, 1);
@@ -304,7 +304,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_2d_parallel_inner_size() {
         tl_enlargeInput.shape = ctx.tl_shape_t4(workingOutputSize, 1, 1, parallelC * bf16_euWorkingOneLane);
         tl_enlargeInput.stride = ctx.tl_default_stride(tl_enlargeInput.shape, fmt, /*eu_align=*/1);
 
-        cvk_tl_shape_t maxValue_shape = ctx.tl_shape_t4(workingOutputSize,1,NPU_NUM,1);
+        cvk_tl_shape_t maxValue_shape = ctx.tl_shape_t4(workingOutputSize,1,CVI_NPU_NUM,1);
         cvk_tl_t *tl_maxValueBroadcasted =
             ctx.lmem_alloc_tensor(maxValue_shape, fmt, eu_align);
         ASSERT(tl_maxValueBroadcasted);
@@ -367,8 +367,8 @@ void TgSoftmaxKernel::bf16_softmax_kernel_2d_parallel_inner_size() {
         } else {
             max_per_lane_value(tl_input, &tl_maxValue);
         }
-        // Broadcast maxValue (n, 1, 1, 1) -> (n, NPU_NUM, 1, 1)
-        // (n, 1, NPU_NUM, 1)->(n, NPU_NUM, 1, 1)
+        // Broadcast maxValue (n, 1, 1, 1) -> (n, CVI_NPU_NUM, 1, 1)
+        // (n, 1, CVI_NPU_NUM, 1)->(n, CVI_NPU_NUM, 1, 1)
         //                 h_str = 0
         broadcast_one_data_to_all_lane(&tl_maxValue, tl_maxValueBroadcasted);
 
@@ -376,7 +376,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_2d_parallel_inner_size() {
         cvk_tl_t *tl_parallel_input =
             ctx.lmem_alloc_tensor(parallel_input_shape, fmt, eu_align);
         ASSERT(tl_parallel_input);
-        //Reshape input(outerSize, 1, 1, innerSize) -> (outerSize, NPU_NUM, 1, innerSize/NPU_NUM)
+        //Reshape input(outerSize, 1, 1, innerSize) -> (outerSize, CVI_NPU_NUM, 1, innerSize/CVI_NPU_NUM)
         {
             cvk_tdma_l2l_tensor_copy_param_t p2 = {0};
             p2.src = &tl_enlargeInput;
@@ -410,7 +410,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_2d_parallel_inner_size() {
         //tl_lut_result = exp(tl_parallel_input)
         exponential(tl_parallel_input, tl_lut_result, tl_lut_working);
 
-        //Reshape expValue (outerSize, NPU_NUM, 1, innerSize/NPU_NUM) -> (outerSize, 1, 1, innerSize)
+        //Reshape expValue (outerSize, CVI_NPU_NUM, 1, innerSize/CVI_NPU_NUM) -> (outerSize, 1, 1, innerSize)
         {
             cvk_tdma_l2l_tensor_copy_param_t p2 = {0};
             p2.src = tl_lut_result;
@@ -495,7 +495,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_2d_parallel_inner_size() {
             log(&tl_maxValue, tl_lut_reciprocal_result, tl_lut_working);
         }
 
-        // Broadcast reciprocal value  (n, 1, 1, 1) -> (n, NPU_NUM, 1, 1)
+        // Broadcast reciprocal value  (n, 1, 1, 1) -> (n, CVI_NPU_NUM, 1, 1)
         broadcast_one_data_to_all_lane(tl_lut_reciprocal_result, tl_maxValueBroadcasted);
 
         //ans = exp(input - maxInput) *  reciprocal value
@@ -732,7 +732,7 @@ void TgSoftmaxKernel::bf16_softmax_kernel_2d_parallel_outer_size() {
 void TgSoftmaxKernel::bf16_softmax_kernel_2d() {
     //This constraint is temporarily used.
     //Set uRate ~= 75%
-    bool isParallelOuterSize = (outer_size >= NPU_NUM * 3 / 4) ? true : false;
+    bool isParallelOuterSize = (outer_size >= CVI_NPU_NUM * 3 / 4) ? true : false;
     unsigned int tiledParallelInnerOutputSize = doSplitHeightBf16softmax2DParallelInnerSize();
     unsigned int tiledParallelOuterOutputSize = doSplitHeightBf16softmax2DParallelOuterSize();
     bool isSizeTooLargeToHandle = (tiledParallelInnerOutputSize == 0) || (tiledParallelOuterOutputSize == 0);
@@ -969,7 +969,7 @@ void TgSoftmaxKernel::broadcast_one_data_to_all_lane(cvk_tl_t *tl_in, cvk_tl_t *
     cvk_tl_t tl_src = {};
     tl_src.start_address = tl_in->start_address;  // start of lmem
     tl_src.fmt = fmt;
-    tl_src.shape = {tl_in->shape.n, 1, (uint32_t)NPU_NUM, 1};
+    tl_src.shape = {tl_in->shape.n, 1, (uint32_t)CVI_NPU_NUM, 1};
     tl_src.stride = ctx.tl_default_stride(tl_src.shape, fmt, /*eu_align=*/1);
     tl_src.stride.h = 0;
     tl_src.stride.n = EU_NUM; //every element = sizeof(BF16), and eu_align  1
@@ -977,7 +977,7 @@ void TgSoftmaxKernel::broadcast_one_data_to_all_lane(cvk_tl_t *tl_in, cvk_tl_t *
     cvk_tl_t tl_dst = {};
     tl_dst.start_address = tl_out->start_address;  // start of lmem
     tl_dst.fmt = fmt;
-    tl_dst.shape = {tl_out->shape.n, (uint32_t)NPU_NUM, 1, 1};
+    tl_dst.shape = {tl_out->shape.n, (uint32_t)CVI_NPU_NUM, 1, 1};
     tl_dst.stride = ctx.tl_default_stride(tl_dst.shape, fmt, /*eu_align=*/1);
 
     cvk_tdma_l2l_tensor_copy_param_t p2 = {0};
