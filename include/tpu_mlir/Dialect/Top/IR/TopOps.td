@@ -194,6 +194,45 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_PackOp: Top_Op<"Pack", [SupportFuseRelu]> {
+  let summary = "Pack operator";
+
+  let description = [{
+  Pack a list of tensors in the given dimension.
+  All tensors must have the same shape.
+  }];
+
+  let arguments = (
+    ins Variadic<AnyTensor>:$inputs,
+    I64Attr:$axis,
+    I64Attr:$values_count,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs AnyTensor:$output);
+  // let hasCanonicalizer = 1;
+}
+
+def Top_UnpackOp: Top_Op<"Unpack", [SupportFuseRelu]> {
+  let summary = "Unpack operator";
+
+  let description = [{
+  Unpack a tensor to list of tensors in the given dimension.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$num,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs Variadic<AnyTensor>:$outputs);
+  // let hasCanonicalizer = 1;
+}
+
 def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
   let summary = "Convolution operator";
 
@@ -344,6 +383,25 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu]> {
+  let summary = "sub operator";
+
+  let description = [{
+    Elementwise subtraction of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MulOp: Top_Op<"Mul", [SupportFuseRelu]> {
   let summary = "Mul operator";
 
@@ -423,6 +481,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$input,
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
@@ -431,7 +490,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit);
+      double &relu_limit, bool &right_transpose);
   }];
 }
 
@@ -525,6 +584,21 @@ def Top_SiLUOp : Top_Op<"SiLU", [InOutSameShape]> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_SplitOp: Top_Op<"Split"> {
+  let summary = "Split operator";
+
+  let description = [{
+    Split Operation on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$num
+  );
+  let results = (outs Variadic<AnyTensor>:$outputs);
 }
 
 def Top_SliceOp: Top_Op<"Slice"> {
