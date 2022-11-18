@@ -130,9 +130,8 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
       }
     }
   }
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_pooling_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
+  BM168x::call_global_func("backend_api_pooling_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }
 
 // =========================================
@@ -142,7 +141,7 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
 int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  switch(pool_mode()){
+  switch (pool_mode()) {
   case tpu::PoolMode::Max:
     return 0;
   case tpu::PoolMode::Avg:
@@ -152,14 +151,13 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
       auto kernel = Module::getI64Array(kernel_shape());
       int64_t dtype_bytes = kernel->at(0) ? sizeof(int) : sizeof(short);
       auto op = getOperation();
-      auto *instance = BM168x::instance(Module::getChip(op));
-      int64_t eu_num = instance->get_eu_num(dtype_bytes);
-      int64_t npu_num = instance->get_npu_num();
+      auto *instance = BM168x::inst;
+      int64_t eu_num = BM168x::eu_num(dtype_bytes);
 
       int64_t N, C, H, W;
       Module::getNCHW(input(), N, C, H, W);
-      size = align_up(out_hslice * W, eu_num) * ceiling_func(C, npu_num) *
-             dtype_bytes;
+      size = align_up(out_hslice * W, eu_num) *
+             ceiling_func(C, BM168x::NPU_NUM) * dtype_bytes;
     }
     return size;
   }
@@ -219,7 +217,6 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attrs.ow;
-  BM168x::instance(Module::getChip(op))->call_local_func("backend_api_pooling_local", &spec,
-                                      sizeof(spec), &sec_info,
-                                      input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_pooling_local", &spec, sizeof(spec),
+                          &sec_info, input_spec->data(), output_spec->data());
 }

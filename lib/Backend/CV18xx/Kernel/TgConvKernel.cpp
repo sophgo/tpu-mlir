@@ -2013,11 +2013,11 @@ bool Conv::checkDmaPolicy(TileInfo &tileInfo) {
   const int dma_min_size = 256;
   int ofmap_plane_size = tileInfo.oh_step * tileInfo.ow_step;
 
-  if ((tileInfo.oc_step > (uint32_t)NPU_NUM) &&
+  if ((tileInfo.oc_step > (uint32_t)CVI_NPU_NUM) &&
       (ofmap_plane_size > (1 * dma_min_size))) {
     return false;
   }
-  if ((tileInfo.oc_step > (2 * (uint32_t)NPU_NUM)) &&
+  if ((tileInfo.oc_step > (2 * (uint32_t)CVI_NPU_NUM)) &&
       (ofmap_plane_size < dma_min_size)) {
     // even oh*ow is smaller, use at most 2xlanes_num
     return false;
@@ -2072,7 +2072,7 @@ bool Conv::determineTileSize(bool useDoubleBuffer, bool favor_dma) {
   assert(static_cast<uint32_t>(oh) == output_height());
   assert(static_cast<uint32_t>(ow) == output_width());
 
-  int32_t npu_num = static_cast<int32_t>(NPU_NUM);
+  int32_t npu_num = static_cast<int32_t>(CVI_NPU_NUM);
   tile_info.n = 1;
   tile_info.oc = ceiling_func(oc, npu_num); // lane parallelism
   tile_info.ic = 1;
@@ -2133,7 +2133,7 @@ bool Conv::determineTileSize(bool useDoubleBuffer, bool favor_dma) {
       for (int32_t slice_oc = 0; slice_oc < num_oc_step; ++slice_oc) {
         // Downward, align lanes
         //   E.g. oc = 48, oc_step: 48, 32
-        int32_t npu_num = static_cast<int32_t>(NPU_NUM);
+        int32_t npu_num = static_cast<int32_t>(CVI_NPU_NUM);
         int32_t oc_step = std::min((num_oc_step - slice_oc) * npu_num, oc);
         if (args.do_quant) {
           oc_step = std::min(oc_step, npu_num);
@@ -2235,7 +2235,7 @@ bool Conv::determineTileSize(bool useDoubleBuffer, bool favor_dma) {
                            weight_size * bufferMultiplier,
                            coeff_oc_step_size * bufferMultiplier,
                            total_needed, LOCAL_MEM_SIZE,
-                           total_needed * NPU_NUM, LOCAL_MEM_SIZE * NPU_NUM,
+                           total_needed * CVI_NPU_NUM, LOCAL_MEM_SIZE * CVI_NPU_NUM,
                            (total_needed * 100) / LOCAL_MEM_SIZE,
                            total_needed, total_size,
                            (total_needed * 100) / total_size,
@@ -2319,7 +2319,7 @@ bool Conv::determinePs32TileSize(bool useDoubleBuffer) {
           oc, oh, ow, kh, kw, pad_top, pad_bottom, pad_left, pad_right,
           stride_h, stride_w, dilation_h, dilation_w, useDoubleBuffer));
 
-  int32_t npu_num = static_cast<int32_t>(NPU_NUM);
+  int32_t npu_num = static_cast<int32_t>(CVI_NPU_NUM);
   tile_info.n = 1;
   tile_info.oc = ceiling_func(oc, npu_num); // lane parallelism
   tile_info.ic = 1;
@@ -2333,7 +2333,7 @@ bool Conv::determinePs32TileSize(bool useDoubleBuffer) {
 
   int32_t n_step = 1;
   int32_t oc_step = std::min(static_cast<int32_t>(group_output_channels()),
-                             static_cast<int32_t>(NPU_NUM));
+                             static_cast<int32_t>(CVI_NPU_NUM));
   // Split ow
   for (int32_t ow_step = std::min(ow, MAX_WIDTH); ow_step > 0; --ow_step) {
     // int32_t ow_step = ceiling_func(ow, tile_info.w);
@@ -2882,7 +2882,7 @@ bool Conv::determineDwTileSize(bool useDoubleBuffer, bool favor_dma) {
   assert(static_cast<uint32_t>(oh) == output_height());
   assert(static_cast<uint32_t>(ow) == output_width());
 
-  int32_t npu_num = static_cast<int32_t>(NPU_NUM);
+  int32_t npu_num = static_cast<int32_t>(CVI_NPU_NUM);
   tile_info.n = 1;
   tile_info.oc = ceiling_func(oc, npu_num); // lane parallelism
   tile_info.ic = ic;
@@ -2929,7 +2929,7 @@ bool Conv::determineDwTileSize(bool useDoubleBuffer, bool favor_dma) {
         for (int32_t slice_oc = 0; slice_oc < num_oc_step; ++slice_oc) {
           // Downward, align lanes
           //   E.g. oc = 48, oc_step: 48, 32
-          int32_t npu_num = static_cast<int32_t>(NPU_NUM);
+          int32_t npu_num = static_cast<int32_t>(CVI_NPU_NUM);
           int32_t oc_step =
               std::min((num_oc_step - slice_oc) * npu_num, max_oc);
 
@@ -3021,7 +3021,7 @@ bool Conv::determineDwTileSize(bool useDoubleBuffer, bool favor_dma) {
                            weight_size * bufferMultiplier,
                            coeff_oc_step_size * bufferMultiplier,
                            total_needed, LOCAL_MEM_SIZE,
-                           total_needed * NPU_NUM, LOCAL_MEM_SIZE * NPU_NUM,
+                           total_needed * CVI_NPU_NUM, LOCAL_MEM_SIZE * CVI_NPU_NUM,
                            (total_needed * 100) / LOCAL_MEM_SIZE,
                            total_needed, total_size,
                            (total_needed * 100) / total_size,
@@ -3670,15 +3670,15 @@ void Conv::doConvByTilePolicy() {
     }
   }
 
-  // Channel should larger than NPU_NUM
+  // Channel should larger than CVI_NPU_NUM
   // Disable intra-cmd with reuse-weight
   //   need to reorder load input and weight
   // Disable intra-cmd with ps32
   //   need to separate load+compute, compute+store (e.g. ssd300 bf16)
   // Disable intra-cmd with compression
   //   h/w does not guarantee to work, failed in alphapose
-  if (tile_info.ic_step > (uint32_t)NPU_NUM &&
-      tile_info.oc_step > (uint32_t)NPU_NUM &&
+  if (tile_info.ic_step > (uint32_t)CVI_NPU_NUM &&
+      tile_info.oc_step > (uint32_t)CVI_NPU_NUM &&
       tilePolicy == ReuseActivationPolicyType &&
       tile_info.ic_step == group_input_channels()) {
     auto intraCmdAnalysis =

@@ -25,16 +25,8 @@ namespace tpu_mlir {
 namespace tpu {
 
 void BMAddressAssign::assign(mlir::ModuleOp &module) {
-  int64_t start_addr = 0;
   int64_t alignment = BM168x::ALIGNMENT;
-  // bool check = false;
-  chip = Module::getChip(module);
-  auto *instance = BM168x::instance(chip);
-  if (Module::isBM1684xFamily(chip) || Module::isBM1684Family(chip)) {
-    start_addr = instance->get_ctx_start_addr();
-  } else {
-    llvm_unreachable("chip not support now");
-  }
+  int64_t start_addr = BM168x::CTX_START_ADDR;
   Builder builder(module.getContext());
   // assign weight first
   auto addr = start_addr;
@@ -115,10 +107,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module) {
   // 3.set inplace_ops address
   for (auto op : inplace_ops) {
     if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op.op)) {
-      if (Module::isBM1684xFamily(chip)) {
-        auto addr = Module::getAddress(reshapeOp.input());
-        Module::setAddress(reshapeOp.output(), addr);
-      }
+      auto addr = Module::getAddress(reshapeOp.input());
+      Module::setAddress(reshapeOp.output(), addr);
     }
   }
   Module::setNeuronAddr(module, start_addr);

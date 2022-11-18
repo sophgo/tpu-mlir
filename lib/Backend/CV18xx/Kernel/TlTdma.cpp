@@ -108,7 +108,7 @@ void cvi_backend_tl_load_compressed(
                                                    c_step,
                                                    step_size);
 
-      // (1, NPU_NUM, 1, w) ... (1, NPU_NUM, 1, w).
+      // (1, CVI_NPU_NUM, 1, w) ... (1, CVI_NPU_NUM, 1, w).
       cvk_tg_shape_t tg_tiled_shape = ctx.tg_shape_t4(1, cur_c, cur_h, Local_W);
 
       cvk_cmpr_tg_t tg_cmpr_src = {0};
@@ -331,7 +331,7 @@ void cvi_backend_tl_store_compressed(
                                                    c_step,
                                                    step_size);
 
-      // (1, NPU_NUM, 1, w) ... (1, NPU_NUM, 1, w).
+      // (1, CVI_NPU_NUM, 1, w) ... (1, CVI_NPU_NUM, 1, w).
       cvk_tg_shape_t tg_tiled_shape = ctx.tg_shape_t4(1, cur_c, cur_h, Local_W);
       cvk_cmpr_tg_t tg_cmpr_dst = {0};
       tg_cmpr_dst.bias0 = (to == CVK_FMT_BF16) ? 127 : 0;

@@ -43,6 +43,6 @@ void tpu::DivOp::codegen_global_bm1684x() {
   spec.scale_B = 1;
   spec.rshift_A = 0;
   spec.rshift_B = 0;
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_eltbinary_global", &spec,
-                                       sizeof(spec), input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_eltbinary_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }

@@ -81,7 +81,7 @@ void cvi_backend_tl_lut_LA(
   } else {
       tl_input = ctx.lmem_alloc_tensor(ctx.tl_shape_t4(n, c, h, w), CVK_FMT_I8, /*eu_align=*/1);
       tl_output = ctx.lmem_alloc_tensor(ctx.tl_shape_t4(n, c, oh, ow), CVK_FMT_I8, /*eu_align=*/1);
-      sg_lut_table = ctx.lmem_alloc_tensor(ctx.tl_shape_t4(1, NPU_NUM, 16, 16), CVK_FMT_I8, /*eu_align=*/1);
+      sg_lut_table = ctx.lmem_alloc_tensor(ctx.tl_shape_t4(1, CVI_NPU_NUM, 16, 16), CVK_FMT_I8, /*eu_align=*/1);
       assert(sg_lut_table && tl_input && tl_output);
   }
 
@@ -145,13 +145,13 @@ void cvi_backend_int8_tl_lut(
                  << "\n";
   );
 
-  // offset start with NPU_NUM start, 0x1000 for hw limitation
+  // offset start with CVI_NPU_NUM start, 0x1000 for hw limitation
   auto fmt = CVK_FMT_I8;
-  uint32_t step = 0x1000 - NPU_NUM;
+  uint32_t step = 0x1000 - CVI_NPU_NUM;
   int align_up_c = align_up(c, step);
   int slice_nr = align_up_c / step;
   uint32_t in_csize_local =
-    ALIGN(h * w * ctx.bytesize_of_fmt(fmt), EU_NUM) * (step / NPU_NUM);
+    ALIGN(h * w * ctx.bytesize_of_fmt(fmt), EU_NUM) * (step / CVI_NPU_NUM);
   auto _la_input = la_input;
   auto _la_output = la_output;
   auto _c = c;
@@ -274,7 +274,7 @@ void cvi_backend_bf16_tl_lut_slope_method(
   tl_ofmap_slope->stride = tl_ifmap->stride;
 
   // working 2
-  int c_per_npu = ceiling_func(c, NPU_NUM);
+  int c_per_npu = ceiling_func(c, CVI_NPU_NUM);
   int csize_local = c_per_npu * tl_ifmap->stride.c;
   int working_size = n * csize_local;
   tl_tmp->start_address = la_working + working_size;

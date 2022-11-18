@@ -53,22 +53,22 @@ typedef struct {
 } dequant_fp_param_t;
 
 typedef struct cast_common_spec {
-    int src_dtype;
-    int dst_dtype;
-    int round_mode;
+  int src_dtype;
+  int dst_dtype;
+  int round_mode;
 } cast_common_spec_t;
 
 typedef struct cast_global_spec {
-    cast_common_spec_t common;
+  cast_common_spec_t common;
 } cast_global_spec_t;
 
 typedef struct cast_local_spec {
-    cast_common_spec_t common;
-    uint32_t buffer_addr;
+  cast_common_spec_t common;
+  uint32_t buffer_addr;
 } cast_local_spec_t;
 
 typedef struct cast_local_param {
-    cast_local_spec_t spec;
+  cast_local_spec_t spec;
 } cast_local_param_t;
 
 #ifdef __cplusplus
@@ -94,9 +94,8 @@ void tpu::CastOp::codegen_global_bm1684x() {
 
     auto input_spec = BM168x::get_input_spec(op);
     auto output_spec = BM168x::get_output_spec(op);
-    BM168x::instance(Module::getChip(op))->call_global_func("backend_api_cast_global",
-                                        &spec, sizeof(spec),
-                                        input_spec->data(), output_spec->data());
+    BM168x::call_global_func("backend_api_cast_global", &spec, sizeof(spec),
+                             input_spec->data(), output_spec->data());
 
   } else {
     if (!qInput && qOutput) {
@@ -114,8 +113,8 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
       param.mode = 0;
-      BM168x::instance(Module::getChip(op))->call_global_func("backend_api_requant_float_global",
-                                           &param, sizeof(param));
+      BM168x::call_global_func("backend_api_requant_float_global", &param,
+                               sizeof(param));
     } else if (qInput && !qOutput) {
       auto qtype = Quant::getUniformQuantizedType(input());
       dequant_fp_param_t param = {0};
@@ -130,8 +129,8 @@ void tpu::CastOp::codegen_global_bm1684x() {
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
-      BM168x::instance(Module::getChip(op))->call_global_func("backend_api_dequant_float_global",
-                                           &param, sizeof(param));
+      BM168x::call_global_func("backend_api_dequant_float_global", &param,
+                               sizeof(param));
     }
   }
 }
@@ -182,9 +181,8 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
 
     auto input_spec = BM168x::get_input_spec(op);
     auto output_spec = BM168x::get_output_spec(op);
-    BM168x::instance(Module::getChip(op))->call_local_func("backend_api_cast_local",
-                                        &spec, sizeof(spec), &sec_info,
-                                      input_spec->data(), output_spec->data());
+    BM168x::call_local_func("backend_api_cast_local", &spec, sizeof(spec),
+                            &sec_info, input_spec->data(), output_spec->data());
   } else {
     if (!qInput && qOutput) {
       auto qtype = Quant::getUniformQuantizedType(output());
@@ -205,8 +203,8 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
       param.mode = ROUND_INF;
-      BM168x::instance(Module::getChip(op))->call_local_func("backend_api_requant_float_local",
-                                          &param, sizeof(param));
+      BM168x::call_local_func("backend_api_requant_float_local", &param,
+                              sizeof(param));
     } else {
       auto qtype = Quant::getUniformQuantizedType(input());
       dequant_fp_param_t param = {0};
@@ -222,8 +220,8 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
       param.offset_value = qtype.getZeroPoint();
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
-      BM168x::instance(Module::getChip(op))->call_local_func("backend_api_dequant_float_local",
-                                          &param, sizeof(param));
+      BM168x::call_local_func("backend_api_dequant_float_local", &param,
+                              sizeof(param));
     }
   }
 }

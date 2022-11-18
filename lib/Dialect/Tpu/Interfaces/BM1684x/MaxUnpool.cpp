@@ -60,7 +60,7 @@ void tpu::MaxUnpoolOp::codegen_global_bm1684x() {
   spec.top_c = oc;
   spec.top_h = oh;
   spec.top_w = ow;
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_upsamplemask_global", &spec,
+  BM168x::call_global_func("backend_api_upsamplemask_global", &spec,
                                        sizeof(spec));
 }
 

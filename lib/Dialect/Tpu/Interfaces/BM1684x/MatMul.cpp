@@ -96,7 +96,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
       spec.offset_val = output_type.getZeroPoint();
     }
 
-    BM168x::instance(Module::getChip(op))->call_global_func(
+    BM168x::call_global_func(
         "backend_api_batch_matmul_global", &spec, sizeof(spec),
         input_spec->data(), output_spec->data());
     return;
@@ -125,7 +125,7 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.offset_val = output_type.getZeroPoint();
     spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
   }
-  BM168x::instance(Module::getChip(op))->call_global_func("backend_api_fc_global", &spec,
+  BM168x::call_global_func("backend_api_fc_global", &spec,
                                        sizeof(spec), input_spec->data(),
                                        output_spec->data());
 }

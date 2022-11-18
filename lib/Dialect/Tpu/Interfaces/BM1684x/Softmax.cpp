@@ -108,10 +108,9 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     param.zero_point = out_qtype.getZeroPoint();
     param.scale_val = out_qtype.getScale();
     param.dtype = BM168x::getDataType(input());
-    BM168x::instance(Module::getChip(op))
-        ->call_global_func("backend_api_softmax_tflite_fix8b", &param,
-                           sizeof(param), input_spec->data(),
-                           output_spec->data());
+    BM168x::call_global_func("backend_api_softmax_tflite_fix8b", &param,
+                             sizeof(param), input_spec->data(),
+                             output_spec->data());
   } else {
     softmax_global_param_t param = {0};
     param.input_addr = Module::getAddress(input());
@@ -124,8 +123,8 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     param.log = false;
     param.dtype = BM168x::getDataType(input());
     param.scale_val = in_scale;
-    BM168x::instance(Module::getChip(op))
-        ->call_global_func("backend_api_softmax_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+    BM168x::call_global_func("backend_api_softmax_global", &param,
+                             sizeof(param), input_spec->data(),
+                             output_spec->data());
   }
 }

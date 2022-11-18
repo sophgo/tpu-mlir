@@ -22,7 +22,7 @@ using namespace tpu_mlir::helper;
 
 void *BM168x::get_gmem_addr(uint64_t addr) {
   auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
-  return start + addr - get_gmem_start();
+  return start + addr - GMEM_START_ADDR;
 }
 
 void *BM168x::get_gmem_addr(const bm_device_mem_t &mem) {
@@ -196,6 +196,15 @@ void BM168x::fix_shape(tensor_spec_t &spec,
   spec.dims = new_shape.size();
 }
 
+int64_t BM168x::NPU_NUM = 0;
+int64_t BM168x::EU_BYTES = 0;
+int64_t BM168x::LMEM_BYTES = 0;
+int64_t BM168x::LMEM_BANKS = 0;
+int64_t BM168x::LMEM_BANK_BYTES = 0;
+uint64_t BM168x::CTX_START_ADDR = 0;
+int64_t BM168x::IC_PARALLEL = 0;
+llvm::StringRef BM168x::LIB_NAME = "";
+
 stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
                                     int64_t W) {
   stride_4D_t s;
@@ -211,19 +220,19 @@ stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
   s.W = 1;
   s.H = W;
   if (eu_align) {
-    s.C = align_up(H * W, get_eu_num(fmtBytes));
+    s.C = align_up(H * W, BM168x::eu_num(fmtBytes));
   } else {
     s.C = H * W;
   }
-  s.N = ceiling_func(C, get_npu_num()) * s.C;
+  s.N = ceiling_func(C, BM168x::NPU_NUM) * s.C;
   return s;
 }
 
 int64_t BM168x::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
                                mlir::Type type, bool eu_align, bool is_4N) {
-  int64_t npu_num = get_npu_num();
+  int64_t npu_num = BM168x::NPU_NUM;
   int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
-  int64_t eu_num = get_eu_num(dbytes);
+  int64_t eu_num = BM168x::eu_num(dbytes);
   int64_t c_per_npu = ceiling_func(c, npu_num);
   int64_t n_align = is_4N ? 1 : get_n_align(dbytes);
   int64_t n_aligned = align_up(n, n_align);
@@ -261,6 +270,36 @@ template <typename FPtrTy> FPtrTy BM168x::CastToFPtr(const char *symbolName) {
   return reinterpret_cast<FPtrTy>(fPtr);
 }
 
+typedef int (*backend_api_t)(void *params, int param_size, void *pid_node);
+void BM168x::call_global_func(const char *symbolName, void *params,
+                              int param_size) {
+  auto func = inst->CastToFPtr<backend_api_t>(symbolName);
+  func(params, param_size, inst->cmdid_node);
+}
+
+void BM168x::call_local_func(const char *symbolName, void *params,
+                             int param_size) {
+  auto func = inst->CastToFPtr<backend_api_t>(symbolName);
+  func(params, param_size, inst->bdc_node);
+}
+
+typedef int (*global_backend_api_t)(void *params, int param_size, void *input,
+                                    void *output, void *pid_node);
+void BM168x::call_global_func(const char *symbolName, void *params,
+                              int param_size, void *input, void *output) {
+  auto func = inst->CastToFPtr<global_backend_api_t>(symbolName);
+  func(params, param_size, input, output, inst->cmdid_node);
+}
+
+typedef int (*local_backend_api_t)(void *params, int param_size, void *input,
+                                   void *info, void *output, void *pid_node);
+void BM168x::call_local_func(const char *symbolName, void *params,
+                             int param_size, void *info, void *input,
+                             void *output) {
+  auto func = inst->CastToFPtr<local_backend_api_t>(symbolName);
+  func(params, param_size, info, input, output, inst->bdc_node);
+}
+
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 void BM168x::load_functions() {
@@ -292,7 +331,7 @@ void BM168x::load_functions() {
 void BM168x::init() {
   if (!DL.isValid()) {
     std::string Err;
-    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(get_lib_name(), &Err);
+    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_NAME.data(), &Err);
     if (DL.isValid() == false) {
       llvm_unreachable(Err.c_str());
     }
@@ -346,14 +385,15 @@ void BM168x::after_codegen(int64_t flops) {
     dl_sg_flops_dump(flops, cmdid_node);
 }
 
-BM168x *BM168x::instance(const StringRef chip) {
-  BM168x *p_backend;
+BM168x *BM168x::inst = nullptr;
+
+void BM168x::init_instance(const StringRef chip) {
   if (chip == Module::Chip::BM1684) {
-    return &BM1684::instance();
+    inst = &BM1684::instance();
   } else if (chip == Module::Chip::BM1684x) {
-    return &BM1684x::instance();
-  } else if(chip == Module::Chip::ATHENA2) {
-    return &Athena2::instance();
+    inst = &BM1684x::instance();
+  } else if (chip == Module::Chip::ATHENA2) {
+    inst = &Athena2::instance();
   } else {
     llvm_unreachable("unsupport chip");
   }
