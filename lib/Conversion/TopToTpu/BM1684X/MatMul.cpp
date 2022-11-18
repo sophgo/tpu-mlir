@@ -23,9 +23,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
-  bool relu, with_bias;
+  bool relu, with_bias, transpose;
   double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit);
+  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
   int scale = 1, shift = 0;
   if (batch > 1 && with_bias != 0) {
     auto bias_size = Module::getNumElements(op.bias());
@@ -197,9 +197,9 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     llvm_unreachable("input output should be quantized");
   }
   int64_t batch, M, K, N;
-  bool relu, with_bias;
+  bool relu, with_bias, transpose;
   double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit);
+  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
   assert(batch == 1);
   auto input_qtype = Quant::getUniformQuantizedType(op.input());
   auto right_qtype = Quant::getUniformQuantizedType(op.right());

@@ -126,6 +126,8 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int pht, int phb, int pwl, int pwr, float pad_value);
 void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point);
+void tensor_hw_transpose(float * dst, float *src, int64_t N, int64_t C,
+                         int64_t H, int64_t W);
 
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
             int k, int n, bool transpose);
