@@ -387,7 +387,7 @@ void BM168x::after_codegen(int64_t flops) {
 
 BM168x *BM168x::inst = nullptr;
 
-void BM168x::init_instance(const StringRef chip) {
+void BM168x::init_instance(const llvm::StringRef chip) {
   if (chip == Module::Chip::BM1684) {
     inst = &BM1684::instance();
   } else if (chip == Module::Chip::BM1684x) {

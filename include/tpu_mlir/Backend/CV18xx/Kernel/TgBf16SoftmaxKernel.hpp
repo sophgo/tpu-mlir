@@ -19,7 +19,7 @@ namespace tpu_mlir {
 namespace backend {
 class TgSoftmaxKernel {
 public:
-  TgSoftmaxKernel(const CviBackendContext &ctx) : ctx(ctx) {}
+  TgSoftmaxKernel() {}
 
   void init(uint32_t layer_id,
             gaddr_t ga_input,
@@ -156,7 +156,6 @@ protected:
   void accumulate_per_lane_value(cvk_tl_t *tl_in, cvk_tl_t *tl_out);
 
 protected:
-  const CviBackendContext &ctx;
   gaddr_t ga_input;
   gaddr_t ga_exponential_table_data_lut;
   gaddr_t ga_exponential_slope_table_data_lut;
@@ -184,5 +183,5 @@ protected:
   cvk_tl_t *tl_reciprocal_table_answer;
   cvk_tl_t *tl_reciprocal_mantissa_table_answer;
 };
-}  
+}
 }

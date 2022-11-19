@@ -64,19 +64,19 @@ void TgInt8PoolingKernel::init(uint32_t layer_id, gaddr_t ga_input,
 
 void TgInt8PoolingKernel::allocLmem(cvk_tl_shape_t &input_shape,
                                     cvk_tl_shape_t &output_shape) {
-  tl_input[0] = ctx.lmem_alloc_tensor(input_shape, CVK_FMT_I8, 1);
-  tl_input[1] = ctx.lmem_alloc_tensor(input_shape, CVK_FMT_I8, 1);
-  tl_output[0] = ctx.lmem_alloc_tensor(output_shape, CVK_FMT_I8, 1);
-  tl_output[1] = ctx.lmem_alloc_tensor(output_shape, CVK_FMT_I8, 1);
+  tl_input[0] = CV18xx::lmem_alloc_tensor(input_shape, CVK_FMT_I8, 1);
+  tl_input[1] = CV18xx::lmem_alloc_tensor(input_shape, CVK_FMT_I8, 1);
+  tl_output[0] = CV18xx::lmem_alloc_tensor(output_shape, CVK_FMT_I8, 1);
+  tl_output[1] = CV18xx::lmem_alloc_tensor(output_shape, CVK_FMT_I8, 1);
   assert(tl_input[0] && tl_input[1]);
   assert(tl_output[0] && tl_output[1]);
 }
 
 void TgInt8PoolingKernel::deallocLmem() {
-  ctx.lmem_free_tensor(tl_output[1]);
-  ctx.lmem_free_tensor(tl_output[0]);
-  ctx.lmem_free_tensor(tl_input[1]);
-  ctx.lmem_free_tensor(tl_input[0]);
+  CV18xx::lmem_free_tensor(tl_output[1]);
+  CV18xx::lmem_free_tensor(tl_output[0]);
+  CV18xx::lmem_free_tensor(tl_input[1]);
+  CV18xx::lmem_free_tensor(tl_input[0]);
 }
 
 void TgInt8PoolingKernel::selectTilePolicy() { doTileForNormalCase(); }
@@ -87,9 +87,9 @@ void TgInt8PoolingKernel::doTileForNormalCase() {
   // determin the shape of tile.
   for (step_ow = stride_w > 15 ? 1 : ow; step_ow > 0; step_ow--) {
     for (step_oh = stride_h > 15 ? 1 : oh; step_oh > 0; step_oh--) {
-      for (step_c = std::min(c, MAX_CHANNEL); step_c > 0; step_c -= CVI_NPU_NUM) {
+      for (step_c = std::min(c, MAX_CHANNEL); step_c > 0; step_c -= CV18xx::NPU_NUM) {
         if (step_c != c) {
-          step_c = align_up(step_c, CVI_NPU_NUM);
+          step_c = align_up(step_c, CV18xx::NPU_NUM);
         }
         auto step_ih = (step_oh - 1) * stride_h + kh;
         auto step_iw = (step_ow - 1) * stride_w + kw;
@@ -103,18 +103,18 @@ void TgInt8PoolingKernel::doTileForNormalCase() {
           continue;
         }
         cvk_tl_shape_t input_shape =
-            ctx.tl_shape_t4(1, step_c, step_ih, step_iw);
+            CV18xx::tl_shape_t4(1, step_c, step_ih, step_iw);
         cvk_tl_shape_t output_shape =
-            ctx.tl_shape_t4(1, step_c, step_oh, step_ow);
+            CV18xx::tl_shape_t4(1, step_c, step_oh, step_ow);
         auto total_lmem =
-            2 * (ctx.lmem_tensor_to_size(input_shape, CVK_FMT_I8, 1) +
-                 ctx.lmem_tensor_to_size(output_shape, CVK_FMT_I8, 1));
+            2 * (CV18xx::lmem_tensor_to_size(input_shape, CVK_FMT_I8, 1) +
+                 CV18xx::lmem_tensor_to_size(output_shape, CVK_FMT_I8, 1));
         LLVM_DEBUG(llvm::errs()
                    << llvm::format("try input shape:%d,%d,%d,%d output "
                                    "shape:%d,%d,%d,%d total lmem:%d\n",
                                    1, step_c, step_ih, step_iw, 1, step_c,
                                    step_oh, step_ow, total_lmem));
-        if (total_lmem <= (uint32_t)LOCAL_MEM_SIZE) {
+        if (total_lmem <= (uint32_t)CV18xx::LMEM_BYTES) {
           LLVM_DEBUG(
               llvm::errs() << llvm::format(
                   "input_shape(%d,%d,%d,%d), output_shape(%d,%d,%d,%d)\n"
@@ -185,7 +185,7 @@ do_tile:
 void TgInt8PoolingKernel::schedule() {
   int32_t total_steps = tiles.size();
   for (int32_t i = 0; i < total_steps + 2; i++) {
-    ctx.parallel_enable();
+    CV18xx::parallel_enable();
 
     if (i - 1 >= 0 && i - 1 < total_steps) {
       compute(i - 1, flip);
@@ -197,7 +197,7 @@ void TgInt8PoolingKernel::schedule() {
       store(i - 2, flip);
     }
     flip = 1 - flip;
-    ctx.parallel_disable();
+    CV18xx::parallel_disable();
 
     LLVM_DEBUG(llvm::errs() << "########\n");
   }
@@ -207,14 +207,14 @@ void TgInt8PoolingKernel::schedule() {
 void TgInt8PoolingKernel::load(int32_t step_idx, int32_t flip) {
   cvk_tl_t operand;
   auto tile = tiles[step_idx];
-  cvk_tl_shape_t shape = ctx.tl_shape_t4(tile.n, tile.c, tile.h, tile.w);
+  cvk_tl_shape_t shape = CV18xx::tl_shape_t4(tile.n, tile.c, tile.h, tile.w);
   operand.start_address = tl_input[1 - flip]->start_address;
   operand.shape = shape;
-  operand.stride = ctx.tl_default_stride(shape, CVK_FMT_I8, 1);
+  operand.stride = CV18xx::tl_default_stride(shape, CVK_FMT_I8, 1);
   operand.fmt = CVK_FMT_I8;
   cvk_tg_stride_t stride = {(uint32_t)(c * h * w), (uint32_t)(h * w),
                             (uint32_t)w, 1};
-  ctx.tdma_load_stride(&operand, ga_input + tile.input_offset, stride);
+  CV18xx::tdma_load_stride(&operand, ga_input + tile.input_offset, stride);
 
   LLVM_DEBUG(llvm::errs() << llvm::format(
                  "load[%d], flip[%d], addr:%d, shape<%d,%d,%d,%d:%d,%d,%d,%d>, "
@@ -227,14 +227,14 @@ void TgInt8PoolingKernel::load(int32_t step_idx, int32_t flip) {
 void TgInt8PoolingKernel::store(int32_t step_idx, int32_t flip) {
   cvk_tl_t result;
   auto tile = tiles[step_idx];
-  cvk_tl_shape_t shape = ctx.tl_shape_t4(tile.n, tile.c, tile.oh, tile.ow);
+  cvk_tl_shape_t shape = CV18xx::tl_shape_t4(tile.n, tile.c, tile.oh, tile.ow);
   result.start_address = tl_output[1 - flip]->start_address;
   result.shape = shape;
-  result.stride = ctx.tl_default_stride(shape, CVK_FMT_I8, 1);
+  result.stride = CV18xx::tl_default_stride(shape, CVK_FMT_I8, 1);
   result.fmt = CVK_FMT_I8;
   cvk_tg_stride_t stride = {(uint32_t)(c * oh * ow), (uint32_t)(oh * ow),
                             (uint32_t)ow, 1};
-  ctx.tdma_store_stride(&result, ga_output + tile.output_offset, stride);
+  CV18xx::tdma_store_stride(&result, ga_output + tile.output_offset, stride);
 
   LLVM_DEBUG(llvm::errs() << llvm::format(
                  "store[%d], flip[%d], addr:%d, "
@@ -251,17 +251,17 @@ void TgInt8PoolingKernel::compute(int32_t step_idx, int32_t flip) {
   cvk_tl_t input;
   cvk_tl_t output;
 
-  input_shape = ctx.tl_shape_t4(tile.n, tile.c, tile.h, tile.w);
+  input_shape = CV18xx::tl_shape_t4(tile.n, tile.c, tile.h, tile.w);
   input.start_address = tl_input[flip]->start_address;
   input.shape = input_shape;
   input.fmt = CVK_FMT_I8;
-  input.stride = ctx.tl_default_stride(input_shape, CVK_FMT_I8, 1);
+  input.stride = CV18xx::tl_default_stride(input_shape, CVK_FMT_I8, 1);
 
-  output_shape = ctx.tl_shape_t4(tile.n, tile.c, tile.oh, tile.ow);
+  output_shape = CV18xx::tl_shape_t4(tile.n, tile.c, tile.oh, tile.ow);
   output.start_address = tl_output[flip]->start_address;
   output.shape = output_shape;
   output.fmt = CVK_FMT_I8;
-  output.stride = ctx.tl_default_stride(output_shape, CVK_FMT_I8, 1);
+  output.stride = CV18xx::tl_default_stride(output_shape, CVK_FMT_I8, 1);
 
   LLVM_DEBUG(llvm::errs() << llvm::format(
                  "compute[%d], flip[%d, %d], addr:%d, %d,input<%d,%d,%d,%d>, "
@@ -289,7 +289,7 @@ void TgInt8PoolingKernel::compute(int32_t step_idx, int32_t flip) {
     param.layer_id = layer_id;
     param.ins_val = -128;
     param.ins_fp = 0xff7f;
-    ctx.tiu_max_pooling(&param);
+    CV18xx::tiu_max_pooling(&param);
   } else {
     cvk_tiu_average_pooling_param_t param = {0};
     param.ofmap = &output;
@@ -310,19 +310,19 @@ void TgInt8PoolingKernel::compute(int32_t step_idx, int32_t flip) {
     param.rshift_bits = rshift;
     param.layer_id = layer_id;
     param.ins_val = 0;
-    param.ins_fp = ctx.convert_fp32_to_bf16(0.0);
-    ctx.tiu_average_pooling(&param);
+    param.ins_fp = CV18xx::convert_fp32_to_bf16(0.0);
+    CV18xx::tiu_average_pooling(&param);
   }
 }
 
 void cvi_backend_tg_fixed_max_pooling_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+     uint32_t layer_id, gaddr_t ga_input,
     gaddr_t ga_output, int n, int c, int h, int w, int kh, int kw, int pad_top,
     int pad_bot, int pad_left, int pad_right, int stride_h, int stride_w,
     bool do_relu, bool ceil_mode) {
 
   assert(!do_relu);
-  TgInt8PoolingKernel kernel(ctx);
+  TgInt8PoolingKernel kernel;
   kernel.init(layer_id, ga_input, ga_output, n, c, h, w, pad_top, pad_bot,
               pad_left, pad_right, kh, kw, stride_h, stride_w, false, do_relu,
               0, 1, ceil_mode);
@@ -332,13 +332,13 @@ void cvi_backend_tg_fixed_max_pooling_kernel(
 }
 
 void cvi_backend_tg_fixed_avg_pooling_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+     uint32_t layer_id, gaddr_t ga_input,
     gaddr_t ga_output, int n, int c, int h, int w, int kh, int kw, int pad_top,
     int pad_bot, int pad_left, int pad_right, int stride_h, int stride_w,
     bool do_relu, int rshift, int multiplier, bool ceil_mode) {
 
   assert(!do_relu);
-  TgInt8PoolingKernel kernel(ctx);
+  TgInt8PoolingKernel kernel;
   kernel.init(layer_id, ga_input, ga_output, n, c, h, w, pad_top, pad_bot,
               pad_left, pad_right, kh, kw, stride_h, stride_w, true, do_relu,
               rshift, multiplier, ceil_mode);

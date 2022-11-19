@@ -22,9 +22,8 @@ using namespace tpu_mlir;
 
 namespace tpu_mlir {
 namespace backend {
-static int get_csize_global_bitwidth(const CviBackendContext &ctx, int h, int w,
-                                     int bitwidth) {
-  // ASSERT(ctx.hw.chip_version != BM_CHIP_BM1880);
+static int get_csize_global_bitwidth(int h, int w, int bitwidth) {
+  // ASSERT(CV18xx::hw.chip_version != BM_CHIP_BM1880);
 
   return ALIGN(h * w * bitwidth, 32) / 8;
 }
@@ -91,16 +90,14 @@ static int index_bit_width(int kernel_size) {
   }
 }
 
-static int index_size_gmem(const CviBackendContext &ctx, int kernel_size, int n,
-                           int c, int h, int w) {
+static int index_size_gmem(int kernel_size, int n, int c, int h, int w) {
   int bit_width = index_bit_width(kernel_size);
-  return n * c * get_csize_global_bitwidth(ctx, h, w, bit_width);
+  return n * c * get_csize_global_bitwidth(h, w, bit_width);
 }
 
-static cvk_tl_t *alloc_tensor_lmem(const CviBackendContext &ctx, int n, int c,
-                                   int h, int w) {
-  cvk_tl_shape_t shape = ctx.tl_shape_t4(n, c, h, w);
-  return ctx.lmem_alloc_tensor(shape, CVK_FMT_BF16, /*eu_align=*/1);
+static cvk_tl_t *alloc_tensor_lmem(int n, int c, int h, int w) {
+  cvk_tl_shape_t shape = CV18xx::tl_shape_t4(n, c, h, w);
+  return CV18xx::lmem_alloc_tensor(shape, CVK_FMT_BF16, /*eu_align=*/1);
 }
 
 typedef struct {
@@ -134,32 +131,31 @@ static int pooling_aligned_out_h(const pooling_t *p) {
   return lcm(out_w, aligned_indices) / out_w;
 }
 
-static int pooling_size_lmem(const CviBackendContext &ctx, const pooling_t *p) {
+static int pooling_size_lmem(const pooling_t *p) {
   int out_h = pooling_out_h(p);
   int out_w = pooling_out_w(p);
-  int in_size = p->n * ALIGN(p->c, CVI_NPU_NUM) *
-                ctx.lmem_tensor_to_size(1, 1, p->h, p->w, CVK_FMT_BF16);
-  int out_size = p->n * ALIGN(p->c, CVI_NPU_NUM) *
-                 ctx.lmem_tensor_to_size(1, 1, out_h, out_w, CVK_FMT_BF16);
+  int in_size = p->n * ALIGN(p->c, CV18xx::NPU_NUM) *
+                CV18xx::lmem_tensor_to_size(1, 1, p->h, p->w, CVK_FMT_BF16);
+  int out_size = p->n * ALIGN(p->c, CV18xx::NPU_NUM) *
+                 CV18xx::lmem_tensor_to_size(1, 1, out_h, out_w, CVK_FMT_BF16);
 
   return in_size + out_size;
 }
 
-static int split_pooling_forward(const CviBackendContext &ctx,
-                                 const pooling_t *_p, int *step_c,
+static int split_pooling_forward(const pooling_t *_p, int *step_c,
                                  int *step_h) {
-  int target_size = CVI_NPU_NUM * LOCAL_MEM_SIZE;
-  int npu_num = CVI_NPU_NUM;
+  int target_size = CV18xx::NPU_NUM * CV18xx::LMEM_BYTES;
+  int npu_num = CV18xx::NPU_NUM;
   *step_c = _p->c;
   *step_h = _p->h;
-  if (pooling_size_lmem(ctx, _p) <= target_size) {
+  if (pooling_size_lmem(_p) <= target_size) {
     return 0;
   }
 
   pooling_t p = *_p;
   if (p.c > npu_num) {
     *step_c = p.c = npu_num;
-    int size = pooling_size_lmem(ctx, &p);
+    int size = pooling_size_lmem(&p);
     if (size <= target_size) {
       *step_c = (target_size / size) * npu_num;
       return 0;
@@ -172,14 +168,14 @@ static int split_pooling_forward(const CviBackendContext &ctx,
   p.pad_top = p.pad_bot = 0;
   int min_in_h = p.stride_h * pooling_aligned_out_h(&p);
   p.h = min_in_h + p.kh;
-  int min_size = pooling_size_lmem(ctx, &p);
+  int min_size = pooling_size_lmem(&p);
   if (min_size > target_size) {
     return -1;
   }
 
   for (int i = target_size / min_size; i < _p->h; i++) {
     p.h = min_in_h * i + p.kh;
-    if (pooling_size_lmem(ctx, &p) > target_size) {
+    if (pooling_size_lmem(&p) > target_size) {
       *step_h = min_in_h * (i - 1);
       break;
     }
@@ -187,23 +183,22 @@ static int split_pooling_forward(const CviBackendContext &ctx,
   return 0;
 }
 
-static void pooling_forward_slice(const CviBackendContext &ctx,
-                                  uint32_t layer_id, const pooling_t *all,
+static void pooling_forward_slice(uint32_t layer_id, const pooling_t *all,
                                   const pooling_t *slice) {
   const pooling_t *s = slice;
   int out_h = pooling_out_h(slice);
   int out_w = pooling_out_w(slice);
 
-  cvk_tl_t *ifmap = alloc_tensor_lmem(ctx, s->n, s->c, s->h, s->w);
-  cvk_tl_t *ofmap = alloc_tensor_lmem(ctx, s->n, s->c, out_h, out_w);
+  cvk_tl_t *ifmap = alloc_tensor_lmem(s->n, s->c, s->h, s->w);
+  cvk_tl_t *ofmap = alloc_tensor_lmem(s->n, s->c, out_h, out_w);
   int is_max_pooling = !s->is_avg_pooling;
 
   cvk_tg_shape_t ts_all_in_shape =
-      ctx.tg_shape_t4(all->n, all->c, all->h, all->w);
+      CV18xx::tg_shape_t4(all->n, all->c, all->h, all->w);
   cvk_tg_stride_t ts_stride =
-      ctx.tg_default_stride(ts_all_in_shape, CVK_FMT_BF16);
+      CV18xx::tg_default_stride(ts_all_in_shape, CVK_FMT_BF16);
 
-  ctx.tdma_load_stride(ifmap, s->ifmap_gaddr, ts_stride);
+  CV18xx::tdma_load_stride(ifmap, s->ifmap_gaddr, ts_stride);
 
   int pad_bot = s->pad_bot;
   if (s->last_column) {
@@ -238,7 +233,7 @@ static void pooling_forward_slice(const CviBackendContext &ctx,
                    s->stride_w, param.pad_top, param.pad_bottom, param.pad_left,
                    param.pad_right););
 
-    ctx.tiu_max_pooling(&param);
+    CV18xx::tiu_max_pooling(&param);
   } else {
     float avg_const = s->avg_const;
 
@@ -264,10 +259,10 @@ static void pooling_forward_slice(const CviBackendContext &ctx,
     param.pad_right = s->pad_right + s->extra_pad_r;
     param.stride_h = s->stride_h;
     param.stride_w = s->stride_w;
-    param.avg_pooling_const = ctx.convert_fp32_to_bf16(avg_const);
+    param.avg_pooling_const = CV18xx::convert_fp32_to_bf16(avg_const);
     param.layer_id = layer_id;
     param.ins_val = 0;
-    param.ins_fp = ctx.convert_fp32_to_bf16(0.0);
+    param.ins_fp = CV18xx::convert_fp32_to_bf16(0.0);
 
     LLVM_DEBUG(llvm::errs() << llvm::format(
                    "  tiu_bf16_avg_pooling\n"
@@ -280,21 +275,21 @@ static void pooling_forward_slice(const CviBackendContext &ctx,
                    ofmap->shape.h, ofmap->shape.w, s->kh, s->kw, s->stride_h,
                    s->stride_w, avg_const, param.avg_pooling_const););
 
-    ctx.tiu_average_pooling(&param);
+    CV18xx::tiu_average_pooling(&param);
   }
 
-  cvk_tg_shape_t ts_all_out_shape =
-      ctx.tg_shape_t4(all->n, all->c, pooling_out_h(all), pooling_out_w(all));
+  cvk_tg_shape_t ts_all_out_shape = CV18xx::tg_shape_t4(
+      all->n, all->c, pooling_out_h(all), pooling_out_w(all));
   cvk_tg_stride_t ts_out_stride =
-      ctx.tg_default_stride(ts_all_out_shape, CVK_FMT_BF16);
+      CV18xx::tg_default_stride(ts_all_out_shape, CVK_FMT_BF16);
 
-  ctx.tdma_store_stride(ofmap, s->ofmap_gaddr, ts_out_stride);
+  CV18xx::tdma_store_stride(ofmap, s->ofmap_gaddr, ts_out_stride);
 
-  ctx.lmem_free_tensor(ofmap);
-  ctx.lmem_free_tensor(ifmap);
+  CV18xx::lmem_free_tensor(ofmap);
+  CV18xx::lmem_free_tensor(ifmap);
 }
 
-static void adjust_nc(const CviBackendContext &ctx, int *n, int *c) {
+static void adjust_nc(int *n, int *c) {
   *c *= *n;
   *n = 1;
   while (*c >= 0x1000) {
@@ -321,10 +316,10 @@ static void adjust_pad(pooling_t *s) {
 }
 
 void cvi_backend_tg_bf16_pooling_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ifmap_gaddr,
-    gaddr_t ofmap_gaddr, gaddr_t index_gaddr, gaddr_t o_findex_gaddr, int n,
-    int c, int h, int w, int kh, int kw, int pad_top, int pad_bot, int pad_left,
-    int pad_right, int stride_h, int stride_w, int is_avg_pooling,
+    uint32_t layer_id, gaddr_t ifmap_gaddr, gaddr_t ofmap_gaddr,
+    gaddr_t index_gaddr, gaddr_t o_findex_gaddr, int n, int c, int h, int w,
+    int kh, int kw, int pad_top, int pad_bot, int pad_left, int pad_right,
+    int stride_h, int stride_w, int is_avg_pooling,
     float avg_const, // default(passing 0.0f) is 1/kh*kw
     int do_relu, const bool ceil_mode) {
   LLVM_DEBUG(
@@ -342,7 +337,7 @@ void cvi_backend_tg_bf16_pooling_kernel(
 
   ASSERT(!do_relu); /* Don't support relu for now. */
 
-  adjust_nc(ctx, &n, &c);
+  adjust_nc(&n, &c);
 
   pooling_t pooling = {.ifmap_gaddr = ifmap_gaddr,
                        .ofmap_gaddr = ofmap_gaddr,
@@ -371,19 +366,19 @@ void cvi_backend_tg_bf16_pooling_kernel(
     adjust_pad(&pooling);
   }
   int step_c = c, step_h = h;
-  int err = split_pooling_forward(ctx, &pooling, &step_c, &step_h);
+  int err = split_pooling_forward(&pooling, &step_c, &step_h);
   ASSERT(err == 0 && step_h >= stride_h);
 
   for (int ci = 0; ci < c; ci += step_c) {
     int slice_c = std::min(step_c, c - ci);
     int out_h = pooling_out_h(&pooling);
     int out_w = pooling_out_w(&pooling);
-    gaddr_t ifmap_nc = ifmap_gaddr + ctx.tensor_size(1, ci, h, w, CVK_FMT_BF16);
+    gaddr_t ifmap_nc =
+        ifmap_gaddr + CV18xx::tensor_size(1, ci, h, w, CVK_FMT_BF16);
     gaddr_t ofmap_nc =
-        ofmap_gaddr + ctx.tensor_size(1, ci, out_h, out_w, CVK_FMT_BF16);
-    gaddr_t index_nc =
-        index_gaddr +
-        index_size_gmem(ctx, kh * kw * sizeof(uint16_t), 1, ci, out_h, out_w);
+        ofmap_gaddr + CV18xx::tensor_size(1, ci, out_h, out_w, CVK_FMT_BF16);
+    gaddr_t index_nc = index_gaddr + index_size_gmem(kh * kw * sizeof(uint16_t),
+                                                     1, ci, out_h, out_w);
 
     pooling_t slice = pooling;
     slice.ifmap_gaddr = ifmap_nc;
@@ -393,7 +388,7 @@ void cvi_backend_tg_bf16_pooling_kernel(
     slice.c = slice_c;
     if (step_h == h) {
       slice.last_column = true;
-      pooling_forward_slice(ctx, layer_id, &pooling, &slice);
+      pooling_forward_slice(layer_id, &pooling, &slice);
       continue;
     }
 
@@ -413,14 +408,14 @@ void cvi_backend_tg_bf16_pooling_kernel(
       slice.pad_top = -std::min(0, hi);
       slice.pad_bot = std::max(0, hi + slice_h - h);
       slice.ifmap_gaddr =
-          ifmap_nc + ctx.tensor_size(1, 1, hi + slice.pad_top, w, CVK_FMT_BF16);
+          ifmap_nc +
+          CV18xx::tensor_size(1, 1, hi + slice.pad_top, w, CVK_FMT_BF16);
       slice.ofmap_gaddr =
-          ofmap_nc + ctx.tensor_size(1, 1, out_hi, out_w, CVK_FMT_BF16);
-      slice.index_gaddr =
-          index_nc +
-          index_size_gmem(ctx, kh * kw * sizeof(uint16_t), 1, 1, out_hi, out_w);
+          ofmap_nc + CV18xx::tensor_size(1, 1, out_hi, out_w, CVK_FMT_BF16);
+      slice.index_gaddr = index_nc + index_size_gmem(kh * kw * sizeof(uint16_t),
+                                                     1, 1, out_hi, out_w);
       slice.h = slice_h - slice.pad_top - slice.pad_bot;
-      pooling_forward_slice(ctx, layer_id, &pooling, &slice);
+      pooling_forward_slice(layer_id, &pooling, &slice);
     }
   }
 }

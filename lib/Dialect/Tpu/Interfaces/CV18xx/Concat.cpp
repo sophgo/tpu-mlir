@@ -24,8 +24,8 @@ using namespace tpu_mlir::helper;
 // GlobalGenInterface
 // =========================================
 
-void tpu::ConcatOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::ConcatOp::codegen_global_cv18xx(int64_t layer_id) {
+
   if (this->only_merge()) {
     return;
   }
@@ -69,10 +69,9 @@ void tpu::ConcatOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
       p_m_i8 = m_i8_input.data();
     }
   }
-  cvi_backend_tg_concat_kernel(*backend_ctx, layer_id, nInputs,
-                               ga_inputs.data(), ga_output, axis_dims.data(),
-                               axis, output_dim_size, output_dim.data(),
-                               do_relu(), p_rshift, p_m_i8, dtype);
+  cvi_backend_tg_concat_kernel(
+      layer_id, nInputs, ga_inputs.data(), ga_output, axis_dims.data(), axis,
+      output_dim_size, output_dim.data(), do_relu(), p_rshift, p_m_i8, dtype);
 }
 
 // =========================================
