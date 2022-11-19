@@ -43,11 +43,11 @@ void TgFcKernel::init(
   this->new_filter = new_filter;
   this->fmt = fmt;
   this->total_steps = 1;
-  this->fmt_size = ctx.bytesize_of_fmt(fmt);
+  this->fmt_size = CV18xx::bytesize_of_fmt(fmt);
   this->r_fmt = do_quant_bf16 ? CVK_FMT_I8 : fmt;
-  this->r_fmt_size = ctx.bytesize_of_fmt(r_fmt);
+  this->r_fmt_size = CV18xx::bytesize_of_fmt(r_fmt);
   this->opt_offset = 0;
-  TOTAL_EU = CVI_NPU_NUM * ctx.tiu_eu_num(fmt);
+  TOTAL_EU = CV18xx::NPU_NUM * CV18xx::tiu_eu_num(fmt);
   uint32_t max_tiu = MAX_TIU_CHL; // 1880v2: 12 bit
   this->maxM = std::min(this->M, max_tiu);
   this->maxK = std::min(this->K, max_tiu);
@@ -92,16 +92,16 @@ void TgFcKernel::init(
     opt_mode = do_quant_bf16 ? FC_OPT_REPOSE : FC_OPT_COMPRESS;
   }
 
-  ctx.set_layer_id(layer_id);
+  CV18xx::set_layer_id(layer_id);
 }
 
 uint32_t TgFcKernel::lmem_matrix_size(uint32_t row, uint32_t col,
                                       bool ps32) const {
-  auto shape = ctx.ml_default_shape(row, col, fmt);
+  auto shape = CV18xx::ml_default_shape(row, col, fmt);
   if (ps32 == false) {
-    return ctx.lmem_matrix_to_size(shape, fmt, 1);
+    return CV18xx::lmem_matrix_to_size(shape, fmt, 1);
   } else {
-    return ctx.lmem_ps32_matrix_to_size(shape, fmt, 1);
+    return CV18xx::lmem_ps32_matrix_to_size(shape, fmt, 1);
   }
 }
 
@@ -190,7 +190,7 @@ void TgFcKernel::set_laddr() {
     Q_laddr[3] = last_laddr;
     last_laddr += lmem_size.Q;
   }
-  assert(last_laddr <= (uint32_t)LOCAL_MEM_SIZE);
+  assert(last_laddr <= (uint32_t)CV18xx::LMEM_BYTES);
 }
 
 // tiling N, for each group
@@ -202,7 +202,7 @@ bool TgFcKernel::try_tiling_group_parallel() {
   tile_K = maxK;
   tile_M = maxM;
   for (tile_N = maxN; tile_N > 0; tile_N--) {
-    if (total_lmem_size() <= (uint32_t)LOCAL_MEM_SIZE) {
+    if (total_lmem_size() <= (uint32_t)CV18xx::LMEM_BYTES) {
       goto tiling_group_parallel_exit;
     }
   }
@@ -234,7 +234,7 @@ bool TgFcKernel::try_no_tiling() {
   tile_K = maxK;
   tile_M = maxM;
   tile_N = maxN;
-  if (total_lmem_size() > (uint32_t)LOCAL_MEM_SIZE) {
+  if (total_lmem_size() > (uint32_t)CV18xx::LMEM_BYTES) {
     return false;
   }
   tile_info_t info = {0};
@@ -256,7 +256,7 @@ bool TgFcKernel::try_tiling_parallel_kn() {
   tile_M = maxM;
   for (tile_K = maxK; tile_K > 0; tile_K--) {
     for (tile_N = maxN; tile_N > 0; tile_N--) {
-      if (total_lmem_size() <= (uint32_t)LOCAL_MEM_SIZE) {
+      if (total_lmem_size() <= (uint32_t)CV18xx::LMEM_BYTES) {
         goto parallel_kn_success;
       }
     }
@@ -290,7 +290,7 @@ bool TgFcKernel::try_tiling_parallel_mn() {
   tile_K = maxK;
   for (tile_M = maxM; tile_M > 0; tile_M--) {
     for (tile_N = maxN; tile_N > 0; tile_N--) {
-      if (total_lmem_size() <= (uint32_t)LOCAL_MEM_SIZE) {
+      if (total_lmem_size() <= (uint32_t)CV18xx::LMEM_BYTES) {
         goto parallel_mn_success;
       }
     }
@@ -317,12 +317,12 @@ parallel_mn_success:
 
 bool TgFcKernel::try_tiling_no_parallel() {
   mode = FC_NO_PARALLEL;
-  int align_num = CVI_NPU_NUM * ctx.tiu_eu_num(fmt);
+  int align_num = CV18xx::NPU_NUM * CV18xx::tiu_eu_num(fmt);
   // try parallel first
   for (tile_M = maxM; tile_M > 0; tile_M--) {
     for (tile_K = maxK; tile_K > 0; tile_K--) {
       for (tile_N = maxN; tile_N > 0;) {
-        if (total_lmem_size() <= (uint32_t)LOCAL_MEM_SIZE) {
+        if (total_lmem_size() <= (uint32_t)CV18xx::LMEM_BYTES) {
           goto tiling_no_parallel_exit;
         }
         if (tile_N % align_num == 0) {
@@ -478,24 +478,24 @@ void TgFcKernel::selectTilePolicy() {
 
 void TgFcKernel::update_tl_matrix(int32_t step_idx) {
   auto &tile = tiles[step_idx];
-  ctx.lmem_init_matrix(&tl_L, ctx.ml_default_shape(tile.m, tile.k, fmt), fmt,
+  CV18xx::lmem_init_matrix(&tl_L, CV18xx::ml_default_shape(tile.m, tile.k, fmt), fmt,
                        1);
   tl_L.start_address = L_laddr[tile.L_idx];
-  ctx.lmem_init_matrix(&tl_R, ctx.ml_default_shape(tile.k, tile.n, fmt), fmt,
+  CV18xx::lmem_init_matrix(&tl_R, CV18xx::ml_default_shape(tile.k, tile.n, fmt), fmt,
                        1);
   tl_R.start_address = R_laddr[tile.RB_idx];
   if (do_bias) {
-    ctx.lmem_init_matrix(&tl_B, ctx.ml_default_shape(4 / fmt_size, tile.n, fmt),
+    CV18xx::lmem_init_matrix(&tl_B, CV18xx::ml_default_shape(4 / fmt_size, tile.n, fmt),
                          fmt, 1);
     tl_B.start_address = B_laddr[tile.RB_idx];
   }
-  ctx.lmem_init_matrix(&tl_Y, ctx.ml_default_shape(tile.m, tile.n, fmt), fmt,
+  CV18xx::lmem_init_matrix(&tl_Y, CV18xx::ml_default_shape(tile.m, tile.n, fmt), fmt,
                        1);
   tl_Y.start_address = Y_laddr[tile.Y_idx];
   if (do_quant_bf16) {
-    ctx.lmem_init_matrix(&tl_scale, ctx.ml_default_shape(1, tile.n, fmt), fmt,
+    CV18xx::lmem_init_matrix(&tl_scale, CV18xx::ml_default_shape(1, tile.n, fmt), fmt,
                          1);
-    ctx.lmem_init_matrix(&tl_zeropoint, ctx.ml_default_shape(1, tile.n, fmt),
+    CV18xx::lmem_init_matrix(&tl_zeropoint, CV18xx::ml_default_shape(1, tile.n, fmt),
                          fmt, 1);
     tl_scale.start_address = Q_laddr[tile.RB_idx];
     tl_zeropoint.start_address = Q_laddr[2 + tile.RB_idx];
@@ -506,22 +506,22 @@ void TgFcKernel::update_tl_matrix(int32_t step_idx) {
 }
 
 void TgFcKernel::matrix_for_tiu() {
-  if (tl_Y.shape.w >= ctx.tiu_eu_num(fmt)) {
+  if (tl_Y.shape.w >= CV18xx::tiu_eu_num(fmt)) {
     return;
   }
-  tl_Y.shape.w = ctx.tiu_eu_num(fmt);
-  tl_Y.stride = ctx.ml_default_stride(tl_Y.shape, fmt, 1);
-  tl_R.shape.w = ctx.tiu_eu_num(fmt);
-  tl_R.stride = ctx.ml_default_stride(tl_R.shape, fmt, 1);
+  tl_Y.shape.w = CV18xx::tiu_eu_num(fmt);
+  tl_Y.stride = CV18xx::ml_default_stride(tl_Y.shape, fmt, 1);
+  tl_R.shape.w = CV18xx::tiu_eu_num(fmt);
+  tl_R.stride = CV18xx::ml_default_stride(tl_R.shape, fmt, 1);
   if (do_bias) {
-    tl_B.shape.w = ctx.tiu_eu_num(fmt);
-    tl_B.stride = ctx.ml_default_stride(tl_B.shape, fmt, 1);
+    tl_B.shape.w = CV18xx::tiu_eu_num(fmt);
+    tl_B.stride = CV18xx::ml_default_stride(tl_B.shape, fmt, 1);
   }
 }
 
 void TgFcKernel::matrix_to_tensor(cvk_tl_t *tensor, const cvk_ml_t &matrix) {
   cvk_tl_shape_t shape = {matrix.shape.n, matrix.shape.c, 1, matrix.shape.w};
-  ctx.lmem_init_tensor(tensor, shape, fmt, 1);
+  CV18xx::lmem_init_tensor(tensor, shape, fmt, 1);
   tensor->start_address = matrix.start_address;
 }
 
@@ -550,7 +550,7 @@ void TgFcKernel::quant_bf16(int32_t step_idx) {
   p.rshift_bits = 0;
   p.layer_id = layer_id;
   p.relu_enable = 0;
-  ctx.tiu_mul(&p);
+  CV18xx::tiu_mul(&p);
 
   cvk_tiu_add_param_t p1 = {0};
   p1.res_high = nullptr;
@@ -563,7 +563,7 @@ void TgFcKernel::quant_bf16(int32_t step_idx) {
   p1.rshift_bits = 0;
   p1.layer_id = layer_id;
   p1.relu_enable = 0;
-  ctx.tiu_add(&p1);
+  CV18xx::tiu_add(&p1);
 }
 
 void TgFcKernel::compute(int32_t step_idx) {
@@ -611,7 +611,7 @@ void TgFcKernel::compute(int32_t step_idx) {
     p.quan_m = cur_multiplier;
     p.layer_id = layer_id;
     p.res_is_int8 = 1;
-    ctx.tiu_matrix_multiplication_qm(&p);
+    CV18xx::tiu_matrix_multiplication_qm(&p);
   } else {
     cvk_tiu_matrix_multiplication_param_t p = {0};
     p.res = &tl_Y;
@@ -625,7 +625,7 @@ void TgFcKernel::compute(int32_t step_idx) {
     p.relu_enable = relu_enable;
     p.ps32_mode = ps32_mode;
     p.layer_id = layer_id;
-    ctx.tiu_matrix_multiplication(&p);
+    CV18xx::tiu_matrix_multiplication(&p);
   }
 }
 
@@ -644,7 +644,7 @@ void TgFcKernel::load_L(int32_t step_idx) {
     return;
   }
 
-  ctx.tdma_load_stride(
+  CV18xx::tdma_load_stride(
       &tl_L, ga_input + tile.pos_m * left_gstride.row + tile.pos_k * fmt_size,
       left_gstride);
 }
@@ -665,25 +665,25 @@ void TgFcKernel::load_R(int32_t step_idx) {
     cvk_mg_t mg_src = {0};
     mg_src.start_address = goffset;
     mg_src.base_reg_index =
-        ctx.getTdmaBaseSelectIndexFromGaddr(mg_src.start_address);
+        CV18xx::getTdmaBaseSelectIndexFromGaddr(mg_src.start_address);
     mg_src.fmt = CVK_FMT_I8;
     mg_src.shape = {tile.k, tile.n};
     if (opt_mode == FC_NO_OPT) {
       mg_src.stride = right_gstride;
     } else {
-      mg_src.stride = ctx.mg_default_stride(mg_src.shape, mg_src.fmt);
+      mg_src.stride = CV18xx::mg_default_stride(mg_src.shape, mg_src.fmt);
     }
     cvk_tdma_g2l_matrix_copy_param_t param = {0};
     param.src = &mg_src;
     param.dst = &tl_R;
     param.layer_id = layer_id;
-    ctx.tdma_g2l_matrix_copy(&param);
+    CV18xx::tdma_g2l_matrix_copy(&param);
   } else if (opt_mode == FC_OPT_COMPRESS) {
-    ctx.tdma_load_decompress(&tl_R, goffset);
+    CV18xx::tdma_load_decompress(&tl_R, goffset);
   } else if (opt_mode == FC_OPT_REPOSE) {
-    ctx.tdma_load(&tl_R, goffset);
+    CV18xx::tdma_load(&tl_R, goffset);
   } else {
-    ctx.tdma_load_stride(&tl_R, goffset, right_gstride);
+    CV18xx::tdma_load_stride(&tl_R, goffset, right_gstride);
   }
 }
 
@@ -695,7 +695,7 @@ void TgFcKernel::load_B(int32_t step_idx) {
   if (is_last_k(step_idx) == false) {
     return;
   }
-  ctx.tdma_load_stride(&tl_B, ga_bias + tile.pos_n * fmt_size, {N * fmt_size});
+  CV18xx::tdma_load_stride(&tl_B, ga_bias + tile.pos_n * fmt_size, {N * fmt_size});
   if (slice_n() == 1 && mode != FC_GROUP_PARALLEL) {
     bias_loaded = true;
   }
@@ -709,9 +709,9 @@ void TgFcKernel::load_Q(int32_t step_idx) {
   if (mode == FC_PARALLEL_MN && tile.pos_m != 0) {
     return;
   }
-  ctx.tdma_load_stride(&tl_scale, ga_scale + tile.pos_n * fmt_size,
+  CV18xx::tdma_load_stride(&tl_scale, ga_scale + tile.pos_n * fmt_size,
                        {N * fmt_size});
-  ctx.tdma_load_stride(&tl_zeropoint, ga_zeropoint + tile.pos_n * fmt_size,
+  CV18xx::tdma_load_stride(&tl_zeropoint, ga_zeropoint + tile.pos_n * fmt_size,
                        {N * fmt_size});
   if (slice_n() == 1) {
     quant_loaded = true;
@@ -736,7 +736,7 @@ void TgFcKernel::store(int32_t step_idx) {
   }
   auto &tile = tiles[step_idx];
   update_tl_matrix(step_idx);
-  ctx.tdma_store_stride(&tl_Y,
+  CV18xx::tdma_store_stride(&tl_Y,
                         ga_output + tile.pos_m * output_gstride.row +
                             tile.pos_n * fmt_size,
                         output_gstride);
@@ -774,7 +774,7 @@ void TgFcKernel::update_batch_info(int high_idx, int low_idx) {
 
 void TgFcKernel::schedule_group_parallel() {
   for (int step = 0; step < total_steps + 2; step++) {
-    ctx.parallel_enable();
+    CV18xx::parallel_enable();
     if (step > 0 && step - 1 < total_steps) {
       compute(step - 1);
     }
@@ -784,7 +784,7 @@ void TgFcKernel::schedule_group_parallel() {
     if (step > 1) {
       store(step - 2);
     }
-    ctx.parallel_disable();
+    CV18xx::parallel_disable();
   }
 }
 
@@ -793,7 +793,7 @@ void TgFcKernel::schedule_parallel() {
     for (int b1 = 0; b1 < batch_low; b1++) {
       update_batch_info(b0, b1);
       for (int step = 0; step < total_steps + 2; step++) {
-        ctx.parallel_enable();
+        CV18xx::parallel_enable();
         if (step > 0 && step - 1 < total_steps) {
           compute(step - 1);
         }
@@ -803,7 +803,7 @@ void TgFcKernel::schedule_parallel() {
         if (step > 1) {
           store(step - 2);
         }
-        ctx.parallel_disable();
+        CV18xx::parallel_disable();
       }
     }
   }
@@ -841,13 +841,13 @@ void TgFcKernel::schedule() {
 }
 
 void cvi_backend_tg_fixed_fc_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+     uint32_t layer_id, gaddr_t ga_input,
     gaddr_t ga_weight, gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
     bool do_bias, bool do_relu, std::vector<int> rshift_width,
     std::vector<int> multiplier, const std::vector<uint8_t> *old_filter,
     std::vector<uint8_t> *new_filter, int batch_high, int batch_low,
     bool lstride, bool rstride, bool ostride) {
-  TgFcKernel kernel(ctx);
+  TgFcKernel kernel;
   kernel.init(layer_id, ga_input, ga_weight, ga_bias, ga_output, M, K, N,
               do_bias, do_relu, &rshift_width, &multiplier, old_filter,
               new_filter, batch_high, batch_low, lstride, rstride, ostride,
@@ -857,13 +857,13 @@ void cvi_backend_tg_fixed_fc_kernel(
 }
 
 void cvi_backend_tg_bf16_fc_kernel(
-    const CviBackendContext &ctx, uint32_t layer_id, gaddr_t ga_input,
+     uint32_t layer_id, gaddr_t ga_input,
     gaddr_t ga_weight, gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
     bool do_bias, bool do_relu, const std::vector<uint8_t> *old_filter,
     std::vector<uint8_t> *new_filter, int batch_high, int batch_low,
     bool lstride, bool rstride, bool ostride, bool do_quant_bf16,
     gaddr_t ga_scale, gaddr_t ga_zeropoint) {
-  TgFcKernel kernel(ctx);
+  TgFcKernel kernel;
   kernel.init(layer_id, ga_input, ga_weight, ga_bias, ga_output, M, K, N,
               do_bias, do_relu, nullptr, nullptr, old_filter, new_filter,
               batch_high, batch_low, lstride, rstride, ostride, CVK_FMT_BF16,

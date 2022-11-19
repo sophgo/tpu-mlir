@@ -92,8 +92,8 @@ static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::PadOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::PadOp::codegen_global_cv18xx( int64_t layer_id) {
+
   std::string s_model;
   std::vector<int64_t> i_s;
   std::vector<int64_t> o_s;
@@ -120,7 +120,7 @@ void tpu::PadOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     llvm_unreachable("Unsupport pad type.");
   }
 
-  cvi_backend_tg_pad_kernel(*backend_ctx, layer_id, ga_input, ga_output, i_s[0],
+  cvi_backend_tg_pad_kernel( layer_id, ga_input, ga_output, i_s[0],
                             i_s[1], i_s[2], i_s[3], pads.data(), const_val,
                             s_model.c_str(), fmt);
 }

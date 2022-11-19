@@ -32,8 +32,8 @@ extern "C" {
 // =========================================
 
 // int8
-void tpu::MinOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::MinOp::codegen_global_cv18xx( int64_t layer_id) {
+
   int input_num = inputs().size();
   assert(input_num == 2);
   int64_t n, c, h, w;
@@ -58,14 +58,14 @@ void tpu::MinOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
     }
     std::vector<int> coeffs(input_num, 1);
     cvi_backend_tg_fixed_eltwise_min_kernel(
-        *backend_ctx, layer_id, ga_inputs.data(), ga_output, input_num, n, c, h,
+         layer_id, ga_inputs.data(), ga_output, input_num, n, c, h,
         w, do_relu(), do_early_stride, early_stride_h, early_stride_w,
         rshift_int, multiplier_int.data(), coeffs.data());
   } else {
     // TODO do_early_stride, coeffs
     std::vector<float> coeffs(input_num, 1.0);
     cvi_backend_tg_bf16_eltwise_min_kernel(
-        *backend_ctx,
+
         layer_id,         // layer_id
         ga_inputs.data(), // gaddr_t ga_input[]
         ga_output,        // gaddr_t ga_output

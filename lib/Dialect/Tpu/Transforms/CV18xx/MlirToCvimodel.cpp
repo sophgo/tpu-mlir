@@ -222,24 +222,21 @@ CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
 }
 
 void CviTpuRoutine::codeGen() {
-  auto backend_ctx = cvi_backend_create_context(chip.c_str());
   for (auto op : ops) {
     if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
-      // cvi_backend_set_layer_id(backend_ctx, layer_id);
       // codegen_for_group(castOp)
       llvm_unreachable("layer group not support now");
     } else if (Module::isOpInGroup(op)) {
       // continue
     } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-      cvi_backend_set_layer_id(backend_ctx, *layer_id);
-      castOp.codegen_global_cv18xx(backend_ctx, *layer_id);
+      CV18xx::set_layer_id(*layer_id);
+      castOp.codegen_global_cv18xx(*layer_id);
     }
     ++(*layer_id);
     // sotre neuron
   }
-  cvi_backend_submit(backend_ctx);
-  cvi_backend_get_cmdbuf(backend_ctx, cmdbuf);
-  cvi_backend_delete_context(backend_ctx);
+  CV18xx::submit();
+  CV18xx::read_cmdbuf(cmdbuf);
 }
 
 flatbuffers::Offset<Routine> CviTpuRoutine::build() {

@@ -25,8 +25,8 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::LeakyReluOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::LeakyReluOp::codegen_global_cv18xx( int64_t layer_id) {
+
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   int64_t n, c, h, w;
@@ -35,11 +35,11 @@ void tpu::LeakyReluOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
     int GT_rshift = 0, GT_scale = 0;
     int LE_rshift = this->rshift().value();
     int LE_scale = this->multiplier().value();
-    cvi_backend_tg_fixed_leakyrelu_kernel(*backend_ctx, layer_id, ga_input, ga_output,
+    cvi_backend_tg_fixed_leakyrelu_kernel( layer_id, ga_input, ga_output,
                                           n, c, h, w, GT_rshift, LE_rshift, GT_scale, LE_scale);
   } else {
     float negative_slope = static_cast<float>(alphaAttr().getValueAsDouble());
-    cvi_backend_tg_bf16_leakyrelu_kernel(*backend_ctx, layer_id, ga_input, ga_output,
+    cvi_backend_tg_bf16_leakyrelu_kernel( layer_id, ga_input, ga_output,
                                           negative_slope, n, c, h, w);
   }
 }

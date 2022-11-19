@@ -30,7 +30,7 @@ extern "C" {
 // =========================================
 
 // int8
-void tpu::AbsOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::AbsOp::codegen_global_cv18xx(int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
 
@@ -38,9 +38,11 @@ void tpu::AbsOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::AbsOp::getBufferSize_cv18xx(
-    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+int64_t tpu::AbsOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
+                                         int64_t out_lmem_bytes,
+                                         int64_t in_nslice, int64_t in_hslice,
+                                         int64_t out_nslice,
+                                         int64_t out_hslice) {
   llvm_unreachable("Not supported now");
 }
 

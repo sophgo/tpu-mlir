@@ -58,8 +58,8 @@ static void transposeBiasInt32(std::vector<int32_t> &bias_int32,
   memcpy(bias_u32.data(), b_t.data(), b_t.size());
 }
 
-void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::MatMulOp::codegen_global_cv18xx( int64_t layer_id) {
+
   OpBuilder builder(getContext());
   int64_t batch, M, K, N, right_zp;
   bool with_bias, relu, right_transpose;
@@ -95,7 +95,7 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
         biasOp.update(bias_u32, bias_data->size());
       }
       cvi_backend_tg_fixed_fc_kernel(
-          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
+           layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
           N, with_bias, relu, rshift_int32, multiplier_int32,
           &weight_opt.old_data, &weight_opt.new_data, batch_high, batch_low,
           false, false, false);
@@ -119,7 +119,7 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
       gaddr_t ga_zeropoint = GA_INVALID;
       bool do_quant_bf16 = false;
       cvi_backend_tg_bf16_fc_kernel(
-          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
+           layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
           N, with_bias, relu, &weight_opt.old_data, &weight_opt.new_data,
           batch_high, batch_low, false, false, false, do_quant_bf16, ga_scale,
           ga_zeropoint);
@@ -134,12 +134,12 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
       rshift_int32.assign(rshift_v->begin(), rshift_v->end());
 
       cvi_backend_tg_fixed_fc_kernel(
-          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
+           layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
           N, with_bias, relu, rshift_int32, multiplier_int32, nullptr, nullptr,
           batch_high, batch_low, false, false, false);
     } else {
       // TODO batch_high, batch_low, lt, rt, ot
-      cvi_backend_tg_bf16_fc_kernel(*backend_ctx, layer_id, ga_input, ga_filter,
+      cvi_backend_tg_bf16_fc_kernel( layer_id, ga_input, ga_filter,
                                     GA_INVALID, ga_output, M, K, N, false, relu,
                                     nullptr, nullptr, batch_high, batch_low,
                                     false, false, false);

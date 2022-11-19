@@ -23,8 +23,8 @@ using namespace tpu_mlir::backend;
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::UpsampleOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::UpsampleOp::codegen_global_cv18xx( int64_t layer_id) {
+
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   int64_t n, c, h, w;
@@ -32,10 +32,10 @@ void tpu::UpsampleOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
   auto scale_h = this->scale_h();
   auto scale_w = this->scale_w();
   if (Quant::isUniformQuantized(output())) {
-    cvi_backend_tg_upsample_kernel(*backend_ctx, layer_id, ga_input, ga_output, n,
+    cvi_backend_tg_upsample_kernel( layer_id, ga_input, ga_output, n,
                                   c, h, w, scale_h, scale_w, CVK_FMT_I8);
   } else {
-    cvi_backend_tg_upsample_kernel(*backend_ctx, layer_id, ga_input, ga_output, n,
+    cvi_backend_tg_upsample_kernel( layer_id, ga_input, ga_output, n,
                                   c, h, w, scale_h, scale_w, CVK_FMT_BF16);
   }
 }

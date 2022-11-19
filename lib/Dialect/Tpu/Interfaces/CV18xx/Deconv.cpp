@@ -249,8 +249,8 @@ void tpu::DeconvOp::weight_reorder_bf16_cv18xx() {
 // GlobalGenInterface
 // ======================================
 
-void tpu::DeconvOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::DeconvOp::codegen_global_cv18xx( int64_t layer_id) {
+
   deconv_attr_t attr = {0};
   parseParam(&attr);
   gaddr_t ga_input = Module::getAddress(input());
@@ -273,7 +273,7 @@ void tpu::DeconvOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   int sw = 1;
 
   if (Quant::isUniformQuantized(output())) {
-    cvi_backend_tg_fixed_conv_kernel(*backend_ctx,
+    cvi_backend_tg_fixed_conv_kernel(
                                      layer_id,   // layer_id,
                                      ga_input,   // input_data_gaddr,
                                      ga_output,  // output_data_gaddr,
@@ -296,7 +296,7 @@ void tpu::DeconvOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
                                      false // do_ic_alignment,
     );
   } else {
-    cvi_backend_tg_bf16_conv_kernel(*backend_ctx,
+    cvi_backend_tg_bf16_conv_kernel(
                                     layer_id,   // layer_id
                                     ga_input,   // input_data_gaddr,
                                     ga_output,  // output_data_gaddr,

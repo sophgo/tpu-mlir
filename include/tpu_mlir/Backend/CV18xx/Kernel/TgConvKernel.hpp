@@ -105,16 +105,14 @@ public:
 
 class LocalMemoryDescriptor : public MemoryDescriptor {
 public:
-  LocalMemoryDescriptor(const CviBackendContext &ctx,
-                        std::vector<uint32_t> shapes, cvk_fmt_t fmt,
-                        uint8_t eu_align)
-      : ctx(ctx) {
+  LocalMemoryDescriptor(std::vector<uint32_t> shapes, cvk_fmt_t fmt,
+                        uint8_t eu_align) {
     shapes_ = shapes;
     fmt_ = fmt;
     eu_align_ = eu_align;
   }
 
-  LocalMemoryDescriptor(const CviBackendContext &ctx) : ctx(ctx) {}
+  LocalMemoryDescriptor() {}
 
   ~LocalMemoryDescriptor() {
     // Kernel release resource in reverse order.
@@ -130,7 +128,7 @@ public:
     cvk_tl_shape_t tl_shapes = {shapes_[NGCHW::N], shapes_[NGCHW::C],
                                 shapes_[NGCHW::H], shapes_[NGCHW::W]};
     cvk_tl_stride_t tl_strides =
-        ctx.tl_default_stride(tl_shapes, fmt_, eu_align_);
+        CV18xx::tl_default_stride(tl_shapes, fmt_, eu_align_);
 
     strides_ = {tl_strides.n, tl_strides.c, tl_strides.h, tl_strides.w};
 
@@ -152,7 +150,7 @@ public:
     cvk_tl_shape_t tl_shapes = {shapes_[NCHW::N], shapes_[NCHW::C],
                                 shapes_[NCHW::H], shapes_[NCHW::W]};
     cvk_tl_stride_t tl_strides =
-        ctx.tl_default_stride(tl_shapes, fmt_, eu_align_);
+        CV18xx::tl_default_stride(tl_shapes, fmt_, eu_align_);
 
     strides_ = {tl_strides.n, tl_strides.c, tl_strides.h, tl_strides.w};
   }
@@ -176,7 +174,7 @@ public:
     cvk_tl_shape_t tl_shape = {shapes_[NGCHW::N],
                                shapes_[NGCHW::G] * shapes_[NGCHW::C],
                                shapes_[NGCHW::H], shapes_[NGCHW::W]};
-    cvk_tl_ = ctx.lmem_alloc_tensor(tl_shape, fmt_, eu_align_);
+    cvk_tl_ = CV18xx::lmem_alloc_tensor(tl_shape, fmt_, eu_align_);
     assert(cvk_tl_ && "Expect allocated");
 
     address_ = cvk_tl_->start_address;
@@ -195,7 +193,7 @@ public:
 
   void free() {
     if (cvk_tl_) {
-      ctx.lmem_free_tensor(cvk_tl_);
+      CV18xx::lmem_free_tensor(cvk_tl_);
       cvk_tl_ = nullptr;
     }
   }
@@ -215,20 +213,17 @@ public:
 
     assert(shapes_.size() && "Expect shape assigned");
 
-    return ctx.lmem_tensor_to_size(getCvkShape(), fmt_, eu_align_);
+    return CV18xx::lmem_tensor_to_size(getCvkShape(), fmt_, eu_align_);
   }
 
 private:
-  const CviBackendContext &ctx;
   uint8_t eu_align_ = {0};
   cvk_tl_t *cvk_tl_ = {nullptr};
 };
 
 class GlobalMemoryDescriptor : public MemoryDescriptor {
 public:
-  GlobalMemoryDescriptor(const CviBackendContext &ctx,
-                         std::vector<uint32_t> shapes, cvk_fmt_t fmt)
-      : ctx(ctx) {
+  GlobalMemoryDescriptor(std::vector<uint32_t> shapes, cvk_fmt_t fmt) {
     shapes_ = shapes;
     fmt_ = fmt;
 
@@ -256,7 +251,6 @@ public:
   }
 
 private:
-  const CviBackendContext &ctx;
 };
 
 class Tdma {
@@ -764,7 +758,7 @@ typedef struct {
 //
 class Conv {
 public:
-  Conv(const CviBackendContext &ctx) : ctx(ctx) {
+  Conv() {
     memset(&args, 0, sizeof(args));
     memset(&tile_info, 0, sizeof(tile_info));
     use_double_buffer = false;
@@ -868,7 +862,7 @@ public:
   void loadBias(std::vector<uint32_t> gmOutputPoss, uint32_t lmIndex,
                 uint32_t cmdQueueIndex);
   void loadQuant(std::vector<uint32_t> gmOutputPoss, uint32_t lmIndex,
-                    uint32_t cmdQueueIndex);
+                 uint32_t cmdQueueIndex);
   void loadWeight(std::vector<uint32_t> gmOutputPoss, uint32_t lmIndex,
                   uint32_t cmdQueueIndex, uint32_t icPos = 0);
   void loadInput(std::vector<uint32_t> gmOutputPoss, uint32_t lmIndex,
@@ -1023,10 +1017,6 @@ public:
            1;
   }
 
-  uint32_t getLmSizePerLane() {
-    return static_cast<uint32_t>(ctx.cvi_chip_info_context(CVI_CHIP_LMEM_SIZE));
-  }
-
   enum TilePolicy {
     NoTilePolicyType,
     SingleBufferPolicyType,
@@ -1051,8 +1041,6 @@ public:
   Conv_ARGS args;
 
 private:
-  const CviBackendContext &ctx;
-
   TileInfo tile_info;
   bool use_double_buffer;
 
@@ -1063,7 +1051,8 @@ private:
   std::unique_ptr<GlobalMemoryDescriptor> gmOutputDesc;
   std::unique_ptr<GlobalMemoryDescriptor> gmWeightDesc;
   std::unique_ptr<GlobalMemoryDescriptor> gmBiasDesc;
-  std::unique_ptr<GlobalMemoryDescriptor> gmQuantDesc[2]; // quant_scale + quant_zeropoint
+  std::unique_ptr<GlobalMemoryDescriptor>
+      gmQuantDesc[2]; // quant_scale + quant_zeropoint
   std::unique_ptr<GlobalMemoryDescriptor> gmScaleLutDesc;
 
   // Local memory descriptor

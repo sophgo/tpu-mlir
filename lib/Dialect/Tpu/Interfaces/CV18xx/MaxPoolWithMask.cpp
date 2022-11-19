@@ -30,7 +30,7 @@ extern "C" {
 // =========================================
 
 // int8
-void tpu::MaxPoolWithMaskOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::MaxPoolWithMaskOp::codegen_global_cv18xx( int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
 

@@ -45,21 +45,21 @@ void TgConcatKernel::update_output(int output_dim[], int dim_size,
                                std::multiplies<int>());
   int axis_dim = output_dim[axis];
   int h, w;
-  bool ret = ctx.size_to_hw(axis_after, h, w);
+  bool ret = CV18xx::size_to_hw(axis_after, h, w);
   assert(ret && "axis after size too large");
   if (axis_before == 1) {
-    tiling_mode = CviBackendContext::TilingAll;
-    output_shape = ctx.tg_shape_t4(axis_before, axis_dim, h, w);
+    tiling_mode = CV18xx::TilingAll;
+    output_shape = CV18xx::tg_shape_t4(axis_before, axis_dim, h, w);
     axis = 1;
   } else if (h == 1 && (axis_dim < axis_before || w == 1)) {
-    output_shape = ctx.tg_shape_t4(1, axis_before, axis_dim, w);
+    output_shape = CV18xx::tg_shape_t4(1, axis_before, axis_dim, w);
     axis = 2;
   } else {
-    output_shape = ctx.tg_shape_t4(axis_before, axis_dim, h, w);
+    output_shape = CV18xx::tg_shape_t4(axis_before, axis_dim, h, w);
     axis = 1;
   }
 
-  output_stride = ctx.tg_default_stride(output_shape, fmt);
+  output_stride = CV18xx::tg_default_stride(output_shape, fmt);
 }
 
 void TgConcatKernel::init(uint32_t layer_id, int input_num, int dim_size,
@@ -68,14 +68,14 @@ void TgConcatKernel::init(uint32_t layer_id, int input_num, int dim_size,
                           int output_dim[], bool do_relu,
                           const int right_shift_width[],
                           const int threshold_x_quantized[], cvk_fmt_t fmt) {
-  ctx.assert_support_fmt(fmt);
+  CV18xx::assert_support_fmt(fmt);
   assert(dim_size >= 2);
   assert(concat_axis < dim_size);
   this->layer_id = layer_id;
   this->fmt = fmt;
   this->do_relu = do_relu;
   this->input_num = input_num;
-  this->tiling_mode = CviBackendContext::TilingNCHW;
+  this->tiling_mode = CV18xx::TilingNCHW;
 
   update_output(output_dim, dim_size, concat_axis);
   uint64_t axis_addr_offset = 0;
@@ -93,7 +93,7 @@ void TgConcatKernel::init(uint32_t layer_id, int input_num, int dim_size,
     }
     info.shape = output_shape;
     axis_dim(info.shape) = axis_dims[i];
-    info.stride = ctx.tg_default_stride(info.shape, fmt);
+    info.stride = CV18xx::tg_default_stride(info.shape, fmt);
     info.do_quantize = true;
     if (info.rshift_width == 0 && info.data_quantized == 1 &&
         do_relu == false) {
@@ -105,13 +105,13 @@ void TgConcatKernel::init(uint32_t layer_id, int input_num, int dim_size,
     info.ga_input = input_gaddrs[i];
     info.ga_output = output_gaddr + axis_addr_offset;
     axis_addr_offset +=
-        ctx.bytesize_of_fmt(fmt) * axis_dim(info.shape) * axis_after;
+        CV18xx::bytesize_of_fmt(fmt) * axis_dim(info.shape) * axis_after;
     inputs.emplace_back(info);
   }
 }
 
 uint64_t
-TgConcatKernel::dst_offset(const CviBackendContext::tiling_info_t &tile) const {
+TgConcatKernel::dst_offset(const CV18xx::tiling_info_t &tile) const {
   return tile.pos_w * output_stride.w + tile.pos_h * output_stride.h +
          tile.pos_c * output_stride.c + tile.pos_n * output_stride.n;
 }
@@ -121,11 +121,11 @@ void TgConcatKernel::selectTilePolicy() {
   if (do_parallel) {
     for (auto &input : inputs) {
       input.tile_idx = total_tiles;
-      ctx.tiling_packing(input.tiles, input.shape, fmt, 4, 0, tiling_mode);
+      CV18xx::tiling_packing(input.tiles, input.shape, fmt, 4, 0, tiling_mode);
       total_tiles += input.tiles.size();
     }
     // half the lmem
-    int lsize = ALIGN(LOCAL_MEM_SIZE / 4, EU_NUM);
+    int lsize = ALIGN(CV18xx::LMEM_BYTES / 4, CV18xx::EU_BYTES);
     base_addr[0] = 0;
     base_addr[1] = lsize;
     base_addr[2] = base_addr[1] + lsize;
@@ -133,7 +133,7 @@ void TgConcatKernel::selectTilePolicy() {
   } else {
     for (auto &input : inputs) {
       input.tile_idx = total_tiles;
-      ctx.tiling_packing(input.tiles, input.shape, fmt, 1, 0, tiling_mode);
+      CV18xx::tiling_packing(input.tiles, input.shape, fmt, 1, 0, tiling_mode);
       total_tiles += input.tiles.size();
     }
     memset(base_addr, 0, sizeof(base_addr));
@@ -142,16 +142,16 @@ void TgConcatKernel::selectTilePolicy() {
 
 void TgConcatKernel::prepare(int32_t step_idx,
                              TgConcatKernel::input_info_t *&input,
-                             CviBackendContext::tiling_info_t *&tile) {
+                             CV18xx::tiling_info_t *&tile) {
   for (int idx = input_num - 1; idx >= 0; idx--) {
     input = &inputs[idx];
     if (input->tile_idx <= step_idx) {
       tile = &input->tiles[step_idx - input->tile_idx];
-      ctx.lmem_init_tensor(&tl_input,
-                           ctx.tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
+      CV18xx::lmem_init_tensor(&tl_input,
+                           CV18xx::tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
                            fmt, 1);
-      ctx.lmem_init_tensor(&tl_output,
-                           ctx.tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
+      CV18xx::lmem_init_tensor(&tl_output,
+                           CV18xx::tl_shape_t4(tile->n, tile->c, tile->h, tile->w),
                            fmt, 1);
       tl_input.start_address = base_addr[step_idx % 2];
       tl_output.start_address = base_addr[step_idx % 2 + 2];
@@ -163,31 +163,31 @@ void TgConcatKernel::prepare(int32_t step_idx,
 
 void TgConcatKernel::load(int32_t step_idx) {
   TgConcatKernel::input_info_t *input;
-  CviBackendContext::tiling_info_t *tile;
+  CV18xx::tiling_info_t *tile;
   prepare(step_idx, input, tile);
-  if (tiling_mode == CviBackendContext::TilingNCHW) {
-    ctx.tdma_load_stride(&tl_input, input->ga_input + tile->offset,
+  if (tiling_mode == CV18xx::TilingNCHW) {
+    CV18xx::tdma_load_stride(&tl_input, input->ga_input + tile->offset,
                          input->stride);
   } else {
-    ctx.tdma_load(&tl_input, input->ga_input + tile->offset);
+    CV18xx::tdma_load(&tl_input, input->ga_input + tile->offset);
   }
 }
 
 void TgConcatKernel::store(int32_t step_idx) {
   TgConcatKernel::input_info_t *input;
-  CviBackendContext::tiling_info_t *tile;
+  CV18xx::tiling_info_t *tile;
   prepare(step_idx, input, tile);
-  if (tiling_mode == CviBackendContext::TilingNCHW) {
-    ctx.tdma_store_stride(&tl_output, input->ga_output + dst_offset(*tile),
+  if (tiling_mode == CV18xx::TilingNCHW) {
+    CV18xx::tdma_store_stride(&tl_output, input->ga_output + dst_offset(*tile),
                           output_stride);
   } else {
-    ctx.tdma_store(&tl_output, input->ga_output + tile->offset);
+    CV18xx::tdma_store(&tl_output, input->ga_output + tile->offset);
   }
 }
 
 void TgConcatKernel::compute(int32_t step_idx) {
   TgConcatKernel::input_info_t *input;
-  CviBackendContext::tiling_info_t *tile;
+  CV18xx::tiling_info_t *tile;
   prepare(step_idx, input, tile);
   // do quantize
   if (input->do_quantize) {
@@ -197,7 +197,7 @@ void TgConcatKernel::compute(int32_t step_idx) {
     p.a = &tl_input;
     if (fmt == CVK_FMT_BF16) {
       // bf16 no quant now
-      p.b_const.val = ctx.convert_fp32_to_bf16(1.0);
+      p.b_const.val = CV18xx::convert_fp32_to_bf16(1.0);
       p.rshift_bits = 0;
     } else {
       p.b_const.val = static_cast<int16_t>(input->data_quantized);
@@ -207,20 +207,20 @@ void TgConcatKernel::compute(int32_t step_idx) {
     p.b_is_const = 1;
     p.layer_id = layer_id;
     p.relu_enable = do_relu ? 1 : 0;
-    ctx.tiu_mul(&p);
+    CV18xx::tiu_mul(&p);
   } else {
     cvk_tiu_copy_param_t p;
     p.layer_id = layer_id;
     p.src = &tl_input;
     p.dst = &tl_output;
-    ctx.tiu_copy(&p);
+    CV18xx::tiu_copy(&p);
   }
 }
 
 void TgConcatKernel::schedule() {
   if (do_parallel) {
     for (int step = 0; step < total_tiles + 2; step++) {
-      ctx.parallel_enable();
+      CV18xx::parallel_enable();
       if (step > 0 && step - 1 < total_tiles) {
         compute(step - 1);
       }
@@ -230,7 +230,7 @@ void TgConcatKernel::schedule() {
       if (step > 1) {
         store(step - 2);
       }
-      ctx.parallel_disable();
+      CV18xx::parallel_disable();
     }
   } else {
     for (int step = 0; step < total_tiles; step++) {
@@ -240,7 +240,7 @@ void TgConcatKernel::schedule() {
   }
 }
 
-void cvi_backend_tg_concat_kernel(const CviBackendContext &ctx,
+void cvi_backend_tg_concat_kernel(
                                   uint32_t layer_id, int input_num,
                                   gaddr_t input_gaddrs[], gaddr_t output_gaddr,
                                   int axis_dims[], int concat_axis,
@@ -248,7 +248,7 @@ void cvi_backend_tg_concat_kernel(const CviBackendContext &ctx,
                                   bool do_relu, const int *right_shift_width,
                                   const int *threshold_x_quantized,
                                   cvk_fmt_t fmt) {
-  TgConcatKernel kernel(ctx);
+  TgConcatKernel kernel;
   kernel.init(layer_id, input_num, output_dim_size, concat_axis, input_gaddrs,
               output_gaddr, axis_dims, output_dim, do_relu, right_shift_width,
               threshold_x_quantized, fmt);

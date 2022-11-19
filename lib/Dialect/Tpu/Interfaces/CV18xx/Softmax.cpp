@@ -21,8 +21,8 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 
-void tpu::SoftmaxOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-   CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::SoftmaxOp::codegen_global_cv18xx( int64_t layer_id) {
+
    bool do_log = false;
    int axis = this->axis();
    gaddr_t ga_input = Module::getAddress(input());
@@ -35,7 +35,7 @@ void tpu::SoftmaxOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
    Module::getShapeVec(input(), shape);
    int dimension = shape.size();
    cvi_backend_tg_bf16_softmax_kernel(
-      *backend_ctx, layer_id,
+       layer_id,
       ga_input,
       exponential_table_data_lut_gaddr, exponential_slope_table_data_lut_gaddr,
       reciprocal_table_data_lut_gaddr, reciprocal_mantissa_table_data_lut_gaddr,

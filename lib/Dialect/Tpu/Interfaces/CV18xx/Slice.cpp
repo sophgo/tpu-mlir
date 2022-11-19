@@ -20,8 +20,8 @@ using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
 
-void tpu::SliceOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::SliceOp::codegen_global_cv18xx( int64_t layer_id) {
+
 
   // prepare data
   std::vector<int64_t> i_s;
@@ -40,6 +40,6 @@ void tpu::SliceOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   if (fusible == false) {
-    cvi_backend_tg_crop_kernel(*backend_ctx, layer_id, ga_input, ga_output, i_s, o_s, offset_4, step_4, fmt);
+    cvi_backend_tg_crop_kernel( layer_id, ga_input, ga_output, i_s, o_s, offset_4, step_4, fmt);
   }
 }

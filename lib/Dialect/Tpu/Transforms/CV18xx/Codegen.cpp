@@ -42,7 +42,7 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    auto cv18xx = CV18xx::instance();
+    CV18xx::init_instance(chip);
     CviModelBuilder builder(module);
     builder.storeModel(filename);
   }

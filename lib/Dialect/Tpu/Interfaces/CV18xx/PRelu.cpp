@@ -24,8 +24,8 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::PReluOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::PReluOp::codegen_global_cv18xx( int64_t layer_id) {
+
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   gaddr_t ga_slope =  Module::getAddress(this->slope());
@@ -33,10 +33,10 @@ void tpu::PReluOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
   Module::getNCHW(input(), n, c, h, w);
   if (Quant::isUniformQuantized(output())) {
     int LE_scale = this->rshift();
-    cvi_backend_tg_fixed_prelu_kernel(*backend_ctx, layer_id, ga_input, ga_output, ga_slope,
+    cvi_backend_tg_fixed_prelu_kernel( layer_id, ga_input, ga_output, ga_slope,
                                         n, c, h, w, 0, 0, LE_scale);
   } else {
-    cvi_backend_tg_bf16_prelu_kernel(*backend_ctx, layer_id, ga_input, ga_output,
+    cvi_backend_tg_bf16_prelu_kernel( layer_id, ga_input, ga_output,
                                       ga_slope, n, c, h, w);
   }
 }

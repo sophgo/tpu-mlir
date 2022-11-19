@@ -21,7 +21,7 @@ namespace tpu_mlir {
 namespace backend {
 class TgQuantKernel {
 public:
-  TgQuantKernel(const CviBackendContext &ctx) : ctx(ctx) {}
+  TgQuantKernel() {}
 
   void init(uint32_t layer_id, cvk_fmt_t from, cvk_fmt_t to, gaddr_t ga_input,
             gaddr_t ga_output, int32_t n, int32_t c, int32_t h, int32_t w,
@@ -42,7 +42,7 @@ protected:
                                  int eu_align) const;
 
 protected:
-  const CviBackendContext &ctx;
+
   gaddr_t ga_input;
   gaddr_t ga_output;
 
@@ -60,7 +60,7 @@ protected:
   int32_t flip = 0;
   float const_scale;
   int offset;
-  std::vector<CviBackendContext::tiling_info_t> tiles;
+  std::vector<CV18xx::tiling_info_t> tiles;
 };
 } // namespace backend
 } // namespace tpu_mlir

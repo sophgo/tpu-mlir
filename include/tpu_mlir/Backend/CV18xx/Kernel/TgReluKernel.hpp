@@ -19,7 +19,7 @@ namespace tpu_mlir {
 namespace backend {
 class TgReluKernel {
 public:
-  TgReluKernel(const CviBackendContext &ctx) : ctx(ctx) {}
+  TgReluKernel() {}
 
   typedef enum { RELU, LEAKY_RELU, PRELU } mode_t;
 
@@ -47,7 +47,7 @@ protected:
   void change_workspace_size(int32_t step_idx);
 
 protected:
-  const CviBackendContext &ctx;
+
   gaddr_t ga_input;
   gaddr_t ga_output;
 
@@ -71,7 +71,7 @@ protected:
   float negative_slope;
 
   int32_t flip = 0;
-  std::vector<CviBackendContext::tiling_info_t> tiles;
+  std::vector<CV18xx::tiling_info_t> tiles;
 };
 }
 }
