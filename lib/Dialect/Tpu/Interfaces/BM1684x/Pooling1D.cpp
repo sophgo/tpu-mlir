@@ -151,7 +151,6 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
       auto kernel = Module::getI64Array(kernel_shape());
       int64_t dtype_bytes = kernel->at(0) ? sizeof(int) : sizeof(short);
       auto op = getOperation();
-      auto *instance = BM168x::inst;
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
 
       int64_t N, C, H, W;

@@ -38,10 +38,7 @@ public:
       llvm_unreachable("module should be tpu quantized");
     }
     auto chip = Module::getChip(module);
-    if (Module::isCV18xx(chip)) {
-    } else {
-      BM168x::init_instance(chip);
-    }
+    Arch::init(chip);
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](WeightReorderInterface op) {
         op.weight_reorder();

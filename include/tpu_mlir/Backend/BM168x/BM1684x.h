@@ -20,8 +20,8 @@ namespace backend {
 class BM1684x : public BM168x {
 public:
   static BM1684x &instance() {
-    static BM1684x inst;
-    return inst;
+    static BM1684x bm1684x;
+    return bm1684x;
   }
 
 public:
@@ -33,7 +33,7 @@ public:
   set_cmd_len_ptr dl_set_cmd_len_ptr;
 
 public:
-  virtual void init() override;
+  virtual void start_env() override;
   virtual void after_codegen(int64_t flops = 0) override;
 
   // arch info
@@ -42,19 +42,19 @@ public:
 
 protected:
   BM1684x() {
-    chip = Module::Chip::BM1684x;
     NPU_NUM = 64;
     EU_BYTES = 64;
     LMEM_BYTES = 1 << 18; // 256KB
     LMEM_BANKS = 16;
     IC_PARALLEL = 64;
+    ALIGNMENT = 0x1000;
+    GMEM_START_ADDR = 0x100000000ull;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     CTX_START_ADDR = GMEM_START_ADDR;
     LIB_NAME = "libbackend_1684x.so";
   };
-  ~BM1684x(){};
+  virtual ~BM1684x(){};
 
-  template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
   virtual void load_functions() override;
 };
 } // namespace backend

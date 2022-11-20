@@ -42,10 +42,11 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    CV18xx::init_instance(chip);
+    Arch::init(chip);
     CviModelBuilder builder(module);
     builder.storeModel(filename);
   }
+
 private:
   ModuleOp module;
   StringRef state;

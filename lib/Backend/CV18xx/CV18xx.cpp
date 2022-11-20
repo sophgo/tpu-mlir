@@ -25,38 +25,38 @@
 using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace backend {
-CV18xx * CV18xx ::inst = nullptr;
+CV18xx * CV18xx ::cv18xx = nullptr;
 void CV18xx::write_cmdbuf(const void *cmdbuf, uint32_t size) {
-  inst->cmdbuf_.resize(size);
-  memcpy(&inst->cmdbuf_[0], cmdbuf, size);
+  cv18xx->cmdbuf_.resize(size);
+  memcpy(&cv18xx->cmdbuf_[0], cmdbuf, size);
 }
 
 void CV18xx::read_cmdbuf(std::vector<uint8_t> &out_cmdbuf) {
-  out_cmdbuf.assign(inst->cmdbuf_.begin(), inst->cmdbuf_.end());
+  out_cmdbuf.assign(cv18xx->cmdbuf_.begin(), cv18xx->cmdbuf_.end());
 }
 
 void CV18xx::dmabuf_convert(std::vector<uint8_t> &dmabuf) {
   uint32_t dmabuf_sz = 0;
   uint32_t pmu_sz = 0;
-  inst->cvk_ctx_->ops->dmabuf_size(inst->cmdbuf_.data(), inst->cmdbuf_.size(),
+  cv18xx->cvk_ctx_->ops->dmabuf_size(cv18xx->cmdbuf_.data(), cv18xx->cmdbuf_.size(),
                                    &dmabuf_sz, &pmu_sz);
   dmabuf.resize(dmabuf_sz);
-  inst->cvk_ctx_->ops->dmabuf_convert(inst->cmdbuf_.data(),
-                                      inst->cmdbuf_.size(), dmabuf.data());
+  cv18xx->cvk_ctx_->ops->dmabuf_convert(cv18xx->cmdbuf_.data(),
+                                      cv18xx->cmdbuf_.size(), dmabuf.data());
 }
 
 void CV18xx::submit() {
   uint32_t size;
-  uint8_t *cmdbuf = inst->cvk_ctx_->ops->acquire_cmdbuf(inst->cvk_ctx_, &size);
+  uint8_t *cmdbuf = cv18xx->cvk_ctx_->ops->acquire_cmdbuf(cv18xx->cvk_ctx_, &size);
   write_cmdbuf(cmdbuf, size);
-  inst->cvk_ctx_->ops->reset(inst->cvk_ctx_);
+  cv18xx->cvk_ctx_->ops->reset(cv18xx->cvk_ctx_);
 }
 
 uint8_t CV18xx::getTdmaBaseSelectIndexFromGaddr(gaddr_t gaddr) {
   // we store memory region value in bits (40 ~ 42) of gaddr;
   uint32_t memoryRegion = ((((uint64_t)gaddr) >> 40) & 0x07);
   if (memoryRegion < MAX_GLOBAL_MEMORY_REGION) {
-    return inst->tdmaBaseSelects[memoryRegion];
+    return cv18xx->tdmaBaseSelects[memoryRegion];
   }
   return 0;
 }
@@ -627,40 +627,12 @@ void CV18xx::tiu_zeros(uint16_t layer_id, cvk_tl_t *tl_mem) {
   }
 }
 
-template <typename FPtrTy> FPtrTy CV18xx::CastToFPtr(const char *symbolName) {
-  assert(DL.isValid());
-  auto fPtr = DL.getAddressOfSymbol(symbolName);
-  if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName << "\n";
-    llvm_unreachable(symbolName);
-  }
-  return reinterpret_cast<FPtrTy>(fPtr);
-}
-
-#define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
-
-void CV18xx::load_library() {
-  if (!DL.isValid()) {
-    std::string Err;
-    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_NAME.data(), &Err);
-    CAST_FUNCTION(cvikernel_register);
-    if (DL.isValid() == false) {
-      llvm_unreachable(Err.c_str());
-    }
-  }
-}
-
-int64_t CV18xx::NPU_NUM = 0;
-int64_t CV18xx::EU_BYTES = 0;
-int64_t CV18xx::LMEM_BYTES = 0;
-int64_t CV18xx::LMEM_BANKS = 0;
-int64_t CV18xx::LMEM_BANK_BYTES = 0;
-llvm::StringRef CV18xx::LIB_NAME = "";
-
 cvk_fmt_t CV18xx::getDataType(Value v) {
   auto type = Module::getStorageType(v);
   return getDataType(type);
 }
+
+#define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
 void CV18xx::load_ctx(const llvm::StringRef chip) {
   cvk_cmd_buf_.reserve(0x20000000);
@@ -669,7 +641,7 @@ void CV18xx::load_ctx(const llvm::StringRef chip) {
           sizeof(req_info.chip_ver_str) - 1);
   req_info.cmdbuf_size = cvk_cmd_buf_.capacity();
   req_info.cmdbuf = cvk_cmd_buf_.data();
-
+  CAST_FUNCTION(cvikernel_register);
   cvk_ctx_ = dl_cvikernel_register(&req_info);
   if (!cvk_ctx_) {
     llvm_unreachable("cvikernel_register failed");
@@ -700,10 +672,10 @@ CV18xx::CV18xx(const llvm::StringRef chip) {
 }
 
 CV18xx::~CV18xx() {
-  inst->cvk_ctx_->ops->cleanup(inst->cvk_ctx_);
+  cv18xx->cvk_ctx_->ops->cleanup(cv18xx->cvk_ctx_);
   cvk_cmd_buf_.clear();
   cvk_cmd_buf_.shrink_to_fit();
-  free(inst->cvk_ctx_);
+  free(cv18xx->cvk_ctx_);
 }
 
 cvk_fmt_t CV18xx::getDataType(mlir::Type type) {

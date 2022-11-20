@@ -24,15 +24,6 @@ uint32_t BM1684::get_gdma_len(int gdma_num, int group_id) {
   return gdma_num * GDMA_CMD_ALIGNED_NUM * sizeof(uint32_t);
 }
 
-template <typename FPtrTy> FPtrTy BM1684::CastToFPtr(const char *symbolName) {
-  assert(DL.isValid());
-  auto fPtr = DL.getAddressOfSymbol(symbolName);
-  if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName << "\n";
-    llvm_unreachable(symbolName);
-  }
-  return reinterpret_cast<FPtrTy>(fPtr);
-}
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 #define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)

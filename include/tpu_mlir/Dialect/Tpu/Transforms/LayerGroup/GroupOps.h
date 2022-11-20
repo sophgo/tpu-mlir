@@ -69,7 +69,6 @@ public:
   GroupOps(::mlir::func::FuncOp func);
   void process();
   ::mlir::func::FuncOp func;
-  backend::BM168x *bm168x;
 
 protected:
   group_lmem_t list_lmems(int64_t start_idx, int64_t end_idx);
@@ -133,7 +132,6 @@ protected:
   std::vector<mlir::Value> all_tensors;
   std::vector<group_pair_t> groups;
   std::list<addr_pair_t> allocated_lmems;
-  int64_t n_align;
   bool no_more_try_secs;
   mlir::MLIRContext *ctx;
   Operation *current_op;

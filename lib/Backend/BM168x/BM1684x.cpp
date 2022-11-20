@@ -32,17 +32,7 @@ uint32_t BM1684x::get_gdma_len(int gdma_num, int group_id) {
   return gdma_bytes[group_id];
 }
 
-template <typename FPtrTy> FPtrTy BM1684x::CastToFPtr(const char *symbolName) {
-  assert(DL.isValid());
-  auto fPtr = DL.getAddressOfSymbol(symbolName);
-  if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName << "\n";
-    llvm_unreachable(symbolName);
-  }
-  return reinterpret_cast<FPtrTy>(fPtr);
-}
-
-#define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
+#define CAST_FUNCTION(name) dl_##name = instance().CastToFPtr<name>(#name)
 
 void BM1684x::load_functions() {
   BM168x::load_functions();
@@ -53,8 +43,8 @@ void BM1684x::load_functions() {
   CAST_FUNCTION(set_cmd_len_ptr);
 }
 
-void BM1684x::init() {
-  BM168x::init();
+void BM1684x::start_env() {
+  BM168x::start_env();
   dl_load_lookup_tables();
   dl_set_cmd_len_ptr((void *)&gdma_bytes, (void *)&bdc_bytes);
 }
