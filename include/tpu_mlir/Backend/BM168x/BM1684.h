@@ -176,8 +176,8 @@ namespace backend {
 class BM1684 : public BM168x {
 public:
   static BM1684 &instance() {
-    static BM1684 inst;
-    return inst;
+    static BM1684 bm1684;
+    return bm1684;
   }
 
   // -------------------------------------------------------------------
@@ -347,10 +347,6 @@ public:
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) override;
-  virtual int64_t get_n_align(int64_t dtype_bytes) override {
-    // for 4N mode
-    return 4 / dtype_bytes;
-  }
 
 public:
   static const int64_t BDC_CMD_ALIGNED_BIT = 7;
@@ -362,17 +358,18 @@ public:
 
 protected:
   BM1684() {
-    chip = Module::Chip::BM1684;
     NPU_NUM = 64;
     EU_BYTES = 128;
     LMEM_BYTES = 1 << 19; // 512KB
     LMEM_BANKS = 8;
+    ALIGNMENT = 0x1000;
+    GMEM_START_ADDR = 0x100000000ull;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     CTX_START_ADDR = GMEM_START_ADDR + 0x5000000 + 0x100000;
     LIB_NAME = "libbackend_1684.so";
+    ALIGN_4N = true;
   };
-  ~BM1684(){};
-  template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
+  virtual ~BM1684(){};
   virtual void load_functions() override;
 };
 } // namespace backend

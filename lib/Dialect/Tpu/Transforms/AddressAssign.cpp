@@ -31,11 +31,11 @@ public:
     }
     Module::removeUnusedOp(module);
     auto chip = Module::getChip(module);
+    Arch::init(chip);
     if (Module::isCV18xx(chip)) {
       CVAddressAssign addr_assign;
       addr_assign.assign(module);
     } else {
-      BM168x::init_instance(chip);
       BMAddressAssign addr_assign;
       addr_assign.assign(module);
     }

@@ -17,13 +17,12 @@ namespace backend {
 class Athena2 : public BM1684x {
 public:
   static Athena2 &instance() {
-    static Athena2 inst;
-    return inst;
+    static Athena2 athena2;
+    return athena2;
   }
 
 protected:
   Athena2() {
-    chip = Module::Chip::ATHENA2;
     NPU_NUM = 32;
     EU_BYTES = 16;
     LMEM_BYTES = 1 << 17; // 128KB
@@ -32,7 +31,7 @@ protected:
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     LIB_NAME = "libbackend_athena2.so";
   };
-  ~Athena2(){};
+  virtual ~Athena2(){};
 };
 } // namespace backend
 } // namespace tpu_mlir

@@ -10,12 +10,7 @@
 
 #pragma once
 
-#include <vector>
-#include <cstring>
-#include <assert.h>
-#include <cmath>
-#include "mlir/IR/Builders.h"
-#include "llvm/Support/DynamicLibrary.h"
+#include "tpu_mlir/Backend/Arch.h"
 
 #define MAX_CONV_IC (4095 - 32)
 #define MAX_TIU_CHL (4095 - 32)
@@ -865,12 +860,12 @@ typedef struct {
  */
 struct cvikernel_context;
 
+// clang-format off
 typedef struct cvikernel_operations {
   void (*cleanup)(struct cvikernel_context *ctx);
   void (*reset)(struct cvikernel_context *ctx);
   uint8_t *(*acquire_cmdbuf)(struct cvikernel_context *ctx, uint32_t *size);
-  void (*dmabuf_size)(uint8_t *cmdbuf, uint32_t sz, uint32_t *psize,
-                      uint32_t *pmu_size);
+  void (*dmabuf_size)(uint8_t *cmdbuf, uint32_t sz, uint32_t *psize, uint32_t *pmu_size);
   void (*dmabuf_convert)(uint8_t *cmdbuf, uint32_t sz, uint8_t *dmabuf);
 
   // Concurrent TDMA and TIU command execution:
@@ -882,226 +877,96 @@ typedef struct cvikernel_operations {
   //     5. tdma command (not wait TIU command)
   void (*parallel_enable)(struct cvikernel_context *ctx);
   void (*parallel_disable)(struct cvikernel_context *ctx);
-
   void (*set_layer_id)(struct cvikernel_context *ctx, uint16_t layer_id);
-
-  cvk_tl_t *(*lmem_alloc_tensor)(struct cvikernel_context *ctx,
-                                 cvk_tl_shape_t shape, cvk_fmt_t fmt,
-                                 int eu_align);
-
-  cvk_ml_t *(*lmem_alloc_matrix)(struct cvikernel_context *ctx,
-                                 cvk_ml_shape_t shape, cvk_fmt_t fmt,
-                                 int eu_align);
-
-  cvk_ml_t *(*lmem_alloc_ps32_matrix)(struct cvikernel_context *ctx,
-                                      cvk_ml_shape_t shape, cvk_fmt_t fmt,
-                                      int eu_align);
-
+  cvk_tl_t *(*lmem_alloc_tensor)(struct cvikernel_context *ctx, cvk_tl_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  cvk_ml_t *(*lmem_alloc_matrix)(struct cvikernel_context *ctx, cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  cvk_ml_t *(*lmem_alloc_ps32_matrix)(struct cvikernel_context *ctx, cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
   void (*lmem_free_tensor)(struct cvikernel_context *ctx, const cvk_tl_t *tl);
-
   void (*lmem_free_matrix)(struct cvikernel_context *ctx, const cvk_ml_t *ml);
-
-  void (*lmem_init_tensor)(struct cvikernel_context *ctx, cvk_tl_t *tl,
-                           cvk_tl_shape_t shape, cvk_fmt_t fmt, int eu_align);
-
-  void (*lmem_init_matrix)(struct cvikernel_context *ctx, cvk_ml_t *ml,
-                           cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
-
-  cvk_tl_stride_t (*tl_default_stride)(struct cvikernel_context *ctx,
-                                       cvk_tl_shape_t shape, cvk_fmt_t fmt,
-                                       int eu_align);
-
-  cvk_tg_stride_t (*tg_default_stride)(struct cvikernel_context *ctx,
-                                       cvk_tg_shape_t shape, cvk_fmt_t fmt);
-
-  cvk_ml_shape_t (*ml_default_shape)(struct cvikernel_context *ctx,
-                                     uint32_t row, uint32_t col, cvk_fmt_t fmt);
-
-  cvk_ml_stride_t (*ml_default_stride)(struct cvikernel_context *ctx,
-                                       cvk_ml_shape_t shape, cvk_fmt_t fmt,
-                                       int eu_align);
-
-  cvk_ml_shape_t (*ml_shape_t1)(struct cvikernel_context *ctx, uint32_t len,
-                                cvk_fmt_t fmt);
-
-  uint32_t (*lmem_tensor_to_size)(struct cvikernel_context *ctx,
-                                  cvk_tl_shape_t shape, cvk_fmt_t fmt,
-                                  int eu_align);
-
-  uint32_t (*lmem_matrix_to_size)(struct cvikernel_context *ctx,
-                                  cvk_ml_shape_t shape, cvk_fmt_t fmt,
-                                  int eu_align);
-
-  uint32_t (*lmem_ps32_matrix_to_size)(struct cvikernel_context *ctx,
-                                       cvk_ml_shape_t shape, cvk_fmt_t fmt,
-                                       int eu_align);
-
-  void (*gmem_init_tensor)(struct cvikernel_context *ctx, cvk_tg_t *tg,
-                           cvk_tg_shape_t shape, cvk_fmt_t fmt);
+  void (*lmem_init_tensor)(struct cvikernel_context *ctx, cvk_tl_t *tl, cvk_tl_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  void (*lmem_init_matrix)(struct cvikernel_context *ctx, cvk_ml_t *ml, cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  cvk_tl_stride_t (*tl_default_stride)(struct cvikernel_context *ctx, cvk_tl_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  cvk_tg_stride_t (*tg_default_stride)(struct cvikernel_context *ctx, cvk_tg_shape_t shape, cvk_fmt_t fmt);
+  cvk_ml_shape_t (*ml_default_shape)(struct cvikernel_context *ctx, uint32_t row, uint32_t col, cvk_fmt_t fmt);
+  cvk_ml_stride_t (*ml_default_stride)(struct cvikernel_context *ctx, cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  cvk_ml_shape_t (*ml_shape_t1)(struct cvikernel_context *ctx, uint32_t len, cvk_fmt_t fmt);
+  uint32_t (*lmem_tensor_to_size)(struct cvikernel_context *ctx, cvk_tl_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  uint32_t (*lmem_matrix_to_size)(struct cvikernel_context *ctx, cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  uint32_t (*lmem_ps32_matrix_to_size)(struct cvikernel_context *ctx, cvk_ml_shape_t shape, cvk_fmt_t fmt, int eu_align);
+  void (*gmem_init_tensor)(struct cvikernel_context *ctx, cvk_tg_t *tg, cvk_tg_shape_t shape, cvk_fmt_t fmt);
 
   /* Local to Local DMA API */
-  void (*tdma_l2l_tensor_copy)(struct cvikernel_context *ctx,
-                               const cvk_tdma_l2l_tensor_copy_param_t *param);
-  void (*tdma_l2l_bf16_tensor_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2l_tensor_copy_param_t *param);
-  void (*tdma_l2l_tensor_lrn_shift)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2l_tensor_lrn_shift_param_t *param);
+  void (*tdma_l2l_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2l_tensor_copy_param_t *param);
+  void (*tdma_l2l_bf16_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2l_tensor_copy_param_t *param);
+  void (*tdma_l2l_tensor_lrn_shift)(struct cvikernel_context *ctx, const cvk_tdma_l2l_tensor_lrn_shift_param_t *param);
 
   /* Local to Global DMA API */
-  void (*tdma_l2g_tensor_copy)(struct cvikernel_context *ctx,
-                               const cvk_tdma_l2g_tensor_copy_param_t *param);
-  void (*tdma_l2g_bf16_tensor_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_copy_param_t *param);
-  void (*tdma_l2g_tensor_copy_nc_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_copy_nc_transposed_param_t *param);
-  void (*tdma_l2g_bf16_tensor_copy_nc_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_copy_nc_transposed_param_t *param);
-  void (*tdma_l2g_tensor_copy_compressed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_copy_compressed_param_t *param);
-  void (*tdma_l2g_tensor_fill_constant)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_fill_constant_param_t *param);
-  void (*tdma_l2g_tensor_copy_cw_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_copy_cw_transposed_param_t *param);
-  void (*tdma_l2g_bf16_tensor_copy_cw_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_tensor_copy_cw_transposed_param_t *param);
-  void (*tdma_l2g_matrix_copy)(struct cvikernel_context *ctx,
-                               const cvk_tdma_l2g_matrix_copy_param_t *param);
-  void (*tdma_l2g_bf16_matrix_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_matrix_copy_param_t *param);
-  void (*tdma_l2g_general_copy)(struct cvikernel_context *ctx,
-                                const cvk_tdma_l2g_general_copy_param_t *param);
-  void (*tdma_l2g_bf16_general_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_bf16_general_copy_param_t *param);
+  void (*tdma_l2g_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_param_t *param);
+  void (*tdma_l2g_bf16_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_param_t *param);
+  void (*tdma_l2g_tensor_copy_nc_transposed)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_nc_transposed_param_t *param);
+  void (*tdma_l2g_bf16_tensor_copy_nc_transposed)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_nc_transposed_param_t *param);
+  void (*tdma_l2g_tensor_copy_compressed)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_compressed_param_t *param);
+  void (*tdma_l2g_tensor_fill_constant)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_fill_constant_param_t *param);
+  void (*tdma_l2g_tensor_copy_cw_transposed)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_cw_transposed_param_t *param);
+  void (*tdma_l2g_bf16_tensor_copy_cw_transposed)(struct cvikernel_context *ctx, const cvk_tdma_l2g_tensor_copy_cw_transposed_param_t *param);
+  void (*tdma_l2g_matrix_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2g_matrix_copy_param_t *param);
+  void (*tdma_l2g_bf16_matrix_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2g_matrix_copy_param_t *param);
+  void (*tdma_l2g_general_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2g_general_copy_param_t *param);
+  void (*tdma_l2g_bf16_general_copy)(struct cvikernel_context *ctx, const cvk_tdma_l2g_bf16_general_copy_param_t *param);
 
   /* Global to Local DMA API */
-  void (*tdma_g2l_tensor_copy)(struct cvikernel_context *ctx,
-                               const cvk_tdma_g2l_tensor_copy_param_t *param);
-  void (*tdma_g2l_bf16_tensor_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_copy_param_t *param);
-  void (*tdma_g2l_tensor_copy_nc_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_copy_nc_transposed_param_t *param);
-  void (*tdma_g2l_bf16_tensor_copy_nc_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_copy_nc_transposed_param_t *param);
-  void (*tdma_g2l_tensor_copy_chw_rotated)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_copy_chw_rotated_param_t *param);
-  void (*tdma_g2l_tensor_copy_decompressed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_copy_decompressed_param_t *param);
-  void (*tdma_g2l_tensor_fill_constant)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_fill_constant_param_t *param);
-  void (*tdma_g2l_bf16_tensor_fill_constant)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_tensor_fill_constant_param_t *param);
-  void (*tdma_g2l_matrix_copy_decompressed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_matrix_copy_decompressed_param_t *param);
-  void (*tdma_l2g_matrix_copy_compressed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_l2g_matrix_copy_compressed_param_t *param);
-  void (*tdma_g2l_matrix_copy)(struct cvikernel_context *ctx,
-                               const cvk_tdma_g2l_matrix_copy_param_t *param);
-  void (*tdma_g2l_bf16_matrix_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_matrix_copy_param_t *param);
-  void (*tdma_g2l_matrix_copy_row_col_transposed)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_matrix_copy_row_col_transposed_param_t *param);
-  void (*tdma_g2l_general_copy)(struct cvikernel_context *ctx,
-                                const cvk_tdma_g2l_general_copy_param_t *param);
-  void (*tdma_g2l_bf16_general_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2l_bf16_general_copy_param_t *param);
+  void (*tdma_g2l_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_copy_param_t *param);
+  void (*tdma_g2l_bf16_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_copy_param_t *param);
+  void (*tdma_g2l_tensor_copy_nc_transposed)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_copy_nc_transposed_param_t *param);
+  void (*tdma_g2l_bf16_tensor_copy_nc_transposed)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_copy_nc_transposed_param_t *param);
+  void (*tdma_g2l_tensor_copy_chw_rotated)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_copy_chw_rotated_param_t *param);
+  void (*tdma_g2l_tensor_copy_decompressed)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_copy_decompressed_param_t *param);
+  void (*tdma_g2l_tensor_fill_constant)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_fill_constant_param_t *param);
+  void (*tdma_g2l_bf16_tensor_fill_constant)(struct cvikernel_context *ctx, const cvk_tdma_g2l_tensor_fill_constant_param_t *param);
+  void (*tdma_g2l_matrix_copy_decompressed)(struct cvikernel_context *ctx, const cvk_tdma_g2l_matrix_copy_decompressed_param_t *param);
+  void (*tdma_l2g_matrix_copy_compressed)(struct cvikernel_context *ctx, const cvk_tdma_l2g_matrix_copy_compressed_param_t *param);
+  void (*tdma_g2l_matrix_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2l_matrix_copy_param_t *param);
+  void (*tdma_g2l_bf16_matrix_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2l_matrix_copy_param_t *param);
+  void (*tdma_g2l_matrix_copy_row_col_transposed)(struct cvikernel_context *ctx, const cvk_tdma_g2l_matrix_copy_row_col_transposed_param_t *param);
+  void (*tdma_g2l_general_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2l_general_copy_param_t *param);
+  void (*tdma_g2l_bf16_general_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2l_bf16_general_copy_param_t *param);
 
   /* Global to Global DMA API */
-  void (*tdma_g2g_tensor_copy)(struct cvikernel_context *ctx,
-                               const cvk_tdma_g2g_tensor_copy_param_t *param);
-  void (*tdma_g2g_general_copy)(struct cvikernel_context *ctx,
-                                const cvk_tdma_g2g_tensor_copy_param_t *param);
-  void (*tdma_g2g_bf16_general_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2g_tensor_copy_param_t *param);
-  void (*tdma_g2g_bf16_tensor_copy)(
-      struct cvikernel_context *ctx,
-      const cvk_tdma_g2g_tensor_copy_param_t *param);
+  void (*tdma_g2g_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2g_tensor_copy_param_t *param);
+  void (*tdma_g2g_general_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2g_tensor_copy_param_t *param);
+  void (*tdma_g2g_bf16_general_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2g_tensor_copy_param_t *param);
+  void (*tdma_g2g_bf16_tensor_copy)(struct cvikernel_context *ctx, const cvk_tdma_g2g_tensor_copy_param_t *param);
 
   /* TIU API */
-  void (*tiu_mul)(struct cvikernel_context *ctx,
-                  const cvk_tiu_mul_param_t *param);
-  void (*tiu_mul_qm)(struct cvikernel_context *ctx,
-                     const cvk_tiu_mul_qm_param_t *param);
-  void (*tiu_mac)(struct cvikernel_context *ctx,
-                  const cvk_tiu_mac_param_t *param);
-  void (*tiu_add)(struct cvikernel_context *ctx,
-                  const cvk_tiu_add_param_t *param);
-  void (*tiu_sub)(struct cvikernel_context *ctx,
-                  const cvk_tiu_sub_param_t *param);
-  void (*tiu_max)(struct cvikernel_context *ctx,
-                  const cvk_tiu_max_param_t *param);
-  void (*tiu_min)(struct cvikernel_context *ctx,
-                  const cvk_tiu_min_param_t *param);
-  void (*tiu_and_int8)(struct cvikernel_context *ctx,
-                       const cvk_tiu_and_int8_param_t *param);
-  void (*tiu_arith_shift)(struct cvikernel_context *ctx,
-                          const cvk_tiu_arith_shift_param_t *param);
-  void (*tiu_and_int16)(struct cvikernel_context *ctx,
-                        const cvk_tiu_and_int16_param_t *param);
-  void (*tiu_or_int8)(struct cvikernel_context *ctx,
-                      const cvk_tiu_or_int8_param_t *param);
-  void (*tiu_or_int16)(struct cvikernel_context *ctx,
-                       const cvk_tiu_or_int16_param_t *param);
-  void (*tiu_xor_int8)(struct cvikernel_context *ctx,
-                       const cvk_tiu_xor_int8_param_t *param);
-  void (*tiu_xor_int16)(struct cvikernel_context *ctx,
-                        const cvk_tiu_xor_int16_param_t *param);
-  void (*tiu_copy)(struct cvikernel_context *ctx,
-                   const cvk_tiu_copy_param_t *param);
-  void (*tiu_lookup_table)(struct cvikernel_context *ctx,
-                           const cvk_tiu_lookup_table_param_t *param);
-  void (*tiu_bf16_lookup_interp_table)(
-      struct cvikernel_context *ctx,
-      const cvk_tiu_bf16_lookup_interp_table_param_t *param);
-  void (*tiu_pt_convolution)(struct cvikernel_context *ctx,
-                             const cvk_tiu_pt_convolution_param_t *param);
-  void (*tiu_convolution)(struct cvikernel_context *ctx,
-                          const cvk_tiu_convolution_param_t *param);
-  void (*tiu_max_pooling)(struct cvikernel_context *ctx,
-                          const cvk_tiu_max_pooling_param_t *param);
-  void (*tiu_average_pooling)(struct cvikernel_context *ctx,
-                              const cvk_tiu_average_pooling_param_t *param);
-  void (*tiu_pt_depthwise_convolution)(
-      struct cvikernel_context *ctx,
-      const cvk_tiu_depthwise_pt_convolution_param_t *param);
-  void (*tiu_depthwise_convolution)(
-      struct cvikernel_context *ctx,
-      const cvk_tiu_depthwise_convolution_param_t *param);
-  void (*tiu_matrix_multiplication)(
-      struct cvikernel_context *ctx,
-      const cvk_tiu_matrix_multiplication_param_t *param);
-  void (*tiu_matrix_multiplication_qm)(
-      struct cvikernel_context *ctx,
-      const cvk_tiu_matrix_multiplication_qm_param_t *param);
-  void (*tiu_ge)(struct cvikernel_context *ctx,
-                 const cvk_tiu_ge_param_t *param);
-  void (*tiu_min_pooling)(struct cvikernel_context *ctx,
-                          const cvk_tiu_min_pooling_param_t *param);
+  void (*tiu_mul)(struct cvikernel_context *ctx, const cvk_tiu_mul_param_t *param);
+  void (*tiu_mul_qm)(struct cvikernel_context *ctx, const cvk_tiu_mul_qm_param_t *param);
+  void (*tiu_mac)(struct cvikernel_context *ctx, const cvk_tiu_mac_param_t *param);
+  void (*tiu_add)(struct cvikernel_context *ctx, const cvk_tiu_add_param_t *param);
+  void (*tiu_sub)(struct cvikernel_context *ctx, const cvk_tiu_sub_param_t *param);
+  void (*tiu_max)(struct cvikernel_context *ctx, const cvk_tiu_max_param_t *param);
+  void (*tiu_min)(struct cvikernel_context *ctx, const cvk_tiu_min_param_t *param);
+  void (*tiu_and_int8)(struct cvikernel_context *ctx, const cvk_tiu_and_int8_param_t *param);
+  void (*tiu_arith_shift)(struct cvikernel_context *ctx, const cvk_tiu_arith_shift_param_t *param);
+  void (*tiu_and_int16)(struct cvikernel_context *ctx, const cvk_tiu_and_int16_param_t *param);
+  void (*tiu_or_int8)(struct cvikernel_context *ctx, const cvk_tiu_or_int8_param_t *param);
+  void (*tiu_or_int16)(struct cvikernel_context *ctx, const cvk_tiu_or_int16_param_t *param);
+  void (*tiu_xor_int8)(struct cvikernel_context *ctx, const cvk_tiu_xor_int8_param_t *param);
+  void (*tiu_xor_int16)(struct cvikernel_context *ctx, const cvk_tiu_xor_int16_param_t *param);
+  void (*tiu_copy)(struct cvikernel_context *ctx, const cvk_tiu_copy_param_t *param);
+  void (*tiu_lookup_table)(struct cvikernel_context *ctx, const cvk_tiu_lookup_table_param_t *param);
+  void (*tiu_bf16_lookup_interp_table)(struct cvikernel_context *ctx, const cvk_tiu_bf16_lookup_interp_table_param_t *param);
+  void (*tiu_pt_convolution)(struct cvikernel_context *ctx, const cvk_tiu_pt_convolution_param_t *param);
+  void (*tiu_convolution)(struct cvikernel_context *ctx, const cvk_tiu_convolution_param_t *param);
+  void (*tiu_max_pooling)(struct cvikernel_context *ctx, const cvk_tiu_max_pooling_param_t *param);
+  void (*tiu_average_pooling)(struct cvikernel_context *ctx, const cvk_tiu_average_pooling_param_t *param);
+  void (*tiu_pt_depthwise_convolution)(struct cvikernel_context *ctx, const cvk_tiu_depthwise_pt_convolution_param_t *param);
+  void (*tiu_depthwise_convolution)(struct cvikernel_context *ctx, const cvk_tiu_depthwise_convolution_param_t *param);
+  void (*tiu_matrix_multiplication)(struct cvikernel_context *ctx, const cvk_tiu_matrix_multiplication_param_t *param);
+  void (*tiu_matrix_multiplication_qm)(struct cvikernel_context *ctx, const cvk_tiu_matrix_multiplication_qm_param_t *param);
+  void (*tiu_ge)(struct cvikernel_context *ctx, const cvk_tiu_ge_param_t *param);
+  void (*tiu_min_pooling)(struct cvikernel_context *ctx, const cvk_tiu_min_pooling_param_t *param);
 } cvk_operations_t;
-
+// clang-format on
 /*
  * Miscellaneous helper function
  *   Not directly related to tiu/tdma operation
@@ -1140,18 +1005,12 @@ typedef cvk_context_t *(*cvikernel_register)(cvk_reg_info_t *req_info);
 
 namespace tpu_mlir {
 namespace backend {
-class CV18xx {
+class CV18xx : public Arch {
 public:
-  static int64_t NPU_NUM;
-  static int64_t EU_BYTES;
-  static int64_t LMEM_BYTES;
-  static int64_t LMEM_BANKS;
-  static int64_t LMEM_BANK_BYTES;
-  static llvm::StringRef LIB_NAME;
-  static CV18xx *inst;
-  static void init_instance(const llvm::StringRef chip) {
-    static CV18xx single(chip);
-    inst = &single;
+  static CV18xx &instance(const llvm::StringRef chip) {
+    static CV18xx inst(chip);
+    cv18xx = &inst;
+    return inst;
   }
   static cvk_fmt_t getDataType(mlir::Type type);
   static cvk_fmt_t getDataType(mlir::Value v);
@@ -1159,18 +1018,6 @@ public:
   static const int64_t WEIGHT_ALIGNMENT = 16;
   static const int64_t NEURON_ALIGNMENT = 64;
 
-  template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
-  enum CVI_CHIP_INFO_E {
-    CVI_CHIP_VERSION = 0,
-    CVI_CHIP_NODE_SHIFT,
-    CVI_CHIP_LANE_NUM,
-    CVI_CHIP_LANE_SHIFT,
-    CVI_CHIP_EU_NUM,
-    CVI_CHIP_EU_SHIFT,
-    CVI_CHIP_LMEM_SIZE,
-    CVI_CHIP_LMEM_BANK,
-    CVI_CHIP_INVALID,
-  };
   enum GlobalMemoryRegion {
     SHARED_MEMORY = 0,
     WEIGHT_MEMORY = 1,
@@ -1196,13 +1043,13 @@ public:
   static void submit();
 
   static void parallel_enable() {
-    inst->cvk_ctx_->ops->parallel_enable(inst->cvk_ctx_);
+    cv18xx->cvk_ctx_->ops->parallel_enable(cv18xx->cvk_ctx_);
   }
   static void parallel_disable() {
-    inst->cvk_ctx_->ops->parallel_disable(inst->cvk_ctx_);
+    cv18xx->cvk_ctx_->ops->parallel_disable(cv18xx->cvk_ctx_);
   }
   static void set_layer_id(uint16_t layer_id) {
-    inst->cvk_ctx_->ops->set_layer_id(inst->cvk_ctx_, layer_id);
+    cv18xx->cvk_ctx_->ops->set_layer_id(cv18xx->cvk_ctx_, layer_id);
   }
 
   // ####################################################
@@ -1214,90 +1061,92 @@ public:
   //
   static void tdma_l2l_tensor_copy(cvk_tdma_l2l_tensor_copy_param_t *param) {
     // compatible for i8/u8/bf16
-    inst->cvk_ctx_->ops->tdma_l2l_bf16_tensor_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_l2l_bf16_tensor_copy(cv18xx->cvk_ctx_, param);
   }
 
   static void
   tdma_l2l_tensor_lrn_shift(cvk_tdma_l2l_tensor_lrn_shift_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2l_tensor_lrn_shift(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_l2l_tensor_lrn_shift(cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_l2g_tensor_copy(cvk_tdma_l2g_tensor_copy_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2g_bf16_tensor_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_l2g_bf16_tensor_copy(cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_l2g_tensor_copy_nc_transposed(
       cvk_tdma_l2g_tensor_copy_nc_transposed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2g_bf16_tensor_copy_nc_transposed(inst->cvk_ctx_,
-                                                                 param);
+    cv18xx->cvk_ctx_->ops->tdma_l2g_bf16_tensor_copy_nc_transposed(
+        cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_l2g_tensor_copy_cw_transposed(
       cvk_tdma_l2g_tensor_copy_cw_transposed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2g_bf16_tensor_copy_cw_transposed(inst->cvk_ctx_,
-                                                                 param);
+    cv18xx->cvk_ctx_->ops->tdma_l2g_bf16_tensor_copy_cw_transposed(
+        cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_l2g_tensor_copy_compressed(
       cvk_tdma_l2g_tensor_copy_compressed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2g_tensor_copy_compressed(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_l2g_tensor_copy_compressed(cv18xx->cvk_ctx_,
+                                                           param);
   }
 
   static void tdma_l2g_tensor_fill_constant(
       cvk_tdma_l2g_tensor_fill_constant_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2g_tensor_fill_constant(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_l2g_tensor_fill_constant(cv18xx->cvk_ctx_,
+                                                         param);
   }
 
   static void tdma_l2g_matrix_copy(cvk_tdma_l2g_matrix_copy_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_l2g_bf16_matrix_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_l2g_bf16_matrix_copy(cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_g2l_tensor_copy(cvk_tdma_g2l_tensor_copy_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_bf16_tensor_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_bf16_tensor_copy(cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_g2l_tensor_copy_nc_transposed(
       cvk_tdma_g2l_tensor_copy_nc_transposed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_bf16_tensor_copy_nc_transposed(inst->cvk_ctx_,
-                                                                 param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_bf16_tensor_copy_nc_transposed(
+        cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_g2l_tensor_copy_chw_rotated(
       cvk_tdma_g2l_tensor_copy_chw_rotated_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_tensor_copy_chw_rotated(inst->cvk_ctx_,
-                                                          param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_tensor_copy_chw_rotated(cv18xx->cvk_ctx_,
+                                                            param);
   }
 
   static void tdma_g2l_tensor_copy_decompressed(
       cvk_tdma_g2l_tensor_copy_decompressed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_tensor_copy_decompressed(inst->cvk_ctx_,
-                                                           param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_tensor_copy_decompressed(cv18xx->cvk_ctx_,
+                                                             param);
   }
 
   static void tdma_g2l_tensor_fill_constant(
       cvk_tdma_g2l_tensor_fill_constant_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_bf16_tensor_fill_constant(inst->cvk_ctx_,
-                                                            param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_bf16_tensor_fill_constant(cv18xx->cvk_ctx_,
+                                                              param);
   }
 
   static void tdma_g2l_matrix_copy_decompressed(
       cvk_tdma_g2l_matrix_copy_decompressed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_matrix_copy_decompressed(inst->cvk_ctx_,
-                                                           param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_matrix_copy_decompressed(cv18xx->cvk_ctx_,
+                                                             param);
   }
 
   static void tdma_g2l_matrix_copy(cvk_tdma_g2l_matrix_copy_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_bf16_matrix_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_bf16_matrix_copy(cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_g2l_matrix_copy_row_col_transposed(
       cvk_tdma_g2l_matrix_copy_row_col_transposed_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2l_matrix_copy_row_col_transposed(inst->cvk_ctx_,
-                                                                 param);
+    cv18xx->cvk_ctx_->ops->tdma_g2l_matrix_copy_row_col_transposed(
+        cv18xx->cvk_ctx_, param);
   }
 
   static void tdma_g2g_tensor_copy(cvk_tdma_g2g_tensor_copy_param_t *param) {
-    inst->cvk_ctx_->ops->tdma_g2g_bf16_tensor_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tdma_g2g_bf16_tensor_copy(cv18xx->cvk_ctx_, param);
   }
 
   //
@@ -1305,212 +1154,218 @@ public:
   //
   // per tensor
   static void tiu_mul(const cvk_tiu_mul_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_mul(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_mul(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_mac(const cvk_tiu_mac_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_mac(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_mac(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_add(const cvk_tiu_add_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_add(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_add(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_sub(const cvk_tiu_sub_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_sub(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_sub(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_max(const cvk_tiu_max_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_max(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_max(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_min(const cvk_tiu_min_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_min(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_min(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_arith_shift(const cvk_tiu_arith_shift_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_arith_shift(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_arith_shift(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_and_int8(const cvk_tiu_and_int8_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_and_int8(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_and_int8(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_and_int16(const cvk_tiu_and_int16_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_and_int16(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_and_int16(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_or_int8(const cvk_tiu_or_int8_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_or_int8(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_or_int8(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_or_int16(const cvk_tiu_or_int16_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_or_int16(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_or_int16(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_xor_int8(const cvk_tiu_xor_int8_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_xor_int8(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_xor_int8(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_xor_int16(const cvk_tiu_xor_int16_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_xor_int16(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_xor_int16(cv18xx->cvk_ctx_, param);
   }
 
   // 182x and mars support, 183x not support
   static void tiu_ge(const cvk_tiu_ge_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_ge(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_ge(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_copy(const cvk_tiu_copy_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_copy(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_copy(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_lookup_table(const cvk_tiu_lookup_table_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_lookup_table(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_lookup_table(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_bf16_lookup_interp_table(
       cvk_tiu_bf16_lookup_interp_table_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_bf16_lookup_interp_table(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_bf16_lookup_interp_table(cv18xx->cvk_ctx_,
+                                                        param);
   }
 
   static void tiu_pt_convolution(const cvk_tiu_pt_convolution_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_pt_convolution(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_pt_convolution(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_max_pooling(const cvk_tiu_max_pooling_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_max_pooling(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_max_pooling(cv18xx->cvk_ctx_, param);
   }
 
   static void
   tiu_average_pooling(const cvk_tiu_average_pooling_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_average_pooling(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_average_pooling(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_pt_depthwise_convolution(
       cvk_tiu_depthwise_pt_convolution_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_pt_depthwise_convolution(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_pt_depthwise_convolution(cv18xx->cvk_ctx_,
+                                                        param);
   }
 
   static void
   tiu_matrix_multiplication(cvk_tiu_matrix_multiplication_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_matrix_multiplication(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_matrix_multiplication(cv18xx->cvk_ctx_, param);
   }
 
   // per-channel
   static void tiu_convolution(const cvk_tiu_convolution_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_convolution(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_convolution(cv18xx->cvk_ctx_, param);
   }
 
   static void
   tiu_depthwise_convolution(cvk_tiu_depthwise_convolution_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_depthwise_convolution(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_depthwise_convolution(cv18xx->cvk_ctx_, param);
   }
 
   static void tiu_matrix_multiplication_qm(
       cvk_tiu_matrix_multiplication_qm_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_matrix_multiplication_qm(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_matrix_multiplication_qm(cv18xx->cvk_ctx_,
+                                                        param);
   }
 
   static void tiu_mul_qm(const cvk_tiu_mul_qm_param_t *param) {
-    inst->cvk_ctx_->ops->tiu_mul_qm(inst->cvk_ctx_, param);
+    cv18xx->cvk_ctx_->ops->tiu_mul_qm(cv18xx->cvk_ctx_, param);
   }
 
   // helper
   static cvk_tl_stride_t tl_default_stride(cvk_tl_shape_t shape, cvk_fmt_t fmt,
                                            int eu_align) {
-    return inst->cvk_ctx_->ops->tl_default_stride(inst->cvk_ctx_, shape, fmt,
-                                                  eu_align);
+    return cv18xx->cvk_ctx_->ops->tl_default_stride(cv18xx->cvk_ctx_, shape,
+                                                    fmt, eu_align);
   }
 
   static cvk_tg_stride_t tg_default_stride(cvk_tg_shape_t shape,
                                            cvk_fmt_t fmt) {
-    return inst->cvk_ctx_->ops->tg_default_stride(inst->cvk_ctx_, shape, fmt);
+    return cv18xx->cvk_ctx_->ops->tg_default_stride(cv18xx->cvk_ctx_, shape,
+                                                    fmt);
   }
 
   static cvk_ml_shape_t ml_shape_t1(uint32_t len, cvk_fmt_t fmt) {
-    return inst->cvk_ctx_->ops->ml_shape_t1(inst->cvk_ctx_, len, fmt);
+    return cv18xx->cvk_ctx_->ops->ml_shape_t1(cv18xx->cvk_ctx_, len, fmt);
   }
 
   static cvk_ml_shape_t ml_default_shape(uint32_t row, uint32_t col,
                                          cvk_fmt_t fmt) {
-    return inst->cvk_ctx_->ops->ml_default_shape(inst->cvk_ctx_, row, col, fmt);
+    return cv18xx->cvk_ctx_->ops->ml_default_shape(cv18xx->cvk_ctx_, row, col,
+                                                   fmt);
   }
 
   static cvk_ml_stride_t ml_default_stride(cvk_ml_shape_t shape, cvk_fmt_t fmt,
                                            int eu_align) {
-    return inst->cvk_ctx_->ops->ml_default_stride(inst->cvk_ctx_, shape, fmt,
-                                                  eu_align);
+    return cv18xx->cvk_ctx_->ops->ml_default_stride(cv18xx->cvk_ctx_, shape,
+                                                    fmt, eu_align);
   }
 
   // lmem kernel
   static cvk_tl_t *lmem_alloc_tensor(cvk_tl_shape_t shape, cvk_fmt_t fmt,
                                      int eu_align) {
-    return inst->cvk_ctx_->ops->lmem_alloc_tensor(inst->cvk_ctx_, shape, fmt,
-                                                  eu_align);
+    return cv18xx->cvk_ctx_->ops->lmem_alloc_tensor(cv18xx->cvk_ctx_, shape,
+                                                    fmt, eu_align);
   }
 
   static void lmem_free_tensor(const cvk_tl_t *tl) {
-    inst->cvk_ctx_->ops->lmem_free_tensor(inst->cvk_ctx_, tl);
+    cv18xx->cvk_ctx_->ops->lmem_free_tensor(cv18xx->cvk_ctx_, tl);
   }
 
   static cvk_ml_t *lmem_alloc_matrix(cvk_ml_shape_t shape, cvk_fmt_t fmt,
                                      int eu_align) {
-    return inst->cvk_ctx_->ops->lmem_alloc_matrix(inst->cvk_ctx_, shape, fmt,
-                                                  eu_align);
+    return cv18xx->cvk_ctx_->ops->lmem_alloc_matrix(cv18xx->cvk_ctx_, shape,
+                                                    fmt, eu_align);
   }
 
   static cvk_ml_t *lmem_alloc_ps32_matrix(cvk_ml_shape_t shape, cvk_fmt_t fmt,
                                           int eu_align) {
-    return inst->cvk_ctx_->ops->lmem_alloc_ps32_matrix(inst->cvk_ctx_, shape,
-                                                       fmt, eu_align);
+    return cv18xx->cvk_ctx_->ops->lmem_alloc_ps32_matrix(cv18xx->cvk_ctx_,
+                                                         shape, fmt, eu_align);
   }
 
   static void lmem_free_matrix(const cvk_ml_t *ml) {
-    inst->cvk_ctx_->ops->lmem_free_matrix(inst->cvk_ctx_, ml);
+    cv18xx->cvk_ctx_->ops->lmem_free_matrix(cv18xx->cvk_ctx_, ml);
   }
 
   static void lmem_init_tensor(cvk_tl_t *tl, cvk_tl_shape_t shape,
                                cvk_fmt_t fmt, int eu_align) {
-    inst->cvk_ctx_->ops->lmem_init_tensor(inst->cvk_ctx_, tl, shape, fmt,
-                                          eu_align);
+    cv18xx->cvk_ctx_->ops->lmem_init_tensor(cv18xx->cvk_ctx_, tl, shape, fmt,
+                                            eu_align);
   }
 
   static void lmem_init_matrix(cvk_ml_t *ml, cvk_ml_shape_t shape,
                                cvk_fmt_t fmt, int eu_align) {
-    inst->cvk_ctx_->ops->lmem_init_matrix(inst->cvk_ctx_, ml, shape, fmt,
-                                          eu_align);
+    cv18xx->cvk_ctx_->ops->lmem_init_matrix(cv18xx->cvk_ctx_, ml, shape, fmt,
+                                            eu_align);
   }
 
   static uint32_t lmem_tensor_to_size(cvk_tl_shape_t shape, cvk_fmt_t fmt,
                                       int eu_align) {
-    return inst->cvk_ctx_->ops->lmem_tensor_to_size(inst->cvk_ctx_, shape, fmt,
-                                                    eu_align);
+    return cv18xx->cvk_ctx_->ops->lmem_tensor_to_size(cv18xx->cvk_ctx_, shape,
+                                                      fmt, eu_align);
   }
 
   static uint32_t lmem_matrix_to_size(cvk_ml_shape_t shape, cvk_fmt_t fmt,
                                       int eu_align) {
-    return inst->cvk_ctx_->ops->lmem_matrix_to_size(inst->cvk_ctx_, shape, fmt,
-                                                    eu_align);
+    return cv18xx->cvk_ctx_->ops->lmem_matrix_to_size(cv18xx->cvk_ctx_, shape,
+                                                      fmt, eu_align);
   }
 
   static uint32_t lmem_ps32_matrix_to_size(cvk_ml_shape_t shape, cvk_fmt_t fmt,
                                            int eu_align) {
-    return inst->cvk_ctx_->ops->lmem_ps32_matrix_to_size(inst->cvk_ctx_, shape,
-                                                         fmt, eu_align);
+    return cv18xx->cvk_ctx_->ops->lmem_ps32_matrix_to_size(
+        cv18xx->cvk_ctx_, shape, fmt, eu_align);
   }
 
   static void bf16_table_shape(cvk_tl_shape_t *shape) {
-    inst->cvk_ctx_->misc_ops->bf16_table_shape(inst->cvk_ctx_, shape);
+    cv18xx->cvk_ctx_->misc_ops->bf16_table_shape(cv18xx->cvk_ctx_, shape);
   }
 
   static void gmem_init_tensor(cvk_tg_t *tg, cvk_tg_shape_t shape,
                                cvk_fmt_t fmt) {
-    inst->cvk_ctx_->ops->gmem_init_tensor(inst->cvk_ctx_, tg, shape, fmt);
+    cv18xx->cvk_ctx_->ops->gmem_init_tensor(cv18xx->cvk_ctx_, tg, shape, fmt);
   }
 
   static uint16_t convert_fp32_to_bf16(float fp32) {
-    return inst->cvk_ctx_->misc_ops->float_to_bfloat16(inst->cvk_ctx_, fp32);
+    return cv18xx->cvk_ctx_->misc_ops->float_to_bfloat16(cv18xx->cvk_ctx_,
+                                                         fp32);
   }
 
   //
@@ -1646,7 +1501,8 @@ public:
   static const cvk_tl_shape_t &lut_table_shape(cvk_fmt_t fmt);
 
   static bool has_cmd_pre_exe() {
-    return (inst->cvk_ctx_->info.features & CVK_HWF_CMD_PRE_EXE) ? true : false;
+    return (cv18xx->cvk_ctx_->info.features & CVK_HWF_CMD_PRE_EXE) ? true
+                                                                   : false;
   }
 
   static uint32_t chan_quan_param_size(bool do_bias) {
@@ -1667,14 +1523,13 @@ protected:
                           uint32_t lmem_size, tiling_mode_t mode);
 
   CV18xx(const llvm::StringRef chip);
-  ~CV18xx();
-  void load_library();
+  virtual ~CV18xx();
+  static CV18xx *cv18xx;
   void load_ctx(const llvm::StringRef chip);
   cvk_context_t *cvk_ctx_;
   uint8_t tdmaBaseSelects[MAX_GLOBAL_MEMORY_REGION];
   std::vector<uint8_t> cmdbuf_;
   std::vector<uint8_t> cvk_cmd_buf_;
-  llvm::sys::DynamicLibrary DL;
   cvikernel_register dl_cvikernel_register;
 };
 

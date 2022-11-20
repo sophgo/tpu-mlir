@@ -49,10 +49,9 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    BM168x::init_instance(chip);
-    bm168x = BM168x::inst;
-    bm168x->init();
-
+    Arch::init(chip);
+    bm168x = BM168x::instance();
+    bm168x->start_env();
     std::vector<top::WeightOp> weights;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
@@ -104,7 +103,7 @@ public:
     model_gen->AddNet(Module::getName(module).str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
-    bm168x->deinit();
+    bm168x->end_env();
   }
 
 private:
@@ -323,11 +322,11 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
           if (Module::isBM1684Family(chip)) {
             lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
           } else if (Module::isBM1684xFamily(chip)) {
-            auto pid_node = (CMD_ID_NODE *)BM168x::inst->bdc_node;
+            auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
             if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
-              pid_node = (CMD_ID_NODE *)BM168x::inst->gdma_node;
+              pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
             }
-            BM168x::inst->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+            BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
             lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep);
           } else {
             llvm_unreachable("chip not support");

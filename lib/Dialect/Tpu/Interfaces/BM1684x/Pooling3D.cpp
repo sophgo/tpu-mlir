@@ -146,7 +146,6 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
   parseParam(&attrs);
 
   auto op = getOperation();
-  auto *instance = BM168x::inst;
   int c_per_npu = ceiling_func(attrs.c, BM168x::NPU_NUM);
 
   if (attrs.kd > 1 || attrs.sd > 1 || attrs.pad_d > 0 ||

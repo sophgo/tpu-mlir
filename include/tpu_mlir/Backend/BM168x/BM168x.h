@@ -8,9 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#include "mlir/IR/Builders.h"
-#include "llvm/Support/DynamicLibrary.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Backend/Arch.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -375,14 +374,13 @@ using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
 namespace backend {
-class BM168x {
+class BM168x : public Arch {
 
 public:
+  static BM168x *instance() { return (BM168x *)inst; }
   // -------------------------------------------------------------------
-  // functions for global
+  // helper functions for global
   // -------------------------------------------------------------------
-  static BM168x *inst;
-  static void init_instance(const llvm::StringRef chip);
   static void call_global_func(const char *symbolName, void *params,
                                int param_size);
   static void call_local_func(const char *symbolName, void *params,
@@ -405,29 +403,16 @@ public:
   get_spec(mlir::ValueRange values);
   static void fix_shape(tensor_spec_t &spec,
                         const std::vector<int32_t> &new_shape);
-  // Chip parameters
-  static int64_t NPU_NUM;
-  static int64_t EU_BYTES;
-  static int64_t LMEM_BYTES;
-  static int64_t LMEM_BANKS;
-  static int64_t IC_PARALLEL;
-  static int64_t LMEM_BANK_BYTES;
-  static llvm::StringRef LIB_NAME;
-  static const int64_t ALIGNMENT = 0x1000;
-  static const uint64_t GMEM_START_ADDR = 0x100000000ull;
-  static uint64_t CTX_START_ADDR;
-  // dbytes is 0.5 for INT4
-  static int64_t eu_num(double dbytes) { return EU_BYTES / dbytes; }
   static int64_t ic_num(double dbytes) { return IC_PARALLEL / dbytes; }
-
-public:
-  // -------------------------------------------------------------------
-  // functions for codegen
-  // -------------------------------------------------------------------
-  virtual void init();
-  virtual void before_codegen();
-  virtual void after_codegen(int64_t flops = 0);
-  virtual void deinit();
+  static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
+                                     int64_t W);
+  static stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
+                                    int fmtBytes, bool eu_align = true);
+  static int64_t ALIGNMENT;
+  static int64_t IC_PARALLEL;
+  static uint64_t GMEM_START_ADDR;
+  static uint64_t CTX_START_ADDR;
+  static const uint64_t CMODEL_GMEM_SIZE = 0x100000000ull;
 
   // -------------------------------------------------------------------
   // functions from nodechip
@@ -458,6 +443,15 @@ public:
   sg_stas_dump dl_sg_stas_dump;
   sg_flops_dump dl_sg_flops_dump;
 
+public:
+  // -------------------------------------------------------------------
+  // functions for codegen
+  // -------------------------------------------------------------------
+  virtual void start_env();
+  virtual void before_codegen();
+  virtual void after_codegen(int64_t flops = 0);
+  virtual void end_env();
+
   void *get_gmem_addr(uint64_t addr);
   void *get_gmem_addr(const bm_device_mem_t &mem);
   void bm_memcpy_s2d(const bm_device_mem_t &dst, void *src);
@@ -470,20 +464,6 @@ public:
   // arch info
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
-  uint64_t get_cmodel_gmem_size() { return 0x100000000ull; }
-
-  virtual int64_t get_n_align(int64_t dtype_bytes) { return 1; }
-  int64_t get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
-                         mlir::Type type, bool eu_align = true,
-                         bool is_4N = false);
-  int64_t get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n, int64_t slice_h,
-                                bool eu_align = true);
-  int64_t get_weight_lmem_bytes(mlir::Value v, bool eu_align = true);
-
-  static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
-                                     int64_t W);
-  stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
-                             int fmtBytes, bool eu_align = true);
 
 public:
   std::vector<uint32_t> bdc_buffer;
@@ -500,14 +480,14 @@ public:
   void *gdma_node;
 
 protected:
+  BM168x(){};
+  virtual ~BM168x() = 0;
   virtual void load_functions();
   void set_command_issue_flag(bool value);
-  template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName);
 
 protected:
+  static BM168x *bm168x;
   bool really_issue_command;
-  llvm::StringRef chip;
-  llvm::sys::DynamicLibrary DL;
 };
 
 } // namespace backend
