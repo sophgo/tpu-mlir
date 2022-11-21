@@ -187,10 +187,16 @@ void Deconv::setup(float *input, float *weight, float *bias, float *output,
 
     if (attr.do_relu) {
       const float ops_scale = 1.f;
-      const float ops_alpha = 0.f; // relu negative slope
+      float ops_alpha = 0.f; // relu negative slope
       const float ops_beta = 0.f;
-      ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha,
-                         ops_beta);
+      if (attr.relu_limit > 0.f) {
+        ops_alpha = attr.relu_limit;
+        ops.append_eltwise(ops_scale, algorithm::eltwise_bounded_relu,
+                           ops_alpha, ops_beta);
+      } else {
+        ops.append_eltwise(ops_scale, algorithm::eltwise_relu, ops_alpha,
+                           ops_beta);
+      }
       deconv_attr.set_post_ops(ops);
     }
 
