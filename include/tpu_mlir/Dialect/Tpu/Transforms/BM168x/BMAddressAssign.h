@@ -40,4 +40,8 @@ protected:
 };
 
 } // namespace tpu
+
+namespace bm168x {
+void populateGlobalBufferPatterns(RewritePatternSet *patterns);
+}
 } // namespace tpu_mlir

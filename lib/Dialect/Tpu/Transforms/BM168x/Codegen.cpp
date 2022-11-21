@@ -6,10 +6,6 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-//
-// This file implements the TPU dialect OP Stats pass.
-//
-//===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"

@@ -32,10 +32,14 @@ public:
     Module::removeUnusedOp(module);
     auto chip = Module::getChip(module);
     Arch::init(chip);
+
     if (Module::isCV18xx(chip)) {
       CVAddressAssign addr_assign;
       addr_assign.assign(module);
     } else {
+      RewritePatternSet patterns(module.getContext());
+      bm168x::populateGlobalBufferPatterns(&patterns);
+      applyPatternsAndFoldGreedily(module, std::move(patterns));
       BMAddressAssign addr_assign;
       addr_assign.assign(module);
     }
