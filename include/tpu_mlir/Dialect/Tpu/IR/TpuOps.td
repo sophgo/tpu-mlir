@@ -109,6 +109,7 @@ def Tpu_LutMode : I32EnumAttr<"LutMode",
       I32EnumAttrCase<"Mantissa", 1>,
       I32EnumAttrCase<"Slope", 2>,
       I32EnumAttrCase<"Log", 3>,
+      I32EnumAttrCase<"Exp", 4>,
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -874,6 +875,20 @@ def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape]> {
 
   let description = [{
     Calculates the natural log of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ExpOp: Tpu_Op<"Exp", [InOutSameShape]> {
+  let summary = "Exp operator";
+
+  let description = [{
+    Calculates the exponent of the given input tensor, element-wise.
   }];
 
   let arguments = (ins

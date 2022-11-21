@@ -727,6 +727,20 @@ def Top_LRNOp: Top_Op<"LRN", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_ExpOp: Top_Op<"Exp", [InOutSameShape]> {
+  let summary = "Exp operator";
+
+  let description = [{
+    Calculates the exponent of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
   let summary = "Div operator";
 

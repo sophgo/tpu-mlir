@@ -123,6 +123,7 @@ class OnnxConverter(BaseConverter):
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
+            "Exp": lambda node: self.convert_exp_op(node),
             "Expand": lambda node: self.convert_expand_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Gather": lambda node: self.convert_gather_op(node),
@@ -891,6 +892,14 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_log_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_exp_op(self, onnx_node):
+        assert (onnx_node.op_type == "Exp")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_exp_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_pad_op(self, onnx_node):
