@@ -68,4 +68,10 @@ def StripIOQuant : Pass<"strip-io-quant", "FuncOp"> {
   ];
 }
 
+def ConvertReluLimit : Pass<"convert-relu-limit", "FuncOp"> {
+  let summary = "convert relu_limit != -1 to clip for cv18xx in tpu by tpuc-opt";
+  let constructor = "createConvertReluLimit()";
+  let dependentDialects = ["TpuDialect"];
+}
+
 #endif

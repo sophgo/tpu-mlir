@@ -26,6 +26,7 @@ std::unique_ptr<OperationPass<ModuleOp>> createCVAddressAssignPass();
 std::unique_ptr<OperationPass<ModuleOp>> createCVCodegenPass();
 std::unique_ptr<OperationPass<FuncOp>> createLayerGroupPass();
 std::unique_ptr<OperationPass<FuncOp>> createStripIOQuant();
+std::unique_ptr<OperationPass<FuncOp>> createConvertReluLimit();
 
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES

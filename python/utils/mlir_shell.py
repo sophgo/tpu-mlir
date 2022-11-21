@@ -104,6 +104,7 @@ def mlir_to_cvi_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         tpu_mlir,
+        "--convert-relu-limit",
         strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",

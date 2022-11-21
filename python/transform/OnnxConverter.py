@@ -973,7 +973,12 @@ class OnnxConverter(BaseConverter):
             }
             new_op = self.mlir.create_relu_op([input], input_shape, **p)
         else:
-            raise RuntimeError("To be supported")
+            p = {
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'min': min,
+                'max': max
+            }
+            new_op = self.mlir.create_clip_op([input], input_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_conv_transpose_op(self, onnx_node):

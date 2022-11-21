@@ -396,6 +396,24 @@ def Tpu_MinOp: Tpu_Op<"Min", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_ClipOp: Tpu_Op<"Clip",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  let summary = "Clip operator";
+
+  let description = [{
+     The operator limits the given input to a certain range.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$min,
+    F64Attr:$max,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "mul const operator";
