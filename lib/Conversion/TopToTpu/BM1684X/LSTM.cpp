@@ -32,13 +32,8 @@ static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
       operands.push_back(opd);
     }
   }
-  auto attr = op.parseParam();
   // add buffer
-  int64_t buffer_size = attr.batch_size * attr.hidden_size * 5;
-  std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
-  auto buffer_type = RankedTensorType::get(buffer_shape, type);
-  auto buffer_op = tpu::BufferOp::create(op, buffer_type);
-  operands.push_back(buffer_op);
+  operands.push_back(Module::getNoneOp(op));
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
