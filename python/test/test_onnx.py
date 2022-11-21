@@ -21,9 +21,8 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "LSTM2", "Neg", "Reduce2", "ReduceL2",
-    "Reciprocal", "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax",
-    "TorchMaskedFill", "TorchWhere"
+    "GRU", "GRU2", "LSTM2", "Neg", "Reduce2", "ReduceL2", "Reciprocal", "Sub", "Sub2", "Sum",
+    "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
 ]
 
 
@@ -348,8 +347,9 @@ class ONNX_IR_TESTER(object):
                                        vals=[2.0])
         mul_def = helper.make_node('Mul', ['pool_output', 'const_mul'], ['output'])
 
-        graph_def = helper.make_graph([pool_def, mul_def], case_name, [input], [output],
-                                      initializer = [mul_const])
+        graph_def = helper.make_graph([pool_def, mul_def],
+                                      case_name, [input], [output],
+                                      initializer=[mul_const])
         self.onnx_and_test({"input": input_data}, graph_def)
 
     def test_AvgPool2D(self, case_name):
@@ -651,7 +651,7 @@ class ONNX_IR_TESTER(object):
 
     def test_Concat(self, case_name):
         input_shape = {"input1": [1, 2, 64], "input2": [1, 3, 64], "input3": [1, 4, 64]}
-        output_shape = [1, 2+3+4, 64]
+        output_shape = [1, 2 + 3 + 4, 64]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
 
         inputs = [
@@ -759,9 +759,7 @@ class ONNX_IR_TESTER(object):
             group=1,
         )
 
-        relu_def = helper.make_node("Relu",
-                                    inputs=['conv_output'],
-                                    outputs=['output'])
+        relu_def = helper.make_node("Relu", inputs=['conv_output'], outputs=['output'])
 
         graph_def = helper.make_graph([conv_def, relu_def],
                                       case_name, [input], [output],
@@ -1593,7 +1591,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test({"input": input_data}, graph_def)
 
     def test_BroadcastAdd(self, case_name):
-        input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
+        # 18xx: only broadcast right opd and broadcast continuous axis is supported
+        input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
         output_shape = [2, 3, 27, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
         inputs = [
@@ -1662,7 +1661,6 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[w, r, b, h0, c0])
         self.onnx_and_test({'input': input_data}, graph_def)
-
 
     def test_LSTM2(self, case_name):
         seq_length = 75
