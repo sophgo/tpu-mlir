@@ -97,8 +97,18 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       bool relu, with_bias, transpose;
       double limit;
       parseParam(batch, M, K, N, with_bias, relu, limit, zp, transpose);
-      auto rshift_v = Module::getI64Array(rshifts(), batch, 0);
-      auto multiplier_v = Module::getI64Array(multipliers(), batch, 1);
+      bool is_fc = isa<top::WeightOp>(right().getDefiningOp());
+      std::shared_ptr<std::vector<int64_t>> rshift_v;
+      std::shared_ptr<std::vector<int64_t>> multiplier_v;
+      if (is_fc) {
+        rshift_v = Module::getI64Array(rshifts(), batch, 0);
+        multiplier_v = Module::getI64Array(multipliers(), batch, 1);
+      } else {
+        rshift_v = Module::getI64Array(rshifts(), 1, 0);
+        multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+        rshift_v->resize(batch, rshift_v->at(0));
+        multiplier_v->resize(batch, multiplier_v->at(0));
+      }
       int64_t isz = M * N;
       for (int64_t i = 0; i < batch; ++i) {
 #pragma omp parallel for schedule(static, omp_schedule(isz))
