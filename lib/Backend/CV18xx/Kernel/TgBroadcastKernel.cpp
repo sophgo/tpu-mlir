@@ -44,11 +44,11 @@ void TgBcastKernel::convert_shape(int an, int ac, int ah, int aw, int bn,
     if (i == num_dims) {
       break;
     }
-    assert(index_bcast == -1);
+    assert(index_bcast == -1 && "only broadcast continuous axis");
     index_bcast = a_v.size();
     int a_ins = 1, b_ins = 1;
     do {
-      assert(b_s[i] == 1);
+      assert(b_s[i] == 1 && "only broadcast right operand supported!");
       a_ins *= a_s[i];
       b_ins *= b_s[i];
       i++;
