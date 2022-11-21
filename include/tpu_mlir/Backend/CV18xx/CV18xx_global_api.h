@@ -39,6 +39,12 @@ void cvi_backend_tg_fixed_eltwise_max_kernel(
     bool do_relu, bool do_early_stride, int32_t stride_h, int32_t stride_w,
     int32_t rshift, const int32_t *multipliers, const int32_t *coeffs);
 
+void cvi_backend_tg_fixed_eltwise_mul_kernel(
+    uint32_t layer_id, gaddr_t ga_inputs[],
+    gaddr_t ga_output, int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
+    bool do_relu, bool do_early_stride, int32_t stride_h, int32_t stride_w,
+    int32_t rshift, const int32_t *multipliers, const int32_t *coeffs);
+
 void cvi_backend_tg_fixed_eltwise_min_kernel(
     uint32_t layer_id, gaddr_t ga_inputs[], gaddr_t ga_output,
     int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
@@ -130,6 +136,13 @@ void cvi_backend_tg_bf16_eltwise_min_kernel(
     int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
     bool do_relu, bool do_early_stride, int32_t stride_h, int32_t stride_w,
     const float coeffs[]);
+
+void cvi_backend_tg_bf16_eltwise_mul_kernel(uint32_t layer_id, gaddr_t ga_inputs[],
+                                            gaddr_t ga_output, int32_t operand_num,
+                                            int32_t n, int32_t c, int32_t h, int32_t w,
+                                            bool do_relu, bool do_early_stride,
+                                            int32_t stride_h, int32_t stride_w,
+                                            const float coeffs[]);
 
 void cvi_backend_tg_bf16_fc_kernel(
     uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_weight, gaddr_t ga_bias,

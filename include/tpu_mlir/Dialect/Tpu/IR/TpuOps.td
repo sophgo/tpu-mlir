@@ -343,6 +343,9 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    //for cv18xx int8,codegen's multiplier and rshift quantized by "qdm" mode
+    DefaultValuedAttr<I64Attr, "1">:$multiplier_cg,
+    DefaultValuedAttr<I64Attr, "0">:$rshift_cg,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 

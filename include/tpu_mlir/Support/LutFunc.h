@@ -43,8 +43,12 @@ namespace tpu_mlir {
 
 // create lookup table
 typedef double (*activate_f)(double);
+typedef double (*activate_f2)(double, double);
 
 Value create_lookup_table(Value in, Value out, activate_f func,
+                          bool asymmetric);
+
+Value create_lookup_table(Value in, Value out, activate_f2 func, double param,
                           bool asymmetric);
 
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
@@ -52,6 +56,10 @@ Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 void bf16_gen_base_slope_table(float *base_table, float *slope_table,
                                float range_start, float range_end,
                                activate_f func);
+
+void bf16_gen_base_slope_table(float *base_table, float *slope_table,
+                               float range_start, float range_end,
+                               activate_f2 func, float param);
 
 void bf16_lut_slope(float *input, float *output, int size, float *base_table,
                     float *slope_table, float range_start, float range_end);
