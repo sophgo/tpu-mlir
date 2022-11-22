@@ -27,23 +27,23 @@ extern "C" {
 #endif
 
 typedef struct reduce_full_common_spec {
-    int axis[MAX_SHAPE_DIMS];
-    int axis_num;
-    int method;
-    float input_scale;
-    float output_scale;
-    int keep_dims; // used for dynamic compile
+  int axis[MAX_SHAPE_DIMS];
+  int axis_num;
+  int method;
+  float input_scale;
+  float output_scale;
+  int keep_dims; // used for dynamic compile
 } reduce_full_common_spec_t;
 
 typedef struct reduce_full_global_spec {
-    reduce_full_common_spec_t common;
-    unsigned long long buffer_addr;
+  reduce_full_common_spec_t common;
+  unsigned long long buffer_addr;
 } reduce_full_global_spec_t;
 
 typedef struct reduce_full_global_param {
-    reduce_full_global_spec_t spec;
-    int if_getting_buffer_size;
-    unsigned long long* buffer_size_ptr;
+  reduce_full_global_spec_t spec;
+  int if_getting_buffer_size;
+  unsigned long long *buffer_size_ptr;
 } reduce_full_global_param_t;
 
 #ifdef __cplusplus
@@ -51,22 +51,22 @@ typedef struct reduce_full_global_param {
 #endif
 
 void tpu::ReduceOp::codegen_global_bm1684x() {
-    auto op = getOperation();
-    auto input_spec = BM1684X::get_input_spec(op);
-    auto output_spec = BM1684X::get_output_spec(op);
-    reduce_full_global_param_t param = {0};
-    auto axes_val = Module::getI64Array(axes());
-    param.spec.common.axis_num = axes_val->size();
-    for (int i = 0; i < param.spec.common.axis_num; i++){
-      param.spec.common.axis[i] = axes_val->at(i);
-    }
-    param.spec.common.method = type();
-    param.spec.common.input_scale = 1.0f;
-    param.spec.common.output_scale = 1.0f;
-    param.spec.common.keep_dims = keepdims();
-    param.spec.buffer_addr = 0x0;
-    param.if_getting_buffer_size = false;
-    BM1684X::instance().call_global_func("backend_api_reduce_full_global", &param,
-                                       sizeof(reduce_full_global_param_t), input_spec->data(),
-                                       output_spec->data());
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  reduce_full_global_param_t param = {0};
+  auto axes_val = Module::getI64Array(axes());
+  param.spec.common.axis_num = axes_val->size();
+  for (int i = 0; i < param.spec.common.axis_num; i++) {
+    param.spec.common.axis[i] = axes_val->at(i);
+  }
+  param.spec.common.method = type();
+  param.spec.common.input_scale = 1.0f;
+  param.spec.common.output_scale = 1.0f;
+  param.spec.common.keep_dims = keepdims();
+  param.spec.buffer_addr = 0x0;
+  param.if_getting_buffer_size = false;
+  BM168x::call_global_func("backend_api_reduce_full_global", &param,
+                           sizeof(reduce_full_global_param_t),
+                           input_spec->data(), output_spec->data());
 }
