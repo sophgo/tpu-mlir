@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM1684x.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
@@ -27,9 +27,8 @@ void tpu::ExpOp::codegen_global_bm1684x() {
   memset(&spec, 0, sizeof(spec));
   spec.common.active_type = ACTIVE_EXP;
   auto op = getOperation();
-  auto input_spec = BM1684x::get_input_spec(op);
-  auto output_spec = BM1684x::get_output_spec(op);
-  BM1684x::instance().call_global_func("backend_api_active_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  BM168x::call_global_func("backend_api_active_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }

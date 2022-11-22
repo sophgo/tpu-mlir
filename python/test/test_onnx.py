@@ -51,7 +51,7 @@ class ONNX_IR_TESTER(object):
             "Clip": self.test_Clip,
             "DepthToSpace": self.test_DepthToSpace,
             "Div": self.test_Div,
-            "Exp" : self.test_Exp,
+            "Exp": self.test_Exp,
             "Expand": self.test_Expand,
             "Expand2": self.test_Expand2,
             "Gather": self.test_Gather,
@@ -107,6 +107,7 @@ class ONNX_IR_TESTER(object):
             "TorchLayerGroup": self.test_TorchLayerGroup,
             "TorchLayerNorm": self.test_TorchLayerNorm,
             "TorchLogSoftmax": self.test_TorchLogSoftmax,
+            "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
             "TorchWhere": self.test_TorchWhere,
         }
@@ -260,7 +261,10 @@ class ONNX_IR_TESTER(object):
         print("* Torch and Onnx result compared *")
 
     def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str):
-        origin_output = torch_model(inputs)
+        if isinstance(inputs, tuple):
+            origin_output = torch_model(*inputs)
+        else:
+            origin_output = torch_model(inputs)
         onnx_file = model_name + ".onnx"
         in_names = []
         in_data = {}
@@ -1512,6 +1516,25 @@ class ONNX_IR_TESTER(object):
         input_shape = [3, 100, 32]
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Net(), case_name)
+
+    def test_TorchLSTM(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.rnn = nn.LSTM(input_size=100, hidden_size=128, bidirectional=True)
+
+            def forward(self, x, h_0, c_0):
+                Y, (Y_h, Y_c) = self.rnn(x, (h_0, c_0))
+                return Y, Y_h, Y_c
+
+        input = torch.randn(81, 1, 100)
+        h_0 = torch.randn(2, 1, 128)
+        c_0 = torch.randn(2, 1, 128)
+
+        inputs = (input, h_0, c_0)
+        self.torch_and_test(inputs, Net(), case_name)
 
     def test_TorchLayerNorm(self, case_name):
 
