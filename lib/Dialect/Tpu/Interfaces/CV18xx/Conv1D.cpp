@@ -23,7 +23,7 @@ using namespace tpu_mlir::backend;
 // WeightReorderInterface
 // ======================================
 
-// refer to net_compiler: bool BM1684xCoeffArranger::ConvWeightArr(GraphEdge*
+// refer to net_compiler: bool BM1684XCoeffArranger::ConvWeightArr(GraphEdge*
 // edge)
 void tpu::Conv1DOp::weight_reorder_int8_cv18xx() {
   llvm_unreachable("Not supported now");

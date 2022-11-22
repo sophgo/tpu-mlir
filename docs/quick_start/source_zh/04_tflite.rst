@@ -1,7 +1,7 @@
 编译TFLite模型
 ================
 
-本章以 ``resnet50_int8.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684x TPU平台运行。
+本章以 ``resnet50_int8.tflite`` 模型为例, 介绍如何编译迁移一个TFLite模型至BM1684X TPU平台运行。
 
 本章需要如下文件(其中xxxx对应实际的版本信息):
 

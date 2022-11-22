@@ -1,7 +1,7 @@
 Compile the Caffe model
 =======================
 
-This chapter takes ``mobilenet_v2_deploy.prototxt`` and ``mobilenet_v2.caffemodel`` as examples to introduce how to compile and transfer a caffe model to run on the BM1684x TPU platform.
+This chapter takes ``mobilenet_v2_deploy.prototxt`` and ``mobilenet_v2.caffemodel`` as examples to introduce how to compile and transfer a caffe model to run on the BM1684X TPU platform.
 
 This chapter requires the following files (where xxxx corresponds to the actual version information):
 

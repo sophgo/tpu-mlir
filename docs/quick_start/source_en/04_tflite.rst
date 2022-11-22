@@ -1,7 +1,7 @@
 Compile the TFLite model
 ========================
 
-This chapter takes the ``resnet50_int8.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684x TPU platform.
+This chapter takes the ``resnet50_int8.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684X TPU platform.
 
 This chapter requires the following files (where xxxx corresponds to the actual version information):
 

@@ -9,7 +9,7 @@
 #include "tpu_mlir/Backend/BM168x/Athena2.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1684x.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
@@ -38,8 +38,8 @@ void Arch::init(const llvm::StringRef chip) {
   }
   if (chip == Module::Chip::BM1684) {
     inst = &BM1684::instance();
-  } else if (chip == Module::Chip::BM1684x) {
-    inst = &BM1684x::instance();
+  } else if (chip == Module::Chip::BM1684X) {
+    inst = &BM1684X::instance();
   } else if (chip == Module::Chip::ATHENA2) {
     inst = &Athena2::instance();
   } else if (Module::isCV18xx(chip)) {
