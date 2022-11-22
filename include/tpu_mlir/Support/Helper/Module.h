@@ -46,7 +46,7 @@ struct Module {
   struct Chip {
     static constexpr llvm::StringRef ALL = "ALL";
     static constexpr llvm::StringRef BM1684 = "BM1684";
-    static constexpr llvm::StringRef BM1684x = "BM1684X";
+    static constexpr llvm::StringRef BM1684X = "BM1684X";
     static constexpr llvm::StringRef CV182x = "CV182X";
     static constexpr llvm::StringRef CV183x = "CV183X";
     static constexpr llvm::StringRef ATHENA2 = "ATHENA2";
@@ -191,8 +191,8 @@ struct Module {
   static inline bool isBM1684Family(StringRef chip){
     return (chip == Module::Chip::BM1684);
   }
-  static inline bool isBM1684xFamily(StringRef chip){
-    return   (chip == Module::Chip::BM1684x
+  static inline bool isBM1684XFamily(StringRef chip){
+    return   (chip == Module::Chip::BM1684X
             || chip == Module::Chip::ATHENA2);
   }
   static inline bool isAthena2(StringRef chip){

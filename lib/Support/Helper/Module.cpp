@@ -42,7 +42,7 @@ constexpr llvm::StringRef Module::State::TPU_ADDRESSED;
 
 constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
-constexpr llvm::StringRef Module::Chip::BM1684x;
+constexpr llvm::StringRef Module::Chip::BM1684X;
 constexpr llvm::StringRef Module::Chip::CV182x;
 constexpr llvm::StringRef Module::Chip::CV183x;
 constexpr llvm::StringRef Module::Chip::ATHENA2;
