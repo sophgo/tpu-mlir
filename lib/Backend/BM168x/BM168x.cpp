@@ -254,8 +254,6 @@ int64_t BM168x::IC_PARALLEL = 0;
 uint64_t BM168x::GMEM_START_ADDR = 0;
 int64_t BM168x::ALIGNMENT = 0;
 
-#define CAST_FUNCTION(name) dl_##name = instance()->CastToFPtr<name>(#name)
-
 void BM168x::load_functions() {
   CAST_FUNCTION(cmodel_init);
   CAST_FUNCTION(cmodel_deinit);

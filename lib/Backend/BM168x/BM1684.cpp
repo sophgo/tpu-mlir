@@ -24,10 +24,6 @@ uint32_t BM1684::get_gdma_len(int gdma_num, int group_id) {
   return gdma_num * GDMA_CMD_ALIGNED_NUM * sizeof(uint32_t);
 }
 
-
-#define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
-#define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)
-
 void BM1684::load_functions() {
   BM168x::load_functions();
   CAST_FUNCTION_WITH_SYM(cmd_id_divide, __cmd_id_divide);

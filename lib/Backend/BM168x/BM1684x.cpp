@@ -32,8 +32,6 @@ uint32_t BM1684x::get_gdma_len(int gdma_num, int group_id) {
   return gdma_bytes[group_id];
 }
 
-#define CAST_FUNCTION(name) dl_##name = instance().CastToFPtr<name>(#name)
-
 void BM1684x::load_functions() {
   BM168x::load_functions();
   CAST_FUNCTION(cmd_id_divide);
