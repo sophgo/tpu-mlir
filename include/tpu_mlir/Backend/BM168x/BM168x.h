@@ -374,6 +374,10 @@ using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
 namespace backend {
+
+#define CAST_FUNCTION(name) dl_##name = BM168x::instance()->CastToFPtr<name>(#name)
+#define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = BM168x::instance()->CastToFPtr<name>(#sym)
+
 class BM168x : public Arch {
 
 public:
