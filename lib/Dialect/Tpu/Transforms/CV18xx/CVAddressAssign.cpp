@@ -82,7 +82,11 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
         liveRange[v_info] = op_infos[v_info].live;
         switch (op_infos[v_info].mem_type) {
         case MEM_IOMEM:
-          io_outs.emplace_back(v_info);
+          if (io_outs.size() < 5) {
+            io_outs.emplace_back(v_info);
+          } else {
+            private_outs.emplace_back(v_info);
+          }
           break;
         case MEM_PRIVATE:
           private_outs.emplace_back(v_info);
