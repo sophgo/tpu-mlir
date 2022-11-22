@@ -32,6 +32,7 @@ class Top:
     UpsampleOp = 'top.Upsample'
     SoftmaxOp = 'top.Softmax'
     LogOp = 'top.Log'
+    ExpOp = 'top.Exp'
     PadOp = 'top.Pad'
     DivOp = 'top.Div'
     SqueezeOp = 'top.Squeeze'
@@ -458,6 +459,13 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.LogOp, operands, [output_type], **param)
+
+    def create_exp_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.ExpOp, operands, [output_type], **param)
 
     def create_pad_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
