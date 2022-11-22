@@ -53,6 +53,7 @@ class ONNX_IR_TESTER(object):
             "Clip": self.test_Clip,
             "DepthToSpace": self.test_DepthToSpace,
             "Div": self.test_Div,
+            "Exp" : self.test_Exp,
             "Expand": self.test_Expand,
             "Expand2": self.test_Expand2,
             "Gather": self.test_Gather,
@@ -1124,6 +1125,15 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
         graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+        self.onnx_and_test({'input': input_data}, graph_def)
+
+    def test_Exp(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        input_data = np.clip(np.random.randn(*input_shape).astype(np.float32) * 10.0, 0.5, 8)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([exp_def], case_name, [input], [output])
         self.onnx_and_test({'input': input_data}, graph_def)
 
     def test_Log(self, case_name):
