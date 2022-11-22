@@ -55,90 +55,98 @@ static inline float sigmoid_(float x) {
 
 static inline float tanh_(float x) { return tanh(x); }
 
-static void lstm_compute(InferenceParameter &p, float *x_wi, float *h_wi,
-                         float *x_bi, float *h, float *c, int num_layer,
-                         int num_dir, int seq_length, int batch_size,
-                         int input_size, int hidden_size, bool forward) {
+static void lstm_compute(InferenceParameter &p,
+                         const tpu::LSTMOp::lstm_attr_t &attr, float *bias,
+                         float *h, float *c, bool forward) {
   //(TODO) num_layers > 1
   // input += seq_length * batch * input_size * num_layer; //(TODO check!)
   float *input = p.inputs[0];
   float *output = p.outputs[0];
+  float *x_wi = p.inputs[1];
+  float *h_wi = p.inputs[2];
+  float *x_bi = bias;
+  float *last_h = p.outputs[1]; // Y_h
+  float *last_c = p.outputs[2]; // Y_c
   if (!forward) {
-    x_wi += 4 * input_size * hidden_size;
-    x_bi += 2 * 4 * hidden_size;
-    h_wi += 4 * hidden_size * hidden_size;
-    // h_bi += 2 * 4 * hidden_size;
-    h += batch_size * hidden_size;
-    c += batch_size * hidden_size;
-    output += batch_size * hidden_size;
+    x_wi += 4 * attr.input_size * attr.hidden_size;
+    x_bi += 2 * 4 * attr.hidden_size;
+    h_wi += 4 * attr.hidden_size * attr.hidden_size;
+    // h_bi += 2 * 4 * attr.hidden_size;
+    h += attr.batch_size * attr.hidden_size;
+    c += attr.batch_size * attr.hidden_size;
+    output += attr.batch_size * attr.hidden_size;
+    last_h += attr.batch_size * attr.hidden_size;
+    last_c += attr.batch_size * attr.hidden_size;
   }
-  float *x_wo = x_wi + input_size * hidden_size;
-  float *x_wf = x_wo + input_size * hidden_size;
-  float *x_wc = x_wf + input_size * hidden_size;
-  float *x_bo = x_bi + hidden_size;
-  float *x_bf = x_bo + hidden_size;
-  float *x_bc = x_bf + hidden_size;
-  float *h_wo = h_wi + hidden_size * hidden_size;
-  float *h_wf = h_wo + hidden_size * hidden_size;
-  float *h_wc = h_wf + hidden_size * hidden_size;
-  float *h_bi = x_bi + 4 * hidden_size;
-  // if (!forward) h_bi += 2 * 4 * hidden_size;
-  float *h_bo = h_bi + hidden_size;
-  float *h_bf = h_bo + hidden_size;
-  float *h_bc = h_bf + hidden_size;
+  float *x_wo = x_wi + attr.input_size * attr.hidden_size;
+  float *x_wf = x_wo + attr.input_size * attr.hidden_size;
+  float *x_wc = x_wf + attr.input_size * attr.hidden_size;
+  float *x_bo = x_bi + attr.hidden_size;
+  float *x_bf = x_bo + attr.hidden_size;
+  float *x_bc = x_bf + attr.hidden_size;
+  float *h_wo = h_wi + attr.hidden_size * attr.hidden_size;
+  float *h_wf = h_wo + attr.hidden_size * attr.hidden_size;
+  float *h_wc = h_wf + attr.hidden_size * attr.hidden_size;
+  float *h_bi = x_bi + 4 * attr.hidden_size;
+  // if (!forward) h_bi += 2 * 4 * attr.hidden_size;
+  float *h_bo = h_bi + attr.hidden_size;
+  float *h_bf = h_bo + attr.hidden_size;
+  float *h_bc = h_bf + attr.hidden_size;
 
-  std::vector<float> x_i(batch_size * hidden_size);
-  std::vector<float> x_o(batch_size * hidden_size);
-  std::vector<float> x_f(batch_size * hidden_size);
-  std::vector<float> x_c(batch_size * hidden_size);
-  std::vector<float> h_i(batch_size * hidden_size);
-  std::vector<float> h_o(batch_size * hidden_size);
-  std::vector<float> h_f(batch_size * hidden_size);
-  std::vector<float> h_c(batch_size * hidden_size);
-  std::vector<float> gi(batch_size * hidden_size);
-  std::vector<float> go(batch_size * hidden_size);
-  std::vector<float> gf(batch_size * hidden_size);
-  std::vector<float> gc(batch_size * hidden_size);
+  std::vector<float> x_i(attr.batch_size * attr.hidden_size);
+  std::vector<float> x_o(attr.batch_size * attr.hidden_size);
+  std::vector<float> x_f(attr.batch_size * attr.hidden_size);
+  std::vector<float> x_c(attr.batch_size * attr.hidden_size);
+  std::vector<float> h_i(attr.batch_size * attr.hidden_size);
+  std::vector<float> h_o(attr.batch_size * attr.hidden_size);
+  std::vector<float> h_f(attr.batch_size * attr.hidden_size);
+  std::vector<float> h_c(attr.batch_size * attr.hidden_size);
+  std::vector<float> gi(attr.batch_size * attr.hidden_size);
+  std::vector<float> go(attr.batch_size * attr.hidden_size);
+  std::vector<float> gf(attr.batch_size * attr.hidden_size);
+  std::vector<float> gc(attr.batch_size * attr.hidden_size);
 
-  for (int s = 0; s < seq_length; s++) {
+  for (int s = 0; s < attr.seq_len; s++) {
     // matrixmul
-    // x op w_x : [batch, x_size] op [x_size, hidden_size] => [batch,
-    // hidden_size] h op w_h : [batch, h_size] op [h_size, hidden_size] =>
-    // [batch, hidden_size] note: h_size = hidden_size?
-    int seq_idx = forward ? s : (seq_length - s - 1);
-    float *x = input + seq_idx * batch_size * input_size;
+    // x op w_x : [batch, x_size] op [x_size, attr.hidden_size] => [batch,
+    // attr.hidden_size] h op w_h : [batch, h_size] op [h_size,
+    // attr.hidden_size] => [batch, attr.hidden_size] note: h_size =
+    // attr.hidden_size?
+    int seq_idx = forward ? s : (attr.seq_len - s - 1);
+    float *x = input + seq_idx * attr.batch_size * attr.input_size;
 
-    dnnl_mm(x, x_wi, x_bi, x_i.data(), batch_size, input_size, hidden_size,
-            false);
-    dnnl_mm(x, x_wo, x_bo, x_o.data(), batch_size, input_size, hidden_size,
-            false);
-    dnnl_mm(x, x_wf, x_bf, x_f.data(), batch_size, input_size, hidden_size,
-            false);
-    dnnl_mm(x, x_wc, x_bc, x_c.data(), batch_size, input_size, hidden_size,
-            false);
+    dnnl_mm(x, x_wi, x_bi, x_i.data(), attr.batch_size, attr.input_size,
+            attr.hidden_size, false);
+    dnnl_mm(x, x_wo, x_bo, x_o.data(), attr.batch_size, attr.input_size,
+            attr.hidden_size, false);
+    dnnl_mm(x, x_wf, x_bf, x_f.data(), attr.batch_size, attr.input_size,
+            attr.hidden_size, false);
+    dnnl_mm(x, x_wc, x_bc, x_c.data(), attr.batch_size, attr.input_size,
+            attr.hidden_size, false);
 
-    dnnl_mm(h, h_wi, h_bi, h_i.data(), batch_size, hidden_size, hidden_size,
-            false);
-    dnnl_mm(h, h_wo, h_bo, h_o.data(), batch_size, hidden_size, hidden_size,
-            false);
-    dnnl_mm(h, h_wf, h_bf, h_f.data(), batch_size, hidden_size, hidden_size,
-            false);
-    dnnl_mm(h, h_wc, h_bc, h_c.data(), batch_size, hidden_size, hidden_size,
-            false);
+    dnnl_mm(h, h_wi, h_bi, h_i.data(), attr.batch_size, attr.hidden_size,
+            attr.hidden_size, false);
+    dnnl_mm(h, h_wo, h_bo, h_o.data(), attr.batch_size, attr.hidden_size,
+            attr.hidden_size, false);
+    dnnl_mm(h, h_wf, h_bf, h_f.data(), attr.batch_size, attr.hidden_size,
+            attr.hidden_size, false);
+    dnnl_mm(h, h_wc, h_bc, h_c.data(), attr.batch_size, attr.hidden_size,
+            attr.hidden_size, false);
 
-    for (int batch = 0; batch < batch_size; batch++) {
-      float *xi = x_i.data() + batch * hidden_size;
-      float *xo = x_o.data() + batch * hidden_size;
-      float *xf = x_f.data() + batch * hidden_size;
-      float *xc = x_c.data() + batch * hidden_size;
-      float *hi = h_i.data() + batch * hidden_size;
-      float *ho = h_o.data() + batch * hidden_size;
-      float *hf = h_f.data() + batch * hidden_size;
-      float *hc = h_c.data() + batch * hidden_size;
-      float *cell_state = c + batch * hidden_size;
+    for (int batch = 0; batch < attr.batch_size; batch++) {
+      float *xi = x_i.data() + batch * attr.hidden_size;
+      float *xo = x_o.data() + batch * attr.hidden_size;
+      float *xf = x_f.data() + batch * attr.hidden_size;
+      float *xc = x_c.data() + batch * attr.hidden_size;
+      float *hi = h_i.data() + batch * attr.hidden_size;
+      float *ho = h_o.data() + batch * attr.hidden_size;
+      float *hf = h_f.data() + batch * attr.hidden_size;
+      float *hc = h_c.data() + batch * attr.hidden_size;
+      float *cell_state = c + batch * attr.hidden_size;
       float *hidden_state =
-          output + (seq_idx * num_dir * batch_size + batch) * hidden_size;
-      for (int i = 0; i < hidden_size; i++) {
+          output + (seq_idx * attr.num_direction * attr.batch_size + batch) *
+                       attr.hidden_size;
+      for (int i = 0; i < attr.hidden_size; i++) {
         gi[i] = sigmoid_(xi[i] + hi[i]);
         go[i] = sigmoid_(xo[i] + ho[i]);
         gf[i] = sigmoid_(xf[i] + hf[i]);
@@ -147,7 +155,14 @@ static void lstm_compute(InferenceParameter &p, float *x_wi, float *h_wi,
         hidden_state[i] = go[i] * tanh_(cell_state[i]);
       }
     }
-    h = output + seq_idx * num_dir * batch_size * hidden_size;
+    h = output +
+        seq_idx * attr.num_direction * attr.batch_size * attr.hidden_size;
+  }
+  if (attr.output_h) {
+    memcpy(last_h, h, attr.batch_size * attr.hidden_size * sizeof(float));
+  }
+  if (attr.output_c) {
+    memcpy(last_c, c, attr.batch_size * attr.hidden_size * sizeof(float));
   }
 }
 
@@ -155,35 +170,31 @@ LogicalResult tpu::LSTMOp::inference(InferenceParameter &p) {
 
   auto module = Module::getModuleOp(getOperation());
   auto attr = parseParam();
-  auto B = p.inputs[3];
-  auto initial_h = p.inputs[4];
-  auto initial_c = p.inputs[5];
 
-  std::shared_ptr<std::vector<float>> bias_buffer, h0_buffer, c0_buffer;
-  if (!attr.have_bias) {
-    bias_buffer = std::make_shared<std::vector<float>>(
-        attr.num_direction * 8 * attr.hidden_size, 0.0f);
-    B = bias_buffer->data();
+  auto h0_buffer = std::make_shared<std::vector<float>>(
+      attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
+  auto initial_h = h0_buffer->data();
+  if (attr.have_h0) {
+    memcpy(initial_h, p.inputs[4], h0_buffer->size() * sizeof(float));
   }
 
-  if (!attr.have_h0) {
-    h0_buffer = std::make_shared<std::vector<float>>(
-        attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
-    initial_h = h0_buffer->data();
-  }
-  if (!attr.have_c0) {
-    c0_buffer = std::make_shared<std::vector<float>>(
-        attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
-    initial_c = c0_buffer->data();
+  auto c0_buffer = std::make_shared<std::vector<float>>(
+      attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
+  auto initial_c = c0_buffer->data();
+  if (attr.have_c0) {
+    memcpy(initial_c, p.inputs[5], c0_buffer->size() * sizeof(float));
   }
 
-  lstm_compute(p, p.inputs[1], p.inputs[2], B, initial_h, initial_c, 0,
-               attr.num_direction, attr.seq_len, attr.batch_size,
-               attr.input_size, attr.hidden_size, true);
+  auto bias_buffer = std::make_shared<std::vector<float>>(
+      attr.num_direction * 8 * attr.hidden_size, 0.0f);
+  auto B = bias_buffer->data();
+  if (attr.have_bias) {
+    memcpy(B, p.inputs[3], bias_buffer->size() * sizeof(float));
+  }
+
+  lstm_compute(p, attr, B, initial_h, initial_c, true);
   if (attr.num_direction == 2) {
-    lstm_compute(p, p.inputs[1], p.inputs[2], B, initial_h, initial_c, 0,
-                 attr.num_direction, attr.seq_len, attr.batch_size,
-                 attr.input_size, attr.hidden_size, false);
+    lstm_compute(p, attr, B, initial_h, initial_c, false);
   }
 
   return success();

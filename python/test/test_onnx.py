@@ -21,8 +21,8 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "LSTM2", "Neg", "Reduce2", "ReduceL2", "Reciprocal", "Sub", "Sub2",
-    "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
+    "GRU", "GRU2", "Neg", "Reduce2", "ReduceL2", "Reciprocal", "Sub", "Sub2", "Where",
+    "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
 ]
 
 
@@ -232,6 +232,8 @@ class ONNX_IR_TESTER(object):
                 flatten_tensor = tensors[name].flatten()
                 max_val = max(flatten_tensor)
                 min_val = min(flatten_tensor)
+                if max_val == min_val:
+                    max_val = max_val + 0.01
                 t = 1.1 * max(abs(min_val), abs(max_val)) + 0.01
                 f.write("{} {} {} {}\n".format(name, t, min_val, max_val))
 
@@ -1821,7 +1823,11 @@ class ONNX_IR_TESTER(object):
         input_data1 = np.random.rand(*input_shape).astype(np.float32)
         input_data2 = np.random.rand(*input_shape).astype(np.float32)
         input_data3 = np.random.rand(*input_shape).astype(np.float32)
-        self.onnx_and_test({"input1": input_data1, "input2": input_data2, "input3": input_data3}, graph_def)
+        self.onnx_and_test({
+            "input1": input_data1,
+            "input2": input_data2,
+            "input3": input_data3
+        }, graph_def)
 
     def test_Tile(self, case_name):
         input_shape = [1, 4, 6, 8]
