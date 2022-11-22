@@ -23,6 +23,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ConvLowering,
       ClipLowering,
       DeconvLowering,
+      InterpLowering,
       LeakyReluLowering,
       LogLowering,
       MatMulLowering,

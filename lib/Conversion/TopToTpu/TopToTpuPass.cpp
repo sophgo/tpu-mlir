@@ -136,6 +136,76 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+//TODO for cv18xx ResizeToConv
+struct ResizeToConvPattern : public OpRewritePattern<top::InterpOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::InterpOp op,
+                                PatternRewriter &rewriter) const override {
+    auto mode = tpu::symbolizeResizeMode(op.mode());
+    auto coord_mode = tpu::symbolizeResizeCoordMode(op.coord_mode());
+    assert(mode && coord_mode);
+    std::string coordinate_transformation_mode;
+    auto o_shape = Module::getShape(op.output());
+    assert(o_shape.size() >= 2);
+    switch (coord_mode.value()) {
+    case tpu::ResizeCoordMode::half_pixel:
+      if (mode.value() == tpu::ResizeMode::nearest) {
+        coordinate_transformation_mode = "nearest_half_pixel";
+      } else {
+        coordinate_transformation_mode = "half_pixel";
+      }
+      break;
+    case tpu::ResizeCoordMode::align_corners:
+      coordinate_transformation_mode = "align_corners";
+      break;
+    case tpu::ResizeCoordMode::pytorch_half_pixel:
+      if (mode.value() == tpu::ResizeMode::linear &&
+          o_shape[o_shape.size() - 1] > 1 && o_shape[o_shape.size() - 2] > 1) {
+        coordinate_transformation_mode = "half_pixel";
+      } else {
+        coordinate_transformation_mode = "pytorch_half_pixel";
+      }
+      break;
+    default:
+      llvm_unreachable("Unsupport interp coord type \n");
+    }
+
+    double scale_h = op.scale_h().convertToDouble();
+    double scale_w = op.scale_w().convertToDouble();
+    if (mode.value() == tpu::ResizeMode::linear) {
+      if (coordinate_transformation_mode == "half_pixel") {
+        if (std::ceil(scale_h) == std::floor(scale_h) &&
+            std::ceil(scale_w) == std::floor(scale_w)) {
+          return resize_to_conv1(op, rewriter);
+        }
+        if (std::abs(scale_h - scale_w) < 1e-6 &&
+            std::abs(scale_h - 0.5) < 1e-6) {
+          return resize_to_conv2(op, rewriter);
+        }
+      }
+    } else if (mode.value() == tpu::ResizeMode::nearest) {
+      if (std::ceil(scale_h) == std::floor(scale_h) &&
+          std::ceil(scale_w) == std::floor(scale_w)) {
+        assert(0 && "already converted in onnx_convert\n");
+      }
+    } else {
+      llvm_unreachable("Unsupport interp mode type \n");
+    }
+  }
+  LogicalResult resize_to_conv1(top::InterpOp &op,
+                                PatternRewriter &rewriter) const {
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    return success();
+  }
+  LogicalResult resize_to_conv2(top::InterpOp &op,
+                                PatternRewriter &rewriter) const {
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    return success();
+  }
+};
+
 struct ConvertTopToTpu : public ::impl::ConvertTopToTpuBase<ConvertTopToTpu> {
 public:
   void runOnOperation() override {
@@ -288,11 +358,20 @@ protected:
     auto to_stype = Module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
-      if (false == isa<tpu::CastOp>(user)) {
-        continue;
+      // for 18xx cpu cast
+      if (auto cpuOp = dyn_cast<tpu::GenericCpuOp>(user)) {
+        if (cpuOp.operation_name() == "quant") {
+          if (type_need_cast(user->getResult(0).getType(), to) == false) {
+            return user->getResult(0);
+          }
+        } else {
+          continue;
+        }
       }
-      if (type_need_cast(user->getResult(0).getType(), to) == false) {
-        return user->getResult(0);
+      if (isa<tpu::CastOp>(user)) {
+        if (type_need_cast(user->getResult(0).getType(), to) == false) {
+          return user->getResult(0);
+        }
       }
     }
     auto ctx = v.getContext();
