@@ -15,7 +15,7 @@ model_transform.py \
     --mlir resnet50_tf.mlir
 
 #########################
-# TFLite to TPU BM1684x
+# TFLite to TPU BM1684X
 #########################
 model_deploy.py \
     --mlir resnet50_tf.mlir \

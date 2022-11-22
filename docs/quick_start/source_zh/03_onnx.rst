@@ -1,7 +1,7 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
+本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 

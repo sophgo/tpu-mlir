@@ -8,7 +8,7 @@ TPU-MLIR is originally developed by SOPHGO. This company is committed to becomin
 
 For technical details of this project, please refer to: [TPU-MLIR Technical Reference Manual](https://tpumlir.org/en/docs/developer_manual/index.html). We also have a paper introducing the design, <https://arxiv.org/abs/2210.15016>.
 
-Currently, the project supports BM1684x. BM1684, CV183x, CV182x, Mars, and other chips will be supported in the future.
+Currently, the project supports BM1684X. BM1684, CV183x, CV182x, Mars, and other chips will be supported in the future.
 
 # How to Build
 
@@ -59,7 +59,7 @@ popd
 
 # Usage
 
-Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684x TPU platform.
+Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx` and running it on the BM1684X TPU platform.
 
 The model comes from the official website of yolov5: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>.
 

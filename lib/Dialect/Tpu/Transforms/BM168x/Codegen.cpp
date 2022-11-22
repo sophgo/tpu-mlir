@@ -317,7 +317,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         if (ginfo.overstepped == false) {
           if (Module::isBM1684Family(chip)) {
             lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
-          } else if (Module::isBM1684xFamily(chip)) {
+          } else if (Module::isBM1684XFamily(chip)) {
             auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
             if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
               pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
@@ -361,7 +361,7 @@ void CodegenPass::codegen(Operation *op) {
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
     if (Module::isBM1684Family(chip)) {
       castOp.codegen_global_bm1684();
-    } else if (Module::isBM1684xFamily(chip)) {
+    } else if (Module::isBM1684XFamily(chip)) {
       castOp.codegen_global_bm1684x();
     } else {
       llvm_unreachable("chip not support");

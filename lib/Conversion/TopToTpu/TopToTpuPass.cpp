@@ -167,7 +167,7 @@ public:
     target.addLegalDialect<tpu::TpuDialect, func::FuncDialect>();
     // no need to lowering:
     target.addLegalOp<top::InputOp, top::WeightOp, top::NoneOp>();
-    if (Module::isBM1684xFamily(LoweringConfig::chip)) {
+    if (Module::isBM1684XFamily(LoweringConfig::chip)) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (Module::isBM1684Family(LoweringConfig::chip)) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);

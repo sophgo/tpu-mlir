@@ -1,7 +1,7 @@
 Compile the ONNX model
 ======================
 
-This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile and transfer an onnx model to run on the BM1684x TPU platform.
+This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile and transfer an onnx model to run on the BM1684X TPU platform.
 
 The model is from the official website of yolov5: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
