@@ -152,6 +152,7 @@ class OnnxConverter(BaseConverter):
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Split": lambda node: self.convert_split_op(node),
+            "Sum": lambda node: self.convert_sum_op(node),
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
@@ -1528,3 +1529,18 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         prelu_op = self.mlir.create_prelu_op([in_op, slope], output_shape, **p)
         self.addOperand(onnx_node.name, prelu_op)
+
+    def convert_sum_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sum")
+        opd0 = self.getOperand(onnx_node.inputs[0])
+        num_inputs = len(onnx_node.inputs)
+        for i in range(1, num_inputs):
+            opd1 = self.getOperand(onnx_node.inputs[i])
+            output_shape = self.getShape(onnx_node.name)
+            last_name = onnx_node.name
+            if i != num_inputs - 1:
+                last_name += "_{}".format(str(i))
+            p = {'do_relu': False, 'relu_limit': 0}
+            p['name'] = "{}_{}".format(last_name, onnx_node.op_type)
+            opd0 = self.mlir.create_add_op([opd0, opd1], output_shape, **p)
+        self.addOperand(onnx_node.name, opd0)
