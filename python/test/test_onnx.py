@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "LSTM2", "Neg", "Reduce2", "ReduceL2", "Reciprocal", "Sub", "Sub2", "Sum",
+    "GRU", "GRU2", "LSTM2", "Neg", "Reduce2", "ReduceL2", "Reciprocal", "Sub", "Sub2",
     "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
 ]
 
@@ -1802,24 +1802,26 @@ class ONNX_IR_TESTER(object):
 
         input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input_shape)
         input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input_shape)
+        input3 = helper.make_tensor_value_info('input3', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
 
         #test three input
         sum_def = helper.make_node(
             'Sum',  # node name
-            ['input1', 'input2'],  # inputs
+            ['input1', 'input2', 'input3'],  # inputs
             ['output'],  # outputs
         )
 
         graph_def = helper.make_graph(
             [sum_def],
             case_name,
-            [input1, input2],
+            [input1, input2, input3],
             [output],
         )
         input_data1 = np.random.rand(*input_shape).astype(np.float32)
         input_data2 = np.random.rand(*input_shape).astype(np.float32)
-        self.onnx_and_test({"input1": input_data1, "input2": input_data2}, graph_def)
+        input_data3 = np.random.rand(*input_shape).astype(np.float32)
+        self.onnx_and_test({"input1": input_data1, "input2": input_data2, "input3": input_data3}, graph_def)
 
     def test_Tile(self, case_name):
         input_shape = [1, 4, 6, 8]
