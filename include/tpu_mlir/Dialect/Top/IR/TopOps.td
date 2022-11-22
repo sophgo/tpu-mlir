@@ -810,4 +810,22 @@ def Top_PReluOp : Top_Op<"PRelu", [InOutSameDim]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu, InOutSameDim]> {
+  let summary = "sub operator";
+
+  let description = [{
+    Elementwise subtraction of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

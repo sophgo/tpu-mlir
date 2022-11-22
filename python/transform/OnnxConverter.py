@@ -148,6 +148,7 @@ class OnnxConverter(BaseConverter):
             "Softmax": lambda node: self.convert_softmax_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Split": lambda node: self.convert_split_op(node),
+            "Sub": lambda node: self.convert_sub_op(node),
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
@@ -339,6 +340,7 @@ class OnnxConverter(BaseConverter):
                 input_op = self.mlir.create_input_op(_name, idx, **{})
             else:
                 input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
+            print(_name)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(node):
@@ -903,13 +905,51 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_div_op(self, onnx_node):
+        assert (onnx_node.op_type == "Div")
         assert (len(onnx_node.inputs) == 2)
-        # if self.isWeight(onnx_node.inputs[0]) or self.isWeight(onnx_node.inputs[1]):
-        #     # TODO: support tensor
-        #     raise RuntimeError("not support Tensor")
+        if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
+            onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
+            self.convert_div_op(onnx_node)
+            return
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        if not self.isWeight(onnx_node.inputs[0]) and self.isWeight(onnx_node.inputs[1]):
+            opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
+            output_shape = self.getShape(onnx_node.name)
+            channel = output_shape[1]
+            op0 = self.getOperand(onnx_node.inputs[0])
+            print('haha')
+            if opd1_num_elem == channel:
+                origin_weight_data = self.getWeight(onnx_node.inputs[1])
+                weight_data = np.ones_like(origin_weight_data)
+                weight_data /= origin_weight_data
+                offset_data = np.zeros_like(origin_weight_data)
+                self.addWeight(name + '_scale', weight_data)
+                self.addWeight(name + '_bias', offset_data)
+                weight_op = self.getWeightOp(name + '_scale')
+                offset_op = self.getWeightOp(name + '_bias')
+                p = {'name': name}
+                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
+            elif opd1_num_elem == 1:
+                origin_weight_data = self.getWeight(onnx_node.inputs[1])
+                print(origin_weight_data)
+                weight_data = np.full(self.getShape(onnx_node.inputs[0]), origin_weight_data)
+                self.addWeight(name + '_const', weight_data)
+                weight_op = self.getWeightOp(name + '_const')
+                p = {'name': name}
+                scale_op = self.mlir.create_div_op([op0, weight_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
+            else:
+                const_op = self.getWeightOp(onnx_node.inputs[1])
+                p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+                div_op = self.mlir.create_div_op([op0, const_op], output_shape, **p)
+                self.addOperand(onnx_node.name, div_op)
+                return
         op0 = self.getOperand(onnx_node.inputs[0])
         op1 = self.getOperand(onnx_node.inputs[1])
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        p = {'name': name}
         output_shape = self.getShape(onnx_node.name)
         div_op = self.mlir.create_div_op([op0, op1], output_shape, **p)
         self.addOperand(onnx_node.name, div_op)
@@ -1407,3 +1447,42 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         prelu_op = self.mlir.create_prelu_op([in_op, slope], output_shape, **p)
         self.addOperand(onnx_node.name, prelu_op)
+
+    def convert_sub_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sub")
+        assert (len(onnx_node.inputs) == 2)
+        if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
+            onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
+            self.convert_sub_op(onnx_node)
+            return
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        if not self.isWeight(onnx_node.inputs[0]) and self.isWeight(onnx_node.inputs[1]):
+            opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
+            output_shape = self.getShape(onnx_node.name)
+            channel = output_shape[1]
+            op0 = self.getOperand(onnx_node.inputs[0])
+            if opd1_num_elem == channel:
+                offset = self.getWeight(onnx_node.inputs[1])
+                weight_data = np.ones_like(offset)
+                offset_data = -offset
+                self.addWeight(name + '_scale', weight_data)
+                self.addWeight(name + '_bias', offset_data)
+                weight_op = self.getWeightOp(name + '_scale')
+                offset_op = self.getWeightOp(name + '_bias')
+                p = {'name': name}
+                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
+            else:
+                const_op = self.getWeightOp(onnx_node.inputs[1])
+                p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+                scale_op = self.mlir.create_sub_op([op0, const_op], output_shape, **p)
+                self.addOperand(onnx_node.name, scale_op)
+                return
+        op0 = self.getOperand(onnx_node.inputs[0])
+        op1 = self.getOperand(onnx_node.inputs[1])
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        output_shape = self.getShape(onnx_node.name)
+        sub_op = self.mlir.create_sub_op([op0, op1], output_shape, **p)
+        self.addOperand(onnx_node.name, sub_op)
+        return

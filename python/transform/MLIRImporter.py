@@ -46,6 +46,7 @@ class Top:
     MinOp = 'top.Min'
     AbsOp = 'top.Abs'
     PReluOp = 'top.PRelu'
+    SubOp = 'top.Sub'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -568,6 +569,15 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name']}
         return self.buildOp(Top.PReluOp, operands, [output_type], **param)
+
+    def create_sub_op(self, operands, output_shape, **kargs):
+        if len(operands) < 2:
+            raise RuntimeError("input operand must great than 2")
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
+        if "coeff" in kargs:
+            param['coeff'] = self.ArrayAttr(kargs['coeff'], 'F64')
+        return self.buildOp(Top.SubOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

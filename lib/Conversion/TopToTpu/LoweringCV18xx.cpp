@@ -24,9 +24,10 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ReshapeLowering,
       PermuteLowering,
       SiLULowering,
+      SubLowering,
       UpsampleLowering
       // clang-format on
       >(patterns->getContext());
 }
-} // namespace CV18xx
+} // namespace cv18xx
 } // namespace tpu_mlir

@@ -23,7 +23,7 @@ import onnxruntime
 Failed_Cases = [
     "Expand2", "GroupFC", "GRU",
     "GRU2", "LRN", "LSTM", "LSTM2", "Neg", "Resize2", "Reduce", "Reduce2", "ReduceL2", "Reciprocal",
-    "Sub", "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
+    "Sub2", "Sum", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
     "TorchWhere"
 ]
 
@@ -143,6 +143,7 @@ class ONNX_IR_TESTER(object):
         # onnx --> mlir conversion (origin and optimized mlir models will be generated and saved)
         fp32_mlir = "{}.mlir".format(model_name)
         model_def = helper.make_model(graph_def, producer_name=model_name)
+        print(graph_def)
         model_def.opset_import[0].version = 13
         onnx.checker.check_model(model_def)
         tool = OnnxTransformer(model_name, model_def)
