@@ -8,13 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#include "tpu_mlir/Backend/BM168x/BM1684x.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 
 namespace tpu_mlir {
 namespace backend {
 
-class Athena2 : public BM1684x {
+class Athena2 : public BM1684X {
 public:
   static Athena2 &instance() {
     static Athena2 athena2;

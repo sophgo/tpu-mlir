@@ -1,7 +1,7 @@
 file(GLOB _sources
           IR/*.cpp
           Interfaces/BM1684/*.cpp
-          Interfaces/BM1684x/*.cpp
+          Interfaces/BM1684X/*.cpp
           Interfaces/CV18xx/*.cpp
           Interfaces/Common/*.cpp
           Canonicalize/*.cpp

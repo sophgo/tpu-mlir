@@ -9,7 +9,7 @@
 #include "tpu_mlir/Backend/BM168x/Athena2.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM1684x.h"
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"

@@ -1,7 +1,7 @@
 编译Caffe模型
 =============
 
-本章以 ``mobilenet_v2_deploy.prototxt`` 和 ``mobilenet_v2.caffemodel`` 为例, 介绍如何编译迁移一个caffe模型至BM1684x TPU平台运行。
+本章以 ``mobilenet_v2_deploy.prototxt`` 和 ``mobilenet_v2.caffemodel`` 为例, 介绍如何编译迁移一个caffe模型至BM1684X TPU平台运行。
 
 本章需要如下文件(其中xxxx对应实际的版本信息):
 

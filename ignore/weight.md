@@ -1,4 +1,4 @@
-# BM1684x weight摆放
+# BM1684X weight摆放
 
 * content
 {:toc}
