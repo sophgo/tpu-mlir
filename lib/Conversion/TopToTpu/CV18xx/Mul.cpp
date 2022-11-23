@@ -24,13 +24,45 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   bool sign = true;
   Quant::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
   double scalef = 1.0;
+  double scale_i;
+  int64_t i_zp;
   for (int i = 0; i < nInputs; i++) {
-    double i_scale;
-    int64_t i_zp;
     auto input = op->getOperand(i);
-    operands.push_back(input);
-    Quant::getScaleAndZeroPoint(input, i_scale, i_zp, sign, false);
-    scalef *= i_scale;
+    if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
+      auto constF32 = constOp.read<float>();
+      // float fmax, fmin;
+      // findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
+      // bool cSign = (fmin < 0);
+      //float fqmax = cSign ? 127 : 255;
+      float fmax = findMaxabs(constF32->data(), constF32->size());
+      bool cSign = true;
+      float fqmax = 127.0;
+      auto filter_type = input.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(filter_type.getShape(),
+                                            rewriter.getIntegerType(8, cSign));
+      scale_i = fmax / fqmax;
+      if (cSign) {
+        auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
+        std::transform(
+            constF32->begin(), constF32->end(), constI8->begin(),
+            [&](const float cf32) { return Quant::to_int8(cf32 / scale_i); });
+        auto new_filter =
+            top::WeightOp::create(constOp, "i8", *constI8, new_type);
+        operands.push_back(new_filter);
+      } else {
+        auto constU8 = std::make_shared<std::vector<uint8_t>>(constF32->size());
+        std::transform(
+            constF32->begin(), constF32->end(), constU8->begin(),
+            [&](const float cf32) { return Quant::to_uint8(cf32 / scale_i); });
+        auto new_filter =
+            top::WeightOp::create(constOp, "u8", *constU8, new_type);
+        operands.push_back(new_filter);
+      }
+    } else {
+      Quant::getScaleAndZeroPoint(input, scale_i, i_zp, sign, false);
+      operands.push_back(input);
+    }
+    scalef *= scale_i;
   }
   scalef /= o_scale;
 
@@ -62,6 +94,12 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
 }
 
 void MulLowering::LoweringBF16(PatternRewriter &rewriter, top::MulOp op) const {
+  for (int i = 0, n = op.getNumOperands(); i < n; ++i) {
+    if (auto constOp =
+            dyn_cast<top::WeightOp>(op.getOperand(i).getDefiningOp())) {
+      op.setOperand(i, constOp.clone_bf16(op));
+    }
+  }
   lowering_common_bf16<tpu::MulOp>(rewriter, op);
 }
 }
