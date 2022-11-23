@@ -80,6 +80,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     return failure();
   }
   auto matmul = (MatMul *)p.handle;
+
   matmul->run();
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());

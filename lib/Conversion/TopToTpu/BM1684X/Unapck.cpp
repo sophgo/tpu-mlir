@@ -46,6 +46,7 @@ void UnpackLowering::LoweringQuantized(PatternRewriter &rewriter,
   shape[op.axis()] = 1;
   auto stype = Module::getStorageType(op.input());
   auto newType = RankedTensorType::get(shape, stype);
+  std::vector<Type> newTypes(op.num(), newType);
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("axis", op.axisAttr()));
@@ -53,7 +54,7 @@ void UnpackLowering::LoweringQuantized(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   auto new_name = Module::getName(op).str() + "_split";
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-  auto splitOp = rewriter.create<tpu::SplitOp>(name_loc, newType, ValueRange{op.input()}, attrs);
+  auto splitOp = rewriter.create<tpu::SplitOp>(name_loc, newTypes, ValueRange{op.input()}, attrs);
 
   // rewriter.replaceOpWithNewOp<tpu::SplitOp>(op, op.input().getType(), operands,
   //                                            attrs);
@@ -61,8 +62,15 @@ void UnpackLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<int64_t>oshape(Module::getShape(op.outputs()[0]));
   auto outType = RankedTensorType::get(oshape, stype);
   for (int i = 0; i < op.num(); ++i) {
-    auto output_reshape = do_reshape(splitOp.outputs()[i], outType);
-    operands.push_back(output_reshape);
+    auto out = splitOp.getResult(i);
+    // auto output_reshape = do_reshape(out, outType);
+    rewriter.setInsertionPointAfterValue(out);
+    std::vector<NamedAttribute> attrs = {};
+    std::string new_name =
+        Module::getName(out).str() + "_reshape_" + std::to_string(i);
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+    auto newOp = rewriter.create<tpu::ReshapeOp>(name_loc, outType, ValueRange{out}, attrs);
+    operands.push_back(newOp.output());
   }
   rewriter.replaceOp(op, operands);
 }

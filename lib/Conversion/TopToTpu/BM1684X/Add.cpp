@@ -154,38 +154,71 @@ void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   std::vector<Value> operands;
   auto ctx = op->getContext();
+  bool is_const = false;
+  int32_t const_val = 0;
 
-  // dequant left
-  auto input0_dequant =
-      do_dequant(addOp.inputs()[0], rewriter.getI32Type(), multiplier_v[0],
-                 shift_v[0], tpu::DequantMode::TFlite, lshift);
-  // op->setOperand(0, input0_dequant);
-  operands.push_back(input0_dequant);
-  // dequant right
-  auto input1_dequant =
-      do_dequant(addOp.inputs()[1], rewriter.getI32Type(), multiplier_v[1],
-                 shift_v[1], tpu::DequantMode::TFlite, lshift);
-  // op->setOperand(1, input1_dequant);
-  operands.push_back(input1_dequant);
+  for (int i = 0; i < nInputs; ++i) {
+    auto input = addOp->getOperand(i);
+    if (isa<top::WeightOp>(input.getDefiningOp())) {
+      // do dequant in here
+      int64_t num_elem = Module::getNumElements(input);
+      if (num_elem != 1) {
+        auto new_input = do_weight_dequant(input, rewriter.getI32Type(),
+                            multiplier_v[i], shift_v[i], lshift);
+        operands.push_back(new_input);
+      } else {
+        const_val = do_const_dequant(input,  multiplier_v[i], shift_v[i], lshift);
+        is_const = true;
+      }
+    } else {
+      // do dequant
+      std::string name = Module::getName(op).str() + "_dequant_" + std::to_string(i);
+      auto name_loc = NameLoc::get(rewriter.getStringAttr(name));
+      auto input_dequant =
+          do_dequant(name_loc, input, rewriter.getI32Type(),
+                    multiplier_v[i], shift_v[i], tpu::DequantMode::TFlite, lshift);
+      operands.push_back(input_dequant);
+    }
+  }
+  // // dequant left
+  // std::string d0_name = Module::getName(op).str() + "_dequant0";
+  // auto name_loc_d0 = NameLoc::get(rewriter.getStringAttr(d0_name));
+  // auto input0_dequant =
+  //     do_dequant(name_loc_d0, addOp.inputs()[0], rewriter.getI32Type(),
+  //                multiplier_v[0], shift_v[0], tpu::DequantMode::TFlite, lshift);
+  // // op->setOperand(0, input0_dequant);
+  // operands.push_back(input0_dequant);
+  // // dequant right
+  // std::string d1_name = Module::getName(op).str() + "_dequant1";
+  // auto name_loc_d1 = NameLoc::get(rewriter.getStringAttr(d1_name));
+  // auto input1_dequant =
+  //     do_dequant(name_loc_d1, addOp.inputs()[1], rewriter.getI32Type(),
+  //                multiplier_v[1], shift_v[1], tpu::DequantMode::TFlite, lshift);
+  // // op->setOperand(1, input1_dequant);
+  // operands.push_back(input1_dequant);
   // add
   std::string suffix = "_add";
   std::string new_name = Module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(
-      rewriter.getNamedAttr("multiplier", rewriter.getI64IntegerAttr(1)));
-  attrs.push_back(
-      rewriter.getNamedAttr("shift", rewriter.getI64IntegerAttr(0)));
-
   auto newType = RankedTensorType::get(Module::getShape(addOp.output()),
                                        rewriter.getI32Type());
   // auto add_quant = lowering_common<tpu::AddOp>(op, newType);
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
   rewriter.setInsertionPointAfter(op);
-  auto newOp = rewriter.create<tpu::AddOp>(name_loc, newType, operands, attrs);
+  Value addout;
+  if (is_const) {
+    attrs.push_back(
+        rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
+    auto newOp = rewriter.create<tpu::AddConstOp>(name_loc, newType, operands, attrs);
+    addout = newOp.output();
+  } else {
+    auto newOp = rewriter.create<tpu::AddOp>(name_loc, newType, operands, attrs);
+    addout = newOp.output();
+  }
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);
-  auto v = do_requant(op->getLoc(), newOp.output(), addOp.output().getType(),
+  auto v = do_requant(op->getLoc(), addout, addOp.output().getType(),
                       true, scalei, shifti, tpu::RequantMode::TFlite);
   rewriter.replaceOp(op, {v});
 }

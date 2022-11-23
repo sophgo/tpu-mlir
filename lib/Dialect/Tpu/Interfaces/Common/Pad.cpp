@@ -34,15 +34,17 @@ void tpu::PadOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
   auto in_shape = Module::getShape(input());
   auto pad_mode = mode();
+  int num_dims = in_shape.size();
   int64_t in = in_shape[0];
   int64_t ic = in_shape[1];
   int64_t ih = in_shape[2];
-  int64_t iw = in_shape[3];
+  int64_t iw = num_dims <= 3 ? 1 : in_shape[3];
   std::shared_ptr<std::vector<int64_t>> pads_ = Module::getI64Array(paddings());
-  int num_dims = in_shape.size();
-  std::vector<int> pads;
-  for (int i = 0; i < num_dims * 2; i++) {
-    pads.emplace_back(pads_->at(i));
+
+  std::vector<int> pads(8, 0);
+  for (int i = 0; i < num_dims; i++) {
+    pads[i] = (pads_->at(i));
+    pads[4 + i] = (pads_->at(i + num_dims));
   }
   int64_t oc = pads[1] + pads[5] + ic;
   int64_t oh = pads[2] + pads[6] + ih;

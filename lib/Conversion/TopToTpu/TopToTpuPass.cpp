@@ -217,6 +217,7 @@ public:
     LoweringConfig::chip = StringRef(chip).upper();
     LoweringConfig::mode = StringRef(mode).upper();
     LoweringConfig::isAsymmetric = isAsymmetric;
+    LoweringConfig::isQuantized = false;
     Module::setChip(module_, LoweringConfig::chip);
     Module::setMode(module_, LoweringConfig::mode);
 

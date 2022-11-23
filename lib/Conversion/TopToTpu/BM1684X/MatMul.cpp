@@ -214,10 +214,13 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   OpBuilder builder(ctx);
   std::vector<Value> operands;
   operands.push_back(op.input());
-  auto right_stype = Module::getStorageType(op.right());
-  auto right_new_type =
-      RankedTensorType::get(Module::getShape(op.right()), right_stype);
-  op.right().setType(right_new_type);
+  if (isa<top::WeightOp>(op.right().getDefiningOp())) {
+    auto right_stype = Module::getStorageType(op.right());
+    auto right_new_type =
+        RankedTensorType::get(Module::getShape(op.right()), right_stype);
+    op.right().setType(right_new_type);
+  }
+
   operands.push_back(op.right());
   if (with_bias) {
     auto bias_stype = Module::getStorageType(op.bias());
@@ -275,7 +278,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
         }
       }
       auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
-                                           *bias_quant, bias_type);
+                                            *bias_quant, bias_type);
       operands.push_back(new_bias);
     } else {
       operands.push_back(op.bias());
@@ -296,7 +299,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     operands.push_back(new_bias);
     auto matmul_type = RankedTensorType::get(Module::getShape(op.output()),
                                              rewriter.getI32Type());
-    auto new_name = Module::getName(op.getOperation()).str() + "_int32";
+    auto new_name = Module::getName(op.getOperation()).str() + "_matmul_no_izp";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfter(op);
     auto newOp =
@@ -312,30 +315,27 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("keepdims", rewriter.getI64IntegerAttr(1)));
     attrs.push_back(
-        rewriter.getNamedAttr("type", rewriter.getI64IntegerAttr(1)));
+        rewriter.getNamedAttr("type", rewriter.getStringAttr("ReduceSum")));
     auto newType = RankedTensorType::get({1, col_size}, rewriter.getI32Type());
     if (op.right_transpose())
       newType = RankedTensorType::get({col_size, 1}, rewriter.getI32Type());
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(op.right());
-    auto reduceOp = rewriter.create<tpu::ReduceOp>(name_loc, newType, ValueRange{op.right()}, attrs);
+    auto reduceOp = rewriter.create<tpu::ReduceOp>(name_loc, newType,
+        ValueRange{op.right(), Module::getNoneOp(op), Module::getNoneOp(op)}, attrs);
     Value newValue = reduceOp.output();
     // do reshape
     attrs.erase(attrs.begin(), attrs.end());
     if (op.right_transpose()) {
       auto reshapeType = RankedTensorType::get({1, col_size}, rewriter.getI32Type());
-      // new_name = Module::getName(op.right()).str() + "_reshape";
-      // name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-      // rewriter.setInsertionPointAfterValue(newValue);
-      // auto reshapeOp = rewriter.create<tpu::ReshapeOp>(name_loc, reshapeType, ValueRange{newValue}, attrs);
       newValue = do_reshape(newValue, reshapeType);
     }
     // do mulconst
     newValue = do_binary_saclar<tpu::MulConstOp>(newValue, rewriter.getI32Type(), -input_zeroPoint);
     // do add
-    new_name = Module::getName(op.right()).str() + "_add";
+    new_name = Module::getName(newOp.output()).str() + "_add_zp";
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    rewriter.setInsertionPointAfterValue(newValue);
+    rewriter.setInsertionPointAfterValue(newOp);
     auto addOp = rewriter.create<tpu::AddOp>(name_loc, matmul_type, ValueRange{newOp.output(), newValue}, attrs);
     // do requant
     newValue = do_requant(op->getLoc(), addOp.output(), op.output().getType(), true,

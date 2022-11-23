@@ -30,6 +30,9 @@ private:
   std::vector<std::unordered_map<int, memory>> net_args;
   std::shared_ptr<std::vector<float>> bias0;
   float *p_right;
-  std::shared_ptr<std::vector<float>> right_after_zp;
+  float *origin_input, *origin_right;
+  std::shared_ptr<std::vector<float>> right_after_init;
+  int64_t batch_, M_, N_, K_, right_zp_;
+  bool right_has_zp_ = 0, input_has_zp_ = 0, has_transpose_ = 0;
 };
 } // namespace tpu_mlir

@@ -25,14 +25,15 @@ void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
                         int64_t K, int64_t N, bool right_transpose) {
   int64_t weight_len = batch * K * N;
   p_right = right;
-  if (right_zp != 0 ) {
-    right_after_zp = std::make_shared<std::vector<float>>(weight_len);
-    p_right = right_after_zp->data();
-    tensor_sub_zp(right_after_zp->data(), right, weight_len, right_zp);
+  origin_right = right;
+  if (right_zp != 0 || right_transpose) {
+    right_after_init = std::make_shared<std::vector<float>>(weight_len);
+    p_right = right_after_init->data();
+    // tensor_sub_zp(right_after_init->data(), right, weight_len, right_zp);
+    right_has_zp_ = right_zp != 0;
+    has_transpose_ = right_transpose;
   }
-  if (right_transpose) {
-    tensor_hw_transpose(p_right, p_right, 1, batch, N, K);
-  }
+
 }
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
@@ -47,6 +48,11 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   memory::dims dst_dims = {batch, M, N};
   int64_t weight_len = batch * K * N;
   right_init(right, right_zp, batch, K, N, right_transpose);
+  batch_ = batch;
+  M_ = M;
+  N_ = N;
+  K_ = K;
+  right_zp_ = right_zp;
   net.clear();
   net_args.clear();
   auto src_md = memory::desc(src_dims, memory::data_type::f32, tag::abc);
@@ -116,6 +122,15 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
 }
 
 void MatMul::run() {
+  float* p_input_after = origin_right;
+  if (has_transpose_) {
+    tensor_hw_transpose(right_after_init->data(), origin_right, 1, batch_, N_, K_);
+    p_input_after = right_after_init->data();
+  }
+  if (right_has_zp_) {
+    int64_t weight_len = batch_ * K_ * N_;
+    tensor_sub_zp(right_after_init->data(), p_input_after, weight_len, right_zp_);
+  }
   for (size_t i = 0; i < net.size(); ++i)
     net.at(i).execute(engine_stream, net_args.at(i));
   engine_stream.wait();

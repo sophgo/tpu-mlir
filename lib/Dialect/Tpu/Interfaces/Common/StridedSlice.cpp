@@ -31,7 +31,7 @@ LogicalResult tpu::StridedSliceOp::inference(InferenceParameter &p) {
   auto starts_ = p.inputs[1];
   auto ends_ = p.inputs[2];
   auto strides_ = p.inputs[3];
-  auto s_dims = Module::getShape(strides()).size();
+  auto s_dims = Module::getNumElements(strides());
   int32_t begin[8], end[8], step[8], input_shape[8];
   int32_t dims, b_mask, e_mask, shrink_mask;
 

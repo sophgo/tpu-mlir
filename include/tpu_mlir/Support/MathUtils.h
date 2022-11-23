@@ -162,4 +162,5 @@ int StopForAxis(const int *stop_indices, const int *strides,
                 const int mask, const int shrink_mask,
                 const int *shape, const int axis,
                 int start_for_axis);
+std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
 } // namespace tpu_mlir
