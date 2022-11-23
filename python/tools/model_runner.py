@@ -121,8 +121,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_keys = []
         model = onnx.load(onnx_file)
         no_list = [
-            "Cast", "Shape", "Unsqueeze", "Constant", "GRU",
-            "Dropout", "Loop", "TopK"
+            "Cast", "Shape", "Unsqueeze", "Constant", "Dropout", "Loop", "TopK"
         ]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
@@ -130,6 +129,8 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
             if x.op_type in no_list:
                 continue
             for name in x.output:
+                if not name:
+                    continue
                 intermediate_layer_value_info = onnx.helper.ValueInfoProto()
                 intermediate_layer_value_info.name = name
                 model.graph.output.append(intermediate_layer_value_info)

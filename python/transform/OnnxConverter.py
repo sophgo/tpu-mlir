@@ -132,6 +132,7 @@ class OnnxConverter(BaseConverter):
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
             "Identity": lambda node: self.convert_skip_op(node),
+            "GRU": lambda node: self.convert_gru_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
             "LRN": lambda node: self.convert_lrn_op(node),
@@ -1171,10 +1172,45 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_lrn_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_gru_op(self, onnx_node):
+        assert (onnx_node.op_type == "GRU")
+        direction = onnx_node.attrs.get("direction", 'forward')
+        layout = onnx_node.attrs.get("layout", 0)
+        batch_first = True if layout == 1 else False
+        operands = list()
+        operands.append(self.getOperand(onnx_node.inputs[0]))  # in
+        operands.append(self.getWeightOp(onnx_node.inputs[1]))  # W
+        operands.append(self.getWeightOp(onnx_node.inputs[2]))  # R
+        num_inputs = len(onnx_node.inputs)
+        bias_op, init_h_op = self.mlir.none_op, self.mlir.none_op
+        if num_inputs > 3:
+            bias_op = self.getWeightOp(onnx_node.inputs[3])
+        if num_inputs > 4 and len(onnx_node.inputs[4]) != 0:
+            raise RuntimeError("LSTM does not test the case of specify the sequence_lens.")
+        if num_inputs > 5 and len(onnx_node.inputs[5]) != 0:
+            init_h_op = self.getOp(onnx_node.inputs[5])
+        operands.extend([bias_op, init_h_op])
+        p = {
+            "name": [onnx_node.name + '_GRU',onnx_node.name + '_H'],
+            "batch_first": batch_first,
+        }
+        out_shapes = [[], []]
+        out_needs = [False, False]
+        for idx, out in enumerate(onnx_node.outputs):
+            need = len(out) > 0 and self.check_need(out)
+            if need:
+                p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
+                out_needs[idx] = True
+                out_shapes[idx] = self.getShape(out)
+        new_op, h_op = self.mlir.create_gru_op(operands, out_shapes, **p)
+        out_ops = [new_op, h_op]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
     def convert_lstm_op(self, onnx_node):
         assert (onnx_node.op_type == "LSTM")
         direction = onnx_node.attrs.get("direction", 'forward')
-        bidirectional = (direction == b'bidirectional')
         layout = onnx_node.attrs.get("layout", 0)
         batch_first = True if layout == 1 else False
         operands = list()
@@ -1183,26 +1219,25 @@ class OnnxConverter(BaseConverter):
         operands.append(self.getWeightOp(onnx_node.inputs[2]))  # R
         num_inputs = len(onnx_node.inputs)
         bias_op, init_h_op, init_c_op = self.mlir.none_op, self.mlir.none_op, self.mlir.none_op
-        if num_inputs > 3:
+        if num_inputs > 3 and len(onnx_node.inputs[3]) != 0:
             bias_op = self.getWeightOp(onnx_node.inputs[3])
         if num_inputs > 4 and len(onnx_node.inputs[4]) != 0:
             raise RuntimeError("LSTM does not test the case of specify the sequence_lens.")
-        if num_inputs > 5:
+        if num_inputs > 5 and len(onnx_node.inputs[5]) != 0:
             init_h_op = self.getOp(onnx_node.inputs[5])
-        if num_inputs > 6:
+        if num_inputs > 6 and len(onnx_node.inputs[5]) != 0:
             init_c_op = self.getOp(onnx_node.inputs[6])
         operands.extend([bias_op, init_h_op, init_c_op])
         p = {
-            "name": [onnx_node.name + '_0', onnx_node.name + '_1', onnx_node.name + '_2'],
-            "bidirectional": bidirectional,
+            "name": [onnx_node.name + '_LSTM',onnx_node.name + '_H', onnx_node.name +'_C'],
             "batch_first": batch_first,
         }
         out_shapes = [[], [], []]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
             need = len(out) > 0 and self.check_need(out)
-            p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
             if need:
+                p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
         new_op, h_op, c_op = self.mlir.create_lstm_op(operands, out_shapes, **p)

@@ -18,6 +18,7 @@ class Top:
     ConcatOp = 'top.Concat'
     ConvOp = 'top.Conv'
     Depth2SpaceOp = 'top.Depth2Space'
+    GRUOp = 'top.GRU'
     MulOp = 'top.Mul'
     MulConstOp = 'top.MulConst'
     MatMulOp = 'top.MatMul'
@@ -578,6 +579,20 @@ class MLIRImporter(object):
 
         return self.buildOp(Top.LRNOp, operands, [output_type], **param)
 
+    def create_gru_op(self, operands, out_shapes, **kargs):
+        out_types = list()
+        for s in out_shapes:
+            if len(s) == 0:
+                out_types.append(NoneType.get())
+            else:
+                t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
+                out_types.append(t)
+        param = {
+            'name': kargs['name'],
+            'batch_first': BoolAttr.get(kargs['batch_first']),
+        }
+        return self.buildOp(Top.GRUOp, operands, out_types, **param)
+
     def create_lstm_op(self, operands, out_shapes, **kargs):
         out_types = list()
         for s in out_shapes:
@@ -588,7 +603,6 @@ class MLIRImporter(object):
                 out_types.append(t)
         param = {
             'name': kargs['name'],
-            'bidirectional': BoolAttr.get(kargs['bidirectional']),
             'batch_first': BoolAttr.get(kargs['batch_first']),
         }
         return self.buildOp(Top.LSTMOp, operands, out_types, **param)
