@@ -197,9 +197,9 @@ typedef struct {
 void tpu::LSTMOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   auto op = getOperation();
-  auto input_spec = BM1684X::get_spec(
+  auto input_spec = BM168x::get_spec(
       ValueRange{input(), initial_h(), initial_c(), filter()});
-  auto output_spec = BM1684X::get_output_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
   pytorch_lstm_param_t p = {0};
   p.x_global_addr = Module::getAddress(input());

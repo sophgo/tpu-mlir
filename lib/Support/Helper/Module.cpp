@@ -45,7 +45,7 @@ constexpr llvm::StringRef Module::Chip::BM1684;
 constexpr llvm::StringRef Module::Chip::BM1684X;
 constexpr llvm::StringRef Module::Chip::CV182x;
 constexpr llvm::StringRef Module::Chip::CV183x;
-constexpr llvm::StringRef Module::Chip::ATHENA2;
+constexpr llvm::StringRef Module::Chip::BM1686;
 
 
 top::NoneOp Module::getNoneOp(Operation *op) {

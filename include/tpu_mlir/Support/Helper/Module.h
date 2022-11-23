@@ -49,7 +49,7 @@ struct Module {
     static constexpr llvm::StringRef BM1684X = "BM1684X";
     static constexpr llvm::StringRef CV182x = "CV182X";
     static constexpr llvm::StringRef CV183x = "CV183X";
-    static constexpr llvm::StringRef ATHENA2 = "ATHENA2";
+    static constexpr llvm::StringRef BM1686 = "BM1686";
   };
 
   static top::NoneOp getNoneOp(Operation *op);
@@ -193,10 +193,10 @@ struct Module {
   }
   static inline bool isBM1684XFamily(StringRef chip){
     return   (chip == Module::Chip::BM1684X
-            || chip == Module::Chip::ATHENA2);
+            || chip == Module::Chip::BM1686);
   }
-  static inline bool isAthena2(StringRef chip){
-    return (chip == Module::Chip::ATHENA2);
+  static inline bool isBM1686(StringRef chip){
+    return (chip == Module::Chip::BM1686);
   }
 };
 } // namespace helper
