@@ -328,6 +328,31 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_SubOp: Tpu_Op<"Sub",
+    [SupportFuseRelu,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "sub operator";
+
+  let description = [{
+    Elementwise subtraction of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
@@ -993,6 +1018,21 @@ def Tpu_StridedSliceOp: Tpu_Op<"StridedSlice"> {
     I64Attr:$shrink_axis_mask
   );
   let results = (outs AnyTensor:$output);
+}
+
+def Tpu_SplitOp: Tpu_Op<"Split"> {
+  let summary = "Split operator";
+
+  let description = [{
+    Split input tensor into a list of tensors.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$num
+  );
+  let results = (outs Variadic<AnyTensor>:$outputs);
 }
 
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[

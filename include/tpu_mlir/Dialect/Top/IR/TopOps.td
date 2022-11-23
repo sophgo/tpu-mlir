@@ -590,7 +590,7 @@ def Top_SplitOp: Top_Op<"Split"> {
   let summary = "Split operator";
 
   let description = [{
-    Split Operation on input.
+    Split input tensor into a list of tensors.
   }];
 
   let arguments = (

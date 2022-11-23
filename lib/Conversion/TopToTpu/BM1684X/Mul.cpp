@@ -128,7 +128,8 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
         continue;
       }
     }
-    auto input_sub_zp = do_add_zp(input, rewriter.getI16Type(), -zeropoint);
+    auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
+                          input, rewriter.getI16Type(), -zeropoint);
     operands.push_back(input_sub_zp);
   }
   Quant::getScaleAndZeroPoint(op.output(), scale, zeropoint, true);

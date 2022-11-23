@@ -49,6 +49,10 @@ class Top:
     PReluOp = 'top.PRelu'
     InterpOp = 'top.Interp'
     ReduceOp = 'top.Reduce'
+    SubOp = 'top.Sub'
+    PackOp = 'top.Pack'
+    UnpackOp = 'top.Unpack'
+    SplitOp = 'top.Split'
 
 class State:
     TOP_F32 = 'TOP_F32'

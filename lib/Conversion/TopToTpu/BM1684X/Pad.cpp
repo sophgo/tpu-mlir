@@ -44,7 +44,7 @@ void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
 
 void PadLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PadOp op) const {
-  llvm_unreachable("Not Implemented");
+  lowering_common<tpu::PadOp>(rewriter, op, op.output().getType());
 }
 
 } // namespace bm1684x
