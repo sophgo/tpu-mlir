@@ -25,6 +25,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
                       top::OP##Op op) const override;                          \
   };
 
+LOWERING_CV18XX(Abs)
 LOWERING_CV18XX(Add)
 LOWERING_CV18XX(AvgPool)
 LOWERING_CV18XX(Cast)
