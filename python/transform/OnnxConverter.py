@@ -114,6 +114,7 @@ class OnnxConverter(BaseConverter):
             #pls add the Op alphabetically
             "Abs": lambda node: self.convert_abs_op(node),
             "Add": lambda node: self.convert_add_op(node),
+            "Sub": lambda node: self.convert_sub_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
@@ -383,13 +384,18 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         self.addOperand(onnx_node.name, op)
 
-    def convert_add_op(self, onnx_node):
-        assert (onnx_node.op_type == "Add")
+    def convert_addsub_op(self, onnx_node):
+        assert (onnx_node.op_type == "Add" or onnx_node.op_type == "Sub")
         assert (len(onnx_node.inputs) == 2)
         if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
             onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
-            self.convert_add_op(onnx_node)
+            self.onnxop_factory[onnx_node.op_type](onnx_node)
             return
+        create_addsub_op_func_map = {
+            "Add": self.mlir.create_add_op,
+            "Sub": self.mlir.create_sub_op,
+        }
+        create_addsub_op = create_addsub_op_func_map[onnx_node.op_type]
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
         if not self.isWeight(onnx_node.inputs[0]) and self.isWeight(onnx_node.inputs[1]):
             opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
@@ -409,16 +415,22 @@ class OnnxConverter(BaseConverter):
             else:
                 const_op = self.getWeightOp(onnx_node.inputs[1])
                 p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-                scale_op = self.mlir.create_add_op([op0, const_op], output_shape, **p)
+                scale_op = create_addsub_op([op0, const_op], output_shape, **p)
                 self.addOperand(onnx_node.name, scale_op)
                 return
         op0 = self.getOperand(onnx_node.inputs[0])
         op1 = self.getOperand(onnx_node.inputs[1])
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         output_shape = self.getShape(onnx_node.name)
-        add_op = self.mlir.create_add_op([op0, op1], output_shape, **p)
-        self.addOperand(onnx_node.name, add_op)
+        op = create_addsub_op([op0, op1], output_shape, **p)
+        self.addOperand(onnx_node.name, op)
         return
+
+    def convert_add_op(self, onnx_node):
+        self.convert_addsub_op(onnx_node)
+
+    def convert_sub_op(self, onnx_node):
+        self.convert_addsub_op(onnx_node)
 
     def convert_batchnorm_op(self, onnx_node):
         assert (onnx_node.op_type == "BatchNormalization")

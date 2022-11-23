@@ -122,7 +122,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         model = onnx.load(onnx_file)
         no_list = [
             "Cast", "Shape", "Unsqueeze", "Constant", "GRU", "Sqrt", "Pow",
-            "Sub", "Dropout", "Loop", "TopK"
+            "Dropout", "Loop", "TopK"
         ]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
