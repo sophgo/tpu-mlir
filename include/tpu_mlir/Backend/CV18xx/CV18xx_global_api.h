@@ -49,8 +49,8 @@ void cvi_backend_tg_fixed_eltwise_max_kernel(
     int32_t rshift, const int32_t *multipliers, const int32_t *coeffs);
 
 void cvi_backend_tg_fixed_eltwise_mul_kernel(
-    uint32_t layer_id, gaddr_t ga_inputs[],
-    gaddr_t ga_output, int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
+    uint32_t layer_id, gaddr_t ga_inputs[], gaddr_t ga_output,
+    int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
     bool do_relu, bool do_early_stride, int32_t stride_h, int32_t stride_w,
     int32_t rshift, const int32_t *multipliers, const int32_t *coeffs);
 
@@ -152,12 +152,11 @@ void cvi_backend_tg_bf16_eltwise_min_max_kernel(
     bool do_relu, bool do_early_stride, int32_t stride_h, int32_t stride_w,
     const float coeffs[]);
 
-void cvi_backend_tg_bf16_eltwise_mul_kernel(uint32_t layer_id, gaddr_t ga_inputs[],
-                                            gaddr_t ga_output, int32_t operand_num,
-                                            int32_t n, int32_t c, int32_t h, int32_t w,
-                                            bool do_relu, bool do_early_stride,
-                                            int32_t stride_h, int32_t stride_w,
-                                            const float coeffs[]);
+void cvi_backend_tg_bf16_eltwise_mul_kernel(
+    uint32_t layer_id, gaddr_t ga_inputs[], gaddr_t ga_output,
+    int32_t operand_num, int32_t n, int32_t c, int32_t h, int32_t w,
+    bool do_relu, bool do_early_stride, int32_t stride_h, int32_t stride_w,
+    const float coeffs[]);
 
 void cvi_backend_tg_bf16_fc_kernel(
     uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_weight, gaddr_t ga_bias,
@@ -242,10 +241,10 @@ void cvi_backend_tg_int8_bcast_add_kernel(uint32_t layer_id, gaddr_t ga_a,
                                           const int32_t *multipliers);
 
 void cvi_backend_tg_bf16_bcast_add_kernel(uint32_t layer_id, gaddr_t ga_a,
-                                            gaddr_t ga_b, gaddr_t ga_output,
-                                            int an, int ac, int ah, int aw,
-                                            int bn, int bc, int bh, int bw,
-                                            bool do_relu);
+                                          gaddr_t ga_b, gaddr_t ga_output,
+                                          int an, int ac, int ah, int aw,
+                                          int bn, int bc, int bh, int bw,
+                                          bool do_relu);
 
 void cvi_backend_tg_int8_bcast_mul_kernel(uint32_t layer_id, gaddr_t ga_a,
                                           gaddr_t ga_b, gaddr_t ga_output,
@@ -258,7 +257,14 @@ void cvi_backend_tg_int8_bcast_mul_kernel(uint32_t layer_id, gaddr_t ga_a,
 void cvi_backend_tg_bf16_bcast_mul_kernel(uint32_t layer_id, gaddr_t ga_a,
                                           gaddr_t ga_b, gaddr_t ga_output,
                                           int n, int c, int h, int w, int bn,
-                                          int bc, int bh, int bw,
-                                          bool do_relu);
+                                          int bc, int bh, int bw, bool do_relu);
+
+void cvi_backend_tg_fixed_pixel_shuffle_kernel(
+    uint32_t layer_id, gaddr_t ga_ifmap, gaddr_t ga_ofmap, int input_n,
+    int input_c, int input_h, int input_w, int factor, bool isDCR);
+
+void cvi_backend_tg_bf16_pixel_shuffle_kernel(
+    uint32_t layer_id, gaddr_t ga_ifmap, gaddr_t ga_ofmap, int input_n,
+    int input_c, int input_h, int input_w, int factor, bool isDCR);
 } // namespace backend
 } // namespace tpu_mlir
