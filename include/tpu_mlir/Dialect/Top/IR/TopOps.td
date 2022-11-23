@@ -963,7 +963,7 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
     AnyTensor:$input,
     I64ArrayAttr:$axes,
     I64Attr:$keepdims,
-    I64Attr: $type
+    StrAttr: $type
   );
   let results = (outs AnyTensor:$output);
 }

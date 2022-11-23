@@ -634,7 +634,7 @@ class MLIRImporter(object):
             'name': kargs['name'],
             'axes': self.ArrayAttr(kargs['axes']),
             'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
-            'type': IntegerAttr.get(self.mlir_type['INT64'], kargs['type']),
+            'type': StringAttr.get(kargs['type']),
         }
         return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
 

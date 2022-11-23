@@ -1429,7 +1429,6 @@ class ONNX_IR_TESTER(object):
     def test_Reduce2(self, case_name):
         input_shape = [4, 4, 4, 16, 64]
         output_shape = [4, 4, 1, 1, 64]
-        output_shape2 = [4, 4, 64]
 
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
