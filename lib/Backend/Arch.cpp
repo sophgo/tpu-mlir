@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Backend/BM168x/Athena2.h"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
@@ -40,8 +40,8 @@ void Arch::init(const llvm::StringRef chip) {
     inst = &BM1684::instance();
   } else if (chip == Module::Chip::BM1684X) {
     inst = &BM1684X::instance();
-  } else if (chip == Module::Chip::ATHENA2) {
-    inst = &Athena2::instance();
+  } else if (chip == Module::Chip::BM1686) {
+    inst = &BM1686::instance();
   } else if (Module::isCV18xx(chip)) {
     inst = &CV18xx::instance(chip);
   } else {
