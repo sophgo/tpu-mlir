@@ -1296,10 +1296,14 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
 
   let arguments = (ins
     AnyTensor:$input,
+    AnyTensorOrNone:$buffer, // cv18xx reciprocal_table
+    AnyTensorOrNone:$reciprocal_mantissa_table,
     I64ArrayAttr:$axes,
     I64Attr:$keepdims,
-    AnyTensorOrNone:$buffer,
-    I64Attr: $type
+    StrAttr: $type,
+    // for cv18xx
+    OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift
   );
 
   let results = (outs AnyTensor:$output);

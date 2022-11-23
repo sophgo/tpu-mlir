@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -25,6 +25,36 @@ extern "C" {
 #ifndef MAX_SHAPE_DIMS
 #define MAX_SHAPE_DIMS 8
 #endif
+
+static int get_reduce_type(std::string mode) {
+  if (mode == "ReduceMean") {
+    return 0;
+  } else if (mode == "ReduceSum") {
+    return 1;
+  } else if (mode == "ReduceMax") {
+    return 2;
+  } else if (mode == "ReduceMin") {
+    return 3;
+  } else if (mode == "ReduceProd") {
+    return 4;
+  } else if (mode == "ReduceAll") {
+    return 5;
+  } else if (mode == "ReduceAny") {
+    return 6;
+  } else if (mode == "ReduceL2") {
+    return 7;
+  } else if (mode == "ReduceL1") {
+    return 8;
+  } else if (mode == "ReduceSumSquare") {
+    return 9;
+  } else if (mode == "ReduceLogSum") {
+    return 10;
+  } else if (mode == "ReduceLogSumExp") {
+    return 11;
+  } else {
+    llvm_unreachable("unsupport reduce mode.");
+  }
+}
 
 typedef struct reduce_full_common_spec {
   int axis[MAX_SHAPE_DIMS];
@@ -60,7 +90,7 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
   for (int i = 0; i < param.spec.common.axis_num; i++) {
     param.spec.common.axis[i] = axes_val->at(i);
   }
-  param.spec.common.method = type();
+  param.spec.common.method = get_reduce_type(type().str());
   param.spec.common.input_scale = 1.0f;
   param.spec.common.output_scale = 1.0f;
   param.spec.common.keep_dims = keepdims();

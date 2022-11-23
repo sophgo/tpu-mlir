@@ -136,7 +136,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
-//TODO for cv18xx ResizeToConv
+// TODO for cv18xx ResizeToConv
 struct ResizeToConvPattern : public OpRewritePattern<top::InterpOp> {
   using OpRewritePattern::OpRewritePattern;
   LogicalResult matchAndRewrite(top::InterpOp op,
@@ -358,20 +358,12 @@ protected:
     auto to_stype = Module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
-      // for 18xx cpu cast
-      if (auto cpuOp = dyn_cast<tpu::GenericCpuOp>(user)) {
-        if (cpuOp.operation_name() == "quant") {
-          if (type_need_cast(user->getResult(0).getType(), to) == false) {
-            return user->getResult(0);
-          }
-        } else {
-          continue;
-        }
+      if (false == isa<tpu::CastOp>(user) &&
+          false == isa<tpu::GenericCpuOp>(user)) {
+        continue;
       }
-      if (isa<tpu::CastOp>(user)) {
-        if (type_need_cast(user->getResult(0).getType(), to) == false) {
-          return user->getResult(0);
-        }
+      if (type_need_cast(user->getResult(0).getType(), to) == false) {
+        return user->getResult(0);
       }
     }
     auto ctx = v.getContext();

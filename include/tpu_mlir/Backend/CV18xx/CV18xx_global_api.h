@@ -105,6 +105,30 @@ void cvi_backend_tg_fixed_prelu_kernel(uint32_t layer_id, uint64_t ga_input,
                                        int c, int h, int w, int GT_rshift,
                                        int GT_scale, int LE_rshift);
 
+void cvi_backend_tg_fixed_reduce_mean_kernel(uint32_t layer_id,
+                                             gaddr_t ga_input,
+                                             gaddr_t ga_output,
+                                             std::vector<int64_t> shape,
+                                             std::vector<int32_t> axes,
+                                             int multiplier, int rshift);
+
+void cvi_backend_tg_fixed_reduce_sum_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                            gaddr_t ga_output,
+                                            std::vector<int64_t> shape,
+                                            std::vector<int32_t> axes,
+                                            int multiplier, int rshift);
+
+void cvi_backend_tg_fixed_reduce_max_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                            gaddr_t ga_output,
+                                            std::vector<int64_t> shape,
+                                            std::vector<int32_t> axes);
+
+void cvi_backend_tg_fixed_reduce_min_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                            gaddr_t ga_output,
+                                            std::vector<int64_t> shape,
+                                            std::vector<int32_t> axes,
+                                            int multiplier, int rshift);
+
 void cvi_backend_tg_upsample_kernel(uint32_t layer_id, gaddr_t ga_ifmap,
                                     gaddr_t ga_ofmap, uint32_t input_n,
                                     uint32_t input_c, uint32_t input_h,
@@ -177,6 +201,32 @@ void cvi_backend_tg_bf16_lut_mantissa_kernel(
     uint32_t layer_id, gaddr_t bottom_gaddr, gaddr_t top_gaddr,
     gaddr_t exp_lut_table, gaddr_t mantissa_lut_table, int input_n, int input_c,
     int input_h, int input_w, int method);
+
+void cvi_backend_tg_bf16_reduce_mean_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                            gaddr_t ga_output,
+                                            std::vector<int64_t> shape,
+                                            std::vector<int32_t> axes);
+
+void cvi_backend_tg_bf16_reduce_sum_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                           gaddr_t ga_output,
+                                           std::vector<int64_t> shape,
+                                           std::vector<int32_t> axes);
+
+void cvi_backend_tg_bf16_reduce_max_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                           gaddr_t ga_output,
+                                           std::vector<int64_t> shape,
+                                           std::vector<int32_t> axes);
+
+void cvi_backend_tg_bf16_reduce_min_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                           gaddr_t ga_output,
+                                           std::vector<int64_t> shape,
+                                           std::vector<int32_t> axes);
+
+void cvi_backend_tg_bf16_reduce_l2_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                          gaddr_t ga_output, gaddr_t ga_table,
+                                          gaddr_t ga_mantissa_table,
+                                          std::vector<int64_t> shape,
+                                          std::vector<int32_t> axes);
 
 void cvi_backend_tg_bf16_lut_slope_kernel(
     uint32_t layer_id, gaddr_t bottom_gaddr, gaddr_t top_gaddr,
