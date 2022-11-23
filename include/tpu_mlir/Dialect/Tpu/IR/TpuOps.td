@@ -1152,6 +1152,45 @@ def Tpu_LRNOp: Tpu_Op<"LRN", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_GRUOp: Tpu_Op<"GRU",[
+    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+  let summary = "GRU operator";
+
+  let description = [{
+    Perform RNN GRU operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensorOrNone:$recurrence,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$initial_h,
+    AnyTensorOrNone:$buffer,
+    DefaultValuedAttr<BoolAttr, "true">:$linear_before_reset,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
+  );
+
+  let results = (outs
+    AnyTensor:$Y,
+    AnyTensorOrNone:$Y_h);
+
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool output_h;
+    } gru_attr_t;
+    gru_attr_t parseParam();
+  }];
+}
+
 def Tpu_LSTMOp: Tpu_Op<"LSTM",[
     DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "LSTM operator";

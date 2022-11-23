@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "ReduceL2", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
+    "GRU2", "ReduceL2", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill",
     "TorchWhere"
 ]
 
@@ -311,6 +311,7 @@ class ONNX_IR_TESTER(object):
         counter = 0
         for name in onnx_outs:
             if name in top_mlir_outs:
+                print("Compare:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
                 np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=1e-5, atol=1e-1)
@@ -481,7 +482,8 @@ class ONNX_IR_TESTER(object):
         r_data = np.random.rand(num_dir, 3 * hidden_size, hidden_size).astype(np.float32)
         b_data = np.random.rand(num_dir, 6 * hidden_size).astype(np.float32)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, list(input_data.shape))
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT,
+                                              [seq_length, batch_size, input_size])
 
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
                                                [seq_length, num_dir, batch_size, hidden_size])

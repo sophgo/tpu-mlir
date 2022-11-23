@@ -228,7 +228,7 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
   p.bidirection = (attr.num_direction == 2);
   p.num_layers = 1;
   p.dtype = BM168x::getDataType(input());
-  BM168x::call_global_func("backend_api_pytorch_lstm", &p,
+  BM168x::call_global_func("backend_api_pytorch_lstm_global", &p,
                            sizeof(pytorch_lstm_param_t), input_spec->data(),
                            output_spec->data());
 }

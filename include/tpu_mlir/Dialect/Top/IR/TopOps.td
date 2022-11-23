@@ -857,6 +857,43 @@ def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu, InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_GRUOp: Top_Op<"GRU"> {
+  let summary = "GRU operator";
+
+  let description = [{
+    Perform RNN GRU operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensor:$recurrence,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$initial_h,
+    DefaultValuedAttr<BoolAttr, "true">:$linear_before_reset,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
+  );
+
+  let results = (outs
+    AnyTensor:$Y,
+    AnyTensorOrNone:$Y_h);
+
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool output_h;
+    } gru_attr_t;
+    gru_attr_t parseParam();
+  }];
+}
+
 def Top_LSTMOp: Top_Op<"LSTM"> {
   let summary = "LSTM operator";
 

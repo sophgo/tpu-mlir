@@ -24,6 +24,30 @@ namespace tpu_mlir {
 
 namespace bm168x {
 
+class GRUGlobalBuffer : public OpRewritePattern<tpu::GRUOp> {
+public:
+  using OpRewritePattern<tpu::GRUOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::GRUOp GRUOp,
+                                PatternRewriter &rewriter) const override {
+    if (!GRUOp.buffer().getType().isa<mlir::NoneType>()) {
+      return failure();
+    }
+    auto ctx = rewriter.getContext();
+    auto attr = GRUOp.parseParam();
+    auto type = Module::getStorageType(GRUOp.input());
+    // add buffer
+    int64_t buffer_size = attr.batch_size * attr.hidden_size * 5;
+    std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(GRUOp, buffer_type);
+    GRUOp.buffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == GRUOp.buffer();
+    });
+    return success();
+  }
+};
+
 class LSTMGlobalBuffer : public OpRewritePattern<tpu::LSTMOp> {
 public:
   using OpRewritePattern<tpu::LSTMOp>::OpRewritePattern;
@@ -41,7 +65,9 @@ public:
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(lstmOp, buffer_type);
-    lstmOp.buffer().replaceAllUsesWith(buffer);
+    lstmOp.buffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == lstmOp.buffer();
+    });
     return success();
   }
 };
@@ -59,9 +85,9 @@ public:
     auto type = Module::getStorageType(reduceOp.input());
     // add buffer
     /* if reduce n or c, need imm buffer. if reduce h/w, don't need imm buffer
-       if reduce c/h, c/w, n/w, will split it to 2 step at fronted, it will not go here.
-       if reduce c/h/w, n/h/w, need imm buffer .
-       Note: reduce max/mean and n/h, don't support it now (transpose need imm buffer) */
+       if reduce c/h, c/w, n/w, will split it to 2 step at fronted, it will not
+       go here. if reduce c/h/w, n/h/w, need imm buffer . Note: reduce max/mean
+       and n/h, don't support it now (transpose need imm buffer) */
     auto axes_val = Module::getI64Array(reduceOp.axes());
     auto axis_num = axes_val->size();
     auto in_tensor = Module::getShape(reduceOp.input());
@@ -70,30 +96,31 @@ public:
       is_reduce[axes_val->at(i)] = 1;
     }
 
-    /* reducemax/mean and reduce n/w,c/h,c/w, will use max/avg pool to implement it.*/
-    if ((axis_num == 1 && (is_reduce[0] || is_reduce[1]))
-        || (axis_num == 3 && (is_reduce[0] || is_reduce[1]))
-        || (axis_num >= 4 && axis_num == in_tensor.size())) {
-      //calculate the actual imm buffer size according to nodechip_reduce
+    /* reducemax/mean and reduce n/w,c/h,c/w, will use max/avg pool to implement
+     * it.*/
+    if ((axis_num == 1 && (is_reduce[0] || is_reduce[1])) ||
+        (axis_num == 3 && (is_reduce[0] || is_reduce[1])) ||
+        (axis_num >= 4 && axis_num == in_tensor.size())) {
+      // calculate the actual imm buffer size according to nodechip_reduce
       int imm_buffer_size = 0;
-      if (axis_num >=4 && axis_num == in_tensor.size()){
-        for (int i = in_tensor.size() - 3; i >=0; i--){
+      if (axis_num >= 4 && axis_num == in_tensor.size()) {
+        for (int i = in_tensor.size() - 3; i >= 0; i--) {
           imm_buffer_size *= in_tensor[i];
         }
         imm_buffer_size *= sizeof(float_t);
       } else if (axis_num == 1 && (is_reduce[0] || is_reduce[1])) {
-        for (int i = in_tensor.size() - 1; i >=0; i--){
+        for (int i = in_tensor.size() - 1; i >= 0; i--) {
           imm_buffer_size *= in_tensor[i];
         }
-        imm_buffer_size *= sizeof(float_t) *2;
+        imm_buffer_size *= sizeof(float_t) * 2;
       } else if (axis_num == 3 && (is_reduce[0] || is_reduce[1])) {
-        int tmp_val  = sizeof(float_t);
-        for (int i = in_tensor.size() - 3; i >=0; i--){
+        int tmp_val = sizeof(float_t);
+        for (int i = in_tensor.size() - 3; i >= 0; i--) {
           tmp_val *= in_tensor[i];
         }
         imm_buffer_size += tmp_val;
         tmp_val = sizeof(float_t) * 2;
-        for (int i = in_tensor.size() - 1; i >= 0; i--){
+        for (int i = in_tensor.size() - 1; i >= 0; i--) {
           tmp_val *= in_tensor[i];
         }
         imm_buffer_size += tmp_val;
@@ -102,7 +129,9 @@ public:
       std::vector<int64_t> buffer_shape = {1, imm_buffer_size};
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
-      reduceOp.buffer().replaceAllUsesWith(buffer);
+      reduceOp.buffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+        return operand.get() == reduceOp.buffer();
+      });
     }
 
     return success();
@@ -110,8 +139,13 @@ public:
 };
 
 void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
-  patterns->add<LSTMGlobalBuffer>(patterns->getContext());
-  patterns->add<ReduceGlobalBuffer>(patterns->getContext());
+  // clang-format off
+  patterns->add<
+      GRUGlobalBuffer,
+      LSTMGlobalBuffer,
+      ReduceGlobalBuffer
+  >(patterns->getContext());
+  // clang-format on
 }
 
 } // namespace bm168x
