@@ -184,5 +184,25 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
 
-Value do_add_zp(Value input, Type to_type, int64_t zero_point);
+template <typename OpTy>
+Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
+  auto from_stype = Module::getStorageType(input);
+  auto to_stype = Module::getStorageType(to_type);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  auto newType = to_type;
+  newType = RankedTensorType::get(Module::getShape(input), to_stype);
+
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(builder.getNamedAttr("const_val", builder.getF64FloatAttr(scalar)));
+
+  std::string new_name =
+      Module::getName(input.getDefiningOp()).str() + "_binary";
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp = builder.create<OpTy>(name_loc, newType, ValueRange{input}, attrs);
+  return newOp.output();
+}
+
+Value do_reshape(Value input, RankedTensorType to_type);
 } // namespace tpu_mlir

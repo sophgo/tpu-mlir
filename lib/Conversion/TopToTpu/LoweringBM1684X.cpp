@@ -53,7 +53,11 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       UpsampleLowering,
       InterpLowering,
       StridedSliceLowering,
-      ReduceLowering
+      ReduceLowering,
+      PackLowering,
+      UnpackLowering,
+      SplitLowering,
+      SubLowering
       // clang-format on
       >(patterns->getContext());
 }

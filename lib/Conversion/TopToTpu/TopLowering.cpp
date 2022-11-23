@@ -197,23 +197,15 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   return newOp.output();
 }
 
-Value do_add_zp(Value input, Type to_type, int64_t zero_point) {
-  auto from_stype = Module::getStorageType(input);
-  auto to_stype = Module::getStorageType(to_type);
+Value do_reshape(Value input, RankedTensorType to_type) {
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
-  auto newType = to_type;
-  newType = RankedTensorType::get(Module::getShape(input), to_stype);
-
   builder.setInsertionPointAfterValue(input);
-  std::vector<NamedAttribute> attrs;
-  attrs.push_back(builder.getNamedAttr("const_val", builder.getF64FloatAttr(zero_point)));
-
+  std::vector<NamedAttribute> attrs = {};
   std::string new_name =
-      Module::getName(input.getDefiningOp()).str() + "_add_zp";
+      Module::getName(input.getDefiningOp()).str() + "_reshape";
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto newOp = builder.create<tpu::AddConstOp>(name_loc, newType,
-                                               ValueRange{input}, attrs);
+  auto newOp = builder.create<tpu::ReshapeOp>(name_loc, to_type, ValueRange{input}, attrs);
   return newOp.output();
 }
 

@@ -58,7 +58,8 @@ void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   std::vector<Value> operands;
   if (i_zeropoint != 0) {
-    auto sub_zp = do_add_zp(op.input(), rewriter.getI32Type(), -i_zeropoint);
+    auto sub_zp = do_binary_saclar<tpu::AddConstOp>(
+                    op.input(), rewriter.getI32Type(), -i_zeropoint);
     operands.push_back(sub_zp);
   } else {
     operands.push_back(op.input());

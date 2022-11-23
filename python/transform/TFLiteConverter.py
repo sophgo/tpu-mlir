@@ -187,7 +187,8 @@ class TFLiteReader:
                 for i in self.Op.InputsAsNumpy():
                     if i == -1:
                         yield None
-                    yield Tensor(self.G.Tensors(i), i)
+                    else:
+                        yield Tensor(self.G.Tensors(i), i)
 
             def _outputs(self):
                 for i in self.Op.OutputsAsNumpy():
@@ -244,6 +245,7 @@ class TFLiteConverter(BaseConverter):
         self.graph = next(self.tflie.subgraph)
         self.shape_infer = self.__shape_infer(input_shapes)
         self.preprocess_args = preprocess_args
+        self.need_transpose = True
 
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
@@ -275,6 +277,7 @@ class TFLiteConverter(BaseConverter):
         self.type_to_mlir = self.__type2mlir(self.mlir.ctx)
         self.BuiltinOptionsToAttributes = {
             "ADD": self.add_op,
+            "SUB": self.sub_op,
             "PAD": self.pad_op,
             "SOFTMAX": self.softmax_op,
             "MEAN": self.mean_op,
@@ -285,12 +288,18 @@ class TFLiteConverter(BaseConverter):
             "AVERAGE_POOL_2D": self.avgpool_op,
             "DEQUANTIZE": lambda _: ("top.Cast", {}),
             "QUANTIZE": lambda _: ("top.Cast", {}),
+            "CAST": lambda _: ("top.Cast", {}),
             "RESHAPE": lambda _: ("top.Reshape", {}),
             "CONCATENATION": self.concat_op,
             "LOGISTIC": lambda _: ("top.Sigmoid", {}),
             "MUL": self.mul_op,
             "RESIZE_NEAREST_NEIGHBOR": self.resize_nearest_op,
             "STRIDED_SLICE": self.stride_slice_op,
+            "SPLIT": self.split_op,
+            "PACK": self.pack_op,
+            "UNPACK": self.unpack_op,
+            "GATHER": self.gather_op,
+            "TRANSPOSE": self.transpose_op,
         }
         input_types=[]
         for x in self.graph.inputs:
@@ -400,6 +409,8 @@ class TFLiteConverter(BaseConverter):
         return UnrankedTensorType.get(elem_type)
 
     def __nhwc2nchw(self, tensor):
+        if not self.need_transpose:
+            return tensor
         # "layout" is a marker to ensure process each tensor once.
         if hasattr(tensor, "layout"):
             return tensor
@@ -469,6 +480,20 @@ class TFLiteConverter(BaseConverter):
             )
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
         return Top.AddOp, attr
+
+    def sub_op(self, op):
+        from .tflite.SubOptions import SubOptions
+
+        op_options = op.builtin_options
+        param = SubOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        fused_active = param.FusedActivationFunction()
+        if fused_active not in [0, 1]:
+            raise Exception(
+                "Not supported ActivationFunctionType: {}!".format(fused_active)
+            )
+        attr = {"do_relu": BoolAttr.get(fused_active == 1)}
+        return Top.SubOp, attr
 
     def mul_op(self, op):
         from .tflite.AddOptions import AddOptions
@@ -610,6 +635,7 @@ class TFLiteConverter(BaseConverter):
             )
         attr = {
             "do_relu": BoolAttr.get(fused_active == 1),
+            # "right_transpose": BoolAttr.get(True),
         }
         return Top.MatMulOp, attr
 
@@ -659,6 +685,7 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         align_corner = param.AlignCorners()
         half_piexl = param.HalfPixelCenters()
+        assert op.inputs[1].buffer is not None
         scale = op.inputs[1].buffer
         op.inputs = [op.inputs[0]]
         coord_mode = "asymmetric"
@@ -696,6 +723,63 @@ class TFLiteConverter(BaseConverter):
             "new_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], new_axis_mask),
             "shrink_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], shrink_axis_mask),
         }
+
+    def split_op(self, op):
+        from .tflite.SplitOptions import SplitOptions
+        op_options = op.builtin_options
+        param = SplitOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        assert op.inputs[0].buffer is not None
+        axis = op.inputs[0].buffer.tolist()
+        op.inputs.pop(0)
+        attr = {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
+            "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.NumSplits()),
+        }
+        return Top.SplitOp, attr
+
+    def pack_op(self, op):
+        from .tflite.PackOptions import PackOptions
+        op_options = op.builtin_options
+        param = PackOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        attr = {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
+            "values_count": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.ValuesCount()),
+        }
+        return Top.PackOp, attr
+
+    def unpack_op(self, op):
+        from .tflite.UnpackOptions import UnpackOptions
+        op_options = op.builtin_options
+        param = UnpackOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        attr = {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
+            "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Num()),
+        }
+        return Top.UnpackOp, attr
+
+    def gather_op(self, op):
+        from .tflite.GatherOptions import GatherOptions
+        op_options = op.builtin_options
+        param = GatherOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
+        attr = {
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
+            # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
+        }
+        return Top.GatherOp, attr
+
+    def transpose_op(self, op):
+        assert op.inputs[1].buffer is not None
+        perm = op.inputs[1].buffer
+        op.inputs.pop(1)
+        attr = {
+            "order": self.mlir.ArrayAttr(perm),
+            # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
+        }
+        return Top.PermuteOp, attr
 
     def convert_subgraph(self, subgraph):
         class symbolTable:
@@ -744,7 +828,10 @@ class TFLiteConverter(BaseConverter):
             if operation.type is 'RESHAPE':
                 operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
             else:
-                operands = [symbol_table[self.__nhwc2nchw(x)] for x in operation.inputs]
+                operands = []
+                for x in operation.inputs:
+                    operands.append(symbol_table[self.__nhwc2nchw(x)] if x is not None else self.mlir.none_op)
+                # operands = [symbol_table[self.__nhwc2nchw(x)] for x in operation.inputs]
             rst_type = [
                 self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
             ]
