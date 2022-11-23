@@ -1258,6 +1258,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
     AnyTensor:$input,
     I64ArrayAttr:$axes,
     I64Attr:$keepdims,
+    AnyTensorOrNone:$buffer,
     I64Attr: $type
   );
 

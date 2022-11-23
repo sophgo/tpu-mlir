@@ -1091,48 +1091,74 @@ class OnnxConverter(BaseConverter):
         assert(onnx_node.op_type == "ReduceMin"
                 or onnx_node.op_type == "ReduceMax"
                 or onnx_node.op_type == "ReduceMean")
-        input_shape = self.getShape(onnx_node.inputs[0])
+        input_shape_orig = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        num_dims = len(input_shape)
-        assert(num_dims <= 6)
-        reduce_n = reduce_c = reduce_x = reduce_d = reduce_h = reduce_w = 0
-        axes = onnx_node.attrs['axes']
+        num_dims = shape_dims_orig = len(input_shape_orig)
+        assert(shape_dims_orig <= 6)
+        is_reduce_orig = [0] * 8
+        axis_list = [0] * 8
+        input_shape = copy.deepcopy(input_shape_orig)
+        is_reduce = copy.deepcopy(is_reduce_orig)
+        axis_list_orig = onnx_node.attrs['axes']
         keepdims = onnx_node.attrs['keepdims']
-        for i in range(len(axes)):
-            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + num_dims
-            if axes[i] == 0:
-                reduce_n = 1
-            elif axes[i] == 1:
-                reduce_c = 1
-            elif (axes[i] == 2 and num_dims == 6):
-                reduce_x = 1
-            elif (axes[i] == 2 and num_dims == 5) or (axes[i] == 3 and num_dims == 6):
-                reduce_d = 1
-            elif ((axes[i] == 2 and num_dims == 4)
-                   or (axes[i] == 3 and num_dims == 5)
-                    or (axes[i] == 4 and num_dims == 6)):
-                reduce_h = 1
-            elif ((axes[i] == 3 and num_dims == 4)
-                   or (axes[i] == 4 and num_dims == 5)
-                    or (axes[i] == 5 and num_dims == 6)):
-                reduce_w = 1
-        new_out_shape = copy.deepcopy(output_shape)
-        if keepdims:
-            if reduce_w:
-                new_out_shape.pop()
-            if reduce_h and num_dims <= 5:
-                new_out_shape.pop(2 if num_dims == 4 else 3)
-            if reduce_h and num_dims == 6:
-                new_out_shape.pop(4)
-            if reduce_d:
-                new_out_shape.pop(2 if num_dims == 5 else 3)
-            if reduce_x:
-                new_out_shape.pop(2)
-            if reduce_c:
-                new_out_shape.pop(1)
-            if reduce_n:
-                new_out_shape.pop(0)
+        axis_num = len(axis_list_orig)
+        permute_flag = 0
+        new_axis_list = [0] * 1
+        for i in range(len(axis_list_orig)):
+            val = axis_list_orig[i]
+            if val < 0:
+                val += shape_dims_orig
+            is_reduce_orig[val] = 1
+            axis_list[i] = val
 
+        #merge to 4 dims
+        if (shape_dims_orig > 4):
+            minimum_merged_dims = shape_dims_orig
+            current_dims = 0
+            for i in range(1, shape_dims_orig):
+                if (is_reduce_orig[i-1] == 0 and is_reduce_orig[i] == 0):
+                    minimum_merged_dims -= 1
+            assert(minimum_merged_dims <= 4)
+            pos = 0
+            reduce_pos = 0
+            for i in range(1, shape_dims_orig):
+                if (is_reduce_orig[i-1] == 0 and is_reduce_orig[i] == 0
+                    and (shape_dims_orig - current_dims > 4)):
+                    input_shape[pos] *= input_shape[i]
+                    current_dims += 1
+                else:
+                    if (is_reduce_orig[i-1]):
+                        axis_list[reduce_pos] = pos
+                        reduce_pos += 1
+                    pos += 1
+                    input_shape[pos] = input_shape[i]
+
+            if (is_reduce_orig[shape_dims_orig-1]):
+                axis_list[reduce_pos] = pos
+                reduce_pos += 1
+
+            pos += 1
+            assert(pos == 4)
+            num_dims = 4
+            input_shape = input_shape[0:4]
+            axis_num = reduce_pos
+            for i in range(reduce_pos):
+                is_reduce[axis_list[i]] = 1
+        else:
+            for i in range(axis_num):
+                is_reduce[axis_list[i]] = 1
+
+        #if reducemax/mean and reduce n/h, n/w, c/h, c/w, use global pooling to implement it
+        if ((onnx_node.op_type == "ReduceMax" or onnx_node.op_type == "ReduceMean")
+            and ((axis_num == 2 and is_reduce[0] and (is_reduce[2] or is_reduce[3]))
+            or (axis_num == 2 and is_reduce[1] and (is_reduce[2] or is_reduce[3])))):
+            self.convert_other_reduce_op(onnx_node)
+            return
+        elif (onnx_node.op_type == "ReduceMin"
+            and ((axis_num == 2 and is_reduce[0] and (is_reduce[2] or is_reduce[3]))
+            or (axis_num == 2 and is_reduce[1] and (is_reduce[2] or is_reduce[3])))):
+            #if reducemin and reduce n/h, n/w, c/h, c/w, use 2 times reduce to implement it
+            permute_flag = 1
         op = self.getOperand(onnx_node.inputs[0])
         type = 0
         name = "reduce" + str(random.randrange(1,1000,1))
@@ -1143,107 +1169,199 @@ class OnnxConverter(BaseConverter):
             type = 2
         elif onnx_node.op_type == "ReduceMean":
             type = 0
+        new_out_shape = copy.deepcopy(input_shape)
+        if keepdims or permute_flag:
+            if is_reduce[3]:
+                new_out_shape.pop()
+            if is_reduce[2]:
+                new_out_shape.pop(2)
+            if is_reduce[1] and not permute_flag:
+                new_out_shape.pop(1)
+            if is_reduce[0] and not permute_flag:
+                new_out_shape.pop(0)
+            if len(new_out_shape) == 0:
+                new_out_shape.insert(0, 1)
+        if permute_flag:
+            new_axis_list[0] = axis_list_orig[1]
+
         p = {
-            "name": "{}_{}".format(name if (keepdims) else onnx_node.name, onnx_node.op_type),
-            "axes": axes,
+            "name": "{}_{}".format(onnx_node.name, name if (keepdims or permute_flag) else onnx_node.op_type),
+            "axes": axis_list_orig if permute_flag == 0 else new_axis_list,
             "keepdims" : 0,
             "type" : type
         }
-        new_op = self.mlir.create_reduce_op([op], new_out_shape if keepdims else output_shape, **p)
-        self.addOperand(name if (keepdims) else onnx_node.name, new_op)
-        if keepdims:
-            op = new_op
+        op = self.mlir.create_reduce_op([op], new_out_shape if (keepdims or permute_flag) else output_shape, **p)
+        if not (keepdims or permute_flag):
+            self.addOperand(onnx_node.name, op)
+            return
+        if permute_flag:
+            #permute need 4 ndims
+            if len(new_out_shape) < 4:
+                while len(new_out_shape) < 4:
+                    new_out_shape.append(1)
+                name = "reshape" + str(random.randrange(1,1000,1))
+                p = {'name': "{}_{}".format(onnx_node.name, name)}
+                op = self.mlir.create_reshape_op([op], new_out_shape, **p)
+
+            transpose_perm = [0] * len(new_out_shape)
+            for i in range(len(new_out_shape)):
+                transpose_perm[i] = i
+            tranpose_new_output_shape = copy.deepcopy(new_out_shape)
+            tranpose_new_output_shape[axis_list[0]] = new_out_shape[len(new_out_shape)-1]
+            tranpose_new_output_shape[len(new_out_shape)-1] = new_out_shape[axis_list[0]]
+            transpose_perm[axis_list[0]] = len(new_out_shape)-1
+            transpose_perm[len(new_out_shape)-1] = axis_list[0]
+            p = {
+                'name': "{}_{}".format(onnx_node.name, "transpose"),
+                'order': transpose_perm,
+            }
+            op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
+            new_axis_list[0] = len(tranpose_new_output_shape)-1
+            tranpose_new_output_shape.pop()
+            p = {
+            "name": "{}_{}".format(onnx_node.name, "reduce_n_c"),
+            "axes": new_axis_list,
+            "keepdims" : 0,
+            "type" : type
+            }
+            op = self.mlir.create_reduce_op([op], tranpose_new_output_shape, **p)
+             #permute need 4 ndims
+            if len(tranpose_new_output_shape) < 4:
+                while len(tranpose_new_output_shape) < 4:
+                    tranpose_new_output_shape.append(1)
+                name = "reshape" + str(random.randrange(1,1000,1))
+                p = {'name': "{}_{}".format(onnx_node.name, name)}
+                op = self.mlir.create_reshape_op([op], tranpose_new_output_shape, **p)
+
+            val = tranpose_new_output_shape[len(tranpose_new_output_shape) - 1]
+            tranpose_new_output_shape[len(tranpose_new_output_shape) - 1] = tranpose_new_output_shape[axis_list[0]]
+            tranpose_new_output_shape[axis_list[0]] = val
+            transpose_back_perm = [0] * len(tranpose_new_output_shape)
+            for i in range(len(tranpose_new_output_shape)):
+                transpose_back_perm[i] = i
+            transpose_back_perm[axis_list[0]] = len(tranpose_new_output_shape)-1
+            transpose_back_perm[len(tranpose_new_output_shape)-1] = axis_list[0]
+            need_trans_flag = 0
+            for i in range(len(tranpose_new_output_shape)):
+                if transpose_back_perm[i] != i:
+                    need_trans_flag = 1
+                    break
+            if need_trans_flag:
+                p = {
+                    'name': "{}_{}".format(onnx_node.name, "transpose_back"),
+                    'order': transpose_back_perm,
+                }
+                op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
+
+        if keepdims or permute_flag:
             p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-            new_op = self.mlir.create_reshape_op([op], output_shape, **p)
-            self.addOperand(onnx_node.name, new_op)
+            op = self.mlir.create_reshape_op([op], output_shape, **p)
+            self.addOperand(onnx_node.name, op)
 
     def convert_other_reduce_op(self, onnx_node):
-        assert (onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceMax"
-            or onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceProd"
-            or onnx_node.op_type == "ReduceSum" or onnx_node.op_type == "ReduceSumSquare"
-            or onnx_node.op_type == "ReduceL1" or onnx_node.op_type == "ReduceL2"
-            or onnx_node.op_type == "ReduceLogSum" or onnx_node.op_type == "ReduceLogSumExp")
-
-        input_shape = self.getShape(onnx_node.inputs[0])
+        assert (onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceMax")
+        input_shape_orig = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        num_dims = len(input_shape)
-        axes = onnx_node.attrs['axes']
+        num_dims = len(input_shape_orig)
+        assert(num_dims <= 6)
+        axis_list_orig = onnx_node.attrs['axes']
         keepdims = onnx_node.attrs['keepdims']
-        reduce_n = reduce_c = reduce_h = reduce_w = 0
-        stride = [1, 1]
-        for i in range(len(axes)):
-            axes[i] = axes[i] if axes[i] >= 0 else axes[i] + num_dims
-            if axes[i] == 0:
-                reduce_n = 1
-            elif axes[i] == 1:
-                reduce_c = 1
-            elif axes[i] == 2:
-                reduce_h = 1
-            else:
-                reduce_w = 1
+        if onnx_node.op_type == "ReduceMean":
+            op_type = "GlobalAveragePool"
+        elif onnx_node.op_type == "ReduceMax":
+            op_type = "GlobalMaxPool"
+
+        is_reduce_orig = [0] * 8
+        axis_list = [0] * 8
+        input_shape = copy.deepcopy(input_shape_orig)
+        is_reduce = copy.deepcopy(is_reduce_orig)
+        axis_num = len(axis_list_orig)
+        reorg_flag = 0
+        for i in range(len(axis_list_orig)):
+            val = axis_list_orig[i]
+            if val < 0:
+                val += num_dims
+            is_reduce_orig[val] = 1
+            axis_list[i] = val
+
+        if (num_dims > 4):
+            minimum_merged_dims = num_dims
+            current_dims = 0
+            for i in range(1, num_dims):
+                if (is_reduce_orig[i-1] == 0 and is_reduce_orig[i] == 0):
+                    minimum_merged_dims -= 1
+            assert(minimum_merged_dims <= 4)
+            pos = 0
+            reduce_pos = 0
+            for i in range(1, num_dims):
+                if (is_reduce_orig[i-1] == 0 and is_reduce_orig[i] == 0
+                    and (num_dims - current_dims > 4)):
+                    input_shape[pos] *= input_shape[i]
+                    current_dims += 1
+                else:
+                    if (is_reduce_orig[i-1]):
+                        axis_list[reduce_pos] = pos
+                        reduce_pos += 1
+                    pos += 1
+                    input_shape[pos] = input_shape[i]
+
+            if (is_reduce_orig[num_dims-1]):
+                axis_list[reduce_pos] = pos
+                reduce_pos += 1
+
+            pos += 1
+            assert(pos == 4)
+            input_shape = input_shape[0:4]
+            axis_num = reduce_pos
+            num_dims = 4
+            reorg_flag = 1
+            for i in range(reduce_pos):
+                is_reduce[axis_list[i]] = 1
+        else:
+            for i in range(axis_num):
+                is_reduce[axis_list[i]] = 1
 
         op = self.getOperand(onnx_node.inputs[0])
+        #reshape
+        if reorg_flag:
+            p = {'name': "{}_{}".format(onnx_node.name, "reshape")}
+            op = self.mlir.create_reshape_op([op], input_shape, **p)
+
         # yapf: disable
         #if reducemean the h, w, or h & w, replace it with avgpool
-        if (onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_w and reduce_h):
+        if (is_reduce[3] or is_reduce[2]):
             name = "reduce_w_h"
-            num_dims = len(input_shape) - 2
-            p = {
-                'name': "{}_{}".format(onnx_node.name, name if (reduce_n or reduce_c) else onnx_node.op_type),
-                'kernel_shape': input_shape[2:],
-                'strides': num_dims * [1],
-                'pads': num_dims * 2 * [0],
-                'count_include_pad': True,
-                'do_relu': False,
-            }
-        elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_w:
-            num_dims = len(input_shape) - 2
+            num_dim = len(input_shape) - 2
             kernel_shape = [1, 1]
-            kernel_shape[1] = input_shape[3]
-            name = "reduce_w"
+            if is_reduce[2]:
+                kernel_shape[0] = input_shape[2]
+            if is_reduce[3]:
+                kernel_shape[1] = input_shape[3]
             p = {
-                'name': "{}_{}".format(onnx_node.name, name if (reduce_n or reduce_c) else onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if (is_reduce[0] or is_reduce[1] or (keepdims == 0)) else onnx_node.op_type),
                 'kernel_shape': kernel_shape,
-                'strides': stride,
-                'pads': num_dims * 2 * [0],
+                'strides': num_dim * [1],
+                'pads': num_dim * 2 * [0],
                 'count_include_pad': True,
                 'do_relu': False,
             }
-        elif onnx_node.op_type == "ReduceMean" and num_dims == 4 and reduce_h:
-            num_dims = len(input_shape) - 2
-            kernel_shape = [1, 1]
-            kernel_shape[0] = input_shape[2]
-            name = "reduce_h"
-            p = {
-                'name': "{}_{}".format(onnx_node.name, name if (reduce_n or reduce_c) else onnx_node.op_type),
-                'kernel_shape': kernel_shape,
-                'strides': stride,
-                'pads': num_dims * 2 * [0],
-                'count_include_pad': True,
-                'do_relu': False,
-            }
+
         # yapf: enable
         new_out_shape = copy.deepcopy(input_shape)
-        if reduce_w:
-            if keepdims:
-                new_out_shape[3] = 1
-            else:
-                new_out_shape.pop()
-        if reduce_h:
-            if keepdims:
-                new_out_shape[2] = 1
-            else:
-                new_out_shape.pop()
+        if is_reduce[3]:
+            new_out_shape[3] = 1
+        if is_reduce[2]:
+            new_out_shape[2] = 1
 
         #reduce h、w or h & w firstly
-        if (reduce_w or reduce_h):
-            op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
-            if (not (reduce_n or reduce_c)):
-                self.addOperand(onnx_node.name, op)
-                return
+        if (is_reduce[3] or is_reduce[2]):
+            if op_type == "GlobalAveragePool":
+                op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
+            elif op_type == "GlobalMaxPool":
+                op = self.mlir.create_maxpool_op([op], new_out_shape, **p)
 
         # reduce_c
-        if reduce_c:
+        if is_reduce[1]:
             #tranpose the c/w firstly
             transpose_perm = [0, 3, 2, 1]
             assert (len(new_out_shape) == len(transpose_perm))
@@ -1255,7 +1373,7 @@ class OnnxConverter(BaseConverter):
                 'order': transpose_perm,
             }
             op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            num_dims = len(tranpose_new_output_shape) - 2
+            num_dim = len(tranpose_new_output_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[1] = tranpose_new_output_shape[3]
             new_out_shape = copy.deepcopy(tranpose_new_output_shape)
@@ -1263,39 +1381,43 @@ class OnnxConverter(BaseConverter):
             p = {
                 'name': "{}_{}".format(onnx_node.name, "reduce_c"),
                 'kernel_shape': kernel_shape,
-                'strides': stride,
-                'pads': num_dims * 2 * [0],
+                'strides': num_dim * [1],
+                'pads': num_dim * 2 * [0],
                 'count_include_pad': True,
                 'do_relu': False,
             }
-            op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
+            if op_type == "GlobalAveragePool":
+                op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
+            elif op_type == "GlobalMaxPool":
+                op = self.mlir.create_maxpool_op([op], new_out_shape, **p)
 
             #tranpose w/c again
-            transpose_perm = [0, 3, 2, 1]
-            assert (len(new_out_shape) == len(transpose_perm))
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
             tranpose_new_output_shape[1] = new_out_shape[3]
             tranpose_new_output_shape[3] = new_out_shape[1]
             name = "tranpose_c_back"
             p = {
-                'name': "{}_{}".format(onnx_node.name, name if reduce_n else onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if (is_reduce[0] or keepdims == 0 \
+                          or reorg_flag or len(tranpose_new_output_shape) != len(output_shape))
+                            else onnx_node.op_type),
                 'order': transpose_perm,
             }
             op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            if not reduce_n:
+            if not (is_reduce[0] or keepdims == 0 or reorg_flag \
+                    or len(tranpose_new_output_shape) != len(output_shape)):
                 self.addOperand(onnx_node.name, op)
                 return
 
         #reduce_n
-        if reduce_n:
+        if is_reduce[0]:
             #tranpose the n/w firstly
             transpose_perm = [3, 1, 2, 0]
             new_out_shape = copy.deepcopy(input_shape)
-            if reduce_w:
+            if is_reduce[3]:
                 new_out_shape[3] = 1
-            if reduce_h:
+            if is_reduce[2]:
                 new_out_shape[2] = 1
-            if reduce_c:
+            if is_reduce[1]:
                 new_out_shape[1] = 1
             assert (len(new_out_shape) == len(transpose_perm))
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
@@ -1306,20 +1428,24 @@ class OnnxConverter(BaseConverter):
                 'order': transpose_perm,
             }
             op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            num_dims = len(tranpose_new_output_shape) - 2
+            num_dim = len(tranpose_new_output_shape) - 2
             kernel_shape = [1, 1]
             kernel_shape[1] = tranpose_new_output_shape[3]
             new_out_shape = copy.deepcopy(tranpose_new_output_shape)
             new_out_shape[3] = 1
             p = {
-                'name': "{}_{}".format(onnx_node.name, "avgpool_n"),
+                'name': "{}_{}".format(onnx_node.name, "avgpool_n" if op_type == "GlobalAveragePool" else "maxpool_n"),
                 'kernel_shape': kernel_shape,
-                'strides': stride,
-                'pads': num_dims * 2 * [0],
+                'strides': num_dim * [1],
+                'pads': num_dim * 2 * [0],
                 'count_include_pad': True,
                 'do_relu': False,
             }
-            op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
+
+            if op_type == "GlobalAveragePool":
+                op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
+            elif op_type == "GlobalMaxPool":
+                op = self.mlir.create_maxpool_op([op], new_out_shape, **p)
 
             #tranpose w/c again
             transpose_perm = [3, 1, 2, 0]
@@ -1327,12 +1453,21 @@ class OnnxConverter(BaseConverter):
             tranpose_new_output_shape = copy.deepcopy(new_out_shape)
             tranpose_new_output_shape[0] = new_out_shape[3]
             tranpose_new_output_shape[3] = new_out_shape[0]
+            name = "tranpose_n_back"
             p = {
-                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'name': "{}_{}".format(onnx_node.name, name if (keepdims == 0 or reorg_flag \
+                  or len(tranpose_new_output_shape) != len(output_shape)) else onnx_node.op_type),
                 'order': transpose_perm,
             }
             op = self.mlir.create_permute_op([op], tranpose_new_output_shape, **p)
-            self.addOperand(onnx_node.name, op)
+            if not (keepdims == 0 or reorg_flag
+                     or len(tranpose_new_output_shape) != len(output_shape)):
+                self.addOperand(onnx_node.name, op)
+                return
+        #reshape
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        op = self.mlir.create_reshape_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, op)
 
     def convert_lrn_op(self, onnx_node):
         assert onnx_node.op_type == "LRN"

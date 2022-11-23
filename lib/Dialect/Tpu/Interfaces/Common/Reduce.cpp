@@ -1032,6 +1032,10 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
         for (int i = 0; i < reduce_pos; i++){
             is_reduce[axis_list[i]] = 1;
         }
+    } else {
+        for (int i = 0; i < num_axes; i++) {
+            is_reduce[axis_list[i]] = 1;
+        }
     }
 
     if (num_dims == 1){
