@@ -120,7 +120,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   }
 }
 
-Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
+Value do_dequant(Location name_loc, Value input, Type to_type,
+                 int64_t multiplier, int64_t shift,
                  tpu::DequantMode mode, int64_t lshift) {
   auto from_stype = Module::getStorageType(input);
   auto to_stype = Module::getStorageType(to_type);
@@ -142,9 +143,6 @@ Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
   attrs.push_back(
       builder.getNamedAttr("quant_mode", tpu::DequantModeAttr::get(ctx, mode)));
 
-  std::string new_name =
-      Module::getName(input.getDefiningOp()).str() + "_dequant";
-  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   auto newOp = builder.create<tpu::DequantIntOp>(name_loc, newType,
                                                  ValueRange{input}, attrs);
   return newOp.output();
@@ -208,6 +206,50 @@ Value do_reshape(Value input, RankedTensorType to_type) {
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   auto newOp = builder.create<tpu::ReshapeOp>(name_loc, to_type, ValueRange{input}, attrs);
   return newOp.output();
+}
+
+int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
+                        int64_t lshift) {
+  auto qtype = Quant::getUniformQuantizedType(input);
+  auto input_stype = Module::getStorageType(input);
+  auto input_quant =
+      cast<top::WeightOp>(input.getDefiningOp()).read<int8_t>();
+  int64_t input_offset = qtype.getZeroPoint();
+  int32_t input_data = input_stype.isUnsignedInteger(8) ?
+                       (uint8_t)(input_quant->at(0)) : input_quant->at(0);
+  int64_t tmp = (input_data - input_offset) * multiplier;
+  auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
+  v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+  return v;
+}
+
+Value do_weight_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
+                        int64_t lshift) {
+  auto op = input.getDefiningOp();
+  auto qtype = Quant::getUniformQuantizedType(input);
+  auto input_stype = Module::getStorageType(input);
+  int64_t num_elem = Module::getNumElements(input);
+  auto input_dequant = std::make_shared<std::vector<int32_t>>(num_elem);
+  auto input_quant =
+      cast<top::WeightOp>(input.getDefiningOp()).read<int8_t>();
+  int64_t input_offset = qtype.getZeroPoint();
+  if (input_stype.isUnsignedInteger(8)) {
+    for (int64_t idx = 0; idx < num_elem; idx++) {
+      int64_t tmp = ((uint8_t)(input_quant->at(idx)) - input_offset) * multiplier;
+      auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
+      v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+      input_dequant->data()[idx] = v;
+    }
+  } else {
+    for (int64_t idx = 0; idx < num_elem; idx++) {
+      int64_t tmp = (input_quant->at(idx) - input_offset) * multiplier;
+      auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
+      v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+      input_dequant->data()[idx] = v;
+    }
+  }
+  auto new_type = RankedTensorType::get(Module::getShape(input), to_type);
+  return top::WeightOp::create(op, "_dequant", *input_dequant, new_type);
 }
 
 } // namespace tpu_mlir

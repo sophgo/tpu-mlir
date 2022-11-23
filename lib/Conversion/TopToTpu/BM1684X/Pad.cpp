@@ -68,8 +68,12 @@ void PadLowering::LoweringF16(PatternRewriter &rewriter, top::PadOp op) const {
 
 void PadLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PadOp op) const {
-  lowering_common<tpu::PadOp>(rewriter, op,
-                              Module::getStorageType(op.output()));
+  std::vector<Value> operands;
+  operands.push_back(op.input());
+  operands.push_back(Module::getNoneOp(op));
+  operands.push_back(Module::getNoneOp(op));
+  rewriter.replaceOpWithNewOp<tpu::PadOp>(op, op.output().getType(),
+                                          operands, op->getAttrs());
 }
 
 } // namespace bm1684x

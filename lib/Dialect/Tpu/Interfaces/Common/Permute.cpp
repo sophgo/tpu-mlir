@@ -48,6 +48,12 @@ LogicalResult tpu::PermuteOp::inference(InferenceParameter &p) {
   for (int i = 0; i < num_dims; i++) {
     order.emplace_back(perm->at(i));
   }
+  for (int i = num_dims; i < 4; ++i) {
+    order.emplace_back(i);
+  }
+  if (num_dims < 4) {
+    in_shape.resize(4, 1);
+  }
   if (num_dims > 4) {
     // remove dims = 1
     while (num_dims > 4) {

@@ -39,6 +39,22 @@ public:
   };
 
   template <typename T>
+  inline Binary &lhs(T *lhs, std::vector<int64_t> lhs_shape) {
+    auto mds =
+        memory::desc(lhs_shape, data_traits<T>::data_type, get_tag(lhs_shape));
+    lhs_mem = memory(mds, eng, lhs);
+    return *this;
+  };
+
+  template <typename T>
+  inline Binary &rhs(T *rhs, std::vector<int64_t> rhs_shape) {
+    auto mds =
+        memory::desc(rhs_shape, data_traits<T>::data_type, get_tag(rhs_shape));
+    rhs_mem = memory(mds, eng, rhs);
+    return *this;
+  };
+
+  template <typename T>
   inline Binary &dst(T *dst, llvm::ArrayRef<int64_t> ret_shape) {
     auto mds =
         memory::desc(ret_shape, data_traits<T>::data_type, get_tag(ret_shape));

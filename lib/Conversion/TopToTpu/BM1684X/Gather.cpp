@@ -53,7 +53,7 @@ void GatherLowering::LoweringF16(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::GatherOp op) const {
-  llvm_unreachable("Not Implemented");
+  lowering_common<tpu::GatherOp>(rewriter, op, op.output().getType());
 }
 
 } // namespace bm1684x

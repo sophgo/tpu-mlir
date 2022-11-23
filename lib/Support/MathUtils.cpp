@@ -843,5 +843,12 @@ int StopForAxis(const int *stop_indices, const int *strides,
   return stop;
 }
 
-
+std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
+  int diff = dims - shape.size();
+  if (diff == 0)
+    return shape.vec();
+  std::vector<int64_t> shape_v(shape.begin(), shape.end());
+  shape_v.insert(shape_v.begin(), diff, 1);
+  return shape_v;
+}
 } // namespace tpu_mlir

@@ -353,6 +353,31 @@ def Tpu_SubOp: Tpu_Op<"Sub",
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_SubConstOp: Tpu_Op<"SubConst",
+    [SupportFuseRelu, InOutSameShape,
+    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "sub const operator";
+
+  let description = [{
+    Elementwise subtraction of input1 and input2. Input1 or Input2 is constant.
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$input,
+    F64Attr:$const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    // quant param
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {

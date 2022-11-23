@@ -19,10 +19,15 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 LogicalResult tpu::SubOp::init(InferenceParameter &p) {
+  auto in0_shape = Module::getShape(inputs()[0]);
+  auto in1_shape = Module::getShape(inputs()[1]);
+  int dims = std::max(in0_shape.size(), in1_shape.size());
+  auto input0_shape = shape_expand_dim(in0_shape, dims);
+  auto input1_shape = shape_expand_dim(in1_shape, dims);
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
+      .lhs(p.inputs[0], in0_shape)
+      .rhs(p.inputs[1], in1_shape)
       .dst(p.outputs[0], Module::getShape(output()))
       .do_relu(do_relu())
       .relu_limit(relu_limit().convertToDouble())

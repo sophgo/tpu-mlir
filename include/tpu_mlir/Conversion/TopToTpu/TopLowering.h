@@ -48,7 +48,8 @@ public:
   LogicalResult matchAndRewrite(OpTy opTy,
                                 PatternRewriter &rewriter) const override {
     Operation *op = opTy.getOperation();
-    if (LoweringConfig::isQuantized) {
+    bool isQuantized = LoweringConfig::isQuantized;
+    if (isQuantized) {
       LoweringQuantized(rewriter, opTy);
       return success();
     }
@@ -174,7 +175,8 @@ Value do_transfer(Value in, Value out, bool asymmetric);
 Value do_transfer_fp(Value in, Value out, bool asymmetric);
 
 // from int8 to int32
-Value do_dequant(Value input, Type to_type, int64_t multiplier, int64_t rshift,
+Value do_dequant(Location name_loc, Value input, Type to_type,
+                 int64_t multiplier, int64_t rshift,
                  tpu::DequantMode mode, int64_t lshift);
 
 // from int8 to int32
@@ -207,4 +209,8 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
 }
 
 Value do_reshape(Value input, RankedTensorType to_type);
+Value do_weight_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
+                        int64_t lshift);
+int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
+                        int64_t lshift);
 } // namespace tpu_mlir

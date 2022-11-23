@@ -34,7 +34,15 @@ void SplitLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SplitLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SplitOp op) const {
-  lowering_common<tpu::SplitOp>(rewriter, op, op.input().getType());
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  std::vector<Type> new_types;
+  for (auto out : op.getResults()) {
+    new_types.push_back(out.getType());
+  }
+  rewriter.replaceOpWithNewOp<tpu::SplitOp>(op, new_types, ValueRange{op.input()}, attrs);
 }
 
 } // namespace bm1684x
