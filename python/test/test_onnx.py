@@ -1758,6 +1758,10 @@ class ONNX_IR_TESTER(object):
     def test_BroadcastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
+        if self.chip.find("cv18") >= 0:
+            ## 18xx: only broadcast right opd and broadcast continuous axis is supported
+            input_shape = {"input1": [2, 3, 4, 27], "input2": [2, 3, 1, 1]}
+            output_shape = [2, 3, 4, 27]
         input_data = {k: np.random.randn(*x).astype(np.float32) for k, x in input_shape.items()}
         inputs = [
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
@@ -1771,7 +1775,11 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 127, 270, 28]
         constant_shape = [2, 1, 1, 28]
         output_shape = [2, 127, 270, 28]
-
+        if self.chip.find("cv18") >= 0:
+            #18xx: only broadcast right opd and broadcast continuous axis is supported
+            input_shape = [2, 127, 270, 28]
+            constant_shape = [1, 1, 1, 28]
+            output_shape = [2, 127, 270, 28]
         input_data = {"input": np.random.randn(*input_shape).astype(np.float32)}
         inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
         constant = helper.make_tensor(

@@ -237,5 +237,19 @@ void cvi_backend_tg_bf16_bcast_add_kernel(uint32_t layer_id, gaddr_t ga_a,
                                             int an, int ac, int ah, int aw,
                                             int bn, int bc, int bh, int bw,
                                             bool do_relu);
+
+void cvi_backend_tg_int8_bcast_mul_kernel(uint32_t layer_id, gaddr_t ga_a,
+                                          gaddr_t ga_b, gaddr_t ga_output,
+                                          int32_t an, int32_t ac, int32_t ah,
+                                          int32_t aw, int32_t bn, int32_t bc,
+                                          int32_t bh, int32_t bw, bool do_relu,
+                                          const int32_t rshift,
+                                          const int32_t *multipliers);
+
+void cvi_backend_tg_bf16_bcast_mul_kernel(uint32_t layer_id, gaddr_t ga_a,
+                                          gaddr_t ga_b, gaddr_t ga_output,
+                                          int n, int c, int h, int w, int bn,
+                                          int bc, int bh, int bw,
+                                          bool do_relu);
 } // namespace backend
 } // namespace tpu_mlir
