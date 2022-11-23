@@ -12,29 +12,54 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void ReduceLowering::LoweringF32(PatternRewriter &rewriter,
-                                   top::ReduceOp op) const {
-  lowering_common_f32<tpu::ReduceOp>(rewriter, op);
+static void LoweringReduce(PatternRewriter &rewriter, top::ReduceOp op, Type type) {
+  auto ctx = rewriter.getContext();
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    auto opd = op->getOperand(i);
+    operands.push_back(opd);
+  }
+  // add buffer
+  operands.push_back(Module::getNoneOp(op));
+  auto output = op->getResult(0);
+  Type newType;
+  if (type.isF32()) {
+   newType = output.getType();
+  } else if (type.isF16()) {
+    newType = getQuantF16Type(output);
+  } else if (type.isBF16()) {
+    newType = getQuantBF16Type(output);
+  }
+
+  rewriter.replaceOpWithNewOp<tpu::ReduceOp>(op, newType, operands, op->getAttrs());
+  return;
 }
 
-void ReduceLowering::LoweringINT8(PatternRewriter &rewriter,
-                                    top::ReduceOp op, bool asymmetric) const {
-  lowering_common_f16<tpu::ReduceOp>(rewriter, op);
+void ReduceLowering::LoweringF32(PatternRewriter &rewriter,
+                               top::ReduceOp op) const {
+  LoweringReduce(rewriter, op, rewriter.getF32Type());
+}
+
+void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
+                                bool asymmetric) const {
+  LoweringReduce(rewriter, op, rewriter.getF16Type());
 }
 
 void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,
-                                    top::ReduceOp op) const {
-  lowering_common_bf16<tpu::ReduceOp>(rewriter, op);
+                                top::ReduceOp op) const {
+  LoweringReduce(rewriter, op, rewriter.getBF16Type());
 }
 
 void ReduceLowering::LoweringF16(PatternRewriter &rewriter,
-                                   top::ReduceOp op) const {
-  lowering_common_f16<tpu::ReduceOp>(rewriter, op);
+                               top::ReduceOp op) const {
+  LoweringReduce(rewriter, op, rewriter.getF16Type());
 }
 
 void ReduceLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                         top::ReduceOp op) const {
-  lowering_common<tpu::ReduceOp>(rewriter, op, op.output().getType());
+                                     top::ReduceOp op) const {
+  llvm_unreachable("Not Implemented");
 }
 
 } // namespace bm1684x

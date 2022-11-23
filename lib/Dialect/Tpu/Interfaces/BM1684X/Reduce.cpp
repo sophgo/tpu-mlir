@@ -66,6 +66,9 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
   param.spec.common.keep_dims = keepdims();
   param.spec.buffer_addr = 0x0;
   param.if_getting_buffer_size = false;
+  if (buffer().getType().isa<NoneType>() == false) {
+        param.spec.buffer_addr = Module::getAddress(buffer());
+  }
   BM168x::call_global_func("backend_api_reduce_full_global", &param,
                            sizeof(reduce_full_global_param_t),
                            input_spec->data(), output_spec->data());
