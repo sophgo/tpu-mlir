@@ -934,6 +934,9 @@ def Tpu_PadOp:Tpu_Op<"Pad"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    // for cv18xx reflect mode
+    AnyTensorOrNone:$left_select,
+    AnyTensorOrNone:$right_select,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
     DefaultValuedAttr<I64Attr, "0">:$mode

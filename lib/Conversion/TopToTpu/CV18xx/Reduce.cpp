@@ -79,8 +79,7 @@ void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,
     bf16_gen_exponent_mantissa_table("pow", exp_table.data(),
                                      mantissa_table.data(), 0.5f, 0.f);
     auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
-    OpBuilder builder(op->getContext());
-    auto table_type = RankedTensorType::get(shape, builder.getF32Type());
+    auto table_type = RankedTensorType::get(shape, rewriter.getF32Type());
     auto vtable = top::WeightOp::create(op, "reciprocal_table",
                                         exp_table, table_type);
     auto vmantissa = top::WeightOp::create(
