@@ -12,7 +12,6 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static double active_exp(double val) { return std::exp(val); }
 
 void ExpLowering::LoweringF32(PatternRewriter &rewriter, top::ExpOp op) const {
   lowering_common_f32<tpu::ExpOp>(rewriter, op.getOperation());
@@ -22,8 +21,8 @@ void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
   auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
-  Value table =
-      create_lookup_table(op.input(), op.output(), active_exp, asymmetric);
+  Value table = create_lookup_table(op.input(), op.output(), asymmetric,
+                                    [](double val) { return std::exp(val); });
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

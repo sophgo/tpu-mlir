@@ -48,12 +48,6 @@ typedef double (*activate_f2)(double, double);
 Value create_lookup_table(Value in, Value out, bool asymmetric,
                           std::function<double(double)> &&func);
 
-Value create_lookup_table(Value in, Value out, activate_f func,
-                          bool asymmetric);
-
-Value create_lookup_table(Value in, Value out, activate_f2 func, double param,
-                          bool asymmetric);
-
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 
 void bf16_gen_base_slope_table(float *base_table, float *slope_table,

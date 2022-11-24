@@ -19,7 +19,8 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
   auto stype = Module::getStorageType(op.output());
   double const_val = op.const_val().convertToDouble();
   Value table =
-      create_lookup_table(op.input(), op.output(), active_mulconst, const_val, asymmetric);
+      create_lookup_table(op.input(), op.output(), asymmetric,
+                          [const_val](double val) { return val * const_val; });
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

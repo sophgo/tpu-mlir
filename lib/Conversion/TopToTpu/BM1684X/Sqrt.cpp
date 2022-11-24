@@ -13,18 +13,16 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::SqrtOp op) const {
+                               top::SqrtOp op) const {
   lowering_common_f32<tpu::SqrtOp>(rewriter, op.getOperation());
 }
-
-static double active_sqrt(double val) { return std::sqrt(val); }
 
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
                                 bool asymmetric) const {
   auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
-  auto table =
-      create_lookup_table(op.input(), op.output(), active_sqrt, asymmetric);
+  auto table = create_lookup_table(op.input(), op.output(), asymmetric,
+                                   [](double val) { return std::sqrt(val); });
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -37,17 +35,17 @@ void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
 }
 
 void SqrtLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::SqrtOp op) const {
+                                top::SqrtOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void SqrtLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::SqrtOp op) const {
+                               top::SqrtOp op) const {
   LoweringF32(rewriter, op);
 }
 
 void SqrtLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::SqrtOp op) const {
+                                     top::SqrtOp op) const {
   llvm_unreachable("Not Implemented");
 }
 

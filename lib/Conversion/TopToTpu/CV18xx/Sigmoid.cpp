@@ -18,7 +18,8 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());
   Value table =
-      create_lookup_table(op.input(), op.output(), active_sigmoid, asymmetric);
+      create_lookup_table(op.input(), op.output(), asymmetric,
+                          [](double val) { return 1 / (1 + std::exp(-val)); });
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
