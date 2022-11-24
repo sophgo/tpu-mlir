@@ -22,11 +22,9 @@ static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
                           std::vector<int64_t> &os_4, std::vector<int> &pad_4) {
   std::vector<int64_t> is, os, pads;
   auto castOp = llvm::dyn_cast<tpu::PadOp>(op);
-  auto _is = Module::getShape(castOp.input());
-  auto _os = Module::getShape(castOp.output());
+  Module::getShapeVec(castOp.input(), is);
+  Module::getShapeVec(castOp.output(), os);
   auto _pads = Module::getI64Array(castOp.paddings());
-  is.assign(_is.begin(), _is.end());
-  os.assign(_os.begin(), _os.end());
   pads.assign(_pads->begin(), _pads->end());
 
   int num_dims = is.size();
@@ -92,7 +90,7 @@ static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::PadOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
 
   std::string s_model;
   std::vector<int64_t> i_s;
@@ -102,25 +100,40 @@ void tpu::PadOp::codegen_global_cv18xx( int64_t layer_id) {
   gaddr_t ga_output = Module::getAddress(output());
   cvk_fmt_t fmt =
       Quant::isUniformQuantized(output()) ? CVK_FMT_I8 : CVK_FMT_BF16;
-  parsePadParam(getOperation(), i_s, o_s, pads);
-  float const_val = val().convertToDouble();
+  if (mode() == 0) {
+    parsePadParam(getOperation(), i_s, o_s, pads);
+    float const_val = val().convertToDouble();
+    cvi_backend_tg_pad_kernel(layer_id, ga_input, ga_output, i_s[0], i_s[1],
+                              i_s[2], i_s[3], pads.data(), const_val,
+                              "constant", fmt);
+  } else if (mode() == 1) {
+    // reflect
+    std::vector<int> pads(4, 0);
+    auto num_dims = Module::getShape(input()).size();
+    auto _pads = Module::getI64Array(paddings());
+    pads[0] = _pads->at(num_dims - 1);
+    pads[1] = _pads->at(num_dims * 2 - 1);
+    pads[num_dims * 2 - 1] = 0;
+    if (num_dims == 4 || num_dims == 3) {
+      pads[2] = _pads->at(num_dims - 2);
+      pads[3] = _pads->at(num_dims * 2 - 2);
+    }
 
-  switch (mode()) {
-  case 0:
-    s_model = "constant";
-    break;
-  case 1:
-    s_model = "reflect"; // todo
-    llvm_unreachable("Unsupport now.");
-    break;
-  case 3:
-    s_model = "edge";
-    break;
-  default:
+    Module::getShapeVec(input(), i_s);
+    int outer_size = std::accumulate(i_s.begin(), i_s.end() - 2, 1,
+                                     std::multiplies<int64_t>());
+    int ih = *(i_s.end() - 2);
+    int iw = i_s.back();
+    gaddr_t ga_left_select = Module::getAddress(left_select());
+    gaddr_t ga_right_select = Module::getAddress(right_select());
+    cvi_backend_tg_reflectionpad_kernel(layer_id, ga_input, ga_output,
+                                        ga_left_select, ga_right_select,
+                                        outer_size, ih, iw, pads, fmt);
+
+  } else if (mode() == 3) {
+    // edge
+    llvm_unreachable("Unsupport pad type.");
+  } else {
     llvm_unreachable("Unsupport pad type.");
   }
-
-  cvi_backend_tg_pad_kernel( layer_id, ga_input, ga_output, i_s[0],
-                            i_s[1], i_s[2], i_s[3], pads.data(), const_val,
-                            s_model.c_str(), fmt);
 }
