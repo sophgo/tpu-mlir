@@ -53,6 +53,7 @@ LOWERING_CV18XX(Sigmoid)
 LOWERING_CV18XX(SiLU)
 LOWERING_CV18XX(Slice)
 LOWERING_CV18XX(Softmax)
+LOWERING_CV18XX(Tile)
 LOWERING_CV18XX(Upsample)
 } // namespace cv18xx
 } // namespace tpu_mlir
