@@ -24,7 +24,9 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
   auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
   auto table =
-      create_lookup_table(op.input(), op.output(), active_silu, asymmetric);
+      create_lookup_table(op.input(), op.output(), asymmetric, [](double val) {
+        return val / (1 + std::exp(-val));
+      });
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
