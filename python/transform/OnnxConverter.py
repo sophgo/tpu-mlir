@@ -143,6 +143,7 @@ class OnnxConverter(BaseConverter):
             "Neg": lambda node: self.convert_neg_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
+            "Reciprocal": lambda node: self.convert_reciprocal_op(node),
             "ReduceMean": lambda node: self.convert_reduce_op(node),
             "ReduceMax": lambda node: self.convert_reduce_op(node),
             "ReduceMin": lambda node: self.convert_reduce_op(node),
@@ -962,6 +963,18 @@ class OnnxConverter(BaseConverter):
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         output_shape = self.getShape(onnx_node.name)
         div_op = self.mlir.create_div_op([op0, op1], output_shape, **p)
+        self.addOperand(onnx_node.name, div_op)
+
+    def convert_reciprocal_op(self, onnx_node):
+        assert len(onnx_node.inputs) == 1
+        op0 = self.getOperand(onnx_node.inputs[0])
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        if onnx_node.op_type == "Reciprocal":
+            p["const_val"] = 1
+        else:
+            raise RuntimeError(f"Not support {onnx_node.type}")
+        output_shape = self.getShape(onnx_node.name)
+        div_op = self.mlir.create_reciprocal_op([op0], output_shape, **p)
         self.addOperand(onnx_node.name, div_op)
 
     def convert_squeeze_op(self, onnx_node):

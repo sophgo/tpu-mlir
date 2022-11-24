@@ -45,6 +45,9 @@ namespace tpu_mlir {
 typedef double (*activate_f)(double);
 typedef double (*activate_f2)(double, double);
 
+Value create_lookup_table(Value in, Value out, bool asymmetric,
+                          std::function<double(double)> &&func);
+
 Value create_lookup_table(Value in, Value out, activate_f func,
                           bool asymmetric);
 

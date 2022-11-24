@@ -468,6 +468,23 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_ReciprocalOp: Top_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape]> {
+  let summary = "Constant scalar divide tensor operator";
+
+  let description = [{
+    Y = const_val / X
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<F64Attr, "1.0">: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   let summary = "matmul operator";
 
