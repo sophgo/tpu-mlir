@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp subOp,
                                bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  lowering_common_f32<tpu::SubOp>(rewriter, subOp.getOperation());
 }
 
 void SubLowering::LoweringF32(PatternRewriter &rewriter,

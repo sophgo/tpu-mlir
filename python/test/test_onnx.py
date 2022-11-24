@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "Neg", "ReduceL2", "Reciprocal", "Sub", "Sub2", "Where",
+    "GRU", "GRU2", "ReduceL2", "Reciprocal", "Where",
     "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
 ]
 
@@ -1920,9 +1920,9 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(inputs, graph_def)
 
     def test_Sub2(self, case_name):
-        input1_shape = [56, 27]
-        input2_shape = [56, 1]
-        output_shape = [56, 27]
+        input1_shape = [4, 3, 27, 1]
+        input2_shape = [4, 3, 1, 27]
+        output_shape = [4, 3, 27, 27]
 
         input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input1_shape)
         input2 = helper.make_tensor_value_info('input2', TensorProto.FLOAT, input2_shape)
