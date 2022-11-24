@@ -54,6 +54,7 @@ class Top:
     PackOp = 'top.Pack'
     UnpackOp = 'top.Unpack'
     SplitOp = 'top.Split'
+    SqrtOp = 'top.Sqrt'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -637,6 +638,12 @@ class MLIRImporter(object):
             'type': StringAttr.get(kargs['type']),
         }
         return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
+
+    def create_sqrt_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.SqrtOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

@@ -967,4 +967,16 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Top_SqrtOp : Top_Op<"Sqrt", [InOutSameShape]> {
+  let summary = "Sqrt operation";
+  let description = [{
+    Computes the square root of the input tensor's element.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

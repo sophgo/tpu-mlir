@@ -74,5 +74,6 @@ LOWERING_BM1684X(Pack)
 LOWERING_BM1684X(Unpack)
 LOWERING_BM1684X(Split)
 LOWERING_BM1684X(Sub)
+LOWERING_BM1684X(Sqrt)
 } // namespace bm1684x
 } // namespace tpu_mlir

@@ -159,6 +159,7 @@ class OnnxConverter(BaseConverter):
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
+            "Sqrt": lambda node: self.convert_sqrt_op(node),
         }
 
     def __del__(self):
@@ -1352,3 +1353,11 @@ class OnnxConverter(BaseConverter):
             p['name'] = "{}_{}".format(last_name, onnx_node.op_type)
             opd0 = self.mlir.create_add_op([opd0, opd1], output_shape, **p)
         self.addOperand(onnx_node.name, opd0)
+
+    def convert_sqrt_op(self, onnx_node):
+        assert (onnx_node.op_type == "Sqrt")
+        operand = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_sqrt_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
