@@ -36,6 +36,7 @@ class Top:
     ExpOp = 'top.Exp'
     PadOp = 'top.Pad'
     DivOp = 'top.Div'
+    Reciprocal = 'top.Reciprocal'
     SqueezeOp = 'top.Squeeze'
     ClipOp = 'top.Clip'
     DeconvOp = 'top.Deconv'
@@ -498,6 +499,19 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.DivOp, operands, [output_type], **param)
+
+    def create_reciprocal_op(self, operands, output_shape, **kargs):
+        if len(operands) != 1:
+            raise RuntimeError("input operand must be 1")
+        output_type = RankedTensorType.get(
+            tuple(output_shape), self.get_value_type(operands[0])
+        )
+        param = {
+            "name": kargs["name"],
+            "do_relu": BoolAttr.get(False),
+            "const_val": FloatAttr.get_f64(kargs["const_val"]),
+        }
+        return self.buildOp(Top.Reciprocal, operands, [output_type], **param)
 
     def create_squeeze_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

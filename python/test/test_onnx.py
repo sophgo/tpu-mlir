@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "GRU", "GRU2", "ReduceL2", "Reciprocal", "Where",
+    "GRU", "GRU2", "ReduceL2", "Where",
     "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
 ]
 
@@ -2080,7 +2080,7 @@ class ONNX_IR_TESTER(object):
             [input],
             [output],
         )
-        input_data = np.random.randn(*input_shape).astype(np.float32)
+        input_data = np.random.randn(*input_shape).astype(np.float32) + 5
         # avoid divide 0
         input_data[input_data == 0] = 1
         self.onnx_and_test({"input": input_data}, graph_def)

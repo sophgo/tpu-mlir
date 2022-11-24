@@ -462,6 +462,25 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "ConstantBinary (Div) operator";
+
+  let description = [{
+    Y = const_val / X
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<F64Attr, "1.0">: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
   let summary = "Depth2Space operator";
