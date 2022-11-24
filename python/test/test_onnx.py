@@ -95,6 +95,7 @@ class ONNX_IR_TESTER(object):
             "Slice": self.test_Slice,
             "Split": self.test_Split,
             "Scale": self.test_Scale,
+            "Sqrt": self.test_Sqrt,
             "Sub": self.test_Sub,
             "Sub2": self.test_Sub2,
             "Sum": self.test_Sum,
@@ -2100,6 +2101,14 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([prelu_def], case_name, inputs, outputs, initializer=[slope])
         self.onnx_and_test({"input": input}, graph_def)
 
+    def test_Sqrt(self, case_name):
+        shape = [3, 5, 100, 100]
+        inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)]
+        outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, shape)]
+        sqrt_def = helper.make_node("Sqrt", ["input"], ["output"])
+        graph_def = helper.make_graph([sqrt_def], case_name, inputs, outputs)
+        input_data = np.abs(np.random.randn(*shape).astype(np.float32))
+        self.onnx_and_test({"input": input_data}, graph_def)
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()

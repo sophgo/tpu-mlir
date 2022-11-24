@@ -1308,4 +1308,18 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Tpu_SqrtOp: Tpu_Op<"Sqrt", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  InOutSameShape]> {
+  let summary = "Sqrt operator";
+  let description = [{
+    Computes the square root of the input tensor's element.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
