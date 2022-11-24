@@ -282,6 +282,10 @@ void cvi_backend_tg_relu_kernel(uint32_t layer_id, uint64_t ga_input,
                                 uint64_t ga_output, int n, int c, int h, int w,
                                 cvk_fmt_t fmt);
 
+void cvi_backend_tg_tile_kernel(uint32_t layer_id, gaddr_t input_gaddr,
+                                gaddr_t output_gaddr, int n, int c, int h,
+                                int w, int axis, int factor, cvk_fmt_t fmt);
+
 void cvi_backend_tg_int8_bcast_add_kernel(uint32_t layer_id, gaddr_t ga_a,
                                           gaddr_t ga_b, gaddr_t ga_output,
                                           int32_t an, int32_t ac, int32_t ah,
