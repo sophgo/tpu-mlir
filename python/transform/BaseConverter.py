@@ -70,6 +70,12 @@ class BaseConverter(object):
             raise KeyError("No {} tensor in model".format(name))
         return self.tensors[name]
 
+    def isConst(self, name):
+        if not self.isWeight(name): return False
+        if np.prod(self.getShape(name)) == 1: return True
+        w = self.getWeight(name)
+        return np.all(w == w.flatten()[0])
+
     def getWeightOp(self, name, shape:list=[]):
         if name not in self.tensors:
             raise KeyError("Should addWeight first:{}!!!".format(name))
