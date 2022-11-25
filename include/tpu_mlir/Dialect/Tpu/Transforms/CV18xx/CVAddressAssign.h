@@ -37,7 +37,7 @@ struct OpElement {
 class CVAddressAssign {
 public:
   CVAddressAssign() {}
-  void assign(mlir::ModuleOp &module);
+  void assign(mlir::ModuleOp &module, bool reuse_addr);
 
 protected:
   bool isOpBelongToIOMemoryRegion(Operation *op, int index,

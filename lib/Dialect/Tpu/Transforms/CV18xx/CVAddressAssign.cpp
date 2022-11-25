@@ -22,7 +22,7 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-void CVAddressAssign::assign(mlir::ModuleOp &module) {
+void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   int64_t start_addr = (uint64_t)1 << 40;
   int64_t weight_alignment = 16;
   int64_t neuron_alignment = 64;
@@ -111,7 +111,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
 
   for (auto &targetOuts : shared_outs_regions) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
-    auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange, true,
+    auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange, reuse_addr,
                                           sharedGmemOffset);
     if (sharedGmemSize < sharedGmemOffset + gmemUsed) {
       sharedGmemSize = sharedGmemOffset + gmemUsed;
@@ -124,7 +124,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module) {
   if (!private_outs.empty()) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
     privateGmemSize =
-        allocator.assignGaddr(private_outs, liveRange, true, baseGaddr);
+        allocator.assignGaddr(private_outs, liveRange, reuse_addr, baseGaddr);
   }
 
   // 3. Assign gaddr for ops in IO memory regin.

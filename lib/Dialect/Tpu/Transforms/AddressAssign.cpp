@@ -35,13 +35,13 @@ public:
 
     if (Module::isCV18xx(chip)) {
       CVAddressAssign addr_assign;
-      addr_assign.assign(module);
+      addr_assign.assign(module, reuse_addr);
     } else {
       RewritePatternSet patterns(module.getContext());
       bm168x::populateGlobalBufferPatterns(&patterns);
       applyPatternsAndFoldGreedily(module, std::move(patterns));
       BMAddressAssign addr_assign;
-      addr_assign.assign(module);
+      addr_assign.assign(module, reuse_addr);
     }
   }
 };
