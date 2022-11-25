@@ -34,6 +34,10 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
   let summary = "assign address for BM168x in tpu by tpuc-opt";
   let constructor = "createAddressAssignPass()";
   let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"reuse_addr", "reuse_addr", "bool", /*default=*/"true",
+           "reuse tensor memory.">,
+  ];
 }
 
 def Codegen : Pass<"codegen", "ModuleOp"> {

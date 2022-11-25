@@ -31,7 +31,7 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-void BMAddressAssign::assign(mlir::ModuleOp &module) {
+void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::CTX_START_ADDR;
   Builder builder(module.getContext());
@@ -85,7 +85,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module) {
   if (!common_ops.empty()) {
     GmemAllocator allocator(gaddrMap, alignment);
     auto gmemUsed =
-        allocator.assignGaddr(common_ops, liveRange, true, start_addr);
+        allocator.assignGaddr(common_ops, liveRange, reuse_addr, start_addr);
     addr += gmemUsed;
   }
 

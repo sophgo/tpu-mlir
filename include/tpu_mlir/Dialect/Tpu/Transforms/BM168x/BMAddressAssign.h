@@ -19,7 +19,7 @@ namespace tpu {
 class BMAddressAssign {
 public:
   BMAddressAssign() {}
-  void assign(mlir::ModuleOp &module);
+  void assign(mlir::ModuleOp &module, bool reuse_addr);
 
 protected:
   void updateLiveRangeofBMOps(Operation *op, int index,
