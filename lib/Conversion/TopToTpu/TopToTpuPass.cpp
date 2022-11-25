@@ -332,6 +332,12 @@ protected:
       bool is_tpu = Module::isTpuOp(op);
       if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+          if (auto cpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
+            //embedding function's first operand is the indices,shouldn't do cast.
+            if(cpuOp.operation_name() == "embedding" && idx == 0) {
+              return;
+            }
+          }
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
