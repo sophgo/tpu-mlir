@@ -293,8 +293,7 @@ protected:
                  ForwardCalibartion<top::LeakyReluOp>,
                  ForwardCalibartion<top::PReluOp>,
                  ForwardCalibartion<top::AbsOp>,
-                 ForwardCalibartion<top::InterpOp>,
-                 ForwardCalibartion<top::ReduceOp>
+                 ForwardCalibartion<top::InterpOp>
                 >(ctx_);
     // clang-format on
     if (LoweringConfig::chip == Module::Chip::BM1684) {
