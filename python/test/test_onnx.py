@@ -78,6 +78,10 @@ class ONNX_IR_TESTER(object):
             "Pad1": self.test_Pad1,  # pad val
             # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
             "PadReflect": self.test_PadReflect,
+            "ConstPow": self.test_ConstPow,
+            "PowConst": self.test_PowConst,
+            # "Pow": self.test_Pow,
+            # "Pow2": self.test_Pow2,
             "PRelu": self.test_PRelu,
             "Resize": self.test_Resize,
             "Resize2": self.test_Resize2,
@@ -2109,6 +2113,62 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([sqrt_def], case_name, inputs, outputs)
         input_data = np.abs(np.random.randn(*shape).astype(np.float32))
         self.onnx_and_test({"input": input_data}, graph_def)
+
+    def test_ConstPow(self, case_name):
+        shape = [1, 3, 27, 27]
+        input_data = np.random.randn(*shape).astype(np.float32)
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
+        constant = helper.make_tensor(
+            "constant",
+            TensorProto.FLOAT,
+            [1],
+            np.array([1.2]).astype(np.float32),
+        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
+        pow_def = helper.make_node("Pow", inputs=["constant", "input"], outputs=["output"])
+        graph_def = helper.make_graph([pow_def], case_name, [input], [output], initializer=[constant])
+        self.onnx_and_test({"input": input_data}, graph_def)
+
+    def test_PowConst(self, case_name):
+        shape = [1, 3, 27, 27]
+        input_data = np.abs(np.random.randn(*shape).astype(np.float32))+1e-6
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
+        constant = helper.make_tensor(
+            "constant",
+            TensorProto.FLOAT,
+            [1],
+            np.array([1.2]).astype(np.float32),
+        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
+        pow_def = helper.make_node("Pow", inputs=["input", "constant"], outputs=["output"])
+        graph_def = helper.make_graph([pow_def], case_name, [input], [output], initializer=[constant])
+        self.onnx_and_test({"input": input_data}, graph_def)
+
+    def test_Pow(self, case_name):
+        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {"input1": np.abs(np.random.randn(*input_shape["input1"]).astype(np.float32))+1e-6,
+                      "input2": np.random.randn(*input_shape["input2"]).astype(np.float32)}
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        pow_def = helper.make_node("Pow", inputs=list(input_shape.keys()), outputs=["output"])
+        graph_def = helper.make_graph([pow_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
+
+    def test_Pow2(self, case_name):
+        input_shape = {"input1": [1, 3, 1, 27], "input2": [1, 3, 27, 1]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {"input1": np.abs(np.random.randn(*input_shape["input1"]).astype(np.float32))+1e-6,
+                      "input2": np.random.randn(*input_shape["input2"]).astype(np.float32)}
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        pow_def = helper.make_node("Pow", inputs=list(input_shape.keys()), outputs=["output"])
+        graph_def = helper.make_graph([pow_def], case_name, inputs, [output])
+        self.onnx_and_test(input_data, graph_def)
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()

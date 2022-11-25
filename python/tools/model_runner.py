@@ -121,7 +121,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_keys = []
         model = onnx.load(onnx_file)
         no_list = [
-            "Cast", "Shape", "Unsqueeze", "Constant", "GRU", "Pow",
+            "Cast", "Shape", "Unsqueeze", "Constant", "GRU",
             "Dropout", "Loop", "TopK"
         ]
 

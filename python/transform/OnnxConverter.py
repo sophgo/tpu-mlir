@@ -161,6 +161,7 @@ class OnnxConverter(BaseConverter):
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Sqrt": lambda node: self.convert_sqrt_op(node),
+            "Pow": lambda node: self.convert_pow_op(node),
         }
 
     def __del__(self):
@@ -1123,8 +1124,8 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         num_dims = len(input_shape)
         assert(num_dims <= 6)
-        axes = onnx_node.attrs['axes']
-        keepdims = onnx_node.attrs['keepdims']
+        axes = onnx_node.attrs.get('axes', list(range(num_dims)))
+        keepdims = onnx_node.attrs.get('keepdims', 1)
         only_reshape = True
         if len(axes) > 0:
             for idx in range(len(axes)):
@@ -1165,7 +1166,6 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_lrn_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
-
 
     def convert_lstm_op(self, onnx_node):
         assert (onnx_node.op_type == "LSTM")
@@ -1374,3 +1374,53 @@ class OnnxConverter(BaseConverter):
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_sqrt_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def _make_pow_op(self, onnx_node_name, base, expn):
+        output_shape = self.getShape(onnx_node_name)
+        if not isinstance(base, str):
+            # expn * log(base)
+            expn_op = self.getOp(expn)
+            mul_name = "{}_{}_{}".format(onnx_node_name, "mul", "Pow")
+            p = {'name': mul_name, 'const_val': np.log(base)}
+            expnlogbase_op = self.mlir.create_mul_const_op([expn_op], output_shape, **p)
+        else:
+            # log(base)
+            base_op = self.getOp(base)
+            base_shape = self.getShape(base)
+            p = {'name': "{}_{}_{}".format(onnx_node_name, "log", "Pow")}
+            logbase_op = self.mlir.create_log_op([base_op], base_shape, **p)
+            # expn * log(base)
+            mul_name = "{}_{}_{}".format(onnx_node_name, "mul", "Pow")
+            if not isinstance(expn, str):
+                p = {'name': mul_name, 'const_val': expn}
+                expnlogbase_op = self.mlir.create_mul_const_op([logbase_op], output_shape, **p)
+            else:
+                p = {'name': mul_name}
+                expn_op = self.getOp(expn)
+                expnlogbase_op = self.mlir.create_mul_op([expn_op, logbase_op], output_shape, **p)
+        # exp(expn * log(base))
+        p = {'name': "{}_{}".format(onnx_node_name, "Pow")}
+        op = self.mlir.create_exp_op([expnlogbase_op], output_shape, **p)
+        self.addOperand(onnx_node_name, op)
+
+    def convert_pow_op(self, onnx_node):
+        assert (onnx_node.op_type == "Pow")
+        assert (len(onnx_node.inputs) == 2)
+        base = onnx_node.inputs[0]
+        expn = onnx_node.inputs[1]
+        if self.isConst(expn):
+            base_op = self.getOp(base)
+            expn_const = self.getWeight(expn).flatten()[0]
+            output_shape = self.getShape(onnx_node.name)
+            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+            if expn_const == 2.0:
+                mul_op = self.mlir.create_mul_op([base_op, base_op], output_shape, **p)
+                self.addOperand(onnx_node.name, mul_op)
+                return
+            else:
+                self._make_pow_op(onnx_node.name, base, expn_const)
+        elif self.isConst(base):
+            base_const = self.getWeight(base).flatten()[0]
+            self._make_pow_op(onnx_node.name, base_const, expn)
+        else:
+            self._make_pow_op(onnx_node.name, base, expn)
