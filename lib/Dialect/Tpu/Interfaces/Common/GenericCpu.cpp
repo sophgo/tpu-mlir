@@ -439,6 +439,54 @@ private:
   std::string coordinate_transformation_mode;
 };
 
+class EmbeddingOpKernel{
+public:
+
+  EmbeddingOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
+    Module::getShapeVec(op.inputs()[0], this->input_shape);
+    Module::getShapeVec(op.inputs()[1], this->table_shape);
+    Module::getShapeVec(op.output(), this->output_shape);
+    input_data = p.inputs[0];
+    table_data = p.inputs[1];
+    output_data = p.outputs[0];
+  }
+
+  void invoke() {
+    auto feature_dim = table_shape.back();
+    assert(output_shape.back() == feature_dim && "must be the same feature dim");
+    int64_t count = std::accumulate(input_shape.begin(), input_shape.end(), 1,
+                                    std::multiplies<int64_t>());
+    for (int64_t i = 0; i < count; i++) {
+      auto index = (size_t)input_data[i];
+      size_t table_offset = (size_t)index * feature_dim;
+      auto out_offset = i * feature_dim;
+      memcpy(output_data + out_offset, table_data + table_offset,
+            feature_dim * sizeof(float));
+      // if (mix_bf16 == false) {
+      //   memcpy(output_data + out_offset, table_data + table_offset,
+      //         feature_dim * sizeof(float));
+      // } else {
+      //   for (int64_t j = 0; j < feature_dim; j++) {
+      //     output[out_offset + j] =
+      //         BF16(BF16(table[table_offset + j] * scale_data->at(j)) + zeropoint_data->at(j));
+      //   }
+      // }
+    }
+  }
+
+private:
+  float *input_data;
+  float *table_data;
+  float *output_data;
+  //float *scale_data;
+  // SyncedData zeropoint_data;
+  // SyncedData output_data;
+  std::vector<int64_t> input_shape;
+  std::vector<int64_t> table_shape;
+  std::vector<int64_t> output_shape;
+  bool mix_bf16;
+};
+
 LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   std::string func_name = operation_name().str();
   if (func_name == "quant") {
@@ -459,6 +507,9 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   } else if (func_name == "interp") {
     InterpolationOpKernel interp_kernel(*this, p);
     interp_kernel.invoke();
+  } else if (func_name == "embedding") {
+    EmbeddingOpKernel embed_kernel(*this, p);
+    embed_kernel.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
