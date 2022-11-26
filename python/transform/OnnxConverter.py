@@ -968,13 +968,10 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, div_op)
 
     def convert_reciprocal_op(self, onnx_node):
+        assert (onnx_node.op_type == "Reciprocal")
         assert len(onnx_node.inputs) == 1
         op0 = self.getOperand(onnx_node.inputs[0])
-        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-        if onnx_node.op_type == "Reciprocal":
-            p["const_val"] = 1
-        else:
-            raise RuntimeError(f"Not support {onnx_node.type}")
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "const_val": 1}
         output_shape = self.getShape(onnx_node.name)
         div_op = self.mlir.create_reciprocal_op([op0], output_shape, **p)
         self.addOperand(onnx_node.name, div_op)
