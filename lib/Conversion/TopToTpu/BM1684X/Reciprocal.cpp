@@ -22,8 +22,6 @@ void ReciprocalLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::ReciprocalOp>(rewriter, op);
 }
 
-static double reciprocal(double val, double) { return std::log(val); }
-
 void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::ReciprocalOp op,
                                       bool asymmetric) const {
