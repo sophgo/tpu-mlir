@@ -131,6 +131,7 @@ class OnnxConverter(BaseConverter):
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
+            "Identity": lambda node: self.convert_skip_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
             "LRN": lambda node: self.convert_lrn_op(node),
@@ -1011,11 +1012,7 @@ class OnnxConverter(BaseConverter):
             }
             new_op = self.mlir.create_relu_op([input], input_shape, **p)
         else:
-            p = {
-                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                'min': min,
-                'max': max
-            }
+            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type), 'min': min, 'max': max}
             new_op = self.mlir.create_clip_op([input], input_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -1116,152 +1113,47 @@ class OnnxConverter(BaseConverter):
 
     #support max ndims to 6
     def convert_reduce_op(self, onnx_node):
-        assert(onnx_node.op_type == "ReduceMin"
-                or onnx_node.op_type == "ReduceMax"
-                or onnx_node.op_type == "ReduceMean"
-                or onnx_node.op_type == "ReduceL2")
+        assert (onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceMax"
+                or onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceL2")
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
+        if (np.prod(input_shape) == np.prod(output_shape)):
+            p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+            new_op = self.mlir.create_reshape_op([op], output_shape, **p)
+            self.addOperand(onnx_node.name, new_op)
+            return
         num_dims = len(input_shape)
-        assert(num_dims <= 6)
+        assert (num_dims <= 6)
         axes = onnx_node.attrs.get('axes', list(range(num_dims)))
         keepdims = onnx_node.attrs.get('keepdims', 1)
-        only_reshape = True
-        if len(axes) > 0:
-            for idx in range(len(axes)):
-                if axes[idx] < 0:
-                    axes[idx] += num_dims
-                if only_reshape and input_shape[axes[idx]] != 1:
-                    only_reshape = False
-        else:
-            only_reshape = False
+        for idx, ax in enumerate(axes):
+            if ax < 0:
+                axes[idx] += num_dims
+        axes.sort()
         op = self.getOperand(onnx_node.inputs[0])
-
-        #temp solution: reducemean and just reduce h or w, use avg pool to implement it.
-        if ((onnx_node.op_type == "ReduceMean")
-            and ((len(axes) == 2 and num_dims - axes[0] == 2
-                and num_dims - axes[1] == 1)
-                  or (len(axes) == 1 and num_dims - axes[0] <= 2))):
-            self.convert_other_reduce_op(onnx_node)
-            return
-        elif only_reshape:
-            new_op = self.mlir.create_reshape_op([op], output_shape, **p)
-        else:
+        if onnx_node.op_type in ["ReduceMean", "ReduceMax"] and num_dims == 4 and axes == [2, 3]:
             p = {
-                "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-                "axes": axes,
-                "keepdims" : keepdims,
-                "type" : onnx_node.op_type
-            }
-            new_op = self.mlir.create_reduce_op([op], output_shape, **p)
-        self.addOperand(onnx_node.name, new_op)
-
-    def convert_other_reduce_op(self, onnx_node):
-        assert (onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceMax")
-        input_shape_orig = self.getShape(onnx_node.inputs[0])
-        output_shape = self.getShape(onnx_node.name)
-        num_dims = len(input_shape_orig)
-        assert(num_dims <= 6)
-        axis_list_orig = onnx_node.attrs['axes']
-        keepdims = onnx_node.attrs['keepdims']
-        if onnx_node.op_type == "ReduceMean":
-            op_type = "GlobalAveragePool"
-        elif onnx_node.op_type == "ReduceMax":
-            op_type = "GlobalMaxPool"
-
-        is_reduce_orig = [0] * 8
-        axis_list = [0] * 8
-        input_shape = copy.deepcopy(input_shape_orig)
-        is_reduce = copy.deepcopy(is_reduce_orig)
-        axis_num = len(axis_list_orig)
-        reorg_flag = 0
-        for i in range(len(axis_list_orig)):
-            val = axis_list_orig[i]
-            if val < 0:
-                val += num_dims
-            is_reduce_orig[val] = 1
-            axis_list[i] = val
-
-        if (num_dims > 4):
-            minimum_merged_dims = num_dims
-            current_dims = 0
-            for i in range(1, num_dims):
-                if (is_reduce_orig[i-1] == 0 and is_reduce_orig[i] == 0):
-                    minimum_merged_dims -= 1
-            assert(minimum_merged_dims <= 4)
-            pos = 0
-            reduce_pos = 0
-            for i in range(1, num_dims):
-                if (is_reduce_orig[i-1] == 0 and is_reduce_orig[i] == 0
-                    and (num_dims - current_dims > 4)):
-                    input_shape[pos] *= input_shape[i]
-                    current_dims += 1
-                else:
-                    if (is_reduce_orig[i-1]):
-                        axis_list[reduce_pos] = pos
-                        reduce_pos += 1
-                    pos += 1
-                    input_shape[pos] = input_shape[i]
-
-            if (is_reduce_orig[num_dims-1]):
-                axis_list[reduce_pos] = pos
-                reduce_pos += 1
-
-            pos += 1
-            assert(pos == 4)
-            input_shape = input_shape[0:4]
-            axis_num = reduce_pos
-            num_dims = 4
-            reorg_flag = 1
-            for i in range(reduce_pos):
-                is_reduce[axis_list[i]] = 1
-        else:
-            for i in range(axis_num):
-                is_reduce[axis_list[i]] = 1
-
-        op = self.getOperand(onnx_node.inputs[0])
-        #reshape
-        if reorg_flag:
-            p = {'name': "{}_{}".format(onnx_node.name, "reshape")}
-            op = self.mlir.create_reshape_op([op], input_shape, **p)
-
-        #if reducemean the h, w, or h & w, replace it with avgpool
-        if (is_reduce[3] or is_reduce[2]):
-            name = "reduce_w_h"
-            num_dim = len(input_shape) - 2
-            kernel_shape = [1, 1]
-            if is_reduce[2]:
-                kernel_shape[0] = input_shape[2]
-            if is_reduce[3]:
-                kernel_shape[1] = input_shape[3]
-            p = {
-                'name': "{}_{}".format(onnx_node.name, name if (keepdims == 0 or reorg_flag) else onnx_node.op_type),
-                'kernel_shape': kernel_shape,
-                'strides': num_dim * [1] if axis_num == 1 else kernel_shape,
-                'pads': num_dim * 2 * [0],
+                'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+                'kernel_shape': input_shape[2:],
+                'strides': [1, 1],
+                'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
                 'do_relu': False,
             }
-
-        # yapf: enable
-        new_out_shape = copy.deepcopy(input_shape)
-        if is_reduce[3]:
-            new_out_shape[3] = 1
-        if is_reduce[2]:
-            new_out_shape[2] = 1
-
-        #reduce h、w or h & w firstly
-        if (is_reduce[3] or is_reduce[2]):
-            if op_type == "GlobalAveragePool":
-                op = self.mlir.create_avgpool_op([op], new_out_shape, **p)
-            elif op_type == "GlobalMaxPool":
-                op = self.mlir.create_maxpool_op([op], new_out_shape, **p)
-
-        if not keepdims or reorg_flag:
-            #reshape
-            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-            op = self.mlir.create_reshape_op([op], output_shape, **p)
-        self.addOperand(onnx_node.name, op)
+            new_op = self.mlir.create_avgpool_op(
+                [op], output_shape, **
+                p) if onnx_node.op_type == "ReduceMean" else self.mlir.create_maxpool_op(
+                    [op], output_shape, **p)
+            self.addOperand(onnx_node.name, new_op)
+            return
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "axes": axes,
+            "keepdims": keepdims,
+            "type": onnx_node.op_type
+        }
+        new_op = self.mlir.create_reduce_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_lrn_op(self, onnx_node):
         assert onnx_node.op_type == "LRN"
@@ -1304,7 +1196,7 @@ class OnnxConverter(BaseConverter):
             init_c_op = self.getOp(onnx_node.inputs[6])
         operands.extend([bias_op, init_h_op, init_c_op])
         p = {
-            "name": [onnx_node.name + '_0',onnx_node.name + '_1', onnx_node.name +'_2'],
+            "name": [onnx_node.name + '_0', onnx_node.name + '_1', onnx_node.name + '_2'],
             "bidirectional": bidirectional,
             "batch_first": batch_first,
         }

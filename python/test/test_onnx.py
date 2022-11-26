@@ -1784,23 +1784,18 @@ class ONNX_IR_TESTER(object):
             input_shape = [2, 127, 270, 28]
             constant_shape = [1, 1, 1, 28]
             output_shape = [2, 127, 270, 28]
-        input_data = {"input": np.random.randn(*input_shape).astype(np.float32)}
+        input_data = {"input": np.random.rand(*input_shape).astype(np.float32)}
         inputs = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
         constant = helper.make_tensor(
             "constant",
             TensorProto.FLOAT,
             constant_shape,
-            np.random.randn(*constant_shape).astype(np.float32),
+            np.random.rand(*constant_shape).astype(np.float32),
         )
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        sigmoid_def = helper.make_node(
-            "Sigmoid",
-            inputs=['input'],
-            outputs=['sigmoid'],
-        )
-        mul_def = helper.make_node("Mul", inputs=["sigmoid", "constant"], outputs=["output"])
+        mul_def = helper.make_node("Mul", inputs=["input", "constant"], outputs=["output"])
 
-        graph_def = helper.make_graph([sigmoid_def, mul_def],
+        graph_def = helper.make_graph([mul_def],
                                       case_name, [inputs], [output],
                                       initializer=[constant])
         self.onnx_and_test(input_data, graph_def)
