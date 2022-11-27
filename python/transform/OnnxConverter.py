@@ -1176,6 +1176,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "GRU")
         direction = onnx_node.attrs.get("direction", 'forward')
         layout = onnx_node.attrs.get("layout", 0)
+        hidden_size = onnx_node.attrs.get("hidden_size")
         batch_first = True if layout == 1 else False
         operands = list()
         operands.append(self.getOperand(onnx_node.inputs[0]))  # in
@@ -1192,6 +1193,8 @@ class OnnxConverter(BaseConverter):
         operands.extend([bias_op, init_h_op])
         p = {
             "name": [onnx_node.name + '_GRU',onnx_node.name + '_H'],
+            "hidden_size": hidden_size,
+            "bidirectional":direction == b'bidirectional',
             "batch_first": batch_first,
         }
         out_shapes = [[], []]
@@ -1212,6 +1215,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "LSTM")
         direction = onnx_node.attrs.get("direction", 'forward')
         layout = onnx_node.attrs.get("layout", 0)
+        hidden_size = onnx_node.attrs.get("hidden_size")
         batch_first = True if layout == 1 else False
         operands = list()
         operands.append(self.getOperand(onnx_node.inputs[0]))  # in
@@ -1230,6 +1234,8 @@ class OnnxConverter(BaseConverter):
         operands.extend([bias_op, init_h_op, init_c_op])
         p = {
             "name": [onnx_node.name + '_LSTM',onnx_node.name + '_H', onnx_node.name +'_C'],
+            "hidden_size": hidden_size,
+            "bidirectional":direction == b'bidirectional',
             "batch_first": batch_first,
         }
         out_shapes = [[], [], []]

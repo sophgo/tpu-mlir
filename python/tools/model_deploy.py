@@ -13,7 +13,7 @@ import numpy as np
 import argparse
 from utils.mlir_shell import *
 from utils.mlir_parser import *
-from tools.model_runner import mlir_inference, model_inference
+from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
 
 
@@ -23,10 +23,6 @@ def str2list(v):
     while files.count('') > 0:
         files.remove('')
     return files
-
-
-def show_fake_cmd(in_npz: str, model: str, out_npz: str):
-    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
 
 class DeployTool:

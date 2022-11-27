@@ -219,6 +219,9 @@ std::string Module::genWeightFileName(ModuleOp module, bool &same_name) {
 }
 
 int64_t Module::getAddress(Value v) {
+  if (v.getType().isa<mlir::NoneType>()) {
+    return 0;
+  }
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
   if (!attr) {
     if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
@@ -271,6 +274,10 @@ int64_t Module::getNumElements(Value v) {
 }
 
 llvm::ArrayRef<int64_t> Module::getShape(Value v) {
+  if (v.getType().isa<mlir::NoneType>()) {
+    v.dump();
+    llvm_unreachable("v is none type");
+  }
   auto type = v.getType().cast<RankedTensorType>();
   return type.getShape();
 }

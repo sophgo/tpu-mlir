@@ -15,6 +15,7 @@ MLIRContext *LoweringConfig::context;
 std::string LoweringConfig::chip;
 std::string LoweringConfig::mode;
 bool LoweringConfig::isAsymmetric;
+bool LoweringConfig::isQuantized;
 std::map<std::string, llvm::StringRef> LoweringConfig::quantize_map;
 
 Value do_transfer(Value in, Value out, bool asymmetric) {

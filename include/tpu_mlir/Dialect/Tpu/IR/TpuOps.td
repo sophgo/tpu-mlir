@@ -1167,12 +1167,14 @@ def Tpu_GRUOp: Tpu_Op<"GRU",[
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$buffer,
+    I64Attr: $hidden_size,
+    BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "true">:$linear_before_reset,
     DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
 
   let results = (outs
-    AnyTensor:$Y,
+    AnyTensorOrNone:$Y,
     AnyTensorOrNone:$Y_h);
 
   let extraClassDeclaration = [{
@@ -1185,7 +1187,8 @@ def Tpu_GRUOp: Tpu_Op<"GRU",[
       bool batch_first;
       bool have_bias;
       bool have_h0;
-      bool output_h;
+      bool output_y;
+      bool output_yh;
     } gru_attr_t;
     gru_attr_t parseParam();
   }];
@@ -1207,11 +1210,13 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$initial_c,
     AnyTensorOrNone:$buffer,
+    I64Attr: $hidden_size,
+    BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
 
   let results = (outs
-    AnyTensor:$Y,
+    AnyTensorOrNone:$Y,
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
@@ -1225,8 +1230,9 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
       bool have_bias;
       bool have_h0;
       bool have_c0;
-      bool output_h;
-      bool output_c;
+      bool output_y;
+      bool output_yh;
+      bool output_yc;
     } lstm_attr_t;
     lstm_attr_t parseParam();
   }];
