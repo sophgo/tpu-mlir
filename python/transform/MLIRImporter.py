@@ -589,6 +589,8 @@ class MLIRImporter(object):
                 out_types.append(t)
         param = {
             'name': kargs['name'],
+            'hidden_size': IntegerAttr.get(self.mlir_type["INT64"], kargs["hidden_size"]),
+            'bidirectional': BoolAttr.get(kargs['bidirectional']),
             'batch_first': BoolAttr.get(kargs['batch_first']),
         }
         return self.buildOp(Top.GRUOp, operands, out_types, **param)
@@ -603,6 +605,8 @@ class MLIRImporter(object):
                 out_types.append(t)
         param = {
             'name': kargs['name'],
+            'hidden_size': IntegerAttr.get(self.mlir_type["INT64"], kargs["hidden_size"]),
+            'bidirectional': BoolAttr.get(kargs['bidirectional']),
             'batch_first': BoolAttr.get(kargs['batch_first']),
         }
         return self.buildOp(Top.LSTMOp, operands, out_types, **param)

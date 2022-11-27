@@ -76,7 +76,14 @@ def WeightReorderInterface : OpInterface<"WeightReorderInterface"> {
         [{
           auto module = Module::getModuleOp($_op);
           auto chip = Module::getChip(module);
-          auto type = Module::getStorageType($_op->getResult(0));
+          mlir::Type type;
+          for (auto t:$_op->getResultTypes()) {
+            auto s = Module::getStorageType(t);
+            if (!isa<mlir::NoneType>(s)) {
+              type = s;
+              break;
+            }
+          }
           if (Module::isBM1684Family(chip)) {
             $_op.weight_reorder_int8_bm1684();
           } else if (Module::isBM1684XFamily(chip)) {

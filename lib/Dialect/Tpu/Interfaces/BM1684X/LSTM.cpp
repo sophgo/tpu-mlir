@@ -176,8 +176,9 @@ typedef struct {
   unsigned long long b_global_addr;
   unsigned long long z_global_addr;
   bool bias;
-  bool output_h;
-  bool output_c;
+  bool output_y;
+  bool output_yh;
+  bool output_yc;
   int sequence;
   int batch;
   int x_size;
@@ -197,29 +198,25 @@ typedef struct {
 void tpu::LSTMOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   auto op = getOperation();
-  auto input_spec = BM168x::get_spec(
-      ValueRange{input(), initial_h(), initial_c(), filter()});
+  auto input_spec =
+      BM168x::get_spec(ValueRange{input(), initial_h(), initial_c(), filter()});
   auto output_spec = BM168x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
   pytorch_lstm_param_t p = {0};
   p.x_global_addr = Module::getAddress(input());
   p.w_global_addr = Module::getAddress(filter());
-  p.b_global_addr = attr.have_bias ? Module::getAddress(bias()) : 0;
+  p.b_global_addr = Module::getAddress(bias());
   p.h0_global_addr = Module::getAddress(initial_h());
   p.c0_global_addr = Module::getAddress(initial_c());
   p.y_global_addr = Module::getAddress(Y());
-  if (attr.output_h) {
-    p.hn_global_addr = Module::getAddress(Y_h());
-  }
-  if (attr.output_c) {
-    p.cn_global_addr = Module::getAddress(Y_c());
-  }
-  if (buffer().getType().isa<NoneType>() == false) {
-    p.z_global_addr = Module::getAddress(buffer());
-  }
+  p.hn_global_addr = Module::getAddress(Y_h());
+  p.cn_global_addr = Module::getAddress(Y_c());
+  p.z_global_addr = Module::getAddress(buffer());
+
   p.bias = attr.have_bias;
-  p.output_h = attr.output_h;
-  p.output_c = attr.output_c;
+  p.output_y = attr.output_y;
+  p.output_yh = attr.output_yh;
+  p.output_yc = attr.output_yc;
   p.sequence = attr.seq_len;
   p.batch = attr.batch_size;
   p.x_size = attr.input_size;

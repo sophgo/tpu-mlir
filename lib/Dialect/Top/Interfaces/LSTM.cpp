@@ -22,9 +22,7 @@ int64_t top::LSTMOp::getFLOPs() { return 0; }
 top::LSTMOp::lstm_attr_t top::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
-  auto r_shape = Module::getShape(recurrence());
   assert(in_shape.size() == 3);
-  assert(r_shape.size() == 3);
   if (batch_first()) {
     attr.batch_size = in_shape[0];
     attr.seq_len = in_shape[1];
@@ -35,13 +33,14 @@ top::LSTMOp::lstm_attr_t top::LSTMOp::parseParam() {
     attr.batch_first = false;
   }
   attr.input_size = in_shape[2];
-  attr.hidden_size = r_shape[2];
-  attr.num_direction = r_shape[0];
+  attr.num_direction = bidirectional() ? 2 : 1;
+  attr.hidden_size = hidden_size();
   attr.have_bias = !bias().getType().isa<NoneType>();
   attr.have_h0 = !initial_h().getType().isa<NoneType>();
   attr.have_c0 = !initial_c().getType().isa<NoneType>();
-  attr.output_h = !Y_h().getType().isa<NoneType>();
-  attr.output_c = !Y_c().getType().isa<NoneType>();
+  attr.output_y = !Y().getType().isa<NoneType>();
+  attr.output_yh = !Y_h().getType().isa<NoneType>();
+  attr.output_yc = !Y_c().getType().isa<NoneType>();
   return attr;
 }
 
@@ -67,6 +66,7 @@ static void lstm_compute(InferenceParameter &p,
   float *x_bi = bias;
   float *last_h = p.outputs[1]; // Y_h
   float *last_c = p.outputs[2]; // Y_c
+
   if (!forward) {
     x_wi += 4 * attr.input_size * attr.hidden_size;
     x_bi += 2 * 4 * attr.hidden_size;
@@ -143,9 +143,12 @@ static void lstm_compute(InferenceParameter &p,
       float *hf = h_f.data() + batch * attr.hidden_size;
       float *hc = h_c.data() + batch * attr.hidden_size;
       float *cell_state = c + batch * attr.hidden_size;
-      float *hidden_state =
-          output + (seq_idx * attr.num_direction * attr.batch_size + batch) *
-                       attr.hidden_size;
+      float *hidden_state = h + batch * attr.hidden_size;
+      if (attr.output_y) {
+        hidden_state =
+            output + (seq_idx * attr.num_direction * attr.batch_size + batch) *
+                         attr.hidden_size;
+      }
       for (int i = 0; i < attr.hidden_size; i++) {
         gi[i] = sigmoid_(xi[i] + hi[i]);
         go[i] = sigmoid_(xo[i] + ho[i]);
@@ -155,13 +158,15 @@ static void lstm_compute(InferenceParameter &p,
         hidden_state[i] = go[i] * tanh_(cell_state[i]);
       }
     }
-    h = output +
-        seq_idx * attr.num_direction * attr.batch_size * attr.hidden_size;
+    if (attr.output_y) {
+      h = output +
+          seq_idx * attr.num_direction * attr.batch_size * attr.hidden_size;
+    }
   }
-  if (attr.output_h) {
+  if (attr.output_yh) {
     memcpy(last_h, h, attr.batch_size * attr.hidden_size * sizeof(float));
   }
-  if (attr.output_c) {
+  if (attr.output_yc) {
     memcpy(last_c, c, attr.batch_size * attr.hidden_size * sizeof(float));
   }
 }

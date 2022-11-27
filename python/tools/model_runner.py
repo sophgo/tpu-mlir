@@ -40,6 +40,8 @@ def fp32_to_bf16(d_fp32):
         d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
     return d_bf16.reshape(s)
 
+def show_fake_cmd(in_npz: str, model: str, out_npz: str):
+    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"

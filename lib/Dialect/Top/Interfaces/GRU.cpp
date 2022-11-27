@@ -22,25 +22,23 @@ int64_t top::GRUOp::getFLOPs() { return 0; }
 top::GRUOp::gru_attr_t top::GRUOp::parseParam() {
   gru_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
-  auto out_shape = Module::getShape(Y());
   assert(in_shape.size() == 3);
-  assert(out_shape.size() == 4);
   if (batch_first()) {
     attr.batch_size = in_shape[0];
     attr.seq_len = in_shape[1];
-    attr.num_direction = out_shape[2];
     attr.batch_first = true;
   } else {
     attr.batch_size = in_shape[1];
     attr.seq_len = in_shape[0];
-    attr.num_direction = out_shape[1];
     attr.batch_first = false;
   }
+  attr.num_direction = bidirectional() ? 2 : 1;
+  attr.hidden_size = hidden_size();
   attr.input_size = in_shape[2];
-  attr.hidden_size = out_shape[3];
   attr.have_bias = !bias().getType().isa<NoneType>();
   attr.have_h0 = !initial_h().getType().isa<NoneType>();
-  attr.output_h = !Y_h().getType().isa<NoneType>();
+  attr.output_y = !Y().getType().isa<NoneType>();
+  attr.output_yh = !Y_h().getType().isa<NoneType>();
   return attr;
 }
 
@@ -131,9 +129,12 @@ static void gru_compute(InferenceParameter &p,
       float *hr = h_r.data() + batch * attr.hidden_size;
       float *hh = h_h.data() + batch * attr.hidden_size;
       float *pre_state = prev_hidden_state + batch * attr.hidden_size;
-      float *hidden_state =
-          output + (seq_idx * attr.num_direction * attr.batch_size + batch) *
-                       attr.hidden_size;
+      float *hidden_state = pre_state;
+      if (attr.output_y) {
+        hidden_state =
+            output + (seq_idx * attr.num_direction * attr.batch_size + batch) *
+                         attr.hidden_size;
+      }
       for (int i = 0; i < attr.hidden_size; i++) {
         hz[i] = sigmoid_(hz[i] + xz[i]);
         hr[i] = sigmoid_(hr[i] + xr[i]);
@@ -141,10 +142,12 @@ static void gru_compute(InferenceParameter &p,
         hidden_state[i] = (1 - hz[i]) * hh[i] + hz[i] * pre_state[i];
       }
     }
-    prev_hidden_state = output + seq_idx * attr.num_direction *
-                                     attr.batch_size * attr.hidden_size;
+    if (attr.output_y) {
+      prev_hidden_state = output + seq_idx * attr.num_direction *
+                                       attr.batch_size * attr.hidden_size;
+    }
   }
-  if (attr.output_h) {
+  if (attr.output_yh) {
     memcpy(last_h, prev_hidden_state,
            attr.batch_size * attr.hidden_size * sizeof(float));
   }

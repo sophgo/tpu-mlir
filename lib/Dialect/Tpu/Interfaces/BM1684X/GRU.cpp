@@ -165,7 +165,8 @@ typedef struct {
   unsigned long long bGlobalAddr;
   unsigned long long zGlobalAddr;
   bool bias;
-  bool output_h;
+  bool outputY;
+  bool outputYh;
   int sequence;
   int batch;
   int xSize;
@@ -188,17 +189,15 @@ void tpu::GRUOp::codegen_global_bm1684x() {
   gru_param_t p = {0};
   p.xGlobalAddr = Module::getAddress(input());
   p.wGlobalAddr = Module::getAddress(filter());
-  p.bGlobalAddr = attr.have_bias ? Module::getAddress(bias()) : 0;
+  p.bGlobalAddr = Module::getAddress(bias());
   p.h0GlobalAddr = Module::getAddress(initial_h());
   p.yGlobalAddr = Module::getAddress(Y());
-  if (attr.output_h) {
-    p.hnGlobalAddr = Module::getAddress(Y_h());
-  }
-  if (buffer().getType().isa<NoneType>() == false) {
-    p.zGlobalAddr = Module::getAddress(buffer());
-  }
+  p.hnGlobalAddr = Module::getAddress(Y_h());
+  p.zGlobalAddr = Module::getAddress(buffer());
+
   p.bias = attr.have_bias;
-  p.output_h = attr.output_h;
+  p.outputY = attr.output_y;
+  p.outputYh = attr.output_yh;
   p.sequence = attr.seq_len;
   p.batch = attr.batch_size;
   p.xSize = attr.input_size;
@@ -207,5 +206,5 @@ void tpu::GRUOp::codegen_global_bm1684x() {
   p.bidirectional = (attr.num_direction == 2);
   p.numLayers = 1;
   p.dtype = BM168x::getDataType(input());
-  BM168x::call_global_func("backend_api_gru", &p, sizeof(gru_param_t));
+  BM168x::call_global_func("backend_api_gru_global", &p, sizeof(gru_param_t));
 }

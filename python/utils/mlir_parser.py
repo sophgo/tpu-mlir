@@ -74,6 +74,8 @@ class Operation:
 
     @staticmethod
     def append_attr(op, attrs):
+        if len(op.results) != 1:
+            return attrs
         shape_type = mlir.ir.ShapedType(op.results[0].type)
         element_type = shape_type.element_type
         if quant.UniformQuantizedType.isinstance(element_type):

@@ -223,7 +223,9 @@ public:
     if (Module::State::TOP_QUANTIZED == state_) {
       Module::setAsymmetric(module_, true);
       LoweringConfig::isAsymmetric = true;
+      LoweringConfig::isQuantized = true;
     } else {
+      LoweringConfig::isQuantized = false;
       Module::setAsymmetric(module_, LoweringConfig::isAsymmetric);
       if (Module::isCV18xx(LoweringConfig::chip)) {
         all_int8_process();

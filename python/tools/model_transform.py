@@ -19,11 +19,6 @@ from utils.misc import *
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
-
-def show_fake_cmd(in_npz: str, model: str, out_npz: str):
-    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
-
-
 class ModelTransformer(object):
 
     def __init__(self, model_name):
@@ -73,8 +68,8 @@ class ModelTransformer(object):
             np.savez(ref_npz, **ref_outputs)
 
             # inference of mlir model
+            from tools.model_runner import mlir_inference, show_fake_cmd
             show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
-            from tools.model_runner import mlir_inference
             f32_outputs = mlir_inference(inputs, self.mlir_file)
             np.savez(test_result, **f32_outputs)
 

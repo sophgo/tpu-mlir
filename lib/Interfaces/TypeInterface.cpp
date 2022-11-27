@@ -89,8 +89,14 @@ static mlir::Type verifyCompatibleType(mlir::Value in, mlir::Type to,
 
 mlir::Type type_verify_case_same(mlir::Operation *op, uint64_t opd_idx,
                                  TypeCastMode &mode) {
-  auto out = op->getResult(0);
-  return type_verify_case_type(op, opd_idx, out.getType(), mode);
+  mlir::Type toType;
+  for (auto t:op->getResultTypes()) {
+    if (!t.isa<mlir::NoneType>()) {
+      toType = t;
+      break;
+    }
+  }
+  return type_verify_case_type(op, opd_idx, toType, mode);
 }
 
 mlir::Type type_verify_case_type(mlir::Operation *op, uint64_t opd_idx,
