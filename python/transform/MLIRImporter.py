@@ -57,6 +57,7 @@ class Top:
     UnpackOp = 'top.Unpack'
     SplitOp = 'top.Split'
     SqrtOp = 'top.Sqrt'
+    WhereOp = 'top.Where'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -676,6 +677,16 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name']}
         return self.buildOp(Top.SqrtOp, operands, [output_type], **param)
+
+    def create_where_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name'],
+                 'tbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['tbrn_is_const']),
+                 'fbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['fbrn_is_const']),
+                 'tbrn_const_val': FloatAttr.get_f64(kargs['tbrn_const_val']),
+                 'fbrn_const_val': FloatAttr.get_f64(kargs['fbrn_const_val'])}
+        return self.buildOp(Top.WhereOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

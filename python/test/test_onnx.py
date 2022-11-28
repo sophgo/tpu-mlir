@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "ReduceL2", "Where", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
+    "ReduceL2", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
 ]
 
 
@@ -765,52 +765,22 @@ class ONNX_IR_TESTER(object):
 
     def test_Where(self, case_name):
         # real case
-        input_shape = [1, 40, 224]
-        output_shape = input_shape
-        condition_shape = [1, 40, 224]
-        condition_data = np.zeros(condition_shape)
-        # select top half
-        #array([[[1., 1., 0., 0.],
-        #        [1., 1., 0., 0.],
-        #        [1., 1., 0., 0.],
-        #        [1., 1., 0., 0.]],
-        condition_data[:, :, :100] = 1
-        const_data = np.array([0.5]).astype(np.float32)
-
-        output_shape = input_shape
-        condition_data = condition_data.astype(np.bool)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        condition_node_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['condition'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor',
-                data_type=onnx.TensorProto.BOOL,
-                dims=condition_shape,
-                vals=condition_data.flatten(),
-            ),
-        )
-        masked_fill_node_def = onnx.helper.make_node(
-            'Constant',
-            inputs=[],
-            outputs=['fill'],
-            value=onnx.helper.make_tensor(
-                name='const_tensor_1',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=const_data.shape,
-                vals=const_data,
-            ),
-        )
+        shape = [10, 40, 224]
+        cond_data = np.zeros(shape).astype(np.bool_)
+        cond_data[:, :, :100] = 1
+        tbrn_data = np.random.randn(*shape).astype(np.float32)
+        fbrn_data = np.random.randn(*shape).astype(np.float32)
+        cond = helper.make_tensor_value_info('cond', TensorProto.BOOL, shape)
+        tbrn = helper.make_tensor_value_info('tbrn', TensorProto.FLOAT, shape)
+        fbrn = helper.make_tensor_value_info('fbrn', TensorProto.FLOAT, shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, shape)
         where_node = helper.make_node(
             'Where',
-            ['condition', 'fill', 'input'],
+            ['cond', 'tbrn', 'fbrn'],
             ['output'],
         )
-        graph_def = helper.make_graph([condition_node_def, masked_fill_node_def, where_node],
-                                      case_name, [input], [output])
-        self.onnx_and_test(graph_def)
+        graph_def = helper.make_graph([where_node], case_name, [cond, tbrn, fbrn], [output])
+        self.onnx_and_test(graph_def, input_data={"cond": cond_data, "tbrn": tbrn_data, "fbrn": fbrn_data})
 
     def test_Relu(self, case_name):
         oc = 64
