@@ -38,9 +38,20 @@ LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
     }
   } else {
     if (is_cv18xx) {
-      bf16_lut_slope(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
-                     p.inputs[2], min_range().convertToDouble(),
-                     max_range().convertToDouble());
+      auto _lut_mode = lut_mode();
+      if (_lut_mode == LutMode::Slope) {
+        bf16_lut_slope(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
+                      p.inputs[2], min_range().convertToDouble(),
+                      max_range().convertToDouble());
+      } else if (_lut_mode == LutMode::Mantissa) {
+        bf16_lut_mantissa(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
+                      p.inputs[2], "mantissa");
+      } else if (_lut_mode == LutMode::Log) {
+        bf16_lut_mantissa(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
+                      p.inputs[2], "log");
+      } else {
+        llvm_unreachable("Not supported now!");
+      }
     } else {
       llvm_unreachable("not support");
     }
