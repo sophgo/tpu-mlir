@@ -5,6 +5,7 @@ set -ex
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+chip_name=bm1684x  #bm1684x  bm1686
 model_name=$1
 full_test=$2
 if [ x$1 == x ]; then
@@ -154,36 +155,36 @@ if [ ${do_f32} == 1 ]; then
 model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize F32 \
-  --chip bm1684x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${excepts_opt} \
   --tolerance 0.99,0.99 \
-  --model ${model_name}_bm1684x_f32.bmodel
+  --model ${model_name}_${chip_name}_f32.bmodel
 fi
 
 if [ ${do_f16} == 1 ]; then
 model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize F16 \
-  --chip bm1684x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${excepts_opt} \
   --tolerance 0.95,0.85 \
-  --model ${model_name}_bm1684x_f16.bmodel
+  --model ${model_name}_${chip_name}_f16.bmodel
 fi
 
 if [ ${do_bf16} == 1 ]; then
 model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize BF16 \
-  --chip bm1684x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${excepts_opt} \
   --tolerance 0.95,0.85 \
-  --model ${model_name}_bm1684x_bf16.bmodel
+  --model ${model_name}_${chip_name}_bf16.bmodel
 fi
 #########################
 # deploy to int8 bmodel
@@ -229,14 +230,14 @@ model_deploy.py \
   --quantize INT8 \
   ${cali_opt} \
   ${qtable_opt} \
-  --chip bm1684x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
   ${excepts_opt} \
   --quant_input \
   --quant_output \
-  --model ${model_name}_bm1684x_int8_sym.bmodel
+  --model ${model_name}_${chip_name}_int8_sym.bmodel
 
 fi #do_symmetric
 
@@ -253,12 +254,12 @@ model_deploy.py \
   --asymmetric \
   ${cali_opt} \
   ${qtable_opt} \
-  --chip bm1684x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_asym_opt} \
   ${excepts_opt} \
-  --model ${model_name}_bm1684x_int8_asym.bmodel
+  --model ${model_name}_${chip_name}_int8_asym.bmodel
 
 fi #do_asymmetric
 
@@ -276,20 +277,20 @@ ${app} \
 # by f32 bmodel
 ${app} \
   --input ${test_input} \
-  --model ${model_name}_bm1684x_f32.bmodel \
+  --model ${model_name}_${chip_name}_f32.bmodel \
   --output output_f32.jpg
 
 # by int8 symmetric bmodel
 ${app} \
   --input ${test_input} \
-  --model ${model_name}_bm1684x_int8_sym.bmodel \
+  --model ${model_name}_${chip_name}_int8_sym.bmodel \
   --output output_int8_sym.jpg
 
 if [ $do_asymmetric == 1 ]; then
 # by int8 asymmetric bmodel
 ${app} \
   --input ${test_input} \
-  --model ${model_name}_bm1684x_int8_asym.bmodel \
+  --model ${model_name}_${chip_name}_int8_asym.bmodel \
   --output output_int8_asym.jpg
 fi
 

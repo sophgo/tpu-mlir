@@ -144,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--correctness", default='0.99,0.90', help="correctness")
     parser.add_argument("--chip", required=True, type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
+                        choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
                         help="chip platform name")
     parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz file for inference, "
