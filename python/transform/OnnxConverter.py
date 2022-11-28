@@ -165,6 +165,11 @@ class OnnxConverter(BaseConverter):
             "Sqrt": lambda node: self.convert_sqrt_op(node),
             "Pow": lambda node: self.convert_pow_op(node),
             "Where": lambda node: self.convert_where_op(node),
+            "Equal": lambda node: self.convert_cmp_op(node),
+            "Greater": lambda node: self.convert_cmp_op(node),
+            "GreaterOrEqual": lambda node: self.convert_cmp_op(node),
+            "Less": lambda node: self.convert_cmp_op(node),
+            "LessOrEqual": lambda node: self.convert_cmp_op(node),
         }
 
     def __del__(self):
@@ -1497,3 +1502,25 @@ class OnnxConverter(BaseConverter):
         where_op = self.mlir.create_where_op([cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
         self.addOperand(onnx_node.name, where_op)
 
+    def convert_cmp_op(self, onnx_node):
+        type_map = {"Equal":0, "Greater":1, "GreaterOrEqual":2, "Less":3, "LessOrEqual":4}
+        assert (onnx_node.op_type in type_map)
+        assert (len(onnx_node.inputs) == 2)
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+             "type": type_map[onnx_node.op_type]}
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
+        lhs_opd = self.getOp(lhs)
+        rhs_opd = self.getOp(rhs)
+        output_shape = self.getShape(onnx_node.name)
+        if self.isConst(lhs):
+            p['const_val'] = self.getWeight(lhs).flatten()[0]
+            p['inversed'] = 1
+            cmp_op = self.mlir.create_compare_const_op([rhs_opd], output_shape, **p)
+        elif self.isConst(rhs):
+            p['const_val'] = self.getWeight(rhs).flatten()[0]
+            p['inversed'] = 0
+            cmp_op = self.mlir.create_compare_const_op([lhs_opd], output_shape, **p)
+        else:
+            cmp_op = self.mlir.create_compare_op([lhs_opd, rhs_opd], output_shape, **p)
+        self.addOperand(onnx_node.name, cmp_op)

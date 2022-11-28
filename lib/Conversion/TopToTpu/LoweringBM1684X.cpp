@@ -61,7 +61,9 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SplitLowering,
       SubLowering,
       SqrtLowering,
-      WhereLowering
+      WhereLowering,
+      CompareLowering,
+      CompareConstLowering
       // clang-format on
       >(patterns->getContext());
 }

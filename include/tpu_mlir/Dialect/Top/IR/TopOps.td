@@ -1056,4 +1056,33 @@ def Top_WhereOp : Top_Op<"Where"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_CompareOp : Top_Op<"Compare"> {
+  let summary = "Compare operation";
+  let description = [{
+    Returns the tensor resulted from performing the compare
+    operation elementwise on the input tensors A and B
+  }];
+  let arguments = (ins
+    AnyTensor:$lhs,
+    AnyTensor:$rhs,
+    I64Attr:$type
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_CompareConstOp : Top_Op<"CompareConst"> {
+  let summary = "CompareConst operation";
+  let description = [{
+    Returns the tensor resulted from performing the compare
+    operation elementwise on the input tensors A and Const
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$type,
+    F64Attr:$const_val,
+    I64Attr:$inversed
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

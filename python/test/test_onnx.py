@@ -21,7 +21,7 @@ import torch.nn as nn
 import onnxruntime
 
 Failed_Cases = [
-    "ReduceL2", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere"
+    "ReduceL2", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill"
 ]
 
 
@@ -42,6 +42,9 @@ class ONNX_IR_TESTER(object):
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
             "BroadcastMulConst": self.test_BroadcastMulConst,
+            "CompareConst": self.test_Compare,
+            "Compare": self.test_Compare,
+            # "Compare2": self.test_Compare2,
             "Concat": self.test_Concat,
             "Conv1d": self.test_Conv1d,
             "Conv2d": self.test_Conv2d,
@@ -1572,7 +1575,7 @@ class ONNX_IR_TESTER(object):
                 x = self.layer_norm(x)
                 return x
 
-        input_shape = [3, 24, 50]
+        input_shape = [1, 3, 24, 50]
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Net(), case_name)
 
@@ -1584,12 +1587,12 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, x):
-                y = x.masked_fill(x == 0, value=torch.tensor(-50.0))
-                z = x.masked_fill(x != 0, value=torch.tensor(1.0))
+                y = x.masked_fill(x > 0.8, value=torch.tensor(-50.0))
+                z = x.masked_fill(x < 0.2, value=torch.tensor(1.0))
                 return y + z
 
         input_shape = [2, 3, 100]
-        input_data = torch.randint(0, 1000, input_shape)
+        input_data = torch.rand(input_shape)
         input_data[:, :, 70:] = 0
         self.torch_and_test(input_data, Net(), case_name)
 
@@ -1600,14 +1603,13 @@ class ONNX_IR_TESTER(object):
             def __init__(self):
                 super(Net, self).__init__()
 
-            def forward(self, mask, a, b):
-                x = torch.where(mask.bool(), a, b)
+            def forward(self, a, b):
+                x = torch.where(a > b, a, b)
                 return x
 
         a = torch.randn(4, 3, 100, 100).float()
         b = torch.randn(4, 3, 100, 100).float()
-        mask = (a > 0).float()
-        self.torch_and_test((mask, a, b), Net(), case_name)
+        self.torch_and_test((a, b), Net(), case_name)
 
     def test_Add(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
@@ -2195,6 +2197,62 @@ class ONNX_IR_TESTER(object):
         pow_def = helper.make_node("Pow", inputs=list(input_shape.keys()), outputs=["output"])
         graph_def = helper.make_graph([pow_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_CompareConst(self, case_name):
+        shape = [1, 3, 27, 27]
+        input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
+        constant = helper.make_tensor(
+            "constant",
+            TensorProto.FLOAT,
+            [1],
+            np.array([0.5]).astype(np.float32),
+        )
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
+        # "Equal" need not to be tested since equal op between floating number may be invalid
+        for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
+            cmp_def = helper.make_node(cmp_type, inputs=["input", "constant"], outputs=["output"])
+            graph_def = helper.make_graph([cmp_def],
+                                           case_name, [input], [output],
+                                           initializer=[constant])
+            self.onnx_and_test(graph_def, input_data={"input": input_data})
+            print("====== TEST {} Success ======".format(cmp_type))
+
+    def test_Compare(self, case_name):
+        shape = [1, 3, 27, 27]
+        input_data = {
+            "input1": np.random.randn(*shape).astype(np.float32),
+            "input2": np.random.randn(*shape).astype(np.float32)
+        }
+        input_shape = {"input1": shape, "input2": shape}
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
+        # "Equal" need not to be tested since equal op between floating number may be invalid
+        for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
+            cmp_def = helper.make_node(cmp_type, inputs=["input1", "input2"], outputs=["output"])
+            graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
+            self.onnx_and_test(graph_def, input_data=input_data)
+            print("====== TEST {} Success ======".format(cmp_type))
+
+    def test_Compare2(self, case_name):
+        input_shape = {"input1": [1, 3, 1, 27], "input2": [1, 3, 27, 1]}
+        output_shape = [1, 3, 27, 27]
+        input_data = {
+            "input1": np.random.randn(*input_shape["input1"]).astype(np.float32),
+            "input2": np.random.randn(*input_shape["input2"]).astype(np.float32)
+        }
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
+        ]
+        output = helper.make_tensor_value_info("output", TensorProto.BOOL, output_shape)
+        # "Equal" need not to be tested since equal op between floating number may be invalid
+        for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
+            cmp_def = helper.make_node(cmp_type, inputs=list(input_shape.keys()), outputs=["output"])
+            graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
+            self.onnx_and_test(graph_def, input_data=input_data)
+            print("====== TEST {} Success ======".format(cmp_type))
 
 
 if __name__ == "__main__":
