@@ -58,6 +58,8 @@ class Top:
     SplitOp = 'top.Split'
     SqrtOp = 'top.Sqrt'
     WhereOp = 'top.Where'
+    CompareOp = 'top.Compare'
+    CompareConstOp = 'top.CompareConst'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -687,6 +689,26 @@ class MLIRImporter(object):
                  'tbrn_const_val': FloatAttr.get_f64(kargs['tbrn_const_val']),
                  'fbrn_const_val': FloatAttr.get_f64(kargs['fbrn_const_val'])}
         return self.buildOp(Top.WhereOp, operands, [output_type], **param)
+
+    def create_compare_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'type': IntegerAttr.get(self.mlir_type['INT64'], kargs['type'])
+        }
+        return self.buildOp(Top.CompareOp, operands, [output_type], **param)
+
+    def create_compare_const_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'type': IntegerAttr.get(self.mlir_type['INT64'], kargs['type']),
+            'const_val': FloatAttr.get_f64(kargs['const_val']),
+            'inversed': IntegerAttr.get(self.mlir_type['INT64'], kargs['inversed'])
+        }
+        return self.buildOp(Top.CompareConstOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
