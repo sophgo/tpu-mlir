@@ -5,6 +5,8 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 model_name=$1
 full_test=$2
+chip_name=cv183x
+
 if [ x$1 == x ]; then
   echo "Error: $0 model_name"
   exit 1
@@ -29,7 +31,7 @@ fi
 
 source ${cfg_file}
 
-NET_DIR=$REGRESSION_PATH/regression_out/${model_name}
+NET_DIR=$REGRESSION_PATH/regression_out/${model_name}_${chip_name}
 mkdir -p $NET_DIR
 pushd $NET_DIR
 
@@ -136,7 +138,7 @@ if [ ${do_bf16} == 1 ]; then
 model_deploy.py \
   --mlir ${model_name}.mlir \
   --quantize BF16 \
-  --chip cv183x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${excepts_opt} \
@@ -187,7 +189,7 @@ model_deploy.py \
   --quantize INT8 \
   ${cali_opt} \
   ${qtable_opt} \
-  --chip cv183x \
+  --chip ${chip_name} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \

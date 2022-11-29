@@ -53,6 +53,7 @@ struct Module {
   };
 
   static top::NoneOp getNoneOp(Operation *op);
+  static Value getOriValue(Value &v);
   static Value getOperand(Operation* op, int i);
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);

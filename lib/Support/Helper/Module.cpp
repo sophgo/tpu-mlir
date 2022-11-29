@@ -72,8 +72,7 @@ top::NoneOp Module::getNoneOp(Operation *op) {
   return NoneOp;
 }
 
-Value Module::getOperand(Operation* op, int i) {
-  auto v = op->getOperand(i);
+Value Module::getOriValue(Value &v) {
   if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
     int idx = block_arg.getArgNumber();
     auto parent_op = v.getParentBlock()->getParentOp();
@@ -95,7 +94,7 @@ Value Module::getOperand(Operation* op, int i) {
     }
   } else if (auto pre_op = v.getDefiningOp()) {
     if (isa<func::CallOp>(pre_op)) {
-      auto module = getModuleOp(op);
+      auto module = getModuleOp(pre_op);
       auto call_op = dyn_cast<func::CallOp>(pre_op);
       int index = v.cast<OpResult>().getResultNumber();
       for (auto func : module.getOps<FuncOp>()) {
@@ -111,6 +110,11 @@ Value Module::getOperand(Operation* op, int i) {
     }
   }
   llvm_unreachable("Failed to get preOperation.FIx me");
+}
+
+Value Module::getOperand(Operation* op, int i) {
+  auto v = op->getOperand(i);
+  return getOriValue(v);
 }
 
 ModuleOp Module::getModuleOp(Operation *op) {
