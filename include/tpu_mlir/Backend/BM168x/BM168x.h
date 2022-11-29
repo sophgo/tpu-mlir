@@ -415,6 +415,27 @@ typedef struct {
   float sel1_const_val;
 } select_common_spec_t;
 
+typedef struct {
+  float scale_val;
+  int begin_axis;
+  int end_axis;
+  int log;
+  int zero_point;
+} softmax_common_param_t;
+
+typedef struct {
+  softmax_common_param_t common;
+} softmax_global_param_t;
+
+typedef struct {
+  softmax_common_param_t common;
+  uint32_t buffer_addr;
+} softmax_local_param_t;
+
+typedef struct {
+  softmax_common_param_t common;
+} softmax_tflite_fix8b_param_t;
+
 #ifdef __cplusplus
 }
 #endif

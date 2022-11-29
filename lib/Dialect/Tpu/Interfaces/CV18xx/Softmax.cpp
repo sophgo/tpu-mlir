@@ -22,8 +22,7 @@ using namespace tpu_mlir::backend;
 
 
 void tpu::SoftmaxOp::codegen_global_cv18xx( int64_t layer_id) {
-
-   bool do_log = false;
+   bool do_log = log();
    int axis = this->axis();
    gaddr_t ga_input = Module::getAddress(input());
    gaddr_t ga_output = Module::getAddress(output());

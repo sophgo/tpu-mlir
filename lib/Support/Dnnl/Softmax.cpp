@@ -32,10 +32,17 @@ void Softmax::setup(float *input, float *output, softmax_attr_t &attr) {
   auto dst_md = memory::desc(attr_.dst_shape, dt::f32, tag::ncw);
   auto dst_mem = memory(dst_md, eng, p_output);
 
-  auto softmax_d =
-      softmax_forward::desc(prop_kind::forward_training, src_md, attr_.axis);
-  auto softmax_pd = softmax_forward::primitive_desc(softmax_d, eng);
-  softmax_prim = softmax_forward(softmax_pd);
+  if (attr.log == false) {
+    auto softmax_d =
+        softmax_forward::desc(prop_kind::forward_inference, src_md, attr_.axis);
+    auto softmax_pd = softmax_forward::primitive_desc(softmax_d, eng);
+    softmax_prim = softmax_forward(softmax_pd);
+  } else {
+    auto softmax_d = logsoftmax_forward::desc(prop_kind::forward_inference,
+                                              src_md, attr_.axis);
+    auto softmax_pd = logsoftmax_forward::primitive_desc(softmax_d, eng);
+    softmax_prim = logsoftmax_forward(softmax_pd);
+  }
 
   softmax_args.insert({DNNL_ARG_SRC, src_mem});
   softmax_args.insert({DNNL_ARG_DST, dst_mem});

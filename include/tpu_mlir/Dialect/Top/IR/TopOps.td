@@ -658,11 +658,12 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
 def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let summary = "Softmax operation";
   let description = [{
-    The operator computes the normalized exponential values for the given input.
+    Integrates some operations related to softmax.
   }];
   let arguments = (ins
     AnyTensor:$input,
     I64Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta
   );
   let results = (outs AnyTensor:$output);

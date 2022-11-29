@@ -40,7 +40,7 @@ void tpu::CompareConstOp::codegen_global_bm1684x() {
   spec.common.inversed = inversed();
   spec.common.binary_type = compare_type_map[type()];
   spec.common.if_relu = 0;
-  spec.common.B_const_val = DTYPE_INT32; // TODO: consider quantized case
+  spec.common.B_dtype = DTYPE_FP32; // TODO: consider quantized case
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -75,7 +75,7 @@ void tpu::CompareConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) 
   spec.common.inversed = inversed();
   spec.common.binary_type = compare_type_map[type()];
   spec.common.if_relu = 0;
-  spec.common.B_const_val = DTYPE_INT32; // TODO: consider quantized case
+  spec.common.B_dtype = DTYPE_FP32; // TODO: consider quantized case
 
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
