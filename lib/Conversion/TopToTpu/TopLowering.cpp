@@ -237,14 +237,14 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier, int64_t s
     for (int64_t idx = 0; idx < num_elem; idx++) {
       int64_t tmp = ((uint8_t)(input_quant->at(idx)) - input_offset) * multiplier;
       auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
-      v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+      v = RightShiftRound(v, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
       input_dequant->data()[idx] = v;
     }
   } else {
     for (int64_t idx = 0; idx < num_elem; idx++) {
       int64_t tmp = (input_quant->at(idx) - input_offset) * multiplier;
       auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
-      v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+      v = RightShiftRound(v, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
       input_dequant->data()[idx] = v;
     }
   }

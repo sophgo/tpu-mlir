@@ -53,6 +53,12 @@ Value create_lookup_table(Operation *owner, const std::vector<float> &table) {
   return top::WeightOp::create(owner, "table", table, table_type);
 }
 
+Value create_lookup_table(Operation *owner, const std::vector<int> &table) {
+  OpBuilder builder(owner->getContext());
+  auto table_type = RankedTensorType::get({1, 1, 1, 256}, builder.getI32Type());
+  return top::WeightOp::create(owner, "table", table, table_type);
+}
+
 static void gen_bf16_base_table(float start, float end, int table_hw,
                                 float *table, activate_f &func) {
   int half = table_hw / 2;

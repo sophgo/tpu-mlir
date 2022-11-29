@@ -167,4 +167,7 @@ std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
 // compare
 bool compare(float lhs, float rhs, llvm::StringRef mode);
 
+// to compilable with gemmlowp
+int32_t exp_on_negative_values(int input, int int_bits);
+
 } // namespace tpu_mlir

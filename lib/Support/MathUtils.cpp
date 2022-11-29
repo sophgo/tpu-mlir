@@ -425,6 +425,9 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode) {
   if (shift_num > 63)
     shift_num = 63;
   T val, res;
+  if (shift_num < 0) {
+    return src << (-shift_num);
+  }
   val = src >> shift_num;
   res = val;
   T lo_mask = (1ull << shift_num) - 1;
@@ -871,4 +874,76 @@ bool compare(float a, float b, StringRef mode) {
   llvm_unreachable("Not Implemented");
   return false;
 }
+
+// to compilable with gemmlowp
+// fixedpoint/fixedpoint.h:exp_on_interval_between_negative_one_quarter_and_0_excl()
+// return exp(x) for x in [-1/4, 0). Taylor expansion.
+int32_t exp_on_interval_between_negative_one_quarter_and_0_excl(int input) {
+  const int32_t const_term = 1895147668;
+  const int32_t const_1_over_3 = 715827883;
+  const int32_t const_1_over_8 = 1 << 28;
+  int32_t x = input + const_1_over_8;
+
+#define QUANT_MUL(x, y)             \
+  RightShiftRound((int64_t)x * (int64_t)y, 31, ROUNDING_HALF_UP);
+
+  int32_t x2 = QUANT_MUL(x, x);
+  int32_t x3 = QUANT_MUL(x2, x);
+  int32_t x4 = QUANT_MUL(x2, x2);
+  int32_t x4_over_4 = RightShiftRound(x4, 2, ROUNDING_HALF_AWAY_FROM_ZERO);
+  int32_t x4_over_12_plus_x3_over_3_plus_x2 = QUANT_MUL((x4_over_4 + x3), const_1_over_3);
+  int32_t x4_over_24_plus_x3_over_6_plus_x2_over_2 =
+      RightShiftRound(x4_over_12_plus_x3_over_3_plus_x2, 1, ROUNDING_HALF_AWAY_FROM_ZERO);
+  int32_t out = const_term +
+      QUANT_MUL((x4_over_24_plus_x3_over_6_plus_x2_over_2 + x), const_term);
+  return out;
+}
+
+// to compilable with gemmlowp
+// fixedpoint/fixedpoint.h:exp_on_negative_values()
+int32_t exp_on_negative_values(int input, int int_bits) {
+  const int type_size = sizeof(int32_t);      // input type is int32
+  const int zero = 0;
+  const int max_value = (1U << 31) - 1;
+  const int total_bits = 8 * type_size;
+  const int fract_bits = total_bits - 1 - int_bits;
+  const int one = int_bits == 0 ? max_value : (1 << fract_bits);
+  if (int_bits > 5) {
+    int clamp_b = int_bits > 5 ? 36 - int_bits : 0;
+    int clamp = clamp_b;    // TODO: for input is 32bit; if input is 16bit, (clamp_b << 16), half away form zero
+    if (input < clamp) {
+      return zero;
+    }
+  }
+  if (input == 0) {
+    return one;
+  }
+  const int one_quarter = 1 << (fract_bits - 2);
+  int mask = one_quarter - 1;
+  int a_mod_quarter_minus_one_quarter = (input & mask) - one_quarter;
+  int32_t result = exp_on_interval_between_negative_one_quarter_and_0_excl(
+      a_mod_quarter_minus_one_quarter);
+  int32_t remainder = a_mod_quarter_minus_one_quarter - input;
+
+#define EXP_BARREL_SHIFTER(Exp, Multiplier)           \
+  if (int_bits > Exp) {                               \
+    int shift_num = fract_bits + Exp;                 \
+    if (remainder & (1 << shift_num)) {               \
+      result = RightShiftRound((int64_t)result * (int64_t)Multiplier, 31, ROUNDING_HALF_UP);  \
+    }                                                 \
+  }
+
+  EXP_BARREL_SHIFTER(-2, 1672461947);  // exp(-1/4)
+  EXP_BARREL_SHIFTER(-1, 1302514674);  // exp(-1/2)
+  EXP_BARREL_SHIFTER(+0, 790015084);   // exp(-1)
+  EXP_BARREL_SHIFTER(+1, 290630308);   // exp(-2)
+  EXP_BARREL_SHIFTER(+2, 39332535);    // exp(-4)
+  EXP_BARREL_SHIFTER(+3, 720401);      // exp(-8)
+  EXP_BARREL_SHIFTER(+4, 242);         // exp(-16)
+
+#undef EXP_BARREL_SHIFTER
+
+  return result;
+}
+
 } // namespace tpu_mlir

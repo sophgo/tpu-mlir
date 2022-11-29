@@ -204,7 +204,6 @@ def tflite_inference(
 ) -> dict:
     # TFLiteInterpreter is heavy, only import it when needed.
     from transform.TFLiteInterpreter import TFLiteInterpreter
-
     session = TFLiteInterpreter(
         tflite_file,
         experimental_preserve_all_tensors=dump_all,
@@ -215,7 +214,6 @@ def tflite_inference(
             tensor = session.to_expressed_dat(tensor_with_desc)
         else:
             _, tensor = tensor_with_desc
-
         if not tf_layout:
             if tensor.ndim == 4:
                 return tensor.transpose([0, 3, 1, 2])
