@@ -21,7 +21,6 @@ include "mlir/IR/OpBase.td"
 include "mlir/IR/EnumAttr.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "tpu_mlir/Interfaces/LocalGenInterface.td"
-include "tpu_mlir/Interfaces/WeightReorderInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/TypeInterface.td"
@@ -153,7 +152,6 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<WeightReorderInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>])> {
   let summary = "convolution operator";
 
@@ -1085,7 +1083,6 @@ def Tpu_SplitOp: Tpu_Op<"Split"> {
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<WeightReorderInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
   let summary = "deconvolution operator";
 
@@ -1177,8 +1174,7 @@ def Tpu_LRNOp: Tpu_Op<"LRN", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_GRUOp: Tpu_Op<"GRU",[
-    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+def Tpu_GRUOp: Tpu_Op<"GRU"> {
   let summary = "GRU operator";
 
   let description = [{
@@ -1219,8 +1215,7 @@ def Tpu_GRUOp: Tpu_Op<"GRU",[
   }];
 }
 
-def Tpu_LSTMOp: Tpu_Op<"LSTM",[
-    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
   let summary = "LSTM operator";
 
   let description = [{

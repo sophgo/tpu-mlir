@@ -7,19 +7,24 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "mlir/IR/BuiltinTypes.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/WeightReorder.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 
-#include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
+#include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
-#include <sstream>
+#include <cstdint>
 #include <fstream>
 #include <set>
+#include <sstream>
 
 using namespace llvm;
 using namespace mlir;
@@ -39,11 +44,17 @@ public:
     }
     auto chip = Module::getChip(module);
     Arch::init(chip);
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](WeightReorderInterface op) {
-        op.weight_reorder();
-      });
+    RewritePatternSet patterns(module.getContext());
+    if (Module::isBM1684Family(chip)) {
+      bm1684::populateWeightReorderPatterns(&patterns);
+    } else if (Module::isBM1684XFamily(chip)) {
+      bm1684x::populateWeightReorderPatterns(&patterns);
+    } else if (chip == Module::Chip::CV182x || chip == Module::Chip::CV183x) {
+      cv18xx::populateWeightReorderPatterns(&patterns);
     }
+    auto config = GreedyRewriteConfig();
+    config.maxIterations = 0; // apply each pattern only once.
+    applyPatternsAndFoldGreedily(module, std::move(patterns), config);
     Module::updateModuleTypes(module);
     Module::setState(module, Module::State::TPU_REORDERED);
   }
@@ -52,5 +63,5 @@ public:
 std::unique_ptr<OperationPass<ModuleOp>> createWeightReorderPass() {
   return std::make_unique<WeightReorderPass>();
 }
-} // namespace top
+} // namespace tpu
 } // namespace tpu_mlir

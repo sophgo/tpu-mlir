@@ -10,6 +10,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 
@@ -17,6 +18,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
+using namespace tpu_mlir::bm1684x;
 
 // ======================================
 // WeightReorderInterface
@@ -88,18 +90,20 @@ static void iofg2ifog(std::shared_ptr<std::vector<T>> &filter, int num_dir,
   filter = filter_new;
 }
 
-void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
-  auto attr = parseParam();
-  auto op = getOperation();
-  OpBuilder builder(getContext());
+template <>
+LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
+    tpu::LSTMOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isF32())
+    return failure();
 
-  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  auto attr = op.parseParam();
+  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
 
-  auto recurrenceOp = recurrence().getDefiningOp<top::WeightOp>();
+  auto recurrenceOp = op.recurrence().getDefiningOp<top::WeightOp>();
   auto recurrence_f32 = recurrenceOp.read<float>();
-  auto num_filter = Module::getNumElements(filter());
-  auto num_recur = Module::getNumElements(recurrence());
+  auto num_filter = Module::getNumElements(op.filter());
+  auto num_recur = Module::getNumElements(op.recurrence());
   auto filter_merged =
       std::make_shared<std::vector<float>>(num_filter + num_recur, 0);
   filter_merge(filter_merged, filter_f32, recurrence_f32, attr.num_direction,
@@ -108,7 +112,7 @@ void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
   std::vector<int64_t> filter_reordered_shape = {
       attr.num_direction, 4 * attr.input_size + 4 * attr.hidden_size,
       attr.hidden_size};
-  auto filter_type = Module::getStorageType(filter());
+  auto filter_type = Module::getStorageType(op.filter());
   auto new_filter_type =
       RankedTensorType::get(filter_reordered_shape, filter_type);
   auto newFilterOp = top::WeightOp::create(op, "reordered_filter",
@@ -116,9 +120,9 @@ void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
   op->setOperand(1, newFilterOp);
   op->setOperand(2, Module::getNoneOp(op));
   if (attr.have_bias) {
-    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
-    auto type = bias().getType().cast<RankedTensorType>();
+    auto type = op.bias().getType().cast<RankedTensorType>();
     iofg2ifog(bias_f32, attr.num_direction, attr.hidden_size);
     auto newBiasOp =
         top::WeightOp::create(op, "reordered_bias", *bias_f32, type);
@@ -128,7 +132,7 @@ void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
   std::vector<int64_t> init_shape = {attr.num_direction, attr.batch_size,
                                      attr.hidden_size};
   if (!attr.have_h0) {
-    auto stype = Module::getStorageType(input());
+    auto stype = Module::getStorageType(op.input());
     auto initial_h = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto new_type = RankedTensorType::get(init_shape, stype);
@@ -137,7 +141,7 @@ void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
     op->setOperand(4, initial_h_Op);
   }
   if (!attr.have_c0) {
-    auto stype = Module::getStorageType(input());
+    auto stype = Module::getStorageType(op.input());
     auto initial_c = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto new_type = RankedTensorType::get(init_shape, stype);
@@ -145,11 +149,8 @@ void tpu::LSTMOp::weight_reorder_f32_bm1684x() {
         top::WeightOp::create(op, "initial_c", *initial_c, new_type);
     op->setOperand(5, initial_c_Op);
   }
+  return success();
 }
-
-void tpu::LSTMOp::weight_reorder_f16_bm1684x() {}
-void tpu::LSTMOp::weight_reorder_bf16_bm1684x() {}
-void tpu::LSTMOp::weight_reorder_int8_bm1684x() {}
 
 #ifdef __cplusplus
 extern "C" {

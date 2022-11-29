@@ -18,16 +18,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-// ======================================
-// WeightReorderInterface
-// ======================================
-
-void tpu::GRUOp::weight_reorder_bf16_cv18xx() {
-  llvm_unreachable("Not supported now");
-}
-void tpu::GRUOp::weight_reorder_int8_cv18xx() {
-  llvm_unreachable("Not supported now");
-}
 
 // =========================================
 // GlobalGenInterface

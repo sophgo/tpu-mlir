@@ -7,6 +7,7 @@ file(GLOB _sources
           Canonicalize/*.cpp
           Transforms/*.cpp
           Transforms/BM168x/*.cpp
+          Transforms/BM1684/*.cpp
           Transforms/CV18xx/*.cpp
           Transforms/LayerGroup/*.cpp)
 
@@ -23,7 +24,6 @@ add_llvm_library(TPUMLIRTpu
   MLIRTpuPassIncGen
   MLIRTpuAttrGen
   MLIRInferenceInterfaceIncGen
-  MLIRWeightReorderInterfaceIncGen
   MLIRGlobalGenInterfaceIncGen
   MLIRLocalGenInterfaceIncGen
   MLIRTypeInterfaceIncGen
@@ -39,7 +39,6 @@ add_llvm_library(TPUMLIRTpu
   MLIRTransforms
   MLIRSideEffectInterfaces
   MLIRInferenceInterface
-  MLIRWeightReorderInterface
   MLIRGlobalGenInterface
   MLIRLocalGenInterface
   MLIRTypeInterface

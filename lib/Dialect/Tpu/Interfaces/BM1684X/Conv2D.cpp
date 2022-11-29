@@ -9,6 +9,7 @@
 
 #include "ConvUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Module.h"
@@ -19,6 +20,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
+using namespace tpu_mlir::bm1684x;
 
 // ======================================
 // WeightReorderInterface
@@ -26,21 +28,23 @@ using namespace tpu_mlir::backend;
 
 // refer to net_compiler: bool BM1684XCoeffArranger::ConvWeightArr(GraphEdge*
 // edge)
-void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isInteger(8) || op.coeff_merged())
+    return failure();
+
   conv_attr_t attr = {0};
-  parseParam(&attr);
+  op.parseParam(&attr);
 
   bool merge = true;
-  auto out_stype = Module::getStorageType(output());
+  auto out_stype = Module::getStorageType(op.output());
   if (out_stype.isInteger(32)) {
     merge = false;
   }
 
-  auto op = getOperation();
-
-  OpBuilder builder(getContext());
   // filter
-  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
@@ -58,36 +62,36 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
     use_3ic_optimize = 0;
   }
 
-  auto pre_op = input().getDefiningOp();
+  auto pre_op = op.input().getDefiningOp();
   if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
     // broadcast input using BDC rather than GDMA
     use_3ic_optimize |= 0x10;
   }
-  if (use_3ic_optimize && !input().hasOneUse()) {
+  if (use_3ic_optimize && !op.input().hasOneUse()) {
     // broadcast input using BDC to a buffer
     use_3ic_optimize |= 0x30;
   }
 
   if (attr.is_dw == false) {
-    reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize);
+    tpu::reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize);
   } else {
     filter_shape = {1, attr.oc, 1, attr.kh * attr.kw};
   }
-  op->setAttr("use_3ic_optimize", builder.getI64IntegerAttr(use_3ic_optimize));
+  op->setAttr("use_3ic_optimize", rewriter.getI64IntegerAttr(use_3ic_optimize));
   if (merge == false) {
-    auto stype = Module::getStorageType(filter());
+    auto stype = Module::getStorageType(op.filter());
     auto new_type = RankedTensorType::get(filter_shape, stype);
     auto new_op =
         top::WeightOp::create(op, "filter_reorderd", *filter_i8, new_type);
     op->setOperand(1, new_op);
     if (attr.has_bias) {
-      auto elem_type = Module::getStorageType(bias());
+      auto elem_type = Module::getStorageType(op.bias());
       auto bias_type = RankedTensorType::get({1, attr.oc, 1, 1}, elem_type);
-      bias().setType(bias_type);
+      op.bias().setType(bias_type);
     }
-    return;
+    return success();
   }
-  reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false);
+  tpu::reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false);
   int64_t new_oc = filter_shape[1];
   int64_t filter_w_bytes = filter_shape[3] * sizeof(int8_t);
 
@@ -96,25 +100,25 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
   int64_t bias_w_bytes = 0;
   if (attr.has_bias) {
-    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
-    reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false);
+    tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false);
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
 
   // requant
-  auto qtype = Quant::getUniformQuantizedType(output());
+  auto qtype = Quant::getUniformQuantizedType(op.output());
   std::vector<int64_t> quant_shape = {1, attr.oc, 1, 3};
   auto quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
-  auto m_data = Module::getI64Array(multiplier(), attr.oc, 1);
-  auto r_data = Module::getI64Array(rshift(), attr.oc, 0);
+  auto m_data = Module::getI64Array(op.multiplier(), attr.oc, 1);
+  auto r_data = Module::getI64Array(op.rshift(), attr.oc, 0);
   for (int i = 0; i < attr.oc; i++) {
     quant_data->at(i * 3) = m_data->at(i);
     quant_data->at(i * 3 + 1) = -r_data->at(i);
     quant_data->at(i * 3 + 2) = qtype.getZeroPoint();
   }
-  reshape_coeff_for_broadcast_channel(quant_data, quant_shape, true);
+  tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, true);
   assert(new_oc == quant_shape[1]);
   int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
 
@@ -154,37 +158,36 @@ void tpu::Conv2DOp::weight_reorder_int8_bm1684x() {
       coeff_shape[3] /= 64;
     }
   }
-  auto elem_type = Module::getStorageType(filter());
+  auto elem_type = Module::getStorageType(op.filter());
   auto coeff_type = RankedTensorType::get(coeff_shape, elem_type);
   auto coeff_op = top::WeightOp::create(op, "merge", *new_coeff, coeff_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
-  op->setAttr("coeff_merged", builder.getBoolAttr(true));
+  op->setAttr("coeff_merged", rewriter.getBoolAttr(true));
   op->setOperand(1, coeff_op);
   auto none = Module::getNoneOp(op);
   op->setOperand(2, none.getResult());
+  return success();
 }
 
-void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
+LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
+                                          PatternRewriter &rewriter) {
   conv_attr_t attr = {0};
-  parseParam(&attr);
+  op.parseParam(&attr);
 
-  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   const int IC_PARALLEL = BM168x::ic_num(2);
   auto filter_u16 = filterOp.read<uint16_t>();
-  auto filter_type = Module::getStorageType(filter());
-
-  auto op = getOperation();
-  OpBuilder builder(getContext());
+  auto filter_type = Module::getStorageType(op.filter());
 
   if (attr.is_dw) {
     filter_shape = {1, attr.ic, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    filter().setType(new_filter_type);
+    op.filter().setType(new_filter_type);
     if (attr.has_bias) {
-      auto biasOp = bias().getDefiningOp<top::WeightOp>();
+      auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
       auto data_fp32 = biasOp.read<float>();
       auto count = data_fp32->size();
       auto data_u16 = std::make_shared<std::vector<uint16_t>>(count);
@@ -197,7 +200,7 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
 
       int64_t bias_shape[4] = {1, attr.oc, 1, 1};
       auto new_bias_type = RankedTensorType::get(bias_shape, filter_type);
-      bias().setType(new_bias_type);
+      op.bias().setType(new_bias_type);
 
       auto newBiasOp =
           top::WeightOp::create(op, "reordered", *data_u16, new_bias_type);
@@ -223,15 +226,15 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
       }
     }
 
-    reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
+    tpu::reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
     op->setAttr("use_3ic_optimize",
-                builder.getI64IntegerAttr(use_3ic_optimize));
+                rewriter.getI64IntegerAttr(use_3ic_optimize));
     // bias op
     if (attr.has_bias) {
-      auto bias_type = Module::getStorageType(bias());
+      auto bias_type = Module::getStorageType(op.bias());
       int64_t bias_shape[4] = {1, attr.oc, 1, 1};
       auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
-      bias().setType(new_bias_type);
+      op.bias().setType(new_bias_type);
     }
   }
 
@@ -249,19 +252,37 @@ void tpu::Conv2DOp::weight_reorder_bf16_bm1684x() {
   auto new_op =
       top::WeightOp::create(op, "filter_reorderd", *filter_u16, new_type);
   op->setOperand(1, new_op);
+  return success();
 }
 
-void tpu::Conv2DOp::weight_reorder_f16_bm1684x() {
-  weight_reorder_bf16_bm1684x();
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isBF16())
+    return failure();
+  return weight_reorder_bf16_bm1684x(op, rewriter);
 }
 
-void tpu::Conv2DOp::weight_reorder_f32_bm1684x() {
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isF16())
+    return failure();
+  return weight_reorder_bf16_bm1684x(op, rewriter);
+}
+
+template <>
+LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
+    tpu::Conv2DOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isF32())
+    return failure();
+
   conv_attr_t attr = {0};
-  parseParam(&attr);
-  auto op = getOperation();
-  auto out_type = Module::getStorageType(output());
+  op.parseParam(&attr);
+
+  auto out_type = Module::getStorageType(op.output());
   // filter reorder
-  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   int64_t filter_shape[4];
   if (out_type.isF32()) {
     filter_shape[0] = 1;
@@ -269,19 +290,20 @@ void tpu::Conv2DOp::weight_reorder_f32_bm1684x() {
     filter_shape[2] = attr.ic / attr.groups;
     filter_shape[3] = attr.kh * attr.kw;
     auto new_type = RankedTensorType::get(filter_shape, out_type);
-    filter().setType(new_type);
+    op.filter().setType(new_type);
   } else {
-    dump();
+    op.dump();
     llvm_unreachable("op type not support");
   }
 
   // bias op
   if (attr.has_bias) {
-    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, out_type);
-    bias().setType(new_type);
+    op.bias().setType(new_type);
   }
+  return success();
 }
 
 // ======================================

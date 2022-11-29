@@ -12,6 +12,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -21,6 +22,7 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
+using namespace tpu_mlir::cv18xx;
 
 // common for weight
 template <typename T>
@@ -167,13 +169,16 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
 // Weight reorder
 // ======================================
 
-void tpu::DeconvOp::weight_reorder_int8_cv18xx() {
+template <>
+LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
+    tpu::DeconvOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isInteger(8))
+    return failure();
+
   deconv_attr_t attr = {0};
-  parseParam(&attr);
-  OpBuilder builder(getContext());
-  auto op = getOperation();
+  op.parseParam(&attr);
   // lower weight  for groups weight's shape is (oc, ic/g, kh, kw)
-  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
@@ -183,7 +188,7 @@ void tpu::DeconvOp::weight_reorder_int8_cv18xx() {
   }
   rotateConvolutionFilter(filter_i8, filter_shape);
   transposeConvolutionFilter(filter_i8, filter_shape);
-  auto elem_type = Module::getStorageType(filter());
+  auto elem_type = Module::getStorageType(op.filter());
   auto filter_type = RankedTensorType::get(filter_shape, elem_type);
   auto weight_op =
       top::WeightOp::create(op, "filter_reordered", *filter_i8, filter_type);
@@ -193,29 +198,33 @@ void tpu::DeconvOp::weight_reorder_int8_cv18xx() {
   std::shared_ptr<std::vector<int32_t>> bias_new;
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
   if (attr.with_bias) {
-    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
   }
-  auto m_data = Module::getI64Array(multiplier(), attr.oc, 1);
-  auto r_data = Module::getI64Array(rshift(), attr.oc, 0);
+  auto m_data = Module::getI64Array(op.multiplier(), attr.oc, 1);
+  auto r_data = Module::getI64Array(op.rshift(), attr.oc, 0);
   std::vector<int64_t> packedShape;
   auto packed = packWeight(bias_new, r_data, m_data, attr.oc, packedShape);
   auto packed_type =
-      RankedTensorType::get(packedShape, builder.getIntegerType(8));
+      RankedTensorType::get(packedShape, rewriter.getIntegerType(8));
   auto pack_op = top::WeightOp::create(op, "bias_packed", *packed, packed_type);
   op->removeAttr("rshift");
   op->removeAttr("multiplier");
   op->setOperand(2, pack_op);
+  return success();
 }
 
-void tpu::DeconvOp::weight_reorder_bf16_cv18xx() {
+template <>
+LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
+    tpu::DeconvOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isBF16())
+    return failure();
+
   deconv_attr_t attr = {0};
-  parseParam(&attr);
-  OpBuilder builder(getContext());
-  auto op = getOperation();
+  op.parseParam(&attr);
   // first lower weight
-  auto shape = Module::getShape( filter());
-  auto filterOp = filter().getDefiningOp<top::WeightOp>();
+  auto shape = Module::getShape(op.filter());
+  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   auto filter_u16 = filterOp.read<uint16_t>();
@@ -226,23 +235,25 @@ void tpu::DeconvOp::weight_reorder_bf16_cv18xx() {
   rotateConvolutionFilter(filter_u16, filter_shape);
   transposeConvolutionFilter(filter_u16, filter_shape);
   // rewrite weightOp
-  auto filter_type = RankedTensorType::get(filter_shape, builder.getBF16Type());
+  auto filter_type =
+      RankedTensorType::get(filter_shape, rewriter.getBF16Type());
   auto weight_op =
       top::WeightOp::create(op, "filter_reordered", *filter_u16, filter_type);
   op->setOperand(1, weight_op);
   // second lower bias if exist
   if (attr.with_bias) {
-    auto biasOp = bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
     std::vector<uint32_t> bias_new(bias_f32->size());
     transposeBiasFp32(bias_f32, bias_new);
     // rewrite biasOp
-    auto new_bias_type = RankedTensorType::get(Module::getShape(bias()),
-                                               builder.getIntegerType(32));
+    auto new_bias_type = RankedTensorType::get(Module::getShape(op.bias()),
+                                               rewriter.getIntegerType(32));
     auto lbias_op =
         top::WeightOp::create(op, "bias_reordered", bias_new, new_bias_type);
     op->setOperand(2, lbias_op);
   }
+  return success();
 }
 
 // ======================================

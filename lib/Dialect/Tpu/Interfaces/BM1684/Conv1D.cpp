@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
@@ -18,11 +19,17 @@ using namespace mlir;
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
+using namespace tpu_mlir::bm1684;
 
-void tpu::Conv1DOp::weight_reorder_int8_bm1684() {
+template <>
+LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
+    tpu::Conv1DOp op, PatternRewriter &rewriter) const {
+  if (!Module::getStorageType(op.filter()).isInteger(8))
+    return failure();
+
   conv_attr_t attr = {0};
-  parseParam(&attr);
-  auto filterOp = cast<top::WeightOp>(filter().getDefiningOp());
+  op.parseParam(&attr);
+  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
@@ -42,9 +49,10 @@ void tpu::Conv1DOp::weight_reorder_int8_bm1684() {
                                     attr.kh * attr.kw * align_up(attr.ic, 4l)};
   auto new_type =
       RankedTensorType::get(new_shape, filter_type.getElementType());
-  auto new_filter = top::WeightOp::create(filter().getDefiningOp(), "reorderd",
-                                          *filter_new, new_type);
-  setOperand(1, new_filter);
+  auto new_filter = top::WeightOp::create(op.filter().getDefiningOp(),
+                                          "reorderd", *filter_new, new_type);
+  op->setOperand(1, new_filter);
+  return success();
 }
 
 void tpu::Conv1DOp::codegen_global_bm1684() {
