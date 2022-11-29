@@ -77,5 +77,6 @@ LOWERING_BM1684X(Split)
 LOWERING_BM1684X(Sub)
 LOWERING_BM1684X(Sqrt)
 LOWERING_BM1684X(Reciprocal)
+LOWERING_BM1684X(Where)
 } // namespace bm1684x
 } // namespace tpu_mlir

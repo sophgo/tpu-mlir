@@ -1039,4 +1039,21 @@ def Top_SqrtOp : Top_Op<"Sqrt", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_WhereOp : Top_Op<"Where"> {
+  let summary = "Where operation";
+  let description = [{
+    Return elements, either from X or Y, depending on condition.
+  }];
+  let arguments = (ins
+    AnyTensor:$cond,
+    AnyTensor:$tbrn,
+    AnyTensor:$fbrn,
+    I64Attr:$tbrn_is_const,
+    F64Attr:$tbrn_const_val,
+    I64Attr:$fbrn_is_const,
+    F64Attr:$fbrn_const_val
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS
