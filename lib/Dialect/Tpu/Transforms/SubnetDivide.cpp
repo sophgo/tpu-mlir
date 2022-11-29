@@ -93,7 +93,8 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   std::vector<Location> argLoc;
   for (auto input : fnInputs) {
     argType.push_back(input.getType());
-    if (auto op = input.getDefiningOp()) {
+    auto ori_input = Module::getOriValue(input);
+    if (auto op = ori_input.getDefiningOp()) {
       argLoc.push_back(op->getLoc());
     } else {
       argLoc.push_back(module.getLoc());

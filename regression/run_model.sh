@@ -38,7 +38,7 @@ fi
 
 source ${cfg_file}
 
-NET_DIR=$REGRESSION_PATH/regression_out/${model_name}
+NET_DIR=$REGRESSION_PATH/regression_out/${model_name}_${chip_name}
 mkdir -p $NET_DIR
 pushd $NET_DIR
 
