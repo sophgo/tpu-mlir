@@ -164,6 +164,7 @@ class OnnxConverter(BaseConverter):
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Sqrt": lambda node: self.convert_sqrt_op(node),
             "Pow": lambda node: self.convert_pow_op(node),
+            "Where": lambda node: self.convert_where_op(node),
         }
 
     def __del__(self):
@@ -1469,3 +1470,30 @@ class OnnxConverter(BaseConverter):
             self._make_pow_op(onnx_node.name, base_const, expn)
         else:
             self._make_pow_op(onnx_node.name, base, expn)
+
+    def convert_where_op(self, onnx_node):
+        assert (onnx_node.op_type == "Where")
+        assert (len(onnx_node.inputs) == 3)
+        cond = onnx_node.inputs[0]
+        tbrn = onnx_node.inputs[1]
+        fbrn = onnx_node.inputs[2]
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+             'tbrn_is_const': 0, 'fbrn_is_const': 0,
+             'tbrn_const_val': 0, 'fbrn_const_val': 0}
+        cond_opd = self.getOp(cond)
+        tbrn_opd = self.getOp(tbrn)
+        fbrn_opd = self.getOp(fbrn)
+        if self.isConst(tbrn):
+            p['tbrn_is_const'] = 1
+            p['tbrn_const_val'] = self.getWeight(tbrn).flatten()[0]
+        else:
+            assert (self.getShape(cond) == self.getShape(tbrn)) # do not support broadcastable case recently
+        if self.isConst(fbrn):
+            p['fbrn_is_const'] = 1
+            p['fbrn_const_val'] = self.getWeight(fbrn).flatten()[0]
+        else:
+            assert (self.getShape(cond) == self.getShape(fbrn)) # do not support broadcastable case recently
+        output_shape = self.getShape(onnx_node.name)
+        where_op = self.mlir.create_where_op([cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
+        self.addOperand(onnx_node.name, where_op)
+

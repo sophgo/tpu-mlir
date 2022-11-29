@@ -317,6 +317,13 @@ typedef struct {
   DATA_TYPE_T dtype;
 } prelu_param_t;
 
+typedef struct {
+  int sel0_is_const;
+  int sel1_is_const;
+  float sel0_const_val;
+  float sel1_const_val;
+} select_common_spec_t;
+
 #ifdef __cplusplus
 }
 #endif
