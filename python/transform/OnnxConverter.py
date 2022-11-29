@@ -10,6 +10,7 @@
 
 from .MLIRImporter import MLIRImporter
 from .BaseConverter import BaseConverter
+from .OnnxOpt import onnx_opt
 from onnx import numpy_helper, mapping
 from numbers import Number
 import onnxsim.onnx_simplifier as onnxsim
@@ -274,11 +275,20 @@ class OnnxConverter(BaseConverter):
         inputs = self.get_inputs(model)
         return [self.get_shape_from_value_info_proto(i) for i in inputs]
 
+    def clean_up_shape_info(self):
+        # uncomplete shape info may cause onnxsim.simplify failed.
+        if self.model.graph.value_info:
+            n = len(self.model.graph.value_info)
+            for _ in range(n):
+                v = self.model.graph.value_info[0]
+                self.model.graph.value_info.remove(v)
+
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
+        self.clean_up_shape_info()
         self.input_names = self.get_input_names(self.model)
         if "image_shape" in self.input_names:
             input_shapes.append([input_shapes[0][0], len(input_shapes[0]) - 2])
@@ -289,6 +299,7 @@ class OnnxConverter(BaseConverter):
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
             self.model = onnx.shape_inference.infer_shapes(model_simplified)
+            self.model = onnx_opt(self.model, True)
         if output_names:
             self.select_output(output_names)
         # add all weight
