@@ -74,7 +74,6 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
   pool_attr_t attrs;
   parseParam(&attrs);
 
-  auto op = getOperation();
   pooling3d_spec_t spec = {0};
   spec.input_addr = Module::getAddress(input());
   spec.output_addr = Module::getAddress(output());
@@ -145,7 +144,6 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
   pool_attr_t attrs;
   parseParam(&attrs);
 
-  auto op = getOperation();
   int c_per_npu = ceiling_func(attrs.c, BM168x::NPU_NUM);
 
   if (attrs.kd > 1 || attrs.sd > 1 || attrs.pad_d > 0 ||

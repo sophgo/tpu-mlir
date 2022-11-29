@@ -19,7 +19,6 @@ void SiLULowering::LoweringF32(PatternRewriter &rewriter,
 
 void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
                                 bool asymmetric) const {
-  auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
   auto table =
       create_lookup_table(op.input(), op.output(), asymmetric, [](double val) {

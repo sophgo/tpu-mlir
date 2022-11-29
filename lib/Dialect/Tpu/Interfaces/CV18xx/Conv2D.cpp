@@ -348,7 +348,6 @@ void tpu::Conv2DOp::codegen_global_cv18xx( int64_t layer_id) {
 int64_t tpu::Conv2DOp::getBufferSize_cv18xx(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  int64_t sz = out_lmem_bytes * sizeof(int32_t);
   llvm_unreachable("Not supported now");
   return 0;
 }

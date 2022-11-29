@@ -47,7 +47,6 @@ typedef struct {
 #endif
 
 void tpu::SplitOp::codegen_global_bm1684x() {
-  auto op = getOperation();
   std::vector<int64_t> input_shape = Module::getShape(input());
   split_global_param_t param = {0};
   param.input_addr = Module::getAddress(input());

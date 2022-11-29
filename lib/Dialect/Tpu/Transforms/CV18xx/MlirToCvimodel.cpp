@@ -80,7 +80,6 @@ static void buildInputsOutputs(flatbuffers::FlatBufferBuilder &fbb,
   fbInputs = fbb.CreateVector(fbStrVec);
   fbStrVec.clear();
   for (auto &v : outputs) {
-    auto op = v.getDefiningOp();
     auto name = Module::getName(v).str();
     fbStrVec.push_back(fbb.CreateString(name));
   }
@@ -286,7 +285,6 @@ void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
 FBSection CviModelBuilder::buildSection(std::string name,
                                         cvi::model::SectionType type) {
   auto fbName = fbb_.CreateString(name);
-  uint32_t size = 0;
   uint32_t offset = 0;
   auto data_u8 = std::make_shared<std::vector<uint8_t>>(coeff_size, 0);
   for (auto weight : weights) {

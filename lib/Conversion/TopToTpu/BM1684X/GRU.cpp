@@ -13,7 +13,6 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
-  auto ctx = rewriter.getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();

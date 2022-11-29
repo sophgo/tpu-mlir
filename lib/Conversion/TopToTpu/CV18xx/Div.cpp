@@ -22,8 +22,6 @@ void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp divOp,
   auto input_shape1 = Module::getShape(divOp.inputs()[0]);
   auto input_shape2 = Module::getShape(divOp.inputs()[1]);
 
-  auto num_elem1 = Module::getNumElements(divOp.inputs()[0]);
-  auto num_elem2 = Module::getNumElements(divOp.inputs()[1]);
   auto weight_op = dyn_cast<top::WeightOp>(divOp.inputs()[1].getDefiningOp());
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(rewriter.getNamedAttr("do_relu", divOp.do_reluAttr()));

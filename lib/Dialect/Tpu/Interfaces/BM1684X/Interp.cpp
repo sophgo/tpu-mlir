@@ -66,8 +66,6 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   common.pad_bag = 0;
   common.pad_end = 0;
   int coord = 0;
-  bool align_corners = (coord_mode() == tpu::ResizeCoordMode::align_corners);
-  bool half_pixel = (coord_mode() == tpu::ResizeCoordMode::half_pixel);
   if (coord_mode() == tpu::ResizeCoordMode::half_pixel)
     coord = 0;
   else if (coord_mode() == tpu::ResizeCoordMode::pytorch_half_pixel)

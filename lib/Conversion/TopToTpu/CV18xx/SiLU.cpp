@@ -21,7 +21,6 @@ static double active_silu(double val) { return val / (1 + std::exp(-val)); }
 void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
                                 bool asymmetric) const {
   OpBuilder builder(op->getContext());
-  auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
   auto table =
       create_lookup_table(op.input(), op.output(), asymmetric, [](double val) {

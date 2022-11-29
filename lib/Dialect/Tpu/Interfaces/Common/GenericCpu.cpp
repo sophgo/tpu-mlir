@@ -494,9 +494,6 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     auto num_elem = Module::getNumElements(output());
     auto in_type = Module::getStorageType(inputs()[0]);
     auto out_type = Module::getStorageType(output());
-    bool isInQuant = Quant::isUniformQuantized(inputs()[0]);
-    bool isOutQuant = Quant::isUniformQuantized(output());
-    auto op = getOperation();
     if (in_type.isF32() && out_type.isSignedInteger()) {
       auto qtype = Quant::getUniformQuantizedType(output());
       quantizeToInt8(p.inputs[0], p.outputs[0], num_elem, 1. / qtype.getScale(),

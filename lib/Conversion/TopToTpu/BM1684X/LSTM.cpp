@@ -13,7 +13,6 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
-  auto ctx = rewriter.getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();

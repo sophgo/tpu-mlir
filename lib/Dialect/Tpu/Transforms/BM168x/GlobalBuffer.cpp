@@ -33,11 +33,9 @@ public:
     if (!GRUOp.buffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
-    auto ctx = rewriter.getContext();
     auto attr = GRUOp.parseParam();
     auto type = Module::getStorageType(GRUOp.input());
     // add buffer
-    int64_t buffer_size = attr.batch_size * attr.hidden_size * 5;
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(GRUOp, buffer_type);
@@ -57,11 +55,9 @@ public:
     if (!lstmOp.buffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
-    auto ctx = rewriter.getContext();
     auto attr = lstmOp.parseParam();
     auto type = Module::getStorageType(lstmOp.input());
     // add buffer
-    int64_t buffer_size = attr.batch_size * attr.hidden_size * 5;
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(lstmOp, buffer_type);
@@ -81,7 +77,6 @@ public:
     if (!reduceOp.buffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
-    auto ctx = rewriter.getContext();
     auto type = Module::getStorageType(reduceOp.input());
     // add buffer
     /* if reduce n or c, need imm buffer. if reduce h/w, don't need imm buffer

@@ -39,7 +39,6 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
       float fmax, fmin;
       findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
       bool cSign = (fmin < 0);
-      float fqmax = cSign ? 127 : 255;
       auto filter_type = input.getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(filter_type.getShape(),
                                             rewriter.getIntegerType(8, cSign));
@@ -153,7 +152,6 @@ void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
   }
 
   std::vector<Value> operands;
-  auto ctx = op->getContext();
   bool is_const = false;
   int32_t const_val = 0;
 

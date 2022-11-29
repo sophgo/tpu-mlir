@@ -39,6 +39,5 @@ int64_t tpu::MulConstOp::getBufferSize_cv18xx(
 }
 
 void tpu::MulConstOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step) {
-  int64_t n, c, h, w;
   llvm_unreachable("Not supported now");
 }

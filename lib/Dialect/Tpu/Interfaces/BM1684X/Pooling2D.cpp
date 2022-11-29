@@ -151,7 +151,6 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
       auto kernel = Module::getI64Array(kernel_shape());
       int64_t dtype_bytes =
           kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
-      auto op = getOperation();
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       int64_t npu_num = BM168x::NPU_NUM;
 

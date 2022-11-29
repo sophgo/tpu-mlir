@@ -60,7 +60,7 @@ public:
       if (std::string::npos != line.find("_weight")) {
         std::string name;
         double value;
-        int num = 0, zp = 0;
+        int num = 0;
         std::istringstream iss(line);
         iss >> name;
         iss >> num;

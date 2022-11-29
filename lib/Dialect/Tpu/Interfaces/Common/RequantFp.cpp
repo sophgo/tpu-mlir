@@ -25,7 +25,6 @@ void tpu::RequantFpOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
   auto o_sType = Module::getStorageType(output());
   auto o_qtype = Quant::getUniformQuantizedType(output());
-  int64_t num_elem = Module::getNumElements(input());
   auto mode = quant_mode();
   auto shape = Module::getShape(output());
   int64_t length = 1;

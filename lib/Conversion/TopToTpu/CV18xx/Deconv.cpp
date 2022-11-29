@@ -26,7 +26,6 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   in_thr = Quant::getThreshold(op.input());
   out_thr = Quant::getThreshold(op.output());
   // filter
-  float fqmax = 127;
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   // bias
@@ -128,9 +127,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
 void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::DeconvOp op) const {
-  auto ctx = getContext();
   std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_bf16(op));

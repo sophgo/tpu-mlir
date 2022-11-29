@@ -40,7 +40,6 @@ void UnpackLowering::LoweringQuantized(PatternRewriter &rewriter,
   // const int nInputs = op->getNumOperands();
   // assert(nInputs == op.values_count()); // TODO: nInput==1
   std::vector<Value> operands;
-  auto ctx = op->getContext();
 
   std::vector<int64_t>shape(Module::getShape(op.input()));
   shape[op.axis()] = 1;

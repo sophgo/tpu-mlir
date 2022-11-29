@@ -239,7 +239,7 @@ void parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size,
       //get global header offset from extra data
       std::vector<char> zip64endrec_header(56);
       fseek(fp,-98,SEEK_END);
-      size_t res = fread(&zip64endrec_header[0],sizeof(char),56,fp);
+      fread(&zip64endrec_header[0],sizeof(char),56,fp);
       global_header_offset = *(uint64_t*) &zip64endrec_header[48];
     }
 }

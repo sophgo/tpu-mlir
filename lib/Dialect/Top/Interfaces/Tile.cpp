@@ -22,7 +22,6 @@ LogicalResult top::TileOp::init(InferenceParameter &p) { return success(); }
 void top::TileOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::TileOp::inference(InferenceParameter &p) {
-  auto num_elem = Module::getNumElements(output());
   auto out_shape = Module::getShape(output());
   auto in_shape = Module::getShape(input());
   auto signed_axis = axisAttr().getValue().getSExtValue();

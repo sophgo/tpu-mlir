@@ -43,7 +43,6 @@ typedef struct {
 // =========================================
 void tpu::MaxUnpoolOp::codegen_global_bm1684x() {
   assert(scale_h() == scale_w());
-  auto op = getOperation();
   int64_t in, ic, ih, iw;
   Module::getNCHW(input(), in, ic, ih, iw);
   int64_t on, oc, oh, ow;

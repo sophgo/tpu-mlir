@@ -29,7 +29,6 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   in_thr = Quant::getThreshold(op.input());
   out_thr = Quant::getThreshold(op.output());
   // filter
-  float fqmax = 127;
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
 
@@ -132,10 +131,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
 
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_bf16(op));

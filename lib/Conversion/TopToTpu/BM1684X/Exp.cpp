@@ -19,7 +19,6 @@ void ExpLowering::LoweringF32(PatternRewriter &rewriter, top::ExpOp op) const {
 
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
-  auto ctx = getContext();
   auto stype = Module::getStorageType(op.output());
   Value table = create_lookup_table(op.input(), op.output(), asymmetric,
                                     [](double val) { return std::exp(val); });

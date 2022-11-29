@@ -14,7 +14,6 @@ namespace bm1684x {
 
 void ConvLowering::LoweringF32(PatternRewriter &rewriter,
                                top::ConvOp op) const {
-  auto ctx = op.getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
@@ -207,10 +206,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
 
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_bf16(op));
@@ -242,10 +239,8 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void ConvLowering::LoweringF16(PatternRewriter &rewriter,
                                top::ConvOp op) const {
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_f16(op));
@@ -316,7 +311,6 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
                          &shift[filter.index()]);
     }
   }
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());

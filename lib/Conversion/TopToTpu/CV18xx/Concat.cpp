@@ -39,7 +39,6 @@ static bool fusible(top::ConcatOp concatOp) {
   bool only_merge = !concatOp.do_relu();
   // check concatOp's outer_dim
   if (only_merge) {
-    uint32_t ax = concatOp.axis();
     auto shape = Module::getShape(concatOp.output());
     int outer_dim = std::accumulate(shape.begin(), shape.begin() + concatOp.axis(), 1,
                                     std::multiplies<int64_t>());
@@ -118,7 +117,6 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void ConcatLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp) const {
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(concatOp);
   std::vector<Value> operands;
   // auto op = concatOp.getOperation();

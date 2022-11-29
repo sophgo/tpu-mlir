@@ -47,7 +47,6 @@ void tpu::SubOp::deinit(InferenceParameter &p) {
 
 LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
   auto module = Module::getModuleOp(getOperation());
-  int nInputs = inputs().size();
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   memset(p.outputs[0], 0, num_elem * sizeof(float));

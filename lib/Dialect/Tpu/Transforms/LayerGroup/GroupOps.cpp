@@ -727,7 +727,7 @@ void GroupOps::get_max_slice_nh(const lmem_info_t &lmem_info, int64_t &max_n,
 
 void GroupOps::set_lmem_size(group_lmem_t &group_lmem) {
   // set size
-  int64_t n, c, h, w, slice_n, slice_h;
+  int64_t slice_n, slice_h;
   for (auto &linfo : *group_lmem) {
     if (LMEM_WEIGHT == linfo.type) {
       linfo.size = Arch::get_weight_lmem_bytes(linfo.value, linfo.eu_align);
@@ -1020,7 +1020,6 @@ lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t &group_lmem,
 
 bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
                                 int64_t hsecs) {
-  int64_t start_addr = 0, end_addr = Arch::LMEM_BYTES;
   allocated_lmems.clear();
   if (nsecs != 1 || hsecs != 1) {
     // weight first

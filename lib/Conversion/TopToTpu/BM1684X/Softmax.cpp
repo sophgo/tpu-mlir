@@ -48,7 +48,6 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (Quant::isUniformQuantized(op.input(), op.output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
-  const int nInputs = op->getNumOperands();
   int64_t zeropoint;
   double i_scale;
   Quant::getScaleAndZeroPoint(op.input(), i_scale, zeropoint, true);

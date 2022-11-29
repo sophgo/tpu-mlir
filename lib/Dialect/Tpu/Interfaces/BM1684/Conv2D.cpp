@@ -69,8 +69,6 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
         attr.has_bias ? 1 : 0, 0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
-    auto weight_addr = Module::getAddress(filter());
-    auto bias_offset = align_up(attr.ic / attr.groups, 4l) * attr.kh * attr.kw;
     BM1684::instance().dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
         Module::getAddress(input()), Module::getAddress(output()),
         Module::getAddress(filter()),

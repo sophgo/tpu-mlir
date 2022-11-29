@@ -37,7 +37,6 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
       kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);
 
   auto op = poolOp.getOperation();
-  auto ctx = getContext();
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

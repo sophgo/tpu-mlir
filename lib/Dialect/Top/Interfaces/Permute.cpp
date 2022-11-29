@@ -40,7 +40,7 @@ static void refresh(std::vector<int> &order, int idx) {
 }
 
 LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
-  int64_t in, ic, ih, iw, on, oc, oh, ow;
+  int64_t in, ic, ih, iw;
   std::vector<int64_t> in_shape = Module::getShape(input());
   std::shared_ptr<std::vector<int64_t>> perm = Module::getI64Array(order());
   int num_dims = in_shape.size();
@@ -84,7 +84,6 @@ LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
   }
 
   in = in_shape[0], ic = in_shape[1], ih = in_shape[2], iw = in_shape[3];
-  int64_t size = in * ic * ih * iw;
 
   for (int n = 0; n < in; n++) {
     for (int c = 0; c < ic; c++) {

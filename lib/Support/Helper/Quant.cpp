@@ -88,7 +88,6 @@ mlir::Type Quant::getQuantInt8Type(Value v, bool asymmetric) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = getCalibratedType(v);
-  auto max = cali_type.getMax();
   auto min = cali_type.getMin();
   double scale;
   int64_t zeropoint = 0;
