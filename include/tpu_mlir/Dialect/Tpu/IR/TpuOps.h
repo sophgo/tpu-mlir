@@ -18,7 +18,6 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
-#include "tpu_mlir/Interfaces/WeightReorderInterface.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h"
 #include "tpu_mlir/Interfaces/TypeInterface.h"

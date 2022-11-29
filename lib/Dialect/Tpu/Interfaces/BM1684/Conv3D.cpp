@@ -19,10 +19,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::Conv3DOp::weight_reorder_int8_bm1684() {
-  llvm_unreachable("Not Implemented");
-}
-
 void tpu::Conv3DOp::codegen_global_bm1684() {
   llvm_unreachable("Not Implemented");
 }

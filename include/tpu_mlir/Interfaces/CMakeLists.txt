@@ -1,5 +1,4 @@
 add_mlir_interface(InferenceInterface)
-add_mlir_interface(WeightReorderInterface)
 add_mlir_interface(GlobalGenInterface)
 add_mlir_interface(FlopsInterface)
 add_mlir_interface(LocalGenInterface)

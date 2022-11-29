@@ -29,13 +29,13 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
   llvm_unreachable("Not supported now");
 }
 
-void tpu::Conv3DOp::weight_reorder_int8_cv18xx() {
-  llvm_unreachable("Not supported now");
-}
+// void tpu::Conv3DOp::weight_reorder_int8_cv18xx() {
+//   llvm_unreachable("Not supported now");
+// }
 
-void tpu::Conv3DOp::weight_reorder_bf16_cv18xx() {
-  llvm_unreachable("Not supported now");
-}
+// void tpu::Conv3DOp::weight_reorder_bf16_cv18xx() {
+//   llvm_unreachable("Not supported now");
+// }
 
 void tpu::Conv3DOp::codegen_global_cv18xx( int64_t layer_id) {
   llvm_unreachable("Not supported now");

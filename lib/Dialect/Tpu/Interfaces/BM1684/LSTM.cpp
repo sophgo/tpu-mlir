@@ -19,8 +19,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::LSTMOp::weight_reorder_int8_bm1684() {}
-
 void tpu::LSTMOp::codegen_global_bm1684() {
   llvm_unreachable("LSTM unsupported");
 }
