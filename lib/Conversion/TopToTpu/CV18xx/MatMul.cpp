@@ -49,8 +49,6 @@ static void quantizeWeightInt8ForFC(float *filter, float *bias, int64_t batch,
     }
   }
   // decompose qscale into rshift and muliplier
-  int64_t multiplier;
-  int64_t rshift;
   for (int i = 0; i < batch; i++) {
     getRShiftAndMultiplierFromQScale(qscale[i], multiplier_per_batch + i,
                                      rshift_per_batch + i, true, 255);

@@ -41,7 +41,6 @@ void tpu::RequantIntAxisOp::codegen_global_bm1684x() {
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
-  auto op = getOperation();
   BM168x::call_global_func("backend_api_requant_int_global", &param,
                                        sizeof(param));
 }
@@ -97,7 +96,6 @@ void tpu::RequantIntAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step
   param.mode = static_cast<int>(quant_mode());
   param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
                      ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
-  auto op = getOperation();
   BM168x::call_local_func("backend_api_requant_int_local", &param,
                                       sizeof(param));
 }

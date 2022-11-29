@@ -65,7 +65,6 @@ static bool needReshape(std::vector<int64_t> &shape, std::vector<int64_t> &axes,
 
 static void LoweringReduce(PatternRewriter &rewriter, top::ReduceOp op,
                            Type type) {
-  auto ctx = rewriter.getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   std::vector<int64_t> input_shape;

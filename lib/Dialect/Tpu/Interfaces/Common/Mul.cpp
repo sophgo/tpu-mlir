@@ -47,7 +47,6 @@ void tpu::MulOp::deinit(InferenceParameter &p) {
 
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto module = Module::getModuleOp(getOperation());
-  int nInputs = inputs().size();
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   auto asym = Module::getAsymmetric(module);

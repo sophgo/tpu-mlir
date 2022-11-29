@@ -85,7 +85,6 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   }
 
   std::vector<Value> operands;
-  auto ctx = op->getContext();
   bool is_const = false;
   int32_t const_val = 0;
   bool is_reverse = false;

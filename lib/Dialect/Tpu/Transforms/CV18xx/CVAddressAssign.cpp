@@ -246,7 +246,6 @@ void CVAddressAssign::updateLiveRange(Operation *op,
     updateLiveRangeOfInPlaceOp(op_infos, op, op_infos[cur_info].live.end,
                                ops_loc, op_infos[cur_info].mem_type, alignment);
   } else if (op->getDialect()->getNamespace() == "tpu") {
-    uint32_t max_end = 0;
     for (int i = 0; i < op->getNumResults(); ++i) {
       ValueInfo cur_info(op, i);
       assert(op_infos.find(cur_info) != op_infos.end());

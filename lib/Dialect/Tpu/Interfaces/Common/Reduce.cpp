@@ -51,7 +51,6 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
   // calc dims
   int num_dims = input_shape.size();
   int num_axes = axes_val->size();
-  int output_dims = out_shape.size();
   for (int i = 1; i < num_axes; i++) {
     assert(axes_val->at(i) == axes_val->at(i - 1) + 1);
     assert(axes_val->at(i) < num_dims);

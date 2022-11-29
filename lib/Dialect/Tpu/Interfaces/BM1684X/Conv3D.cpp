@@ -285,7 +285,6 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
     spec.pad_is_const = true;
     spec.pad_val = in_qtype.getZeroPoint();
   }
-  auto op = getOperation();
   BM168x::call_global_func("backend_api_conv3d_global", &spec, sizeof(spec));
 }
 

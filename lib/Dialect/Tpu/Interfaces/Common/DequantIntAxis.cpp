@@ -53,7 +53,6 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
     int64_t lshift_val = lshift();
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
-      int64_t multi = p.inputs[1][c * 3];
       int64_t shift_val = p.inputs[1][c * 3 + 1];
       int64_t zero_point = p.inputs[1][c * 3 + 2];
       for (int n = 0; n < shape[0]; ++n) {

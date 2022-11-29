@@ -46,7 +46,6 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   memory::dims weights_dims = {batch, K, N};
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch, M, N};
-  int64_t weight_len = batch * K * N;
   right_init(right, right_zp, batch, K, N, right_transpose);
   batch_ = batch;
   M_ = M;

@@ -14,7 +14,6 @@ namespace bm1684x {
 
 void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::DeconvOp deconvOp) const {
-  auto ctx = getContext();
   auto op = deconvOp.getOperation();
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
@@ -175,9 +174,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
 
 void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::DeconvOp op) const {
-  auto ctx = getContext();
   std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_bf16(op));
@@ -195,9 +192,7 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void DeconvLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::DeconvOp op) const {
-  auto ctx = getContext();
   std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_f16(op));

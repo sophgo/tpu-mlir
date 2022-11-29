@@ -21,7 +21,6 @@ LogicalResult tpu::TileOp::init(InferenceParameter &p) { return success(); }
 void tpu::TileOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
-  auto num_elem = Module::getNumElements(output());
   auto out_shape = Module::getShape(output());
   auto in_shape = Module::getShape(input());
   auto signed_axis = axisAttr().getValue().getSExtValue();

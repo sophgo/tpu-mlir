@@ -28,7 +28,6 @@ int64_t tpu::StoreOp::getBufferSize_bm1684x(
 }
 
 void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto op = getOperation();
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   auto data_type = BM168x::getDataType(output());

@@ -37,7 +37,6 @@ void tpu::PReluOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
-  int64_t n, c, h, w;
   if (p.handle == nullptr) {
     return failure();
   }
@@ -56,7 +55,6 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
     }
   } else if (asym == false) {
     auto shift = rshift();
-    auto num_inputs = Module::getNumElements(input());
     auto num_slope = Module::getNumElements(slope());
     auto in_shape = Module::getShape(input());
     int64_t num_inner = 1;

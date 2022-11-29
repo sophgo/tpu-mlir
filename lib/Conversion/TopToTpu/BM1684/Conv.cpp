@@ -14,7 +14,6 @@ namespace bm1684 {
 
 void ConvLowering::LoweringF32(PatternRewriter &rewriter,
                                top::ConvOp op) const {
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();

@@ -33,7 +33,6 @@ extern "C" {
 void tpu::SubConstOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
-  auto op = getOperation();
   // auto input_spec = BM168x::get_input_spec(op);
   // auto output_spec = BM168x::get_output_spec(op);
   // constbinary_global_spec_t param = {0};
@@ -81,7 +80,6 @@ int64_t tpu::SubConstOp::getBufferSize_bm1684x(
 }
 
 void tpu::SubConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  int64_t n, c, h, w;
   // Module::getNCHW(input(), n, c, h, w);
   // auto op = getOperation();
   // auto input_spec = BM168x::get_input_spec(op);

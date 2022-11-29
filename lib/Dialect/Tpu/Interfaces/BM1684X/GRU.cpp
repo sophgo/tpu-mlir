@@ -186,7 +186,6 @@ typedef struct {
 // =========================================
 void tpu::GRUOp::codegen_global_bm1684x() {
   auto attr = parseParam();
-  auto op = getOperation();
   gru_param_t p = {0};
   p.xGlobalAddr = Module::getAddress(input());
   p.wGlobalAddr = Module::getAddress(filter());

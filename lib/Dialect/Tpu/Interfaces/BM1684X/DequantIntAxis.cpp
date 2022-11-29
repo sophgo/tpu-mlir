@@ -43,7 +43,6 @@ void tpu::DequantIntAxisOp::codegen_global_bm1684x() {
   param.round_mode = quant_mode() == tpu::DequantMode::Normal
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
-  auto op = getOperation();
   BM168x::call_global_func("backend_api_dequant_int_global", &param,
                                  sizeof(param));
 }
@@ -89,7 +88,6 @@ void tpu::DequantIntAxisOp::codegen_local_bm1684x(int64_t n_step,
   param.round_mode = quant_mode() == tpu::DequantMode::Normal
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
-  auto op = getOperation();
   BM168x::call_local_func("backend_api_dequant_int_local", &param,
                                 sizeof(param));
 }

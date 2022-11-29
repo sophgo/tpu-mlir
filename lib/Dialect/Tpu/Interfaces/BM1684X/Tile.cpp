@@ -66,7 +66,6 @@ void tpu::TileOp::codegen_global_bm1684x() {
   param.input_dim = in_shape.size();
   param.type = 0;
   param.dtype = BM168x::getDataType(input());
-  auto op = getOperation();
   BM168x::call_global_func("backend_api_tile_global", &param,
                                        sizeof(param));
 }
@@ -104,7 +103,6 @@ void tpu::TileOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.input_dim = in_shape.size();
   param.type = 0;
   param.dtype = BM168x::getDataType(input());
-  auto op = getOperation();
   BM168x::call_local_func("backend_api_tile_local", &param,
                                       sizeof(param));
 }

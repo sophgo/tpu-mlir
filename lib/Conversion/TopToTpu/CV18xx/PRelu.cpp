@@ -60,13 +60,10 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
 
 void PReluLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::PReluOp op) const {
-  auto ctx = getContext();
   rewriter.setInsertionPointAfter(op);
 
   auto src_shape = Module::getShape(op.input());
   auto slope_shape = Module::getShape(op.slope());
-  int src_dims = src_shape.size();
-  int slope_dims = slope_shape.size();
 
   std::vector<Value> operands;
   auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());

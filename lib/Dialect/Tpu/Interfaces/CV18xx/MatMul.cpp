@@ -68,7 +68,6 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
   parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp,
              right_transpose);
   // TODO get batch_high and batch_low, group_fc bias transpose
-  auto op = getOperation();
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_filter = Module::getAddress(right());
   gaddr_t ga_output = Module::getAddress(output());

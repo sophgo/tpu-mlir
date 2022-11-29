@@ -288,7 +288,6 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
     });
   }
   // 3. codegen for group
-  int64_t timestep = 0;
   int64_t stage_idx = 0;
   int64_t draining_idx = 0;
   bool draining_period = false;

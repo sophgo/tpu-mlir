@@ -72,8 +72,6 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
   auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
-  uint32_t input_offset[] = {(uint32_t)in0_gi.out_addr,
-                             (uint32_t)in1_gi.out_addr};
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
   auto out_type = Module::getStorageType(output());

@@ -60,7 +60,6 @@ void tpu::LutOp::codegen_global_bm1684x() {
   p.shape[1] = c;
   p.shape[2] = h;
   p.shape[3] = w;
-  auto op = getOperation();
   BM168x::call_global_func("backend_api_lut", &p, sizeof(p));
 }
 
@@ -96,6 +95,5 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   p.shape[1] = c;
   p.shape[2] = gi.h_slice;
   p.shape[3] = w;
-  auto op = getOperation();
   BM168x::call_local_func("backend_api_lut", &p, sizeof(p));
 }

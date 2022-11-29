@@ -18,7 +18,6 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   assert(!asymmetric);
   const size_t kernel_size = poolOp.kernel_shape().size();
   auto kernel = Module::getI64Array(poolOp.kernel_shape());
-  int64_t kd = kernel_size == 3 ? kernel->at(0) : 1;
   int64_t kh = kernel_size == 3 ? kernel->at(1) : kernel->at(0);
   int64_t kw =
       kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);

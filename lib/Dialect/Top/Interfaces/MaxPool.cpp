@@ -19,7 +19,6 @@ using namespace mlir;
 void top::MaxPoolOp::parseParam(void *param) {
   pool_attr_t *p = (pool_attr_t *)param;
   memset(p, 0, sizeof(pool_attr_t));
-  bool is_pool3d = kernel_shape().size() == 3;
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
   auto kernel = Module::getI64Array(kernel_shape());
