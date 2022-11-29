@@ -69,6 +69,8 @@ def add_preprocess_parser(parser):
     parser.add_argument("--pad_value", type=int, default=0, help="pad value when resize ")
     parser.add_argument("--pad_type", type=str, choices=['normal','center'], default='center', help="type of pad when resize ")
     parser.add_argument("--debug_cmd", type=str, default='', help="debug cmd")
+    parser.add_argument("--model_format", choices=['image','nlp'], default='image',
+                        help='image or nlp')
     return parser
 
 def get_preprocess_parser(existed_parser=None):
@@ -88,7 +90,7 @@ class preprocess(object):
 
     def config(self, resize_dims=None, keep_aspect_ratio=False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0,
-               channel_format='nchw', debug_cmd='', input_shapes=None, **ignored):#add input_shapes for model_eval.py by wangxuechuan 20221110
+               channel_format='nchw', debug_cmd='', input_shapes=None, model_format='image', **ignored):#add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
         if input_shapes is None:
@@ -108,6 +110,7 @@ class preprocess(object):
         self.pad_type = pad_type
         self.pixel_format = pixel_format
         self.channel_format = channel_format
+        self.model_format = model_format
 
         self.input_name = 'input'
         self.channel_num = 3
@@ -140,10 +143,12 @@ class preprocess(object):
                "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
                "\tpixel_format          : {}\n" + \
-               "\tchannel_format        : {}\n"
+               "\tchannel_format        : {}\n" + \
+               "\tmodel_format          : {}\n"
         resize_dims_str = resize_dims if resize_dims is not None else 'same to net input dims'
         info_str += format_str.format(resize_dims_str, self.keep_aspect_ratio, self.pad_value, self.pad_type,
-                list(self.mean.flatten()), list(self.scale.flatten()), self.pixel_format, self.channel_format)
+                list(self.mean.flatten()), list(self.scale.flatten()), self.pixel_format, self.channel_format,
+                self.model_format)
         logger.info(info_str)
 
     def load_config(self, input_op):
@@ -169,6 +174,7 @@ class preprocess(object):
         self.channel_format = Operation.str(attrs['channel_format'])
         if self.channel_format == 'nhwc':
             self.net_input_dims = shape[1:-1]
+        self.model_format = Operation.str(attrs['model_format'])
         self.keep_aspect_ratio = Operation.bool(attrs['keep_aspect_ratio'])
         self.pad_value = Operation.int(attrs['pad_value'])
         self.pad_type = Operation.str(attrs['pad_type'])
@@ -192,12 +198,14 @@ class preprocess(object):
                "\tscale                 : {}\n" + \
                "\t--------------------------\n" + \
                "\tpixel_format          : {}\n" + \
-               "\tchannel_format        : {}\n"
+               "\tchannel_format        : {}\n" + \
+               "\tmodel_format          : {}\n"
         logger.info(format_str.format(self.resize_dims, self.keep_aspect_ratio, self.pad_value, self.pad_type,
                 self.net_input_dims,
                 list(self.mean.flatten()), list(self.scale.flatten()),
                 self.pixel_format,
-                self.channel_format))
+                self.channel_format,
+                self.model_format))
 
     def to_dict(self):
         return {
@@ -208,7 +216,8 @@ class preprocess(object):
             'mean': list(self.mean.flatten()),
             'scale': list(self.scale.flatten()),
             'pixel_format': self.pixel_format,
-            'channel_format': self.channel_format
+            'channel_format': self.channel_format,
+            'model_format' : self.model_format
         }
 
 

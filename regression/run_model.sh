@@ -119,6 +119,11 @@ if [ x${channel_format} != x ]; then
   channel_format_opt="--channel_format=${channel_format}"
 fi
 
+model_format_opt=
+if [ x${model_format} != x ]; then
+  model_format_opt="--model_format=${model_format}"
+fi
+
 test_input_opt=
 test_result_opt=
 test_innpz_opt=
@@ -143,6 +148,7 @@ model_transform.py \
   ${scale_opt} \
   ${pixel_format_opt} \
   ${channel_format_opt} \
+  ${model_format_opt} \
   ${test_input_opt} \
   ${test_result_opt} \
   ${excepts_opt} \

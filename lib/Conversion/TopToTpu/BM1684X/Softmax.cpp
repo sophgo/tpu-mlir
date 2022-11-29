@@ -54,6 +54,22 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<float> table(256, 0.0f);
   auto beta_v = op.beta().convertToDouble();
   auto scale = -i_scale * beta_v;
+
+  // const int int_bits = 5;
+  // const double_t multiplier_max = (1ULL << 31) - 1;
+  // double_t multiplier_real =
+  //     std::min(i_scale * beta_v * (1 << (31 - int_bits)), multiplier_max);
+  // int32_t multi, shift;
+  // QuantizeMultiplier(multiplier_real, &multi, &shift);
+  // double max_input_rescaled =
+  //     1.0 * ((1 << int_bits) - 1) * (1LL << (31 - int_bits)) / (1LL << shift);
+  // int32_t diff_min = -1 * static_cast<int32_t>(std::floor(max_input_rescaled));
+  // std::vector<int32_t> table(256, 0);
+  // for (int i = 0; i < 256; ++i) {
+  //   int32_t input_diff_rescaled = MultiplyByQuantizedMultiplier(-i, multi, shift);
+  //   table[i] = exp_on_negative_values(input_diff_rescaled, int_bits);
+  // }
+
   for (int i = 0; i < 256; ++i) {
     table[i] = std::exp(scale * i);
   }

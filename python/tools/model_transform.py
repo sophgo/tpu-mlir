@@ -137,11 +137,8 @@ class TFLiteTransformer(ModelTransformer):
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
         is_nchw = self.converter.preprocess_args['channel_format'] == 'nchw'
-        return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw)
-
-
-
-
+        tf_layout = self.converter.preprocess_args['model_format'] == 'nlp'
+        return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw, tf_layout = tf_layout)
 
 
 def get_model_transform(args):

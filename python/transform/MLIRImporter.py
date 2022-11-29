@@ -209,6 +209,8 @@ class MLIRImporter(object):
             param['pixel_format'] = StringAttr.get(kargs['pixel_format'])
         if 'channel_format' in kargs:
             param['channel_format'] = StringAttr.get(kargs['channel_format'])
+        if 'model_format' in kargs:
+            param['model_format'] = StringAttr.get(kargs['model_format'])
         op = Operation.create(Top.InputOp,
                               results=[self.input_types[index]],
                               operands=[self.func_args[index]],

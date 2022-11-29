@@ -245,7 +245,8 @@ class TFLiteConverter(BaseConverter):
         self.graph = next(self.tflie.subgraph)
         self.shape_infer = self.__shape_infer(input_shapes)
         self.preprocess_args = preprocess_args
-        self.need_transpose = True
+        self.need_transpose = preprocess_args['model_format'] == 'image'
+        # self.need_transpose = True
 
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
@@ -463,8 +464,13 @@ class TFLiteConverter(BaseConverter):
         paddings = op.inputs[1].buffer
         if paddings.shape[0] == 4:
             paddings = paddings[[0, 3, 1, 2], :]
+        paddings = paddings.transpose([1,0])
+        pad_val = op.outputs[0].quantization.ZeroPoint(0)
+        if len(op.inputs) == 3:
+            pad_val = op.inputs[2].buffer
         op.inputs = [op.inputs[0]]  # remove ins[1]
-        attr = {"paddings": self.mlir.ArrayAttr(paddings.flatten())}
+        attr = {"paddings": self.mlir.ArrayAttr(paddings.flatten()),
+                "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val)}
         return "top.Pad", attr
 
     def add_op(self, op):
@@ -619,12 +625,6 @@ class TFLiteConverter(BaseConverter):
     def fully_connected_op(self, op):
         from .tflite.FullyConnectedOptions import FullyConnectedOptions
 
-        f, c = op.inputs[1].shape
-        op.inputs[1].shape = (c, f)
-        op.inputs[1].buffer = op.inputs[1].buffer.transpose([1, 0])
-        op.inputs[1].layout = "NCHW"
-        for x in op.outputs:
-            self.__nhwc2nchw(x)
         op_options = op.builtin_options
         param = FullyConnectedOptions()
         param.Init(op_options.Bytes, op_options.Pos)
@@ -637,6 +637,13 @@ class TFLiteConverter(BaseConverter):
             "do_relu": BoolAttr.get(fused_active == 1),
             # "right_transpose": BoolAttr.get(True),
         }
+        if op.inputs[1].buffer is not None:
+            f, c = op.inputs[1].shape
+            op.inputs[1].shape = (c, f)
+            op.inputs[1].buffer = op.inputs[1].buffer.transpose([1, 0])
+            op.inputs[1].layout = "NCHW"
+        else:
+            attr["right_transpose"] = BoolAttr.get(True)
         return Top.MatMulOp, attr
 
     def mean_op(self, op):
@@ -659,8 +666,9 @@ class TFLiteConverter(BaseConverter):
         param = SoftmaxOptions()
         param.Init(op_options.Bytes, op_options.Pos)
         beta = param.Beta()
+        axis = 1 if self.need_transpose else len(op.inputs[0].shape) - 1
         return "top.Softmax", {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], 1),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
         }
 

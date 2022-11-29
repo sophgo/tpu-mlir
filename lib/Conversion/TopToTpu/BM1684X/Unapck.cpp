@@ -37,14 +37,12 @@ void UnpackLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (Quant::isUniformQuantized(op.input(), op.outputs()[0]) == false) {
     llvm_unreachable("input output should be quantized");
   }
-  // const int nInputs = op->getNumOperands();
-  // assert(nInputs == op.values_count()); // TODO: nInput==1
   std::vector<Value> operands;
 
-  std::vector<int64_t>shape(Module::getShape(op.input()));
+  std::vector<int64_t>shape(Module::getShape(op.outputs()[0]));
   shape[op.axis()] = 1;
-  auto stype = Module::getStorageType(op.input());
-  auto newType = RankedTensorType::get(shape, stype);
+  auto qtype = Quant::getUniformQuantizedType(op.input());
+  auto newType = RankedTensorType::get(shape, qtype);
   std::vector<Type> newTypes(op.num(), newType);
 
   std::vector<NamedAttribute> attrs;
@@ -55,20 +53,13 @@ void UnpackLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
   auto splitOp = rewriter.create<tpu::SplitOp>(name_loc, newTypes, ValueRange{op.input()}, attrs);
 
-  // rewriter.replaceOpWithNewOp<tpu::SplitOp>(op, op.input().getType(), operands,
-  //                                            attrs);
-
   std::vector<int64_t>oshape(Module::getShape(op.outputs()[0]));
-  auto outType = RankedTensorType::get(oshape, stype);
+  auto outType = RankedTensorType::get(oshape, qtype);
   for (int i = 0; i < op.num(); ++i) {
     auto out = splitOp.getResult(i);
-    // auto output_reshape = do_reshape(out, outType);
     rewriter.setInsertionPointAfterValue(out);
     std::vector<NamedAttribute> attrs = {};
-    std::string new_name =
-        Module::getName(out).str() + "_reshape_" + std::to_string(i);
-    auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    auto newOp = rewriter.create<tpu::ReshapeOp>(name_loc, outType, ValueRange{out}, attrs);
+    auto newOp = rewriter.create<tpu::ReshapeOp>(op.getLoc(), outType, ValueRange{out}, attrs);
     operands.push_back(newOp.output());
   }
   rewriter.replaceOp(op, operands);
