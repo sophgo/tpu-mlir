@@ -17,34 +17,6 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-    float scale_val;
-    int begin_axis;
-    int end_axis;
-    int log;
-    int zero_point;
-} softmax_common_param_t;
-
-typedef struct {
-    softmax_common_param_t common;
-} softmax_global_param_t;
-
-typedef struct {
-    softmax_common_param_t common;
-    uint32_t buffer_addr;
-} softmax_local_param_t;
-
-typedef struct {
-    softmax_common_param_t common;
-} softmax_tflite_fix8b_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 // =========================================
 // GloballGenInterface
 // =========================================
@@ -59,6 +31,10 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     in_scale = in_qtype.getScale();
   }
   if (Quant::isUniformQuantized(input(), output())) {
+    if (log()) {
+      llvm_unreachable("Not Implemented");
+      return;
+    }
     assert(has_table);
     auto out_qtype = Quant::getUniformQuantizedType(output());
     softmax_tflite_fix8b_param_t param = {0};
@@ -76,6 +52,7 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
     common.begin_axis = axis();
     common.end_axis = axis();
     common.scale_val = in_scale;
+    common.log = log();
     BM168x::call_global_func("backend_api_softmax_global", &param,
                              sizeof(param), input_spec->data(),
                              output_spec->data());

@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["ReduceL2", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchStd",
+Failed_Cases = ["ReduceL2", "TorchLayerNorm", "TorchMaskedFill", "TorchStd",
                 "TorchGelu", "TorchHardSigmoid", "TorchHardSwish"]
 
 
@@ -65,6 +65,7 @@ class ONNX_IR_TESTER(object):
             "GRU3": self.test_GRU3,  # test gru output Y and Yh
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
+            "LogSoftmax": self.test_LogSoftmax,
             "LRN": self.test_LRN,
             "LSTM": self.test_LSTM,  # output_y
             "LSTM2": self.test_LSTM2,  # output all
@@ -83,7 +84,7 @@ class ONNX_IR_TESTER(object):
             # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
             "PadReflect": self.test_PadReflect,
             "ConstPow": self.test_ConstPow,
-            "PowConst": self.test_PowConst,
+            #"PowConst": self.test_PowConst,
             # "Pow": self.test_Pow,
             # "Pow2": self.test_Pow2,
             "PRelu": self.test_PRelu,
@@ -1122,8 +1123,17 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Softmax(self, case_name):
-        input_shape = [1, 1000, 1, 1]
-        axis = 1
+        input_shape = [3, 100, 32]
+        axis = 2
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
+        graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_LogSoftmax(self, case_name):
+        input_shape = [3, 100, 32]
+        axis = 2
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)

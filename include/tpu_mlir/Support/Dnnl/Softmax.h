@@ -16,6 +16,7 @@ namespace tpu_mlir {
 
 typedef struct {
   uint64_t axis;
+  bool log;
   memory::dims src_shape;
   memory::dims dst_shape;
 } softmax_attr_t;

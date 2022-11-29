@@ -47,10 +47,9 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     }
     std::vector<float> max_arr(inner_dim);
     std::vector<float> sum_arr(inner_dim);
-    std::vector<float> ex_arr(channel * inner_dim);
     std::vector<float> sub_arr(channel * inner_dim);
 
-    auto bottom_data = p.inputs[0];
+    const auto bottom_data = p.inputs[0];
     auto top_data = p.outputs[0];
 
     for (int i = 0; i < outer_dim; ++i) {
@@ -80,6 +79,9 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
       for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
         for (int k = 0; k < inner_dim; k++) {
           top_data[c_offset + k] /= sum_arr[k];
+          if (log()) {
+            top_data[c_offset + k] = std::log(top_data[c_offset + k]);
+          }
         }
       }
     }

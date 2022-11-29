@@ -61,6 +61,7 @@ class Top:
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
 
+
 class State:
     TOP_F32 = 'TOP_F32'
     TOP_QUANTIZED = 'TOP_QUANTIZED'
@@ -471,6 +472,8 @@ class MLIRImporter(object):
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
         }
+        if 'log' in kargs:
+            param['log'] = BoolAttr.get(kargs['log'])
         return self.buildOp(Top.SoftmaxOp, operands, [output_type], **param)
 
     def create_log_op(self, operands, output_shape, **kargs):
@@ -507,9 +510,7 @@ class MLIRImporter(object):
     def create_reciprocal_op(self, operands, output_shape, **kargs):
         if len(operands) != 1:
             raise RuntimeError("input operand must be 1")
-        output_type = RankedTensorType.get(
-            tuple(output_shape), self.get_value_type(operands[0])
-        )
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
             "name": kargs["name"],
             "do_relu": BoolAttr.get(False),
@@ -564,9 +565,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.ScaleOp, operands, [output_type], **param)
 
     def create_lrn_op(self, operands, output_shape, **kargs):
-        output_type = RankedTensorType.get(
-            tuple(output_shape), self.get_value_type(operands[0])
-        )
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
             "name": kargs["name"],
             "size": IntegerAttr.get(self.mlir_type["INT64"], kargs["size"]),
@@ -683,11 +682,13 @@ class MLIRImporter(object):
     def create_where_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': kargs['name'],
-                 'tbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['tbrn_is_const']),
-                 'fbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['fbrn_is_const']),
-                 'tbrn_const_val': FloatAttr.get_f64(kargs['tbrn_const_val']),
-                 'fbrn_const_val': FloatAttr.get_f64(kargs['fbrn_const_val'])}
+        param = {
+            'name': kargs['name'],
+            'tbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['tbrn_is_const']),
+            'fbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['fbrn_is_const']),
+            'tbrn_const_val': FloatAttr.get_f64(kargs['tbrn_const_val']),
+            'fbrn_const_val': FloatAttr.get_f64(kargs['fbrn_const_val'])
+        }
         return self.buildOp(Top.WhereOp, operands, [output_type], **param)
 
     def create_compare_op(self, operands, output_shape, **kargs):

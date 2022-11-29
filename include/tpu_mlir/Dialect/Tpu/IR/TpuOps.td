@@ -811,8 +811,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
   let summary = "softmax operator";
 
   let description = [{
-    The softmax function, also known as softargmax or normalized exponential
-    function, is a generalization of the logistic function to multiple dimensions.
+    Integrates some operations related to softmax.
   }];
 
   let arguments = (ins
@@ -822,6 +821,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     AnyTensorOrNone:$reciprocal_table,
     AnyTensorOrNone:$reciprocal_mantissa_table,
     I64Attr:$axis,
+    DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta
   );
 
