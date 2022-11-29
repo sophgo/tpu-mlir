@@ -1427,4 +1427,36 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_CompareOp: Tpu_Op<"Compare", [
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "Compare operator";
+  let description = [{
+    Returns the tensor resulted from performing the compare
+    operation elementwise on the input tensors A and B
+  }];
+  let arguments = (ins
+    AnyTensor:$lhs,
+    AnyTensor:$rhs,
+    I64Attr:$type
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
+  InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "CompareConst operator";
+  let description = [{
+    Returns the tensor resulted from performing the compare
+    operation elementwise on the input tensors A and Const
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$type,
+    F64Attr:$const_val,
+    I64Attr:$inversed
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
