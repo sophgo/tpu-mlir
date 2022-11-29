@@ -280,8 +280,9 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
       offset += tensor_size;
     }
   } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
+    auto operand = Module::getOperand(op, 0);
     Module::setAddress(reshapeOp.output(),
-                       Module::getAddress(reshapeOp.input()));
+                       Module::getAddress(operand));
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     std::vector<int64_t> i_s;
     std::vector<int64_t> o_s;
@@ -299,8 +300,9 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
         offset_bytes *= i_s[i];
       }
     }
+    auto operand = Module::getOperand(op, 0);
     Module::setAddress(sliceOp.output(),
-                       Module::getAddress(sliceOp.input()) + offset_bytes);
+                       Module::getAddress(operand) + offset_bytes);
   } else {
     llvm_unreachable("set address of undefined inplace op!");
   }
