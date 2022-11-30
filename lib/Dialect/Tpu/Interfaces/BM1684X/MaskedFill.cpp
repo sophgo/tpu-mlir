@@ -29,11 +29,14 @@ extern "C" {
 // GlobalGenInterface
 // =========================================
 
-void tpu::WhereOp::codegen_global_bm1684x() {
+void tpu::MaskedFillOp::codegen_global_bm1684x() {
+  const float const_val_ = const_val().convertToDouble();
   select_common_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.sel0_is_const = false;
-  spec.sel1_is_const = false;
+  spec.sel0_is_const = inversed();
+  spec.sel1_is_const = !inversed();
+  spec.sel0_const_val = inversed() ? const_val_ : 0;
+  spec.sel1_const_val = inversed() ? 0 : const_val_;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -45,15 +48,15 @@ void tpu::WhereOp::codegen_global_bm1684x() {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::WhereOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
-                                            int64_t out_lmem_bytes,
-                                            int64_t in_nslice, int64_t in_hslice,
-                                            int64_t out_nslice,
-                                            int64_t out_hslice) {
+int64_t tpu::MaskedFillOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
+                                                 int64_t out_lmem_bytes,
+                                                 int64_t in_nslice, int64_t in_hslice,
+                                                 int64_t out_nslice,
+                                                 int64_t out_hslice) {
   return 0;
 }
 
-void tpu::WhereOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::MaskedFillOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
@@ -62,10 +65,13 @@ void tpu::WhereOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
 
+  const float const_val_ = const_val().convertToDouble();
   select_common_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.sel0_is_const = false;
-  spec.sel1_is_const = false;
+  spec.sel0_is_const = inversed();
+  spec.sel1_is_const = !inversed();
+  spec.sel0_const_val = inversed() ? const_val_ : 0;
+  spec.sel1_const_val = inversed() ? 0 : const_val_;
 
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));

@@ -60,7 +60,7 @@ class Top:
     WhereOp = 'top.Where'
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
-
+    MaskedFillOp = 'top.MaskedFill'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -682,14 +682,16 @@ class MLIRImporter(object):
     def create_where_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {
-            'name': kargs['name'],
-            'tbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['tbrn_is_const']),
-            'fbrn_is_const': IntegerAttr.get(self.mlir_type['INT64'], kargs['fbrn_is_const']),
-            'tbrn_const_val': FloatAttr.get_f64(kargs['tbrn_const_val']),
-            'fbrn_const_val': FloatAttr.get_f64(kargs['fbrn_const_val'])
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.WhereOp, operands, [output_type], **param)
+
+    def create_masked_fill_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name'],
+                 'inversed': BoolAttr.get(kargs['inversed']),
+                 'const_val': FloatAttr.get_f64(kargs['const_val'])}
+        return self.buildOp(Top.MaskedFillOp, operands, [output_type], **param)
 
     def create_compare_op(self, operands, output_shape, **kargs):
         # get_value_type

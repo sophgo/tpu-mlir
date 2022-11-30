@@ -17,18 +17,18 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 
-void tpu::WhereOp::codegen_global_bm1684() {
+void tpu::MaskedFillOp::codegen_global_bm1684() {
   llvm_unreachable("Not Implemented");
 }
 
-int64_t tpu::WhereOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
-                                           int64_t out_lmem_bytes,
-                                           int64_t in_nslice, int64_t in_hslice,
-                                           int64_t out_nslice,
-                                           int64_t out_hslice) {
+int64_t tpu::MaskedFillOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
+                                                int64_t out_lmem_bytes,
+                                                int64_t in_nslice, int64_t in_hslice,
+                                                int64_t out_nslice,
+                                                int64_t out_hslice) {
   return 0;
 }
 
-void tpu::WhereOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::MaskedFillOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   llvm_unreachable("Not Implemented");
 }
