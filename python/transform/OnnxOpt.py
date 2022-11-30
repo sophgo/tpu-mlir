@@ -404,6 +404,35 @@ class ReForm(object):
 def onnx_opt(model, dump=False):
     patterns = []
     reform = ReForm(model)
+    ############ torch.std ############
+    # _reducemean_input = OuterNode()
+    # sub_input = OuterNode()
+    # mul_tensor = OuterNode(is_tensor=True)
+    # div_tensor = OuterNode(is_tensor=True)
+    # # unbiased case
+    # _reducemean_0 = PatternNode("ReduceMean", [_reducemean_input],
+    #                             cur_attr_name=["axes"], new_attr_name=["dim"])
+    # _sub = PatternNode("Sub", [sub_input, _reducemean_0])
+    # _mul_0 = PatternNode("Mul", [_sub, _sub])
+    # _reducemean_1 = PatternNode("ReduceMean", [_mul_0], cur_attr_name=["keepdims"])
+    # _mul_1 = PatternNode("Mul", [_reducemean_1, mul_tensor])
+    # _div = PatternNode("Div", [_mul_1, div_tensor])
+    # _sqrt = PatternNode("Sqrt", [_div])
+
+    # _std = PatternNode("Std", [_reducemean_input], new_attr={"dim": _reducemean_0,
+    #                    "keepdims": _reducemean_1, "unbiased": True})
+    # patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _mul_0, _reducemean_1,
+    #                                      _mul_1, _div, _sqrt],
+    #                            dst_node=[_std]))
+    # # normal case
+    # _sqrt = PatternNode("Sqrt", [_reducemean_1])
+
+    # _std = PatternNode("Std", [_reducemean_input], new_attr={"dim": _reducemean_0,
+    #                    "keepdims": _reducemean_1, "unbiased": False})
+    # patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _mul_0,
+    #                                      _reducemean_1, _sqrt],
+    #                            dst_node=[_std]))
+
     ############ torch.LayerNorm ############
     reducemean_input = OuterNode()
     pow_tensor = OuterNode(tensor_value=2)
@@ -435,6 +464,92 @@ def onnx_opt(model, dump=False):
     patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
                                          _add_0, _sqrt, _div],
                                dst_node=[layernorm]))
+
+    # ############ hard_sigmoid ############
+    # # nomal case
+    # add_input = OuterNode()
+    # add_tensor = OuterNode(tensor_value=3)
+    # clip_min = OuterNode(tensor_value=0)
+    # clip_max = OuterNode(tensor_value=6)
+    # div_tensor = OuterNode(tensor_value=6)
+
+    # _add = PatternNode("Add", [add_input, add_tensor])
+    # clip = PatternNode("Clip", [_add, clip_min, clip_max])
+    # _div = PatternNode("Div", [clip, div_tensor])
+
+    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
+    # patterns.append(ReformInfo(src_node=[_add, clip, _div],
+    #                            dst_node=[hard_sigmoid]))
+
+    # # old offset version min max is clip's attr
+    # clip = PatternNode("Clip", [_add])
+    # _div = PatternNode("Div", [clip, div_tensor])
+
+    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
+    # patterns.append(ReformInfo(src_node=[_add, clip, _div],
+    #                            dst_node=[hard_sigmoid]))
+
+    # # relu6_inplace (add is fused in pre matmul) case
+    # matmulbias_input = OuterNode()
+    # matmulbias_weight = OuterNode(is_tensor=True)
+    # matmulbias_bias = OuterNode(is_tensor=True)
+    # clip_min = OuterNode(is_tensor=True)
+    # clip_max = OuterNode(is_tensor=True)
+    # div_tensor = OuterNode(is_tensor=True)
+
+    # matmulbias = PatternNode("MatMul", [matmulbias_input, matmulbias_weight, matmulbias_bias])
+    # clip = PatternNode("Clip", [matmulbias, clip_min, clip_max])
+    # _div = PatternNode("Div", [clip, div_tensor])
+
+    # matmul = PatternNode("MatMul", [matmulbias_input, matmulbias_weight])
+    # hard_sigmoid = PatternNode("HardSigmoid", [matmul])
+
+    # patterns.append(ReformInfo(src_node=[matmulbias, clip, _div],
+    #                            dst_node=[matmul, hard_sigmoid]))
+
+    # ############ hard_swish ############
+    # # normal case
+    # add_input = OuterNode()
+    # add_tensor = OuterNode(tensor_value=3)
+    # clip_min = OuterNode(tensor_value=0)
+    # clip_max = OuterNode(tensor_value=6)
+    # div_tensor = OuterNode(tensor_value=6)
+
+    # _add = PatternNode("Add", [add_input, add_tensor])
+    # clip = PatternNode("Clip", [_add, clip_min, clip_max])
+    # mul_0 = PatternNode("Mul", [add_input, clip])
+    # _div = PatternNode("Div", [mul_0, div_tensor])
+
+    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
+    # mul_1 = PatternNode("Mul", [add_input, hard_sigmoid])
+
+    # patterns.append(ReformInfo(src_node=[_add, clip, mul_0, _div],
+    #                            dst_node=[hard_sigmoid, mul_1]))
+    # # old offset version min max is clip's attr
+    # clip = PatternNode("Clip", [_add])
+    # mul_0 = PatternNode("Mul", [add_input, clip])
+    # _div = PatternNode("Div", [mul_0, div_tensor])
+
+    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
+    # mul_1 = PatternNode("Mul", [add_input, hard_sigmoid])
+    # patterns.append(ReformInfo(src_node=[_add, clip, mul_0, _div],
+    #                            dst_node=[hard_sigmoid, mul_1]))
+
+    ############ torch.gelu ############
+    # gelu_input = OuterNode()
+    # div_tensor = OuterNode(is_tensor=True)
+    # add_tensor = OuterNode(tensor_value=1)
+    # mul_tensor = OuterNode(tensor_value=0.5)
+
+    # _div = PatternNode("Div", [gelu_input, div_tensor])
+    # _erf = PatternNode("Erf", [_div])
+    # _add = PatternNode("Add", [_erf, add_tensor])
+    # _mu_0 = PatternNode("Mul", [gelu_input, _add])
+    # _mul_1 = PatternNode("Mul", [_mu_0, mul_tensor])
+
+    # gelu = PatternNode("Gelu", [gelu_input])
+    # patterns.append(ReformInfo(src_node=[_div, _erf, _add, _mu_0, _mul_1], dst_node=[gelu]))
+
     reform(patterns)
     if dump:
         dump_model(model, "final_opt.onnx")
