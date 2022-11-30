@@ -35,11 +35,14 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
 
 group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
                                              int64_t n_step, int64_t h_step) {
+  group_info_t ginfo = {0};
+  if (isa<top::NoneOp>(op)) {
+    return ginfo;
+  }
   assert(op != nullptr);
   assert(op->hasAttr(LocalGenInterface::kLayerGroupAttrName));
   auto g_param = op->getAttr(LocalGenInterface::kLayerGroupAttrName)
                      .cast<tpu::LayerGroupAttr>();
-  group_info_t ginfo = {0};
   ginfo.id = g_param.getId();
   ginfo.stage = g_param.getStage();
   ginfo.out_addr = g_param.getOutAddr();

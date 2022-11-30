@@ -26,8 +26,7 @@ void Deconv::pad_init(float *input, deconv_attr_t &attr, int izp) {
   origin_input = input;
   _izp = izp;
   memcpy(&_attrs, &attr, sizeof(deconv_attr_t));
-  if (izp && (attr.pad_d > 0 || attr.pad_d_after > 0 || attr.pad_h > 0 ||
-              attr.pad_h_after > 0 || attr.pad_w > 0 || attr.pad_w_after > 0)) {
+  if (izp) {
     src_shape = {attr.n, attr.ic,
                  (attr.id - 1) * attr.sd + 1 + attr.dd * (attr.kd - 1),
                  (attr.ih - 1) * attr.sh + 1 + attr.dh * (attr.kh - 1),

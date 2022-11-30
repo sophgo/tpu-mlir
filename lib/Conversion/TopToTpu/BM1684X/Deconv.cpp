@@ -34,6 +34,10 @@ void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
 
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
+  if (asymmetric) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   deconv_attr_t param;
   op.parseParam(&param);
   rewriter.setInsertionPointAfter(op);
