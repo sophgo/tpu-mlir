@@ -320,7 +320,6 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   int type_len = BM168x::getFmtBytes(idtype);
   int64_t eu_num = BM168x::eu_num(type_len);
 
-  auto chip = Module::getChip(getOperation());
   int ic_per_npu = ceiling_func(attrs.ic / attrs.g, BM168x::NPU_NUM);
   // fp part 2: used for group > 1, input must start from npu 0
   if (attrs.g > 1 &&
@@ -363,10 +362,10 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.stride[1] = attrs.sw;
   param.dilation[0] = attrs.dh;
   param.dilation[1] = attrs.dw;
-  param.pad[0] = attrs.pad_h;
-  param.pad[1] = attrs.pad_h_after;
-  param.pad[2] = attrs.pad_w;
-  param.pad[3] = attrs.pad_w_after;
+  param.pad[0] = attrs.kh - attrs.pad_h - 1;
+  param.pad[1] = attrs.kh - attrs.pad_h_after - 1;
+  param.pad[2] = attrs.kw - attrs.pad_w - 1;
+  param.pad[3] = attrs.kw - attrs.pad_w_after - 1;
   param.has_bias = attrs.with_bias;
   param.input_dtype = BM168x::getDataType(input());
   param.weight_dtype = BM168x::getDataType(filter());

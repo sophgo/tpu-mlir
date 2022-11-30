@@ -49,7 +49,8 @@ class ONNX_IR_TESTER(object):
             "Conv1d": self.test_Conv1d,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
-            "ConvTranspose2D": self.test_ConvTranspose,
+            "ConvTranspose": self.test_ConvTranspose,
+            "ConvTranspose2": self.test_ConvTranspose2, #no pad
             "Clip": self.test_Clip,
             "DepthToSpace": self.test_DepthToSpace,
             "Div": self.test_Div,
@@ -1315,6 +1316,31 @@ class ONNX_IR_TESTER(object):
                                              pads=pads,
                                              strides=strides,
                                              dilations=dilations,
+                                             group=1)
+        graph_def = helper.make_graph([convtranspose_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias])
+        self.onnx_and_test(graph_def)
+
+    def test_ConvTranspose2(self, case_name):
+        input_shape = [1, 64, 35, 35]
+        filter_shape = [64, 32, 2, 2]
+        bias_shape = [32]
+        output_shape = [1, 32, 70, 70]
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(*bias_shape).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+        convtranspose_def = helper.make_node("ConvTranspose",
+                                             inputs=['input', 'weight', 'bias'],
+                                             outputs=['output'],
+                                             kernel_shape=[2, 2],
+                                             pads=[0, 0, 0, 0],
+                                             strides=[2, 2],
+                                             dilations=[1, 1],
                                              group=1)
         graph_def = helper.make_graph([convtranspose_def],
                                       case_name, [input], [output],
