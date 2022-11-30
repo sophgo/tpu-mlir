@@ -18,11 +18,11 @@ from utils.mlir_shell import *
 import os
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = [
-    "ReduceL2", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill"
-]
+Failed_Cases = ["ReduceL2", "TorchLayerNorm", "TorchLogSoftmax", "TorchMaskedFill", "TorchStd",
+                "TorchGelu", "TorchHardSigmoid", "TorchHardSwish"]
 
 
 class ONNX_IR_TESTER(object):
@@ -113,6 +113,9 @@ class ONNX_IR_TESTER(object):
             #############################
             # Torch Test Case, Alphabetically
             #############################
+            "TorchHardSwish": self.test_TorchHardSwish,
+            "TorchHardSigmoid": self.test_TorchHardSigmoid,
+            "TorchGelu": self.test_TorchGelu,
             "TorchGRU": self.test_TorchGRU,
             "TorchLayerGroup": self.test_TorchLayerGroup,
             "TorchLayerNorm": self.test_TorchLayerNorm,
@@ -120,6 +123,7 @@ class ONNX_IR_TESTER(object):
             "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
             "TorchWhere": self.test_TorchWhere,
+            "TorchStd": self.test_TorchStd
         }
         # no quantization when quant_mode == "f32"
         self.quant_modes = ["f32", "int8", "f16", "bf16"]
@@ -306,6 +310,7 @@ class ONNX_IR_TESTER(object):
                           onnx_file,
                           export_params=True,
                           verbose=True,
+                          opset_version=13, # export hardswish needed
                           input_names=in_names)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
@@ -783,7 +788,12 @@ class ONNX_IR_TESTER(object):
             ['output'],
         )
         graph_def = helper.make_graph([where_node], case_name, [cond, tbrn, fbrn], [output])
-        self.onnx_and_test(graph_def, input_data={"cond": cond_data, "tbrn": tbrn_data, "fbrn": fbrn_data})
+        self.onnx_and_test(graph_def,
+                           input_data={
+                               "cond": cond_data,
+                               "tbrn": tbrn_data,
+                               "fbrn": fbrn_data
+                           })
 
     def test_Relu(self, case_name):
         oc = 64
@@ -1493,6 +1503,38 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([reducemean_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
+    def test_TorchHardSigmoid(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                # old torch version not support export this op
+                self.hardsigmoid = nn.Hardsigmoid()
+
+            def forward(self, x):
+                return self.hardsigmoid(x)
+                # return F.hardtanh(x + 3, 0., 6.) / 6.
+
+        x = torch.randn(3, 100, 200).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchHardSwish(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                # old torch version not support export this op
+                self.hardSwish = nn.Hardswish()
+
+            def forward(self, x):
+                return self.hardSwish(x)
+                # return x * F.hardtanh(x + 3, 0., 6.) / 6.
+
+        x = torch.randn(3, 100, 200).float()
+        self.torch_and_test(x, Model(), case_name)
+
     def test_TorchLayerGroup(self, case_name):
 
         class Model(nn.Module):
@@ -1548,6 +1590,20 @@ class ONNX_IR_TESTER(object):
         inputs = (input, h_0, c_0)
         self.torch_and_test(inputs, Net(), case_name)
 
+    def test_TorchGelu(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.gelu = nn.GELU()
+
+            def forward(self, x):
+                return self.gelu(x)
+
+        x = torch.randn(1, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
     def test_TorchGRU(self, case_name):
         class Net(torch.nn.Module):
             def __init__(self):
@@ -1595,6 +1651,19 @@ class ONNX_IR_TESTER(object):
         input_data = torch.rand(input_shape)
         input_data[:, :, 70:] = 0
         self.torch_and_test(input_data, Net(), case_name)
+
+    def test_TorchStd(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                return torch.std(x, -1)
+
+        x = torch.randn(1, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
 
     def test_TorchWhere(self, case_name):
 
@@ -2213,8 +2282,8 @@ class ONNX_IR_TESTER(object):
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             cmp_def = helper.make_node(cmp_type, inputs=["input", "constant"], outputs=["output"])
             graph_def = helper.make_graph([cmp_def],
-                                           case_name, [input], [output],
-                                           initializer=[constant])
+                                          case_name, [input], [output],
+                                          initializer=[constant])
             self.onnx_and_test(graph_def, input_data={"input": input_data})
             print("====== TEST {} Success ======".format(cmp_type))
 
@@ -2249,7 +2318,9 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, output_shape)
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
-            cmp_def = helper.make_node(cmp_type, inputs=list(input_shape.keys()), outputs=["output"])
+            cmp_def = helper.make_node(cmp_type,
+                                       inputs=list(input_shape.keys()),
+                                       outputs=["output"])
             graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
             self.onnx_and_test(graph_def, input_data=input_data)
             print("====== TEST {} Success ======".format(cmp_type))
