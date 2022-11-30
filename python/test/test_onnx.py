@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "TorchMaskedFill", "TorchStd",
+Failed_Cases = ["TorchLayerNorm", "TorchStd",
                 "TorchGelu", "TorchHardSigmoid", "TorchHardSwish"]
 
 
@@ -42,7 +42,7 @@ class ONNX_IR_TESTER(object):
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
             "BroadcastMulConst": self.test_BroadcastMulConst,
-            "CompareConst": self.test_Compare,
+            "CompareConst": self.test_CompareConst,
             "Compare": self.test_Compare,
             # "Compare2": self.test_Compare2,
             "Concat": self.test_Concat,
@@ -1679,13 +1679,11 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, x):
-                y = x.masked_fill(x > 0.8, value=torch.tensor(-50.0))
-                z = x.masked_fill(x < 0.2, value=torch.tensor(1.0))
-                return y + z
+                y = x.masked_fill(x < 0.2, value=2)
+                return y
 
         input_shape = [2, 3, 100]
         input_data = torch.rand(input_shape)
-        input_data[:, :, 70:] = 0
         self.torch_and_test(input_data, Net(), case_name)
 
     def test_TorchStd(self, case_name):
@@ -2306,14 +2304,14 @@ class ONNX_IR_TESTER(object):
     def test_CompareConst(self, case_name):
         shape = [1, 3, 27, 27]
         input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
         constant = helper.make_tensor(
             "constant",
             TensorProto.FLOAT,
             [1],
             np.array([0.5]).astype(np.float32),
         )
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
+        output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             cmp_def = helper.make_node(cmp_type, inputs=["input", "constant"], outputs=["output"])

@@ -1420,11 +1420,22 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
   let arguments = (ins
     AnyTensor:$cond,
     AnyTensor:$tbrn,
-    AnyTensor:$fbrn,
-    I64Attr:$tbrn_is_const,
-    F64Attr:$tbrn_const_val,
-    I64Attr:$fbrn_is_const,
-    F64Attr:$fbrn_const_val
+    AnyTensor:$fbrn
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "MaskedFill operator";
+  let description = [{
+    Return elements, either from X or Y, depending on condition.
+  }];
+  let arguments = (ins
+    AnyTensor:$cond,
+    AnyTensor:$brn,
+    BoolAttr:$inversed,
+    F64Attr:$const_val
   );
   let results = (outs AnyTensor:$output);
 }

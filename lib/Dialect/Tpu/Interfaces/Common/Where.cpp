@@ -23,16 +23,9 @@ void tpu::WhereOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::WhereOp::inference(InferenceParameter &p) {
   const auto num_element = Module::getNumElements(output());
-  const float tbrn_const = tbrn_const_val().convertToDouble();
-  const float fbrn_const = fbrn_const_val().convertToDouble();
-  int idx = 1;
-  const int tbrn_idx = tbrn_is_const() ? -1 : (idx++);
-  const int fbrn_idx = fbrn_is_const() ? -1 : (idx++);
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
-    const float tbrn = tbrn_is_const() ? tbrn_const : p.inputs[tbrn_idx][i];
-    const float fbrn = fbrn_is_const() ? fbrn_const : p.inputs[fbrn_idx][i];
-    p.outputs[0][i] = p.inputs[0][i] ? tbrn : fbrn;
+    p.outputs[0][i] = p.inputs[0][i] ? p.inputs[1][i] : p.inputs[2][i];
   }
   return success();
 }

@@ -17,18 +17,23 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 
-int64_t top::WhereOp::getFLOPs() {
+int64_t top::MaskedFillOp::getFLOPs() {
   return Module::getNumElements(output());
 }
 
-LogicalResult top::WhereOp::init(InferenceParameter &p) { return success(); }
-void top::WhereOp::deinit(InferenceParameter &p) {}
+LogicalResult top::MaskedFillOp::init(InferenceParameter &p) { return success(); }
+void top::MaskedFillOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::WhereOp::inference(InferenceParameter &p) {
+LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
   const auto num_element = Module::getNumElements(output());
+  const float const_val_ = const_val().convertToDouble();
+  const float* in = p.inputs[0];
+  const float* brn = p.inputs[1];
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
-    p.outputs[0][i] = p.inputs[0][i] ? p.inputs[1][i] : p.inputs[2][i];
+    const float tbrn = inversed() ? const_val_ : brn[i];
+    const float fbrn = inversed() ? brn[i] : const_val_;
+    p.outputs[0][i] = in[i] ? tbrn : fbrn;
   }
   return success();
 }

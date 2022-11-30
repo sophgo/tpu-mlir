@@ -1497,25 +1497,34 @@ class OnnxConverter(BaseConverter):
         cond = onnx_node.inputs[0]
         tbrn = onnx_node.inputs[1]
         fbrn = onnx_node.inputs[2]
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-             'tbrn_is_const': 0, 'fbrn_is_const': 0,
-             'tbrn_const_val': 0, 'fbrn_const_val': 0}
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         cond_opd = self.getOp(cond)
         tbrn_opd = self.getOp(tbrn)
         fbrn_opd = self.getOp(fbrn)
+        num_const = 0
         if self.isConst(tbrn):
-            p['tbrn_is_const'] = 1
-            p['tbrn_const_val'] = self.getWeight(tbrn).flatten()[0]
+            num_const += 1
         else:
             assert (self.getShape(cond) == self.getShape(tbrn)) # do not support broadcastable case recently
         if self.isConst(fbrn):
-            p['fbrn_is_const'] = 1
-            p['fbrn_const_val'] = self.getWeight(fbrn).flatten()[0]
+            num_const += 1
         else:
             assert (self.getShape(cond) == self.getShape(fbrn)) # do not support broadcastable case recently
         output_shape = self.getShape(onnx_node.name)
-        where_op = self.mlir.create_where_op([cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
-        self.addOperand(onnx_node.name, where_op)
+        if num_const == 0:
+            new_op = self.mlir.create_where_op([cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
+        elif num_const == 1:
+            brn_opd = fbrn_opd if self.isConst(tbrn) else tbrn_opd
+            if self.isConst(tbrn):
+                p['inversed'] = True
+                p['const_val'] = self.getWeight(tbrn).flatten()[0]
+            else:
+                p['inversed'] = False
+                p['const_val'] = self.getWeight(fbrn).flatten()[0]
+            new_op = self.mlir.create_masked_fill_op([cond_opd, brn_opd], output_shape, **p)
+        else:
+            assert(0) # TODO: to be implement
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_cmp_op(self, onnx_node):
         type_map = {"Equal":0, "Greater":1, "GreaterOrEqual":2, "Less":3, "LessOrEqual":4}
@@ -1525,17 +1534,19 @@ class OnnxConverter(BaseConverter):
              "type": type_map[onnx_node.op_type]}
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
-        lhs_opd = self.getOp(lhs)
-        rhs_opd = self.getOp(rhs)
         output_shape = self.getShape(onnx_node.name)
         if self.isConst(lhs):
+            rhs_opd = self.getOp(rhs)
             p['const_val'] = self.getWeight(lhs).flatten()[0]
             p['inversed'] = 1
             cmp_op = self.mlir.create_compare_const_op([rhs_opd], output_shape, **p)
         elif self.isConst(rhs):
+            lhs_opd = self.getOp(lhs)
             p['const_val'] = self.getWeight(rhs).flatten()[0]
             p['inversed'] = 0
             cmp_op = self.mlir.create_compare_const_op([lhs_opd], output_shape, **p)
         else:
+            rhs_opd = self.getOp(rhs)
+            lhs_opd = self.getOp(lhs)
             cmp_op = self.mlir.create_compare_op([lhs_opd, rhs_opd], output_shape, **p)
         self.addOperand(onnx_node.name, cmp_op)
