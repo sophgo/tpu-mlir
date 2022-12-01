@@ -300,7 +300,6 @@ class OnnxConverter(BaseConverter):
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
             self.model = onnx.shape_inference.infer_shapes(model_simplified)
-            self.model = onnx_opt(self.model, True)
         if output_names:
             self.select_output(output_names)
         # add all weight
@@ -327,6 +326,9 @@ class OnnxConverter(BaseConverter):
         strip_model.graph.ClearField("initializer")
         with open(self.onnx_file + ".prototxt", "w") as f:
             f.write(str(strip_model))
+        if is_ok:
+            # fuse ops such as layernorm gelu...
+            self.model = onnx_opt(self.model, True)
 
     def model_shape_infer(self, input_shapes):
         inputs = self.get_inputs(self.model)

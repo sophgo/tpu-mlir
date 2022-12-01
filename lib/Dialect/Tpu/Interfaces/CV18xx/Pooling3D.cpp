@@ -20,12 +20,12 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 // using namespace tpu_mlir::backend;
 
-
 // =========================================
 // GlobalGenInterface
 // =========================================
 
-void tpu::Pool3DOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::Pool3DOp::codegen_global_cv18xx(int64_t layer_id) {
+  // convert in TopToTpu/CV18xx/AvgPool.cpp by pool 2 times
   llvm_unreachable("Not supported now");
 }
 

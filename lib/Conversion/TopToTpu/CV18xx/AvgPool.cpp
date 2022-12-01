@@ -21,7 +21,10 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   int64_t kh = kernel_size == 3 ? kernel->at(1) : kernel->at(0);
   int64_t kw =
       kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);
-
+  if (kernel_size == 3) {
+    LoweringBF16(rewriter, poolOp);
+    return;
+  }
   auto op = poolOp.getOperation();
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -66,14 +69,98 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   if (poolOp.kernel_shape().size() == 3) {
-    lowering_common_bf16<tpu::Pool3DOp>(rewriter, op);
+    std::vector<Value> operands;
+    std::vector<int64_t> input_shape;
+    std::vector<int64_t> output_shape;
+    std::vector<int64_t> tmp_shape0(4, 1);
+    std::vector<int64_t> tmp_shape1;
+    std::vector<int64_t> _kernel;
+    std::vector<int64_t> _strides;
+    std::vector<int64_t> _pad;
+
+    Module::getShapeVec(poolOp.input(), input_shape);
+    Module::getShapeVec(poolOp.output(), output_shape);
+    auto kernel = Module::getI64Array(poolOp.kernel_shape());
+    auto strides = Module::getI64Array(poolOp.strides());
+    auto pads = Module::getI64Array(poolOp.pads());
+    auto type = rewriter.getBF16Type();
+    auto op_name = Module::getName(poolOp.getOperation()).str();
+    // 0. reshape [n c f h w] -> [n*c h w f].
+    // It should align_right, this may casuse layerGroup err (fix me)
+    Module::getNCHW(input_shape, tmp_shape0[0], tmp_shape0[1], tmp_shape0[2],
+                    tmp_shape0[3], false);
+    auto newType = RankedTensorType::get(tmp_shape0, type);
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape"));
+    auto reshapeOp =
+        rewriter.create<tpu::ReshapeOp>(name_loc, newType, poolOp->getOperands());
+    // 1. do pool at last 2 dim
+    for (int i = 1; i < 3; i++) {
+      _kernel.push_back(kernel->at(i));
+      _strides.push_back(strides->at(i));
+      _pad.push_back(pads->at(i));
+    }
+    for (int i = 4; i < 6; i++) {
+      _pad.push_back(pads->at(i));
+    }
+    auto dims = input_shape.size();
+    tmp_shape0[2] = output_shape[dims - 2];
+    tmp_shape0[3] = output_shape[dims - 1];
+    newType = RankedTensorType::get(tmp_shape0, type);
+    name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_0"));
+    auto newOp0 = rewriter.create<tpu::Pool2DOp>(
+        name_loc, newType, ValueRange{reshapeOp.output()} , op->getAttrs());
+    newOp0->setAttr("kernel_shape", rewriter.getI64ArrayAttr(_kernel));
+    newOp0->setAttr("strides", rewriter.getI64ArrayAttr(_strides));
+    newOp0->setAttr("pads", rewriter.getI64ArrayAttr(_pad));
+    // 2. trans [n*c f h w] -> [n*c h w f]
+    std::vector<int64_t> order(tmp_shape0.size());
+    std::iota(order.begin(), order.end(), 0);
+    order.erase(order.begin() + tmp_shape0.size() - 3);
+    order.push_back(tmp_shape0.size() - 3);
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    for (auto i : order) {
+      tmp_shape1.push_back(tmp_shape0[i]);
+    }
+    newType = RankedTensorType::get(tmp_shape1, type);
+    name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
+    auto newOp1 = rewriter.create<tpu::PermuteOp>(
+        name_loc, newType, ValueRange{newOp0.output()}, attrs);
+    // 3. do pool last dim
+    tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
+    newType = RankedTensorType::get(tmp_shape1, type);
+    name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_1"));
+    auto newOp2 = rewriter.create<tpu::Pool2DOp>(
+        name_loc, newType, ValueRange{newOp1.output()}, op->getAttrs());
+    newOp2->setAttr("kernel_shape", rewriter.getI64ArrayAttr({1, kernel->at(0)}));
+    newOp2->setAttr("strides", rewriter.getI64ArrayAttr({1, strides->at(0)}));
+    newOp2->setAttr("pads",
+                    rewriter.getI64ArrayAttr({0, pads->at(0), 0, pads->at(3)}));
+    // 4. trans back  [n c h w f] -> [n c f h w]
+    name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_2"));
+    newType = RankedTensorType::get(output_shape, type);
+    std::iota(order.begin(), order.end(), 0);
+    order.pop_back();
+    order.insert(order.begin() + tmp_shape1.size() - 3,
+                 tmp_shape1.size() - 1);
+    attrs.clear();
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
+    auto newOp3 = rewriter.create<tpu::PermuteOp>(
+        name_loc, newType, ValueRange{newOp2.output()}, attrs);
+    // 5. reshape back
+    newType = RankedTensorType::get(output_shape, type);
+    auto reshape_backOp =
+        rewriter.create<tpu::ReshapeOp>(poolOp->getLoc(), newType, ValueRange{newOp3.output()});
+
+    rewriter.replaceOp(op, {reshape_backOp.output()});
   } else if (poolOp.kernel_shape().size() == 2) {
     lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
   } else {
     lowering_common_bf16<tpu::Pool1DOp>(rewriter, op);
   }
 }
-
 
 } // namespace cv18xx
 } // namespace tpu_mlir
