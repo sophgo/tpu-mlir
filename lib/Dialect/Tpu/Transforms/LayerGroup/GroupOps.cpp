@@ -164,9 +164,6 @@ GroupOps::GroupOps(::mlir::func::FuncOp func_) {
   MAX_ID = llvm::maxIntN(64);
   func = func_;
   ctx = func.getContext();
-  auto chip = Module::getChip(Module::getModuleOp(func.getOperation()));
-  bm168x = BM168x::instance(chip);
-  n_align = bm168x->get_n_align(1);
   func.walk([&](Operation *op) {
     if (isa<FuncOp, top::NoneOp, top::WeightOp>(op)) {
       // do nothing
@@ -538,7 +535,8 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   auto out = end_op->getResult(0);
   int64_t n, c, h, w;
   Module::getNCHW(out, n, c, h, w);
-  auto n_align = bm168x->get_n_align(1);
+  auto type = Module::getStorageType(out);
+  auto n_align = Arch::get_n_align(type.getIntOrFloatBitWidth() / 8);
   int64_t max_nsecs = ceiling_func(n, n_align);
   int64_t max_hsecs = h;
   new_start_idx = start_idx;
@@ -578,6 +576,8 @@ void GroupOps::slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
     if (nsecs == 1) {
       si.n.emplace_back(slice_pair_t(0, n));
     } else {
+      auto type = Module::getStorageType(linfo.value);
+      auto n_align = Arch::get_n_align(type.getIntOrFloatBitWidth() / 8);
       auto max_slice = align_up(ceiling_func(n, nsecs), n_align);
       auto offset = 0l;
       for (auto i = 0; i < nsecs; i++) {
@@ -730,11 +730,11 @@ void GroupOps::set_lmem_size(group_lmem_t &group_lmem) {
   int64_t n, c, h, w, slice_n, slice_h;
   for (auto &linfo : *group_lmem) {
     if (LMEM_WEIGHT == linfo.type) {
-      linfo.size = bm168x->get_weight_lmem_bytes(linfo.value, linfo.eu_align);
+      linfo.size = Arch::get_weight_lmem_bytes(linfo.value, linfo.eu_align);
     } else if (LMEM_ACTIVATION == linfo.type) {
       get_max_slice_nh(linfo, slice_n, slice_h);
-      linfo.size = bm168x->get_tensor_lmem_bytes(linfo.value, slice_n, slice_h,
-                                                 linfo.eu_align);
+      linfo.size = Arch::get_tensor_lmem_bytes(linfo.value, slice_n, slice_h,
+                                               linfo.eu_align);
     }
   }
   for (auto &linfo : *group_lmem) {
@@ -1020,7 +1020,7 @@ lmem_info_t *GroupOps::find_max_unalloc_lmem(group_lmem_t &group_lmem,
 
 bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
                                 int64_t hsecs) {
-  int64_t start_addr = 0, end_addr = bm168x->get_lmem_bytes();
+  int64_t start_addr = 0, end_addr = Arch::LMEM_BYTES;
   allocated_lmems.clear();
   if (nsecs != 1 || hsecs != 1) {
     // weight first
@@ -1053,11 +1053,11 @@ bool GroupOps::assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs,
 
 int64_t GroupOps::alloc_lmem(int64_t size) {
   bool in_bank[] = {true, false};
-  if (size > bm168x->get_lmem_bytes()) {
+  if (size > Arch::LMEM_BYTES) {
     return -1;
   }
   for (auto align_bank : in_bank) {
-    if (align_bank && size > bm168x->get_lmem_bank_bytes()) {
+    if (align_bank && size > Arch::LMEM_BANK_BYTES) {
       continue;
     }
     int64_t addr = 0;
@@ -1067,19 +1067,17 @@ int64_t GroupOps::alloc_lmem(int64_t size) {
         allocated_lmems.insert(it, pair);
         return addr;
       }
-      int64_t addr_tmp =
-          align_up(it->first + it->second, bm168x->get_eu_bytes());
+      int64_t addr_tmp = align_up(it->first + it->second, Arch::EU_BYTES);
       if (align_bank) {
-        auto bank0 = ceiling_func(addr_tmp, bm168x->get_lmem_bank_bytes());
-        auto bank1 =
-            ceiling_func(addr_tmp + size - 1, bm168x->get_lmem_bank_bytes());
+        auto bank0 = ceiling_func(addr_tmp, Arch::LMEM_BANK_BYTES);
+        auto bank1 = ceiling_func(addr_tmp + size - 1, Arch::LMEM_BANK_BYTES);
         if (bank0 != bank1) {
-          addr_tmp = align_up(addr_tmp, bm168x->get_lmem_bank_bytes());
+          addr_tmp = align_up(addr_tmp, Arch::LMEM_BANK_BYTES);
         }
       }
       addr = std::max(addr, addr_tmp);
     }
-    if (addr + size > bm168x->get_lmem_bytes()) {
+    if (addr + size > Arch::LMEM_BYTES) {
       continue;
     }
     auto pair = addr_pair_t(addr, size);

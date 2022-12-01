@@ -46,12 +46,14 @@ struct Module {
   struct Chip {
     static constexpr llvm::StringRef ALL = "ALL";
     static constexpr llvm::StringRef BM1684 = "BM1684";
-    static constexpr llvm::StringRef BM1684x = "BM1684X";
+    static constexpr llvm::StringRef BM1684X = "BM1684X";
     static constexpr llvm::StringRef CV182x = "CV182X";
     static constexpr llvm::StringRef CV183x = "CV183X";
+    static constexpr llvm::StringRef BM1686 = "BM1686";
   };
 
   static top::NoneOp getNoneOp(Operation *op);
+  static Value getOperand(Operation* op, int i);
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);
   static void removeUnusedOp(ModuleOp module);
@@ -63,6 +65,7 @@ struct Module {
   static void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c,
                       int64_t &h, int64_t &w, bool left_align = true);
   static void getShapeVec(Value v, std::vector<int64_t> &vec_shape);
+  static int getDtypeSize(Value v);
   static size_t getBytes(Value v);
   static int64_t getNumElements(Value v);
   static Type getStorageType(Value v); // storage type
@@ -184,6 +187,16 @@ struct Module {
   static inline bool isCV18xx(StringRef chip) {
     return (chip == Module::Chip::CV183x
             || chip == Module::Chip::CV182x);
+  }
+  static inline bool isBM1684Family(StringRef chip){
+    return (chip == Module::Chip::BM1684);
+  }
+  static inline bool isBM1684XFamily(StringRef chip){
+    return   (chip == Module::Chip::BM1684X
+            || chip == Module::Chip::BM1686);
+  }
+  static inline bool isBM1686(StringRef chip){
+    return (chip == Module::Chip::BM1686);
   }
 };
 } // namespace helper

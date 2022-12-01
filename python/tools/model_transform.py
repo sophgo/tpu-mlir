@@ -15,13 +15,9 @@ import argparse
 from transform.BaseConverter import BaseConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
+from utils.misc import *
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
-
-
-def show_fake_cmd(in_npz: str, model: str, out_npz: str):
-    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
-
 
 class ModelTransformer(object):
 
@@ -72,8 +68,8 @@ class ModelTransformer(object):
             np.savez(ref_npz, **ref_outputs)
 
             # inference of mlir model
+            from tools.model_runner import mlir_inference, show_fake_cmd
             show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
-            from tools.model_runner import mlir_inference
             f32_outputs = mlir_inference(inputs, self.mlir_file)
             np.savez(test_result, **f32_outputs)
 
@@ -129,13 +125,14 @@ class CaffeTransformer(ModelTransformer):
 
 class TFLiteTransformer(ModelTransformer):
 
-    def __init__(self, model_name, model_def, input_shapes: list = [], preprocessor=None):
+    def __init__(self, model_name, model_def, input_shapes: list = [],
+                 output_names=[], preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         self.do_mlir_infer = False
         from transform.TFLiteConverter import TFLiteConverter
         self.converter = TFLiteConverter(self.model_name, self.model_def, input_shapes,
-                                         preprocessor)
+                                         output_names, preprocessor)
 
     def origin_inference(self, inputs: dict):
         from tools.model_runner import tflite_inference
@@ -143,26 +140,8 @@ class TFLiteTransformer(ModelTransformer):
         return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw)
 
 
-def str2shape(v):
-    _shape = eval(v)
-    if not isinstance(_shape, list):
-        raise KeyError("not shape list:{}".format(v))
-    if len(_shape) == 0:
-        return []
-    dim = np.array(_shape).ndim
-    if dim == 1:
-        return [_shape]
-    if dim != 2:
-        raise KeyError("not shape list:{}".format(v))
-    return _shape
 
 
-def str2list(v):
-    files = v.split(',')
-    files = [s.strip() for s in files]
-    while files.count('') > 0:
-        files.remove('')
-    return files
 
 
 def get_model_transform(args):
@@ -179,7 +158,7 @@ def get_model_transform(args):
                                 args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.tflite'):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
-                                 preprocessor.to_dict())
+                                 args.output_names, preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))

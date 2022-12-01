@@ -6,11 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-/*
- * Written by:
- *   Pengchao Hu <pengchao.hu@bitmain.com>
- * Created Time: 2018-06-19 15:34
- */
+
 #include <stdio.h>
 #include <fstream>
 #include <unistd.h>

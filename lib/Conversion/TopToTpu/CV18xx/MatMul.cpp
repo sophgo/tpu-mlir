@@ -78,9 +78,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;
-  bool with_bias, relu;
+  bool with_bias, relu, transpose;
   double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit);
+  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
   auto th_output = Quant::getThreshold(op.output());
   auto th_input = Quant::getThreshold(op.input());
   std::vector<int64_t> multipliers;
@@ -92,7 +92,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     // fc
     auto rightOp = cast<top::WeightOp>(op.right().getDefiningOp());
     auto right_f32 = rightOp.read<float>();
-    assert(right_f32->size() == K * N);
+    assert(right_f32->size() == batch * K * N);
     auto right_i8 = std::vector<int8_t>(right_f32->size());
 
     std::shared_ptr<std::vector<float>> bias_f32;

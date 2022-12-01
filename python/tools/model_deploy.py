@@ -13,7 +13,7 @@ import numpy as np
 import argparse
 from utils.mlir_shell import *
 from utils.mlir_parser import *
-from tools.model_runner import mlir_inference, model_inference
+from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
 
 
@@ -23,10 +23,6 @@ def str2list(v):
     while files.count('') > 0:
         files.remove('')
     return files
-
-
-def show_fake_cmd(in_npz: str, model: str, out_npz: str):
-    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
 
 class DeployTool:
@@ -144,7 +140,7 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--correctness", default='0.99,0.90', help="correctness")
     parser.add_argument("--chip", required=True, type=str,
-                        choices=['bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
+                        choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
                         help="chip platform name")
     parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz file for inference, "

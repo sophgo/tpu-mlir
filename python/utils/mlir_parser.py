@@ -74,7 +74,9 @@ class Operation:
 
     @staticmethod
     def append_attr(op, attrs):
-        shape_type = mlir.ir.ShapedType(op.result.type)
+        if len(op.results) != 1:
+            return attrs
+        shape_type = mlir.ir.ShapedType(op.results[0].type)
         element_type = shape_type.element_type
         if quant.UniformQuantizedType.isinstance(element_type):
             quant_type = quant.UniformQuantizedType(element_type)
@@ -214,7 +216,7 @@ class MlirParser:
             type = Operation.type(op)
             if type in ['top.None', 'top.Input', 'func.return']:
                 continue
-            shape_type = mlir.ir.ShapedType(op.result.type)
+            shape_type = mlir.ir.ShapedType(op.results[0].type)
             name = Operation.name(op)
             middles[name] = shape_type
         return middles
@@ -227,7 +229,7 @@ class MlirParser:
             type = Operation.type(op)
             if type != 'top.Weight':
                 continue
-            shape_type = mlir.ir.ShapedType(op.result.type)
+            shape_type = mlir.ir.ShapedType(op.results[0].type)
             name = Operation.name(op)
             initializer[name] = shape_type
         return initializer

@@ -87,8 +87,8 @@ void parsePermuteParam(std::vector<int64_t> input_shape, std::vector<int64_t> or
     order_4[idx] = order[end] + idx - end;
   }
 }
-void tpu::PermuteOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::PermuteOp::codegen_global_cv18xx( int64_t layer_id) {
+
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   auto order = Module::getI64Array(this->order());
@@ -98,11 +98,11 @@ void tpu::PermuteOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
   std::vector<int> order_4;
   parsePermuteParam(input_shape, *order, shape_4, order_4);
   if (Quant::isUniformQuantized(output())) {
-    cvi_backend_tg_permute_kernel(*backend_ctx, layer_id, ga_input, ga_output,
+    cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
           shape_4[0], shape_4[1], shape_4[2], shape_4[3],
           order_4[0], order_4[1], order_4[2], order_4[3], CVK_FMT_I8);
   } else {
-    cvi_backend_tg_permute_kernel(*backend_ctx, layer_id, ga_input, ga_output,
+    cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
           shape_4[0], shape_4[1], shape_4[2], shape_4[3],
           order_4[0], order_4[1], order_4[2], order_4[3], CVK_FMT_BF16);
   }

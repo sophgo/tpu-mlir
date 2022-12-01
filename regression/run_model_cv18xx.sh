@@ -148,8 +148,8 @@ fi
 #########################
 
 # only once
-CALI_TABLE=${REGRESSION_PATH}/config/${model_name}_cali_table
-QTABLE=${REGRESSION_PATH}/config/${model_name}_qtable
+CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
+QTABLE=${REGRESSION_PATH}/cali_tables/${model_name}_qtable
 if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
     echo "Error: ${model_name} has no dataset"

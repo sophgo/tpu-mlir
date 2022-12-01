@@ -6,10 +6,6 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-//
-// This file implements the TPU dialect OP Stats pass.
-//
-//===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/MlirToCvimodel.hpp"
@@ -42,10 +38,11 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    auto cv18xx = CV18xx::instance();
+    Arch::init(chip);
     CviModelBuilder builder(module);
     builder.storeModel(filename);
   }
+
 private:
   ModuleOp module;
   StringRef state;

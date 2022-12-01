@@ -1,11 +1,11 @@
 编译ONNX模型
 ============
 
-本章以 ``yolov5s.onnx`` 为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
+本章以 ``yolov5s.onnx`` 为例, 介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
 
 该模型来自yolov5的官网: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
-本章需要如下文件(其中xxxx对应实际的版本信息)：
+本章需要如下文件(其中xxxx对应实际的版本信息):
 
 **tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
@@ -18,13 +18,13 @@
 准备工作目录
 ------------------
 
-建立 ``model_yolov5s`` 目录，注意是与tpu-mlir同级目录；并把模型文件和图片文件都
+建立 ``model_yolov5s`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
 放入 ``model_yolov5s`` 目录中。
 
 
-操作如下：
+操作如下:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir model_yolov5s && cd model_yolov5s
@@ -34,27 +34,27 @@
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量，对应tpu-mlir_xxxx目录。
+这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
 
 
 ONNX转MLIR
 ------------------
 
-如果模型是图片输入，在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入，则不需要考虑预处理。
-预处理过程用公式表达如下（ :math:`x` 代表输入)：
+如果模型是图片输入, 在转模型之前我们需要了解模型的预处理。如果模型用预处理后的npz文件做输入, 则不需要考虑预处理。
+预处理过程用公式表达如下( :math:`x` 代表输入):
 
 .. math::
 
-   y = （x - mean） \times scale
+   y = (x - mean) \times scale
 
 
-官网yolov5的图片是rgb，每个值会乘以 ``1/255`` ，转换成mean和scale对应为
+官网yolov5的图片是rgb, 每个值会乘以 ``1/255`` , 转换成mean和scale对应为
 ``0.0,0.0,0.0`` 和 ``0.0039216,0.0039216,0.0039216`` 。
 
-模型转换命令如下：
+模型转换命令如下:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name yolov5s \
@@ -85,51 +85,51 @@ ONNX转MLIR
      - 指定模型名称
    * - model_def
      - 是
-     - 指定模型定义文件，比如`.onnx`或`.tflite`或`.prototxt`文件
+     - 指定模型定义文件, 比如`.onnx`或`.tflite`或`.prototxt`文件
    * - input_shapes
      - 否
-     - 指定输入的shape，例如[[1,3,640,640]]；二维数组，可以支持多输入情况
+     - 指定输入的shape, 例如[[1,3,640,640]]; 二维数组, 可以支持多输入情况
    * - resize_dims
      - 否
-     - 原始图片需要resize之后的尺寸；如果不指定，则resize成模型的输入尺寸
+     - 原始图片需要resize之后的尺寸; 如果不指定, 则resize成模型的输入尺寸
    * - keep_aspect_ratio
      - 否
-     - 在Resize时是否保持长宽比，默认为false；设置时会对不足部分补0
+     - 在Resize时是否保持长宽比, 默认为false; 设置时会对不足部分补0
    * - mean
      - 否
-     - 图像每个通道的均值，默认为0.0,0.0,0.0
+     - 图像每个通道的均值, 默认为0.0,0.0,0.0
    * - scale
      - 否
-     - 图片每个通道的比值，默认为1.0,1.0,1.0
+     - 图片每个通道的比值, 默认为1.0,1.0,1.0
    * - pixel_format
      - 否
-     - 图片类型，可以是rgb、bgr、gray、rgbd四种情况
+     - 图片类型, 可以是rgb、bgr、gray、rgbd四种情况
    * - output_names
      - 否
-     - 指定输出的名称，如果不指定，则用模型的输出；指定后用该指定名称做输出
+     - 指定输出的名称, 如果不指定, 则用模型的输出; 指定后用该指定名称做输出
    * - test_input
      - 否
-     - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
+     - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会正确性验证
    * - test_result
      - 否
      - 指定验证后的输出文件
    * - excepts
      - 否
-     - 指定需要排除验证的网络层的名称，多个用,隔开
+     - 指定需要排除验证的网络层的名称, 多个用,隔开
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
 
 
-转成mlir文件后，会生成一个 ``${model_name}_in_f32.npz`` 文件，该文件是模型的输入文件。
+转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。
 
 
 MLIR转F32模型
 ------------------
 
-将mlir文件转换成f32的bmodel，操作方法如下：
+将mlir文件转换成f32的bmodel, 操作方法如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -141,7 +141,7 @@ MLIR转F32模型
        --model yolov5s_1684x_f32.bmodel
 
 
-``model_deploy.py`` 的相关参数说明如下：
+``model_deploy.py`` 的相关参数说明如下:
 
 
 .. list-table:: model_deploy 参数功能
@@ -156,68 +156,67 @@ MLIR转F32模型
      - 指定mlir文件
    * - quantize
      - 是
-     - 指定默认量化类型，支持F32/F16/BF16/INT8
+     - 指定默认量化类型, 支持F32/F16/BF16/INT8
    * - chip
      - 是
-     - 指定模型将要用到的平台，支持bm1684x（目前只支持这一种，后续会支持多款TPU
-       平台）
+     - 指定模型将要用到的平台, 支持bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x
    * - calibration_table
      - 否
-     - 指定量化表路径，当存在INT8量化的时候需要量化表
+     - 指定校准表路径, 当存在INT8量化的时候需要校准表
    * - tolerance
      - 否
      - 表示 MLIR 量化后的结果与 MLIR fp32推理结果相似度的误差容忍度
    * - correctness
      - 否
-     - 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度，默认0.99,0.90
+     - 表示仿真器运行的结果与MLIR量化后的结果相似度的误差容忍度, 默认0.99,0.90
    * - test_input
      - 否
-     - 指定输入文件用于验证，可以是图片或npy或npz；可以不指定，则不会正确性验证
+     - 指定输入文件用于验证, 可以是图片或npy或npz; 可以不指定, 则不会正确性验证
    * - test_reference
      - 否
-     - 用于验证模型正确性的参考数据（使用npz格式）。其为各算子的计算结果
+     - 用于验证模型正确性的参考数据(使用npz格式)。其为各算子的计算结果
    * - excepts
      - 否
-     - 指定需要排除验证的网络层的名称，多个用,隔开
+     - 指定需要排除验证的网络层的名称, 多个用,隔开
    * - model
      - 是
      - 指定输出的model文件名称和路径
 
 
-编译完成后，会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。
 
 
 MLIR转INT8模型
 ------------------
 
-生成量化表
+生成校准表
 ~~~~~~~~~~~~~~~~~~~~
 
-转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
+转INT8模型前需要跑calibration, 得到校准表; 输入数据的数量根据情况准备100~1000张左右。
 
-然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为
+然后用校准表, 生成对称或非对称bmodel。如果对称符合需求, 一般不建议用非对称, 因为
 非对称的性能会略差于对称模型。
 
-这里用现有的100张来自COCO2017的图片举例，执行calibration：
+这里用现有的100张来自COCO2017的图片举例, 执行calibration:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py yolov5s.mlir \
        --dataset ../COCO2017 \
        --input_num 100 \
        -o yolov5s_cali_table
 
-运行完成后会生成名为 ``${model_name}_cali_table`` 的文件，该文件用于后续编译INT8
+运行完成后会生成名为 ``${model_name}_cali_table`` 的文件, 该文件用于后续编译INT8
 模型的输入文件。
 
 
 编译为INT8对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-转成INT8对称量化模型，执行如下命令：
+转成INT8对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -229,15 +228,15 @@ MLIR转INT8模型
        --tolerance 0.85,0.45 \
        --model yolov5s_1684x_int8_sym.bmodel
 
-编译完成后，会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
 
 
 编译为INT8非对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-转成INT8非对称量化模型，执行如下命令：
+转成INT8非对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -251,21 +250,21 @@ MLIR转INT8模型
        --model yolov5s_1684x_int8_asym.bmodel
 
 
-编译完成后，会生成名为 ``${model_name}_1684x_int8_asym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_int8_asym.bmodel`` 的文件。
 
 
 效果对比
 ------------------
 
-在本发布包中有用python写好的yolov5用例，源码路径
-``$TPUC_ROOT/python/samples/detect_yolov5.py`` ，用于对图片进行目标检测。阅读该
-代码可以了解模型是如何使用的：先预处理得到模型的输入，然后推理得到输出，最后做后处理。
+在本发布包中有用python写好的yolov5用例, 源码路径
+``$TPUC_ROOT/python/samples/detect_yolov5.py`` , 用于对图片进行目标检测。阅读该
+代码可以了解模型是如何使用的: 先预处理得到模型的输入, 然后推理得到输出, 最后做后处理。
 用以下代码分别来验证onnx/f32/int8的执行结果。
 
 
-onnx模型的执行方式如下，得到 ``dog_onnx.jpg`` ：
+onnx模型的执行方式如下, 得到 ``dog_onnx.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -273,9 +272,9 @@ onnx模型的执行方式如下，得到 ``dog_onnx.jpg`` ：
        --output dog_onnx.jpg
 
 
-f32 bmodel的执行方式如下，得到 ``dog_f32.jpg`` ：
+f32 bmodel的执行方式如下, 得到 ``dog_f32.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -284,9 +283,9 @@ f32 bmodel的执行方式如下，得到 ``dog_f32.jpg`` ：
 
 
 
-int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` ：
+int8对称bmodel的执行方式如下, 得到 ``dog_int8_sym.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -294,9 +293,9 @@ int8对称bmodel的执行方式如下，得到 ``dog_int8_sym.jpg`` ：
        --output dog_int8_sym.jpg
 
 
-int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
+int8非对称bmodel的执行方式如下, 得到 ``dog_int8_asym.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -304,7 +303,7 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
        --output dog_int8_asym.jpg
 
 
-四张图片对比如下：
+四张图片对比如下:
 
 .. _yolov5s_result:
 .. figure:: ../assets/yolov5s.png
@@ -313,13 +312,13 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 
    TPU-MLIR对YOLOv5s编译效果对比
 
-由于运行环境不同，最终的效果和精度与 :numref:`yolov5s_result` 会有些差异。
+由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result` 会有些差异。
 
 
 模型性能测试
 ------------
 
-以下操作需要在Docker外执行，
+以下操作需要在Docker外执行,
 
 安装 ``libsophon`` 环境
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -330,13 +329,13 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
 检查 ``BModel`` 的性能
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-安装好 ``libsophon`` 后，可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确
-性及性能。可以根据 ``bmrt_test`` 输出的性能结果，来估算模型最大的fps，来选择合适的模型。
+安装好 ``libsophon`` 后, 可以使用 ``bmrt_test`` 来测试编译出的 ``bmodel`` 的正确
+性及性能。可以根据 ``bmrt_test`` 输出的性能结果, 来估算模型最大的fps, 来选择合适的模型。
 
-.. code-block:: console
+.. code-block:: shell
 
    # 下面测试上面编译出的bmodel
-   # --bmodel参数后面接bmodel文件，
+   # --bmodel参数后面接bmodel文件,
 
    $ cd $TPUC_ROOT/../model_yolov5s/workspace
    $ bmrt_test --bmodel yolov5s_1684x_f32.bmodel
@@ -344,9 +343,9 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
    $ bmrt_test --bmodel yolov5s_1684x_int8_sym.bmodel
 
 
-以最后一个命令输出为例（此处对日志做了部分截断处理）：
+以最后一个命令输出为例(此处对日志做了部分截断处理):
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    [BMRT][load_bmodel:983] INFO:pre net num: 0, load net num: 1
@@ -378,10 +377,10 @@ int8非对称bmodel的执行方式如下，得到 ``dog_int8_asym.jpg`` ：
    [BMRT][bmrt_test:1061] INFO:compare    time(s): 0.006514
 
 
-从上面输出可以看到以下信息：
+从上面输出可以看到以下信息:
 
 1. 05-08行是bmodel的网络输入输出信息
-2. 19行是在TPU上运行的时间，其中TPU用时4009us，CPU用时113us。这里CPU用时主要是指在HOST端调用等待时间
+2. 19行是在TPU上运行的时间, 其中TPU用时4009us, CPU用时113us。这里CPU用时主要是指在HOST端调用等待时间
 3. 24行是加载数据到NPU的DDR的时间
 4. 25行相当于12行的总时间
 5. 26行是输出数据取回时间

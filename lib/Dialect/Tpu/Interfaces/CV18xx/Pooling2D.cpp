@@ -24,8 +24,8 @@ using namespace tpu_mlir::helper;
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::Pool2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::Pool2DOp::codegen_global_cv18xx( int64_t layer_id) {
+
   pool_attr_t attrs = {0};
   parseParam(&attrs);
   assert(!attrs.do_relu);
@@ -34,7 +34,7 @@ void tpu::Pool2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   if (pool_mode() == tpu::PoolMode::Avg) {
     if (Quant::isUniformQuantized(output())) {
       cvi_backend_tg_fixed_avg_pooling_kernel(
-          *backend_ctx,
+
           layer_id,  // layer_id,
           ga_input,  // input_data_gaddr,
           ga_output, // output_data_gaddr,
@@ -47,7 +47,7 @@ void tpu::Pool2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
           true);
     } else {
       cvi_backend_tg_bf16_pooling_kernel(
-          *backend_ctx,
+
           layer_id,   // layer_id,
           ga_input,   // input_data_gaddr,
           ga_output,  // output_data_gaddr,
@@ -64,7 +64,7 @@ void tpu::Pool2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
   } else if (pool_mode() == tpu::PoolMode::Max) {
     if (Quant::isUniformQuantized(output())) {
       cvi_backend_tg_fixed_max_pooling_kernel(
-          *backend_ctx,
+
           layer_id,  // layer_id,
           ga_input,  // input_data_gaddr,
           ga_output, // output_data_gaddr,
@@ -75,7 +75,7 @@ void tpu::Pool2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
           true);
     } else {
       cvi_backend_tg_bf16_pooling_kernel(
-          *backend_ctx,
+
           layer_id,   // layer_id,
           ga_input,   // input_data_gaddr,
           ga_output,  // output_data_gaddr,

@@ -15,6 +15,7 @@ MLIRContext *LoweringConfig::context;
 std::string LoweringConfig::chip;
 std::string LoweringConfig::mode;
 bool LoweringConfig::isAsymmetric;
+bool LoweringConfig::isQuantized;
 std::map<std::string, llvm::StringRef> LoweringConfig::quantize_map;
 
 Value do_transfer(Value in, Value out, bool asymmetric) {
@@ -194,6 +195,18 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
 
   auto newOp =
       builder.create<tpu::RequantIntAxisOp>(name_loc, newType, operands, attrs);
+  return newOp.output();
+}
+
+Value do_reshape(Value input, RankedTensorType to_type) {
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs = {};
+  std::string new_name =
+      Module::getName(input.getDefiningOp()).str() + "_reshape";
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp = builder.create<tpu::ReshapeOp>(name_loc, to_type, ValueRange{input}, attrs);
   return newOp.output();
 }
 

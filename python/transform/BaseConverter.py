@@ -44,6 +44,11 @@ class BaseConverter(object):
             raise KeyError("operand {} not found".format(name))
         return self.operands[name]
 
+    def getOp(self, name):
+        if self.isWeight(name):
+            return self.getWeightOp(name)
+        return self.getOperand(name)
+
     def addWeight(self, name, data):
         if name in self.tensors:
             raise KeyError("tensor {} conflict".format(name))
@@ -64,6 +69,12 @@ class BaseConverter(object):
         if name not in self.tensors:
             raise KeyError("No {} tensor in model".format(name))
         return self.tensors[name]
+
+    def isConst(self, name):
+        if not self.isWeight(name): return False
+        if np.prod(self.getShape(name)) == 1: return True
+        w = self.getWeight(name)
+        return np.all(w == w.flatten()[0])
 
     def getWeightOp(self, name, shape:list=[]):
         if name not in self.tensors:

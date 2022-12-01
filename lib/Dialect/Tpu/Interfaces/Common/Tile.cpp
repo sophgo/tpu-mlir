@@ -24,7 +24,8 @@ LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   auto out_shape = Module::getShape(output());
   auto in_shape = Module::getShape(input());
-  auto axis_ = axis();
+  auto signed_axis = axisAttr().getValue().getSExtValue();
+  auto axis_ = signed_axis > 0 ? signed_axis : 0;
   int tile_ = tile();
   auto outer_count = std::accumulate(in_shape.begin(), in_shape.begin() + axis_,
                                      1, std::multiplies<int64_t>());

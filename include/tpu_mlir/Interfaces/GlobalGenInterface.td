@@ -33,7 +33,7 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"codegen_global_cv18xx",
-        /*args=*/(ins "void*":$ctx, "int64_t":$layer_id)
+        /*args=*/(ins "int64_t":$layer_id)
       >,
   ];
 }

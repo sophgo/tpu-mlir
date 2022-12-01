@@ -136,7 +136,7 @@ latex_elements = {
     # \setCJKmainfont[BoldFont=Heiti SC Medium]{Heiti SC Light}
     # \setCJKmonofont[BoldFont=Times Regular]{Times Italic}
     # `\setmainfont`、`\setsansfont{}`、`\setmonofont{}`
-    # 分别设置正文字体、无衬线字体：标题、等宽字体：用于抄录内容
+    # 分别设置正文字体、无衬线字体: 标题、等宽字体: 用于抄录内容
     'fontpkg': r'''
     \setmainfont{FandolSong}
     \setsansfont{FandolHei}
@@ -148,9 +148,9 @@ latex_elements = {
     # 图片严格出现在文字处
     # 'figure_align': 'H',
     # preamble 样式
-    # 目录样式：tocloft
-    # 每节从新页面开始：newcommand{\sectionbreak}{\clearpage}
-    # 全文文本左对齐：\usepackage[document]{ragged2e}
+    # 目录样式: tocloft
+    # 每节从新页面开始: newcommand{\sectionbreak}{\clearpage}
+    # 全文文本左对齐: \usepackage[document]{ragged2e}
     'preamble':r'''
     \usepackage{tocloft}
     \renewcommand\cftfignumwidth{4em}

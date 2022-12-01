@@ -60,7 +60,7 @@ The range of Tensor is [-threshold, threshold].
 
 For activation, usually :math:`S = threshold / 128`.
 
-For weight，usually :math:`S = threshold / 127`.
+For weight, usually :math:`S = threshold / 127`.
 
 In the case of UINT8, the Tensor range is [0, threshold], at this time :math:`S = threshold/ 255.0`.
 
@@ -166,7 +166,7 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
    step1:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j-Z_x) + Z_y \\
    step2:\quad & => y_i = \frac{S_x}{S_yk}\sum_{j=0}^{k}(x_j) - (Z_y - \frac{S_x}{S_y}Z_x) \\
    step3:\quad & => y_i = (Scale_{f32}\sum_{j=0}^{k}(x_j) - Offset_{f32})_{i8} \\
-               & Scale_{f32} = \frac{S_x}{S_yk}，Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
+               & Scale_{f32} = \frac{S_x}{S_yk}, Offset_{f32} = Z_y - \frac{S_x}{S_y}Z_x
 
 
 LeakyReLU
@@ -180,14 +180,14 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
 
    float:\quad & Y = \begin{cases} X, if \ X \geq 0\\ \alpha X, if \ X < 0 \end{cases} \\
    step0:\quad & => S_y (q_y - Z_y) = \begin{cases} S_x(q_x - Z_x), if \ q_x \geq 0\\ \alpha S_x (q_x - Z_x), if \ q_x < 0 \end{cases} \\
-   step1:\quad & => q_y = \begin{cases} \frac{S_x}{S_y}(q_x - Z_x) + Z_y, if \ q_x \geq 0\\ \alpha \frac{S_x}{S_y} (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases}  
+   step1:\quad & => q_y = \begin{cases} \frac{S_x}{S_y}(q_x - Z_x) + Z_y, if \ q_x \geq 0\\ \alpha \frac{S_x}{S_y} (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases}
 
-In INT8 symmetric quantization: :math:`S_y=\frac{threshold_y}{128}, S_x=\frac{threshold_x}{128}`. In INT8 asymmetric quantization: :math:`S_y = \frac{max_y ⁡- min_y}{255}, S_x = \frac{max_x ⁡- min_x}{255}`. After BackwardCalibration, :math:`max_y = max_x, min_y = min_x, threshold_y = threshold_x`, so Sx/Sy = 1. 
+In INT8 symmetric quantization: :math:`S_y=\frac{threshold_y}{128}, S_x=\frac{threshold_x}{128}`. In INT8 asymmetric quantization: :math:`S_y = \frac{max_y ⁡- min_y}{255}, S_x = \frac{max_x ⁡- min_x}{255}`. After BackwardCalibration, :math:`max_y = max_x, min_y = min_x, threshold_y = threshold_x`, so Sx/Sy = 1.
 
 .. math::
 
-   step2:\quad & => q_y = \begin{cases} (q_x - Z_x) + Z_y， if \ q_x \geq 0\\ \alpha (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases} \\
-   step3:\quad & => q_y = \begin{cases} q_x - Z_x + Z_y， if \ q_x \geq 0\\ M_{i8} >> rshift_{i8} (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases} 
+   step2:\quad & => q_y = \begin{cases} (q_x - Z_x) + Z_y,  if \ q_x \geq 0\\ \alpha (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases} \\
+   step3:\quad & => q_y = \begin{cases} q_x - Z_x + Z_y,  if \ q_x \geq 0\\ M_{i8} >> rshift_{i8} (q_x - Z_x) + Z_y, if \ q_x < 0 \end{cases}
 
 In the symmetric case, both Zx and Zy are 0.
 
@@ -203,7 +203,7 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
    step0:\quad & => S_y (q_y - Z_y) = \begin{cases} S_x (q_x - Z_x), \ origin\ location \\ value, \ padded\ location \end{cases} \\
    step1:\quad & => q_y = \begin{cases} \frac{S_x}{S_y} (q_x - Z_x) + Z_y, \ origin\ location \\ \frac{value}{S_y} + Z_y, \ padded\ location \end{cases}
 
-After BackwardCalibration, :math:`max_y = max_x， min_y = min_x，threshold_y = threshold_x`, so Sx/Sy = 1。
+After BackwardCalibration, :math:`max_y = max_x,  min_y = min_x, threshold_y = threshold_x`, so Sx/Sy = 1。
 
 .. math::
    step2:\quad & => q_y = \begin{cases} (q_x - Z_x) + Z_y, \ origin\ location \\ \frac{value}{S_y} + Z_y, \ padded\ location \end{cases}
@@ -222,7 +222,7 @@ Substitute it into the int8 quantization formula, the derivation is as follows:
    step0:\quad & => S_y (y_i - Z_y) = \begin{cases} S_x (x_i - Z_x), if \ x_i \geq 0\\ S_{\alpha}q_{\alpha_i}S_x (x_i - Z_x), if \ x_i < 0 \end{cases} \\
    step1:\quad & => y_i = \begin{cases} \frac{S_x}{S_y} (x_i - Z_x) + Z_y, if \ x_i \geq 0\\ S_{\alpha}q_{\alpha_i}\frac{S_x}{S_y} (x_i - Z_x) + Z_y, if \ x_i < 0 \end{cases} \\
 
-After BackwardCalibration, :math:`max_y = max_x， min_y = min_x，threshold_y = threshold_x`, so Sx/Sy = 1。
+After BackwardCalibration, :math:`max_y = max_x,  min_y = min_x, threshold_y = threshold_x`, so Sx/Sy = 1。
 
 .. math::
    step2:\quad & => y_i = \begin{cases} (x_i - Z_x) + Z_y, if \ x_i \geq 0\\ S_{\alpha}q_{\alpha_i}(x_i - Z_x) + Z_y, if \ x_i < 0 \end{cases} \\

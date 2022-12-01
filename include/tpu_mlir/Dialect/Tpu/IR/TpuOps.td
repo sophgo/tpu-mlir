@@ -136,6 +136,20 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
        DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
+def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
+  let summary = "buffer operator";
+
+  let description = [{
+    A global buffer for operation, and free after op
+  }];
+
+  let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    static mlir::Value create(mlir::Operation * OwnerOp,
+                              mlir::RankedTensorType& type);
+  }];
+}
+
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
@@ -268,7 +282,7 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
 }
 
 def Tpu_AddOp: Tpu_Op<"Add", [
-  SupportFuseRelu, InOutSameDim,
+  SupportFuseRelu,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "add operator";
 
@@ -314,8 +328,33 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_SubOp: Tpu_Op<"Sub",
+    [SupportFuseRelu,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  let summary = "sub operator";
+
+  let description = [{
+    Elementwise subtraction of input1 and input2. Axis of size 1 will be broadcast,
+    as necessary.
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_MulOp: Tpu_Op<"Mul",
-    [SupportFuseRelu, InOutSameDim,
+    [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "mul operator";
 
@@ -330,6 +369,9 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    //for cv18xx int8,codegen's multiplier and rshift quantized by "qdm" mode
+    DefaultValuedAttr<I64Attr, "1">:$multiplier_cg,
+    DefaultValuedAttr<I64Attr, "0">:$rshift_cg,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -346,6 +388,12 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -362,6 +410,30 @@ def Tpu_MinOp: Tpu_Op<"Min", [
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64ArrayAttr>:$coeff,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ClipOp: Tpu_Op<"Clip",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  let summary = "Clip operator";
+
+  let description = [{
+     The operator limits the given input to a certain range.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$min,
+    F64Attr:$max,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -384,6 +456,25 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape,
+  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  let summary = "ConstantBinary (Div) operator";
+
+  let description = [{
+    Y = const_val / X
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    DefaultValuedAttr<F64Attr, "1.0">: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -416,7 +507,6 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
 def Tpu_LutOp: Tpu_Op<"Lut",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
-    DeclareOpInterfaceMethods<WeightReorderInterface>,
     InOutSameShape]>{
   let summary = "Lut operator";
 
@@ -450,6 +540,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$input,
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
@@ -463,7 +554,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit, int64_t &zp);
+      double &relu_limit, int64_t &zp, bool &right_transpose);
   }];
 }
 
@@ -704,6 +795,9 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
   let arguments = (ins
     AnyTensor:$input,
     AnyTensorOrNone:$table,
+    AnyTensorOrNone:$slope_table,
+    AnyTensorOrNone:$reciprocal_table,
+    AnyTensorOrNone:$reciprocal_mantissa_table,
     I64Attr:$axis,
     DefaultValuedAttr<F64Attr, "1.0">:$beta
   );
@@ -740,7 +834,12 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     I64Attr:$axis,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    // param for cv18xx
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    DefaultValuedAttr<BoolAttr, "false">:$only_merge,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu
   );
   let results = (outs AnyTensor:$output);
 }
@@ -854,6 +953,9 @@ def Tpu_PadOp:Tpu_Op<"Pad"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
+    // for cv18xx reflect mode
+    AnyTensorOrNone:$left_select,
+    AnyTensorOrNone:$right_select,
     I64ArrayAttr:$paddings,
     DefaultValuedAttr<F64Attr, "0.0">:$val,
     DefaultValuedAttr<I64Attr, "0">:$mode
@@ -910,6 +1012,49 @@ def Tpu_SliceOp: Tpu_Op<"Slice"> {
     I64ArrayAttr:$steps
   );
   let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    void parseParam(std::vector<int64_t> &is_4,
+                    std::vector<int64_t> &os_4,
+                    std::vector<int> &offset_4,
+                    std::vector<int> &step_4,
+                    bool &fusible);
+  }];
+}
+
+def Tpu_StridedSliceOp: Tpu_Op<"StridedSlice"> {
+  let summary = "Strided Slice operator";
+
+  let description = [{
+    Strided Slice Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$starts,
+    AnyTensor:$ends,
+    AnyTensor:$strides,
+    I64Attr:$begin_mask,
+    I64Attr:$end_mask,
+    I64Attr:$ellipsis_mask,
+    I64Attr:$new_axis_mask,
+    I64Attr:$shrink_axis_mask
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_SplitOp: Tpu_Op<"Split"> {
+  let summary = "Split operator";
+
+  let description = [{
+    Split input tensor into a list of tensors.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$num
+  );
+  let results = (outs Variadic<AnyTensor>:$outputs);
 }
 
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
@@ -989,6 +1134,66 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LRNOp: Tpu_Op<"LRN", [InOutSameShape]> {
+  let summary = "Local Response Normalization";
+
+  let description = [{
+    It normalizes over local input regions. The local region is defined across the channels.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$size,
+    DefaultValuedAttr<F64Attr, "0.0001">:$alpha,
+    DefaultValuedAttr<F64Attr, "0.75">:$beta,
+    DefaultValuedAttr<F64Attr, "1.0">:$bias
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_GRUOp: Tpu_Op<"GRU",[
+    DeclareOpInterfaceMethods<WeightReorderInterface>]> {
+  let summary = "GRU operator";
+
+  let description = [{
+    Perform RNN GRU operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$filter,
+    AnyTensorOrNone:$recurrence,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$initial_h,
+    AnyTensorOrNone:$buffer,
+    I64Attr: $hidden_size,
+    BoolAttr: $bidirectional,
+    DefaultValuedAttr<BoolAttr, "true">:$linear_before_reset,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
+  );
+
+  let results = (outs
+    AnyTensorOrNone:$Y,
+    AnyTensorOrNone:$Y_h);
+
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool output_y;
+      bool output_yh;
+    } gru_attr_t;
+    gru_attr_t parseParam();
+  }];
+}
+
 def Tpu_LSTMOp: Tpu_Op<"LSTM",[
     DeclareOpInterfaceMethods<WeightReorderInterface>]> {
   let summary = "LSTM operator";
@@ -1000,19 +1205,37 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM",[
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$filter,
-    AnyTensor:$recurrence,
+    AnyTensorOrNone:$recurrence,
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$initial_c,
-
-    DefaultValuedAttr<BoolAttr, "false">:$have_bias,
-    DefaultValuedAttr<BoolAttr, "false">:$bidirectional,
-    DefaultValuedAttr<BoolAttr, "false">:$batch_first,
-    DefaultValuedAttr<I64Attr, "1">:$num_layers,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    AnyTensorOrNone:$buffer,
+    I64Attr: $hidden_size,
+    BoolAttr: $bidirectional,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
 
-  let results = (outs AnyTensor:$output);
+  let results = (outs
+    AnyTensorOrNone:$Y,
+    AnyTensorOrNone:$Y_h,
+    AnyTensorOrNone:$Y_c);
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool have_c0;
+      bool output_y;
+      bool output_yh;
+      bool output_yc;
+    } lstm_attr_t;
+    lstm_attr_t parseParam();
+  }];
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
@@ -1078,27 +1301,91 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SubOp: Tpu_Op<"Sub", [
-  SupportFuseRelu, InOutSameDim,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
-  let summary = "sub operator";
-
+def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp"> {
+  let summary = "generic cpu operator";
   let description = [{
-    Elementwise subtraction of input1 and input2. Axis of size 1 will be broadcast,
-    as necessary.
+    Generic Cpu Op.
   }];
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<F64ArrayAttr>:$coeff,
-    // quant param
-    OptionalAttr<I64ArrayAttr>:$multipliers,
-    OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    StrAttr:$operation_name,
+    OptionalAttr<DictionaryAttr>:$param
   );
 
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ResizeMode : I32EnumAttr<"ResizeMode",
+    "Resize mode",
+    [
+      I32EnumAttrCase<"nearest", 0>,
+      I32EnumAttrCase<"linear", 1>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ResizeModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeMode, "mode">;
+
+def Tpu_ResizeCoordMode : I32EnumAttr<"ResizeCoordMode",
+    "Resize coord mode",
+    [
+      I32EnumAttrCase<"align_corners", 0>,
+      I32EnumAttrCase<"half_pixel", 1>,
+      I32EnumAttrCase<"pytorch_half_pixel", 2>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ResizeCoordModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeCoordMode, "coord_mode">;
+
+def Tpu_InterpOp: Tpu_Op<"Interp"> {
+  let summary = "Interp operation";
+  let description = [{
+    Perform Interp on input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$scale_h,
+    F64Attr:$scale_w,
+    Tpu_ResizeModeAttr:$mode,
+    Tpu_ResizeCoordModeAttr:$coord_mode,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
+  let summary = "Reduce operator";
+  let description = [{
+      Computes the mean/max/prod/sum of the input tensor's element along the provided axes.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$buffer, // cv18xx reciprocal_table
+    AnyTensorOrNone:$reciprocal_mantissa_table,
+    I64ArrayAttr:$axes,
+    I64Attr:$keepdims,
+    StrAttr: $type,
+    // for cv18xx
+    OptionalAttr<I64ArrayAttr>:$multiplier,
+    OptionalAttr<I64ArrayAttr>:$rshift
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_SqrtOp: Tpu_Op<"Sqrt", [
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  InOutSameShape]> {
+  let summary = "Sqrt operator";
+  let description = [{
+    Computes the square root of the input tensor's element.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
   let results = (outs AnyTensor:$output);
 }
 

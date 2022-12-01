@@ -26,8 +26,10 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       DivLowering,
       ExpLowering,
       GatherLowering,
+      GRULowering,
       LeakyReluLowering,
       LogLowering,
+      LRNLowering,
       LSTMLowering,
       MatMulLowering,
       MaxLowering,
@@ -40,6 +42,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       PadLowering,
       PermuteLowering,
       PReluLowering,
+      ReciprocalLowering,
       ReluLowering,
       ReshapeLowering,
       ScaleLowering,
@@ -50,7 +53,15 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SqueezeLowering,
       SubLowering,
       TileLowering,
-      UpsampleLowering
+      UpsampleLowering,
+      InterpLowering,
+      StridedSliceLowering,
+      ReduceLowering,
+      PackLowering,
+      UnpackLowering,
+      SplitLowering,
+      SubLowering,
+      SqrtLowering
       // clang-format on
       >(patterns->getContext());
 }

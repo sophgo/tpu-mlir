@@ -47,35 +47,41 @@ static void transposeBiasFp32(std::vector<float> &bias_f32,
 // for int8
 static void transposeBiasInt32(std::vector<int32_t> &bias_int32,
                                std::vector<uint32_t> &bias_u32) {
+  size_t element_num = bias_u32.size();
   int8_t *ptr = reinterpret_cast<int8_t *>(bias_int32.data());
-  std::vector<int8_t> b(ptr, ptr + bias_int32.size() * sizeof(int32_t));
+  std::vector<int8_t> b(ptr, ptr + element_num * sizeof(int32_t));
   std::vector<int8_t> b_t(b.size());
-  for (size_t i = 0; i < bias_int32.size(); i++) {
+  for (size_t i = 0; i < element_num; i++) {
     for (size_t j = 0; j < 4; j++) {
-      b_t[j * bias_int32.size() + i] = b[i * 4 + j];
+      b_t[j * element_num + i] = b[i * 4 + j];
     }
   }
   memcpy(bias_u32.data(), b_t.data(), b_t.size());
 }
 
-void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
+
   OpBuilder builder(getContext());
   int64_t batch, M, K, N, right_zp;
-  bool with_bias, relu;
+  bool with_bias, relu, right_transpose;
   double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp);
-  assert(batch == 1);
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp,
+             right_transpose);
   // TODO get batch_high and batch_low, group_fc bias transpose
-  int batch_high = 1;    // fixme
-  int batch_low = batch; // fixme
   auto op = getOperation();
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_filter = Module::getAddress(right());
   gaddr_t ga_output = Module::getAddress(output());
   gaddr_t ga_bias = GA_INVALID;
-  bool is_fc = isa<top::WeightOp>(right().getDefiningOp());
+  bool is_fc = true;
+  if (!right().getDefiningOp()) {
+    is_fc = false;
+  } else {
+    is_fc = isa<top::WeightOp>(right().getDefiningOp());
+  }
   if (is_fc) {
+    int batch_high = 1;    // fixme
+    int batch_low = batch; // fixme
     WeightCompresser weight_opt(this->getOperation(), true);
     if (Quant::isUniformQuantized(output())) {
       auto multiplier_v = Module::getI64Array(multipliers(), batch, 1);
@@ -85,30 +91,41 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
       multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());
       rshift_int32.assign(rshift_v->begin(), rshift_v->end());
       if (with_bias) {
-        // TODO  group_fc bias transpose
         ga_bias = Module::getAddress(bias());
-        std::shared_ptr<std::vector<int32_t>> bias_data;
         auto biasOp = bias().getDefiningOp<top::WeightOp>();
-        bias_data = biasOp.read<int32_t>();
+        auto bias_data = biasOp.read<int32_t>();
+        std::vector<int32_t> bias_i32(N);
+        std::vector<uint32_t> tmp_bias_u32(N);
         std::vector<uint32_t> bias_u32(bias_data->size());
-        transposeBiasInt32(*bias_data, bias_u32);
+        for (int b = 0; b < batch; ++b) {
+          std::copy(bias_data->data() + b * N, bias_data->data() + (b + 1) * N,
+                    bias_i32.data());
+          transposeBiasInt32(bias_i32, tmp_bias_u32);
+          memcpy(bias_u32.data() + b * N, tmp_bias_u32.data(),
+                 N * sizeof(int32_t));
+        }
         biasOp.update(bias_u32, bias_data->size());
       }
       cvi_backend_tg_fixed_fc_kernel(
-          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
-          N, with_bias, relu, rshift_int32, multiplier_int32,
-          &weight_opt.old_data, &weight_opt.new_data, batch_high, batch_low,
-          false, false, false);
+          layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K, N, with_bias,
+          relu, rshift_int32, multiplier_int32, &weight_opt.old_data,
+          &weight_opt.new_data, batch_high, batch_low, false, false, false);
     } else {
       // TODO batch_high, batch_low, lstride, ostride, do_quant_bf16
       if (with_bias) {
-        // TODO  group_fc bias transpose
         ga_bias = Module::getAddress(bias());
         std::shared_ptr<std::vector<float_t>> bias_data;
         auto biasOp = bias().getDefiningOp<top::WeightOp>();
         bias_data = biasOp.read<float_t>();
         std::vector<uint32_t> bias_u32(bias_data->size());
-        transposeBiasFp32(*bias_data, bias_u32);
+        std::vector<float> tmp_bias(N);
+        std::vector<uint32_t> tmp_u32(N);
+        for (int b = 0; b < batch; ++b) {
+          std::copy(bias_data->data() + b * N, bias_data->data() + (b + 1) * N,
+                    tmp_bias.data());
+          transposeBiasFp32(tmp_bias, tmp_u32);
+          std::copy(tmp_u32.begin(), tmp_u32.end(), bias_u32.data() + b * N);
+        }
         biasOp.update(bias_u32, bias_data->size());
         auto new_bias_type = RankedTensorType::get(
             Module::getShape(bias()), builder.getIntegerType(32),
@@ -118,13 +135,15 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
       gaddr_t ga_scale = GA_INVALID;
       gaddr_t ga_zeropoint = GA_INVALID;
       bool do_quant_bf16 = false;
-      cvi_backend_tg_bf16_fc_kernel(
-          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
-          N, with_bias, relu, &weight_opt.old_data, &weight_opt.new_data,
-          batch_high, batch_low, false, false, false, do_quant_bf16, ga_scale,
-          ga_zeropoint);
+      cvi_backend_tg_bf16_fc_kernel(layer_id, ga_input, ga_filter, ga_bias,
+                                    ga_output, M, K, N, with_bias, relu,
+                                    &weight_opt.old_data, &weight_opt.new_data,
+                                    batch_high, batch_low, false, false, false,
+                                    do_quant_bf16, ga_scale, ga_zeropoint);
     }
   } else {
+    int batch_high = batch; // fixme
+    int batch_low = 1;      // fixme
     if (Quant::isUniformQuantized(output())) {
       auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
       auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
@@ -134,15 +153,14 @@ void tpu::MatMulOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
       rshift_int32.assign(rshift_v->begin(), rshift_v->end());
 
       cvi_backend_tg_fixed_fc_kernel(
-          *backend_ctx, layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K,
-          N, with_bias, relu, rshift_int32, multiplier_int32, nullptr, nullptr,
-          batch_high, batch_low, false, false, false);
+          layer_id, ga_input, ga_filter, ga_bias, ga_output, M, K, N, with_bias,
+          relu, rshift_int32, multiplier_int32, nullptr, nullptr, batch_high,
+          batch_low, false, false, false);
     } else {
       // TODO batch_high, batch_low, lt, rt, ot
-      cvi_backend_tg_bf16_fc_kernel(*backend_ctx, layer_id, ga_input, ga_filter,
-                                    GA_INVALID, ga_output, M, K, N, false, relu,
-                                    nullptr, nullptr, batch_high, batch_low,
-                                    false, false, false);
+      cvi_backend_tg_bf16_fc_kernel(
+          layer_id, ga_input, ga_filter, GA_INVALID, ga_output, M, K, N, false,
+          relu, nullptr, nullptr, batch_high, batch_low, false, false, false);
     }
   }
 }

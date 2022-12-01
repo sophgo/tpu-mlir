@@ -254,8 +254,8 @@ void tpu::Conv2DOp::weight_reorder_bf16_cv18xx() {
 // GlobalGenInterface
 // ======================================
 
-void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::Conv2DOp::codegen_global_cv18xx( int64_t layer_id) {
+
   conv_attr_t attr = {0};
   parseParam(&attr);
   gaddr_t ga_input = Module::getAddress(input());
@@ -266,9 +266,8 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     ga_pc_info = Module::getAddress(bias());
   }
 
-  auto fliter_shape = Module::getShape(filter());
   bool do_compress = attr.groups > 1 ? false : true;
-  WeightCompresser weight_opt(this->getOperation(), do_compress); // fix me
+  WeightCompresser weight_opt(this->getOperation(), do_compress);
   if (Quant::isUniformQuantized(output())) {
     bool do_ic_alignment = use_3ic_optimize() ? true : false;
     gaddr_t ga_scale_lut = GA_INVALID;
@@ -280,7 +279,7 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     float fused_negative_slope = 0.0f; // Todo this->do_leaky_relu()
 
     cvi_backend_tg_fixed_conv_kernel(
-        *backend_ctx,
+
         layer_id,   // layer_id,
         ga_input,   // input_data_gaddr,
         ga_output,  // output_data_gaddr,
@@ -310,7 +309,7 @@ void tpu::Conv2DOp::codegen_global_cv18xx(void *ctx, int64_t layer_id) {
     bool do_quant = false;
     gaddr_t ga_scale = GA_INVALID;
     gaddr_t ga_zeropoint = GA_INVALID;
-    cvi_backend_tg_bf16_conv_kernel(*backend_ctx,
+    cvi_backend_tg_bf16_conv_kernel(
                                     layer_id,   // layer_id
                                     ga_input,   // input_data_gaddr,
                                     ga_output,  // output_data_gaddr,

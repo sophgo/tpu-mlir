@@ -344,7 +344,8 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
       bias_quant =
           cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
     } else {
-      bias_quant->resize(attr.oc, 0);
+      // bias_quant->resize(attr.oc, 0);
+      bias_quant = std::shared_ptr<std::vector<int32_t> >(new std::vector<int32_t>(attr.oc, 0));
     }
     int64_t oc = filter_type.getShape()[0];
     int64_t kernel_size = filter_type.getNumElements() / oc;

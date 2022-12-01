@@ -7,7 +7,7 @@ Configure the system environment
 
 If you are using Docker for the first time, use the methods in :ref:`First-time Docker <docker configuration>` to install and configure Docker. At the same time, ``git-lfs`` will be used in this chapter. If you use ``git-lfs`` for the first time, you can execute the following commands for installation and configuration (only for the first time, and the configuration is in the user's own system, not in Docker container):
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | sudo bash
@@ -19,7 +19,7 @@ Get the ``model-zoo`` model [#extra]_
 
 In the same directory of ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir's release package), use the following command to clone the ``model-zoo`` project:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ git clone --depth=1 https://github.com/sophgo/model-zoo
@@ -29,7 +29,7 @@ In the same directory of ``tpu-mlir_xxxx.tar.gz`` (tpu-mlir's release package), 
 
 If you have cloned ``model-zoo``, you can execute the following command to synchronize the model to the latest state:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ cd model-zoo
@@ -75,7 +75,7 @@ Unzip the SDK and create a Docker container
 Execute the following command in the ``tpu-mlir_xxxx.tar.gz`` directory (note that ``tpu-mlir_xxxx.tar.gz`` and
 ``model-zoo`` needs to be at the same level):
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ tar zxf tpu-mlir_xxxx.tar.gz
@@ -90,7 +90,7 @@ Set environment variables and install ``tpu-perf``
 
 Complete setting the environment variables needed to run the tests with the following command:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ cd tpu-mlir_xxxx
@@ -98,7 +98,7 @@ Complete setting the environment variables needed to run the tests with the foll
 
 There will be no prompts after the process ends. Then install ``tpu-perf`` with the following command:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ pip3 install ../tpu_perf-x.x.x-py3-none-manylinux2014_x86_64.whl
 
@@ -115,7 +115,7 @@ Compile the model
 
 Execute the following command to run all test samples:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ cd ../model-zoo
@@ -139,7 +139,7 @@ After the command is finished, you will see the newly generated ``output`` folde
 Modify the properties of the ``output`` folder to make it accessible to systems outside of Docker.
 
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ chmod -R a+rw output
@@ -157,7 +157,7 @@ The performance test only depends on the ``libsophon`` runtime environment, so a
 
 First, install the nfs service on the toolchain environment server "host system":
 
-.. code-block:: console
+.. code-block:: shell
 
    $ sudo apt install nfs-kernel-server
 
@@ -176,20 +176,20 @@ can be configured to be accessible by a specific network segment or IP, such as:
 
 Then execute the following command to make the configuration take effect:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ sudo exportfs -a
    $ sudo systemctl restart nfs-kernel-server
 
 In addition, you need to add read permissions to the images in the dataset directory:
 
-.. code-block:: console
+.. code-block:: shell
 
    chmod -R +r path/to/model-zoo/dataset
 
 Install the client on the SOC device and mount the shared directory:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ mkdir model-zoo
    $ sudo apt-get install -y nfs-common
@@ -209,23 +209,23 @@ Running the test needs to be done in an environment outside Docker (it is assume
 
 1. Run the following commands under the PCIE board to test the performance of the generated ``bmodel``.
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ pip3 install ./tpu_perf-*-py3-none-manylinux2014_x86_64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir --full
+   $ python3 -m tpu_perf.run --mlir --full -l full_cases.txt
 
 2. The SOC device uses the following steps to test the performance of the generated ``bmodel``.
 
 Download the latest ``tpu-perf``, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl``, from https://github.com/sophgo/tpu-perf/releases to the SOC device and execute the following operations:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ pip3 install ./tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl
    $ cd model-zoo
-   $ python3 -m tpu_perf.run --mlir --full
+   $ python3 -m tpu_perf.run --mlir --full -l full_cases.txt
 
 
 After that, performance data is available in ``output/stats.csv``, in which the running time, computing resource utilization, and bandwidth utilization of the relevant models are recorded.

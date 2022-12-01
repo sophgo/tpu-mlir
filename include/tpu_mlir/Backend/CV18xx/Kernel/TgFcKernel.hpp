@@ -20,7 +20,7 @@ namespace backend {
   // Y[M, N] = L[M,K] * R[K,N] + B[4,N]
 class TgFcKernel {
 public:
-  TgFcKernel(const CviBackendContext &ctx) : ctx(ctx) {}
+  TgFcKernel() {}
 
   void init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_weight,
             gaddr_t ga_bias, gaddr_t ga_output, int M, int K, int N,
@@ -76,7 +76,7 @@ protected:
   bool try_optimize();
 
 protected:
-  const CviBackendContext &ctx;
+
   gaddr_t ga_input;
   gaddr_t ga_weight;
   gaddr_t ga_bias;

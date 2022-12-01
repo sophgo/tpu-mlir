@@ -18,11 +18,27 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
+
+llvm::ArrayRef<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
+  int diff = dims - shape.size();
+  if (diff == 0)
+    return shape;
+  std::vector<int64_t> shape_v(shape.begin(), shape.end());
+  shape_v.insert(shape_v.begin(), diff, 1);
+  auto shape_ed = llvm::ArrayRef<int64_t>(shape_v);
+  return shape_ed;
+}
+
 LogicalResult tpu::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
+  auto in0_shape = Module::getShape(inputs()[0]);
+  auto in1_shape = Module::getShape(inputs()[1]);
+  int dims = std::max(in0_shape.size(), in1_shape.size());
+  auto input0_shape = shape_expand_dim(in0_shape, dims);
+  auto input1_shape = shape_expand_dim(in1_shape, dims);
   (*binary)
-      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
+      .lhs(p.inputs[0], input0_shape)
+      .rhs(p.inputs[1], input1_shape)
       .dst(p.outputs[0], Module::getShape(output()))
       .do_relu(do_relu())
       .relu_limit(relu_limit().convertToDouble())
@@ -46,17 +62,17 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   auto asym = Module::getAsymmetric(module);
+  auto binary = (Binary *)p.handle;
+  binary->run();
   if (out_type.isa<FloatType>()) {
-    auto binary = (Binary *)p.handle;
-    binary->run();
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
+  } else if (out_type.isInteger(32)) {
+    return success();
   } else if (asym == false) {
-    auto binary = (Binary *)p.handle;
-    binary->run();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];

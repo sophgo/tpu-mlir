@@ -18,7 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 // using namespace tpu_mlir::backend;
 
-void tpu::StoreOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::StoreOp::codegen_global_cv18xx( int64_t layer_id) {
   llvm_unreachable("not support now");
 }
 

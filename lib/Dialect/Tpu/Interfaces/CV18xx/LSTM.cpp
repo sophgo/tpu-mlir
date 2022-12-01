@@ -8,7 +8,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// #include "tpu_mlir/Backend/BM168x/BM1684x.h"
+// #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
@@ -32,6 +32,6 @@ void tpu::LSTMOp::weight_reorder_int8_cv18xx() {
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::LSTMOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::LSTMOp::codegen_global_cv18xx( int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

@@ -19,7 +19,7 @@ namespace tpu_mlir {
 namespace backend {
 class TgPermuteKernel {
 public:
-  TgPermuteKernel(const CviBackendContext &ctx) : ctx(ctx) {}
+  TgPermuteKernel() {}
 
   void init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_output, int n,
             int c, int h, int w, int order_n, int order_c, int order_h,
@@ -42,10 +42,10 @@ protected:
   void reshape(int dim0, int dim1);
   void reshape(int channel);
   void permute_tdma();
-  uint32_t tile_offset(const CviBackendContext::tiling_info_t &tile,
+  uint32_t tile_offset(const CV18xx::tiling_info_t &tile,
                        bool is_src = true) const;
 
-  const CviBackendContext &ctx;
+
   gaddr_t ga_input;
   gaddr_t ga_output;
   cvk_tl_t *tl_mem[4];
@@ -63,7 +63,7 @@ protected:
   int fmt_bytes;
   int layer_id;
   bool by_tdma;
-  std::vector<CviBackendContext::tiling_info_t> tiles;
+  std::vector<CV18xx::tiling_info_t> tiles;
 };
-}  
+}
 }

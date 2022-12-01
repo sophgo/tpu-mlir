@@ -15,16 +15,37 @@ namespace cv18xx {
 void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
   patterns->add<
       // clang-format off
+      AbsLowering,
       AddLowering,
       AvgPoolLowering,
       CastLowering,
+      ConcatLowering,
       ConvLowering,
+      ClipLowering,
+      DeconvLowering,
+      Depth2SpaceLowering,
+      GatherLowering,
+      InterpLowering,
+      LeakyReluLowering,
+      LogLowering,
       MatMulLowering,
+      MaxLowering,
       MaxPoolLowering,
+      MinLowering,
+      MulLowering,
+      MulConstLowering,
       ReshapeLowering,
+      PadLowering,
       PermuteLowering,
+      ReduceLowering,
+      PReluLowering,
+      ReluLowering,
+      ReciprocalLowering,
+      SigmoidLowering,
       SiLULowering,
-      SubLowering,
+      SliceLowering,
+      SoftmaxLowering,
+      TileLowering,
       UpsampleLowering
       // clang-format on
       >(patterns->getContext());

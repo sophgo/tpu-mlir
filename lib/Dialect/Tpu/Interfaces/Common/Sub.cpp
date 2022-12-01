@@ -58,9 +58,6 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (out_type.isInteger(32)) {
-    // auto in0 = reinterpret_cast<int32_t*>(p.inputs[0]);
-    // auto in1 = reinterpret_cast<int32_t*>(p.inputs[1]);
-    // auto out = reinterpret_cast<int32_t*>(p.outputs[0]);
     auto binary = (Binary *)p.handle;
     binary->run();
   } else if (asym == false) {

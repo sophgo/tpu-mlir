@@ -37,6 +37,7 @@ struct LoweringConfig {
   static std::string chip;
   static std::string mode;
   static bool isAsymmetric;
+  static bool isQuantized;
   static std::map<std::string, llvm::StringRef> quantize_map;
 };
 
@@ -47,7 +48,7 @@ public:
   LogicalResult matchAndRewrite(OpTy opTy,
                                 PatternRewriter &rewriter) const override {
     Operation *op = opTy.getOperation();
-    if (Quant::isUniformQuantized(op->getResult(0))) {
+    if (LoweringConfig::isQuantized) {
       LoweringQuantized(rewriter, opTy);
       return success();
     }
@@ -57,12 +58,11 @@ public:
     if (iter != LoweringConfig::quantize_map.end()) {
       real_mode = iter->second;
     }
-    bool isAsymmetric = LoweringConfig::isAsymmetric;
     if (real_mode == Quant::Type::INT8) {
       if (op->hasTrait<trait::SupportFuseRelu>() || isa<top::ReluOp>(op)) {
         op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
       }
-      LoweringINT8(rewriter, opTy, isAsymmetric);
+      LoweringINT8(rewriter, opTy, LoweringConfig::isAsymmetric);
     } else if (real_mode == Quant::Type::F16) {
       LoweringF16(rewriter, opTy);
     } else if (real_mode == Quant::Type::BF16) {
@@ -118,8 +118,11 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
 
 template <typename ElemTy = Float32Type>
 static mlir::Type getQuantFloatType(Value v) {
-  auto sType = Module::getStorageType(v);
   Type newType = v.getType();
+  if (newType.isa<mlir::NoneType>()) {
+    return newType;
+  }
+  auto sType = Module::getStorageType(v);
   if (sType.isa<ElemTy>() == false) {
     auto shape = Module::getShape(v);
     auto ctx = v.getContext();
@@ -181,4 +184,27 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
 
+template <typename OpTy>
+Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
+  auto from_stype = Module::getStorageType(input);
+  auto to_stype = Module::getStorageType(to_type);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  auto newType = to_type;
+  newType = RankedTensorType::get(Module::getShape(input), to_stype);
+
+  builder.setInsertionPointAfterValue(input);
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      builder.getNamedAttr("const_val", builder.getF64FloatAttr(scalar)));
+
+  std::string new_name =
+      Module::getName(input.getDefiningOp()).str() + "_binary";
+  auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp =
+      builder.create<OpTy>(name_loc, newType, ValueRange{input}, attrs);
+  return newOp.output();
+}
+
+Value do_reshape(Value input, RankedTensorType to_type);
 } // namespace tpu_mlir

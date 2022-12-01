@@ -34,14 +34,13 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
     if (!Quant::isCalibratedType(in)) {
       return failure();
     }
-    if (!Quant::isCalibratedType(out)) {
-      return failure();
-    }
     auto in_qtype = Quant::getCalibratedType(in);
-    auto out_qtype = Quant::getCalibratedType(out);
-    if (in_qtype.getMax() == out_qtype.getMax() &&
-        in_qtype.getMin() == out_qtype.getMin()) {
-      return failure();
+    if (Quant::isCalibratedType(out)) {
+      auto out_qtype = Quant::getCalibratedType(out);
+      if (in_qtype.getMax() == out_qtype.getMax() &&
+          in_qtype.getMin() == out_qtype.getMin()) {
+        return failure();
+      }
     }
     auto out_type = out.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
@@ -58,9 +57,6 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op->getOperand(0);
     Value out = op.output();
-    if (!Quant::isCalibratedType(in)) {
-      return failure();
-    }
     if (!Quant::isCalibratedType(out)) {
       return failure();
     }
@@ -68,11 +64,13 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
       return failure();
     }
 
-    auto in_qtype = Quant::getCalibratedType(in);
     auto out_qtype = Quant::getCalibratedType(out);
-    if (in_qtype.getMax() == out_qtype.getMax() &&
-        in_qtype.getMin() == out_qtype.getMin()) {
-      return failure();
+    if (Quant::isCalibratedType(in)) {
+      auto in_qtype = Quant::getCalibratedType(in);
+      if (in_qtype.getMax() == out_qtype.getMax() &&
+          in_qtype.getMin() == out_qtype.getMin()) {
+        return failure();
+      }
     }
     auto in_type = in.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
@@ -138,6 +136,76 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   }
 };
 
+// TODO for cv18xx ResizeToConv
+struct ResizeToConvPattern : public OpRewritePattern<top::InterpOp> {
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::InterpOp op,
+                                PatternRewriter &rewriter) const override {
+    auto mode = tpu::symbolizeResizeMode(op.mode());
+    auto coord_mode = tpu::symbolizeResizeCoordMode(op.coord_mode());
+    assert(mode && coord_mode);
+    std::string coordinate_transformation_mode;
+    auto o_shape = Module::getShape(op.output());
+    assert(o_shape.size() >= 2);
+    switch (coord_mode.value()) {
+    case tpu::ResizeCoordMode::half_pixel:
+      if (mode.value() == tpu::ResizeMode::nearest) {
+        coordinate_transformation_mode = "nearest_half_pixel";
+      } else {
+        coordinate_transformation_mode = "half_pixel";
+      }
+      break;
+    case tpu::ResizeCoordMode::align_corners:
+      coordinate_transformation_mode = "align_corners";
+      break;
+    case tpu::ResizeCoordMode::pytorch_half_pixel:
+      if (mode.value() == tpu::ResizeMode::linear &&
+          o_shape[o_shape.size() - 1] > 1 && o_shape[o_shape.size() - 2] > 1) {
+        coordinate_transformation_mode = "half_pixel";
+      } else {
+        coordinate_transformation_mode = "pytorch_half_pixel";
+      }
+      break;
+    default:
+      llvm_unreachable("Unsupport interp coord type \n");
+    }
+
+    double scale_h = op.scale_h().convertToDouble();
+    double scale_w = op.scale_w().convertToDouble();
+    if (mode.value() == tpu::ResizeMode::linear) {
+      if (coordinate_transformation_mode == "half_pixel") {
+        if (std::ceil(scale_h) == std::floor(scale_h) &&
+            std::ceil(scale_w) == std::floor(scale_w)) {
+          return resize_to_conv1(op, rewriter);
+        }
+        if (std::abs(scale_h - scale_w) < 1e-6 &&
+            std::abs(scale_h - 0.5) < 1e-6) {
+          return resize_to_conv2(op, rewriter);
+        }
+      }
+    } else if (mode.value() == tpu::ResizeMode::nearest) {
+      if (std::ceil(scale_h) == std::floor(scale_h) &&
+          std::ceil(scale_w) == std::floor(scale_w)) {
+        assert(0 && "already converted in onnx_convert\n");
+      }
+    } else {
+      llvm_unreachable("Unsupport interp mode type \n");
+    }
+  }
+  LogicalResult resize_to_conv1(top::InterpOp &op,
+                                PatternRewriter &rewriter) const {
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    return success();
+  }
+  LogicalResult resize_to_conv2(top::InterpOp &op,
+                                PatternRewriter &rewriter) const {
+    std::vector<NamedAttribute> attrs;
+    std::vector<Value> operands;
+    return success();
+  }
+};
+
 struct ConvertTopToTpu : public ::impl::ConvertTopToTpuBase<ConvertTopToTpu> {
 public:
   void runOnOperation() override {
@@ -155,7 +223,9 @@ public:
     if (Module::State::TOP_QUANTIZED == state_) {
       Module::setAsymmetric(module_, true);
       LoweringConfig::isAsymmetric = true;
+      LoweringConfig::isQuantized = true;
     } else {
+      LoweringConfig::isQuantized = false;
       Module::setAsymmetric(module_, LoweringConfig::isAsymmetric);
       if (Module::isCV18xx(LoweringConfig::chip)) {
         all_int8_process();
@@ -169,9 +239,9 @@ public:
     target.addLegalDialect<tpu::TpuDialect, func::FuncDialect>();
     // no need to lowering:
     target.addLegalOp<top::InputOp, top::WeightOp, top::NoneOp>();
-    if (LoweringConfig::chip == Module::Chip::BM1684x) {
+    if (Module::isBM1684XFamily(LoweringConfig::chip)) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
-    } else if (LoweringConfig::chip == Module::Chip::BM1684) {
+    } else if (Module::isBM1684Family(LoweringConfig::chip)) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
     } else if (Module::isCV18xx(LoweringConfig::chip)) {
       cv18xx::populateTopToTpuConversionPatterns(&patterns);
@@ -224,7 +294,8 @@ protected:
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>,
                  ForwardCalibartion<top::PReluOp>,
-                 ForwardCalibartion<top::AbsOp>
+                 ForwardCalibartion<top::AbsOp>,
+                 ForwardCalibartion<top::InterpOp>
                 >(ctx_);
     // clang-format on
     if (LoweringConfig::chip == Module::Chip::BM1684) {
@@ -263,6 +334,12 @@ protected:
       bool is_tpu = Module::isTpuOp(op);
       if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
+          if (auto cpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
+            //embedding function's first operand is the indices,shouldn't do cast.
+            if(cpuOp.operation_name() == "embedding" && idx == 0) {
+              return;
+            }
+          }
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
@@ -288,7 +365,8 @@ protected:
     auto to_stype = Module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
-      if (false == isa<tpu::CastOp>(user)) {
+      if (false == isa<tpu::CastOp>(user) &&
+          false == isa<tpu::GenericCpuOp>(user)) {
         continue;
       }
       if (type_need_cast(user->getResult(0).getType(), to) == false) {
@@ -316,6 +394,12 @@ protected:
       auto newType = Quant::getQuantInt8Type(v, LoweringConfig::isAsymmetric);
       name += "_" + type_string(newType);
       auto loc = NameLoc::get(builder.getStringAttr(name));
+      if (Module::isCV18xx(LoweringConfig::chip)) {
+        auto parentOp = v.getDefiningOp();
+        if (isa<top::InputOp>(parentOp)) {
+          return insert_18xx_cpu_cast(builder, v, loc, newType);
+        }
+      }
       auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
       return castOp.output();
     }
@@ -323,6 +407,26 @@ protected:
       break;
     }
     return v;
+  }
+
+  Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
+                             Type &newType) {
+    std::vector<NamedAttribute> attrs;
+    std::vector<NamedAttribute> param;
+    attrs.emplace_back(
+        builder.getNamedAttr("operation_name", builder.getStringAttr("quant")));
+    param.emplace_back(
+        builder.getNamedAttr("from", builder.getStringAttr("FP32")));
+    param.emplace_back(
+        builder.getNamedAttr("to", builder.getStringAttr("INT8")));
+    param.emplace_back(builder.getNamedAttr(
+        "scale", builder.getF64FloatAttr(
+                     1. / Quant::getUniformQuantizedType(newType).getScale())));
+    attrs.emplace_back(
+        builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
+    auto castOp = builder.create<tpu::GenericCpuOp>(
+        loc, newType, ValueRange{v}, ArrayRef<NamedAttribute>{attrs});
+    return castOp.output();
   }
 
   static StringRef qmode(const std::string &mode) {

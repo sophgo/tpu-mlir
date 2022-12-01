@@ -1,7 +1,7 @@
 Compile the ONNX model
 ======================
 
-This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile and transfer an onnx model to run on the BM1684x TPU platform.
+This chapter takes ``yolov5s.onnx`` as an example to introduce how to compile and transfer an onnx model to run on the BM1684X TPU platform.
 
 The model is from the official website of yolov5: https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx
 
@@ -25,7 +25,7 @@ into the ``model_yolov5s`` directory.
 
 The operation is as follows:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir model_yolov5s && cd model_yolov5s
@@ -46,7 +46,7 @@ The preprocessing process is formulated as follows ( :math:`x` represents the in
 
 .. math::
 
-   y = （x - mean） \times scale
+   y = (x - mean) \times scale
 
 
 The image of the official yolov5 is rgb. Each value will be multiplied by ``1/255``, respectively corresponding to
@@ -55,7 +55,7 @@ The image of the official yolov5 is rgb. Each value will be multiplied by ``1/25
 The model conversion command is as follows:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name yolov5s \
@@ -130,7 +130,7 @@ MLIR to F32 bmodel
 
 To convert the mlir file to the f32 bmodel, we need to run:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -160,10 +160,10 @@ The relevant parameters of ``model_deploy.py`` are as follows:
      - Quantization type (F32/F16/BF16/INT8)
    * - chip
      - Y
-     - The platform that the model will use. Currently only bm1684x is supported. More TPU platforms will be supported in the future
+     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
    * - calibration_table
      - N
-     - The quantization table path. Required when it is INT8 quantization
+     - The calibration table path. Required when it is INT8 quantization
    * - tolerance
      - N
      - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results
@@ -201,7 +201,7 @@ the performance of the asymmetric model will be slightly worse than the symmetri
 Here is an example of the existing 100 images from COCO2017 to perform calibration:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py yolov5s.mlir \
        --dataset ../COCO2017 \
@@ -216,7 +216,7 @@ Compile to INT8 symmetric quantized model
 
 Execute the following command to convert to the INT8 symmetric quantized model:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -236,7 +236,7 @@ Compile to INT8 asymmetric quantized model
 
 Execute the following command to convert to the INT8 asymmetric quantized model:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov5s.mlir \
@@ -262,7 +262,7 @@ Use the following codes to validate the inference results of onnx/f32/int8 respe
 
 The onnx model is run as follows to get ``dog_onnx.jpg``:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -272,7 +272,7 @@ The onnx model is run as follows to get ``dog_onnx.jpg``:
 
 The f32 bmodel is run as follows to get ``dog_f32.jpg`` :
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -283,7 +283,7 @@ The f32 bmodel is run as follows to get ``dog_f32.jpg`` :
 
 The int8 symmetric bmodel is run as follows to get ``dog_int8_sym.jpg``:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -293,7 +293,7 @@ The int8 symmetric bmodel is run as follows to get ``dog_int8_sym.jpg``:
 
 The int8 asymmetric bmodel is run as follows to get ``dog_int8_asym.jpg``:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov5.py \
        --input ../image/dog.jpg \
@@ -329,7 +329,7 @@ Check the performance of ``BModel``
 
 After installing ``libsophon``, you can use ``bmrt_test`` to test the accuracy and performance of the ``bmodel``. You can choose a suitable model by estimating the maximum fps of the model based on the output of ``bmrt_test``.
 
-.. code-block:: console
+.. code-block:: shell
 
    # Test the bmodel compiled above
    # --bmodel parameter followed by bmodel file,
@@ -342,7 +342,7 @@ After installing ``libsophon``, you can use ``bmrt_test`` to test the accuracy a
 
 Take the output of the last command as an example (the log is partially truncated here):
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    [BMRT][load_bmodel:983] INFO:pre net num: 0, load net num: 1

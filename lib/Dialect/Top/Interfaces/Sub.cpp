@@ -23,9 +23,13 @@ int64_t top::SubOp::getFLOPs() {
 
 LogicalResult top::SubOp::init(InferenceParameter &p) {
   auto binary = new Binary();
+  int index0 = 0, index1 = 1;
+  if (is_reverse()) {
+    index0 = 1, index1 = 0;
+  }
   (*binary)
-      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
+      .lhs(p.inputs[index0], Module::getShape(inputs()[index0]))
+      .rhs(p.inputs[index1], Module::getShape(inputs()[index1]))
       .dst(p.outputs[0], Module::getShape(output()))
       .do_relu(do_relu())
       .relu_limit(relu_limit().convertToDouble())

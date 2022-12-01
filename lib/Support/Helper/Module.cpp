@@ -42,9 +42,11 @@ constexpr llvm::StringRef Module::State::TPU_ADDRESSED;
 
 constexpr llvm::StringRef Module::Chip::ALL;
 constexpr llvm::StringRef Module::Chip::BM1684;
-constexpr llvm::StringRef Module::Chip::BM1684x;
+constexpr llvm::StringRef Module::Chip::BM1684X;
 constexpr llvm::StringRef Module::Chip::CV182x;
 constexpr llvm::StringRef Module::Chip::CV183x;
+constexpr llvm::StringRef Module::Chip::BM1686;
+
 
 top::NoneOp Module::getNoneOp(Operation *op) {
   assert(op != nullptr);
@@ -68,6 +70,47 @@ top::NoneOp Module::getNoneOp(Operation *op) {
   auto NoneOp = builder.create<top::NoneOp>(builder.getUnknownLoc(),
                                             builder.getNoneType());
   return NoneOp;
+}
+
+Value Module::getOperand(Operation* op, int i) {
+  auto v = op->getOperand(i);
+  if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
+    int idx = block_arg.getArgNumber();
+    auto parent_op = v.getParentBlock()->getParentOp();
+    if (auto func_op = dyn_cast_or_null<FuncOp>(parent_op)) {
+      auto module = getModuleOp(parent_op);
+      // cur call op
+      auto call_op = getCallOp(module, func_op);
+      // pre call op
+      auto operand = call_op.getOperand(idx);
+      auto result = operand.cast<OpResult>();
+      auto opd = result.getDefiningOp();
+      if (isa<top::InputOp>(opd)) {
+        return operand;
+      }
+      auto pre_call_op = dyn_cast<func::CallOp>(opd);
+      auto pre_func_op = getFuncOp(module, pre_call_op.getCallee());
+      auto return_op = dyn_cast<func::ReturnOp>(pre_func_op.front().back());
+      return return_op.getOperand(result.getResultNumber());
+    }
+  } else if (auto pre_op = v.getDefiningOp()) {
+    if (isa<func::CallOp>(pre_op)) {
+      auto module = getModuleOp(op);
+      auto call_op = dyn_cast<func::CallOp>(pre_op);
+      int index = v.cast<OpResult>().getResultNumber();
+      for (auto func : module.getOps<FuncOp>()) {
+        if (call_op.getCallee() == func.getName()) {
+          Block &entryBlock = func.front();
+          auto returnOp =
+              dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+          return returnOp->getOperand(index);
+        }
+      }
+    } else {
+      return v;
+    }
+  }
+  llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
 ModuleOp Module::getModuleOp(Operation *op) {
@@ -176,6 +219,9 @@ std::string Module::genWeightFileName(ModuleOp module, bool &same_name) {
 }
 
 int64_t Module::getAddress(Value v) {
+  if (v.getType().isa<mlir::NoneType>()) {
+    return 0;
+  }
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
   if (!attr) {
     if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
@@ -205,11 +251,21 @@ void Module::setAddress(Value v, int64_t addr) {
 }
 
 size_t Module::getBytes(Value v) {
+  if (v.getType().isa<mlir::NoneType>()) {
+    return 0;
+  }
   auto type = v.getType().cast<RankedTensorType>();
   auto elm_count = type.getNumElements();
   auto etype = getStorageType(v);
   int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
   return elm_count * elm_bytes;
+}
+
+int Module::getDtypeSize(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto etype = getStorageType(v);
+  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
+  return elm_bytes;
 }
 
 int64_t Module::getNumElements(Value v) {
@@ -218,6 +274,10 @@ int64_t Module::getNumElements(Value v) {
 }
 
 llvm::ArrayRef<int64_t> Module::getShape(Value v) {
+  if (v.getType().isa<mlir::NoneType>()) {
+    v.dump();
+    llvm_unreachable("v is none type");
+  }
   auto type = v.getType().cast<RankedTensorType>();
   return type.getShape();
 }

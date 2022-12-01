@@ -20,7 +20,7 @@ Create a ``yolov3_tiny`` directory, note that it is the same level as tpu-mlir, 
 
 The operation is as follows:
 
-.. code-block:: console
+.. code-block:: shell
   :linenos:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
@@ -38,7 +38,7 @@ Sample for onnx
 
 The operation is as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov3.py \
         --model ../tiny-yolov3-11.onnx \
@@ -47,7 +47,7 @@ The operation is as follows:
 
 The print result as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
     car:81.7%
     car:72.6%
@@ -71,7 +71,7 @@ To INT8 symmetric model
 Step 1: To F32 mlir
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name yolov3_tiny \
@@ -87,7 +87,7 @@ Step 1: To F32 mlir
 Step 2: Gen calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py yolov3_tiny.mlir \
        --dataset ../COCO2017 \
@@ -97,7 +97,7 @@ Step 2: Gen calibartion table
 Step 3: To model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov3_tiny.mlir \
@@ -109,7 +109,7 @@ Step 3: To model
 Step 4: Run model
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov3.py \
         --model yolov3_int8.bmodel \
@@ -118,7 +118,7 @@ Step 4: Run model
 
 The print result as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
   car:79.0%
   car:72.4%
@@ -166,7 +166,7 @@ Use ``run_qtable.py`` to gen qtable, parameters as below:
      - Name of calibration table file
    * - chip
      - Y
-     - The platform that the model will use. Currently only bm1684x is supported. More TPU platforms will be supported in the future
+     - The platform that the model will use. Support bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x.
    * - input_num
      - N
      - The number of sample, default 10
@@ -176,7 +176,7 @@ Use ``run_qtable.py`` to gen qtable, parameters as below:
 
 The operation is as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_qtable.py yolov3_tiny.mlir \
        --dataset ../COCO2017 \
@@ -186,7 +186,7 @@ The operation is as follows:
 
 And get quantization table ``yolov3_qtable``, context as below:
 
-.. code-block:: console
+.. code-block:: shell
 
   # op_name   quantize_mode
   convolution_output11_Conv F32
@@ -195,7 +195,7 @@ And get quantization table ``yolov3_qtable``, context as below:
 In the table, first col is layer name, second is quantization type.
 Also ``full_loss_table.txt`` is generated, context as blow:
 
-.. code-block:: console
+.. code-block:: shell
     :linenos:
 
     # all int8 loss: -17.297552609443663
@@ -218,7 +218,7 @@ If application performs not good, you can also add more layers to quantization t
 Step 2: Gen mix precision model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov3_tiny.mlir \
@@ -231,7 +231,7 @@ Step 2: Gen mix precision model
 Step 3: run mix precision model
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov3.py \
         --model yolov3_mix.bmodel \
@@ -240,7 +240,7 @@ Step 3: run mix precision model
 
 The print result as follows:
 
-.. code-block:: console
+.. code-block:: shell
 
     car:78.7%
     car:68.8%

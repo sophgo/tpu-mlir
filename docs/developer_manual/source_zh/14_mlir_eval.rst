@@ -6,32 +6,43 @@
 
 验证对象
 ~~~~~~~~~~~~
-TPU-MLIR中的精度验证主要针对mlir模型，fp32采用top层的mlir模型进行精度验证，而int8对称与非对称量化模式则采用tpu层的mlir模型。
+TPU-MLIR中的精度验证主要针对mlir模型, fp32采用top层的mlir模型进行精度验证, 而int8对称与非对称量化模式则采用tpu层的mlir模型。
 
 评估指标
 ~~~~~~~~~~~~
-当前主要用于测试的网络有分类网络与目标检测网络，分类网络的精度指标采用Top-1与Top-5准确率，而目标检测网络采用COCO的12个评估指标，如图(:ref:`coco_eval`)。通常记录精度时采用IoU=0.5时的Average Precision（即PASCAL VOC metric）。
+当前主要用于测试的网络有分类网络与目标检测网络，分类网络的精度指标采用Top-1与Top-5准确率，而目标检测网络采用COCO的12个评估指标，如下所示。通常记录精度时采用IoU=0.5时的Average Precision（即PASCAL VOC metric）。
 
-.. _coco_eval:
-.. figure:: ../assets/coco_eval.png
-   :height: 9.5cm
-   :align: center
+.. math::
 
-   COCO评估指标
-
+   \boldsymbol{Average Precision (AP):} & \\
+   AP\quad & \text{\% AP at IoU=.50:.05:.95 (primary challenge metric)} \\
+   AP^{IoU}=.50\quad & \text{\% AP at IoU=.50 (PASCAL VOC metric)} \\
+   AP^{IoU}=.75\quad & \text{\% AP at IoU=.75 (strict metric)} \\
+   \boldsymbol{AP Across Scales:} & \\
+   AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
+   AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
+   AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$} \\
+   \boldsymbol{Average Recall (AR):} & \\ 
+   AR^{max=1}\quad & \text{\% AR given 1 detection per image} \\
+   AR^{max=10}\quad & \text{\% AR given 10 detections per image} \\
+   AR^{max=100}\quad & \text{\% AR given 100 detections per image} \\
+   \boldsymbol{AP Across Scales:} & \\
+   AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
+   AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
+   AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$}
 
 数据集
 ~~~~~~~~~~~~
-另外，验证时使用的数据集需要自行下载，分类网络使用ILSVRC2012的验证集（共50000张图片，https://www.image-net.org/challenges/LSVRC/2012/）。数据集中的图片有两种摆放方式，一种是数据集目录下有1000个子目录，对应1000个类别，每个子目录下有50张该类别的图片，该情况下无需标签文件；另外一种是所有图片均在同一个数据集目录下，有一个额外的txt标签文件，按照图片编号顺序每行用1-1000的数字表示每一张图片的类别。
+另外, 验证时使用的数据集需要自行下载, 分类网络使用ILSVRC2012的验证集(共50000张图片, https://www.image-net.org/challenges/LSVRC/2012/)。数据集中的图片有两种摆放方式, 一种是数据集目录下有1000个子目录, 对应1000个类别, 每个子目录下有50张该类别的图片, 该情况下无需标签文件; 另外一种是所有图片均在同一个数据集目录下, 有一个额外的txt标签文件, 按照图片编号顺序每行用1-1000的数字表示每一张图片的类别。
 
-目标检测网络使用COCO2017验证集（共5000张图片，https://cocodataset.org/#download），所有图片均在同一数据集目录下，另外还需要下载与该数据集对应的标签文件.json。
+目标检测网络使用COCO2017验证集(共5000张图片, https://cocodataset.org/#download), 所有图片均在同一数据集目录下, 另外还需要下载与该数据集对应的标签文件.json。
 
 精度验证接口
 ------------
 
-TPU-MLIR的精度验证命令参考如下：
+TPU-MLIR的精度验证命令参考如下:
 
-.. code-block:: console
+.. code-block:: shell
 
     $ model_eval.py \
         --model_file mobilenet_v2.mlir \
@@ -40,7 +51,7 @@ TPU-MLIR的精度验证命令参考如下：
         --postprocess_type topx \
         --dataset datasets/ILSVRC2012_img_val_with_subdir
 
-所支持的参数如下：
+所支持的参数如下:
 
 .. list-table:: model_eval.py 参数功能
    :widths: 20 9 50
@@ -57,19 +68,19 @@ TPU-MLIR的精度验证命令参考如下：
      - 数据集目录
    * - dataset_type
      - 否
-     - 数据集类型，当前主要支持imagenet, coco，默认为imagenet
+     - 数据集类型, 当前主要支持imagenet, coco, 默认为imagenet
    * - postprocess_type
      - 是
-     - 精度评估方式，当前支持topx和coco_mAP
+     - 精度评估方式, 当前支持topx和coco_mAP
    * - label_file
      - 否
-     - txt标签文件，在验证分类网络精度时可能需要
+     - txt标签文件, 在验证分类网络精度时可能需要
    * - coco_annotation
      - 否
-     - json标签文件，在验证目标检测网络时需要
+     - json标签文件, 在验证目标检测网络时需要
    * - count
      - 否
-     - 用来验证精度的图片数量，默认使用整个数据集
+     - 用来验证精度的图片数量, 默认使用整个数据集
 
 
 精度验证样例
@@ -79,29 +90,29 @@ TPU-MLIR的精度验证命令参考如下：
 mobilenet_v2
 ~~~~~~~~~~~~~
 1. 数据集下载
-   
-   下载ILSVRC2012验证集到datasets/ILSVRC2012_img_val_with_subdir目录下，数据集的图片采用带有子目录的摆放方式，因此不需要额外的标签文件。
+
+   下载ILSVRC2012验证集到datasets/ILSVRC2012_img_val_with_subdir目录下, 数据集的图片采用带有子目录的摆放方式, 因此不需要额外的标签文件。
 
 2. 模型转换
-   
-   使用model_transform.py接口将原模型转换为mobilenet_v2.mlir模型，并通过run_calibration.py接口获得mobilenet_v2_cali_table。具体使用方法请参照“用户界面”章节。tpu层的INT8模型则通过以下命令获得：
 
-.. code-block:: console
+   使用model_transform.py接口将原模型转换为mobilenet_v2.mlir模型, 并通过run_calibration.py接口获得mobilenet_v2_cali_table。具体使用方法请参照“用户界面”章节。tpu层的INT8模型则通过以下命令获得:
+
+.. code-block:: shell
 
     # INT8 对称量化模型
     $ tpuc-opt mobilenet_v2.mlir \
         --import-calibration-table='file=mobilenet_v2_cali_table asymmetric=false' \
         --convert-top-to-tpu="mode=INT8 asymmetric=false chip=bm1684x" \
         --save-weight \
-        --canonicalize \ 
+        --canonicalize \
         --mlir-print-debuginfo \
         -o mobilenet_v2_tpu_int8_sym.mlir
 
 3. 精度验证
-   
-   使用model_eval.py接口进行精度验证：
 
-.. code-block:: console
+   使用model_eval.py接口进行精度验证:
+
+.. code-block:: shell
 
     # F32 模型精度验证
     $ model_eval.py \
@@ -119,10 +130,10 @@ mobilenet_v2
         --postprocess_type topx \
         --dataset datasets/ILSVRC2012_img_val_with_subdir
 
-F32模型与INT8对称量化模型的精度验证结果如下：
+F32模型与INT8对称量化模型的精度验证结果如下:
 
-.. code-block:: console
-    
+.. code-block:: shell
+
     # mobilenet_v2.mlir精度验证结果
     2022/11/08 01:30:29 - INFO : idx:50000, top1:0.710, top5:0.899
     INFO:root:idx:50000, top1:0.710, top5:0.899
@@ -135,18 +146,18 @@ yolov5s
 ~~~~~~~~~~~~~
 
 1. 数据集下载
-   
-   下载COCO2017验证集到datasets/val2017目录下，该目录下即包含5000张用于验证的图片。对应的标签文件instances_val2017.json下载到datasets目录下。
+
+   下载COCO2017验证集到datasets/val2017目录下, 该目录下即包含5000张用于验证的图片。对应的标签文件instances_val2017.json下载到datasets目录下。
 
 2. 模型转换
-   
+
    转换流程与mobilenet_v2相似。
 
 3. 精度验证
-   
-   使用model_eval.py接口进行精度验证：
 
-.. code-block:: console
+   使用model_eval.py接口进行精度验证:
+
+.. code-block:: shell
 
     # F32 模型精度验证
     $ model_eval.py \
@@ -166,10 +177,10 @@ yolov5s
         --coco_annotation datasets/instances_val2017.json \
         --dataset datasets/val2017
 
-F32模型与INT8对称量化模型的精度验证结果如下：
+F32模型与INT8对称量化模型的精度验证结果如下:
 
-.. code-block:: console
-    
+.. code-block:: shell
+
     # yolov5s.mlir精度验证结果
     Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.369
     Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.561

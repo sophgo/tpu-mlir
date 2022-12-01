@@ -1,5 +1,7 @@
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Wall -Werror -Wno-pedantic -fno-strict-aliasing -Wno-maybe-uninitialized")
-file(GLOB _sources BM168x/*.cpp
+file(GLOB _sources
+     *.cpp
+     BM168x/*.cpp
      CV18xx/*.cpp
      CV18xx/Kernel/*.cpp)
 

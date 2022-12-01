@@ -1,7 +1,7 @@
 Compile the TFLite model
 ========================
 
-This chapter takes the ``resnet50_int8.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684x TPU platform.
+This chapter takes the ``resnet50_int8.tflite`` model as an example to introduce how to compile and transfer a TFLite model to run on the BM1684X TPU platform.
 
 This chapter requires the following files (where xxxx corresponds to the actual version information):
 
@@ -21,7 +21,7 @@ Create a ``model_resnet50_tf`` directory, note that it is the same level as tpu-
 
 The operation is as follows:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir model_resnet50_tf && cd model_resnet50_tf
@@ -41,7 +41,7 @@ The model in this example has a bgr input, whose mean is 103.939,116.779,123.68 
 The model conversion command:
 
 
-.. code-block:: console
+.. code-block:: shell
 
     $ model_transform.py \
         --model_name resnet50_tf \
@@ -63,7 +63,7 @@ MLIR to bmodel
 
 This model is a tflite asymmetric quantized model, which can be converted into a bmodel according to the following parameters:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir resnet50_tf.mlir \

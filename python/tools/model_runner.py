@@ -14,28 +14,34 @@ import argparse
 import os
 import struct
 
+
 def round_away_from_zero(x):
     a = np.floor(np.abs(x) + 0.5)
     return np.sign(x) * a
 
+
 def bf16_to_fp32(d_bf16):
-  s = d_bf16.shape
-  d_bf16 = d_bf16.flatten()
-  assert d_bf16.dtype == np.uint16
-  d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
-  for i in range(len(d_bf16)):
-    d_fp32[i] = struct.unpack('<f', struct.pack('<HH', 0, d_bf16[i]))[0]
-  return d_fp32.reshape(s)
+    s = d_bf16.shape
+    d_bf16 = d_bf16.flatten()
+    assert d_bf16.dtype == np.uint16
+    d_fp32 = np.empty_like(d_bf16, dtype=np.float32)
+    for i in range(len(d_bf16)):
+        d_fp32[i] = struct.unpack('<f', struct.pack('<HH', 0, d_bf16[i]))[0]
+    return d_fp32.reshape(s)
+
 
 def fp32_to_bf16(d_fp32):
-  s = d_fp32.shape
-  d_fp32 = d_fp32.flatten()
-  assert d_fp32.dtype == np.float32
-  d_bf16 = np.empty_like(d_fp32, dtype=np.uint16)
-  for i in range(len(d_bf16)):
-    bytes = struct.pack('f', d_fp32[i])
-    d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
-  return d_bf16.reshape(s)
+    s = d_fp32.shape
+    d_fp32 = d_fp32.flatten()
+    assert d_fp32.dtype == np.float32
+    d_bf16 = np.empty_like(d_fp32, dtype=np.uint16)
+    for i in range(len(d_bf16)):
+        bytes = struct.pack('f', d_fp32[i])
+        d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
+    return d_bf16.reshape(s)
+
+def show_fake_cmd(in_npz: str, model: str, out_npz: str):
+    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
@@ -117,20 +123,20 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_keys = []
         model = onnx.load(onnx_file)
         no_list = [
-            "Cast", "Shape", "Unsqueeze", "Split", "Constant", "GRU", "Sqrt", "ReduceMean", "Pow",
-            "Sub", "Dropout", "Loop", "TopK"
+            "Cast", "Shape", "Unsqueeze", "Constant", "Dropout", "Loop", "TopK"
         ]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
         for x in model.graph.node:
             if x.op_type in no_list:
                 continue
-            _intermediate_tensor_name = list(x.output)
-            intermediate_tensor_name = ",".join(_intermediate_tensor_name)
-            intermediate_layer_value_info = onnx.helper.ValueInfoProto()
-            intermediate_layer_value_info.name = intermediate_tensor_name
-            model.graph.output.append(intermediate_layer_value_info)
-            output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
+            for name in x.output:
+                if not name:
+                    continue
+                intermediate_layer_value_info = onnx.helper.ValueInfoProto()
+                intermediate_layer_value_info.name = name
+                model.graph.output.append(intermediate_layer_value_info)
+                output_keys.append(intermediate_layer_value_info.name + '_' + x.op_type)
         dump_all_tensors_onnx = onnx_file.replace('.onnx', '_all.onnx', 1)
         onnx.save(model, dump_all_tensors_onnx)
         return output_keys, dump_all_tensors_onnx

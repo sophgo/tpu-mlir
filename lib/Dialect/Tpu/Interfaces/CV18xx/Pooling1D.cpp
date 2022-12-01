@@ -23,7 +23,7 @@ using namespace tpu_mlir::helper;
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::Pool1DOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::Pool1DOp::codegen_global_cv18xx( int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
 // =========================================

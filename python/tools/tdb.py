@@ -276,6 +276,7 @@ class Tdb(cmd.Cmd):
         if m_type == "L":
             raise Exception("Not implemented.")
         if m_type == "G":
+            # TODO stride layout
             offset = mem.addr - opdef_1684x.memmap["G"][0]
             size = int(np.prod(mem.shape)) * np.dtype(mem.np_dtype).itemsize
             return (

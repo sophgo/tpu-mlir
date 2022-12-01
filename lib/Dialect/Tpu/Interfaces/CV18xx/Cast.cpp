@@ -24,11 +24,10 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 // int8
-void tpu::CastOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
-  CviBackendContext *backend_ctx = (CviBackendContext *)ctx;
+void tpu::CastOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t n, c, h, w;
-  int64_t offset = 0; 
-  float_t scale = 1.; 
+  int64_t offset = 0;
+  float_t scale = 1.;
   Module::getNCHW(input(), n, c, h, w);
   cvk_fmt_t from = CV18xx::getDataType(input());
   cvk_fmt_t to = CV18xx::getDataType(output());
@@ -47,8 +46,8 @@ void tpu::CastOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
     }
   }
   //  quant to int8
-  cvi_backend_tg_quant_kernel(*backend_ctx, layer_id, from, to, ga_input,
-                              ga_output, n, c, h, w, scale, offset);
+  cvi_backend_tg_quant_kernel(layer_id, from, to, ga_input, ga_output, n, c, h,
+                              w, scale, offset);
 }
 
 // =========================================
@@ -56,10 +55,10 @@ void tpu::CastOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
 // =========================================
 
 int64_t tpu::CastOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
-                                           int64_t out_lmem_bytes,
-                                           int64_t in_nslice, int64_t in_hslice,
-                                           int64_t out_nslice,
-                                           int64_t out_hslice) {
+                                          int64_t out_lmem_bytes,
+                                          int64_t in_nslice, int64_t in_hslice,
+                                          int64_t out_nslice,
+                                          int64_t out_hslice) {
   llvm_unreachable("Not supported now");
   return 0;
 }

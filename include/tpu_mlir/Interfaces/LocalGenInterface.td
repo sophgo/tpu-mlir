@@ -114,10 +114,10 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         [{
           auto module = Module::getModuleOp($_op);
           auto chip = Module::getChip(module);
-          if (chip == Module::Chip::BM1684) {
+          if (Module::isBM1684Family(chip)) {
             return $_op.getBufferSize_bm1684(in_lmem_bytes, out_lmem_bytes,
                                              in_nslice, in_hslice, out_nslice, out_hslice);
-          } else if (chip == Module::Chip::BM1684x) {
+          } else if (Module::isBM1684XFamily(chip)) {
             return $_op.getBufferSize_bm1684x(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_hslice, out_nslice, out_hslice);
           } else if (chip == Module::Chip::CV182x

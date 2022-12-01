@@ -21,7 +21,7 @@
 
 操作如下:
 
-.. code-block:: console
+.. code-block:: shell
   :linenos:
 
    $ mkdir yolov3_tiny && cd yolov3_tiny
@@ -37,16 +37,16 @@
 
 ``detect_yolov3.py`` 是已经写好的验证程序, 可以用来对 ``yolov3_tiny`` 网络进行验证。执行过程如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov3.py \
         --model ../tiny-yolov3-11.onnx \
         --input ../COCO2017/000000124798.jpg \
         --output yolov3_onnx.jpg
 
-执行完后打印检测到的结果如下：
+执行完后打印检测到的结果如下:
 
-.. code-block:: console
+.. code-block:: shell
 
     car:81.7%
     car:72.6%
@@ -72,7 +72,7 @@
 第一步: 转成F32 mlir
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name yolov3_tiny \
@@ -88,7 +88,7 @@
 第二步: 生成calibartion table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py yolov3_tiny.mlir \
        --dataset ../COCO2017 \
@@ -98,7 +98,7 @@
 第三步: 转对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov3_tiny.mlir \
@@ -110,16 +110,16 @@
 第四步: 验证模型
 ~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov3.py \
         --model yolov3_int8.bmodel \
         --input ../COCO2017/000000124798.jpg \
         --output yolov3_int8.jpg
 
-执行完后打印结果为：
+执行完后打印结果为:
 
-.. code-block:: console
+.. code-block:: shell
 
   car:79.0%
   car:72.4%
@@ -164,20 +164,20 @@
      - 指定样本列表, 与dataset必须二选一
    * - calibration_table
      - 是
-     - 输入calibration table文件
+     - 输入校准表
    * - chip
      - 是
-     - 指定模型将要用到的平台, 支持bm1684x(目前只支持这一种, 后续会支持多款TPU平台)
+     - 指定模型将要用到的平台, 支持bm1684x/bm1684/cv183x/cv182x/cv181x/cv180x
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
    * - o
      - 是
-     - 输出混精度表
+     - 输出混精度量化表
 
 本例中采用默认10张图片校准, 执行命令如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_qtable.py yolov3_tiny.mlir \
        --dataset ../COCO2017 \
@@ -187,16 +187,16 @@
 
 生成的混精度量化表 ``yolov3_qtable``, 内容如下:
 
-.. code-block:: console
+.. code-block:: shell
 
   # op_name   quantize_mode
   convolution_output11_Conv F32
 
 
-该表中, 第一列表示相应的layer, 第二列表示类型。
+该表中, 第一列表示相应的layer, 第二列表示类型, 支持的类型有F32/F16/BF16/INT8。
 另外同时也会生成一个loss表文件 ``full_loss_table.txt``, 内容如下:
 
-.. code-block:: console
+.. code-block:: shell
     :linenos:
 
     # all int8 loss: -17.297552609443663
@@ -213,13 +213,13 @@
 
 该表按Loss从小到大顺利排列, 表示该层Layer换成相应的模式后, 最终结果的loss, loss越小说明改善越大。
 ``run_qtable.py`` 只会取相对INT8的loss, 改善超过5%的layer做混精度。
-如果混精度表的实际业务效果不好, 则可以按loss顺序多添加几层, 看看效果。
+如果混精度量化表的实际业务效果不好, 则可以按loss顺序多添加几层, 看看效果。
 
 
 第二步: 生成混精度量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir yolov3_tiny.mlir \
@@ -232,16 +232,16 @@
 第三步: 验证混精度模型
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: console
+.. code-block:: shell
 
    $ detect_yolov3.py \
         --model yolov3_mix.bmodel \
         --input ../COCO2017/000000124798.jpg \
         --output yolov3_mix.jpg
 
-执行完后打印结果为：
+执行完后打印结果为:
 
-.. code-block:: console
+.. code-block:: shell
 
     car:78.7%
     car:68.8%

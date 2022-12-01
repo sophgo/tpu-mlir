@@ -12,10 +12,10 @@ CPU服务器以及相关产品的研发与销售。旗下算丰全系列人工�
 算平台。公司具备全球领先的先进制程设计能力，现已成功量产云端、边端人工智能芯片并
 规模化商业落地。
 
-本项目的技术细节可以参考：[TPU-MLIR开发参考手册](http://tpumlir.org/docs/index.html)。
+本项目的技术细节可以参考：[TPU-MLIR开发参考手册](https://tpumlir.org/docs/developer_manual/index.html)。
 同时也有论文，介绍整体的设计思路：<https://arxiv.org/abs/2210.15016>
 
-目前该工程支持BM1684x，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
+目前该工程支持BM1684X，后面会陆续支持BM1684、CV183x、CV182x、Mars等等芯片。
 
 # 编译工程
 
@@ -66,7 +66,7 @@ popd
 
 # 使用方法
 
-以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684x TPU平台运行。
+以`yolov5s.onnx`为例，介绍如何编译迁移一个onnx模型至BM1684X TPU平台运行。
 
 该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>。
 

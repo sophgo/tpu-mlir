@@ -26,7 +26,7 @@ using namespace mlir;
 // clang-format on
 void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                                int64_t &N, bool &with_bias, bool &relu,
-                               double &limit, int64_t &zp) {
+                               double &limit, int64_t &zp, bool &transpose) {
   auto a_s = Module::getShape(input());
   auto b_s = Module::getShape(right());
   auto o_s = Module::getShape(output());
@@ -34,12 +34,13 @@ void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
   relu = do_relu();
   limit = this->relu_limit().convertToDouble();
   zp = right_zp();
+  transpose = right_transpose();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
   assert(b_dims >= 2);
-  N = b_s[b_dims - 1];
+  N = transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
   assert(N == o_s[o_dims - 1]);
-  K = b_s[b_dims - 2];
+  K = transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   batch = 1;
   for (int i = 0; i < b_dims - 2; i++) {
     batch *= b_s[i];
@@ -55,12 +56,12 @@ void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   int64_t batch, M, K, N, zp;
-  bool relu, with_bias;
+  bool relu, with_bias, right_transpose;
   double limit;
-  parseParam(batch, M, K, N, with_bias, relu, limit, zp);
+  parseParam(batch, M, K, N, with_bias, relu, limit, zp, right_transpose);
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, relu, limit, zp);
+                K, N, relu, limit, zp, right_transpose);
   p.handle = (void *)matmul;
   return success();
 }
@@ -93,11 +94,21 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   } else if (Quant::isUniformQuantized(output())) {
     if (is_cv18xx) {
       int64_t batch, M, K, N, zp;
-      bool relu, with_bias;
+      bool relu, with_bias, transpose;
       double limit;
-      parseParam(batch, M, K, N, with_bias, relu, limit, zp);
-      auto rshift_v = Module::getI64Array(rshifts(), batch, 0);
-      auto multiplier_v = Module::getI64Array(multipliers(), batch, 1);
+      parseParam(batch, M, K, N, with_bias, relu, limit, zp, transpose);
+      bool is_fc = isa<top::WeightOp>(right().getDefiningOp());
+      std::shared_ptr<std::vector<int64_t>> rshift_v;
+      std::shared_ptr<std::vector<int64_t>> multiplier_v;
+      if (is_fc) {
+        rshift_v = Module::getI64Array(rshifts(), batch, 0);
+        multiplier_v = Module::getI64Array(multipliers(), batch, 1);
+      } else {
+        rshift_v = Module::getI64Array(rshifts(), 1, 0);
+        multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+        rshift_v->resize(batch, rshift_v->at(0));
+        multiplier_v->resize(batch, multiplier_v->at(0));
+      }
       int64_t isz = M * N;
       for (int64_t i = 0; i < batch; ++i) {
 #pragma omp parallel for schedule(static, omp_schedule(isz))

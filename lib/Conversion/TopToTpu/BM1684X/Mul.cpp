@@ -112,11 +112,25 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   const int nInputs = op->getNumOperands();
   assert(nInputs == 2);
   int64_t zeropoint;
-  double scale, scale_mul;
+  double scale, scale_mul = 1.f;
+  bool is_const = false;
+  float const_val = 0.f;
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     Quant::getScaleAndZeroPoint(input, scale, zeropoint, true);
     scale_mul *= scale;
+    if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
+      auto num_element = Module::getNumElements(input);
+      if (num_element == 1) {
+        is_const = true;
+        auto constF32 = constOp.read_as_float();
+        const_val = constF32->data()[0] - zeropoint;
+        continue;
+      }
+    }
+    auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
+                          input, rewriter.getI16Type(), -zeropoint);
+    operands.push_back(input_sub_zp);
   }
   Quant::getScaleAndZeroPoint(op.output(), scale, zeropoint, true);
   scale_mul = scale_mul / scale;
@@ -127,12 +141,26 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-  attrs.push_back(rewriter.getNamedAttr(
-      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
-  attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
-  auto newType = Quant::getQuantInt8Type(op.output(), true);
-  rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
+  std::string suffix = "_mul";
+  std::string new_name = Module::getName(op.getOperation()).str() + suffix;
+  auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+  rewriter.setInsertionPointAfter(op);
+  auto newType = RankedTensorType::get(Module::getShape(op.output()),
+                                       rewriter.getI32Type());
+  if (is_const == false) {
+    auto newOp = rewriter.create<tpu::MulOp>(name_loc, newType, operands, attrs);
+    // requant to int8
+    auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
+                        true, multiplier, shift, tpu::RequantMode::TFlite);
+    rewriter.replaceOp(op, {v});
+  } else {
+    attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
+    auto newOp = rewriter.create<tpu::MulConstOp>(name_loc, newType, operands, attrs);
+    // requant to int8
+    auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
+                        true, multiplier, shift, tpu::RequantMode::TFlite);
+    rewriter.replaceOp(op, {v});
+  }
 }
 
 } // namespace bm1684x

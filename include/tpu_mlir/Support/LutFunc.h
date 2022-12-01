@@ -24,6 +24,16 @@
 #include "mlir/Transforms/DialectConversion.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
+#define SIGMOID_BF16_LUT_RANGE 12
+#define TANH_BF16_LUT_RANGE 15
+#define EXP_BF16_LUT_RANGE 15
+#define ELU_BF16_LUT_RANGE 15
+#define MISH_BF16_LUT_RANGE 8
+#define SOFTPLUS_BF16_LUT_RANGE 8
+#define SWISH_BF16_LUT_RANGE 12
+#define LOG_BF16_LUT_RANGE 8
+#define GELU_BF16_LUT_RANGE 8
+
 using namespace llvm;
 using namespace mlir;
 using namespace tpu_mlir;
@@ -33,9 +43,10 @@ namespace tpu_mlir {
 
 // create lookup table
 typedef double (*activate_f)(double);
+typedef double (*activate_f2)(double, double);
 
-Value create_lookup_table(Value in, Value out, activate_f func,
-                          bool asymmetric);
+Value create_lookup_table(Value in, Value out, bool asymmetric,
+                          std::function<double(double)> &&func);
 
 Value create_lookup_table(Operation *owner, const std::vector<float> &table);
 
@@ -43,11 +54,15 @@ void bf16_gen_base_slope_table(float *base_table, float *slope_table,
                                float range_start, float range_end,
                                activate_f func);
 
+void bf16_gen_base_slope_table(float *base_table, float *slope_table,
+                               float range_start, float range_end,
+                               activate_f2 func, float param);
+
 void bf16_lut_slope(float *input, float *output, int size, float *base_table,
                     float *slope_table, float range_start, float range_end);
 
 void bf16_gen_exponent_mantissa_table(const std::string &name, float *exp_table,
-                                      float *mantissa_table);
+                                      float *mantissa_table, float param0, float param1);
 
 void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
                        float *mantissa_table, const std::string &method);

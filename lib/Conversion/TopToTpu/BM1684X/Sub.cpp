@@ -14,75 +14,7 @@ namespace bm1684x {
 
 void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp subOp,
                                bool asymmetric) const {
-  if (asymmetric) {
-    LoweringF32(rewriter, subOp);
-    return;
-  }
-  auto op = subOp.getOperation();
-  std::vector<Value> operands;
-  const int nInputs = op->getNumOperands();
-  std::vector<int64_t> rshift_v(nInputs);
-  std::vector<int64_t> multiplier_v(nInputs, 1);
-  int64_t o_zp;
-  double o_scale;
-  Quant::getScaleAndZeroPoint(subOp.output(), o_scale, o_zp, asymmetric);
-  auto coeff_v = Module::getF64Array(subOp.coeff(), nInputs, 1.0);
-
-  double scale;
-  int64_t zeropoint;
-  for (int i = 0; i < nInputs; i++) {
-    auto input = op->getOperand(i);
-    int scalei = 1, shifti = 0;
-    if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
-      // constant tensor
-      auto constF32 = constOp.read<float>();
-      float fmax, fmin;
-      findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
-      bool cSign = (fmin < 0);
-      float fqmax = cSign ? 127 : 255;
-      auto filter_type = input.getType().cast<RankedTensorType>();
-      auto new_type = RankedTensorType::get(filter_type.getShape(),
-                                            rewriter.getIntegerType(8, cSign));
-      // scale = fmax / fqmax;
-      scale = o_scale; // Merge o_scale to Qconst, reducing multiple and shift
-      if (cSign) {
-        auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
-        std::transform(
-            constF32->begin(), constF32->end(), constI8->begin(),
-            [&](const float cf32) { return Quant::to_int8(cf32 / scale); });
-        auto new_filter =
-            top::WeightOp::create(constOp, "i8", *constI8, new_type);
-        operands.push_back(new_filter);
-      } else {
-        auto constU8 = std::make_shared<std::vector<uint8_t>>(constF32->size());
-        std::transform(
-            constF32->begin(), constF32->end(), constU8->begin(),
-            [&](const float cf32) { return Quant::to_uint8(cf32 / scale); });
-        auto new_filter =
-            top::WeightOp::create(constOp, "u8", *constU8, new_type);
-        operands.push_back(new_filter);
-      }
-    } else {
-      operands.push_back(input);
-      Quant::getScaleAndZeroPoint(input, scale, zeropoint, asymmetric);
-      auto scale_f = scale / o_scale;
-      // get_scale_and_shift(coeff_v->at(i) * scale_f, scalei, shifti, 8);
-      // "get_scale_and_shift_positive" use positive right_shift, left_shift
-      // will be converted to the multiplier.
-      get_scale_and_shift_positive(coeff_v->at(i) * scale_f, scalei, shifti, 8);
-    }
-    multiplier_v[i] = scalei;
-    rshift_v[i] = shifti;
-  }
-
-  std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", subOp.do_reluAttr()));
-  attrs.push_back(rewriter.getNamedAttr(
-      "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
-  attrs.push_back(
-      rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = Quant::getQuantInt8Type(subOp.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::SubOp>(op, newType, operands, attrs);
+  lowering_common_f32<tpu::SubOp>(rewriter, subOp.getOperation());
 }
 
 void SubLowering::LoweringF32(PatternRewriter &rewriter,
@@ -112,6 +44,9 @@ void SubLowering::LoweringF16(PatternRewriter &rewriter,
   lowering_common_f16<tpu::SubOp>(rewriter, subOp.getOperation());
 }
 
+//                / input0 -> dequant \
+// quant sub ==> |                      sub -> requant
+//                \ input1 -> dequant /
 void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SubOp subOp) const {
   if (Quant::isUniformQuantized(subOp.inputs()[0], subOp.output()) == false) {

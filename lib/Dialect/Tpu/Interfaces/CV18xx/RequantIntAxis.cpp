@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// #include "tpu_mlir/Backend/BM168x/BM1684x.h"
+// #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
@@ -22,7 +22,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-void tpu::RequantIntAxisOp::codegen_global_cv18xx(void* ctx, int64_t layer_id) {
+void tpu::RequantIntAxisOp::codegen_global_cv18xx( int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }
 

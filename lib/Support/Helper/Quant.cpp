@@ -39,8 +39,10 @@ void Quant::getScaleAndZeroPoint(double rmin, double rmax, double &scale,
   zeroPoint = round(zeroPointFromMin);
   if (zeroPointFromMin < qminDouble) {
     zeroPoint = qmin;
+    scale = rmax / (qmaxDouble - zeroPoint);
   } else if (zeroPointFromMin > qmaxDouble) {
     zeroPoint = qmax;
+    scale = rmin / (qminDouble - zeroPoint);
   }
 }
 

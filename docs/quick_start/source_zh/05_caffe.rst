@@ -1,9 +1,9 @@
 编译Caffe模型
 =============
 
-本章以 ``mobilenet_v2_deploy.prototxt`` 和 ``mobilenet_v2.caffemodel`` 为例，介绍如何编译迁移一个caffe模型至BM1684x TPU平台运行。
+本章以 ``mobilenet_v2_deploy.prototxt`` 和 ``mobilenet_v2.caffemodel`` 为例, 介绍如何编译迁移一个caffe模型至BM1684X TPU平台运行。
 
-本章需要如下文件(其中xxxx对应实际的版本信息)：
+本章需要如下文件(其中xxxx对应实际的版本信息):
 
 **tpu-mlir_xxxx.tar.gz (tpu-mlir的发布包)**
 
@@ -16,13 +16,13 @@
 准备工作目录
 ------------------
 
-建立 ``mobilenet_v2`` 目录，注意是与tpu-mlir同级目录；并把模型文件和图片文件都
+建立 ``mobilenet_v2`` 目录, 注意是与tpu-mlir同级目录; 并把模型文件和图片文件都
 放入 ``mobilenet_v2`` 目录中。
 
 
-操作如下：
+操作如下:
 
-.. code-block:: console
+.. code-block:: shell
    :linenos:
 
    $ mkdir mobilenet_v2 && cd mobilenet_v2
@@ -33,18 +33,18 @@
    $ mkdir workspace && cd workspace
 
 
-这里的 ``$TPUC_ROOT`` 是环境变量，对应tpu-mlir_xxxx目录。
+这里的 ``$TPUC_ROOT`` 是环境变量, 对应tpu-mlir_xxxx目录。
 
 
 Caffe转MLIR
 ------------------
 
-本例中的模型是 `BGR` 输入，mean和scale分别为 ``103.94,116.78,123.68`` 和 ``0.017,0.017,0.017``。
+本例中的模型是 `BGR` 输入, mean和scale分别为 ``103.94,116.78,123.68`` 和 ``0.017,0.017,0.017``。
 
-模型转换命令如下：
+模型转换命令如下:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_transform.py \
        --model_name mobilenet_v2 \
@@ -59,15 +59,15 @@ Caffe转MLIR
        --test_result mobilenet_v2_top_outputs.npz \
        --mlir mobilenet_v2.mlir
 
-转成mlir文件后，会生成一个 ``${model_name}_in_f32.npz`` 文件，该文件是模型的输入文件。
+转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。
 
 
 MLIR转F32模型
 ------------------
 
-将mlir文件转换成f32的bmodel，操作方法如下：
+将mlir文件转换成f32的bmodel, 操作方法如下:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -78,40 +78,40 @@ MLIR转F32模型
        --tolerance 0.99,0.99 \
        --model mobilenet_v2_1684x_f32.bmodel
 
-编译完成后，会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_f32.bmodel`` 的文件。
 
 
 MLIR转INT8模型
 ------------------
 
-生成量化表
+生成校准表
 ~~~~~~~~~~~~~~~~~~~~
 
-转INT8模型前需要跑calibration，得到量化表；输入数据的数量根据情况准备100~1000张左右。
+转INT8模型前需要跑calibration, 得到校准表; 输入数据的数量根据情况准备100~1000张左右。
 
-然后用量化表，生成对称或非对称bmodel。如果对称符合需求，一般不建议用非对称，因为
+然后用校准表, 生成对称或非对称bmodel。如果对称符合需求, 一般不建议用非对称, 因为
 非对称的性能会略差于对称模型。
 
-这里用现有的100张来自ILSVRC2012的图片举例，执行calibration：
+这里用现有的100张来自ILSVRC2012的图片举例, 执行calibration:
 
 
-.. code-block:: console
+.. code-block:: shell
 
    $ run_calibration.py mobilenet_v2.mlir \
        --dataset ../ILSVRC2012 \
        --input_num 100 \
        -o mobilenet_v2_cali_table
 
-运行完成后会生成名为 ``${model_name}_cali_table`` 的文件，该文件用于后续编译INT8
+运行完成后会生成名为 ``${model_name}_cali_table`` 的文件, 该文件用于后续编译INT8
 模型的输入文件。
 
 
 编译为INT8对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-转成INT8对称量化模型，执行如下命令：
+转成INT8对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -123,15 +123,15 @@ MLIR转INT8模型
        --tolerance 0.96,0.70 \
        --model mobilenet_v2_1684x_int8_sym.bmodel
 
-编译完成后，会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_int8_sym.bmodel`` 的文件。
 
 
 编译为INT8非对称量化模型
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-转成INT8非对称量化模型，执行如下命令：
+转成INT8非对称量化模型, 执行如下命令:
 
-.. code-block:: console
+.. code-block:: shell
 
    $ model_deploy.py \
        --mlir mobilenet_v2.mlir \
@@ -145,4 +145,4 @@ MLIR转INT8模型
        --model mobilenet_v2_1684x_int8_asym.bmodel
 
 
-编译完成后，会生成名为 ``${model_name}_1684x_int8_asym.bmodel`` 的文件。
+编译完成后, 会生成名为 ``${model_name}_1684x_int8_asym.bmodel`` 的文件。

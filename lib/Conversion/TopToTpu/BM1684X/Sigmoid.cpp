@@ -17,13 +17,12 @@ void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::SigmoidOp>(rewriter, op);
 }
 
-static double active_sigmoid(double val) { return 1 / (1 + std::exp(-val)); }
-
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());
   Value table =
-      create_lookup_table(op.input(), op.output(), active_sigmoid, asymmetric);
+      create_lookup_table(op.input(), op.output(), asymmetric,
+                          [](double val) { return 1 / (1 + std::exp(-val)); });
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -47,7 +46,18 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
-  LoweringINT8(rewriter, op, true);
+  auto stype = Module::getStorageType(op.output());
+  Value table =
+      create_lookup_table(op.input(), op.output(), true,
+                          [](double val) { return 1 / (1 + std::exp(-val)); });
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(
+      op, op.output().getType(),
+      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
+      attrs);
 }
 
 } // namespace bm1684x

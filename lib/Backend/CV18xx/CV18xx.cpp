@@ -8,11 +8,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 /*
  * Copyright (C) Cvitek Co., Ltd. 2019-2020. All rights reserved.
  */
-
 
 #include <iostream>
 #include <llvm/Support/Debug.h>
@@ -27,151 +25,47 @@
 using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace backend {
-// constexpr llvm::StringRef CV18xx::LIB_NAME;
-// use local
-#undef NPU_NUM
-#undef EU_NUM
-#undef LOCAL_MEM_SIZE
-#undef LOCAL_MEM_BANKS
-#define NPU_NUM cvi_chip_info_context(CVI_CHIP_LANE_NUM)
-#define EU_NUM cvi_chip_info_context(CVI_CHIP_EU_NUM)
-#define LOCAL_MEM_SIZE cvi_chip_info_context(CVI_CHIP_LMEM_SIZE)
-#define LOCAL_MEM_BANKS cvi_chip_info_context(CVI_CHIP_LMEM_BANK)
-
-CviBackendContext::CviBackendContext(const char *runchip) {
-  cvk_cmd_buf_.reserve(0x20000000);
-  cvk_reg_info_t req_info;
-  strncpy(req_info.chip_ver_str, runchip, sizeof(req_info.chip_ver_str) - 1);
-  req_info.cmdbuf_size = cvk_cmd_buf_.capacity();
-  req_info.cmdbuf = cvk_cmd_buf_.data();
-
-  cvk_ctx_ = CV18xx::instance().dl_cvikernel_register(&req_info);
-
-  // Default mapping between tdma base selection
-  // and global memory region.
-  tdmaBaseSelects[SHARED_MEMORY] = 0;
-  tdmaBaseSelects[WEIGHT_MEMORY] = 1;
-  tdmaBaseSelects[PRIVATE_MEMORY] = 2;
-  tdmaBaseSelects[IO_MEMORY_0] = 3;
-  tdmaBaseSelects[IO_MEMORY_1] = 4;
-  tdmaBaseSelects[IO_MEMORY_2] = 5;
-  tdmaBaseSelects[IO_MEMORY_3] = 6;
-  tdmaBaseSelects[IO_MEMORY_4] = 7;
-
-  LLVM_DEBUG(llvm::errs() << "register " << runchip << " done\n";);
+CV18xx * CV18xx ::cv18xx = nullptr;
+void CV18xx::write_cmdbuf(const void *cmdbuf, uint32_t size) {
+  cv18xx->cmdbuf_.resize(size);
+  memcpy(&cv18xx->cmdbuf_[0], cmdbuf, size);
 }
 
-CviBackendContext::~CviBackendContext() {
-  cvk_ctx_->ops->cleanup(cvk_ctx_);
-  cvk_cmd_buf_.clear();
-  cvk_cmd_buf_.shrink_to_fit();
-  free(cvk_ctx_);
+void CV18xx::read_cmdbuf(std::vector<uint8_t> &out_cmdbuf) {
+  out_cmdbuf.assign(cv18xx->cmdbuf_.begin(), cv18xx->cmdbuf_.end());
 }
 
-void CviBackendContext::write_cmdbuf(const void *cmdbuf, uint32_t size) {
-  cmdbuf_.resize(size);
-  memcpy(&cmdbuf_[0], cmdbuf, size);
-}
-
-void CviBackendContext::read_cmdbuf(std::vector<uint8_t> &out_cmdbuf) {
-  out_cmdbuf.assign(cmdbuf_.begin(), cmdbuf_.end());
-}
-
-void CviBackendContext::dmabuf_convert(std::vector<uint8_t> &dmabuf) {
+void CV18xx::dmabuf_convert(std::vector<uint8_t> &dmabuf) {
   uint32_t dmabuf_sz = 0;
   uint32_t pmu_sz = 0;
-  cvk_ctx_->ops->dmabuf_size(cmdbuf_.data(), cmdbuf_.size(),
-                             &dmabuf_sz, &pmu_sz);
+  cv18xx->cvk_ctx_->ops->dmabuf_size(cv18xx->cmdbuf_.data(), cv18xx->cmdbuf_.size(),
+                                   &dmabuf_sz, &pmu_sz);
   dmabuf.resize(dmabuf_sz);
-  cvk_ctx_->ops->dmabuf_convert(cmdbuf_.data(), cmdbuf_.size(),
-                                dmabuf.data());
+  cv18xx->cvk_ctx_->ops->dmabuf_convert(cv18xx->cmdbuf_.data(),
+                                      cv18xx->cmdbuf_.size(), dmabuf.data());
 }
 
-void CviBackendContext::submit() {
+void CV18xx::submit() {
   uint32_t size;
-  uint8_t *cmdbuf = cvk_ctx_->ops->acquire_cmdbuf(cvk_ctx_, &size);
+  uint8_t *cmdbuf = cv18xx->cvk_ctx_->ops->acquire_cmdbuf(cv18xx->cvk_ctx_, &size);
   write_cmdbuf(cmdbuf, size);
-  cvk_ctx_->ops->reset(cvk_ctx_);
+  cv18xx->cvk_ctx_->ops->reset(cv18xx->cvk_ctx_);
 }
 
-int CviBackendContext::cvi_chip_info_context(
-    CVI_CHIP_INFO_E cvi_chip_info_e) const {
-  if (cvi_chip_info_e == CVI_CHIP_VERSION)
-    return cvk_ctx_->info.version;
-  else if (cvi_chip_info_e == CVI_CHIP_NODE_SHIFT)
-    return cvk_ctx_->info.node_shift;
-  else if (cvi_chip_info_e == CVI_CHIP_LANE_NUM)
-    return cvk_ctx_->info.npu_num;
-  else if (cvi_chip_info_e == CVI_CHIP_LANE_SHIFT)
-    return cvk_ctx_->info.npu_shift;
-  else if (cvi_chip_info_e == CVI_CHIP_EU_NUM)
-    return cvk_ctx_->info.eu_num;
-  else if (cvi_chip_info_e == CVI_CHIP_EU_SHIFT)
-    return cvk_ctx_->info.eu_shift;
-  else if (cvi_chip_info_e == CVI_CHIP_LMEM_SIZE)
-    return cvk_ctx_->info.lmem_size;
-  else if (cvi_chip_info_e == CVI_CHIP_LMEM_BANK)
-    return cvk_ctx_->info.lmem_banks;
-  else
-    assert(0);
-}
-
-uint8_t
-CviBackendContext::getTdmaBaseSelectIndexFromGaddr(gaddr_t gaddr) const {
+uint8_t CV18xx::getTdmaBaseSelectIndexFromGaddr(gaddr_t gaddr) {
   // we store memory region value in bits (40 ~ 42) of gaddr;
   uint32_t memoryRegion = ((((uint64_t)gaddr) >> 40) & 0x07);
   if (memoryRegion < MAX_GLOBAL_MEMORY_REGION) {
-    return tdmaBaseSelects[memoryRegion];
+    return cv18xx->tdmaBaseSelects[memoryRegion];
   }
   return 0;
 }
 
-CviBackendContext *cvi_backend_create_context(const char *runchip) {
-  CviBackendContext *ctx = new CviBackendContext(runchip);
-  return ctx;
-}
-
-void cvi_backend_delete_context(CviBackendContext *ctx) {
-  delete ctx;
-}
-
-void cvi_backend_submit(CviBackendContext *ctx) {
-  ctx->submit();
-}
-
-void cvi_backend_get_cmdbuf(CviBackendContext *ctx,
-                            std::vector<uint8_t> &cmdbuf) {
-  ctx->read_cmdbuf(cmdbuf);
-}
-
-void cvi_backend_dmabuf_convert(CviBackendContext *ctx,
-                                std::vector<uint8_t> &dmabuf) {
-  ctx->dmabuf_convert(dmabuf);
-}
-
-void cvi_backend_parallel_enable(CviBackendContext *ctx) {
-  ctx->parallel_enable();
-}
-
-void cvi_backend_parallel_disable(CviBackendContext *ctx) {
-  ctx->parallel_disable();
-}
-
-int cvi_backend_chip_context(CviBackendContext *ctx,
-                             CVI_CHIP_INFO_E cvi_chip_info_e) {
-  return ctx->cvi_chip_info_context(cvi_chip_info_e);
-}
-
-void cvi_backend_set_layer_id(CviBackendContext *ctx, int layer_id) {
-  ctx->set_layer_id(layer_id);
-}
-
 // tdma api
 
-void CviBackendContext::tdma_load_stride(cvk_tl_t *tlp, uint64_t ga_src,
-                                         cvk_tg_stride_t ts_stride,
-                                         bool do_transpose,
-                                         bool do_decompress) const {
+void CV18xx::tdma_load_stride(cvk_tl_t *tlp, uint64_t ga_src,
+                              cvk_tg_stride_t ts_stride, bool do_transpose,
+                              bool do_decompress) {
   assert(tlp != nullptr);
 
   // tensor in system memory
@@ -227,14 +121,25 @@ void CviBackendContext::tdma_load_stride(cvk_tl_t *tlp, uint64_t ga_src,
 //   1880v2 bmk does not keep eu-aligned info, use need to calculate stride
 //   info.
 //
-void CviBackendContext::tdma_load(cvk_tl_t *tlp, uint64_t ga_src,
-                                  uint8_t do_transpose) const {
+void CV18xx::tdma_load(cvk_tl_t *tlp, uint64_t ga_src, uint8_t do_transpose) {
   assert(tlp != nullptr);
 
   cvk_tg_t ts_data = {0};
   ts_data.fmt = tlp->fmt;
   ts_data.shape = {tlp->shape.n, tlp->shape.c, tlp->shape.h, tlp->shape.w};
   ts_data.stride = tg_default_stride(ts_data.shape, ts_data.fmt);
+  tdma_load_stride(tlp, ga_src, ts_data.stride);
+}
+
+void CV18xx::tdma_load_table(cvk_tl_t *tlp, uint64_t ga_src,
+                             uint8_t do_transpose) {
+  assert(tlp != nullptr);
+  cvk_tg_t ts_data = {0};
+  ts_data.fmt = tlp->fmt;
+  ts_data.shape = {tlp->shape.n, tlp->shape.c, tlp->shape.h, tlp->shape.w};
+  ts_data.stride = tg_default_stride(ts_data.shape, ts_data.fmt);
+  // set stride.c=0 so that load the same one table.
+  ts_data.stride.c = 0;
   tdma_load_stride(tlp, ga_src, ts_data.stride);
 }
 
@@ -246,10 +151,9 @@ void CviBackendContext::tdma_load(cvk_tl_t *tlp, uint64_t ga_src,
 //   1880v2 bmk does not keep eu-aligned info, use need to calculate stride
 //   info.
 //
-void CviBackendContext::tdma_store_stride(cvk_tl_t *tlp, uint64_t ga_dst,
-                                          cvk_tg_stride_t ts_stride,
-                                          bool do_transpose,
-                                          bool do_compress) const {
+void CV18xx::tdma_store_stride(cvk_tl_t *tlp, uint64_t ga_dst,
+                               cvk_tg_stride_t ts_stride, bool do_transpose,
+                               bool do_compress) {
   assert(tlp != nullptr);
 
   // tensor in system memory
@@ -292,8 +196,7 @@ void CviBackendContext::tdma_store_stride(cvk_tl_t *tlp, uint64_t ga_dst,
 //   1880v2 bmk does not keep eu-aligned info, use need to calculate stride
 //   info.
 //
-void CviBackendContext::tdma_store(cvk_tl_t *tlp, uint64_t ga_dst,
-                                   uint8_t do_transpose) const {
+void CV18xx::tdma_store(cvk_tl_t *tlp, uint64_t ga_dst, uint8_t do_transpose) {
   assert(tlp != nullptr);
 
   // tensor in system memory
@@ -322,9 +225,8 @@ void CviBackendContext::tdma_store(cvk_tl_t *tlp, uint64_t ga_dst,
 //
 // Implement 1880 gdma_load_stride, matrix format
 //
-void CviBackendContext::tdma_load_stride(cvk_ml_t *tlp, uint64_t ga_src,
-                                         cvk_mg_stride_t ts_stride,
-                                         uint8_t do_transpose) const {
+void CV18xx::tdma_load_stride(cvk_ml_t *tlp, uint64_t ga_src,
+                              cvk_mg_stride_t ts_stride, uint8_t do_transpose) {
   assert(tlp != nullptr);
 
   // Global memory from reshaped local memory
@@ -362,8 +264,7 @@ void CviBackendContext::tdma_load_stride(cvk_ml_t *tlp, uint64_t ga_src,
 //
 // Implement 1880 gdma_load, matrix format
 //
-void CviBackendContext::tdma_load(cvk_ml_t *tlp, uint64_t ga_src,
-                                  uint8_t do_transpose) const {
+void CV18xx::tdma_load(cvk_ml_t *tlp, uint64_t ga_src, uint8_t do_transpose) {
   assert(tlp != nullptr);
   cvk_mg_stride_t stride = {tlp->shape.col};
   if (tlp->fmt == CVK_FMT_BF16) {
@@ -372,8 +273,7 @@ void CviBackendContext::tdma_load(cvk_ml_t *tlp, uint64_t ga_src,
   tdma_load_stride(tlp, ga_src, stride);
 }
 
-void CviBackendContext::tdma_load_decompress(cvk_ml_t *tlp,
-                                             uint64_t ga_src) const {
+void CV18xx::tdma_load_decompress(cvk_ml_t *tlp, uint64_t ga_src) {
   assert(tlp != nullptr);
 
   cvk_mg_t mg_src = {0};
@@ -395,8 +295,7 @@ void CviBackendContext::tdma_load_decompress(cvk_ml_t *tlp,
 //
 // Implement 1880 gdma_store, matrix format
 //
-void CviBackendContext::tdma_store(cvk_ml_t *tlp, uint64_t ga_dst,
-                                   uint8_t do_transpose) const {
+void CV18xx::tdma_store(cvk_ml_t *tlp, uint64_t ga_dst, uint8_t do_transpose) {
 
   assert(do_transpose == false);
 
@@ -422,9 +321,9 @@ void CviBackendContext::tdma_store(cvk_ml_t *tlp, uint64_t ga_dst,
 //
 // Implement 1880 gdma_store_stride, matrix format
 //
-void CviBackendContext::tdma_store_stride(cvk_ml_t *tlp, uint64_t ga_dst,
-                                          cvk_mg_stride_t ts_stride,
-                                          uint8_t do_transpose) const {
+void CV18xx::tdma_store_stride(cvk_ml_t *tlp, uint64_t ga_dst,
+                               cvk_mg_stride_t ts_stride,
+                               uint8_t do_transpose) {
 
   assert(do_transpose == false);
 
@@ -444,10 +343,11 @@ void CviBackendContext::tdma_store_stride(cvk_ml_t *tlp, uint64_t ga_dst,
   tdma_l2g_matrix_copy(&p1);
 }
 
-void CviBackendContext::tdma_g2g_tensor_copy(
-    uint64_t src_addr, cvk_tg_shape_t src_shape, cvk_tg_stride_t src_stride,
-    cvk_fmt_t src_fmt, uint64_t dst_addr, cvk_tg_shape_t dst_shape,
-    cvk_tg_stride_t dst_stride, cvk_fmt_t dst_fmt) const {
+void CV18xx::tdma_g2g_tensor_copy(uint64_t src_addr, cvk_tg_shape_t src_shape,
+                                  cvk_tg_stride_t src_stride, cvk_fmt_t src_fmt,
+                                  uint64_t dst_addr, cvk_tg_shape_t dst_shape,
+                                  cvk_tg_stride_t dst_stride,
+                                  cvk_fmt_t dst_fmt) {
   cvk_tg_t src = {0};
   src.start_address = src_addr;
   src.base_reg_index = getTdmaBaseSelectIndexFromGaddr(src_addr);
@@ -469,7 +369,7 @@ void CviBackendContext::tdma_g2g_tensor_copy(
   tdma_g2g_tensor_copy(&p);
 }
 
-int CviBackendContext::bitsize_of_fmt(uint32_t fmt) const {
+int CV18xx::bitsize_of_fmt(uint32_t fmt) {
   switch (fmt) {
   case CVK_FMT_F32:
   case CVK_FMT_I32:
@@ -494,7 +394,7 @@ int CviBackendContext::bitsize_of_fmt(uint32_t fmt) const {
   }
 }
 
-const cvk_tl_shape_t &CviBackendContext::lut_table_shape(cvk_fmt_t fmt) const {
+const cvk_tl_shape_t &CV18xx::lut_table_shape(cvk_fmt_t fmt) {
   static const cvk_tl_shape_t table_fixed = tl_shape_t4(1, NPU_NUM, 16, 16);
   static const cvk_tl_shape_t table_bf16 = tl_shape_t4(1, NPU_NUM, 32, 8);
   assert_support_fmt(fmt);
@@ -504,7 +404,7 @@ const cvk_tl_shape_t &CviBackendContext::lut_table_shape(cvk_fmt_t fmt) const {
   return table_fixed;
 }
 
-bool CviBackendContext::size_to_hw(int size, int&h, int&w) const {
+bool CV18xx::size_to_hw(int size, int &h, int &w) {
   if (size <= MAX_WIDTH) {
     h = 1;
     w = size;
@@ -523,9 +423,9 @@ bool CviBackendContext::size_to_hw(int size, int&h, int&w) const {
   return false;
 }
 
-void CviBackendContext::tiling_all(std::vector<tiling_info_t> &tiling_result,
-                                   int64_t total, cvk_fmt_t fmt, int blob_num,
-                                   uint32_t lmem_size) const {
+void CV18xx::tiling_all(std::vector<tiling_info_t> &tiling_result,
+                        int64_t total, cvk_fmt_t fmt, int blob_num,
+                        uint32_t lmem_size) {
   tiling_info_t tile;
   memset(&tile, 0, sizeof(tile));
   tile.n = 1;
@@ -563,10 +463,9 @@ void CviBackendContext::tiling_all(std::vector<tiling_info_t> &tiling_result,
   return;
 }
 
-void CviBackendContext::tiling_nchw(std::vector<tiling_info_t> &tiling_result,
-                                    int n, int c, int h, int w, cvk_fmt_t fmt,
-                                    int blob_num, uint32_t lmem_size,
-                                    tiling_mode_t mode) const {
+void CV18xx::tiling_nchw(std::vector<tiling_info_t> &tiling_result, int n,
+                         int c, int h, int w, cvk_fmt_t fmt, int blob_num,
+                         uint32_t lmem_size, tiling_mode_t mode) {
   int max_w = std::min(w, MAX_WIDTH);
   int max_h = std::min(h, MAX_HEIGHT);
   int max_c = std::min(c, MAX_CHANNEL);
@@ -585,7 +484,6 @@ void CviBackendContext::tiling_nchw(std::vector<tiling_info_t> &tiling_result,
     min_c = max_c;
     min_w = max_w;
   }
-
 
   int step_w, step_h, step_c, step_n;
   uint32_t lmem_required = 0;
@@ -637,10 +535,9 @@ after_loop:
                  mode, n, c, h, w, step_n, step_c, step_h, step_w););
 }
 
-void CviBackendContext::tiling_packing(
-    std::vector<tiling_info_t> &tiling_result, cvk_tg_shape_t shape,
-    cvk_fmt_t fmt, int blob_num, uint32_t reserved_lmem,
-    tiling_mode_t mode) const {
+void CV18xx::tiling_packing(std::vector<tiling_info_t> &tiling_result,
+                            cvk_tg_shape_t shape, cvk_fmt_t fmt, int blob_num,
+                            uint32_t reserved_lmem, tiling_mode_t mode) {
   int n = static_cast<int>(shape.n);
   int c = static_cast<int>(shape.c);
   int h = static_cast<int>(shape.h);
@@ -648,12 +545,12 @@ void CviBackendContext::tiling_packing(
   tiling_packing(tiling_result, n, c, h, w, fmt, blob_num, reserved_lmem, mode);
 }
 
-void CviBackendContext::tiling_packing(
-    std::vector<tiling_info_t> &tiling_result, int n, int c, int h, int w,
-    cvk_fmt_t fmt, int blob_num, uint32_t reserved_lmem,
-    tiling_mode_t mode) const {
-  uint32_t lmem_size = (uint32_t)LOCAL_MEM_SIZE - reserved_lmem;
-  assert((uint32_t)LOCAL_MEM_SIZE > reserved_lmem && "reserved_lmem too large");
+void CV18xx::tiling_packing(std::vector<tiling_info_t> &tiling_result, int n,
+                            int c, int h, int w, cvk_fmt_t fmt, int blob_num,
+                            uint32_t reserved_lmem, tiling_mode_t mode) {
+  uint32_t lmem_size = (uint32_t)CV18xx::LMEM_BYTES - reserved_lmem;
+  assert((uint32_t)CV18xx::LMEM_BYTES > reserved_lmem &&
+         "reserved_lmem too large");
 
   if (mode == TilingAll) {
     tiling_all(tiling_result, n * c * h * w, fmt, blob_num, lmem_size);
@@ -662,18 +559,14 @@ void CviBackendContext::tiling_packing(
   }
 }
 
-void CviBackendContext::assert_support_fmt(cvk_fmt_t fmt) const {
+void CV18xx::assert_support_fmt(cvk_fmt_t fmt) {
   assert((fmt == CVK_FMT_I8 || fmt == CVK_FMT_U8 || fmt == CVK_FMT_BF16) &&
          "others not supported");
 }
 
-void *cvi_backend_get_cvk_ctx(const CviBackendContext &ctx) {
-  return ctx.get_cvk_ctx();
-}
-
-uint32_t CviBackendContext::ga_cmpr_offset(int n, int c, int h, int w,
-                                           int n_pos, int c_pos, int h_pos,
-                                           int c_step, int step_size) const {
+uint32_t CV18xx::ga_cmpr_offset(int n, int c, int h, int w, int n_pos,
+                                int c_pos, int h_pos, int c_step,
+                                int step_size) {
   uint32_t cmpr_n_offset = n_pos * llvm::divideCeil(c, c_step) * h * step_size;
   uint32_t cmpr_c_offset = (c_pos / c_step) * h * step_size;
   uint32_t cmpr_h_offset = h_pos * step_size;
@@ -681,15 +574,14 @@ uint32_t CviBackendContext::ga_cmpr_offset(int n, int c, int h, int w,
   return cmpr_n_offset + cmpr_c_offset + cmpr_h_offset;
 }
 
-uint32_t CviBackendContext::addr_after_right_shift(int addr, uint32_t step,
-                                                   int c_str) const {
-  uint32_t lmem_i = (addr / LOCAL_MEM_SIZE + step) % NPU_NUM;
-  uint32_t offset = addr % LOCAL_MEM_SIZE + (lmem_i + step) / NPU_NUM * c_str;
-  return lmem_i * LOCAL_MEM_SIZE + offset;
+uint32_t CV18xx::addr_after_right_shift(int addr, uint32_t step, int c_str) {
+  uint32_t lmem_i = (addr / CV18xx::LMEM_BYTES + step) % NPU_NUM;
+  uint32_t offset =
+      addr % CV18xx::LMEM_BYTES + (lmem_i + step) / NPU_NUM * c_str;
+  return lmem_i * CV18xx::LMEM_BYTES + offset;
 }
 
-uint32_t CviBackendContext::tl_cmpr_c_stride(int n, int c, int h, int w,
-                                             cvk_fmt_t fmt) const {
+uint32_t CV18xx::tl_cmpr_c_stride(int n, int c, int h, int w, cvk_fmt_t fmt) {
   // (1, c, h, w) -> (1, NPU, 1, w) ...
   // Right shift NPU, same as next batch so eu_align = 1
   cvk_tl_shape_t blck_cmpr_shape = tl_shape_t4(n, c, h, w);
@@ -698,7 +590,7 @@ uint32_t CviBackendContext::tl_cmpr_c_stride(int n, int c, int h, int w,
   return blck_cmpr_stride.c;
 }
 
-void CviBackendContext::tiu_zeros(uint16_t layer_id, cvk_tl_t *tl_mem) const {
+void CV18xx::tiu_zeros(uint16_t layer_id, cvk_tl_t *tl_mem) {
   assert(tl_mem);
   if (tl_mem->fmt == CVK_FMT_BF16) {
     auto stride =
@@ -735,32 +627,55 @@ void CviBackendContext::tiu_zeros(uint16_t layer_id, cvk_tl_t *tl_mem) const {
   }
 }
 
-template <typename FPtrTy> FPtrTy CV18xx::CastToFPtr(const char *symbolName) {
-  assert(DL.isValid());
-  auto fPtr = DL.getAddressOfSymbol(symbolName);
-  if (fPtr == nullptr) {
-    llvm::errs() << "can't find symbol: " << symbolName << "\n";
-    llvm_unreachable(symbolName);
-  }
-  return reinterpret_cast<FPtrTy>(fPtr);
+cvk_fmt_t CV18xx::getDataType(Value v) {
+  auto type = Module::getStorageType(v);
+  return getDataType(type);
 }
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
-void CV18xx::init() {
-    if (!DL.isValid()) {
-    std::string Err;
-    DL = llvm::sys::DynamicLibrary::getPermanentLibrary(LIB_NAME.data(), &Err);
-    CAST_FUNCTION(cvikernel_register);
-    if (DL.isValid() == false) {
-      llvm_unreachable(Err.c_str());
-    }
+void CV18xx::load_ctx(const llvm::StringRef chip) {
+  cvk_cmd_buf_.reserve(0x20000000);
+  cvk_reg_info_t req_info = {0};
+  strncpy(req_info.chip_ver_str, chip.lower().c_str(),
+          sizeof(req_info.chip_ver_str) - 1);
+  req_info.cmdbuf_size = cvk_cmd_buf_.capacity();
+  req_info.cmdbuf = cvk_cmd_buf_.data();
+  CAST_FUNCTION(cvikernel_register);
+  cvk_ctx_ = dl_cvikernel_register(&req_info);
+  if (!cvk_ctx_) {
+    llvm_unreachable("cvikernel_register failed");
   }
+  // Default mapping between tdma base selection
+  // and global memory region.
+  tdmaBaseSelects[SHARED_MEMORY] = 0;
+  tdmaBaseSelects[WEIGHT_MEMORY] = 1;
+  tdmaBaseSelects[PRIVATE_MEMORY] = 2;
+  tdmaBaseSelects[IO_MEMORY_0] = 3;
+  tdmaBaseSelects[IO_MEMORY_1] = 4;
+  tdmaBaseSelects[IO_MEMORY_2] = 5;
+  tdmaBaseSelects[IO_MEMORY_3] = 6;
+  tdmaBaseSelects[IO_MEMORY_4] = 7;
+
+  LLVM_DEBUG(llvm::errs() << "register " << chip << " done\n";);
 }
 
-cvk_fmt_t CV18xx::getDataType(Value v) {
-  auto type = Module::getStorageType(v);
-  return getDataType(type);
+CV18xx::CV18xx(const llvm::StringRef chip) {
+  LIB_NAME = "libcvikernel.so";
+  load_library();
+  load_ctx(chip);
+  NPU_NUM = cvk_ctx_->info.npu_num;
+  EU_BYTES = cvk_ctx_->info.eu_num;
+  LMEM_BYTES = cvk_ctx_->info.lmem_size;
+  LMEM_BANKS = cvk_ctx_->info.lmem_banks;
+  LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
+}
+
+CV18xx::~CV18xx() {
+  cv18xx->cvk_ctx_->ops->cleanup(cv18xx->cvk_ctx_);
+  cvk_cmd_buf_.clear();
+  cvk_cmd_buf_.shrink_to_fit();
+  free(cv18xx->cvk_ctx_);
 }
 
 cvk_fmt_t CV18xx::getDataType(mlir::Type type) {
