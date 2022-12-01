@@ -334,5 +334,12 @@ void cvi_backend_tg_fixed_pixel_shuffle_kernel(
 void cvi_backend_tg_bf16_pixel_shuffle_kernel(
     uint32_t layer_id, gaddr_t ga_ifmap, gaddr_t ga_ofmap, int input_n,
     int input_c, int input_h, int input_w, int factor, bool isDCR);
+
+void cvi_backend_tg_bf16_lrn_kernel(uint32_t layer_id, gaddr_t input_gaddr,
+                                    gaddr_t output_gaddr,
+                                    gaddr_t exp_table_gaddr,
+                                    gaddr_t mantissa_table_gaddr, int input_n,
+                                    int input_c, int input_h, int input_w,
+                                    int local_size, float alpha, float k);
 } // namespace backend
 } // namespace tpu_mlir
