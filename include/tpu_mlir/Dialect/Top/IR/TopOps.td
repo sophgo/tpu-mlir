@@ -450,6 +450,23 @@ def Top_MaxOp: Top_Op<"Max"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, InOutSameShape]> {
+  let summary = "Add Const operator";
+
+  let description = [{
+    Y = X + const_val
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr: $const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
   let summary = "Mul Const operator";
 
@@ -1092,6 +1109,17 @@ def Top_CompareConstOp : Top_Op<"CompareConst"> {
     I64Attr:$type,
     F64Attr:$const_val,
     I64Attr:$inversed
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ErfOp : Top_Op<"Erf"> {
+  let summary = "Erf operation";
+  let description = [{
+    Computes the error function of the given input tensor element-wise.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
   );
   let results = (outs AnyTensor:$output);
 }

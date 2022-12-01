@@ -21,8 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "TorchStd",
-                "TorchGelu", "TorchHardSigmoid", "TorchHardSwish"]
+Failed_Cases = ["TorchLayerNorm", "TorchHardSigmoid", "TorchHardSwish"]
 
 
 class ONNX_IR_TESTER(object):
@@ -54,6 +53,7 @@ class ONNX_IR_TESTER(object):
             "Clip": self.test_Clip,
             "DepthToSpace": self.test_DepthToSpace,
             "Div": self.test_Div,
+            "Erf": self.test_Erf,
             "Exp": self.test_Exp,
             "Expand": self.test_Expand,
             "Expand2": self.test_Expand2,
@@ -2377,6 +2377,13 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def, input_data=input_data)
             print("====== TEST {} Success ======".format(cmp_type))
 
+    def test_Erf(self, case_name):
+        input_shape = [10, 3, 32, 32]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([exp_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
