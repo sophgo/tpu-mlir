@@ -12,6 +12,28 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static Value CreateConvOp(PatternRewriter &rewriter, int kernel_dims,
+                          Location loc, Type type, std::vector<Value> &operands,
+                          std::vector<NamedAttribute> &attrs) {
+  switch (kernel_dims) {
+  case 1: {
+    auto newOp = rewriter.create<tpu::Conv1DOp>(loc, type, operands, attrs);
+    return newOp.output();
+  } break;
+  case 2: {
+    auto newOp = rewriter.create<tpu::Conv2DOp>(loc, type, operands, attrs);
+    return newOp.output();
+  } break;
+  case 3: {
+    auto newOp = rewriter.create<tpu::Conv3DOp>(loc, type, operands, attrs);
+    return newOp.output();
+  } break;
+  default:
+    llvm_unreachable("not support kernel dims");
+  }
+  return nullptr;
+}
+
 void ConvLowering::LoweringF32(PatternRewriter &rewriter,
                                top::ConvOp op) const {
   rewriter.setInsertionPointAfter(op);
@@ -27,21 +49,8 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
   bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-
-  Value newValue;
-  if (op.kernel_shape().size() == 1) {
-    auto newOp = rewriter.create<tpu::Conv1DOp>(
-        op->getLoc(), op.output().getType(), operands, attrs);
-    newValue = newOp.output();
-  } else if (op.kernel_shape().size() == 2) {
-    auto newOp = rewriter.create<tpu::Conv2DOp>(
-        op->getLoc(), op.output().getType(), operands, attrs);
-    newValue = newOp.output();
-  } else {
-    auto newOp = rewriter.create<tpu::Conv3DOp>(
-        op->getLoc(), op.output().getType(), operands, attrs);
-    newValue = newOp.output();
-  }
+  auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), op->getLoc(),
+                               op.output().getType(), operands, attrs);
   rewriter.replaceOp(op, {newValue});
 }
 
@@ -156,17 +165,18 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
 
-  Value newValue;
-  if (op.kernel_shape().size() == 3) {
-    /// merge requant to conv3d when 1684x backend supports this
-    /// conv3d(int32) + requant_to_i8
+  bool output_int32 = false;
+  if (Module::isBM1686(LoweringConfig::chip) || op.kernel_shape().size() == 3) {
+    output_int32 = true;
+  }
+  if (output_int32) {
+    // to int32, and then requant to int8
     auto convType = RankedTensorType::get(Module::getShape(op.output()),
                                           rewriter.getI32Type());
     auto conv_name = Module::getName(op.getOperation()).str() + "_int32";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(conv_name));
-    auto Conv3dOp =
-        rewriter.create<tpu::Conv3DOp>(name_loc, convType, operands, attrs);
-
+    auto conv_out = CreateConvOp(rewriter, op.kernel_shape().size(), name_loc,
+                                 convType, operands, attrs);
     // requant
     auto output_type = Quant::getQuantInt8Type(op.output(), asymmetric);
     std::vector<int32_t> quant(attr.oc * 3, 0);
@@ -178,30 +188,25 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     auto quant_type =
         RankedTensorType::get({1, attr.oc, 1, 1, 3}, rewriter.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
-    newValue = do_requant(op->getLoc(), Conv3dOp.output(), quant_value,
-                          output_type, true, tpu::RequantMode::Normal);
-  } else {
-    auto ctx = op->getContext();
-    attrs.push_back(rewriter.getNamedAttr(
-        "quant_mode",
-        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
-    attrs.push_back(rewriter.getNamedAttr(
-        "multiplier",
-        rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
-    auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-    if (op.kernel_shape().size() == 1) {
-      auto newOp = rewriter.create<tpu::Conv1DOp>(op->getLoc(), newType,
-                                                  operands, attrs);
-      newValue = newOp.output();
-    } else if (op.kernel_shape().size() == 2) {
-      auto newOp = rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType,
-                                                  operands, attrs);
-      newValue = newOp.output();
-    }
+    auto newValue = do_requant(op->getLoc(), conv_out, quant_value, output_type,
+                               true, tpu::RequantMode::Normal);
+    rewriter.replaceOp(op, {newValue});
+    return;
   }
+
+  auto ctx = op->getContext();
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
+  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+
+  auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), op->getLoc(),
+                               newType, operands, attrs);
   rewriter.replaceOp(op, {newValue});
+  return;
 }
 
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -220,20 +225,8 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.output());
-  Value newValue;
-  if (op.kernel_shape().size() == 1) {
-    auto newOp =
-        rewriter.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  } else if (op.kernel_shape().size() == 2) {
-    auto newOp =
-        rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  } else {
-    auto newOp =
-        rewriter.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  }
+  auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), op->getLoc(),
+                               newType, operands, attrs);
   rewriter.replaceOp(op, {newValue});
 }
 
@@ -253,20 +246,8 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantF16Type(op.output());
-  Value newValue;
-  if (op.kernel_shape().size() == 1) {
-    auto newOp =
-        rewriter.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  } else if (op.kernel_shape().size() == 2) {
-    auto newOp =
-        rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  } else {
-    auto newOp =
-        rewriter.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  }
+  auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), op->getLoc(),
+                               newType, operands, attrs);
   rewriter.replaceOp(op, {newValue});
 }
 
@@ -339,7 +320,8 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
           cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
     } else {
       // bias_quant->resize(attr.oc, 0);
-      bias_quant = std::shared_ptr<std::vector<int32_t> >(new std::vector<int32_t>(attr.oc, 0));
+      bias_quant = std::shared_ptr<std::vector<int32_t>>(
+          new std::vector<int32_t>(attr.oc, 0));
     }
     int64_t oc = filter_type.getShape()[0];
     int64_t kernel_size = filter_type.getNumElements() / oc;
@@ -387,20 +369,8 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto new_name = Module::getName(op.getOperation()).str() + "_int32";
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
 
-  Value newValue;
-  if (op.kernel_shape().size() == 1) {
-    auto newOp =
-        rewriter.create<tpu::Conv1DOp>(name_loc, newType, operands, attrs);
-    newValue = newOp.output();
-  } else if (op.kernel_shape().size() == 2) {
-    auto newOp =
-        rewriter.create<tpu::Conv2DOp>(name_loc, newType, operands, attrs);
-    newValue = newOp.output();
-  } else {
-    auto newOp =
-        rewriter.create<tpu::Conv3DOp>(name_loc, newType, operands, attrs);
-    newValue = newOp.output();
-  }
+  auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), name_loc,
+                               newType, operands, attrs);
 
   // do requant
   if (quant_size == 1) {
