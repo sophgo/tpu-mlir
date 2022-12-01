@@ -54,8 +54,10 @@ class BaseConverter(object):
             raise KeyError("tensor {} conflict".format(name))
         if not isinstance(data, np.ndarray):
             raise KeyError("tensor data must be numpy array")
+        if len(data.shape) == 0:
+            data = data.reshape([1])
         if data.dtype == np.int64:
-            self.tensors[name] = data.astype(np.float32);
+            self.tensors[name] = data.astype(np.float32)
         else:
             self.tensors[name] = data
         self.addShape(name, data.shape)
