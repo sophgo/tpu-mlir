@@ -23,9 +23,31 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 
-// int8
 void tpu::SubOp::codegen_global_cv18xx(int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  int input_num = inputs().size();
+  assert(input_num == 2);
+  int64_t n, c, h, w, bn, bc, bh, bw;
+  Module::getNCHW(inputs()[0], n, c, h, w, false);
+  Module::getNCHW(inputs()[1], bn, bc, bh, bw, false);
+  std::vector<gaddr_t> ga_inputs;
+  gaddr_t ga_a = Module::getAddress(inputs()[0]);
+  gaddr_t ga_b = Module::getAddress(inputs()[1]);
+  gaddr_t ga_output = Module::getAddress(output());
+
+  if (Quant::isUniformQuantized(output())) {
+    auto multiplier_v = Module::getI64Array(multipliers(), input_num, 1);
+    auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+    std::vector<int32_t> multiplier;
+    multiplier.assign(multiplier_v->begin(), multiplier_v->end());
+
+    cvi_backend_tg_int8_bcast_sub_kernel(
+        layer_id, ga_a, ga_b, ga_output, n, c, h, w, bn, bc, bh, bw, do_relu(),
+        (int32_t)rshift_v->at(0), multiplier.data());
+
+  } else {
+    cvi_backend_tg_bf16_bcast_sub_kernel(layer_id, ga_a, ga_b, ga_output, n, c,
+                                         h, w, bn, bc, bh, bw, do_relu());
+  }
 }
 
 // =========================================

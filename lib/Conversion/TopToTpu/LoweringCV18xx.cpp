@@ -47,6 +47,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SiLULowering,
       SliceLowering,
       SoftmaxLowering,
+      SubLowering,
       TileLowering,
       UpsampleLowering
       // clang-format on

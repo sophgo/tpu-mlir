@@ -32,12 +32,13 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
   for (int i = 0; i < input_num; ++i) {
     ga_inputs.emplace_back(Module::getAddress(inputs()[i]));
   }
+
   gaddr_t ga_output = Module::getAddress(output());
 
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
-
+  auto coeffs_ = Module::getF64Array(coeff(), 2, 1);
   Module::getNCHW(output(), n, c, h, w);
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
@@ -86,14 +87,16 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
       for (int i = 0; i < input_num; ++i) {
         multiplier_int.emplace_back(multiplier_v->at(i));
       }
-      std::vector<int> coeffs(input_num, 1);
+      std::vector<int> coeffs;
+      coeffs.assign(coeffs_->begin(), coeffs_->end());
       cvi_backend_tg_fixed_eltwise_add_kernel(
           layer_id, ga_inputs.data(), ga_output, input_num, n, c, h, w,
           do_relu(), do_early_stride, early_stride_h, early_stride_w,
           rshift_int, multiplier_int.data(), coeffs.data());
     } else {
       // TODO do_early_stride, coeffs
-      std::vector<float> coeffs(input_num, 1.0);
+      std::vector<float> coeffs;
+      coeffs.assign(coeffs_->begin(), coeffs_->end());
       cvi_backend_tg_bf16_eltwise_add_kernel(
           layer_id,         // layer_id
           ga_inputs.data(), // gaddr_t ga_input[]
