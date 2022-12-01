@@ -25,13 +25,23 @@ LogicalResult tpu::AddOp::init(InferenceParameter &p) {
   auto input0_shape = shape_expand_dim(in0_shape, dims);
   auto input1_shape = shape_expand_dim(in1_shape, dims);
   auto binary = new Binary();
+  // fix me. naive impletment.
+  // It should be o = alpha * i0 + beta * i1
+  auto coeff_ = Module::getF64Array(coeff(), 2, 1);
+  bool is_add = true;
+  if (Module::getStorageType(output()).isa<FloatType>()) {
+    if (coeff_->at(0) == 1 && coeff_->at(1) == -1) {
+      is_add = false;
+    }
+  }
+
   (*binary)
       .lhs(p.inputs[0], input0_shape)
       .rhs(p.inputs[1], input1_shape)
       .dst(p.outputs[0], Module::getShape(output()))
       .do_relu(do_relu())
       .relu_limit(relu_limit().convertToDouble())
-      .algorithem(algorithm::binary_add)
+      .algorithem(is_add ? algorithm::binary_add : algorithm::binary_sub)
       .setup();
   p.handle = (void *)binary;
   return success();

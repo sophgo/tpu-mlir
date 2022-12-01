@@ -2074,7 +2074,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Sub2(self, case_name):
-        input1_shape = [4, 3, 27, 1]
+        input1_shape = [4, 3, 27, 27]
         input2_shape = [4, 3, 1, 27]
         output_shape = [4, 3, 27, 27]
 
