@@ -1,10 +1,114 @@
-# SPDX-License-Identifier: MIT
+#!/usr/bin/env python3
+# Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+#
+# TPU-MLIR is licensed under the 2-Clause BSD License except for the
+# third-party components.
+#
+# ==============================================================================
 
 import cv2
 import onnxruntime as ort
 import argparse
 import numpy as np
 from tools.model_runner import mlir_inference, model_inference, onnx_inference
+
+image_mean_test = image_mean = np.array([127, 127, 127])
+image_std = 128.0
+iou_threshold = 0.3
+center_variance = 0.1
+size_variance = 0.2
+
+min_boxes = [[10, 16, 24], [32, 48], [64, 96], [128, 192, 256]]
+shrinkage_list = []
+image_size = [320, 240]  # default input size 320*240
+feature_map_w_h_list = [[40, 20, 10, 5], [30, 15, 8, 4]]  # default feature map size
+priors = []
+
+
+def generate_priors(feature_map_list, shrinkage_list, image_size, min_boxes, clamp=True):
+    priors = []
+    for index in range(0, len(feature_map_list[0])):
+        scale_w = image_size[0] / shrinkage_list[0][index]
+        scale_h = image_size[1] / shrinkage_list[1][index]
+        for j in range(0, feature_map_list[1][index]):
+            for i in range(0, feature_map_list[0][index]):
+                x_center = (i + 0.5) / scale_w
+                y_center = (j + 0.5) / scale_h
+
+                for min_box in min_boxes[index]:
+                    w = min_box / image_size[0]
+                    h = min_box / image_size[1]
+                    priors.append([x_center, y_center, w, h])
+    print("priors nums:{}".format(len(priors)))
+    priors = np.array(priors)
+    if clamp:
+        np.clip(priors, 0.0, 1.0, out=priors)
+    return priors
+
+
+def define_img_size(size):
+    global image_size, feature_map_w_h_list, priors
+    img_size_dict = {
+        128: [128, 96],
+        160: [160, 120],
+        320: [320, 240],
+        480: [480, 360],
+        640: [640, 480],
+        1280: [1280, 960]
+    }
+    image_size = img_size_dict[size]
+
+    feature_map_w_h_list_dict = {
+        128: [[16, 8, 4, 2], [12, 6, 3, 2]],
+        160: [[20, 10, 5, 3], [15, 8, 4, 2]],
+        320: [[40, 20, 10, 5], [30, 15, 8, 4]],
+        480: [[60, 30, 15, 8], [45, 23, 12, 6]],
+        640: [[80, 40, 20, 10], [60, 30, 15, 8]],
+        1280: [[160, 80, 40, 20], [120, 60, 30, 15]]
+    }
+    feature_map_w_h_list = feature_map_w_h_list_dict[size]
+
+    for i in range(0, len(image_size)):
+        item_list = []
+        for k in range(0, len(feature_map_w_h_list[i])):
+            item_list.append(image_size[i] / feature_map_w_h_list[i][k])
+        shrinkage_list.append(item_list)
+    priors = generate_priors(feature_map_w_h_list, shrinkage_list, image_size, min_boxes)
+
+
+def convert_locations_to_boxes(locations, priors, center_variance, size_variance):
+    """Convert regressional location results of SSD into boxes in the form of (center_x, center_y, h, w).
+
+    The conversion:
+        $$predicted\_center * center_variance = \frac {real\_center - prior\_center} {prior\_hw}$$
+        $$exp(predicted\_hw * size_variance) = \frac {real\_hw} {prior\_hw}$$
+    We do it in the inverse direction here.
+    Args:
+        locations (batch_size, num_priors, 4): the regression output of SSD. It will contain the outputs as well.
+        priors (num_priors, 4) or (batch_size/1, num_priors, 4): prior boxes.
+        center_variance: a float used to change the scale of center.
+        size_variance: a float used to change of scale of size.
+    Returns:
+        boxes:  priors: [[center_x, center_y, h, w]]. All the values
+            are relative to the image size.
+    """
+    # priors can have one dimension less.
+    if len(priors.shape) + 1 == len(locations.shape):
+        priors = np.expand_dims(priors, 0)
+    return np.concatenate(
+        [
+            locations[..., :2] * center_variance * priors[..., 2:] + priors[..., :2],
+            np.exp(locations[..., 2:] * size_variance) * priors[..., 2:]
+        ],
+        axis=len(locations.shape) - 1,
+    )
+
+
+def center_form_to_corner_form(locations):
+    return np.concatenate(
+        [locations[..., :2] - locations[..., 2:] / 2, locations[..., :2] + locations[..., 2:] / 2],
+        axis=len(locations.shape) - 1,
+    )
 
 
 def area_of(left_top, right_bottom):
@@ -132,6 +236,7 @@ def preprocess(orig_image, input_shape):
     image = np.transpose(image, [2, 0, 1])
     image = np.expand_dims(image, axis=0)
     image = image.astype(np.float32)
+    define_img_size(640)
     return image
 
 
@@ -194,19 +299,17 @@ def main():
             raise RuntimeError("not support modle file:{}".format(args.model))
 
         confidences = output['scores_Softmax']
-        boxes = output['boxes_Concat']
+        boxes = output['460_Concat']
+        boxes = convert_locations_to_boxes(boxes, priors, center_variance, size_variance)
+        boxes = center_form_to_corner_form(boxes)
 
         boxes, label, probs = predict(origin_image.shape[1], origin_image.shape[0], confidences,
                                       boxes, 0.7)
-        # boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
-        #                                              args.score_thres, args.iou_thres,
-        #                                              args.conf_thres)
 
     for i in range(boxes.shape[0]):
         box = scale(boxes[i, :])
         cv2.rectangle(origin_image, (box[0], box[1]), (box[2], box[3]), color, 4)
-        # cv2.imshow('', origin_image)
-        cv2.imwrite(f'{i}.jpg', origin_image)
+    cv2.imwrite(args.output, origin_image)
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
