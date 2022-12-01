@@ -125,6 +125,7 @@ class OnnxConverter(BaseConverter):
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
+            "Erf": lambda node: self.convert_erf_op(node),
             "Exp": lambda node: self.convert_exp_op(node),
             "Expand": lambda node: self.convert_expand_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
@@ -412,53 +413,68 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
         self.addOperand(onnx_node.name, op)
 
-    def convert_addsub_op(self, onnx_node):
-        assert (onnx_node.op_type == "Add" or onnx_node.op_type == "Sub")
+    def convert_add_op(self, onnx_node):
+        assert (onnx_node.op_type == "Add")
         assert (len(onnx_node.inputs) == 2)
-        if self.isWeight(onnx_node.inputs[0]) and not self.isWeight(onnx_node.inputs[1]):
+        output_shape = self.getShape(onnx_node.name)
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
+        if self.isWeight(lhs) and not self.isWeight(rhs):
             onnx_node.inputs[0], onnx_node.inputs[1] = onnx_node.inputs[1], onnx_node.inputs[0]
-            self.onnxop_factory[onnx_node.op_type](onnx_node)
+            self.convert_add_op(onnx_node)
             return
-        create_addsub_op_func_map = {
-            "Add": self.mlir.create_add_op,
-            "Sub": self.mlir.create_sub_op,
-        }
-        create_addsub_op = create_addsub_op_func_map[onnx_node.op_type]
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
-        if not self.isWeight(onnx_node.inputs[0]) and self.isWeight(onnx_node.inputs[1]):
-            opd1_num_elem = np.prod(self.getShape(onnx_node.inputs[1]))
-            output_shape = self.getShape(onnx_node.name)
+        p = {'name': name}
+        if not self.isWeight(lhs) and self.isWeight(rhs):
+            opd1_num_elem = np.prod(self.getShape(rhs))
             channel = output_shape[1]
-            op0 = self.getOperand(onnx_node.inputs[0])
+            lhs_op = self.getOp(lhs)
             if opd1_num_elem == channel:
-                offset = self.getWeight(onnx_node.inputs[1])
-                weight_data = np.ones_like(offset)
+                bias = self.getWeight(rhs)
+                weight_data = np.ones_like(bias)
                 self.addWeight(name + '_scale', weight_data)
                 weight_op = self.getWeightOp(name + '_scale')
-                offset_op = self.getWeightOp(onnx_node.inputs[1])
-                p = {'name': name}
-                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
-                self.addOperand(onnx_node.name, scale_op)
-                return
+                bias_op = self.getWeightOp(rhs)
+                new_op = self.mlir.create_scale_op([lhs_op, weight_op, bias_op], output_shape, **p)
+            elif self.isConst(rhs):
+                p['do_relu'] = False
+                p['const_val'] = self.getWeight(rhs).flatten()[0]
+                new_op = self.mlir.create_add_const_op([lhs_op], output_shape, **p)
             else:
-                const_op = self.getWeightOp(onnx_node.inputs[1])
-                p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-                scale_op = create_addsub_op([op0, const_op], output_shape, **p)
-                self.addOperand(onnx_node.name, scale_op)
-                return
-        op0 = self.getOperand(onnx_node.inputs[0])
-        op1 = self.getOperand(onnx_node.inputs[1])
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
-        output_shape = self.getShape(onnx_node.name)
-        op = create_addsub_op([op0, op1], output_shape, **p)
-        self.addOperand(onnx_node.name, op)
-        return
-
-    def convert_add_op(self, onnx_node):
-        self.convert_addsub_op(onnx_node)
+                rhs_op = self.getOp(rhs)
+                new_op = self.mlir.create_add_op([lhs_op, rhs_op], output_shape, **p)
+        else:
+            lhs_op = self.getOp(lhs)
+            rhs_op = self.getOp(rhs)
+            new_op = self.mlir.create_add_op([lhs_op, rhs_op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_sub_op(self, onnx_node):
-        self.convert_addsub_op(onnx_node)
+        assert (onnx_node.op_type == "Sub")
+        assert (len(onnx_node.inputs) == 2)
+        output_shape = self.getShape(onnx_node.name)
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        p = {'name': name}
+        new_op = None
+        if self.isConst(lhs):
+            # lhs_const + (-1 * rhs)
+            attr = {'name': name + "_unm", 'const_val': -1}
+            rhs_op = self.getOp(rhs)
+            unm_op = self.mlir.create_mul_const_op([rhs_op], output_shape, **attr)
+            p['const_val'] = self.getWeight(lhs).flatten()[0]
+            new_op = self.mlir.create_add_const_op([unm_op], output_shape, **p)
+        elif self.isConst(rhs):
+            # lhs + (-rhs_const)
+            p['const_val'] = -self.getWeight(rhs).flatten()[0]
+            lhs_op = self.getOp(lhs)
+            new_op = self.mlir.create_add_const_op([lhs_op], output_shape, **p)
+        else:
+            lhs_op = self.getOp(lhs)
+            rhs_op = self.getOp(rhs)
+            new_op = self.mlir.create_sub_op([lhs_op, rhs_op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_batchnorm_op(self, onnx_node):
         assert (onnx_node.op_type == "BatchNormalization")
@@ -944,6 +960,14 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_exp_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_erf_op(self, onnx_node):
+        assert (onnx_node.op_type == "Erf")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_erf_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
     def convert_pad_op(self, onnx_node):
         assert (onnx_node.op_type == "Pad")
         pad_mode = {"constant": 0, "reflect": 1, "edge": 3}
@@ -980,16 +1004,30 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_div_op(self, onnx_node):
+        assert (onnx_node.op_type == "Div")
         assert (len(onnx_node.inputs) == 2)
-        # if self.isWeight(onnx_node.inputs[0]) or self.isWeight(onnx_node.inputs[1]):
-        #     # TODO: support tensor
-        #     raise RuntimeError("not support Tensor")
-        op0 = self.getOperand(onnx_node.inputs[0])
-        op1 = self.getOperand(onnx_node.inputs[1])
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        lhs = onnx_node.inputs[0]
+        rhs = onnx_node.inputs[1]
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        p = {'name': name}
         output_shape = self.getShape(onnx_node.name)
-        div_op = self.mlir.create_div_op([op0, op1], output_shape, **p)
-        self.addOperand(onnx_node.name, div_op)
+        if self.isConst(lhs):
+            # lhs_const * (1 / rhs)
+            attr = {'name': name + "_rcp"}
+            rhs_op = self.getOp(rhs)
+            rcp_op = self.mlir.create_reciprocal_op([rhs_op], output_shape, **attr)
+            p['const_val'] = self.getWeight(lhs).flatten()[0]
+            new_op = self.mlir.create_mul_const_op([rcp_op], output_shape, **p)
+        elif self.isConst(rhs):
+            # lhs * (1 / rhs_const)
+            p['const_val'] = 1 / self.getWeight(rhs).flatten()[0]
+            lhs_op = self.getOp(lhs)
+            new_op = self.mlir.create_mul_const_op([lhs_op], output_shape, **p)
+        else:
+            lhs_op = self.getOp(lhs)
+            rhs_op = self.getOp(rhs)
+            new_op = self.mlir.create_div_op([lhs_op, rhs_op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_reciprocal_op(self, onnx_node):
         assert (onnx_node.op_type == "Reciprocal")

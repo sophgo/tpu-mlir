@@ -13,6 +13,7 @@ class Top:
     InputOp = 'top.Input'
     AddOp = 'top.Add'
     SubOp = 'top.Sub'
+    AddConstOp = 'top.AddConst'
     AvgPoolOp = 'top.AvgPool'
     BatchNormOp = 'top.BatchNorm'
     ConcatOp = 'top.Concat'
@@ -61,6 +62,7 @@ class Top:
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
     MaskedFillOp = 'top.MaskedFill'
+    ErfOp = 'top.Erf'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -251,6 +253,15 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.MulOp, operands, [output_type], **param)
+
+    def create_add_const_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'const_val': FloatAttr.get_f64(kargs['const_val']),
+            'do_relu': BoolAttr.get(False)
+        }
+        return self.buildOp(Top.AddConstOp, operands, [output_type], **param)
 
     def create_mul_const_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
@@ -489,6 +500,13 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.ExpOp, operands, [output_type], **param)
+
+    def create_erf_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.ErfOp, operands, [output_type], **param)
 
     def create_pad_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

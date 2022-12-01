@@ -33,6 +33,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 LOWERING_BM1684X(Abs)
 LOWERING_BM1684X(Add)
+LOWERING_BM1684X(AddConst)
 LOWERING_BM1684X(AvgPool)
 LOWERING_BM1684X(Cast)
 LOWERING_BM1684X(Concat)
@@ -81,5 +82,6 @@ LOWERING_BM1684X(Where)
 LOWERING_BM1684X(MaskedFill)
 LOWERING_BM1684X(Compare)
 LOWERING_BM1684X(CompareConst)
+LOWERING_BM1684X(Erf)
 } // namespace bm1684x
 } // namespace tpu_mlir

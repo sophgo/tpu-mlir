@@ -1472,4 +1472,15 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_ErfOp: Tpu_Op<"Erf", [InOutSameShape]> {
+  let summary = "Erf operator";
+  let description = [{
+    Computes the error function of the given input tensor element-wise.
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

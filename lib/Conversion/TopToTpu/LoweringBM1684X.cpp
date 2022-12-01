@@ -17,6 +17,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       // clang-format off
       AbsLowering,
       AddLowering,
+      AddConstLowering,
       AvgPoolLowering,
       CastLowering,
       ConcatLowering,
@@ -64,7 +65,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       WhereLowering,
       MaskedFillLowering,
       CompareLowering,
-      CompareConstLowering
+      CompareConstLowering,
+      ErfLowering
       // clang-format on
       >(patterns->getContext());
 }
