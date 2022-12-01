@@ -12,15 +12,14 @@
 #define DEBUG_TYPE "lowering-mulconst"
 namespace tpu_mlir {
 namespace cv18xx {
-static double active_mulconst(double val, double const_val) { return val * const_val; }
-
 void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());
   double const_val = op.const_val().convertToDouble();
+  auto active_mulconst = [const_val](double val) { return val * const_val; };
   Value table =
-      create_lookup_table(op.input(), op.output(), asymmetric,
-                          [const_val](double val) { return val * const_val; });
+      create_lookup_table(op.input(), op.output(), asymmetric, active_mulconst);
+
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -43,8 +42,9 @@ void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
   float range_start = -15;
   float range_end = 15;
   double const_val = op.const_val().convertToDouble();
+  auto active_mulconst = [const_val](double val) { return val * const_val; };
   bf16_gen_base_slope_table(table.data(), mantissa.data(), range_start,
-                            range_end, active_mulconst, const_val);
+                            range_end, active_mulconst);
   auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
 
   OpBuilder builder(op->getContext());
@@ -76,5 +76,5 @@ void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
                  mantissa_weight_op.clone_bf16(op)},
       attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

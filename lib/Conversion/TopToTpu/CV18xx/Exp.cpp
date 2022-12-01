@@ -11,14 +11,14 @@
 #define DEBUG_TYPE "lowering-log"
 namespace tpu_mlir {
 namespace cv18xx {
-static double active_exp(double val) {
-    return std::exp(val);
-}
+
+static double active_exp(double val) { return std::exp(val); }
+
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());
   Value table = create_lookup_table(op.input(), op.output(), asymmetric,
-                                    [](double val) { return std::exp(val); });
+                                    activate_f(active_exp));
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
@@ -38,12 +38,14 @@ void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {
   std::vector<float> slope_table(table_hw);
   float range_start = -15;
   float range_end = 15;
-  bf16_gen_base_slope_table(table.data(), slope_table.data(), range_start, range_end, active_exp);
+  bf16_gen_base_slope_table(table.data(), slope_table.data(), range_start,
+                            range_end, activate_f(active_exp));
   auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
   OpBuilder builder(op->getContext());
   auto table_type = RankedTensorType::get(shape, builder.getF32Type());
   auto table_op = top::WeightOp::create(op, "table", table, table_type);
-  auto slope_table_op = top::WeightOp::create(op, "slope_table", slope_table, table_type);
+  auto slope_table_op =
+      top::WeightOp::create(op, "slope_table", slope_table, table_type);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -68,5 +70,5 @@ void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {
       attrs);
   return;
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

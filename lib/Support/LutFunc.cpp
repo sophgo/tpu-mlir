@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 
 Value create_lookup_table(Value in, Value out, bool asymmetric,
-                          std::function<double(double)> &&func) {
+                          activate_f &&func) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool in_sign, out_sign;
@@ -54,7 +54,7 @@ Value create_lookup_table(Operation *owner, const std::vector<float> &table) {
 }
 
 static void gen_bf16_base_table(float start, float end, int table_hw,
-                                float *table, activate_f func) {
+                                float *table, activate_f &func) {
   int half = table_hw / 2;
   int range = abs(end - start);
   float interval = (float)range / (float)table_hw;
@@ -74,38 +74,13 @@ static void gen_bf16_base_table(float start, float end, int table_hw,
   for (int i = half, j = 0; i < table_hw; i++, j++) {
     x_value = start + j * interval;
     y_value = func(x_value);
-    table[i] = Quant::Quant::BF16(y_value);
-  }
-}
-
-static void gen_bf16_base_table(float start, float end, int table_hw,
-                                float *table, activate_f2 func, double param) {
-  int half = table_hw / 2;
-  int range = abs(end - start);
-  float interval = (float)range / (float)table_hw;
-  float x_value;
-  float y_value;
-  float offset = (start + end) / 2;
-  assert(offset == 0);
-
-  // Set idx [0 , 127] fp32 and bf16 data
-  for (int i = 0; i < half; i++) {
-    x_value = offset + i * interval;
-    y_value = func(x_value, param);
-    table[i] = Quant::Quant::BF16(y_value);
-  }
-
-  // set idx 129 to 255, 2's complment
-  for (int i = half, j = 0; i < table_hw; i++, j++) {
-    x_value = start + j * interval;
-    y_value = func(x_value, param);
     table[i] = Quant::Quant::BF16(y_value);
   }
 }
 
 static void gen_bf16_slope_table(float start, float end, int table_hw,
                                  float *table, float *slope_table,
-                                 activate_f func) {
+                                 activate_f &func) {
   int half = table_hw / 2;
   float scale = ((float)table_hw) / (end - start);
 
@@ -138,58 +113,13 @@ static void gen_bf16_slope_table(float start, float end, int table_hw,
                                          (std::abs(2 * start) * scale));
 }
 
-static void gen_bf16_slope_table(float start, float end, int table_hw,
-                                 float *table, float *slope_table,
-                                 activate_f2 func, double param) {
-  int half = table_hw / 2;
-  float scale = ((float)table_hw) / (end - start);
-
-  // positive axis, slope = x(i+1) - x(i)
-  for (int i = 0; i < half - 1; i++) {
-    auto x0 = table[i];
-    auto x1 = table[i + 1];
-    if (Quant::to_bf16(x0, false) == Quant::to_bf16(x1, false)) {
-      slope_table[i] = 0;
-    } else {
-      slope_table[i] = Quant::Quant::BF16(x1 - x0);
-    }
-  }
-  // slope of range end
-  slope_table[half - 1] =
-      Quant::Quant::BF16((func(3 * end, param) - func(end, param)) / (2 * end * scale));
-
-  // negtive axis, slope = x(i - 1) - x(i)
-  for (int i = table_hw - 1; i > half; i--) {
-    auto x0 = table[i];
-    auto x1 = table[i - 1];
-    if (Quant::to_bf16(x0, false) == Quant::to_bf16(x1, false)) {
-      slope_table[i] = 0;
-    } else {
-      slope_table[i] = Quant::Quant::BF16(x0 - x1);
-    }
-  }
-  // slope of range start
-  slope_table[half] = Quant::Quant::BF16((func(3 * start, param) - func(start, param)) /
-                                         (std::abs(2 * start) * scale));
-}
-
 void bf16_gen_base_slope_table(float *base_table, float *slope_table,
                                float range_start, float range_end,
-                               activate_f func) {
+                               activate_f &&func) {
   gen_bf16_base_table(range_start, range_end, 256, base_table, func);
 
   gen_bf16_slope_table(range_start, range_end, 256, base_table, slope_table,
                        func);
-}
-
-void bf16_gen_base_slope_table(float *base_table, float *slope_table,
-                               float range_start, float range_end,
-                               activate_f2 func, float param) {
-  gen_bf16_base_table(range_start, range_end, 256, base_table, func, param);
-
-  gen_bf16_slope_table(range_start, range_end, 256, base_table, slope_table,
-                       func, param);
-
 }
 
 void bf16_lut_slope(float *input, float *output, int size, float *base_table,

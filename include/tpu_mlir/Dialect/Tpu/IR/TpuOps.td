@@ -1165,6 +1165,8 @@ def Tpu_LRNOp: Tpu_Op<"LRN", [InOutSameShape]> {
 
   let arguments = (ins
     AnyTensor:$input,
+    AnyTensorOrNone:$table,
+    AnyTensorOrNone:$mantissa,
     I64Attr:$size,
     DefaultValuedAttr<F64Attr, "0.0001">:$alpha,
     DefaultValuedAttr<F64Attr, "0.75">:$beta,
