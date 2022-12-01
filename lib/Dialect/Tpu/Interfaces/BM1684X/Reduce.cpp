@@ -37,13 +37,13 @@ static int get_reduce_type(std::string mode) {
     return 3;
   } else if (mode == "ReduceProd") {
     return 4;
-  } else if (mode == "ReduceAll") {
-    return 5;
-  } else if (mode == "ReduceAny") {
-    return 6;
   } else if (mode == "ReduceL2") {
-    return 7;
+    return 5;
   } else if (mode == "ReduceL1") {
+    return 6;
+  } else if (mode == "ReduceAll") {
+    return 7;
+  } else if (mode == "ReduceAny") {
     return 8;
   } else if (mode == "ReduceSumSquare") {
     return 9;
