@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["ReduceL2", "TorchLayerNorm", "TorchMaskedFill", "TorchStd",
+Failed_Cases = ["TorchLayerNorm", "TorchMaskedFill", "TorchStd",
                 "TorchGelu", "TorchHardSigmoid", "TorchHardSwish"]
 
 
