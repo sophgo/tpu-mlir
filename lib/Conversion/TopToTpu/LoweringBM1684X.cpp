@@ -51,6 +51,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SliceLowering,
       SoftmaxLowering,
       SqueezeLowering,
+      SubLowering,
       TileLowering,
       UpsampleLowering,
       InterpLowering,

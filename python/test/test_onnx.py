@@ -1576,7 +1576,9 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(inputs, Net(), case_name)
 
     def test_TorchGRU(self, case_name):
+
         class Net(torch.nn.Module):
+
             def __init__(self):
                 super(Net, self).__init__()
                 self.gru = nn.GRU(input_size=100, hidden_size=50, bidirectional=True)
