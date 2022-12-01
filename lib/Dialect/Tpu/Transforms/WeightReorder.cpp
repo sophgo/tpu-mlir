@@ -49,7 +49,7 @@ public:
       bm1684::populateWeightReorderPatterns(&patterns);
     } else if (Module::isBM1684XFamily(chip)) {
       bm1684x::populateWeightReorderPatterns(&patterns);
-    } else if (chip == Module::Chip::CV182x || chip == Module::Chip::CV183x) {
+    } else if (Module::isCV18xx(chip)) {
       cv18xx::populateWeightReorderPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
