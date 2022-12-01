@@ -32,7 +32,7 @@ class topx(base_class):
     def preproc(self, img_paths):
         return None
 
-    def update(self, idx, outputs, img_paths = None, labels = None):
+    def update(self, idx, outputs, img_paths = None, labels = None, ratios = None):
         if not self.have_label_file and labels is None:
             print('error, label info not exist')
             exit(1)

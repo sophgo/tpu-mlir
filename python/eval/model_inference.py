@@ -59,6 +59,7 @@ class mlir_inference(object):
                     if len(self.batched_labels) > 0:
                         self.batched_labels.append(self.batched_labels[-1])
             self.batched_imgs = ','.join(tmp)
+            self.idx += n
             self.model_invoke()
         return self.score.get_result()
 
@@ -138,6 +139,7 @@ class onnx_inference(object):
                     if len(self.batched_labels) > 0:
                         self.batched_labels.append(self.batched_labels[-1])
             self.batched_imgs = ','.join(tmp)
+            self.idx += n
             self.model_invoke()
         self.score.get_result()
 

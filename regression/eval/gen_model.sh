@@ -10,6 +10,9 @@ if [ x$1 == x ]; then
 fi
 
 cfg_file=$REGRESSION_PATH/config/$1.cfg
+if [ x$2 != x ]; then
+  cfg_file=$2
+fi
 
 if [ ! -f $cfg_file ]; then
   echo "Error: can't open config file ${cfg_file}"
@@ -114,8 +117,8 @@ model_transform.py \
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
-if [ x$2 != x ]; then
-  CALI_TABLE=$2
+if [ x${specified_cali_table} != x ]; then
+  CALI_TABLE=${specified_cali_table}
 fi
 if [ ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
