@@ -151,9 +151,7 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(op.output());
   Value newValue;
   if (op.kernel_shape().size() == 1) {
     auto newOp =

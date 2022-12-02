@@ -57,9 +57,7 @@ void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(op.output());
   auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
   auto slope_weight_op =
       dyn_cast<top::WeightOp>(slope_table_op.getDefiningOp());

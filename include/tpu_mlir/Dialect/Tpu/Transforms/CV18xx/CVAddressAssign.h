@@ -59,6 +59,7 @@ protected:
 
   void updateLiveRange(Operation *op, std::map<Operation *, uint32_t> &ops_loc,
                        std::map<ValueInfo, OpElement> &op_infos,
+                       std::vector<ValueInfo> &inplace_ops,
                        std::vector<mlir::Value> &outputs, int64_t alignment);
 
   void updateAddressOfInPlaceOp(ValueInfo &v_info,
@@ -75,6 +76,8 @@ protected:
   int getOutIndex(Operation *op, Value &out);
 
   uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
+
+  void updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops, std::map<ValueInfo, OpElement> &op_infos);
 };
 } // namespace tpu
 } // namespace tpu_mlir

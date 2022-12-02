@@ -62,9 +62,7 @@ void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "lut_mode",
       tpu::LutModeAttr::get(op->getContext(), tpu::LutMode::Slope)));
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(op.output());
   auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
   auto mantissa_weight_op =
       dyn_cast<top::WeightOp>(mantissa_op.getDefiningOp());
