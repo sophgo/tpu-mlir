@@ -137,9 +137,7 @@ void ConcatLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   attrs.push_back(rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(only_merge)));
 
-  auto tensor_type = concatOp.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
+  auto newType = getQuantBF16Type(concatOp.output());
   auto newOp =
         rewriter.create<tpu::ConcatOp>(concatOp->getLoc(), newType, operands, attrs);
   rewriter.replaceOp(concatOp, {newOp.output()});
