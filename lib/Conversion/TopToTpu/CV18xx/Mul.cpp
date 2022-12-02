@@ -17,6 +17,14 @@ namespace tpu_mlir {
 namespace cv18xx {
 void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
                                bool asymmetric) const {
+  // for convert from DivOp
+  auto div_v = op.inputs()[1];
+  if (!Quant::isCalibratedType(div_v) &&
+      !Quant::isUniformQuantized(div_v)) {
+    LoweringBF16(rewriter, op);
+    return;
+  }
+
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   int64_t o_zp;
