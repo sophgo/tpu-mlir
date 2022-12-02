@@ -55,6 +55,7 @@ public:
     }
     auto real_mode = LoweringConfig::mode;
     auto op_name = Module::getName(op);
+    auto chip_name = Module::getChip(op);
     auto iter = LoweringConfig::quantize_map.find(op_name.str());
     if (iter != LoweringConfig::quantize_map.end()) {
       real_mode = iter->second;
@@ -65,7 +66,11 @@ public:
       }
       LoweringINT8(rewriter, opTy, LoweringConfig::isAsymmetric);
     } else if (real_mode == Quant::Type::F16) {
-      LoweringF16(rewriter, opTy);
+      if (Module::isCV18xx(chip_name)) {
+        LoweringBF16(rewriter, opTy);
+      } else {
+        LoweringF16(rewriter, opTy);
+      }
     } else if (real_mode == Quant::Type::BF16) {
       LoweringBF16(rewriter, opTy);
     } else {

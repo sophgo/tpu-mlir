@@ -66,9 +66,10 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   std::vector<Value> outputs;
   Module::getInputsOutputs(module, inputs, outputs);
   for (auto iter = ops.rbegin(); iter != ops.rend(); ++iter) {
-    updateLiveRange(*iter, ops_loc, op_infos, outputs, neuron_alignment);
+    updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs, neuron_alignment);
   }
-
+  std::reverse(inplace_ops.begin(), inplace_ops.end());
+  updateConcatOpTargetV(inplace_ops, op_infos);
   for (auto iter = ops.begin(); iter != ops.end(); ++iter) {
     auto op = *iter;
     int n = op->getNumResults();
@@ -95,10 +96,6 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
           auto func_name = dyn_cast<FuncOp>(op->getParentOp()).getName().str();
           shared_outs_regions[func_name].emplace_back(v_info);
           break;
-        }
-      } else {
-        if (op_infos[v_info].inplace) {
-          inplace_ops.emplace_back(v_info);
         }
       }
     }
@@ -223,6 +220,7 @@ void CVAddressAssign::updateLiveRangeOfInPlaceOp(
 void CVAddressAssign::updateLiveRange(Operation *op,
                                       std::map<Operation *, uint32_t> &ops_loc,
                                       std::map<ValueInfo, OpElement> &op_infos,
+                                      std::vector<ValueInfo> &inplace_ops,
                                       std::vector<mlir::Value> &outputs,
                                       int64_t alignment) {
   if (isa<top::InputOp>(op)) {
@@ -245,6 +243,7 @@ void CVAddressAssign::updateLiveRange(Operation *op,
     op_infos[cur_info].inplace = true;
     updateLiveRangeOfInPlaceOp(op_infos, op, op_infos[cur_info].live.end,
                                ops_loc, op_infos[cur_info].mem_type, alignment);
+    inplace_ops.emplace_back(cur_info);
   } else if (op->getDialect()->getNamespace() == "tpu") {
     for (int i = 0; i < op->getNumResults(); ++i) {
       ValueInfo cur_info(op, i);
@@ -341,6 +340,27 @@ bool CVAddressAssign::isOutput(Operation *op, int index) {
     }
   }
   return false;
+}
+
+void CVAddressAssign::updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops, std::map<ValueInfo, OpElement> &op_infos) {
+  for (auto iter = inplace_ops.rbegin(); iter != inplace_ops.rend(); ++iter) {
+    auto value_info = *iter;
+    auto op = static_cast<Operation *>(value_info.op);
+    if (isa<tpu::ConcatOp>(op)) {
+      auto target_v_info = op_infos[value_info].target_v;
+      auto target_v_op = static_cast<Operation *>(target_v_info.op);
+      if (isa<tpu::ConcatOp>(target_v_op)) {
+        auto target_vv_info = op_infos[target_v_info].target_v;
+        assert(op_infos.find(target_vv_info) != op_infos.end());
+        if (op_infos[target_v_info].live.tensor_size > op_infos[target_vv_info].live.tensor_size) {
+          op_infos[target_vv_info].live.tensor_size = op_infos[target_v_info].live.tensor_size;
+        }
+        if (op_infos[target_v_info].live.end > op_infos[target_vv_info].live.end) {
+          op_infos[target_vv_info].live.end = op_infos[target_v_info].live.end;
+        }
+      }
+    }
+  }
 }
 
 uint32_t CVAddressAssign::getTensorGmemSize(Operation *op, int index,
