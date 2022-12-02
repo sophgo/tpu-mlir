@@ -18,6 +18,11 @@ namespace cv18xx {
 
 void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp divOp,
                                bool asymmetric) const {
+  LoweringBF16(rewriter, divOp);
+}
+
+void DivLowering::LoweringBF16(PatternRewriter &rewriter,
+                               top::DivOp divOp) const {
   std::vector<Value> operands;
   auto input_shape1 = Module::getShape(divOp.inputs()[0]);
   auto input_shape2 = Module::getShape(divOp.inputs()[1]);
@@ -47,21 +52,19 @@ void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp divOp,
     std::string name = Module::getName(divOp.inputs()[1]).str() + "_reciprocal";
     auto loc = NameLoc::get(rewriter.getStringAttr(name));
     std::vector<NamedAttribute> reci_attrs;
-    reci_attrs.emplace_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.0)));
+    reci_attrs.emplace_back(
+        rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(1.0)));
+    auto reciprocal_type =
+        RankedTensorType::get(input_shape2, rewriter.getF32Type());
     auto reciprocal_op = rewriter.create<top::ReciprocalOp>(
-        loc, divOp.inputs()[1].getType().cast<RankedTensorType>(),
-        ValueRange{divOp.inputs()[1]}, reci_attrs);
+        loc, reciprocal_type, ValueRange{divOp.inputs()[1]}, reci_attrs);
     operands.emplace_back(reciprocal_op.output());
     rewriter.replaceOpWithNewOp<top::MulOp>(
         divOp.getOperation(), divOp.output().getType().cast<RankedTensorType>(),
         operands, attrs);
+
     return;
   }
-}
-
-void DivLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::DivOp divOp) const {
-  lowering_common_bf16<tpu::DivOp>(rewriter, divOp.getOperation());
 }
 
 } // namespace cv18xx

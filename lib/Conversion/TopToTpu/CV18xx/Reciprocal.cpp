@@ -16,6 +16,12 @@ namespace cv18xx {
 void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::ReciprocalOp op,
                                       bool asymmetric) const {
+  // for convert from DivOp
+  if (!Quant::isCalibratedType(op.output()) &&
+      !Quant::isUniformQuantized(op.output())) {
+    LoweringBF16(rewriter, op);
+    return;
+  }
 
   double const_s = op.const_val().convertToDouble();
   Value table =
@@ -41,14 +47,16 @@ void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<float> reciprocal_mantissa_table(table_hw);
   float range_start = -62;
   float range_end = 63;
-  bf16_gen_exponent_mantissa_table("pow", reciprocal_table.data(), reciprocal_mantissa_table.data(), -1.0f, 0);
+  bf16_gen_exponent_mantissa_table("pow", reciprocal_table.data(),
+                                   reciprocal_mantissa_table.data(), -1.0f, 0);
   auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
 
   OpBuilder builder(op->getContext());
   auto table_type = RankedTensorType::get(shape, builder.getF32Type());
-  auto table_op = top::WeightOp::create(op, "table", reciprocal_table, table_type);
-  auto mantissa_op =
-      top::WeightOp::create(op, "mantissa", reciprocal_mantissa_table, table_type);
+  auto table_op =
+      top::WeightOp::create(op, "table", reciprocal_table, table_type);
+  auto mantissa_op = top::WeightOp::create(
+      op, "mantissa", reciprocal_mantissa_table, table_type);
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -73,5 +81,5 @@ void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
                  mantissa_weight_op.clone_bf16(op)},
       attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir
