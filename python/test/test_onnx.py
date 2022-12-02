@@ -96,6 +96,7 @@ class ONNX_IR_TESTER(object):
             "Reduce2": self.test_Reduce2,
             "ReduceL2": self.test_ReduceL2,
             "ReduceMean": self.test_ReduceMean,
+            "ReduceSum": self.test_ReduceSum,
             "Reciprocal": self.test_Reciprocal,
             "Relu": self.test_Relu,
             "SiLU": self.test_SiLU,
@@ -1389,6 +1390,23 @@ class ONNX_IR_TESTER(object):
         )
 
         graph_def = helper.make_graph([reduce_l2], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_ReduceSum(self, case_name):
+        input_shape = [4, 4, 4, 16, 16, 64]
+        output_shape = [4, 4, 4, 16, 64]
+        axes = helper.make_tensor(name='axes',
+                                data_type=onnx.TensorProto.INT64,
+                                dims=[1],
+                                vals=[4])
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('o_sum', TensorProto.FLOAT, output_shape)
+        reduce_sum = helper.make_node(
+            'ReduceSum',
+            inputs=['input', 'axes'],
+            outputs = ['o_sum'],
+            keepdims=0)
+        graph_def = helper.make_graph([reduce_sum], case_name, [input], [output], initializer=[axes])
         self.onnx_and_test(graph_def)
 
     def test_Sigmoid(self, case_name):

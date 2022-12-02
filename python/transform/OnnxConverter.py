@@ -151,6 +151,8 @@ class OnnxConverter(BaseConverter):
             "ReduceMax": lambda node: self.convert_reduce_op(node),
             "ReduceMin": lambda node: self.convert_reduce_op(node),
             "ReduceL2": lambda node: self.convert_reduce_op(node),
+            "ReduceL1": lambda node: self.convert_reduce_op(node),
+            "ReduceSum": lambda node: self.convert_reduce_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
@@ -1133,7 +1135,8 @@ class OnnxConverter(BaseConverter):
     #support max ndims to 6
     def convert_reduce_op(self, onnx_node):
         assert (onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceMax"
-                or onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceL2")
+                or onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceL2"
+                or onnx_node.op_type == "ReduceL1" or onnx_node.op_type == "ReduceSum")
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         if (np.prod(input_shape) == np.prod(output_shape)):
@@ -1143,7 +1146,8 @@ class OnnxConverter(BaseConverter):
             return
         num_dims = len(input_shape)
         assert (num_dims <= 6)
-        axes = onnx_node.attrs.get('axes', list(range(num_dims)))
+        axes = onnx_node.attrs.get('axes', list(range(num_dims))) \
+               if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
         keepdims = onnx_node.attrs.get('keepdims', 1)
         for idx, ax in enumerate(axes):
             if ax < 0:
