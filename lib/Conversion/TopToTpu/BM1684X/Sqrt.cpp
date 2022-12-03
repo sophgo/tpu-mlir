@@ -27,10 +27,8 @@ void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, newType,
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 void SqrtLowering::LoweringBF16(PatternRewriter &rewriter,

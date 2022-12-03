@@ -12,7 +12,6 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-
 void ErfLowering::LoweringF32(PatternRewriter &rewriter, top::ErfOp op) const {
   lowering_common_f32<tpu::ErfOp>(rewriter, op.getOperation());
 }
@@ -27,10 +26,8 @@ void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, newType,
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 void ErfLowering::LoweringBF16(PatternRewriter &rewriter, top::ErfOp op) const {

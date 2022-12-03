@@ -101,7 +101,7 @@ def Tpu_PoolMode: I32EnumAttr<"PoolMode",
 }
 def Tpu_PoolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PoolMode, "pool_mode">;
 
-def Tpu_LutMode : I32EnumAttr<"LutMode",
+def Tpu_LutBF16Mode : I32EnumAttr<"LutBF16Mode",
     "look up table mode",
     [
       I32EnumAttrCase<"Other", 0>,
@@ -113,7 +113,7 @@ def Tpu_LutMode : I32EnumAttr<"LutMode",
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
 }
-def Tpu_LutModeAttr : EnumAttr<Tpu_Dialect, Tpu_LutMode, "lut_mode">;
+def Tpu_LutBF16ModeAttr : EnumAttr<Tpu_Dialect, Tpu_LutBF16Mode, "lut_mode">;
 
 //===----------------------------------------------------------------------===//
 // Tpu Types.
@@ -540,10 +540,29 @@ def Tpu_LutOp: Tpu_Op<"Lut",
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$table,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
+    [DeclareOpInterfaceMethods<LocalGenInterface>,
+    InOutSameShape]>{
+  let summary = "LutBF16 operator";
+
+  let description = [{
+    input and output is BF16, input BF16 split as exponent and mantissa,
+    get output by exponent table and mantissa table
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$table,
     AnyTensorOrNone:$mantissa,
     DefaultValuedAttr<F64Attr, "8">:$max_range,
     DefaultValuedAttr<F64Attr, "-8">:$min_range,
-    DefaultValuedAttr<Tpu_LutModeAttr, "tpu::LutMode::Other">:$lut_mode,
+    DefaultValuedAttr<Tpu_LutBF16ModeAttr, "tpu::LutBF16Mode::Other">:$lut_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 

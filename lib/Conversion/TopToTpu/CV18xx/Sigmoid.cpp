@@ -25,14 +25,12 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, newType,
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::SigmoidOp op) const {
+                                   top::SigmoidOp op) const {
   int table_h = 32;
   int table_w = 8;
   int table_hw = table_h * table_w;
@@ -61,17 +59,17 @@ void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   attrs.push_back(rewriter.getNamedAttr(
       "lut_mode",
-      tpu::LutModeAttr::get(op->getContext(), tpu::LutMode::Slope)));
+      tpu::LutBF16ModeAttr::get(op->getContext(), tpu::LutBF16Mode::Slope)));
   auto newType = getQuantBF16Type(op.output());
   auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
   auto mantissa_weight_op =
       dyn_cast<top::WeightOp>(mantissa_op.getDefiningOp());
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
+  rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
       op, newType,
       ValueRange{op.input(), table_weight_op.clone_bf16(op),
                  mantissa_weight_op.clone_bf16(op)},
       attrs);
   return;
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir
