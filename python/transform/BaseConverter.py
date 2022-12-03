@@ -72,11 +72,17 @@ class BaseConverter(object):
             raise KeyError("No {} tensor in model".format(name))
         return self.tensors[name]
 
-    def isConst(self, name):
+    def isScalar(self, name):
         if not self.isWeight(name): return False
         if np.prod(self.getShape(name)) == 1: return True
         w = self.getWeight(name)
         return np.all(w == w.flatten()[0])
+
+    def getScalar(self, name):
+        if not self.isScalar(name):
+            raise RuntimeError("Not Scalar")
+        return self.getWeight(name).flatten()[0]
+
 
     def getWeightOp(self, name, shape:list=[]):
         if name not in self.tensors:

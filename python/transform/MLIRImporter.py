@@ -9,60 +9,63 @@ from mlir.ir import *
 
 
 class Top:
-    WeightOp = 'top.Weight'
-    InputOp = 'top.Input'
+    #pls add the Op alphabetically
+    AbsOp = 'top.Abs'
     AddOp = 'top.Add'
-    SubOp = 'top.Sub'
     AddConstOp = 'top.AddConst'
     AvgPoolOp = 'top.AvgPool'
     BatchNormOp = 'top.BatchNorm'
+    ClipOp = 'top.Clip'
     ConcatOp = 'top.Concat'
     ConvOp = 'top.Conv'
+    CompareOp = 'top.Compare'
+    CompareConstOp = 'top.CompareConst'
     Depth2SpaceOp = 'top.Depth2Space'
+    DeconvOp = 'top.Deconv'
+    DivOp = 'top.Div'
+    ErfOp = 'top.Erf'
+    ExpOp = 'top.Exp'
+    GatherOp = 'top.Gather'
     GRUOp = 'top.GRU'
-    MulOp = 'top.Mul'
-    MulConstOp = 'top.MulConst'
+    InputOp = 'top.Input'
+    InterpOp = 'top.Interp'
+    LeakyReluOp = 'top.LeakyRelu'
+    LRNOp = 'top.LRN'
+    LSTMOp = 'top.LSTM'
+    LogOp = 'top.Log'
+    MaskedFillOp = 'top.MaskedFill'
     MatMulOp = 'top.MatMul'
     MaxPoolOp = 'top.MaxPool'
     MaxPoolWithMaskOp = 'top.MaxPoolWithMask'
     MaxUnpoolOp = 'top.MaxUnpool'
-    PermuteOp = 'top.Permute'
-    ReshapeOp = 'top.Reshape'
-    ReluOp = 'top.Relu'
-    SliceOp = 'top.Slice'
-    SigmoidOp = 'top.Sigmoid'
-    LeakyReluOp = 'top.LeakyRelu'
-    UpsampleOp = 'top.Upsample'
-    SoftmaxOp = 'top.Softmax'
-    LogOp = 'top.Log'
-    ExpOp = 'top.Exp'
-    PadOp = 'top.Pad'
-    DivOp = 'top.Div'
-    Reciprocal = 'top.Reciprocal'
-    SqueezeOp = 'top.Squeeze'
-    ClipOp = 'top.Clip'
-    DeconvOp = 'top.Deconv'
-    ScaleOp = 'top.Scale'
-    LRNOp = 'top.LRN'
-    LSTMOp = 'top.LSTM'
-    GatherOp = 'top.Gather'
-    TileOp = 'top.Tile'
     MaxOp = 'top.Max'
     MinOp = 'top.Min'
-    AbsOp = 'top.Abs'
+    MulOp = 'top.Mul'
+    MulConstOp = 'top.MulConst'
+    PermuteOp = 'top.Permute'
+    PadOp = 'top.Pad'
+    PackOp = 'top.Pack'
+    PowOp = 'top.Pow'
     PReluOp = 'top.PRelu'
-    InterpOp = 'top.Interp'
+    Reciprocal = 'top.Reciprocal'
+    ReshapeOp = 'top.Reshape'
+    ReluOp = 'top.Relu'
     ReduceOp = 'top.Reduce'
     SubOp = 'top.Sub'
-    PackOp = 'top.Pack'
-    UnpackOp = 'top.Unpack'
+    SliceOp = 'top.Slice'
+    SigmoidOp = 'top.Sigmoid'
+    SoftmaxOp = 'top.Softmax'
+    SqueezeOp = 'top.Squeeze'
+    ScaleOp = 'top.Scale'
+    SubOp = 'top.Sub'
     SplitOp = 'top.Split'
     SqrtOp = 'top.Sqrt'
+    TileOp = 'top.Tile'
+    UnpackOp = 'top.Unpack'
+    UpsampleOp = 'top.Upsample'
+    WeightOp = 'top.Weight'
     WhereOp = 'top.Where'
-    CompareOp = 'top.Compare'
-    CompareConstOp = 'top.CompareConst'
-    MaskedFillOp = 'top.MaskedFill'
-    ErfOp = 'top.Erf'
+
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -253,6 +256,11 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name'], 'do_relu': BoolAttr.get(False)}
         return self.buildOp(Top.MulOp, operands, [output_type], **param)
+
+    def create_pow_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name'], 'exponent': FloatAttr.get_f64(kargs['exponent'])}
+        return self.buildOp(Top.PowOp, operands, [output_type], **param)
 
     def create_add_const_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
@@ -706,9 +714,11 @@ class MLIRImporter(object):
     def create_masked_fill_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {'name': kargs['name'],
-                 'inversed': BoolAttr.get(kargs['inversed']),
-                 'const_val': FloatAttr.get_f64(kargs['const_val'])}
+        param = {
+            'name': kargs['name'],
+            'inversed': BoolAttr.get(kargs['inversed']),
+            'const_val': FloatAttr.get_f64(kargs['const_val'])
+        }
         return self.buildOp(Top.MaskedFillOp, operands, [output_type], **param)
 
     def create_compare_op(self, operands, output_shape, **kargs):
