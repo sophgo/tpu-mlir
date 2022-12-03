@@ -28,10 +28,8 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, newType,
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -54,10 +52,8 @@ void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, op.output().getType(),
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.output().getType(),
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 } // namespace bm1684x

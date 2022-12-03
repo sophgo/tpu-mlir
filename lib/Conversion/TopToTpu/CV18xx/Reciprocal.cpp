@@ -32,10 +32,8 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, newType,
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -64,7 +62,7 @@ void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   attrs.push_back(rewriter.getNamedAttr(
       "lut_mode",
-      tpu::LutModeAttr::get(op->getContext(), tpu::LutMode::Mantissa)));
+      tpu::LutBF16ModeAttr::get(op->getContext(), tpu::LutBF16Mode::Mantissa)));
   attrs.push_back(rewriter.getNamedAttr("min_range",
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
@@ -73,7 +71,7 @@ void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
   auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
   auto mantissa_weight_op =
       dyn_cast<top::WeightOp>(mantissa_op.getDefiningOp());
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
+  rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
       op, newType,
       ValueRange{op.input(), table_weight_op.clone_bf16(op),
                  mantissa_weight_op.clone_bf16(op)},

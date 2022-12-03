@@ -24,37 +24,15 @@ void tpu::LutOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
   auto num_element = Module::getNumElements(input());
   auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
-  if (Quant::isUniformQuantized(input())) {
-    auto stype = Module::getStorageType(input());
+  auto stype = Module::getStorageType(input());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
-    for (int i = 0; i < num_element; ++i) {
-      int offset = p.inputs[0][i];
-      if (offset < 0) {
-        offset += 256;
-      }
-      assert(offset >= 0 && offset <= 255);
-      p.outputs[0][i] = p.inputs[1][offset];
+  for (int i = 0; i < num_element; ++i) {
+    int offset = p.inputs[0][i];
+    if (offset < 0) {
+      offset += 256;
     }
-  } else {
-    if (is_cv18xx) {
-      auto _lut_mode = lut_mode();
-      if (_lut_mode == LutMode::Slope) {
-        bf16_lut_slope(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
-                      p.inputs[2], min_range().convertToDouble(),
-                      max_range().convertToDouble());
-      } else if (_lut_mode == LutMode::Mantissa) {
-        bf16_lut_mantissa(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
-                      p.inputs[2], "mantissa");
-      } else if (_lut_mode == LutMode::Log) {
-        bf16_lut_mantissa(p.inputs[0], p.outputs[0], num_element, p.inputs[1],
-                      p.inputs[2], "log");
-      } else {
-        llvm_unreachable("Not supported now!");
-      }
-    } else {
-      llvm_unreachable("not support");
-    }
+    assert(offset >= 0 && offset <= 255);
+    p.outputs[0][i] = p.inputs[1][offset];
   }
   return success();
 }

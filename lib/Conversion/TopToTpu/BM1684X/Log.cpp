@@ -12,7 +12,6 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-
 void LogLowering::LoweringF32(PatternRewriter &rewriter, top::LogOp op) const {
   lowering_common_f32<tpu::LogOp>(rewriter, op);
 }
@@ -27,10 +26,8 @@ void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
     attrs.push_back(attr);
   }
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(
-      op, newType,
-      ValueRange{op.input(), table, Module::getNoneOp(op.getOperation())},
-      attrs);
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
+                                          ValueRange{op.input(), table}, attrs);
 }
 
 void LogLowering::LoweringBF16(PatternRewriter &rewriter, top::LogOp op) const {
