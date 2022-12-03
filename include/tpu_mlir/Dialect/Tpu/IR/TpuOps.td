@@ -102,7 +102,7 @@ def Tpu_PoolMode: I32EnumAttr<"PoolMode",
 def Tpu_PoolModeAttr : EnumAttr<Tpu_Dialect, Tpu_PoolMode, "pool_mode">;
 
 def Tpu_LutBF16Mode : I32EnumAttr<"LutBF16Mode",
-    "look up table mode",
+    "bf16 look up table mode",
     [
       I32EnumAttrCase<"Other", 0>,
       I32EnumAttrCase<"Mantissa", 1>,
@@ -114,6 +114,51 @@ def Tpu_LutBF16Mode : I32EnumAttr<"LutBF16Mode",
   let cppNamespace = "::tpu_mlir::tpu";
 }
 def Tpu_LutBF16ModeAttr : EnumAttr<Tpu_Dialect, Tpu_LutBF16Mode, "lut_mode">;
+
+def Tpu_ActiveMode : I32EnumAttr<"ActiveMode",
+    "Activation mode for ActiveOp, for sigmoid/exp, e.g.",
+    [
+      I32EnumAttrCase<"TANH", 0>,
+      I32EnumAttrCase<"SIGMOID", 1>,
+      I32EnumAttrCase<"RELU", 2>,
+      I32EnumAttrCase<"EXP", 3>,
+      I32EnumAttrCase<"ELU", 4>,
+      I32EnumAttrCase<"SQRT", 5>,
+      I32EnumAttrCase<"SQUARE", 6>,
+      I32EnumAttrCase<"RSQRT", 7>,
+      I32EnumAttrCase<"ABSVAL", 8>,
+      I32EnumAttrCase<"LN", 9>,
+      I32EnumAttrCase<"ROUND", 10>,
+      I32EnumAttrCase<"CEIL", 11>,
+      I32EnumAttrCase<"FLOOR", 12>,
+      I32EnumAttrCase<"SIN", 13>,
+      I32EnumAttrCase<"COS", 14>,
+      I32EnumAttrCase<"IS_FINITE", 15>,
+      I32EnumAttrCase<"MISH", 16>,
+      I32EnumAttrCase<"SWISH", 17>,
+      I32EnumAttrCase<"HSWISH", 18>,
+      I32EnumAttrCase<"SILU", 19>,
+      I32EnumAttrCase<"ARCSIN", 20>,
+      I32EnumAttrCase<"ARCCOS", 21>,
+      I32EnumAttrCase<"ARCSINH", 22>,
+      I32EnumAttrCase<"ARCCOSH", 23>,
+      I32EnumAttrCase<"ARCTANH", 24>,
+      I32EnumAttrCase<"SINH", 25>,
+      I32EnumAttrCase<"COSH", 26>,
+      I32EnumAttrCase<"TAN", 27>,
+      I32EnumAttrCase<"SIGN", 28>,
+      I32EnumAttrCase<"GELU", 29>,
+      I32EnumAttrCase<"ERF", 30>,
+      I32EnumAttrCase<"HSIGMOID", 31>,
+      I32EnumAttrCase<"LOG_SIGMOID", 32>,
+      I32EnumAttrCase<"SOFT_PLUS", 33>,
+      I32EnumAttrCase<"SOFT_SIGN", 34>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ActiveModeAttr : EnumAttr<Tpu_Dialect, Tpu_ActiveMode, "active_mode">;
+
 
 //===----------------------------------------------------------------------===//
 // Tpu Types.
@@ -439,6 +484,23 @@ def Tpu_MinOp: Tpu_Op<"Min", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ActiveOp: Tpu_Op<"Active",
+  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  let summary = "Active operator";
+
+  let description = [{
+     The operator for activation function
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    Tpu_ActiveModeAttr:$mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
@@ -811,19 +873,6 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
 }
 
-def Tpu_SiLUOp : Tpu_Op<"SiLU",
-    [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
-  let summary = " SiLU operator,  y = x * Sigmoid(x)";
-  let description = [{
-     Y = x * Sigmoid(x)
-  }];
-  let arguments = (
-    ins AnyTensor:$input
-  );
-
-  let results = (outs AnyTensor:$output);
-}
-
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     DeclareOpInterfaceMethods<TypeInterface>,
     InOutSameShape]> {
@@ -956,34 +1005,6 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_LogOp: Tpu_Op<"Log", [InOutSameShape]> {
-  let summary = "Log operator";
-
-  let description = [{
-    Calculates the natural log of the given input tensor, element-wise.
-  }];
-
-  let arguments = (ins
-    AnyTensor:$input
-  );
-
-  let results = (outs AnyTensor:$output);
-}
-
-def Tpu_ExpOp: Tpu_Op<"Exp", [InOutSameShape]> {
-  let summary = "Exp operator";
-
-  let description = [{
-    Calculates the exponent of the given input tensor, element-wise.
-  }];
-
-  let arguments = (ins
-    AnyTensor:$input
-  );
-
-  let results = (outs AnyTensor:$output);
-}
-
 def Tpu_PadOp:Tpu_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
@@ -1020,23 +1041,6 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
-  );
-
-  let results = (outs AnyTensor:$output);
-}
-
-def Tpu_SigmoidOp : Tpu_Op<"Sigmoid",
-    [DeclareOpInterfaceMethods<LocalGenInterface>,
-    InOutSameShape]> {
-  let summary = " Sigmoid operator";
-  let description = [{
-     y = 1 / (1 + exp(-x))
-     Y = scale * y + bias
-  }];
-  let arguments = (ins
-    AnyTensor:$input,
-    DefaultValuedAttr<F64Attr, "1">:$scale,
-    DefaultValuedAttr<F64Attr, "0">:$bias
   );
 
   let results = (outs AnyTensor:$output);
@@ -1311,20 +1315,6 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
   let results = (outs AnyTenor:$output);
 }
 
-def Tpu_AbsOp : Tpu_Op<"Abs", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
-  InOutSameShape]> {
-  let summary = " Abs operator";
-  let description = [{
-     y = abs(x)
-  }];
-  let arguments = (ins
-    AnyTensor:$input
-  );
-
-  let results = (outs AnyTensor:$output);
-}
-
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
   let summary = "PReluOp operator";
@@ -1417,19 +1407,6 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SqrtOp: Tpu_Op<"Sqrt", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
-  InOutSameShape]> {
-  let summary = "Sqrt operator";
-  let description = [{
-    Computes the square root of the input tensor's element.
-  }];
-  let arguments = (ins
-    AnyTensor:$input
-  );
-  let results = (outs AnyTensor:$output);
-}
-
 def Tpu_WhereOp: Tpu_Op<"Where", [
   DeclareOpInterfaceMethods<LocalGenInterface>]> {
   let summary = "Where operator";
@@ -1487,17 +1464,6 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
     I64Attr:$type,
     F64Attr:$const_val,
     I64Attr:$inversed
-  );
-  let results = (outs AnyTensor:$output);
-}
-
-def Tpu_ErfOp: Tpu_Op<"Erf", [InOutSameShape]> {
-  let summary = "Erf operator";
-  let description = [{
-    Computes the error function of the given input tensor element-wise.
-  }];
-  let arguments = (ins
-    AnyTensor:$input
   );
   let results = (outs AnyTensor:$output);
 }

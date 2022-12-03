@@ -14,7 +14,10 @@ namespace bm1684x {
 
 void SiLULowering::LoweringF32(PatternRewriter &rewriter,
                                top::SiLUOp op) const {
-  lowering_common_f32<tpu::SiLUOp>(rewriter, op);
+  auto op_ = op.getOperation();
+  op_->setAttr(
+      "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SILU));
+  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,

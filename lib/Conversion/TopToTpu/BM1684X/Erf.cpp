@@ -13,7 +13,10 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void ErfLowering::LoweringF32(PatternRewriter &rewriter, top::ErfOp op) const {
-  lowering_common_f32<tpu::ErfOp>(rewriter, op.getOperation());
+  auto op_ = op.getOperation();
+  op_->setAttr("mode",
+               tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ERF));
+  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,

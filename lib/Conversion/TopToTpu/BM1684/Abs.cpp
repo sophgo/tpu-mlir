@@ -13,12 +13,12 @@ namespace tpu_mlir {
 namespace bm1684 {
 
 void AbsLowering::LoweringF32(PatternRewriter &rewriter, top::AbsOp op) const {
-  lowering_common_f32<tpu::AbsOp>(rewriter, op);
+  llvm_unreachable("Not Implemented");
 }
 
 void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp op,
                                bool asymmetric) const {
-  lowering_common_int8<tpu::AbsOp>(rewriter, op, false);
+  llvm_unreachable("Not Implemented");
 }
 
 } // namespace bm1684

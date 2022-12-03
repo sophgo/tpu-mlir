@@ -14,7 +14,10 @@ namespace bm1684x {
 
 void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
                                top::SqrtOp op) const {
-  lowering_common_f32<tpu::SqrtOp>(rewriter, op.getOperation());
+  auto op_ = op.getOperation();
+  op_->setAttr(
+      "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SQRT));
+  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
