@@ -13,7 +13,10 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void LogLowering::LoweringF32(PatternRewriter &rewriter, top::LogOp op) const {
-  lowering_common_f32<tpu::LogOp>(rewriter, op);
+  auto op_ = op.getOperation();
+  op_->setAttr("mode",
+               tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN));
+  lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
 
 void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,

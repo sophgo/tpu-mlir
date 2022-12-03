@@ -18,13 +18,20 @@ namespace cv18xx {
 
 void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp absOp,
                                bool asymmetric) const {
-  lowering_common_int8<tpu::AbsOp>(rewriter, absOp.getOperation(), asymmetric);
+  auto op = absOp.getOperation();
+  op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),
+                                               tpu::ActiveMode::ABSVAL));
+  lowering_common_int8<tpu::ActiveOp>(rewriter, absOp.getOperation(),
+                                      asymmetric);
 }
 
 void AbsLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::AbsOp absOp) const {
-  lowering_common_bf16<tpu::AbsOp>(rewriter, absOp.getOperation());
+  auto op = absOp.getOperation();
+  op->setAttr("mode", tpu::ActiveModeAttr::get(op->getContext(),
+                                               tpu::ActiveMode::ABSVAL));
+  lowering_common_bf16<tpu::ActiveOp>(rewriter, absOp.getOperation());
 }
 
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir
