@@ -1046,6 +1046,18 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_PowOp : Top_Op<"Pow", [InOutSameShape]> {
+  let summary = "Pow operation";
+  let description = [{
+    output = input ^ n
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr: $exponent
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SqrtOp : Top_Op<"Sqrt", [InOutSameShape]> {
   let summary = "Sqrt operation";
   let description = [{

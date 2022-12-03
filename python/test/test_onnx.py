@@ -49,7 +49,7 @@ class ONNX_IR_TESTER(object):
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "ConvTranspose": self.test_ConvTranspose,
-            "ConvTranspose2": self.test_ConvTranspose2, #no pad
+            "ConvTranspose2": self.test_ConvTranspose2,  #no pad
             "Clip": self.test_Clip,
             "DepthToSpace": self.test_DepthToSpace,
             "Div": self.test_Div,
@@ -84,10 +84,8 @@ class ONNX_IR_TESTER(object):
             "Pad1": self.test_Pad1,  # pad val
             # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
             "PadReflect": self.test_PadReflect,
-            "ConstPow": self.test_ConstPow,
-            #"PowConst": self.test_PowConst,
-            # "Pow": self.test_Pow,
-            # "Pow2": self.test_Pow2,
+            "Pow1": self.test_Pow1, # y = x ^ n
+            #"Pow2": self.test_Pow2, # y = n ^ x
             "PRelu": self.test_PRelu,
             "Resize": self.test_Resize,
             "Resize2": self.test_Resize2,
@@ -308,13 +306,14 @@ class ONNX_IR_TESTER(object):
             in_names.append('in_0')
             in_data['in_0'] = inputs.data.numpy().astype(np.float32)
 
-        torch.onnx.export(torch_model,
-                          inputs,
-                          onnx_file,
-                          export_params=True,
-                          verbose=True,
-                          opset_version=13, # export hardswish needed
-                          input_names=in_names)
+        torch.onnx.export(
+            torch_model,
+            inputs,
+            onnx_file,
+            export_params=True,
+            verbose=True,
+            opset_version=13,  # export hardswish needed
+            input_names=in_names)
         onnx_model = onnx.load(onnx_file)
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data)
@@ -1395,18 +1394,16 @@ class ONNX_IR_TESTER(object):
     def test_ReduceSum(self, case_name):
         input_shape = [4, 4, 4, 16, 16, 64]
         output_shape = [4, 4, 4, 16, 64]
-        axes = helper.make_tensor(name='axes',
-                                data_type=onnx.TensorProto.INT64,
-                                dims=[1],
-                                vals=[4])
+        axes = helper.make_tensor(name='axes', data_type=onnx.TensorProto.INT64, dims=[1], vals=[4])
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('o_sum', TensorProto.FLOAT, output_shape)
-        reduce_sum = helper.make_node(
-            'ReduceSum',
-            inputs=['input', 'axes'],
-            outputs = ['o_sum'],
-            keepdims=0)
-        graph_def = helper.make_graph([reduce_sum], case_name, [input], [output], initializer=[axes])
+        reduce_sum = helper.make_node('ReduceSum',
+                                      inputs=['input', 'axes'],
+                                      outputs=['o_sum'],
+                                      keepdims=0)
+        graph_def = helper.make_graph([reduce_sum],
+                                      case_name, [input], [output],
+                                      initializer=[axes])
         self.onnx_and_test(graph_def)
 
     def test_Sigmoid(self, case_name):
@@ -1659,7 +1656,9 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(x, Net(), case_name)
 
     def test_TorchGRU(self, case_name):
+
         class Net(torch.nn.Module):
+
             def __init__(self):
                 super(Net, self).__init__()
                 self.gru = nn.GRU(input_size=100, hidden_size=50, bidirectional=True)
@@ -2260,7 +2259,20 @@ class ONNX_IR_TESTER(object):
         input_data = np.abs(np.random.randn(*shape).astype(np.float32))
         self.onnx_and_test(graph_def, input_data={"input": input_data})
 
-    def test_ConstPow(self, case_name):
+    def test_Pow1(self, case_name):
+        shape = [1, 3, 27, 27]
+        input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
+        constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
+                                      np.array([1.2]).astype(np.float32))
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
+        pow_def = helper.make_node("Pow", inputs=["input", "constant"], outputs=["output"])
+        graph_def = helper.make_graph([pow_def],
+                                      case_name, [input], [output],
+                                      initializer=[constant])
+        self.onnx_and_test(graph_def, input_data={"input": input_data})
+
+    def test_Pow2(self, case_name):
         shape = [1, 3, 27, 27]
         input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
@@ -2271,53 +2283,6 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[constant])
         self.onnx_and_test(graph_def)
-
-    def test_PowConst(self, case_name):
-        shape = [1, 3, 27, 27]
-        input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, [1, 3, 27, 27])
-        constant = helper.make_tensor(
-            "constant",
-            TensorProto.FLOAT,
-            [1],
-            np.array([1.2]).astype(np.float32),
-        )
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, shape)
-        pow_def = helper.make_node("Pow", inputs=["input", "constant"], outputs=["output"])
-        graph_def = helper.make_graph([pow_def],
-                                      case_name, [input], [output],
-                                      initializer=[constant])
-        self.onnx_and_test(graph_def, input_data={"input": input_data})
-
-    def test_Pow(self, case_name):
-        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
-        output_shape = [1, 3, 27, 27]
-        input_data = {
-            "input1": np.abs(np.random.randn(*input_shape["input1"]).astype(np.float32)) + 1e-6,
-            "input2": np.random.randn(*input_shape["input2"]).astype(np.float32)
-        }
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        pow_def = helper.make_node("Pow", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([pow_def], case_name, inputs, [output])
-        self.onnx_and_test(graph_def, input_data=input_data)
-
-    def test_Pow2(self, case_name):
-        input_shape = {"input1": [1, 3, 1, 27], "input2": [1, 3, 27, 1]}
-        output_shape = [1, 3, 27, 27]
-        input_data = {
-            "input1": np.abs(np.random.randn(*input_shape["input1"]).astype(np.float32)) + 1e-6,
-            "input2": np.random.randn(*input_shape["input2"]).astype(np.float32)
-        }
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-        pow_def = helper.make_node("Pow", inputs=list(input_shape.keys()), outputs=["output"])
-        graph_def = helper.make_graph([pow_def], case_name, inputs, [output])
-        self.onnx_and_test(graph_def, input_data=input_data)
 
     def test_CompareConst(self, case_name):
         shape = [1, 3, 27, 27]
@@ -2384,6 +2349,7 @@ class ONNX_IR_TESTER(object):
         exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([exp_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
+
 
 if __name__ == "__main__":
     tester = ONNX_IR_TESTER()
