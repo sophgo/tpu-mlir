@@ -100,6 +100,36 @@ struct ForwardTypePattern : public OpRewritePattern<TyOp> {
   }
 };
 
+// to make compare inputs have the same min max
+struct CompareCalibartion : public OpRewritePattern<top::CompareOp> {
+  using OpRewritePattern<top::CompareOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::CompareOp op,
+                                PatternRewriter &rewriter) const override {
+    Value l = op.lhs();
+    Value r = op.rhs();
+    if (false == Quant::isCalibratedType(l) ||
+        false == Quant::isCalibratedType(r)) {
+      return failure();
+    }
+    auto stype = Module::getStorageType(l);
+    auto l_ctype = Quant::getCalibratedType(l);
+    auto r_ctype = Quant::getCalibratedType(r);
+    auto max = std::max(l_ctype.getMax(), r_ctype.getMax());
+    auto min = std::min(l_ctype.getMin(), r_ctype.getMin());
+    if (l_ctype.getMax() == r_ctype.getMax() &&
+        l_ctype.getMin() == r_ctype.getMin()) {
+      return failure();
+    }
+    auto new_ctype = quant::CalibratedQuantizedType::get(stype, min, max);
+    auto new_ltype = RankedTensorType::get(Module::getShape(l), new_ctype);
+    auto new_rtype = RankedTensorType::get(Module::getShape(r), new_ctype);
+    l.setType(new_ltype);
+    r.setType(new_rtype);
+    return success();
+  }
+};
+
 template <typename TyOp>
 struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -198,23 +228,24 @@ protected:
     if (state_ != Module::State::TOP_CALIBRATED) {
       return;
     }
+    // clang-format off
     RewritePatternSet patterns(ctx_);
     patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
                  BackwardMutiInSingleOut<top::MinOp>,
                  BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    // clang-format off
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::ReshapeOp>,
                  BackwardCalibartion<top::LeakyReluOp>,
                  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
-    // clang-format on
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    // clang-format off
+    patterns.add<CompareCalibartion>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
                  ForwardCalibartion<top::SliceOp>,
@@ -265,8 +296,9 @@ protected:
       if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           if (auto cpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
-            //embedding function's first operand is the indices,shouldn't do cast.
-            if(cpuOp.operation_name() == "embedding" && idx == 0) {
+            // embedding function's first operand is the indices,shouldn't do
+            // cast.
+            if (cpuOp.operation_name() == "embedding" && idx == 0) {
               return;
             }
           }

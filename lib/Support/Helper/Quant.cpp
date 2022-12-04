@@ -105,6 +105,23 @@ mlir::Type Quant::getQuantInt8Type(Value v, bool asymmetric) {
   return RankedTensorType::get(type.getShape(), qtype);
 }
 
+mlir::Type Quant::getQuantBoolType(Value v) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto ctx = v.getContext();
+  auto cali_type = getCalibratedType(v);
+  int64_t qmin = -128, qmax = 127;
+  uint32_t flag = quant::QuantizationFlags::Signed;
+  if (cali_type.getMin() >= 0) {
+    qmin = 0;
+    qmax = 255;
+    flag = 0;
+  }
+  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
+                                                cali_type.getExpressedType(),
+                                                1.0, 0, qmin, qmax);
+  return RankedTensorType::get(type.getShape(), qtype);
+}
+
 uint16_t Quant::to_bf16(float src, bool rounding) {
   // To convert a float 32 to bfloat16, a float 32 can be viewed as 32 bits
   // with the following tags:
@@ -136,8 +153,7 @@ uint16_t Quant::to_bf16(float src, bool rounding) {
     u16_val = ((uint16_t *)(&u32_val))[1];
     /* HW behavior */
     // infinity set to max finite positive value
-    u16_val = ((u16_val & 0x7f80) == 0x7f80) ?
-              0x7f7f : u16_val;
+    u16_val = ((u16_val & 0x7f80) == 0x7f80) ? 0x7f7f : u16_val;
   } else {
     u16_val = ((uint16_t *)(&src))[1];
   }

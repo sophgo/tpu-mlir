@@ -25,18 +25,19 @@ extern "C" {
 }
 #endif
 
-static const int compare_type_map[] = {
-  BINARY_EQ, BINARY_GT, BINARY_GE, BINARY_LT, BINARY_LE
-};
+static const int compare_type_map[] = {BINARY_EQ, BINARY_GT, BINARY_GE,
+                                       BINARY_LT, BINARY_LE};
 
 // =========================================
 // GlobalGenInterface
 // =========================================
 
 void tpu::CompareOp::codegen_global_bm1684x() {
-  bcbinary_common_spec_t spec;
+  bcbinary_common_spec_t spec = {0};
   spec.binary_type = compare_type_map[type()];
   spec.if_relu = 0;
+  spec.scale_A = 1;
+  spec.scale_B = 1;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -48,11 +49,9 @@ void tpu::CompareOp::codegen_global_bm1684x() {
 // LocalGenInterface
 // =========================================
 
-int64_t tpu::CompareOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
-                                              int64_t out_lmem_bytes,
-                                              int64_t in_nslice, int64_t in_hslice,
-                                              int64_t out_nslice,
-                                              int64_t out_hslice) {
+int64_t tpu::CompareOp::getBufferSize_bm1684x(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   return 0;
 }
 
@@ -65,10 +64,11 @@ void tpu::CompareOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
 
-  bcbinary_local_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
+  bcbinary_local_spec_t spec = {0};
   spec.common.binary_type = compare_type_map[type()];
   spec.common.if_relu = 0;
+  spec.common.scale_A = 1;
+  spec.common.scale_B = 1;
 
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));
