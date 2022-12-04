@@ -93,7 +93,7 @@ struct Quant {
     // ROUNDING_DOWN  for cv18xx
     // ROUNDING_HALF_UP for cv18xx
     int64_t i64_val;
-    if (round_mode == ROUNDING_HALF_DOWN) {
+    if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
       i64_val = std::round(v);
     } else if (round_mode == ROUNDING_DOWN) {
       i64_val = (int64_t)v;
@@ -113,7 +113,9 @@ struct Quant {
         i64_val = -i64_val;
       }
     } else if (round_mode == ROUNDING_HALF_UP) {
-      i64_val = floor(v + 0.5);
+      i64_val = std::floor(v + 0.5);
+    } else if (round_mode == ROUNDING_HALF_DOWN) {
+      i64_val = std::ceil(v - 0.5);
     } else {
       llvm_unreachable("not support round_mode.");
     }
@@ -121,14 +123,15 @@ struct Quant {
   }
 
   template <typename T>
-  static int8_t to_int8(T value, RoundingMode round_mode = ROUNDING_HALF_DOWN) {
+  static int8_t
+  to_int8(T value, RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
     auto v = to_int(value, round_mode);
     return v > 127 ? 127 : v < -128 ? -128 : v;
   };
 
   template <typename T>
-  static uint8_t to_uint8(T value,
-                          RoundingMode round_mode = ROUNDING_HALF_DOWN) {
+  static uint8_t
+  to_uint8(T value, RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
     auto v = to_int(value, round_mode);
     return v > 255 ? 255 : v < 0 ? 0 : v;
   }

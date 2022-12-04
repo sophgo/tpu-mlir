@@ -311,7 +311,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("keepdims", rewriter.getI64IntegerAttr(1)));
     attrs.push_back(
-        rewriter.getNamedAttr("type", rewriter.getStringAttr("ReduceSum")));
+        rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceSum")));
     auto newType = RankedTensorType::get({1, col_size}, rewriter.getI32Type());
     if (op.right_transpose())
       newType = RankedTensorType::get({col_size, 1}, rewriter.getI32Type());

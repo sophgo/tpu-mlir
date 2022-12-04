@@ -49,6 +49,20 @@ class Tpu_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
   let mnemonic = attrMnemonic;
 }
 
+// A string attribute whose value are one of the values in `cases`.
+class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
+  CPred<!foldl(
+      "$_self.cast<StringAttr>().getValue() == \"" # !head(cases) # "\"",
+      !foreach(case, !tail(cases),
+               "$_self.cast<StringAttr>().getValue() == \"" # case # "\""),
+      prev, cur, prev # " || " # cur)>,
+  "string attribute whose value is " #
+    !foldl(/*init*/!head(cases), /*list*/!tail(cases),
+           prev, cur, prev # ", or " # cur)>;
+
+def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
+def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum"]>;
+
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
   let parameters = (ins
@@ -159,6 +173,28 @@ def Tpu_ActiveMode : I32EnumAttr<"ActiveMode",
 }
 def Tpu_ActiveModeAttr : EnumAttr<Tpu_Dialect, Tpu_ActiveMode, "active_mode">;
 
+def Tpu_ResizeMode : I32EnumAttr<"ResizeMode",
+    "Resize mode",
+    [
+      I32EnumAttrCase<"nearest", 0>,
+      I32EnumAttrCase<"linear", 1>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ResizeModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeMode, "mode">;
+
+def Tpu_ResizeCoordMode : I32EnumAttr<"ResizeCoordMode",
+    "Resize coord mode",
+    [
+      I32EnumAttrCase<"align_corners", 0>,
+      I32EnumAttrCase<"half_pixel", 1>,
+      I32EnumAttrCase<"pytorch_half_pixel", 2>,
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_ResizeCoordModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeCoordMode, "coord_mode">;
 
 //===----------------------------------------------------------------------===//
 // Tpu Types.
@@ -1347,29 +1383,6 @@ def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_ResizeMode : I32EnumAttr<"ResizeMode",
-    "Resize mode",
-    [
-      I32EnumAttrCase<"nearest", 0>,
-      I32EnumAttrCase<"linear", 1>,
-    ]>{
-  let genSpecializedAttr = 0;
-  let cppNamespace = "::tpu_mlir::tpu";
-}
-def Tpu_ResizeModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeMode, "mode">;
-
-def Tpu_ResizeCoordMode : I32EnumAttr<"ResizeCoordMode",
-    "Resize coord mode",
-    [
-      I32EnumAttrCase<"align_corners", 0>,
-      I32EnumAttrCase<"half_pixel", 1>,
-      I32EnumAttrCase<"pytorch_half_pixel", 2>,
-    ]>{
-  let genSpecializedAttr = 0;
-  let cppNamespace = "::tpu_mlir::tpu";
-}
-def Tpu_ResizeCoordModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeCoordMode, "coord_mode">;
-
 def Tpu_InterpOp: Tpu_Op<"Interp"> {
   let summary = "Interp operation";
   let description = [{
@@ -1398,7 +1411,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
     AnyTensorOrNone:$reciprocal_mantissa_table,
     I64ArrayAttr:$axes,
     I64Attr:$keepdims,
-    StrAttr: $type,
+    ReduceModeAttr:$mode,
     // for cv18xx
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift
@@ -1446,7 +1459,7 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
   let arguments = (ins
     AnyTensor:$lhs,
     AnyTensor:$rhs,
-    I64Attr:$type
+    CompareModeAttr:$mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1461,9 +1474,9 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$type,
+    CompareModeAttr:$mode,
     F64Attr:$const_val,
-    I64Attr:$inversed
+    BoolAttr:$inversed
   );
   let results = (outs AnyTensor:$output);
 }

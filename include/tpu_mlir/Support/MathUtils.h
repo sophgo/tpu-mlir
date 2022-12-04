@@ -86,7 +86,7 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 template <typename T>
 void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
-                    RoundingMode round_mode = ROUNDING_HALF_DOWN);
+                    RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO);
 // to compitable with tflite
 void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,
                         int64_t *shift);
@@ -163,4 +163,8 @@ int StopForAxis(const int *stop_indices, const int *strides,
                 const int *shape, const int axis,
                 int start_for_axis);
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
+
+// compare
+bool compare(float lhs, float rhs, llvm::StringRef mode);
+
 } // namespace tpu_mlir

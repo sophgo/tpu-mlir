@@ -851,4 +851,24 @@ std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
   shape_v.insert(shape_v.begin(), diff, 1);
   return shape_v;
 }
+
+bool compare(float a, float b, StringRef mode) {
+  if (mode == "Equal") {
+    return a == b;
+  }
+  if (mode == "Greater") {
+    return a > b;
+  }
+  if (mode == "GreaterOrEqual") {
+    return a >= b;
+  }
+  if (mode == "Less") {
+    return a < b;
+  }
+  if (mode == "LessOrEqual") {
+    return a <= b;
+  }
+  llvm_unreachable("Not Implemented");
+  return false;
+}
 } // namespace tpu_mlir

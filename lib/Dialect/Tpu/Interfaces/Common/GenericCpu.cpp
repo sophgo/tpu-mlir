@@ -439,9 +439,8 @@ private:
   std::string coordinate_transformation_mode;
 };
 
-class EmbeddingOpKernel{
+class EmbeddingOpKernel {
 public:
-
   EmbeddingOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
     Module::getShapeVec(op.inputs()[0], this->input_shape);
     Module::getShapeVec(op.inputs()[1], this->table_shape);
@@ -453,7 +452,8 @@ public:
 
   void invoke() {
     auto feature_dim = table_shape.back();
-    assert(output_shape.back() == feature_dim && "must be the same feature dim");
+    assert(output_shape.back() == feature_dim &&
+           "must be the same feature dim");
     int64_t count = std::accumulate(input_shape.begin(), input_shape.end(), 1,
                                     std::multiplies<int64_t>());
     for (int64_t i = 0; i < count; i++) {
@@ -461,14 +461,15 @@ public:
       size_t table_offset = (size_t)index * feature_dim;
       auto out_offset = i * feature_dim;
       memcpy(output_data + out_offset, table_data + table_offset,
-            feature_dim * sizeof(float));
+             feature_dim * sizeof(float));
       // if (mix_bf16 == false) {
       //   memcpy(output_data + out_offset, table_data + table_offset,
       //         feature_dim * sizeof(float));
       // } else {
       //   for (int64_t j = 0; j < feature_dim; j++) {
       //     output[out_offset + j] =
-      //         BF16(BF16(table[table_offset + j] * scale_data->at(j)) + zeropoint_data->at(j));
+      //         BF16(BF16(table[table_offset + j] * scale_data->at(j)) +
+      //         zeropoint_data->at(j));
       //   }
       // }
     }
@@ -478,9 +479,9 @@ private:
   float *input_data;
   float *table_data;
   float *output_data;
-  //float *scale_data;
-  // SyncedData zeropoint_data;
-  // SyncedData output_data;
+  // float *scale_data;
+  //  SyncedData zeropoint_data;
+  //  SyncedData output_data;
   std::vector<int64_t> input_shape;
   std::vector<int64_t> table_shape;
   std::vector<int64_t> output_shape;
@@ -496,8 +497,8 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     auto out_type = Module::getStorageType(output());
     if (in_type.isF32() && out_type.isSignedInteger()) {
       auto qtype = Quant::getUniformQuantizedType(output());
-      quantizeToInt8(p.inputs[0], p.outputs[0], num_elem, 1. / qtype.getScale(),
-                     ROUNDING_HALF_DOWN);
+      quantizeToInt8(p.inputs[0], p.outputs[0], num_elem,
+                     1. / qtype.getScale());
     } else {
       llvm_unreachable("not supported!\n");
     }

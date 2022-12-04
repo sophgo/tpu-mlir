@@ -52,6 +52,25 @@ class Top_Attr<string attrName, string attrMnemonic, list<Trait> traits = []>
   let mnemonic = attrMnemonic;
 }
 
+// A string attribute whose value are one of the values in `cases`.
+class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
+  CPred<!foldl(
+      "$_self.cast<StringAttr>().getValue() == \"" # !head(cases) # "\"",
+      !foreach(case, !tail(cases),
+               "$_self.cast<StringAttr>().getValue() == \"" # case # "\""),
+      prev, cur, prev # " || " # cur)>,
+  "string attribute whose value is " #
+    !foldl(/*init*/!head(cases), /*list*/!tail(cases),
+           prev, cur, prev # ", or " # cur)>;
+
+def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
+def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum"]>;
+def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
+def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel"]>;
+def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;
+def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
+def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
+
 //===----------------------------------------------------------------------===//
 // TOP Types.
 //===----------------------------------------------------------------------===//
@@ -121,12 +140,12 @@ def Top_InputOp: Top_BaseOp<"Input"> {
   let arguments = (
     ins AnyTensor:$input,
     // preprocess for input
-    OptionalAttr<StrAttr>:$pixel_format,
-    OptionalAttr<StrAttr>:$channel_format,
+    OptionalAttr<PixelFormatAttr>:$pixel_format,
+    OptionalAttr<ChannelFormatAttr>:$channel_format,
     OptionalAttr<I64ArrayAttr>:$resize_dims,
     OptionalAttr<BoolAttr>:$keep_aspect_ratio,
     OptionalAttr<I64Attr>:$pad_value,
-    OptionalAttr<StrAttr>:$pad_type,
+    OptionalAttr<PadModeAttr>:$pad_type,
     OptionalAttr<F64ArrayAttr>:$scale,
     OptionalAttr<F64ArrayAttr>:$mean
   );
@@ -1025,8 +1044,8 @@ def Top_InterpOp : Top_Op<"Interp"> {
     AnyTensor:$input,
     F64Attr:$scale_h,
     F64Attr:$scale_w,
-    StrAttr:$mode,
-    StrAttr:$coord_mode
+    InterpModeAttr:$mode,
+    InterpCoordModeAttr:$coord_mode
   );
 
   let results = (outs AnyTensor:$output);
@@ -1041,7 +1060,7 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
     AnyTensor:$input,
     I64ArrayAttr:$axes,
     I64Attr:$keepdims,
-    StrAttr: $type
+    ReduceModeAttr:$mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1105,7 +1124,7 @@ def Top_CompareOp : Top_Op<"Compare"> {
   let arguments = (ins
     AnyTensor:$lhs,
     AnyTensor:$rhs,
-    I64Attr:$type
+    CompareModeAttr:$mode
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1118,9 +1137,9 @@ def Top_CompareConstOp : Top_Op<"CompareConst"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$type,
+    CompareModeAttr:$mode,
     F64Attr:$const_val,
-    I64Attr:$inversed
+    BoolAttr:$inversed
   );
   let results = (outs AnyTensor:$output);
 }

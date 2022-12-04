@@ -311,6 +311,25 @@ void BM168x::end_env() {
   }
 }
 
+int BM168x::compare_mode(StringRef mode) {
+  if (mode == "Equal") {
+    return BINARY_EQ;
+  }
+  if (mode == "Greater") {
+    return BINARY_GT;
+  }
+  if (mode == "GreaterOrEqual") {
+    return BINARY_GE;
+  }
+  if (mode == "Less") {
+    return BINARY_LT;
+  }
+  if (mode == "LessOrEqual") {
+    return BINARY_LE;
+  }
+  llvm_unreachable("Not Implemented");
+}
+
 void BM168x::before_codegen() {
   dl_reset_cmd_id(cmdid_node);
   dl_reset_cmd_id(bdc_node);

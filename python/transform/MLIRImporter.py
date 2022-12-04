@@ -695,7 +695,7 @@ class MLIRImporter(object):
             'name': kargs['name'],
             'axes': self.ArrayAttr(kargs['axes']),
             'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
-            'type': StringAttr.get(kargs['type']),
+            'mode': StringAttr.get(kargs['mode']),
         }
         return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
 
@@ -724,10 +724,7 @@ class MLIRImporter(object):
     def create_compare_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        param = {
-            'name': kargs['name'],
-            'type': IntegerAttr.get(self.mlir_type['INT64'], kargs['type'])
-        }
+        param = {'name': kargs['name'], 'mode': StringAttr.get(kargs['mode'])}
         return self.buildOp(Top.CompareOp, operands, [output_type], **param)
 
     def create_compare_const_op(self, operands, output_shape, **kargs):
@@ -735,9 +732,9 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
             'name': kargs['name'],
-            'type': IntegerAttr.get(self.mlir_type['INT64'], kargs['type']),
+            'mode': StringAttr.get(kargs['mode']),
             'const_val': FloatAttr.get_f64(kargs['const_val']),
-            'inversed': IntegerAttr.get(self.mlir_type['INT64'], kargs['inversed'])
+            'inversed': BoolAttr.get(kargs['inversed'])
         }
         return self.buildOp(Top.CompareConstOp, operands, [output_type], **param)
 
