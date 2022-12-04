@@ -138,6 +138,7 @@ struct Quant {
   static float BF16(float src, bool rounding = true);
   static void BF16(float *src, float *dst, size_t size, bool rounding = true);
   static mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
+  static mlir::Type getQuantBoolType(Value v);
   static mlir::Type getQuantBF16Type(Value v);
   static mlir::Type getQuantF16Type(Value v);
 };

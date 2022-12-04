@@ -2306,10 +2306,6 @@ class ONNX_IR_TESTER(object):
 
     def test_Compare(self, case_name):
         shape = [1, 3, 27, 27]
-        input_data = {
-            "input1": np.random.randn(*shape).astype(np.float32),
-            "input2": np.random.randn(*shape).astype(np.float32)
-        }
         input_shape = {"input1": shape, "input2": shape}
         inputs = [
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
@@ -2319,7 +2315,7 @@ class ONNX_IR_TESTER(object):
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
             cmp_def = helper.make_node(cmp_type, inputs=["input1", "input2"], outputs=["output"])
             graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
-            self.onnx_and_test(graph_def, input_data=input_data)
+            self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
 
     def test_Compare2(self, case_name):
