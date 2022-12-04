@@ -84,7 +84,7 @@ class ONNX_IR_TESTER(object):
             "Pad1": self.test_Pad1,  # pad val
             # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
             "PadReflect": self.test_PadReflect,
-            "Pow1": self.test_Pow1, # y = x ^ n
+            "Pow1": self.test_Pow1,  # y = x ^ n
             #"Pow2": self.test_Pow2, # y = n ^ x
             "PRelu": self.test_PRelu,
             "Resize": self.test_Resize,
@@ -2286,14 +2286,9 @@ class ONNX_IR_TESTER(object):
 
     def test_CompareConst(self, case_name):
         shape = [1, 3, 27, 27]
-        input_data = np.abs(np.random.randn(*shape).astype(np.float32)) + 1e-6
         input = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
-        constant = helper.make_tensor(
-            "constant",
-            TensorProto.FLOAT,
-            [1],
-            np.array([0.5]).astype(np.float32),
-        )
+        constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
+                                      np.array([0.5]).astype(np.float32))
         output = helper.make_tensor_value_info("output", TensorProto.BOOL, shape)
         # "Equal" need not to be tested since equal op between floating number may be invalid
         for cmp_type in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
@@ -2301,7 +2296,7 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([cmp_def],
                                           case_name, [input], [output],
                                           initializer=[constant])
-            self.onnx_and_test(graph_def, input_data={"input": input_data})
+            self.onnx_and_test(graph_def)
             print("====== TEST {} Success ======".format(cmp_type))
 
     def test_Compare(self, case_name):

@@ -17,9 +17,20 @@ void CompareConstLowering::LoweringF32(PatternRewriter &rewriter,
   lowering_common_f32<tpu::CompareConstOp>(rewriter, op.getOperation());
 }
 
-void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareConstOp op,
+void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
+                                        top::CompareConstOp op,
                                         bool asymmetric) const {
-  lowering_common_f32<tpu::CompareConstOp>(rewriter, op.getOperation());
+  auto op_ = op.getOperation();
+  int64_t zp;
+  double scale;
+  bool sign;
+  Quant::getScaleAndZeroPoint(op.input(), scale, zp, sign, asymmetric);
+  auto val = op.const_val().convertToDouble();
+  double new_val = std::round(val / scale + zp);
+  new_val = sign ? Quant::to_int8(new_val) : Quant::to_uint8(new_val);
+  op_->setAttr("const_val", rewriter.getF64FloatAttr(new_val));
+  auto newType = Quant::getQuantBoolType(op.output());
+  lowering_common<tpu::CompareConstOp>(rewriter, op.getOperation(), newType);
 }
 
 void CompareConstLowering::LoweringBF16(PatternRewriter &rewriter,

@@ -16,7 +16,7 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   std::vector<Value> operands;
   std::vector<int64_t> rshift_v(1, 0);
   std::vector<int64_t> multiplier_v(1, 1);
-  auto mode = op.type().str();
+  auto mode = op.mode();
   double in_thr, out_thr;
   in_thr = Quant::getThreshold(op.input());
   out_thr = Quant::getThreshold(op.output());
@@ -64,7 +64,7 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
 void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::ReduceOp op) const {
   std::vector<Value> operands;
-  auto mode = op.type().str();
+  auto mode = op.mode();
   operands.push_back(op.input());
   if (mode != "ReduceL2") {
     auto none = Module::getNoneOp(op);
@@ -80,10 +80,10 @@ void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,
                                      mantissa_table.data(), 0.5f, 0.f);
     auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
     auto table_type = RankedTensorType::get(shape, rewriter.getF32Type());
-    auto vtable = top::WeightOp::create(op, "reciprocal_table",
-                                        exp_table, table_type);
-    auto vmantissa = top::WeightOp::create(
-        op, "reciprocal_mantissa_table", mantissa_table, table_type);
+    auto vtable =
+        top::WeightOp::create(op, "reciprocal_table", exp_table, table_type);
+    auto vmantissa = top::WeightOp::create(op, "reciprocal_mantissa_table",
+                                           mantissa_table, table_type);
     operands.push_back(
         dyn_cast<top::WeightOp>(vtable.getDefiningOp()).clone_bf16(op));
     operands.push_back(

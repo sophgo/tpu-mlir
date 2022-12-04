@@ -22,10 +22,9 @@ void CompareLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareOp op,
   auto op_ = op.getOperation();
   double l_scale, r_scale;
   int64_t l_zp, r_zp;
-  bool l_sign, r_sign;
-  Quant::getScaleAndZeroPoint(op.lhs(), l_scale, l_zp, l_sign, asymmetric);
-  Quant::getScaleAndZeroPoint(op.rhs(), r_scale, r_zp, r_sign, asymmetric);
-  if (l_scale != r_scale || l_zp != r_zp || l_sign != r_sign) {
+  Quant::getScaleAndZeroPoint(op.lhs(), l_scale, l_zp, asymmetric);
+  Quant::getScaleAndZeroPoint(op.rhs(), r_scale, r_zp, asymmetric);
+  if (l_scale != r_scale || l_zp != r_zp) {
     lowering_common_f32<tpu::CompareOp>(rewriter, op_);
     return;
   }

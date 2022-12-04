@@ -15,7 +15,7 @@ void top::ReduceOp::deinit(InferenceParameter &p) {}
 LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   float *input_v = p.inputs[0];
   float *output_v = p.outputs[0];
-  auto type_val = type().str();
+  auto type_val = mode().str();
   auto axes_val = Module::getI64Array(axes());
   auto out_shape = Module::getShape(output());
   auto input_shape = Module::getShape(input());

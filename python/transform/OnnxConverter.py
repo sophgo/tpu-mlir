@@ -1216,7 +1216,7 @@ class OnnxConverter(BaseConverter):
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
             "axes": axes,
             "keepdims": keepdims,
-            "type": onnx_node.op_type
+            "mode": onnx_node.op_type
         }
         new_op = self.mlir.create_reduce_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -1550,25 +1550,22 @@ class OnnxConverter(BaseConverter):
         self.addOperand(onnx_node.name, new_op)
 
     def convert_cmp_op(self, onnx_node):
-        type_map = {"Equal": 0, "Greater": 1, "GreaterOrEqual": 2, "Less": 3, "LessOrEqual": 4}
-        assert (onnx_node.op_type in type_map)
+        supports = {"Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual"}
+        assert (onnx_node.op_type in supports)
         assert (len(onnx_node.inputs) == 2)
-        p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            "type": type_map[onnx_node.op_type]
-        }
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "mode": onnx_node.op_type}
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         output_shape = self.getShape(onnx_node.name)
         if self.isScalar(lhs):
             rhs_opd = self.getOp(rhs)
             p['const_val'] = self.getScalar(lhs)
-            p['inversed'] = 1
+            p['inversed'] = True
             cmp_op = self.mlir.create_compare_const_op([rhs_opd], output_shape, **p)
         elif self.isScalar(rhs):
             lhs_opd = self.getOp(lhs)
             p['const_val'] = self.getScalar(rhs)
-            p['inversed'] = 0
+            p['inversed'] = False
             cmp_op = self.mlir.create_compare_const_op([lhs_opd], output_shape, **p)
         else:
             rhs_opd = self.getOp(rhs)

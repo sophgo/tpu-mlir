@@ -90,7 +90,7 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
   for (int i = 0; i < param.spec.common.axis_num; i++) {
     param.spec.common.axis[i] = axes_val->at(i);
   }
-  param.spec.common.method = get_reduce_type(type().str());
+  param.spec.common.method = get_reduce_type(mode().str());
   param.spec.common.input_scale = 1.0f;
   param.spec.common.output_scale = 1.0f;
   param.spec.common.keep_dims = keepdims();
