@@ -52,12 +52,13 @@ public:
     std::string line;
     std::regex cali_pattern("\\S+\\s+[-0-9.e]+\\s+[-0-9.e]+\\s+[-0-9.e]+");
     std::regex info_pattern("#.*");
+    bool weight_scale_meeted = false;
     while (std::getline(infile, line)) {
       if (line.back() == '\r') {
         line.pop_back();
       }
 
-      if (std::string::npos != line.find("_weight")) {
+      if (weight_scale_meeted && std::string::npos != line.find("_weight")) {
         std::string name;
         double value;
         int num = 0;
@@ -80,6 +81,8 @@ public:
           }
           calibration_map[name] = info;
         } else if (std::regex_match(line, info_pattern)) {
+          if (std::string::npos != line.find("#weight_scale"))
+            weight_scale_meeted = true;
         } else {
           // Format of threshold table error
           llvm::errs() << line;
