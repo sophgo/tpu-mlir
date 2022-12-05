@@ -216,6 +216,16 @@ void cvi_backend_tg_bf16_lut_mantissa_kernel(
     gaddr_t exp_lut_table, gaddr_t mantissa_lut_table, int input_n, int input_c,
     int input_h, int input_w, int method);
 
+void cvi_backend_tg_bf16_lstm_kernel(
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_recurrence, gaddr_t ga_bias,
+    gaddr_t ga_initial_h, gaddr_t ga_inital_c, gaddr_t ga_cont,
+    gaddr_t ga_sigmoid_table_data_lut, gaddr_t ga_sigmoid_slope_table_data_lut,
+    gaddr_t ga_tanh_table_data_lut, gaddr_t ga_tanh_slope_table_data_lut,
+    gaddr_t ga_output, gaddr_t ga_last_h, gaddr_t ga_last_c, int seq_len,
+    int num_dir, int batch_size, int hidden_size, bool do_bias,
+    bool with_initial_h, bool with_initial_c, bool with_cont,
+    bool is_bidirectional, bool with_final_h, bool with_final_c);
+
 void cvi_backend_tg_bf16_reduce_mean_kernel(uint32_t layer_id, gaddr_t ga_input,
                                             gaddr_t ga_output,
                                             std::vector<int64_t> shape,

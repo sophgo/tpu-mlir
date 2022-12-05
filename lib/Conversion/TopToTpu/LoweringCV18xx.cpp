@@ -32,6 +32,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       LeakyReluLowering,
       LogLowering,
       LRNLowering,
+      LSTMLowering,
       MatMulLowering,
       MaxLowering,
       MaxPoolLowering,
