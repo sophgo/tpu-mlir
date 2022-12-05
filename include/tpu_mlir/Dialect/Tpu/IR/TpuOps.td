@@ -534,6 +534,7 @@ def Tpu_ActiveOp: Tpu_Op<"Active",
   let arguments = (ins
     AnyTensor:$input,
     Tpu_ActiveModeAttr:$mode,
+    OptionalAttr<F64ArrayAttr>:$coeffs,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 

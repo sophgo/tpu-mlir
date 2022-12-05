@@ -22,6 +22,14 @@ using namespace mlir;
 LogicalResult tpu::ActiveOp::init(InferenceParameter &p) { return success(); }
 void tpu::ActiveOp::deinit(InferenceParameter &p) {}
 
+static inline double hsigmoid(double x, double alpha, double beta) {
+  return std::max(0.0, std::min(1.0, alpha * x + beta));
+}
+
+static inline double hswish(double x) {
+  return x * std::max(0.0, std::min(1.0, x / 6 + 0.5)) ;
+}
+
 static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; ++i) {
@@ -54,6 +62,17 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::SIGMOID:
     active_func(p, num_element,
                 [](double val) { return 1 / (1 + std::exp(-val)); });
+    break;
+  case ActiveMode::HSIGMOID: {
+    const auto coeffs_ = Module::getF64Array(coeffs(), 2, 0);
+    const double alpha = coeffs_->at(1);
+    const double beta = coeffs_->at(0);
+    active_func(p, num_element,
+                [alpha, beta](double val) { return hsigmoid(val, alpha, beta); });
+    break;
+  }
+  case ActiveMode::HSWISH:
+    active_func(p, num_element, [](double val) { return hswish(val); });
     break;
   }
   return success();

@@ -84,5 +84,7 @@ LOWERING_BM1684X(MaskedFill)
 LOWERING_BM1684X(Compare)
 LOWERING_BM1684X(CompareConst)
 LOWERING_BM1684X(Erf)
+LOWERING_BM1684X(HardSigmoid)
+LOWERING_BM1684X(HardSwish)
 } // namespace bm1684x
 } // namespace tpu_mlir

@@ -9,7 +9,7 @@ from mlir.ir import *
 
 
 class Top:
-    #pls add the Op alphabetically
+    # NOTICE: Please add the Op alphabetically !!!
     AbsOp = 'top.Abs'
     AddOp = 'top.Add'
     AddConstOp = 'top.AddConst'
@@ -27,6 +27,8 @@ class Top:
     ExpOp = 'top.Exp'
     GatherOp = 'top.Gather'
     GRUOp = 'top.GRU'
+    HardSigmoidOp = 'top.HardSigmoid'
+    HardSwishOp = 'top.HardSwish'
     InputOp = 'top.Input'
     InterpOp = 'top.Interp'
     LeakyReluOp = 'top.LeakyRelu'
@@ -739,6 +741,22 @@ class MLIRImporter(object):
             'inversed': BoolAttr.get(kargs['inversed'])
         }
         return self.buildOp(Top.CompareConstOp, operands, [output_type], **param)
+
+    def create_hsigmoid_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'alpha': FloatAttr.get_f64(kargs['alpha']),
+            'beta': FloatAttr.get_f64(kargs['beta'])
+        }
+        return self.buildOp(Top.HardSigmoidOp, operands, [output_type], **param)
+
+    def create_hswish_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.HardSwishOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "TorchHardSigmoid", "TorchHardSwish"]
+Failed_Cases = ["TorchLayerNorm", "TorchHardSwish"]
 
 
 class ONNX_IR_TESTER(object):
@@ -1593,7 +1593,7 @@ class ONNX_IR_TESTER(object):
                 return self.hardSwish(x)
                 # return x * F.hardtanh(x + 3, 0., 6.) / 6.
 
-        x = torch.randn(3, 100, 200).float()
+        x = torch.randn(10, 2).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchLayerGroup(self, case_name):
