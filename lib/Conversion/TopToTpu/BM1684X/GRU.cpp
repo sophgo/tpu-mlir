@@ -31,7 +31,12 @@ static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
       operands.push_back(opd);
     }
   }
-  operands.push_back(Module::getNoneOp(op));
+  auto noneOp = Module::getNoneOp(op);
+  operands.push_back(noneOp);
+  operands.push_back(noneOp);
+  operands.push_back(noneOp);
+  operands.push_back(noneOp);
+  operands.push_back(noneOp);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

@@ -73,6 +73,12 @@ static void quantizeWeightInt8ForFC(float *filter, float *bias, int64_t batch,
 
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                                   bool asymmetric) const {
+  // for convert from Gru/LSTM
+  if (!Quant::isCalibratedType(op.output()) &&
+      !Quant::isUniformQuantized(op.output())) {
+    LoweringBF16(rewriter, op);
+    return;
+  }
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   int64_t batch, M, K, N;

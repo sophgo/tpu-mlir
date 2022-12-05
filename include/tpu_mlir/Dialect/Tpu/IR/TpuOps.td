@@ -1244,11 +1244,15 @@ def Tpu_GRUOp: Tpu_Op<"GRU"> {
 
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$filter,
+    AnyTensorOrNone:$filter,
     AnyTensorOrNone:$recurrence,
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$initial_h,
     AnyTensorOrNone:$buffer,
+    AnyTensorOrNone:$sigmoid_table,
+    AnyTensorOrNone:$sigmoid_slope_table,
+    AnyTensorOrNone:$tanh_table,
+    AnyTensorOrNone:$tanh_slope_table,
     I64Attr: $hidden_size,
     BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "true">:$linear_before_reset,

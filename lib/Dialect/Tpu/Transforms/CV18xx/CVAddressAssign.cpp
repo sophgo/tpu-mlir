@@ -247,7 +247,9 @@ void CVAddressAssign::updateLiveRange(Operation *op,
   } else if (op->getDialect()->getNamespace() == "tpu") {
     for (int i = 0; i < op->getNumResults(); ++i) {
       ValueInfo cur_info(op, i);
-      assert(op_infos.find(cur_info) != op_infos.end());
+      if (!op->getResult(i).getType().isa<mlir::NoneType>()) {
+        assert(op_infos.find(cur_info) != op_infos.end());
+      }
     }
     updateLiveRangeofPreOp(op_infos, op, ops_loc[op] + 1, ops_loc, MEM_SHARED,
                            alignment);
