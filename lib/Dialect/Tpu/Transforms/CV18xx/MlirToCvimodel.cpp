@@ -195,7 +195,8 @@ void CviCpuRoutine::serializeFuncArgs(std::vector<uint8_t> &args) {
 
 flatbuffers::Offset<Routine> CviCpuRoutine::build() {
   FBStringVector fbInputs, fbOutputs;
-  //For some cpu functions, weightOp maybe the operand and the weightOp's name should be added to the inputs.
+  // For some cpu functions, weightOp maybe the operand and the weightOp's name
+  // should be added to the inputs.
   inputs.clear();
   for (auto v : this->op_->getOperands()) {
     inputs.push_back(v);
@@ -469,7 +470,7 @@ FBWeightVector CviModelBuilder::buildWeightMap() {
 }
 
 void markGmemReusedOp(std::vector<op_info_t> &ops,
-                      std::set<Operation *> &gmemReusedSet) {
+                      std::set<op_info_t *> &gmemReusedSet) {
   std::vector<op_info_t *> tmp;
   for (int i = ops.size() - 1; i >= 0; i--) {
     auto addr_i = ops[i].offset;
@@ -481,7 +482,7 @@ void markGmemReusedOp(std::vector<op_info_t> &ops,
       auto end = std::max(addr_i + sz_i, addr_j + sz_j);
       // memory overlap
       if (end - start < sz_i + sz_j) {
-        gmemReusedSet.insert(ops[i].op);
+        gmemReusedSet.insert(&ops[i]);
       }
     }
     tmp.emplace_back(&ops[i]);
@@ -507,12 +508,12 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
       if (isa<tpu::GroupOp>(neuronOp)) {
         llvm_unreachable("Not support layerGroup now");
       }
-      op_info_t op_info;
-      op_info.op = neuronOp;
-      op_info.overwrite = false;
-      op_info.shape.resize(4, 1);
       for (uint32_t i = 0; i < neuronOp->getNumResults(); ++i) {
         if (!neuronOp->getResults()[i].getType().isa<mlir::NoneType>()) {
+          op_info_t op_info;
+          op_info.op = neuronOp;
+          op_info.overwrite = false;
+          op_info.shape.resize(4, 1);
           op_info.idx = i;
           parseOpInfo(neuronOp, op_info.name, op_info.shape, op_info.size,
                       op_info.offset, op_info.dtype, op_info.idx);
@@ -521,10 +522,10 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
       }
     }
   }
-  std::set<Operation *> op_reused;
+  std::set<op_info_t *> op_reused;
   markGmemReusedOp(ops, op_reused);
   for (auto &op_info : ops) {
-    if (op_reused.find(op_info.op) != op_reused.end()) {
+    if (op_reused.find(&op_info) != op_reused.end()) {
       op_info.overwrite = true;
     }
     tensorVec.emplace_back(buildNeuron(op_info));

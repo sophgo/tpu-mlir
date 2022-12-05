@@ -964,7 +964,7 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
     DefaultValuedAttr<BoolAttr, "false">:$only_merge,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu, 
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
   let results = (outs AnyTensor:$output);
@@ -1295,6 +1295,50 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
     AnyTensorOrNone:$initial_c,
     AnyTensorOrNone:$buffer,
     I64Attr: $hidden_size,
+    BoolAttr: $bidirectional,
+    DefaultValuedAttr<BoolAttr, "false">:$batch_first
+  );
+
+  let results = (outs
+    AnyTensorOrNone:$Y,
+    AnyTensorOrNone:$Y_h,
+    AnyTensorOrNone:$Y_c);
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t seq_len;
+      int64_t batch_size;
+      int64_t input_size;
+      int64_t num_direction;
+      int64_t hidden_size;
+      bool batch_first;
+      bool have_bias;
+      bool have_h0;
+      bool have_c0;
+      bool output_y;
+      bool output_yh;
+      bool output_yc;
+    } lstm_attr_t;
+    lstm_attr_t parseParam();
+  }];
+}
+
+def Tpu_LSTMCVIOp: Tpu_Op<"LSTMCVI"> {
+  let summary = "LSTM operator for cv18xx";
+
+  let description = [{
+    Perform RNN LSTM operation.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$recurrence,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$initial_h,
+    AnyTensorOrNone:$initial_c,
+    AnyTensorOrNone:$sigmoid_table,
+    AnyTensorOrNone:$sigmoid_slope_table,
+    AnyTensorOrNone:$tanh_table,
+    AnyTensorOrNone:$tanh_slope_table,
     BoolAttr: $bidirectional,
     DefaultValuedAttr<BoolAttr, "false">:$batch_first
   );
