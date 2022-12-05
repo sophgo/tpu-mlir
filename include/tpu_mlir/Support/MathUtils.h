@@ -17,16 +17,18 @@ namespace tpu_mlir {
 // round mode
 // =======================
 typedef enum {
-  ROUNDING_HALF_AWAY_FROM_ZERO = 0,   // 1.5 -> 2   -1.5 -> -2
-  ROUNDING_HALF_UP = 1,               // 1.5 -> 2   -1.5 -> -1
-  ROUNDING_HALF_DOWN = 2,             // 1.5 -> 1   -1.5 -> -2
-  ROUNDING_HALF_TO_EVEN = 3,          // 1.5 -> 2    2.5 -> 2
-  ROUNDING_HALF_TO_ODD = 4,           // 1.5 -> 1    0.5 -> 1
-  ROUNDING_HALF_TOWARDS_ZERO = 5,     // 1.5 -> 1   -1.5 -> -1
-  ROUNDING_TOWARDS_ZERO = 6,          // 1.6 -> 1   -1.6 -> -1
-  ROUNDING_AWAY_FROM_ZERO = 7,        // 1.4 -> 2   -1.4 -> -2
-  ROUNDING_UP = 8,   /* CEIL */       // 1.4 -> 2   -1.6 -> -1
-  ROUNDING_DOWN = 9, /* FLOOR */      // 1.6 -> 1   -1.4 -> -2
+  ROUNDING_HALF_AWAY_FROM_ZERO = 0, // 1.5 -> 2   -1.5 -> -2
+  ROUNDING_HALF_UP = 1,             // 1.5 -> 2   -1.5 -> -1
+  ROUNDING_HALF_DOWN = 2,           // 1.5 -> 1   -1.5 -> -2
+  ROUNDING_HALF_TO_EVEN = 3,        // 1.5 -> 2    2.5 -> 2
+  ROUNDING_HALF_TO_ODD = 4,         // 1.5 -> 1    0.5 -> 1
+  ROUNDING_HALF_TOWARDS_ZERO = 5,   // 1.5 -> 1   -1.5 -> -1
+  ROUNDING_TOWARDS_ZERO = 6,        // 1.6 -> 1   -1.6 -> -1
+  ROUNDING_AWAY_FROM_ZERO = 7,      // 1.4 -> 2   -1.4 -> -2
+  ROUNDING_UP = 8,
+  /* CEIL */ // 1.4 -> 2   -1.6 -> -1
+  ROUNDING_DOWN = 9,
+  /* FLOOR */ // 1.6 -> 1   -1.4 -> -2
   ROUNDING_UNKNOWN = -1
 } RoundingMode;
 
@@ -126,8 +128,10 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int pht, int phb, int pwl, int pwr, float pad_value);
 void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point);
-void tensor_hw_transpose(float * dst, float *src, int64_t N, int64_t C,
+void tensor_hw_transpose(float *dst, float *src, int64_t N, int64_t C,
                          int64_t H, int64_t W);
+void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
+                  std::vector<int64_t> &shape, int slice_num, int axis);
 
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
             int k, int n, bool transpose);
@@ -156,11 +160,10 @@ void stride_slice_gen_params(const int64_t *input_shape_, int input_dim_,
                              int *input_shape, int *input_dim, int *begin_index,
                              int *end_index, int *strides, int *begin_mask,
                              int *end_mask, int *shrink_axis_mask);
-int StartForAxis(const int *start_indices, const int *strides,
-                 const int mask, const int *shape, const int axis);
-int StopForAxis(const int *stop_indices, const int *strides,
-                const int mask, const int shrink_mask,
-                const int *shape, const int axis,
+int StartForAxis(const int *start_indices, const int *strides, const int mask,
+                 const int *shape, const int axis);
+int StopForAxis(const int *stop_indices, const int *strides, const int mask,
+                const int shrink_mask, const int *shape, const int axis,
                 int start_for_axis);
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
 

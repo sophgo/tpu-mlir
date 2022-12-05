@@ -15,6 +15,7 @@
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "llvm/Support/Debug.h"
 #include <map>
+#include <numeric>
 
 #define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {
@@ -586,10 +587,10 @@ void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
   }
 }
 
-void tensor_hw_transpose(float * dst, float *src, int64_t N, int64_t C,
+void tensor_hw_transpose(float *dst, float *src, int64_t N, int64_t C,
                          int64_t H, int64_t W) {
-#pragma omp parallel for schedule(static, omp_schedule(N * C))
-  for (int64_t nc = 0 ; nc < N * C; ++nc) {
+#pragma omp parallel for schedule(static, omp_schedule(N *C))
+  for (int64_t nc = 0; nc < N * C; ++nc) {
     int64_t nc_offset = nc * H * W;
     for (int w = 0; w < W; ++w) {
       for (int h = 0; h < H; ++h) {
@@ -597,6 +598,45 @@ void tensor_hw_transpose(float * dst, float *src, int64_t N, int64_t C,
         int64_t s_offset = nc_offset + h * W + w;
         dst[d_offset] = src[s_offset];
       }
+    }
+  }
+}
+
+void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
+                  std::vector<int64_t> &shape, int slice_num, int axis) {
+  assert(shape[axis] % slice_num == 0);
+  assert(axis < shape.size());
+  dst_data.resize(slice_num);
+
+  // The data can be treated as 3 dim
+  // 1.pre of the axis
+  // 2.the axis
+  // 3.behind of axis
+  std::vector<int64_t> fake_shape(3);
+  fake_shape[0] = std::accumulate(shape.begin(), shape.begin() + axis, 1,
+                                  std::multiplies<int64_t>());
+  fake_shape[1] = shape[axis];
+  fake_shape[2] = std::accumulate(shape.begin() + axis + 1, shape.end(), 1,
+                                  std::multiplies<int64_t>());
+  std::vector<int64_t> fake_offset(3);
+  fake_offset[2] = 1;
+  fake_offset[1] = fake_offset[2] * fake_shape[2];
+  fake_offset[0] = fake_offset[1] * fake_shape[1];
+
+  int64_t indices = shape[1] / slice_num;
+  int64_t slice_size = fake_shape[0] * indices * fake_offset[1];
+
+  // each slice
+#pragma omp parallel for schedule(static, omp_schedule(slice_num))
+  for (int64_t i = 0; i < slice_num; ++i) {
+    dst_data[i].resize(slice_size);
+    // each fake dim 0
+#pragma omp parallel for schedule(static, omp_schedule(fake_shape[0]))
+    for (int64_t j = 0; j < fake_shape[0]; ++j) {
+      float *src_ptr =
+          src_data + j * fake_offset[0] + i * indices * fake_offset[1];
+      float *dst_ptr = dst_data[i].data() + j * indices * fake_offset[1];
+      std::copy(src_ptr, src_ptr + indices * fake_offset[1], dst_ptr);
     }
   }
 }
@@ -798,8 +838,8 @@ inline int Clamp(int value, int min, int max) {
   return value;
 }
 
-int StartForAxis(const int *start_indices, const int *strides,
-                 const int mask, const int *shape, const int axis) {
+int StartForAxis(const int *start_indices, const int *strides, const int mask,
+                 const int *shape, const int axis) {
   const int axis_size = shape[axis];
   if (axis_size == 0) {
     return 0;
@@ -819,9 +859,8 @@ int StartForAxis(const int *start_indices, const int *strides,
   return start;
 }
 
-int StopForAxis(const int *stop_indices, const int *strides,
-                const int mask, const int shrink_mask,
-                const int *shape, const int axis,
+int StopForAxis(const int *stop_indices, const int *strides, const int mask,
+                const int shrink_mask, const int *shape, const int axis,
                 int start_for_axis) {
   const int axis_size = shape[axis];
   if (axis_size == 0) {
@@ -884,17 +923,19 @@ int32_t exp_on_interval_between_negative_one_quarter_and_0_excl(int input) {
   const int32_t const_1_over_8 = 1 << 28;
   int32_t x = input + const_1_over_8;
 
-#define QUANT_MUL(x, y)             \
-  RightShiftRound((int64_t)x * (int64_t)y, 31, ROUNDING_HALF_UP);
+#define QUANT_MUL(x, y)                                                        \
+  RightShiftRound((int64_t)x *(int64_t)y, 31, ROUNDING_HALF_UP);
 
   int32_t x2 = QUANT_MUL(x, x);
   int32_t x3 = QUANT_MUL(x2, x);
   int32_t x4 = QUANT_MUL(x2, x2);
   int32_t x4_over_4 = RightShiftRound(x4, 2, ROUNDING_HALF_AWAY_FROM_ZERO);
-  int32_t x4_over_12_plus_x3_over_3_plus_x2 = QUANT_MUL((x4_over_4 + x3), const_1_over_3);
-  int32_t x4_over_24_plus_x3_over_6_plus_x2_over_2 =
-      RightShiftRound(x4_over_12_plus_x3_over_3_plus_x2, 1, ROUNDING_HALF_AWAY_FROM_ZERO);
-  int32_t out = const_term +
+  int32_t x4_over_12_plus_x3_over_3_plus_x2 =
+      QUANT_MUL((x4_over_4 + x3), const_1_over_3);
+  int32_t x4_over_24_plus_x3_over_6_plus_x2_over_2 = RightShiftRound(
+      x4_over_12_plus_x3_over_3_plus_x2, 1, ROUNDING_HALF_AWAY_FROM_ZERO);
+  int32_t out =
+      const_term +
       QUANT_MUL((x4_over_24_plus_x3_over_6_plus_x2_over_2 + x), const_term);
   return out;
 }
@@ -902,7 +943,7 @@ int32_t exp_on_interval_between_negative_one_quarter_and_0_excl(int input) {
 // to compilable with gemmlowp
 // fixedpoint/fixedpoint.h:exp_on_negative_values()
 int32_t exp_on_negative_values(int input, int int_bits) {
-  const int type_size = sizeof(int32_t);      // input type is int32
+  const int type_size = sizeof(int32_t); // input type is int32
   const int zero = 0;
   const int max_value = (1U << 31) - 1;
   const int total_bits = 8 * type_size;
@@ -910,7 +951,8 @@ int32_t exp_on_negative_values(int input, int int_bits) {
   const int one = int_bits == 0 ? max_value : (1 << fract_bits);
   if (int_bits > 5) {
     int clamp_b = int_bits > 5 ? 36 - int_bits : 0;
-    int clamp = clamp_b;    // TODO: for input is 32bit; if input is 16bit, (clamp_b << 16), half away form zero
+    int clamp = clamp_b; // TODO: for input is 32bit; if input is 16bit,
+                         // (clamp_b << 16), half away form zero
     if (input < clamp) {
       return zero;
     }
@@ -925,21 +967,22 @@ int32_t exp_on_negative_values(int input, int int_bits) {
       a_mod_quarter_minus_one_quarter);
   int32_t remainder = a_mod_quarter_minus_one_quarter - input;
 
-#define EXP_BARREL_SHIFTER(Exp, Multiplier)           \
-  if (int_bits > Exp) {                               \
-    int shift_num = fract_bits + Exp;                 \
-    if (remainder & (1 << shift_num)) {               \
-      result = RightShiftRound((int64_t)result * (int64_t)Multiplier, 31, ROUNDING_HALF_UP);  \
-    }                                                 \
+#define EXP_BARREL_SHIFTER(Exp, Multiplier)                                    \
+  if (int_bits > Exp) {                                                        \
+    int shift_num = fract_bits + Exp;                                          \
+    if (remainder & (1 << shift_num)) {                                        \
+      result = RightShiftRound((int64_t)result * (int64_t)Multiplier, 31,      \
+                               ROUNDING_HALF_UP);                              \
+    }                                                                          \
   }
 
-  EXP_BARREL_SHIFTER(-2, 1672461947);  // exp(-1/4)
-  EXP_BARREL_SHIFTER(-1, 1302514674);  // exp(-1/2)
-  EXP_BARREL_SHIFTER(+0, 790015084);   // exp(-1)
-  EXP_BARREL_SHIFTER(+1, 290630308);   // exp(-2)
-  EXP_BARREL_SHIFTER(+2, 39332535);    // exp(-4)
-  EXP_BARREL_SHIFTER(+3, 720401);      // exp(-8)
-  EXP_BARREL_SHIFTER(+4, 242);         // exp(-16)
+  EXP_BARREL_SHIFTER(-2, 1672461947); // exp(-1/4)
+  EXP_BARREL_SHIFTER(-1, 1302514674); // exp(-1/2)
+  EXP_BARREL_SHIFTER(+0, 790015084);  // exp(-1)
+  EXP_BARREL_SHIFTER(+1, 290630308);  // exp(-2)
+  EXP_BARREL_SHIFTER(+2, 39332535);   // exp(-4)
+  EXP_BARREL_SHIFTER(+3, 720401);     // exp(-8)
+  EXP_BARREL_SHIFTER(+4, 242);        // exp(-16)
 
 #undef EXP_BARREL_SHIFTER
 

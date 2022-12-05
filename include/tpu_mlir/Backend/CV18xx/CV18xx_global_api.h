@@ -341,5 +341,13 @@ void cvi_backend_tg_bf16_lrn_kernel(uint32_t layer_id, gaddr_t input_gaddr,
                                     gaddr_t mantissa_table_gaddr, int input_n,
                                     int input_c, int input_h, int input_w,
                                     int local_size, float alpha, float k);
+
+void cvi_backend_tg_bf16_gru_kernel(
+    uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_recurrence, gaddr_t ga_bias,
+    gaddr_t ga_initial_h, gaddr_t ga_sigmoid_lut, gaddr_t ga_sigmoid_slope_lut,
+    gaddr_t ga_tanh_lut, gaddr_t ga_tanh_slope_lut, gaddr_t ga_output,
+    int seq_len, int num_dir, int batch_size, int hidden_size, bool do_bias,
+    bool with_initial_h, bool is_linear_before_reset, bool is_bidirectional,
+    bool only_last);
 } // namespace backend
 } // namespace tpu_mlir
