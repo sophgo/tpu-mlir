@@ -40,7 +40,10 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
-
+enum TableMode {
+  Slope,
+  Mantissa
+};
 // create lookup table
 using activate_f = std::function<double(double)>;
 
@@ -62,4 +65,9 @@ void bf16_gen_exponent_mantissa_table(const std::string &name, float *exp_table,
 
 void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
                        float *mantissa_table, const std::string &method);
+
+void createBf16LutOp(Operation *op, const std::string &type_name, TableMode mode,
+                     float param0, float param1,
+                     float range_start, float range_end, activate_f &&func,
+                     Value &v_table, Value &v_mantissa);
 } // namespace tpu_mlir

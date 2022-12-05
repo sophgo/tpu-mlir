@@ -19,36 +19,25 @@ void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,
 }
 
 void LRNLowering::LoweringBF16(PatternRewriter &rewriter, top::LRNOp op) const {
-  int table_h = 32;
-  int table_w = 8;
-  int table_hw = table_h * table_w;
-  std::vector<float> table(table_hw);
-  std::vector<float> mantissa(table_hw);
-
-  bf16_gen_exponent_mantissa_table("pow", table.data(), mantissa.data(),
-                                   -1 * op.beta().convertToDouble(), 0);
-  auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
-
-  OpBuilder builder(op->getContext());
-  auto table_type = RankedTensorType::get(shape, builder.getF32Type());
-  auto table_op = top::WeightOp::create(op, "table", table, table_type);
-  auto mantissa_op =
-      top::WeightOp::create(op, "mantissa", mantissa, table_type);
-
+  Value table_weight, mantissa_weight;
+  float range_start = -62, range_end = 63;
+  createBf16LutOp(op, "pow", TableMode::Mantissa, -1 * op.beta().convertToDouble(), 0.0,
+                  range_start, range_end, nullptr, table_weight, mantissa_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
   }
-  auto tensor_type = op.output().getType().cast<RankedTensorType>();
-  auto newType =
-      RankedTensorType::get(tensor_type.getShape(), rewriter.getBF16Type());
-  auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
-  auto mantissa_weight_op =
-      dyn_cast<top::WeightOp>(mantissa_op.getDefiningOp());
+  attrs.push_back(rewriter.getNamedAttr(
+      "lut_mode",
+      tpu::LutBF16ModeAttr::get(op->getContext(), tpu::LutBF16Mode::Mantissa)));
+  attrs.push_back(rewriter.getNamedAttr("min_range",
+                                        rewriter.getF64FloatAttr(range_start)));
+  attrs.push_back(
+      rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
+  auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::LRNOp>(
       op, newType,
-      ValueRange{op.input(), table_weight_op.clone_bf16(op),
-                 mantissa_weight_op.clone_bf16(op)},
+      ValueRange{op.input(), table_weight, mantissa_weight},
       attrs);
   return;
 }
