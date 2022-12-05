@@ -32,6 +32,12 @@ extern "C" {
 void tpu::ActiveOp::codegen_global_bm1684x() {
   active_global_spec_t spec = {0};
   spec.common.active_type = (int)mode();
+  if (coeffs().has_value()) {
+    const auto coeffs_ = Module::getF64Array(coeffs().value());
+    for (int i = 0; i < coeffs_->size(); ++i) {
+      spec.common.coeffs[i] = (float)coeffs_->at(i);
+    }
+  }
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -108,6 +114,12 @@ void tpu::ActiveOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   memset(&spec, 0, sizeof(spec));
   spec.common.active_type = (int)mode();
   spec.buffer_addr = gi.buffer_addr;
+  if (coeffs().has_value()) {
+    const auto coeffs_ = Module::getF64Array(coeffs().value());
+    for (int i = 0; i < coeffs_->size(); ++i) {
+      spec.common.coeffs[i] = (float)coeffs_->at(i);
+    }
+  }
 
   local_sec_info_t sec_info;
   memset(&sec_info, 0, sizeof(sec_info));

@@ -1155,4 +1155,28 @@ def Top_ErfOp : Top_Op<"Erf"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_HardSigmoidOp : Top_Op<"HardSigmoid"> {
+  let summary = "HardSigmoid operation";
+  let description = [{
+    hardsigmoid(x; alpha, beta) := min(max(alpha*x + beta, 0), 1)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$alpha,
+    F64Attr:$beta
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_HardSwishOp : Top_Op<"HardSwish"> {
+  let summary = "HardSwish operation";
+  let description = [{
+    hardswish(x) := x * hardsigmoid(x; 1/6, 0.5)
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS

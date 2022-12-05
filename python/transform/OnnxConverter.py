@@ -112,7 +112,7 @@ class OnnxConverter(BaseConverter):
         self.converted_nodes = list()
 
         self.onnxop_factory = {
-            #pls add the Op alphabetically
+            # NOTICE: Please add the Op alphabetically !!!
             "Abs": lambda node: self.convert_abs_op(node),
             "Add": lambda node: self.convert_add_op(node),
             "Sub": lambda node: self.convert_sub_op(node),
@@ -137,6 +137,8 @@ class OnnxConverter(BaseConverter):
             "Greater": lambda node: self.convert_cmp_op(node),
             "GreaterOrEqual": lambda node: self.convert_cmp_op(node),
             "GRU": lambda node: self.convert_gru_op(node),
+            "HardSigmoid": lambda node: self.convert_hsigmoid_op(node),
+            "HardSwish": lambda node: self.convert_hswish_op(node),
             "Identity": lambda node: self.convert_skip_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
@@ -1572,3 +1574,26 @@ class OnnxConverter(BaseConverter):
             lhs_opd = self.getOp(lhs)
             cmp_op = self.mlir.create_compare_op([lhs_opd, rhs_opd], output_shape, **p)
         self.addOperand(onnx_node.name, cmp_op)
+
+    def convert_hsigmoid_op(self, onnx_node):
+        # hardsigmoid(x; alpha, beta) := min(max(alpha*x + beta, 0), 1)
+        assert (onnx_node.op_type == "HardSigmoid")
+        assert (len(onnx_node.inputs) == 1)
+        operand = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        alpha = onnx_node.attrs.get("alpha", 0.2)
+        beta = onnx_node.attrs.get("beta", 0.5)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+             'alpha': alpha, 'beta': beta}
+        new_op = self.mlir.create_hsigmoid_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_hswish_op(self, onnx_node):
+        # hardswish(x) := x * hardsigmoid(x; 1/6, 0.5)
+        assert (onnx_node.op_type == "HardSwish")
+        assert (len(onnx_node.inputs) == 1)
+        operand = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_hswish_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
