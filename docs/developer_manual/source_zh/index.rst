@@ -24,3 +24,4 @@ TPU-MLIR开发参考手册
    12_codegen
    13_mlir_define
    14_mlir_eval
+   15_qat

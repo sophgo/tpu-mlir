@@ -77,6 +77,7 @@ def worker(n, cmd_line):
     print('idx:{}, cmd_line end'.format(n))
 
 if __name__ == "__main__":
+  os.system('cat /dev/null > /tmp/run_eval_log_file_list')
   po = Pool(opt.pool_size)
   if opt.fast_test:
     for n,process_str in enumerate(postprocess_type_all):
