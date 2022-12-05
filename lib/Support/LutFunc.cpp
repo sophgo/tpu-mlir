@@ -299,4 +299,36 @@ void bf16_lut_mantissa(float *input, float *output, int size, float *exp_table,
   }
 }
 
+void createBf16LutOp(Operation *op, const std::string &type_name, TableMode mode,
+                     float param0, float param1,
+                     float range_start, float range_end, activate_f &&func,
+                     Value &v_table, Value &v_mantissa) {
+  int table_h = 32;
+  int table_w = 8;
+  int table_hw = table_h * table_w;
+  std::vector<float> table(table_hw);
+  std::vector<float> mantissa(table_hw);
+  std::string suffix_table = type_name + "_table";
+  std::string suffix_mantissa;
+  if (mode == TableMode::Mantissa) {
+    bf16_gen_exponent_mantissa_table(type_name, table.data(), mantissa.data(), param0, param1);
+    suffix_mantissa = type_name + "_mantissa_table";
+  } else if (mode == TableMode::Slope) {
+    bf16_gen_base_slope_table(table.data(), mantissa.data(), range_start, range_end, std::move(func));
+    suffix_mantissa = type_name + "_slope_table";
+  } else {
+    llvm_unreachable("Table type_name must be pow, log or slope!");
+  }
+  auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
+  OpBuilder builder(op->getContext());
+  auto table_type = RankedTensorType::get(shape, builder.getF32Type());
+  auto table_op = top::WeightOp::create(op, suffix_table, table, table_type);
+  auto mantissa_op =
+      top::WeightOp::create(op, suffix_mantissa, mantissa, table_type);
+  auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
+  auto mantissa_weight_op =
+      dyn_cast<top::WeightOp>(mantissa_op.getDefiningOp());
+  v_table = table_weight_op.clone_bf16(op);
+  v_mantissa = mantissa_weight_op.clone_bf16(op);
+}
 } // namespace tpu_mlir

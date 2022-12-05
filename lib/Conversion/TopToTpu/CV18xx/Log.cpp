@@ -28,22 +28,10 @@ void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
 }
 
 void LogLowering::LoweringBF16(PatternRewriter &rewriter, top::LogOp op) const {
-  int table_h = 32;
-  int table_w = 8;
-  int table_hw = table_h * table_w;
-  std::vector<float> table(table_hw);
-  std::vector<float> mantissa(table_hw);
-
-  bf16_gen_exponent_mantissa_table("log", table.data(), mantissa.data(), 0.0,
-                                   0);
-  auto shape = std::vector<int64_t>{1, 1, table_h, table_w};
-
-  OpBuilder builder(op->getContext());
-  auto table_type = RankedTensorType::get(shape, builder.getF32Type());
-  auto table_op = top::WeightOp::create(op, "table", table, table_type);
-  auto mantissa_op =
-      top::WeightOp::create(op, "mantissa", mantissa, table_type);
-
+  Value table_weight, mantissa_weight;
+  float range_start = -62, range_end = 63;
+  createBf16LutOp(op, "log", TableMode::Mantissa, 0.0, 0.0, range_start, range_end,
+                  nullptr, table_weight, mantissa_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -51,14 +39,14 @@ void LogLowering::LoweringBF16(PatternRewriter &rewriter, top::LogOp op) const {
   attrs.push_back(rewriter.getNamedAttr(
       "lut_mode",
       tpu::LutBF16ModeAttr::get(op->getContext(), tpu::LutBF16Mode::Log)));
+  attrs.push_back(rewriter.getNamedAttr("min_range",
+                                        rewriter.getF64FloatAttr(range_start)));
+  attrs.push_back(
+      rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.output());
-  auto table_weight_op = dyn_cast<top::WeightOp>(table_op.getDefiningOp());
-  auto mantissa_weight_op =
-      dyn_cast<top::WeightOp>(mantissa_op.getDefiningOp());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
       op, newType,
-      ValueRange{op.input(), table_weight_op.clone_bf16(op),
-                 mantissa_weight_op.clone_bf16(op)},
+      ValueRange{op.input(), table_weight, mantissa_weight},
       attrs);
   return;
 }
