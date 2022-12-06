@@ -165,7 +165,9 @@ static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
   for (auto opd : op->getOperands()) {
     auto op_ = opd.getDefiningOp();
     if (isa<top::WeightOp>(op_)) {
-      subf->ops.push_back(op_);
+      if (std::find(subf->ops.begin(), subf->ops.end(), op_) == subf->ops.end()) {
+        subf->ops.push_back(op_);
+      }
     } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
       subf->have_none = true;
     }
