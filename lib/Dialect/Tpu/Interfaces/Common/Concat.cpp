@@ -71,6 +71,13 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
       out_p += idt.value();
     }
   }
+
+  if (do_relu()) {
+    auto limit = relu_limit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
+                  limit);
+  }
+
   // free tmp input
   for (int i = 0; i < nInputs; ++i) {
     delete[] tmp_inputs[i];
