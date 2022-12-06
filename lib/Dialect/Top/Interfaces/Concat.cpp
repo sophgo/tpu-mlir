@@ -8,9 +8,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
 using namespace mlir;
+using namespace tpu_mlir::helper;
 
 int64_t top::ConcatOp::getFLOPs() { return 0; }
 
@@ -42,6 +45,12 @@ LogicalResult top::ConcatOp::inference(InferenceParameter &p) {
              idt.value() * sizeof(float));
       out_p += idt.value();
     }
+  }
+
+  if (do_relu()) {
+    auto limit = relu_limit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
+                  limit);
   }
 
   return success();
