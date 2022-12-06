@@ -290,7 +290,7 @@ def cropImage(image, box):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Inference inception_v3 network.')
+        description='Inference ultraface network.')
     parser.add_argument("--model", type=str, required=True,
                         help="Model definition file")
     parser.add_argument("--model_data", type=str,
@@ -302,7 +302,7 @@ def parse_args():
     parser.add_argument("--output",
                         type=str,
                         required=True,
-                        help="Output image after classification")
+                        help="Output image after detection")
     args = parser.parse_args()
     return args
 
@@ -341,12 +341,6 @@ def main():
 
         boxes, label, probs = predict(origin_image.shape[1], origin_image.shape[0], confidences,
                                       boxes, 0.7)
-
-    # for i in range(boxes.shape[0]):
-    #     box = scale(boxes[i, :])
-    #     cv2.rectangle(
-    #         origin_image, (box[0], box[1]), (box[2], box[3]), color, 4)
-    # cv2.imwrite(args.output, origin_image)
 
     if boxes is not None:
         fix_img = vis(origin_image,

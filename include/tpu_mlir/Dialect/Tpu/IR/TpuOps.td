@@ -862,7 +862,8 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
     DefaultValuedAttr<BoolAttr, "false">:$only_merge,
-    DefaultValuedAttr<BoolAttr, "false">:$do_relu
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu, 
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
   let results = (outs AnyTensor:$output);
 }
