@@ -45,10 +45,10 @@ struct OpReorderPattern : public RewritePattern {
         continue;
       }
       if (isa<top::WeightOp>(op_)) {
-        if (op_->hasOneUse() == false) {
-          op_->dump();
-          llvm_unreachable("weightOp should only has one use");
-        }
+        // if (op_->hasOneUse() == false) {
+        //   op_->dump();
+        //   llvm_unreachable("weightOp should only has one use");
+        // }
         weights.push_back(op_);
       } else {
         if (op_->hasOneUse() == true) {

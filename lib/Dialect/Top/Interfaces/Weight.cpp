@@ -93,8 +93,7 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   return nullptr;
 }
 std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
-  auto type = getType().cast<RankedTensorType>();
-  auto dtype = type.getElementType();
+  auto dtype = Module::getStorageType(output());
   if (dtype.isInteger(8)) {
     return read<uint8_t>();
   } else if (dtype.isF32()) {
