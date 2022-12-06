@@ -33,6 +33,7 @@ model_list_basic=(
   "yolov5s"
   "yolov3_tiny"
   "yolov5s_tf"
+  "ssd_mobilenet_v1_tf"
 )
 
 # run models

@@ -574,7 +574,7 @@ class TFLiteConverter(BaseConverter):
                 padding_after[1],
             ]
 
-        if fused_active not in [0, 1]:
+        if fused_active not in [0, 1, 3]:
             raise Exception(
                 "Not supported ActivationFunctionType: {}!".format(fused_active)
             )
@@ -585,7 +585,7 @@ class TFLiteConverter(BaseConverter):
                 [param.DilationHFactor(), param.DilationWFactor()]
             ),
             "pads": self.mlir.ArrayAttr(padding),
-            "do_relu": BoolAttr.get(fused_active == 1),
+            "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),     # relu6 to relu
         }
         return Top.ConvOp, attr
 
@@ -607,7 +607,7 @@ class TFLiteConverter(BaseConverter):
         input_size = np.array(in_shape[1:3], dtype=np.int64)  # NHWC
         padding = _compute_pad(stride, dilation_rate, input_size, kernel_size, param.Padding())
 
-        if fused_active not in [0, 1]:
+        if fused_active not in [0, 1, 3]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {
             "kernel_shape": self.mlir.ArrayAttr(kernel_shape[1:-1]),
@@ -616,7 +616,7 @@ class TFLiteConverter(BaseConverter):
                 [param.DilationHFactor(), param.DilationWFactor()]
             ),
             "pads": self.mlir.ArrayAttr(padding),
-            "do_relu": BoolAttr.get(fused_active == 1),
+            "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),    # relu6 to relu
             "group": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
                                      in_shape[3] // kernel_shape[0]),
         }
