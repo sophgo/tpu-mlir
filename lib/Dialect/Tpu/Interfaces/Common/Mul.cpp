@@ -52,6 +52,8 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto asym = Module::getAsymmetric(module);
   auto binary = (Binary *)p.handle;
   binary->run();
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
@@ -61,10 +63,16 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   } else if (out_type.isInteger(32)) {
     return success();
   } else if (asym == false) {
+    MultiplierType m_type;
+    if (is_cv18xx) {
+      m_type = CVI_QDM_QUANT;
+    } else {
+      m_type = BM_QUANT;
+    }
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];
-      sum = applyMultiplierAndRShift(sum, multiplier(), rshift());
+      sum = applyMultiplierAndRShift(sum, multiplier(), rshift(), m_type);
       p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
                                                       : Quant::to_int8(sum);
     }

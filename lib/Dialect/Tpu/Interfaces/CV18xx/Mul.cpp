@@ -54,8 +54,8 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
       std::swap(shape0, shape1);
     }
     if (Quant::isUniformQuantized(output())) {
-      int32_t multiplier_v = static_cast<int32_t>(this->multiplier_cg());
-      int32_t rshift_v = static_cast<int32_t>(this->rshift_cg());
+      int32_t multiplier_v = static_cast<int32_t>(this->multiplier());
+      int32_t rshift_v = static_cast<int32_t>(this->rshift());
       cvi_backend_tg_int8_bcast_mul_kernel(
         layer_id, ga_inputs[0], ga_inputs[1], ga_output,
         shape0[0], shape0[1], shape0[2], shape0[3],
@@ -69,8 +69,8 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
     }
   } else {
     if (Quant::isUniformQuantized(output())) {
-      int32_t multiplier_v = static_cast<int32_t>(this->multiplier_cg());
-      int32_t rshift_v = static_cast<int32_t>(this->rshift_cg());
+      int32_t multiplier_v = static_cast<int32_t>(this->multiplier());
+      int32_t rshift_v = static_cast<int32_t>(this->rshift());
       std::vector<int32_t> coeffs(input_num, 1);
       cvi_backend_tg_fixed_eltwise_mul_kernel(
           layer_id, ga_inputs.data(), ga_output, input_num, n, c, h,
