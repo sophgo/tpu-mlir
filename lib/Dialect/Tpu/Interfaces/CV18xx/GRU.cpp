@@ -143,7 +143,13 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t seq_len2, num_dir, batch_size2, hidden_size;
   auto in_shape = Module::getShape(input());
   Module::getNCHW(in_shape, seq_len, batch_size, input_size, garbage);
-  auto out_shape = Module::getShape(getResults()[0]);
+  Value output;
+  if (!getResults()[0].getType().isa<mlir::NoneType>()) {
+    output = getResults()[0];
+  } else {
+    output = getResults()[1];
+  }
+  auto out_shape = Module::getShape(output);
   if (out_shape.size() == 4) {
     Module::getNCHW(out_shape, seq_len2, num_dir, batch_size2, hidden_size);
     assert(seq_len == seq_len2);
@@ -158,7 +164,7 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   bool with_bias = !bias().getType().isa<mlir::NoneType>();
   bool with_h0 = !initial_h().getType().isa<mlir::NoneType>();
   gaddr_t ga_input = Module::getAddress(input());
-  gaddr_t ga_output = Module::getAddress(getResults()[0]);
+  gaddr_t ga_output = Module::getAddress(output);
   gaddr_t ga_bias = with_bias ? Module::getAddress(bias()) : 0;
   gaddr_t ga_initial_h = with_h0 ? Module::getAddress(initial_h()) : 0;
   gaddr_t ga_recurrence = Module::getAddress(recurrence());
@@ -170,7 +176,7 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   bool is_linear_before_reset = linear_before_reset();
   bool is_bidirectional = bidirectional();
 
-  if (Quant::isUniformQuantized(getResults()[0])) {
+  if (Quant::isUniformQuantized(output)) {
     llvm_unreachable("Not supported now");
   } else {
     cvi_backend_tg_bf16_gru_kernel(

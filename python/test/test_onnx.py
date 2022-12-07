@@ -539,6 +539,11 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([gru_def],
                                       case_name, [input], [Y],
                                       initializer=[w_value, r_value, b_value, h_value])
+        if self.chip.find("cv18") >= 0:
+          input_data = {}
+          input_data["input"] = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
+          self.onnx_and_test(graph_def, input_data = input_data)
+          return
         self.onnx_and_test(graph_def)
 
     def test_GRU2(self, case_name):
@@ -594,6 +599,11 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([gru_def],
                                       case_name, [input], [Y_h],
                                       initializer=[w_value, r_value, b_value, h_value])
+        if self.chip.find("cv18") >= 0:
+          input_data = {}
+          input_data["input"] = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
+          self.onnx_and_test(graph_def, input_data = input_data)
+          return
         self.onnx_and_test(graph_def)
 
     def test_GRU3(self, case_name):
@@ -1770,7 +1780,10 @@ class ONNX_IR_TESTER(object):
 
     def test_BroadcastAdd(self, case_name):
         # 18xx: only broadcast right opd and broadcast continuous axis is supported
-        input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
+        if self.chip.find("cv18") >= 0:
+          input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
+        else:
+          input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
         inputs = [
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
