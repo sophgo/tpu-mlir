@@ -1572,4 +1572,25 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_LayerNormOp : Tpu_Op<"LayerNorm"
+  // ,[DeclareOpInterfaceMethods<LocalGenInterface>]
+  > {
+  let summary = "LayerNorm operation";
+  let description = [{
+    layer normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$weight,
+    AnyTensorOrNone:$bias,
+    I64Attr:$axis,
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output,
+  	AnyTensorOrNone:$mean,
+  	AnyTensorOrNone:$rstd
+  );
+}
+
 #endif // TPU_OPS

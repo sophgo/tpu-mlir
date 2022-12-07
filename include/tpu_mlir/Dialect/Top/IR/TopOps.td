@@ -1336,7 +1336,6 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
   let results = (outs AnyTensor:$output);
 }
 
-
 def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear", [InOutSameShape]> {
   let summary = "Linear quantize operation";
   let description = [{
@@ -1351,6 +1350,25 @@ def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear", [InOutSameShape]> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_LayerNormOp : Top_Op<"LayerNorm"> {
+  let summary = "LayerNorm operation";
+  let description = [{
+    layer normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$weight,
+    AnyTensorOrNone:$bias,
+    I64Attr:$axis,
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output,
+  	AnyTensorOrNone:$mean,
+  	AnyTensorOrNone:$rstd
+  );
 }
 
 def Top_ProposalOp: Top_Op<"Proposal"> {

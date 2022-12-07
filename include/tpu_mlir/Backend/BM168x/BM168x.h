@@ -436,6 +436,43 @@ typedef struct {
   softmax_common_param_t common;
 } softmax_tflite_fix8b_param_t;
 
+typedef struct {
+    unsigned long long input_addr;
+    unsigned long long weight_addr;
+    unsigned long long bias_addr;
+    unsigned long long output_addr;
+    unsigned long long mean_addr;
+    unsigned long long rstd_addr;
+    int                shape[MAX_SHAPE_DIMS];
+    int                dims;
+    int                axis;
+    float              eps;
+    int                affine; // 0: no weight and bias, 1: weight, 2: bias, 3: both
+    int                need_mean;
+    int                need_rstd;
+    int                dtype;
+} layer_norm_global_param_t;
+
+typedef struct {
+    unsigned int       input_addr;
+    unsigned int       weight_addr;
+    unsigned int       bias_addr;
+    unsigned int       output_addr;
+    unsigned int       mean_addr;
+    unsigned int       rstd_addr;
+    unsigned int       buffer_addr;
+    int                input_n;
+    int                input_c;
+    int                input_h;
+    int                input_w;
+    int                depth;
+    float              eps;
+    int                affine;
+    int                need_mean;
+    int                need_rstd;
+    int                dtype;
+} layer_norm_local_param_t;
+
 #ifdef __cplusplus
 }
 #endif

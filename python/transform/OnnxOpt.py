@@ -478,7 +478,7 @@ def TorchLayerNormPattern():
 
     patterns = []
     # affine (have both weight and bias)
-    layernorm_aff = PatternNode("LayerNorm", [reducemean_input, mul_tensor, add_1_tensor],
+    layernorm_aff = PatternNode("LayerNormalization", [reducemean_input, mul_tensor, add_1_tensor],
                                 attrmap={"epsilon": epsilon_attrfunc,
                                          "axis": axis_attrfunc})
     patterns.append(ReformInfo(name="layernorm_aff",
@@ -486,7 +486,7 @@ def TorchLayerNormPattern():
                                          _add_0, _sqrt, _div, mul, _add_1],
                                dst_nodes=[layernorm_aff]))
     # without affine (do not have both weight and bias)
-    layernorm = PatternNode("LayerNorm", [reducemean_input],
+    layernorm = PatternNode("LayerNormalization", [reducemean_input],
                             attrmap={"epsilon": epsilon_attrfunc,
                                      "axis": axis_attrfunc})
     patterns.append(ReformInfo(name="layernorm",

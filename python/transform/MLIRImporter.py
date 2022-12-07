@@ -33,6 +33,7 @@ class Top:
     HardSwishOp = 'top.HardSwish'
     InputOp = 'top.Input'
     InterpOp = 'top.Interp'
+    LayerNormOp = 'top.LayerNorm'
     LeakyReluOp = 'top.LeakyRelu'
     LRNOp = 'top.LRN'
     LSTMOp = 'top.LSTM'
@@ -80,7 +81,6 @@ class Top:
     Proposal = 'top.Proposal'
     ROIPooling = 'top.ROIPooling'
     FrcnDetection = 'top.FrcnDetection'
-
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -928,6 +928,22 @@ class MLIRImporter(object):
             'axis': IntegerAttr.get(self.mlir_type['INT64'], axis)
         }
         return self.buildOp(Top.DequantizeLinearOp, operands, [output_type], **param)
+
+    def create_layer_norm_op(self, operands, output_shapes, **kargs):
+        # get_value_type
+        out_types = list()
+        for s in output_shapes:
+            if len(s) == 0:
+                out_types.append(NoneType.get())
+            else:
+                t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
+                out_types.append(t)
+        param = {
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'eps': FloatAttr.get_f64(kargs['eps'])
+        }
+        return self.buildOp(Top.LayerNormOp, operands, out_types, **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

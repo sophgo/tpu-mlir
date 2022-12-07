@@ -69,7 +69,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       CompareConstLowering,
       ErfLowering,
       HardSigmoidLowering,
-      HardSwishLowering
+      HardSwishLowering,
+      LayerNormLowering
       // clang-format on
       >(patterns->getContext());
 }
