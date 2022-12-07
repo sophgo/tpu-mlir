@@ -201,13 +201,23 @@ public:
     float *sigmoid_slope_lut;
     float *tanh_lut;
     float *tanh_slope_lut;
+    uint32_t out_idx;
   };
 
   static void inference(InferenceParameter &p, tpu::GRUOp *op) {
+    cv_gru_param_t gp;
     auto input_type = op->input().getType().dyn_cast<TensorType>();
     auto in_shape = Module::getShape(op->input());
-    auto out_shape = Module::getShape(op->getResults()[0]);
-    cv_gru_param_t gp;
+    Value output;
+    for (uint32_t i = 0; i < op->getNumResults(); ++i) {
+      if (!op->getResults()[i].getType().isa<mlir::NoneType>()) {
+        output = op->getResults()[i];
+        gp.out_idx = i;
+        break;
+      }
+    }
+    assert(output);
+    auto out_shape = Module::getShape(output);
     if (out_shape.size() == 4) {
       gp.seq_length = out_shape[0];
       gp.num_dir = out_shape[1];
@@ -229,15 +239,15 @@ public:
     assert(gp.linear_before_reset == true);
     gp.bidirectional = op->bidirectional();
 
-    auto out_type = Module::getStorageType(op->getResults()[0]);
+    auto out_type = Module::getStorageType(output);
     bool is_bf16 = out_type.isBF16();
     compute(true, p, gp, is_bf16);
     if (gp.bidirectional) {
       compute(false, p, gp, is_bf16);
     }
     if (is_bf16) {
-      auto ele_num = Module::getNumElements(op->getResults()[0]);
-      Quant::BF16(p.outputs[0], p.outputs[0], ele_num, false);
+      auto ele_num = Module::getNumElements(output);
+      Quant::BF16(p.outputs[gp.out_idx], p.outputs[gp.out_idx], ele_num, false);
     }
   }
 
@@ -266,13 +276,13 @@ private:
     if (forward) {
       gp.r_z = p.inputs[2];
       gp.r_bz = p.inputs[3];
-      gp.output = p.outputs[0];
+      gp.output = p.outputs[gp.out_idx];
       gp.prev_hidden_state = p.inputs[4];
       gp.input = p.inputs[0];
     } else {
       gp.r_z = p.inputs[2] + 3 * gp.hidden_size * gp.hidden_size;
       gp.r_bz = p.inputs[3] + 3 * gp.hidden_size;
-      gp.output = p.outputs[0] + gp.batch_size * gp.hidden_size;
+      gp.output = p.outputs[gp.out_idx] + gp.batch_size * gp.hidden_size;
       gp.prev_hidden_state = p.inputs[4] + gp.batch_size * gp.hidden_size;
       gp.input = p.inputs[0] + 3 * gp.hidden_size;
     }

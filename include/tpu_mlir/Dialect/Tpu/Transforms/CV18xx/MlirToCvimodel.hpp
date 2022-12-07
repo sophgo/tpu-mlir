@@ -43,8 +43,9 @@ using FBModel = flatbuffers::Offset<Model>;
 using FBWeight = flatbuffers::Offset<Weight>;
 using FBPreProcessHints = flatbuffers::Offset<PreProcessHints>;
 
-struct opInfo {
+struct op_info_t {
   Operation *op;
+  uint32_t idx;
   std::string name;
   std::vector<int64_t> shape;
   size_t size;
@@ -144,8 +145,8 @@ private:
                          std::vector<uint8_t> &data);
   void parseOpInfo(Operation *op, std::string &name,
                    std::vector<int64_t> &shape, size_t &size, int64_t &offset,
-                   DType &dtype);
-  flatbuffers::Offset<Tensor> buildNeuron(opInfo &op);
+                   DType &dtype, uint32_t idx);
+  flatbuffers::Offset<Tensor> buildNeuron(op_info_t &op);
 };
 
 #endif // LIBCVIODEL_HPP_

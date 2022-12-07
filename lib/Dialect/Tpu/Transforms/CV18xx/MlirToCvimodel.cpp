@@ -358,8 +358,8 @@ FBModel CviModelBuilder::build() {
 
 void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
                                   std::vector<int64_t> &shape, size_t &size,
-                                  int64_t &offset, DType &dtype) {
-  auto v = op->getResult(0);
+                                  int64_t &offset, DType &dtype, uint32_t idx) {
+  auto v = op->getResult(idx);
   name = Module::getName(v).str();
   auto tensorShape = Module::getShape(v);
   auto type = Module::getStorageType(v);
@@ -423,12 +423,12 @@ void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
   offset = Module::getAddress(v);
 }
 
-flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(opInfo &op_info) {
+flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(op_info_t &op_info) {
 
   // quant info
   float qscale = 0.0f; // fix me sophone set 1.0
   QuantType quant_type = QuantType_NONE;
-  if (Quant::isUniformQuantized(op_info.op->getResult(0))) {
+  if (Quant::isUniformQuantized(op_info.op->getResult(op_info.idx))) {
     auto qtype = Quant::getUniformQuantizedType(op_info.op->getResult(0));
     qscale = qtype.getScale();
     if (isa<top::InputOp>(op_info.op->getResult(0).getDefiningOp())) {
@@ -459,7 +459,7 @@ FBWeightVector CviModelBuilder::buildWeightMap() {
     int64_t offset;
     size_t size;
     DType dtype;
-    parseOpInfo(op, name, shape, size, offset, dtype);
+    parseOpInfo(op, name, shape, size, offset, dtype, 0);
     auto fbName = fbb_.CreateString(name);
     auto fbShape = CreateShapeDirect(fbb_, &shape);
     auto fbWeight = CreateWeight(fbb_, fbName, offset, size, fbShape, dtype);
@@ -468,9 +468,9 @@ FBWeightVector CviModelBuilder::buildWeightMap() {
   return fbb_.CreateVector(fbWeightVec);
 }
 
-void markGmemReusedOp(std::vector<opInfo> &ops,
+void markGmemReusedOp(std::vector<op_info_t> &ops,
                       std::set<Operation *> &gmemReusedSet) {
-  std::vector<opInfo *> tmp;
+  std::vector<op_info_t *> tmp;
   for (int i = ops.size() - 1; i >= 0; i--) {
     auto addr_i = ops[i].offset;
     auto sz_i = ops[i].size;
@@ -490,15 +490,16 @@ void markGmemReusedOp(std::vector<opInfo> &ops,
 
 FBTensorVector CviModelBuilder::buildNeuronMap() {
   std::vector<flatbuffers::Offset<Tensor>> tensorVec;
-  std::vector<opInfo> ops;
+  std::vector<op_info_t> ops;
   for (auto v : inputs) {
     auto inputOp = v.getDefiningOp();
-    opInfo op_info;
+    op_info_t op_info;
     op_info.op = inputOp;
     op_info.overwrite = false;
     op_info.shape.resize(4, 1);
+    op_info.idx = 0;
     parseOpInfo(inputOp, op_info.name, op_info.shape, op_info.size,
-                op_info.offset, op_info.dtype);
+                op_info.offset, op_info.dtype, op_info.idx);
     ops.emplace_back(op_info);
   }
   for (auto rt : routines_) {
@@ -506,13 +507,18 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
       if (isa<tpu::GroupOp>(neuronOp)) {
         llvm_unreachable("Not support layerGroup now");
       }
-      opInfo op_info;
+      op_info_t op_info;
       op_info.op = neuronOp;
       op_info.overwrite = false;
       op_info.shape.resize(4, 1);
-      parseOpInfo(neuronOp, op_info.name, op_info.shape, op_info.size,
-                  op_info.offset, op_info.dtype);
-      ops.emplace_back(op_info);
+      for (uint32_t i = 0; i < neuronOp->getNumResults(); ++i) {
+        if (!neuronOp->getResults()[i].getType().isa<mlir::NoneType>()) {
+          op_info.idx = i;
+          parseOpInfo(neuronOp, op_info.name, op_info.shape, op_info.size,
+                      op_info.offset, op_info.dtype, op_info.idx);
+          ops.emplace_back(op_info);
+        }
+      }
     }
   }
   std::set<Operation *> op_reused;
