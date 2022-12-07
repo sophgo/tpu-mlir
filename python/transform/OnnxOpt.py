@@ -69,10 +69,15 @@ class OuterNode(object):
             attr_value = float(attr_value)
         return {self.attr_name: translate_onnx(self.attr_name, attr_value)}
 
+class AttrFunctor(object):
+    def __init__(self, inputs=[], attrs=[], func=(lambda x:x)):
+        self.inputs = inputs
+        self.attrs = attrs
+        self.func = func
 
 class PatternNode(object):
     def __init__(self, op_type, input=[], cur_attr_name=[],
-                 new_attr_name=[], new_attr={}, constraint=''):
+                 new_attr_name=[], new_attr={}, attrmap={}, constraint=''):
         self.op_type = op_type
         self.input = input
         self.output = []
@@ -82,6 +87,7 @@ class PatternNode(object):
         self.new_attr_name = new_attr_name
         # add new attr in curent node
         self.new_attr = new_attr
+        self.attrmap = attrmap
         # check current node's cal manner
         self.constraint = constraint
         assert(isinstance(self.input, list))
@@ -104,10 +110,10 @@ class PatternNode(object):
         self.attr.update(zip(self.new_attr_name, attr_value))
 
     def get_attr(self):
-        for k, v in self.new_attr.items():
-            if isinstance(v, PatternNode) or isinstance(v, OuterNode):
-                v = v.get_attr()[k]
-            self.attr.update({k: v})
+        for new_attr, attr_func in self.attrmap.items():
+            args = [t.get_attr()[old_attr]
+                    for t, old_attr in zip(attr_func.inputs, attr_func.attrs)]
+            self.attr.update({new_attr: attr_func.func(*args)})
         return self.attr
 
 
@@ -131,6 +137,8 @@ class ReForm(object):
                             for info in self.shape_info}
         self.weight_tensor = [x.name for x in self.weight]
         self.node_tensor = [node.output[0] for node in self.nodes if node.op_type == "Constant"]
+        # stores output node name mapping from src to dst of replace subgraphs
+        self.node_name_mapping = {}
 
     def get_tensor_value(self, name):
         for n in self.nodes:
@@ -253,11 +261,13 @@ class ReForm(object):
         return matched_patterns
 
     def replace_pattern(self, matched_pattern):
+        # Recently we assume that subgraph to be replace has only one output
+        # TODO: implement for multi-output cases
         for reform_info in matched_pattern:
             src_node = reform_info.src_node
             dst_node = reform_info.dst_node
-            insert_idx, _ = self.get_node(src_node[-1].output[0])
             last_node = src_node[-1]
+            insert_idx, _ = self.get_node(last_node.output[0])
             out = last_node.output
             for i, new_node in enumerate(dst_node):
                 if i == len(dst_node) - 1:
@@ -287,7 +297,12 @@ class ReForm(object):
                                                 outputs=_output, **new_node.get_attr())
                 self.nodes.insert(insert_idx, new_node)
                 insert_idx += 1
-            # clearn up
+            node_name = _output[0]
+            src_oname = "{}_{}".format(node_name, src_node[-1].op_type)
+            dst_oname = "{}_{}".format(node_name, dst_node[-1].op_type)
+            assert (src_oname not in self.node_name_mapping)
+            self.node_name_mapping[src_oname] = dst_oname
+            # clear up
             for node in src_node:
                 self.nodes.remove(node)
             self.remove_unused_tensor()
@@ -398,12 +413,46 @@ class ReForm(object):
         self.remove_cast()
         self.remove_duplicate()
         self.graph_opt()
-        return self.nodes, self.weight
+        return self.node_name_mapping, self.nodes, self.weight
 
+############ torch.LayerNorm ############
+def TorchLayerNormPattern():
+    reducemean_input = OuterNode()
+    pow_tensor = OuterNode(tensor_value=2)
+    add_0_tensor = OuterNode(attr_name="eps")
+    mul_tensor = OuterNode(is_tensor=True)
+    add_1_tensor = OuterNode(is_tensor=True)
 
-def onnx_opt(model, dump=False):
+    _reducemean_0 = PatternNode("ReduceMean", [reducemean_input], ["axes"])
+    _sub = PatternNode("Sub", [reducemean_input, _reducemean_0])
+    _pow = PatternNode("Pow", [_sub, pow_tensor])
+    _reducemean_1 = PatternNode("ReduceMean", [_pow])
+    _add_0 = PatternNode("Add", [_reducemean_1, add_0_tensor])
+    _sqrt = PatternNode("Sqrt", [_add_0])
+    _div = PatternNode("Div", [_sub, _sqrt])
+    mul = PatternNode("Mul", [_div, mul_tensor])
+    _add_1 = PatternNode("Add", [mul, add_1_tensor])
+
+    epsilon_attrfunc = AttrFunctor([add_0_tensor], ["eps"])
+    axis_attrfunc = AttrFunctor([_reducemean_0], ["axes"], lambda x: x[0])
+
     patterns = []
-    reform = ReForm(model)
+    # affine (have both weight and bias)
+    layernorm_aff = PatternNode("LayerNorm", [reducemean_input, mul_tensor, add_1_tensor],
+                                attrmap={"epsilon": epsilon_attrfunc,
+                                         "axis": axis_attrfunc})
+    patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
+                                         _add_0, _sqrt, _div, mul, _add_1],
+                               dst_node=[layernorm_aff]))
+    # without affine (do not have both weight and bias)
+    layernorm = PatternNode("LayerNorm", [reducemean_input],
+                            attrmap={"epsilon": epsilon_attrfunc,
+                                     "axis": axis_attrfunc})
+    patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
+                                         _add_0, _sqrt, _div],
+                               dst_node=[layernorm]))
+    return patterns
+
     ############ torch.std ############
     # _reducemean_input = OuterNode()
     # sub_input = OuterNode()
@@ -433,37 +482,7 @@ def onnx_opt(model, dump=False):
     #                                      _reducemean_1, _sqrt],
     #                            dst_node=[_std]))
 
-    ############ torch.LayerNorm ############
-    reducemean_input = OuterNode()
-    pow_tensor = OuterNode(tensor_value=2)
-    add_0_tensor = OuterNode(attr_name="eps")
-    mul_tensor = OuterNode(is_tensor=True)
-    add_1_tensor = OuterNode(is_tensor=True)
 
-    _reducemean_0 = PatternNode("ReduceMean", [reducemean_input], ["axes"])
-    _sub = PatternNode("Sub", [reducemean_input, _reducemean_0])
-    _pow = PatternNode("Pow", [_sub, pow_tensor])
-    _reducemean_1 = PatternNode("ReduceMean", [_pow])
-    _add_0 = PatternNode("Add", [_reducemean_1, add_0_tensor])
-    _sqrt = PatternNode("Sqrt", [_add_0])
-    _div = PatternNode("Div", [_sub, _sqrt])
-    mul = PatternNode("Mul", [_div, mul_tensor])
-    _add_1 = PatternNode("Add", [mul, add_1_tensor])
-
-    # affine
-    layernorm_aff = PatternNode("LayerNorm", [reducemean_input, mul_tensor, add_1_tensor],
-                                new_attr={"eps": add_0_tensor, "axes": _reducemean_0,
-                                          "elementwise_affine": True})
-    patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
-                                         _add_0, _sqrt, _div, mul, _add_1],
-                               dst_node=[layernorm_aff]))
-    # without affine
-    layernorm = PatternNode("LayerNorm", [reducemean_input],
-                                new_attr={"eps": add_0_tensor, "axes": _reducemean_0,
-                                          "elementwise_affine": False})
-    patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
-                                         _add_0, _sqrt, _div],
-                               dst_node=[layernorm]))
 
     # ############ hard_sigmoid ############
     # # nomal case
@@ -550,7 +569,18 @@ def onnx_opt(model, dump=False):
     # gelu = PatternNode("Gelu", [gelu_input])
     # patterns.append(ReformInfo(src_node=[_div, _erf, _add, _mu_0, _mul_1], dst_node=[gelu]))
 
-    reform(patterns)
+def onnx_opt(model, dump=False):
+    pattern_functions = [
+        TorchLayerNormPattern,
+    ]
+
+    patterns = []
+    for pf in pattern_functions:
+        some_patterns = pf()
+        patterns.extend(some_patterns)
+
+    reform = ReForm(model)
+    node_name_mapping, _, _ = reform(patterns)
     if dump:
         dump_model(model, "final_opt.onnx")
-    return model
+    return model, node_name_mapping

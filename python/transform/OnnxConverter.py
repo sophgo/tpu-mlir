@@ -106,6 +106,7 @@ class OnnxConverter(BaseConverter):
         self.weight_file = "{}_top_weight.npz".format(model_name)
         self.model = None
         self.mlir = None
+        self.node_name_mapping = {} # used in onnx opt
         self.load_onnx_model(onnx_file, input_shapes, output_names)
         self.init_MLIRImporter()
         self.preprocess_args = preprocess_args
@@ -140,6 +141,7 @@ class OnnxConverter(BaseConverter):
             "HardSigmoid": lambda node: self.convert_hsigmoid_op(node),
             "HardSwish": lambda node: self.convert_hswish_op(node),
             "Identity": lambda node: self.convert_skip_op(node),
+            "LayerNorm": lambda node: self.convert_layer_norm_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
             "LRN": lambda node: self.convert_lrn_op(node),
@@ -333,7 +335,7 @@ class OnnxConverter(BaseConverter):
             f.write(str(strip_model))
         if is_ok:
             # fuse ops such as layernorm gelu...
-            self.model = onnx_opt(self.model, True)
+            self.model, self.node_name_mapping = onnx_opt(self.model, True)
 
     def model_shape_infer(self, input_shapes):
         inputs = self.get_inputs(self.model)
@@ -1597,3 +1599,4 @@ class OnnxConverter(BaseConverter):
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_hswish_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
