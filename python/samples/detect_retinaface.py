@@ -35,18 +35,18 @@ def vis(img, boxes, scores, landmarks, conf=0.5):
 
         txt_size = cv2.getTextSize(text, font, 0.4, 1)[0]
         cv2.rectangle(img, (x0, y0), (x1, y1), rectangle_color, 2)
-        
+
         txt_bk_color = rectangle_color
         cv2.rectangle(img, (x0, y0 + 1), (x0 + txt_size[0] + 1, y0 + int(1.5 * txt_size[1])),
                       txt_bk_color, -1)
         cv2.putText(
             img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
-    
+
     point_color = (0, 255, 0)
     for landmark in landmarks:
         for mark in landmark:
             cv2.circle(img, (int(mark[0]), int(mark[1])), 1, point_color, -1)
-            
+
     return img
 
 
@@ -199,7 +199,7 @@ def postprocess(image, cls_heads, box_heads, landmark_heads, image_shape, image_
         A = num_anchors[stride]
         K = height * width
         anchors_fpn = _anchors_fpn[stride]
-        anchors = anchors_plane(height, width, stride, anchors_fpn)  
+        anchors = anchors_plane(height, width, stride, anchors_fpn)
         anchors = anchors.reshape((K * A), 4)
         scores = scores.transpose((0, 2, 3, 1)).reshape((-1, 1))
         bbox_deltas = bbox_deltas.transpose((0, 2, 3, 1))
@@ -209,9 +209,9 @@ def postprocess(image, cls_heads, box_heads, landmark_heads, image_shape, image_
         bbox_deltas[:, 1::4] = bbox_deltas[:, 1::4] * bbox_stds[1]
         bbox_deltas[:, 2::4] = bbox_deltas[:, 2::4] * bbox_stds[2]
         bbox_deltas[:, 3::4] = bbox_deltas[:, 3::4] * bbox_stds[3]
-        proposals = bbox_pred(anchors, bbox_deltas)                   
+        proposals = bbox_pred(anchors, bbox_deltas)
         proposals = clip_boxes(
-            proposals, image_shape[:2])                 
+            proposals, image_shape[:2])
         scores_ravel = scores.ravel()
         order = np.where(scores_ravel >= threshold)[0]
         proposals = proposals[order, :]
@@ -238,7 +238,7 @@ def postprocess(image, cls_heads, box_heads, landmark_heads, image_shape, image_
     landmarks = None
     if proposals.shape[0] == 0:
         landmarks = np.zeros((0, 5, 2))
-        return np.zeros((0, 5)), landmarks
+        return np.zeros((0, 1)), np.zeros((0, 4)), landmarks
     scores = np.vstack(scores_list)
     scores_ravel = scores.ravel()
     order = scores_ravel.argsort()[::-1]
@@ -340,7 +340,7 @@ def main():
             outputs = model_inference(data, args.model)
         else:
             raise RuntimeError("not support modle file:{}".format(args.model))
-        
+
     output_keys = set(outputs.keys())
 
     for bbx_name, cls_name, landmark_name in zip(bbx_names, cls_names, landmark_names):
@@ -354,8 +354,9 @@ def main():
             else:
                 continue
 
-    probs, boxes, landmarks = postprocess(image_data, cls_heads, bbx_heads, landmark_heads, image_shape, image_scale)
-    
+    probs, boxes, landmarks = postprocess(
+        image_data, cls_heads, bbx_heads, landmark_heads, image_shape, image_scale)
+
     if boxes.shape[0] > 0:
         fix_img = vis(origin_image, boxes, probs, landmarks)
         cv2.imwrite(args.output, fix_img)

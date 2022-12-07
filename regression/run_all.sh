@@ -34,6 +34,9 @@ model_list_basic=(
   "yolov3_tiny"
   "yolov5s_tf"
   "ssd_mobilenet_v1_tf"
+# face detection
+  "retinaface"
+  "ultraface_640"
 )
 
 # run models
