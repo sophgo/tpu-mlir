@@ -1785,18 +1785,18 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(inputs, Net(), case_name)
 
     def test_TorchLayerNorm(self, case_name):
-
+        normalize_shape = [13, 22]
         class Net(torch.nn.Module):
 
             def __init__(self):
                 super(Net, self).__init__()
-                self.layer_norm = nn.LayerNorm([24, 50])
+                self.layer_norm = nn.LayerNorm(normalize_shape)
 
             def forward(self, x):
                 x = self.layer_norm(x)
                 return x
 
-        input_shape = [1, 3, 24, 50]
+        input_shape = [14, 25] + normalize_shape
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Net(), case_name)
 

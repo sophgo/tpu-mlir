@@ -143,7 +143,7 @@ class OnnxConverter(BaseConverter):
             "HardSigmoid": lambda node: self.convert_hsigmoid_op(node),
             "HardSwish": lambda node: self.convert_hswish_op(node),
             "Identity": lambda node: self.convert_skip_op(node),
-            "LayerNorm": lambda node: self.convert_layer_norm_op(node),
+            "LayerNormalization": lambda node: self.convert_layer_norm_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
             "LRN": lambda node: self.convert_lrn_op(node),
@@ -1772,3 +1772,33 @@ class OnnxConverter(BaseConverter):
                 pass
         new_op = self.mlir.create_deqlinear_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_layer_norm_op(self, onnx_node):
+        assert (onnx_node.op_type == "LayerNormalization")
+        assert (len(onnx_node.inputs) in (2, 3))
+        input_shape = self.getShape(onnx_node.inputs[0])
+        num_dims = len(input_shape)
+        axis = onnx_node.attrs.get("axis", -1)
+        if axis < 0:
+            axis += num_dims
+        eps = onnx_node.attrs.get("epsilon", 1e-05)
+        # stash_type is not important
+        p = {"name": [onnx_node.name]*3, "axis": axis, "eps": eps}
+        input_opd = self.getOperand(onnx_node.inputs[0])
+        scale_opd = self.getWeightOp(onnx_node.inputs[1])
+        if len(onnx_node.inputs) > 2:
+            bias_opd = self.getWeightOp(onnx_node.inputs[2])
+        else:
+            bias_opd = self.mlir.none_op
+        out_shapes = [[], [], []]
+        out_needs = [False, False, False]
+        for idx, out in enumerate(onnx_node.outputs):
+            need = len(out) > 0 and self.check_need(out)
+            if need:
+                p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
+                out_needs[idx] = True
+                out_shapes[idx] = self.getShape(out)
+        out_ops = self.mlir.create_layer_norm_op([input_opd, scale_opd, bias_opd], out_shapes, **p)
+        for idx, need in enumerate(out_needs):
+            if not need: continue
+            self.addOperand(onnx_node.outputs[idx], out_ops[idx])
