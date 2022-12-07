@@ -170,6 +170,7 @@ class ONNX_IR_TESTER(object):
         model_def.opset_import[0].version = 13
         onnx.checker.check_model(model_def)
         tool = OnnxTransformer(model_name, model_def)
+        node_name_mapping = tool.converter.node_name_mapping
         tool.model_transform(fp32_mlir)
 
         onnx_model = "{}_opt.onnx".format(model_name)
@@ -186,7 +187,7 @@ class ONNX_IR_TESTER(object):
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
 
-        return (onnx_outs, top_mlir_outs, input_npz)
+        return (onnx_outs, top_mlir_outs, input_npz, node_name_mapping)
 
     def bmodel_generate(self,
                         model_name: str,
@@ -322,16 +323,26 @@ class ONNX_IR_TESTER(object):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
-        onnx_outs, top_mlir_outs, input_npz = self.onnx_convert(input_data, graph_def, model_name)
+        onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(input_data, graph_def, model_name)
         # test onnx and mlir outputs
+        rtol = 1e-5
+        atol = 1e-1
         counter = 0
         for name in onnx_outs:
             if name in top_mlir_outs:
                 print("Compare:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
-                np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=1e-5, atol=1e-1)
+                np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=rtol, atol=atol)
                 counter += 1
+            if name in node_name_mapping:
+                mapped_name = node_name_mapping[name]
+                if mapped_name in top_mlir_outs:
+                    print("Compare:{}\n".format(mapped_name))
+                    top_mlir_output = top_mlir_outs[mapped_name].flatten()
+                    onnx_output = onnx_outs[name].flatten()
+                    np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=rtol, atol=atol)
+                    counter += 1
         if counter == 0:
             raise RuntimeError("No compare between onnx outs and mlir outts")
         print("Success: ONNX outs and Mlir outs are equal\n")
