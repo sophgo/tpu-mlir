@@ -74,29 +74,16 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   }
   scalef /= o_scale;
 
-  //For quant compare npz result use.
-  int multiplier;
-  int rshift;
-  get_scale_and_shift(scalef, multiplier, rshift, 8);
+  int64_t multiplier;
+  int64_t rshift;
+  getRShiftAndMultiplierFromQScale(scalef, &multiplier, &rshift, true);
 
-  //This quantinization is for codegen/backend use,because cv18xx mulOp should quant in "qdm" mode.
-
-  int64_t multiplier_cg;
-  int64_t rshift_cg;
-  getRShiftAndMultiplierFromQScale(scalef, &multiplier_cg, &rshift_cg, true);
-
-  /*Note:Due to the different way to get multiplier and rshift,the final result compare between
-   "_int8_sym_tpu_out.npz" and "_int8_sym_model_out.npz" maybe a little different.*/
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
-  attrs.push_back(rewriter.getNamedAttr(
-      "multiplier_cg", rewriter.getI64IntegerAttr(multiplier_cg)));
-  attrs.push_back(
-      rewriter.getNamedAttr("rshift_cg", rewriter.getI64IntegerAttr(rshift_cg)));
   auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
 }
