@@ -76,7 +76,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newType = Quant::getQuantInt8Type(op.output());
+  auto newType = getQuantInt8Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 

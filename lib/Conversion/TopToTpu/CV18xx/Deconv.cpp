@@ -117,7 +117,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.with_bias)));
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   auto newOp = rewriter.create<tpu::DeconvOp>(op->getLoc(), newType,
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});

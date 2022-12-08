@@ -121,7 +121,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   auto newOp = rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType,
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});

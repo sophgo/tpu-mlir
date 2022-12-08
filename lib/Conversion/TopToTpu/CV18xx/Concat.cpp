@@ -110,7 +110,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(*rshift_v)));
   attrs.push_back(
       rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(only_merge)));
-  auto newType = Quant::getQuantInt8Type(concatOp.output(), asymmetric);
+  auto newType = getQuantInt8Type(concatOp.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(concatOp, newType, operands,
                                              attrs);
 }

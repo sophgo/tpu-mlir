@@ -153,7 +153,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   operands.emplace_back(right_operand);
   operands.emplace_back(bias_operand);
 
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
   return;
 }

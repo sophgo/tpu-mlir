@@ -831,7 +831,7 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   mlir::Type new_type;
   if (mode.value() == tpu::ResizeMode::nearest) {
     if constexpr (std::is_same_v<T, mlir::IntegerType>) {
-      new_type = Quant::getQuantInt8Type(op.output(), asymmetric);
+      new_type = getQuantInt8Type(op.output(), asymmetric);
     } else {
       new_type = getQuantBF16Type(op.output());
     }

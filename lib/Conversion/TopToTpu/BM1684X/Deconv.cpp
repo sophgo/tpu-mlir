@@ -145,7 +145,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto deconvOp = rewriter.create<tpu::DeconvOp>(NameLoc::get(name), deconvType,
                                                  operands, attrs);
 
-  auto rqType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto rqType = getQuantInt8Type(op.output(), asymmetric);
 
   auto quant_int32 = std::make_shared<std::vector<int32_t>>(param.oc * 3, 0);
   int int32_multiplier, rshift;

@@ -54,7 +54,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
     }
     attrs.push_back(
         rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshifti)));
-    auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+    auto newType = getQuantInt8Type(op.output(), asymmetric);
     rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
   } else {
     LoweringF32(rewriter, op);

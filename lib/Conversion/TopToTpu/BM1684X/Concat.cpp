@@ -30,7 +30,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newType = Quant::getQuantInt8Type(concatOp.output(), asymmetric);
+  auto newType = getQuantInt8Type(concatOp.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, newType, operands, attrs);
 }
 
