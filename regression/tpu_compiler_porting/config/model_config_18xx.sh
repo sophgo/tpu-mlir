@@ -39,6 +39,7 @@ if [ $NET = "resnet50" ]; then
 export MODEL_DEF=$MODEL_PATH/imagenet/resnet/caffe/ResNet-50-deploy.prototxt
 export MODEL_DAT=$MODEL_PATH/imagenet/resnet/caffe/ResNet-50-model.caffemodel
 export CALI_TABLE=$REGRESSION_PATH/tpu_compiler_porting/cali_tables/${NET}_calibration_table
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 export INPUT_SHAPE=[[1,3,224,224]]
 export NET_INPUT_DIMS=224,224
 export IMAGE_RESIZE_DIMS=256,256
@@ -53,7 +54,6 @@ export MIX_PRECISION_BF16_LAYER_NUM=10
 export EXCEPTS=prob,res2c_relu,res3d_relu,res4f_relu
 export TOLERANCE_BF16=0.99,0.96
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
-export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
 
 if [ $NET = "mobilenet_v1" ]; then

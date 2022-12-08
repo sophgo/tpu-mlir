@@ -103,7 +103,23 @@ struct PythonCviModel {
     for (int i = 0; i < input_num; i++) {
       inputs.push_back(std::make_shared<PythonTensor>(&input_tensors[i]));
     }
+    // remove input tensor
+    // because input tensor's qscale different from other tensors
+    // it will cause error in model_runner.py convert int8 data to fp32
     for (int i = 0; i < output_num; i++) {
+      if (!output_tensors[i].name) {
+        continue;
+      }
+      bool is_input_tensor = false;
+      for (int j = 0; j < input_num; ++j) {
+        if (strcmp(output_tensors[i].name, input_tensors[j].name) == 0) {
+          is_input_tensor = true;
+          break;
+        }
+      }
+      if (is_input_tensor) {
+        continue;
+      }
       outputs.push_back(std::make_shared<PythonTensor>(&output_tensors[i]));
     }
   }
