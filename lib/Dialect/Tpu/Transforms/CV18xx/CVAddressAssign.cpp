@@ -276,7 +276,8 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
         assert(0);
       }
       int this_index = operand.cast<OpResult>().getResultNumber();
-      uint32_t tensor_size = getTensorGmemSize(opd, this_index, alignment);
+      //uint32_t tensor_size = getTensorGmemSize(opd, this_index, alignment);
+      uint32_t tensor_size = Module::getBytes(opd->getResult(this_index));
       Module::setAddress(opd->getResult(this_index), base_addr + offset);
       offset += tensor_size;
     }
