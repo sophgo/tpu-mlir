@@ -77,19 +77,21 @@ public:
     if (!reduceOp.buffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
+    auto attr = reduceOp.parseParam();
+    if (attr.simplified == false) {
+      llvm_unreachable("Not Implemented");
+    }
+
     auto type = Module::getStorageType(reduceOp.input());
     // add buffer
     /* if reduce n or c, need imm buffer. if reduce h/w, don't need imm buffer
        if reduce c/h, c/w, n/w, will split it to 2 step at fronted, it will not
        go here. if reduce c/h/w, n/h/w, need imm buffer . Note: reduce max/mean
        and n/h, don't support it now (transpose need imm buffer) */
-    auto axes_val = Module::getI64Array(reduceOp.axes());
-    auto axis_num = axes_val->size();
-    auto in_tensor = Module::getShape(reduceOp.input());
-    int is_reduce[MAX_SHAPE_DIMS] = {0};
-    for (int i = 0; i < axis_num; i++) {
-      is_reduce[axes_val->at(i)] = 1;
-    }
+    auto axis_num = 1;
+    bool is_reduce[4] = {false, false, true, false};
+    std::vector<int64_t> in_tensor = {attr.outer_n, attr.outer_c,
+                                      attr.axis_dims, attr.inner_dims};
 
     /* reducemax/mean and reduce n/w,c/h,c/w, will use max/avg pool to implement
      * it.*/
