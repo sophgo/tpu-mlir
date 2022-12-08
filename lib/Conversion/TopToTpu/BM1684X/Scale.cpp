@@ -142,7 +142,7 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
   attrs.push_back(rewriter.getNamedAttr("relu_limit", op.relu_limitAttr()));
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
 

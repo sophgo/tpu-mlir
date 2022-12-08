@@ -662,8 +662,8 @@ class OnnxConverter(BaseConverter):
         dim = len(kernel_shape)
         input_shape = self.getShape(onnx_node.inputs[0])
         strides = onnx_node.attrs.get("strides", kernel_shape)
-        auto_pad = onnx_node.attrs.get("auto_pad", None)
-        if auto_pad:
+        auto_pad = onnx_node.attrs.get("auto_pad", b"NOTSET")
+        if auto_pad != b"NOTSET":
             pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
         else:
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])

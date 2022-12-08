@@ -100,7 +100,7 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
       "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = Quant::getQuantInt8Type(op.output());
+  auto newType = getQuantInt8Type(op.output());
   if (!bcast) {
     rewriter.replaceOpWithNewOp<tpu::AddOp>(op.getOperation(), newType,
                                             operands, attrs);

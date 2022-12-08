@@ -84,44 +84,6 @@ void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
   }
 }
 
-mlir::Type Quant::getQuantInt8Type(Value v, bool asymmetric) {
-  auto type = v.getType().cast<RankedTensorType>();
-  auto ctx = v.getContext();
-  auto cali_type = getCalibratedType(v);
-  auto min = cali_type.getMin();
-  double scale;
-  int64_t zeropoint = 0;
-  getScaleAndZeroPoint(v, scale, zeropoint, asymmetric);
-  int64_t qmin = -128, qmax = 127;
-  uint32_t flag = quant::QuantizationFlags::Signed;
-  if (min >= 0) {
-    qmin = 0;
-    qmax = 255;
-    flag = 0;
-  }
-  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
-                                                cali_type.getExpressedType(),
-                                                scale, zeropoint, qmin, qmax);
-  return RankedTensorType::get(type.getShape(), qtype);
-}
-
-mlir::Type Quant::getQuantBoolType(Value v) {
-  auto type = v.getType().cast<RankedTensorType>();
-  auto ctx = v.getContext();
-  auto cali_type = getCalibratedType(v);
-  int64_t qmin = -128, qmax = 127;
-  uint32_t flag = quant::QuantizationFlags::Signed;
-  if (cali_type.getMin() >= 0) {
-    qmin = 0;
-    qmax = 255;
-    flag = 0;
-  }
-  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
-                                                cali_type.getExpressedType(),
-                                                1.0, 0, qmin, qmax);
-  return RankedTensorType::get(type.getShape(), qtype);
-}
-
 uint16_t Quant::to_bf16(float src, bool rounding) {
   // To convert a float 32 to bfloat16, a float 32 can be viewed as 32 bits
   // with the following tags:

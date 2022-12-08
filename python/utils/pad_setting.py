@@ -24,7 +24,7 @@ def set_auto_pad(auto_pad, input_shape, kernel_shape, strides):
         padding_l = padding_along_w - padding_r
         pads = [padding_t, padding_l, padding_b, padding_r]
     else:
-        raise RuntimeError("Not support conv {} pad method".format(pad_method))
+        raise RuntimeError("Not support {} pad method".format(pad_method))
     return pads
 
 def set_caffe_pad(input_shape, output_shape, kernel_shape, strides, leading_pad):

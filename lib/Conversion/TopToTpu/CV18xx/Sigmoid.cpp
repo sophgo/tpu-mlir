@@ -24,7 +24,7 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.input(), table}, attrs);
 }
@@ -33,8 +33,8 @@ void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SigmoidOp op) const {
   Value table_weight, slope_weight;
   float range_start = -12, range_end = 12;
-  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start, range_end,
-                  active_sigmoid, table_weight, slope_weight);
+  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
+                  range_end, active_sigmoid, table_weight, slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -48,9 +48,7 @@ void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType,
-      ValueRange{op.input(), table_weight, slope_weight},
-      attrs);
+      op, newType, ValueRange{op.input(), table_weight, slope_weight}, attrs);
   return;
 }
 } // namespace cv18xx

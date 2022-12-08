@@ -355,7 +355,7 @@ protected:
         v.dump();
         llvm_unreachable("Only calibrated type can do quantize");
       }
-      auto newType = Quant::getQuantInt8Type(v, LoweringConfig::isAsymmetric);
+      auto newType = getQuantInt8Type(v, LoweringConfig::isAsymmetric);
       name += "_" + type_string(newType);
       auto loc = NameLoc::get(builder.getStringAttr(name));
       if (Module::isCV18xx(LoweringConfig::chip)) {

@@ -66,7 +66,7 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "pool_mode", tpu::PoolModeAttr::get(getContext(), tpu::PoolMode::Avg)));
 
-  auto newType = Quant::getQuantInt8Type(poolOp.output(), asymmetric);
+  auto newType = getQuantInt8Type(poolOp.output(), asymmetric);
   if (kernel_size == 1) {
     rewriter.replaceOpWithNewOp<tpu::Pool1DOp>(
         op, newType, ValueRange{poolOp.input()}, attrs);

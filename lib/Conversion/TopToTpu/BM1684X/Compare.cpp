@@ -29,7 +29,7 @@ void CompareLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareOp op,
     return;
   }
 
-  auto newType = Quant::getQuantBoolType(op.output());
+  auto newType = getQuantBoolType(op.output());
   lowering_common<tpu::CompareOp>(rewriter, op_, newType);
 }
 

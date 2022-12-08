@@ -178,7 +178,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     auto conv_out = CreateConvOp(rewriter, op.kernel_shape().size(), name_loc,
                                  convType, operands, attrs);
     // requant
-    auto output_type = Quant::getQuantInt8Type(op.output(), asymmetric);
+    auto output_type = getQuantInt8Type(op.output(), asymmetric);
     std::vector<int32_t> quant(attr.oc * 3, 0);
     for (size_t i = 0; i < attr.oc; ++i) {
       quant[i * 3] = multiplier_v[i];
@@ -201,7 +201,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
 
   auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), op->getLoc(),
                                newType, operands, attrs);

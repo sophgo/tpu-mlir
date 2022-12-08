@@ -102,12 +102,14 @@ public:
 // Lowering Helper Apis
 // ================================
 
+mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
+mlir::Type getQuantBoolType(Value v);
+
 // Lowering to a new Operation, with the same operands and same attrs, and
 // newType
 template <typename OpTy>
 static void lowering_common(PatternRewriter &rewriter, Operation *from,
                             Type newType) {
-  // rewriter.setInsertionPointAfter(from);
   rewriter.replaceOpWithNewOp<OpTy>(from, newType, from->getOperands(),
                                     from->getAttrs());
 }
@@ -118,7 +120,7 @@ template <typename OpTy>
 static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
                                  bool asymmetric = false) {
   assert(from->getNumResults() == 1);
-  auto newType = Quant::getQuantInt8Type(from->getResult(0), asymmetric);
+  auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
   lowering_common<OpTy>(rewriter, from, newType);
 }
 
@@ -181,8 +183,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric);
 
 // from int8 to int32
 Value do_dequant(Location name_loc, Value input, Type to_type,
-                 int64_t multiplier, int64_t rshift,
-                 tpu::DequantMode mode, int64_t lshift);
+                 int64_t multiplier, int64_t rshift, tpu::DequantMode mode,
+                 int64_t lshift);
 
 // from int8 to int32
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
@@ -214,8 +216,8 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
 }
 
 Value do_reshape(Value input, RankedTensorType to_type);
-Value do_weight_dequant(Value input, Type to_type, int64_t multiplier, int64_t shift,
-                        int64_t lshift);
+Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
+                        int64_t shift, int64_t lshift);
 int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
-                        int64_t lshift);
+                         int64_t lshift);
 } // namespace tpu_mlir

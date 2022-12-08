@@ -28,7 +28,7 @@ void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.input(), table}, attrs);
 }

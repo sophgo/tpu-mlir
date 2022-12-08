@@ -54,7 +54,7 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
     operands.push_back(Module::getNoneOp(op));
     operands.push_back(Module::getNoneOp(op));
   }
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);
 }
 

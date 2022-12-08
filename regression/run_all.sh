@@ -37,6 +37,8 @@ model_list_basic=(
 # face detection
   "retinaface"
   "ultraface_640"
+# paddlepaddle models
+  "pp_humanseg"
 )
 
 # run models

@@ -57,7 +57,7 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
       "multiplier", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = Quant::getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ReduceOp>(op, newType, operands, attrs);
 }
 
