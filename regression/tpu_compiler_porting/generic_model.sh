@@ -23,7 +23,7 @@ if [ ! -f $cfg_file ]; then
 fi
 
 
-if [ x$MODEL_PATH == x ] && [ x$2 != x ]; then
+if [ x$2 != x ]; then
   MODEL_PATH=$2
 fi
 MODEL_PATH=${MODEL_PATH:-/data/mlir-models}
@@ -32,11 +32,11 @@ if [ ! -f $MODEL_PATH]; then
   exit 1
 fi
 
-if [ x$DATA_SET == x ] && [ x$3 != x ]; then
-  DATA_SET=$2
+if [ x$3 != x ]; then
+  DATA_SET=$3
 fi
-DATA_SET=${MODEL_PATH:-/data/dataset}
-if [ ! -f $MODEL_PATH]; then
+DATA_SET=${DATA_SET:-/data/dataset}
+if [ ! -f $DATA_SET]; then
   echo "Error: model dataset not exist\n"
   exit 1
 fi
@@ -177,7 +177,7 @@ if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE}_100 ]; then
     exit 1
   fi
   run_calibration.py ${NET}.mlir \
-    --dataset ${DATA_SET} \
+    --dataset ${CALI_IMAGES} \
     --input_num 100 \
     -o ${CALI_TABLE}_100
 fi

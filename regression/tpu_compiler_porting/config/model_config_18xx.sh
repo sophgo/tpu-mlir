@@ -73,3 +73,22 @@ export TOLERANCE_BF16=0.99,0.92
 export EXCEPTS=prob
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
+
+if [ $NET = "inception_v3" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/inception_v3/caffe/deploy_inception-v3.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/inception_v3/caffe/inception-v3.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/tpu_compiler_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,299,299]]
+export NET_INPUT_DIMS=299,299
+export IMAGE_RESIZE_DIMS=299,299
+export RAW_SCALE=255.0
+export MEAN=128.0,128.0,128.0
+export INPUT_SCALE=0.0078125,0.0078125,0.0078125
+export INPUT=input
+export OUTPUTS=classifier
+# export EXCEPTS=prob
+export TOLERANCE_INT8=0.95,0.68
+export TOLERANCE_BF16=0.99,0.93
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
