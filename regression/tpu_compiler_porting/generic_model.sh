@@ -201,7 +201,7 @@ model_deploy.py \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
   ${excepts_opt} \
-  --quant_output  \
+  --quant_input \
   --model ${NET}_${CHIP_NAME}_int8_sym.cvimodel
 popd
 
