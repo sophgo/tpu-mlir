@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "TorchHardSwish"]
+Failed_Cases = ["TorchLayerNorm"]
 
 
 class ONNX_IR_TESTER(object):

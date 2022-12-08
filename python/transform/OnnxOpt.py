@@ -118,7 +118,8 @@ class PatternNode(object):
 
 
 class ReformInfo(object):
-    def __init__(self, src_node, dst_node):
+    def __init__(self, name:str, src_node, dst_node):
+        self.name = name
         self.src_node = src_node
         self.dst_node = dst_node
 
@@ -231,6 +232,7 @@ class ReForm(object):
         return matched
 
     def match_pattern(self, reform_info):
+        name = reform_info.name
         pnodeIdx = 0
         matched_patterns = []
         unused_nodes = []
@@ -247,7 +249,7 @@ class ReForm(object):
                 unused_nodes.append(node)
                 if pnodeIdx == patternLens:
                     newNodes = copy.deepcopy(reform_info.dst_node)
-                    matched_patterns.append(ReformInfo(unused_nodes, newNodes))
+                    matched_patterns.append(ReformInfo(name, unused_nodes, newNodes))
                     pnodeIdx = 0
                     unused_nodes = []
             else:
@@ -306,6 +308,7 @@ class ReForm(object):
             for node in src_node:
                 self.nodes.remove(node)
             self.remove_unused_tensor()
+            print("[ONNX OPT] RULE <<{}>> applied \n".format(reform_info.name))
 
     def remove_unused_tensor(self):
         # purging redundancy tensor
@@ -415,6 +418,8 @@ class ReForm(object):
         self.graph_opt()
         return self.node_name_mapping, self.nodes, self.weight
 
+###====================== Declare your patterns here ======================###
+
 ############ torch.LayerNorm ############
 def TorchLayerNormPattern():
     reducemean_input = OuterNode()
@@ -441,137 +446,38 @@ def TorchLayerNormPattern():
     layernorm_aff = PatternNode("LayerNorm", [reducemean_input, mul_tensor, add_1_tensor],
                                 attrmap={"epsilon": epsilon_attrfunc,
                                          "axis": axis_attrfunc})
-    patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
+    patterns.append(ReformInfo(name="layernorm_aff",
+                               src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
                                          _add_0, _sqrt, _div, mul, _add_1],
                                dst_node=[layernorm_aff]))
     # without affine (do not have both weight and bias)
     layernorm = PatternNode("LayerNorm", [reducemean_input],
                             attrmap={"epsilon": epsilon_attrfunc,
                                      "axis": axis_attrfunc})
-    patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
+    patterns.append(ReformInfo(name="layernorm",
+                               src_node=[_reducemean_0, _sub, _pow, _reducemean_1,
                                          _add_0, _sqrt, _div],
                                dst_node=[layernorm]))
     return patterns
 
-    ############ torch.std ############
-    # _reducemean_input = OuterNode()
-    # sub_input = OuterNode()
-    # mul_tensor = OuterNode(is_tensor=True)
-    # div_tensor = OuterNode(is_tensor=True)
-    # # unbiased case
-    # _reducemean_0 = PatternNode("ReduceMean", [_reducemean_input],
-    #                             cur_attr_name=["axes"], new_attr_name=["dim"])
-    # _sub = PatternNode("Sub", [sub_input, _reducemean_0])
-    # _mul_0 = PatternNode("Mul", [_sub, _sub])
-    # _reducemean_1 = PatternNode("ReduceMean", [_mul_0], cur_attr_name=["keepdims"])
-    # _mul_1 = PatternNode("Mul", [_reducemean_1, mul_tensor])
-    # _div = PatternNode("Div", [_mul_1, div_tensor])
-    # _sqrt = PatternNode("Sqrt", [_div])
+############ torch.HardSwish ############
+def TorchHardSwishPattern():
+    input = OuterNode()
+    hard_sigmoid = PatternNode("HardSigmoid", [input])
+    mul = PatternNode("Mul", [input, hard_sigmoid])
+    hard_swish = PatternNode("HardSwish", [input])
 
-    # _std = PatternNode("Std", [_reducemean_input], new_attr={"dim": _reducemean_0,
-    #                    "keepdims": _reducemean_1, "unbiased": True})
-    # patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _mul_0, _reducemean_1,
-    #                                      _mul_1, _div, _sqrt],
-    #                            dst_node=[_std]))
-    # # normal case
-    # _sqrt = PatternNode("Sqrt", [_reducemean_1])
-
-    # _std = PatternNode("Std", [_reducemean_input], new_attr={"dim": _reducemean_0,
-    #                    "keepdims": _reducemean_1, "unbiased": False})
-    # patterns.append(ReformInfo(src_node=[_reducemean_0, _sub, _mul_0,
-    #                                      _reducemean_1, _sqrt],
-    #                            dst_node=[_std]))
-
-
-
-    # ############ hard_sigmoid ############
-    # # nomal case
-    # add_input = OuterNode()
-    # add_tensor = OuterNode(tensor_value=3)
-    # clip_min = OuterNode(tensor_value=0)
-    # clip_max = OuterNode(tensor_value=6)
-    # div_tensor = OuterNode(tensor_value=6)
-
-    # _add = PatternNode("Add", [add_input, add_tensor])
-    # clip = PatternNode("Clip", [_add, clip_min, clip_max])
-    # _div = PatternNode("Div", [clip, div_tensor])
-
-    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
-    # patterns.append(ReformInfo(src_node=[_add, clip, _div],
-    #                            dst_node=[hard_sigmoid]))
-
-    # # old offset version min max is clip's attr
-    # clip = PatternNode("Clip", [_add])
-    # _div = PatternNode("Div", [clip, div_tensor])
-
-    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
-    # patterns.append(ReformInfo(src_node=[_add, clip, _div],
-    #                            dst_node=[hard_sigmoid]))
-
-    # # relu6_inplace (add is fused in pre matmul) case
-    # matmulbias_input = OuterNode()
-    # matmulbias_weight = OuterNode(is_tensor=True)
-    # matmulbias_bias = OuterNode(is_tensor=True)
-    # clip_min = OuterNode(is_tensor=True)
-    # clip_max = OuterNode(is_tensor=True)
-    # div_tensor = OuterNode(is_tensor=True)
-
-    # matmulbias = PatternNode("MatMul", [matmulbias_input, matmulbias_weight, matmulbias_bias])
-    # clip = PatternNode("Clip", [matmulbias, clip_min, clip_max])
-    # _div = PatternNode("Div", [clip, div_tensor])
-
-    # matmul = PatternNode("MatMul", [matmulbias_input, matmulbias_weight])
-    # hard_sigmoid = PatternNode("HardSigmoid", [matmul])
-
-    # patterns.append(ReformInfo(src_node=[matmulbias, clip, _div],
-    #                            dst_node=[matmul, hard_sigmoid]))
-
-    # ############ hard_swish ############
-    # # normal case
-    # add_input = OuterNode()
-    # add_tensor = OuterNode(tensor_value=3)
-    # clip_min = OuterNode(tensor_value=0)
-    # clip_max = OuterNode(tensor_value=6)
-    # div_tensor = OuterNode(tensor_value=6)
-
-    # _add = PatternNode("Add", [add_input, add_tensor])
-    # clip = PatternNode("Clip", [_add, clip_min, clip_max])
-    # mul_0 = PatternNode("Mul", [add_input, clip])
-    # _div = PatternNode("Div", [mul_0, div_tensor])
-
-    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
-    # mul_1 = PatternNode("Mul", [add_input, hard_sigmoid])
-
-    # patterns.append(ReformInfo(src_node=[_add, clip, mul_0, _div],
-    #                            dst_node=[hard_sigmoid, mul_1]))
-    # # old offset version min max is clip's attr
-    # clip = PatternNode("Clip", [_add])
-    # mul_0 = PatternNode("Mul", [add_input, clip])
-    # _div = PatternNode("Div", [mul_0, div_tensor])
-
-    # hard_sigmoid = PatternNode("HardSigmoid", [add_input])
-    # mul_1 = PatternNode("Mul", [add_input, hard_sigmoid])
-    # patterns.append(ReformInfo(src_node=[_add, clip, mul_0, _div],
-    #                            dst_node=[hard_sigmoid, mul_1]))
-
-    ############ torch.gelu ############
-    # gelu_input = OuterNode()
-    # div_tensor = OuterNode(is_tensor=True)
-    # add_tensor = OuterNode(tensor_value=1)
-    # mul_tensor = OuterNode(tensor_value=0.5)
-
-    # _div = PatternNode("Div", [gelu_input, div_tensor])
-    # _erf = PatternNode("Erf", [_div])
-    # _add = PatternNode("Add", [_erf, add_tensor])
-    # _mu_0 = PatternNode("Mul", [gelu_input, _add])
-    # _mul_1 = PatternNode("Mul", [_mu_0, mul_tensor])
-
-    # gelu = PatternNode("Gelu", [gelu_input])
-    # patterns.append(ReformInfo(src_node=[_div, _erf, _add, _mu_0, _mul_1], dst_node=[gelu]))
+    patterns = []
+    patterns.append(ReformInfo(name="hardswish",
+                               src_node=[hard_sigmoid, mul],
+                               dst_node=[hard_swish]))
+    return patterns
 
 def onnx_opt(model, dump=False):
+    # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,
+        TorchHardSwishPattern,
     ]
 
     patterns = []
