@@ -35,6 +35,27 @@ export MIX_PRECISION_TABLE='-'1
 # default inference and test image
 export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/cat.jpg
 
+if [ $NET = "googlenet" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/googlenet/caffe/deploy_bs1.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/googlenet/caffe/bvlc_googlenet.caffemodel
+# replace $REGRESSION_PATH/data/cali_tables/ with $REGRESSION_PATH/cv18xx_porting/cali_tables/
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,224,224]]  # new attr
+export NET_INPUT_DIMS=224,224
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MEAN=104,117,123
+export INPUT_SCALE=1.0,1.0,1.0      # value per-channel
+export INPUT=data
+export OUTPUTS=prob
+export TOLERANCE_INT8=0.975,0.768     # 2 value
+export TOLERANCE_BF16=0.998,0.990     # 2 value
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+export EXCEPTS=prob
+export MODEL_CHANNEL_ORDER=bgr      # set channel order
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012 # set calibration dateset
+fi
+
 if [ $NET = "resnet50" ]; then
 export MODEL_DEF=$MODEL_PATH/imagenet/resnet/caffe/ResNet-50-deploy.prototxt
 export MODEL_DAT=$MODEL_PATH/imagenet/resnet/caffe/ResNet-50-model.caffemodel
@@ -55,6 +76,24 @@ export MIX_PRECISION_BF16_LAYER_NUM=10
 export EXCEPTS=prob,res2c_relu,res3d_relu,res4f_relu
 export TOLERANCE_BF16=0.99,0.96
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+fi
+
+if [ $NET = "squeezenet_v1.0" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/squeezenet/caffe/deploy_v1.0.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/squeezenet/caffe/squeezenet_v1.0.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,227,227]]
+export NET_INPUT_DIMS=227,227
+export IMAGE_RESIZE_DIMS=227,227
+export RAW_SCALE=255.0
+export MEAN=104,117,123
+export INPUT_SCALE=1.0,1.0,1.0
+export INPUT=data
+export OUTPUTS=pool10
+export TOLERANCE_INT8=0.973,0.762
+export TOLERANCE_BF16=0.999,0.987
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.93
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
 
 if [ $NET = "mobilenet_v1" ]; then
@@ -111,5 +150,25 @@ export OUTPUTS=classifier
 export TOLERANCE_INT8=0.95,0.68
 export TOLERANCE_BF16=0.99,0.93
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "vgg16" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/vgg/caffe/VGG_ILSVRC_16_layers_deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/vgg/caffe/VGG_ILSVRC_16_layers.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,224,224]]
+export NET_INPUT_DIMS=224,224
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MEAN=103.94,116.78,123.68
+export INPUT_SCALE=0.017,0.017,0.017
+export INPUT=input
+export OUTPUTS=fc8
+export TOLERANCE_INT8=0.997,0.928
+export TOLERANCE_BF16=0.999,0.994
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+export MODEL_CHANNEL_ORDER=bgr
+export EXCEPTS=prob
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi

@@ -340,7 +340,7 @@ class CaffeConverter(BaseConverter):
             self.addOperand(layer.top[0], new_op)
 
     def convert_relu_op(self, layer):
-        assert (layer.type == "ReLU")
+        assert (self.layerType(layer) == "ReLU")
         op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
         output_shape = input_shape
@@ -353,7 +353,7 @@ class CaffeConverter(BaseConverter):
         self.addOperand(layer.top[0], new_op)
 
     def convert_pooling_op(self, layer):
-        assert (layer.type == "Pooling")
+        assert (self.layerType(layer) == "Pooling")
         input_shape = self.getShape(layer.bottom[0])
         output_shape = self.getShape(layer.top[0])
         op = self.getOperand(layer.bottom[0])
@@ -413,7 +413,7 @@ class CaffeConverter(BaseConverter):
 
 
     def convert_eltwise_op(self, layer):
-        assert (layer.type == "Eltwise")
+        assert (self.layerType(layer) == "Eltwise")
         operands = list()
         for bottom in layer.bottom:
             op = self.getOperand(bottom)
@@ -571,7 +571,18 @@ class CaffeConverter(BaseConverter):
 
     def convert_lrn_op(self, layer):
         assert (self.layerType(layer) == 'LRN')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        p = layer.lrn_param
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'alpha': p.alpha,
+            'beta': p.beta,
+            'bias': p.k,
+            'size': p.local_size,
+        }
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_lrn_op([in_op], output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_lstm_op(self, layer):
         assert (self.layerType(layer) == 'LSTM')

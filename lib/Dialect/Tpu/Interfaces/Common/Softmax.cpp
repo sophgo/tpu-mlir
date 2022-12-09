@@ -9,9 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir;
@@ -26,6 +27,8 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   auto input_shape = Module::getShape(input());
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
 
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {
@@ -38,7 +41,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   }
 
   int channel = input_shape[axis_];
-  bool has_table = !table().getType().isa<NoneType>();
+  bool has_table = !table().getType().isa<mlir::NoneType>();
   if (out_type.isa<FloatType>()) {
     float scale = 1.0f;
     if (Quant::isUniformQuantized(input())) {
@@ -62,31 +65,73 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
             max_arr[k] = bottom_data[c_offset + k];
         }
       }
-
-      // calculate exp(x)
       c_offset = i * channel * inner_dim;
-      memset(sum_arr.data(), 0, inner_dim * sizeof(float));
-      for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
-        for (int k = 0; k < inner_dim; k++) {
-          sub_arr[j * inner_dim + k] =
-              (bottom_data[c_offset + k] - max_arr[k]) * scale;
-          top_data[c_offset + k] = std::exp(sub_arr[j * inner_dim + k]);
-          sum_arr[k] += top_data[c_offset + k];
+      if (is_cv18xx) {
+        // calculate x - max
+        for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
+          for (int k = 0; k < inner_dim; k++) {
+            auto idx = j * inner_dim + k;
+            sub_arr[idx] =
+                cvi_f32_to_fbf16(bottom_data[c_offset + k] - max_arr[k]);
+          }
         }
-      }
+        // e^x
+        std::vector<float> ex_arr(channel * inner_dim);
+        bf16_lut_slope(sub_arr.data(), ex_arr.data(), sub_arr.size(),
+                       p.inputs[1], p.inputs[2], -15, 15);
+        // sum of (e^x)
+        float const_val =
+            cvi_f32_to_fbf16(cvi_f32_to_fbf16(1.0 * channel) / channel);
+        memset(sum_arr.data(), 0, inner_dim * sizeof(float));
+        for (int j = 0; j < channel; ++j) {
+          for (int k = 0; k < inner_dim; k++) {
+            auto idx = j * inner_dim + k;
+            sum_arr[k] += ex_arr[idx] * const_val;
+          }
+        }
+        // convert to bf16
+        f32_to_bf16(sum_arr.data(), sum_arr.data(), sum_arr.size(), true);
 
-      c_offset = i * channel * inner_dim;
-      for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
-        for (int k = 0; k < inner_dim; k++) {
-          top_data[c_offset + k] /= sum_arr[k];
-          if (log()) {
-            top_data[c_offset + k] = std::log(top_data[c_offset + k]);
+        std::string mehod = log() ? "log" : "mantissa";
+        bf16_lut_mantissa(sum_arr.data(), sum_arr.data(), sum_arr.size(),
+                          p.inputs[3], p.inputs[4], mehod);
+
+        c_offset = i * channel * inner_dim;
+        for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
+          for (int k = 0; k < inner_dim; k++) {
+            auto idx = j * inner_dim + k;
+            if (log()) {
+              top_data[c_offset + k] = sub_arr[idx] - sum_arr[k];
+            } else {
+              top_data[c_offset + k] = ex_arr[idx] * sum_arr[k];
+            }
+          }
+        }
+      } else {
+        // calculate exp(x)
+        memset(sum_arr.data(), 0, inner_dim * sizeof(float));
+        for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
+          for (int k = 0; k < inner_dim; k++) {
+            sub_arr[j * inner_dim + k] =
+                (bottom_data[c_offset + k] - max_arr[k]) * scale;
+            top_data[c_offset + k] = std::exp(sub_arr[j * inner_dim + k]);
+            sum_arr[k] += top_data[c_offset + k];
+          }
+        }
+
+        c_offset = i * channel * inner_dim;
+        for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
+          for (int k = 0; k < inner_dim; k++) {
+            top_data[c_offset + k] /= sum_arr[k];
+            if (log()) {
+              top_data[c_offset + k] = std::log(top_data[c_offset + k]);
+            }
           }
         }
       }
     }
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
