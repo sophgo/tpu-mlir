@@ -21,6 +21,11 @@ def type_map(element_type):
         expressed_type = quant_type.expressed_type
         signed_flag = True if quant_type.is_signed else False
         element_type = expressed_type
+    if quant.UniformQuantizedPerAxisType.isinstance(element_type):
+        quant_type = quant.UniformQuantizedPerAxisType(element_type)
+        storagetype = quant_type.storage_type
+        signed_flag = True if quant_type.is_signed else False
+        element_type = storagetype
     str_element_type = str(element_type)
     if str_element_type == 'f64':
         ret_type = TensorProto.FLOAT64
