@@ -19,13 +19,23 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 LogicalResult tpu::LRNOp::init(InferenceParameter &p) {
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
+  auto alpha_ = alpha().convertToDouble();
+  auto beta_ = beta().convertToDouble();
+  auto bias_ = bias().convertToDouble();
+  if (is_cv18xx) {
+    alpha_ = cvi_f32_to_fbf16(alpha_);
+    beta_ = cvi_f32_to_fbf16(beta_);
+    bias_ = cvi_f32_to_fbf16(bias_);
+  }
+
   auto lrn = new LRN();
   (*lrn)
       .src(p.inputs[0], Module::getShape(input()))
       .dst(p.outputs[0], Module::getShape(output()))
       .size(size())
-      .param(alpha().convertToDouble(), beta().convertToDouble(),
-             bias().convertToDouble())
+      .param(alpha_, beta_, bias_)
       .algorithem(algorithm::lrn_across_channels)
       .setup();
 
@@ -44,12 +54,14 @@ void tpu::LRNOp::deinit(InferenceParameter &p) {
 LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
 
   if (out_type.isa<FloatType>()) {
     auto lrn = (LRN *)p.handle;
     lrn->run();
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
