@@ -47,7 +47,7 @@ class ModelTransformer(object):
             for name in self.converter.input_names:
                 assert (name in npz_in.files)
                 inputs[name] = npz_in[name]
-        elif file_list[0].endswith('.jpg'):  #todo add isPicture in util
+        elif file_list[0].endswith(('.jpg', '.jpeg', '.png')):  #todo add isPicture in util
             ppa = preprocess()
             for i in range(self.input_num):
                 pic_path = file_list[i] if i < len(file_list) else file_list[-1]

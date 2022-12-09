@@ -110,18 +110,35 @@ def get_image_list(image_dir, count = 0):
             image_path_list.append(os.path.join(image_dir, image_name))
     end = count if count > 0 else len(image_path_list)
     return image_path_list[0:end]
+
+
+def depth(seq):
+    from collections import Sequence
+    from itertools import chain, count
+
+    seq = iter(seq)
+    try:
+        for level in count():
+            seq = chain([next(seq)], seq)
+            seq = chain.from_iterable(s for s in seq if isinstance(s, Sequence))
+    except StopIteration:
+        return level
+
+
 def str2shape(v):
     _shape = eval(v)
     if not isinstance(_shape, list):
         raise KeyError("not shape list:{}".format(v))
     if len(_shape) == 0:
         return []
-    dim = np.array(_shape).ndim
+    dim = depth(_shape)
     if dim == 1:
         return [_shape]
     if dim != 2:
         raise KeyError("not shape list:{}".format(v))
     return _shape
+
+
 def str2list(v):
     files = v.split(',')
     files = [s.strip() for s in files]
