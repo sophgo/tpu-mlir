@@ -323,7 +323,8 @@ class ONNX_IR_TESTER(object):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
-        onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(input_data, graph_def, model_name)
+        onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
+            input_data, graph_def, model_name)
         # test onnx and mlir outputs
         rtol = 1e-5
         atol = 1e-1
@@ -551,10 +552,11 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [Y],
                                       initializer=[w_value, r_value, b_value, h_value])
         if self.chip.find("cv18") >= 0:
-          input_data = {}
-          input_data["input"] = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
-          self.onnx_and_test(graph_def, input_data = input_data)
-          return
+            input_data = {}
+            input_data["input"] = np.random.rand(seq_length, batch_size,
+                                                 input_size).astype(np.float32)
+            self.onnx_and_test(graph_def, input_data=input_data)
+            return
         self.onnx_and_test(graph_def)
 
     def test_GRU2(self, case_name):
@@ -611,10 +613,11 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [Y_h],
                                       initializer=[w_value, r_value, b_value, h_value])
         if self.chip.find("cv18") >= 0:
-          input_data = {}
-          input_data["input"] = np.random.rand(seq_length, batch_size, input_size).astype(np.float32)
-          self.onnx_and_test(graph_def, input_data = input_data)
-          return
+            input_data = {}
+            input_data["input"] = np.random.rand(seq_length, batch_size,
+                                                 input_size).astype(np.float32)
+            self.onnx_and_test(graph_def, input_data=input_data)
+            return
         self.onnx_and_test(graph_def)
 
     def test_GRU3(self, case_name):
@@ -1490,72 +1493,64 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Reduce(self, case_name):
-        input_shape = [4, 4, 4, 16, 64]
-        output_shape = [4, 4, 4, 16]
+        for keep in [True, False]:
+            input_shape = [4, 4, 4, 16, 64]
+            output_shape = [4, 4, 4, 16, 1] if keep else [4, 4, 4, 16]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
-        output1 = helper.make_tensor_value_info('o_max', TensorProto.FLOAT, output_shape)
-        output2 = helper.make_tensor_value_info('o_min', TensorProto.FLOAT, output_shape)
-        reduce_mean = helper.make_node(
-            'ReduceMean',
-            ['input'],
-            ['o_mean'],
-            keepdims=0,
-            axes=[4],
-        )
-        reduce_max = helper.make_node(
-            'ReduceMax',
-            ['input'],
-            ['o_max'],
-            keepdims=0,
-            axes=[4],
-        )
-        reduce_min = helper.make_node(
-            'ReduceMin',
-            ['input'],
-            ['o_min'],
-            keepdims=0,
-            axes=[4],
-        )
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
+            output1 = helper.make_tensor_value_info('o_max', TensorProto.FLOAT, output_shape)
+            output2 = helper.make_tensor_value_info('o_min', TensorProto.FLOAT, output_shape)
+            reduce_mean = helper.make_node(
+                'ReduceMean',
+                ['input'],
+                ['o_mean'],
+                keepdims=keep,
+                axes=[4],
+            )
+            reduce_max = helper.make_node(
+                'ReduceMax',
+                ['input'],
+                ['o_max'],
+                keepdims=keep,
+                axes=[4],
+            )
+            reduce_min = helper.make_node(
+                'ReduceMin',
+                ['input'],
+                ['o_min'],
+                keepdims=keep,
+                axes=[4],
+            )
 
-        graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min], case_name, [input],
-                                      [output0, output1, output2])
-        self.onnx_and_test(graph_def)
+            graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min],
+                                          "{}_{}".format(case_name, keep), [input],
+                                          [output0, output1, output2])
+            self.onnx_and_test(graph_def)
 
     def test_Reduce2(self, case_name):
-        input_shape = [4, 4, 4, 16, 64]
-        output_shape = [4, 4, 1, 1, 64]
+        for keep in [True, False]:
+            input_shape = [4, 4, 4, 16, 64]
+            output_shape = [4, 4, 1, 1, 64] if keep else [4, 4, 64]
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
-        output1 = helper.make_tensor_value_info('o_max', TensorProto.FLOAT, output_shape)
-        output2 = helper.make_tensor_value_info('o_min', TensorProto.FLOAT, output_shape)
-        reduce_mean = helper.make_node(
-            'ReduceMean',
-            ['input'],
-            ['o_mean'],
-            keepdims=1,
-            axes=[2, 3],
-        )
-        reduce_max = helper.make_node(
-            'ReduceMax',
-            ['input'],
-            ['o_max'],
-            keepdims=1,
-            axes=[2, 3],
-        )
-        reduce_min = helper.make_node(
-            'ReduceMin',
-            ['input'],
-            ['o_min'],
-            keepdims=1,
-            axes=[2, 3],
-        )
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output0 = helper.make_tensor_value_info('o_mean', TensorProto.FLOAT, output_shape)
+            output1 = helper.make_tensor_value_info('o_max', TensorProto.FLOAT, output_shape)
+            output2 = helper.make_tensor_value_info('o_min', TensorProto.FLOAT, output_shape)
+            reduce_mean = helper.make_node('ReduceMean', ['input'], ['o_mean'],
+                                           keepdims=keep,
+                                           axes=[2, 3])
+            reduce_max = helper.make_node('ReduceMax', ['input'], ['o_max'],
+                                          keepdims=keep,
+                                          axes=[2, 3])
+            reduce_min = helper.make_node('ReduceMin', ['input'], ['o_min'],
+                                          keepdims=keep,
+                                          axes=[2, 3])
 
-        graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min], case_name, [input],
-                                      [output0, output1, output2])
-        self.onnx_and_test(graph_def)
+            graph_def = helper.make_graph([reduce_mean, reduce_max, reduce_min],
+                                          "{}_{}".format(case_name, keep), [input],
+                                          [output0, output1, output2])
+            self.onnx_and_test(graph_def)
 
     def test_ReduceMean(self, case_name):
         input_shape = [2, 200, 7, 7]
@@ -1792,9 +1787,9 @@ class ONNX_IR_TESTER(object):
     def test_BroadcastAdd(self, case_name):
         # 18xx: only broadcast right opd and broadcast continuous axis is supported
         if self.chip.find("cv18") >= 0:
-          input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
+            input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
         else:
-          input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
+            input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
         inputs = [
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()

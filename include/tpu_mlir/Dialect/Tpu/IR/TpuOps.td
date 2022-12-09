@@ -1465,6 +1465,16 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    typedef struct {
+      int64_t outer_n;
+      int64_t outer_c;
+      int64_t axis_dims;
+      int64_t inner_dims;
+      bool simplified;
+    } reduce_attr_t;
+    reduce_attr_t parseParam();
+  }];
 }
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
