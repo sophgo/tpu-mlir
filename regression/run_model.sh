@@ -1,39 +1,52 @@
 #!/bin/bash
-# full test: run_model.sh mobilenet_v2
-# basic test: run_model.sh mobilenet_v2 0
 set -ex
+
+# all test (f32/f16/bf16/int8): run_model.sh mobilenet_v2 bm1684x all
+# basic test (f32/int8): run_model.sh mobilenet_v2 bm1684x basic
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-chip_name=bm1684x  #bm1684x  bm1686
 model_name=$1
-full_test=$2
+chip_name=$2
+test_type=$3
+
 if [ x$1 == x ]; then
-  echo "Error: $0 model_name"
+  echo "Error: $0 model_name [bm1684x|cv183x]"
   exit 1
 fi
 
-cfg_file=$REGRESSION_PATH/config/$1.cfg
+if [ x$2 == x ]; then
+  chip_name=bm1684x
+fi
+
+if [ x$chip_name != xbm1684x ] && [ x$chip_name != xcv183x ]; then
+  echo "Error: $0 model_name [bm1684x|cv183x]"
+  exit 1
+fi
+
+if [ x$test_type == x ]; then
+  test_type=all
+fi
+
+cfg_file=$REGRESSION_PATH/config/${model_name}.cfg
 
 if [ ! -f $cfg_file ]; then
   echo "Error: can't open config file ${cfg_file}"
   exit 1
 fi
 
-if [ x${full_test} == x0 ]; then
-  do_f32=1
+source $REGRESSION_PATH/chip.cfg
+eval do_f32=\${${chip_name}_support_f32}
+eval do_bf16=\${${chip_name}_support_bf16}
+eval do_f16=\${${chip_name}_support_f16}
+eval do_asymmetric=\${${chip_name}_support_asym}
+eval do_symmetric=\${${chip_name}_support_sym}
+eval model_type=\${${chip_name}_model_type}
+
+# basic test don't run bf16/f16
+if [ x${test_type} == xbasic ]; then
   do_f16=0
   do_bf16=0
-  do_cali=1
-  do_symmetric=1
-  do_asymmetric=1
-else
-  do_f32=1
-  do_f16=1
-  do_bf16=1
-  do_cali=1
-  do_symmetric=1
-  do_asymmetric=1
 fi
 
 source ${cfg_file}
@@ -65,6 +78,7 @@ if echo ${model_path} | grep -q -E '\.prototxt$'; then
 fi
 
 # tflite model
+do_cali=1
 if echo ${model_path} | grep -q -E '\.tflite$'; then
   do_cali=0
   do_f32=0
@@ -166,7 +180,7 @@ model_deploy.py \
   ${test_reference_opt} \
   ${excepts_opt} \
   --tolerance 0.99,0.99 \
-  --model ${model_name}_${chip_name}_f32.bmodel
+  --model ${model_name}_${chip_name}_f32.${model_type}
 fi
 
 if [ ${do_f16} == 1 ]; then
@@ -178,7 +192,7 @@ model_deploy.py \
   ${test_reference_opt} \
   ${excepts_opt} \
   --tolerance 0.95,0.85 \
-  --model ${model_name}_${chip_name}_f16.bmodel
+  --model ${model_name}_${chip_name}_f16.${model_type}
 fi
 
 if [ ${do_bf16} == 1 ]; then
@@ -190,7 +204,7 @@ model_deploy.py \
   ${test_reference_opt} \
   ${excepts_opt} \
   --tolerance 0.95,0.85 \
-  --model ${model_name}_${chip_name}_bf16.bmodel
+  --model ${model_name}_${chip_name}_bf16.${model_type}
 fi
 #########################
 # deploy to int8 bmodel
@@ -243,7 +257,7 @@ model_deploy.py \
   ${excepts_opt} \
   --quant_input \
   --quant_output \
-  --model ${model_name}_${chip_name}_int8_sym.bmodel
+  --model ${model_name}_${chip_name}_int8_sym.${model_type}
 
 fi #do_symmetric
 
@@ -265,14 +279,14 @@ model_deploy.py \
   ${test_reference_opt} \
   ${tolerance_asym_opt} \
   ${excepts_opt} \
-  --model ${model_name}_${chip_name}_int8_asym.bmodel
+  --model ${model_name}_${chip_name}_int8_asym.${model_type}
 
 fi #do_asymmetric
 
 #########################
 # app
 #########################
-if [ x${app} != x ]; then
+if [ x${app} != x ] && [ x${chip_name} != xcv183x ]; then
 
 # by onnx
 ${app} \
@@ -281,22 +295,26 @@ ${app} \
   --output output_onnx.jpg
 
 # by f32 bmodel
+if [ x${do_f32} == x1 ]; then
 ${app} \
   --input ${test_input} \
-  --model ${model_name}_${chip_name}_f32.bmodel \
+  --model ${model_name}_${chip_name}_f32.${model_type} \
   --output output_f32.jpg
+fi
 
 # by int8 symmetric bmodel
+if [ x${do_symmetric} == x1 ]; then
 ${app} \
   --input ${test_input} \
-  --model ${model_name}_${chip_name}_int8_sym.bmodel \
+  --model ${model_name}_${chip_name}_int8_sym.${model_type} \
   --output output_int8_sym.jpg
+fi
 
 if [ $do_asymmetric == 1 ]; then
 # by int8 asymmetric bmodel
 ${app} \
   --input ${test_input} \
-  --model ${model_name}_${chip_name}_int8_asym.bmodel \
+  --model ${model_name}_${chip_name}_int8_asym.${model_type} \
   --output output_int8_asym.jpg
 fi
 
