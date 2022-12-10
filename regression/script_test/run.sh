@@ -3,7 +3,7 @@ set -ex
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-TEST_DIR=$REGRESSION_PATH/regression_out/basic_test
+TEST_DIR=$REGRESSION_PATH/regression_out/script_test
 mkdir -p $TEST_DIR
 pushd $TEST_DIR
 

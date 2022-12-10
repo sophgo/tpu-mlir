@@ -205,7 +205,7 @@ if __name__ == '__main__':
 
     elif args.model.endswith(".tflite"):
         raise RuntimeError("TFLite not supported yet, modle file:{}".format(args.model))
-    elif args.model.endswith(".bmodel"):
+    elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
         raise RuntimeError("bmodel not supported yet, modle file:{}".format(args.model))
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
