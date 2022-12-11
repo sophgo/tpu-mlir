@@ -168,6 +168,7 @@ class OnnxConverter(BaseConverter):
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
+            "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
@@ -503,7 +504,34 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs['axis']
         if axis < 0:
             axis += num_dims
-        operands = [self.getOperand(x) for x in onnx_node.inputs]
+        operands = list()
+        weight_data = None
+        for x in onnx_node.inputs:
+            if self.isWeight(x):
+                data = self.getWeight(x)
+                if weight_data is not None:
+                    weight_data = np.concatenate((weight_data, data), axis=axis)
+                else:
+                    weight_data = data
+                continue
+            else:
+                if weight_data is not None:
+                    w_name = x + "_weight"
+                    self.addWeight(w_name, weight_data)
+                    operands.append(self.getWeightOp(w_name))
+                    weight_data = None
+                operands.append(self.getOperand(x))
+        if len(operands) == 0:
+            # all weight
+            self.addWeight(onnx_node, weight_data)
+            return
+        if weight_data is not None:
+            w_name = onnx_node.name + "_weight"
+            self.addWeight(w_name, weight_data)
+            operands.append(self.getWeightOp(w_name))
+        if len(operands) == 1:
+            self.addOperand(onnx_node.name, operands[0])
+            return
         p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "axis": axis}
         new_op = self.mlir.create_concat_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -849,8 +877,11 @@ class OnnxConverter(BaseConverter):
                                   coord_mode)
             return
 
-        raise RuntimeError("[{}] Unsupported mode: {}, coord_mode: {}".format(
-            onnx_node.name, mode, coord_mode))
+    def convert_shape_op(self, onnx_node):
+        assert(onnx_node.op_type == "Shape")
+        input_shape = self.getShape(onnx_node.inputs[0])
+        data = np.array(input_shape)
+        self.addWeight(onnx_node.name, data)
 
     def convert_sigmoid_op(self, onnx_node):
         assert (onnx_node.op_type == "Sigmoid")
@@ -868,7 +899,6 @@ class OnnxConverter(BaseConverter):
 
     def convert_slice_op(self, onnx_node):
         assert (onnx_node.op_type == "Slice")
-        op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         starts = []
@@ -890,6 +920,18 @@ class OnnxConverter(BaseConverter):
             steps = [1] * len(axes)
         assert (len(starts) == len(ends))
         assert (len(axes) == len(ends))
+
+        if self.isWeight(onnx_node.inputs[0]):
+            tensor_data = self.getWeight(onnx_node.inputs[0])
+            for start, end, axis, step in zip(starts, ends, axes, steps):
+                start, end, axis, step = int(start), int(end), int(axis), int(step)
+                if axis < 0:
+                    axis = axis + num_dims
+                s = slice(start, end, step)
+                tensor_data = tensor_data[(slice(None), ) * axis + (s, )]
+            self.addWeight(onnx_node.name, tensor_data)
+            return
+        op = self.getOperand(onnx_node.inputs[0])
         slice_shape = list(input_shape)
         slice_offset = [0] * num_dims
         slice_step = [1] * num_dims

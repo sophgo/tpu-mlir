@@ -124,7 +124,7 @@ void SubLowering::LoweringBF16(PatternRewriter &rewriter, top::SubOp op) const {
     rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, op->getOperands(),
                                             attrs);
   } else {
-    lowering_common_bf16<tpu::SubOp>(rewriter, op.getOperation());
+    lowering_common_bf16<tpu::SubOp>(rewriter, op);
   }
 }
 

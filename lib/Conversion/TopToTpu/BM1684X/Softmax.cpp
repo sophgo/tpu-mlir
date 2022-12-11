@@ -17,15 +17,11 @@ void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
   std::vector<Value> operands;
   operands.push_back(op.input());
   auto none = Module::getNoneOp(op);
-  for(int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++) {
     operands.push_back(none);
   }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(op, op.output().getType(),
-                                              operands, attrs);
+                                              operands, op->getAttrs());
 }
 
 void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
@@ -62,12 +58,13 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   // int32_t multi, shift;
   // QuantizeMultiplier(multiplier_real, &multi, &shift);
   // double max_input_rescaled =
-  //     1.0 * ((1 << int_bits) - 1) * (1LL << (31 - int_bits)) / (1LL << shift);
-  // int32_t diff_min = -1 * static_cast<int32_t>(std::floor(max_input_rescaled));
-  // std::vector<int32_t> table(256, 0);
-  // for (int i = 0; i < 256; ++i) {
-  //   int32_t input_diff_rescaled = MultiplyByQuantizedMultiplier(-i, multi, shift);
-  //   table[i] = exp_on_negative_values(input_diff_rescaled, int_bits);
+  //     1.0 * ((1 << int_bits) - 1) * (1LL << (31 - int_bits)) / (1LL <<
+  //     shift);
+  // int32_t diff_min = -1 *
+  // static_cast<int32_t>(std::floor(max_input_rescaled)); std::vector<int32_t>
+  // table(256, 0); for (int i = 0; i < 256; ++i) {
+  //   int32_t input_diff_rescaled = MultiplyByQuantizedMultiplier(-i, multi,
+  //   shift); table[i] = exp_on_negative_values(input_diff_rescaled, int_bits);
   // }
 
   for (int i = 0; i < 256; ++i) {
@@ -80,8 +77,11 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     attrs.push_back(attr);
   }
   rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
-      op, op.output().getType(), ValueRange{op.input(), table_opd, Module::getNoneOp(op.getOperation()),
-      Module::getNoneOp(op.getOperation()), Module::getNoneOp(op.getOperation())}, attrs);
+      op, op.output().getType(),
+      ValueRange{op.input(), table_opd, Module::getNoneOp(op.getOperation()),
+                 Module::getNoneOp(op.getOperation()),
+                 Module::getNoneOp(op.getOperation())},
+      attrs);
 }
 
 } // namespace bm1684x

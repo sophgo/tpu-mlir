@@ -169,11 +169,9 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
     operands.push_back(op.right());
   }
   operands.push_back(op.bias());
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantBF16Type(op.output());
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
+                                             op->getAttrs());
 }
 } // namespace cv18xx
 } // namespace tpu_mlir

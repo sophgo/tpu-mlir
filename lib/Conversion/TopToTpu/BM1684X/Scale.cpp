@@ -39,11 +39,8 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
   // lshift
   auto none = Module::getNoneOp(op);
   operands.push_back(none);
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands,
+                                            op->getAttrs());
 }
 
 void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,

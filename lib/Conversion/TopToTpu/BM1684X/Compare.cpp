@@ -13,8 +13,8 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void CompareLowering::LoweringF32(PatternRewriter &rewriter,
-                                  top::CompareOp compareOp) const {
-  lowering_common_f32<tpu::CompareOp>(rewriter, compareOp.getOperation());
+                                  top::CompareOp op) const {
+  lowering_common_f32<tpu::CompareOp>(rewriter, op);
 }
 
 void CompareLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareOp op,

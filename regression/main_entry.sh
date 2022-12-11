@@ -52,14 +52,14 @@ run_onnx_op() {
 export -f run_onnx_op
 
 run_script_test() {
-  echo "======= basic test ====="
+  echo "======= script test ====="
   $REGRESSION_PATH/script_test/run.sh >script_test.log 2>&1 | true
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-    echo "basic test FAILED" >>result.log
+    echo "script test FAILED" >>result.log
     cat script_test.log >>fail.log
     return 1
   else
-    echo "basic test PASSED" >>result.log
+    echo "script test PASSED" >>result.log
     return 0
   fi
 }
@@ -91,10 +91,10 @@ fi
 cat result.log
 
 if [ $ERR -eq 0 ]; then
-  echo ${test_type} TEST PASSED
+  echo run ${test_type} TEST PASSED
 else
   cat fail.log
-  echo ${test_type} TEST FAILED
+  echo run ${test_type} TEST FAILED
 fi
 
 popd

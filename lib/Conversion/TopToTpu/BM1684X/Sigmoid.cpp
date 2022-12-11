@@ -26,13 +26,9 @@ void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
   Value table =
       create_lookup_table(op.input(), op.output(), asymmetric,
                           [](double val) { return 1 / (1 + std::exp(-val)); });
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
 }
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -51,12 +47,8 @@ void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
   Value table =
       create_lookup_table(op.input(), op.output(), true,
                           [](double val) { return 1 / (1 + std::exp(-val)); });
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.output().getType(),
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
 }
 
 } // namespace bm1684x

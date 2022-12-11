@@ -84,22 +84,10 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
 }
 
 void MulLowering::LoweringBF16(PatternRewriter &rewriter, top::MulOp op) const {
-  for (int i = 0, n = op.getNumOperands(); i < n; ++i) {
-    if (auto constOp =
-            dyn_cast<top::WeightOp>(op.getOperand(i).getDefiningOp())) {
-      op.setOperand(i, constOp.clone_bf16(op));
-    }
-  }
   lowering_common_bf16<tpu::MulOp>(rewriter, op);
 }
 
 void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
-  for (int i = 0, n = op.getNumOperands(); i < n; ++i) {
-    if (auto constOp =
-            dyn_cast<top::WeightOp>(op.getOperand(i).getDefiningOp())) {
-      op.setOperand(i, constOp.clone_f16(op));
-    }
-  }
   lowering_common_f16<tpu::MulOp>(rewriter, op);
 }
 
@@ -129,7 +117,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
       }
     }
     auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
-                          input, rewriter.getI16Type(), -zeropoint);
+        input, rewriter.getI16Type(), -zeropoint);
     operands.push_back(input_sub_zp);
   }
   Quant::getScaleAndZeroPoint(op.output(), scale, zeropoint, true);
@@ -148,14 +136,17 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto newType = RankedTensorType::get(Module::getShape(op.output()),
                                        rewriter.getI32Type());
   if (is_const == false) {
-    auto newOp = rewriter.create<tpu::MulOp>(name_loc, newType, operands, attrs);
+    auto newOp =
+        rewriter.create<tpu::MulOp>(name_loc, newType, operands, attrs);
     // requant to int8
     auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
                         true, multiplier, shift, tpu::RequantMode::TFlite);
     rewriter.replaceOp(op, {v});
   } else {
-    attrs.push_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
-    auto newOp = rewriter.create<tpu::MulConstOp>(name_loc, newType, operands, attrs);
+    attrs.push_back(rewriter.getNamedAttr("const_val",
+                                          rewriter.getF64FloatAttr(const_val)));
+    auto newOp =
+        rewriter.create<tpu::MulConstOp>(name_loc, newType, operands, attrs);
     // requant to int8
     auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
                         true, multiplier, shift, tpu::RequantMode::TFlite);

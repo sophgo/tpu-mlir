@@ -40,8 +40,9 @@ static bool fusible(top::ConcatOp concatOp) {
   // check concatOp's outer_dim
   if (only_merge) {
     auto shape = Module::getShape(concatOp.output());
-    int outer_dim = std::accumulate(shape.begin(), shape.begin() + concatOp.axis(), 1,
-                                    std::multiplies<int64_t>());
+    int outer_dim =
+        std::accumulate(shape.begin(), shape.begin() + concatOp.axis(), 1,
+                        std::multiplies<int64_t>());
     if (outer_dim != 1) {
       return false;
     }
@@ -58,7 +59,7 @@ static bool fusible(top::ConcatOp concatOp) {
     }
     only_merge = is_fusible_op(inOp);
     if (only_merge && !inOp->getResult(0).hasOneUse()) {
-      for (auto &use : inOp->getResult(0).getUses()){
+      for (auto &use : inOp->getResult(0).getUses()) {
         auto useOp = use.getOwner();
         if (!is_fusible_op(useOp)) {
           return false;
@@ -117,30 +118,10 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void ConcatLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp) const {
-  rewriter.setInsertionPointAfter(concatOp);
-  std::vector<Value> operands;
-  // auto op = concatOp.getOperation();
+  auto op = concatOp.getOperation();
   bool only_merge = fusible(concatOp);
-  uint32_t nInputs = concatOp->getNumOperands();
-  for (int i = 0; i < nInputs; ++i) {
-    if (auto constOp =
-            dyn_cast<top::WeightOp>(concatOp->getOperand(i).getDefiningOp())) {
-      // concatOp.setOperand(i, constOp.clone_bf16(concatOp));
-      operands.push_back(constOp.clone_bf16(concatOp));
-      continue;
-    }
-    operands.push_back(concatOp->getOperand(i));
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : concatOp->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  attrs.push_back(rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(only_merge)));
-
-  auto newType = getQuantBF16Type(concatOp.output());
-  auto newOp =
-        rewriter.create<tpu::ConcatOp>(concatOp->getLoc(), newType, operands, attrs);
-  rewriter.replaceOp(concatOp, {newOp.output()});
+  op->setAttr("only_merge", rewriter.getBoolAttr(only_merge));
+  lowering_common_bf16<tpu::ConcatOp>(rewriter, op);
 }
 } // namespace cv18xx
 } // namespace tpu_mlir

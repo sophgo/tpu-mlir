@@ -109,34 +109,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   return;
 }
 void AddLowering::LoweringBF16(PatternRewriter &rewriter, top::AddOp op) const {
-  const int nInputs = op->getNumOperands();
-  bool hasConst = false;
-  for (int i = 1; i < nInputs; ++i) {
-    if (isa<top::WeightOp>(op->getOperand(i).getDefiningOp())) {
-      hasConst = true;
-      break;
-    }
-  }
-  if (hasConst) {
-    std::vector<Value> operands;
-    std::vector<NamedAttribute> attrs;
-    for (int i = 0; i < nInputs; ++i) {
-      auto opd = op->getOperand(i);
-      if (auto weightOp = dyn_cast<top::WeightOp>(opd.getDefiningOp())) {
-        operands.push_back(weightOp.clone_bf16(op));
-      } else {
-        operands.push_back(opd);
-      }
-    }
-    for (auto &attr : op->getAttrs()) {
-      attrs.push_back(attr);
-    }
-    auto newType = getQuantBF16Type(op.output());
-    rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
-
-  } else {
-    lowering_common_bf16<tpu::AddOp>(rewriter, op.getOperation());
-  }
+  lowering_common_bf16<tpu::AddOp>(rewriter, op);
 }
 
 } // namespace cv18xx

@@ -30,13 +30,9 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
   Value table =
       create_lookup_table(op.input(), op.output(), asymmetric,
                           [const_s](double val) { return const_s / val; });
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
 }
 
 void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,

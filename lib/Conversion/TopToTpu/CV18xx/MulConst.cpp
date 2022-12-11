@@ -19,14 +19,9 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
   auto active_mulconst = [const_val](double val) { return val * const_val; };
   Value table =
       create_lookup_table(op.input(), op.output(), asymmetric, active_mulconst);
-
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
 }
 
 void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -35,8 +30,8 @@ void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
   auto active_mulconst = [const_val](double val) { return val * const_val; };
   Value table_weight, slope_weight;
   float range_start = -15, range_end = 15;
-  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start, range_end,
-                  active_mulconst, table_weight, slope_weight);
+  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
+                  range_end, active_mulconst, table_weight, slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -50,9 +45,7 @@ void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType,
-      ValueRange{op.input(), table_weight, slope_weight},
-      attrs);
+      op, newType, ValueRange{op.input(), table_weight, slope_weight}, attrs);
   return;
 }
 } // namespace cv18xx

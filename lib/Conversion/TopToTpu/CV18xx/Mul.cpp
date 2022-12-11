@@ -19,8 +19,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
                                bool asymmetric) const {
   // for convert from DivOp
   auto div_v = op.inputs()[1];
-  if (!Quant::isCalibratedType(div_v) &&
-      !Quant::isUniformQuantized(div_v)) {
+  if (!Quant::isCalibratedType(div_v) && !Quant::isUniformQuantized(div_v)) {
     LoweringBF16(rewriter, op);
     return;
   }
@@ -41,7 +40,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
       // float fmax, fmin;
       // findMinMax(constF32->data(), constF32->size(), &fmin, &fmax);
       // bool cSign = (fmin < 0);
-      //float fqmax = cSign ? 127 : 255;
+      // float fqmax = cSign ? 127 : 255;
       float fmax = findMaxabs(constF32->data(), constF32->size());
       bool cSign = true;
       float fqmax = 127.0;
@@ -89,13 +88,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
 }
 
 void MulLowering::LoweringBF16(PatternRewriter &rewriter, top::MulOp op) const {
-  for (int i = 0, n = op.getNumOperands(); i < n; ++i) {
-    if (auto constOp =
-            dyn_cast<top::WeightOp>(op.getOperand(i).getDefiningOp())) {
-      op.setOperand(i, constOp.clone_bf16(op));
-    }
-  }
   lowering_common_bf16<tpu::MulOp>(rewriter, op);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

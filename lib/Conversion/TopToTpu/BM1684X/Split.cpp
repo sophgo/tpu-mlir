@@ -12,37 +12,34 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-void SplitLowering::LoweringINT8(PatternRewriter &rewriter, top::SplitOp unpackOp,
-                               bool asymmetric) const {
+void SplitLowering::LoweringINT8(PatternRewriter &rewriter,
+                                 top::SplitOp unpackOp, bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
 
 void SplitLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::SplitOp unpackOp) const {
+                                top::SplitOp unpackOp) const {
   llvm_unreachable("Not Implemented");
 }
 
 void SplitLowering::LoweringBF16(PatternRewriter &rewriter,
-                               top::SplitOp unpackOp) const {
+                                 top::SplitOp unpackOp) const {
   llvm_unreachable("Not Implemented");
 }
 
 void SplitLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::SplitOp unpackOp) const {
+                                top::SplitOp unpackOp) const {
   llvm_unreachable("Not Implemented");
 }
 
 void SplitLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::SplitOp op) const {
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
+                                      top::SplitOp op) const {
   std::vector<Type> new_types;
   for (auto out : op.getResults()) {
     new_types.push_back(out.getType());
   }
-  rewriter.replaceOpWithNewOp<tpu::SplitOp>(op, new_types, ValueRange{op.input()}, attrs);
+  rewriter.replaceOpWithNewOp<tpu::SplitOp>(
+      op, new_types, ValueRange{op.input()}, op->getAttrs());
 }
 
 } // namespace bm1684x

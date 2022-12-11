@@ -44,8 +44,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
 
   operands.push_back(op.input());
   auto new_type = RankedTensorType::get(slope_shape, rewriter.getI8Type());
-  auto new_slope =
-      top::WeightOp::create(op, "slope_i8", slope_int8, new_type);
+  auto new_slope = top::WeightOp::create(op, "slope_i8", slope_int8, new_type);
   operands.push_back(new_slope);
 
   for (auto &attr : op->getAttrs()) {
@@ -55,27 +54,11 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshifti)));
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
-
 }
 
 void PReluLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::PReluOp op) const {
-  rewriter.setInsertionPointAfter(op);
-
-  auto src_shape = Module::getShape(op.input());
-  auto slope_shape = Module::getShape(op.slope());
-
-  std::vector<Value> operands;
-  auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
-  operands.push_back(op.input());
-
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  operands.push_back(slopeOp.clone_bf16(op));
-  auto newType = getQuantBF16Type(op.output());
-  rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
+  lowering_common_bf16<tpu::PReluOp>(rewriter, op);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir
