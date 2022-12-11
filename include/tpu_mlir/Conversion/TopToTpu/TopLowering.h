@@ -110,8 +110,27 @@ mlir::Type getQuantBoolType(Value v);
 template <typename OpTy>
 static void lowering_common(PatternRewriter &rewriter, Operation *from,
                             Type newType) {
-  rewriter.replaceOpWithNewOp<OpTy>(from, newType, from->getOperands(),
-                                    from->getAttrs());
+  auto stype = Module::getStorageType(newType);
+  if (stype.isF16() || stype.isBF16()) {
+    std::vector<Value> operands;
+    for (auto in : from->getOperands()) {
+      if (isa<top::WeightOp>(in.getDefiningOp())) {
+        auto wOp = in.getDefiningOp<top::WeightOp>();
+        if (stype.isF16()) {
+          operands.push_back(wOp.clone_f16(from));
+        } else {
+          operands.push_back(wOp.clone_bf16(from));
+        }
+      } else {
+        operands.push_back(in);
+      }
+    }
+    rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands,
+                                      from->getAttrs());
+  } else {
+    rewriter.replaceOpWithNewOp<OpTy>(from, newType, from->getOperands(),
+                                      from->getAttrs());
+  }
 }
 
 // lowering to a new Operation, with same operands and same attrs, and quantize

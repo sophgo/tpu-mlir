@@ -142,49 +142,12 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 
 void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::MatMulOp op) const {
-  std::vector<Value> operands;
-  operands.push_back(op.input());
-  if (auto rightOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
-    operands.push_back(rightOp.clone_bf16(op));
-  } else {
-    operands.push_back(op.right());
-  }
-  if (auto biasOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
-    operands.push_back(biasOp.clone_bf16(op));
-  } else {
-    auto none = Module::getNoneOp(op);
-    operands.push_back(none);
-  }
-
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto newType = getQuantBF16Type(op.output());
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  lowering_common_bf16<tpu::MatMulOp>(rewriter, op);
 }
 
 void MatMulLowering::LoweringF16(PatternRewriter &rewriter,
                                  top::MatMulOp op) const {
-  std::vector<Value> operands;
-  operands.push_back(op.input());
-  if (auto rightOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
-    operands.push_back(rightOp.clone_f16(op));
-  } else {
-    operands.push_back(op.right());
-  }
-  if (auto biasOp = dyn_cast<top::WeightOp>(op.bias().getDefiningOp())) {
-    operands.push_back(biasOp.clone_f16(op));
-  } else {
-    auto none = Module::getNoneOp(op);
-    operands.push_back(none);
-  }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  auto newType = getQuantF16Type(op.output());
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
+  lowering_common_f16<tpu::MatMulOp>(rewriter, op);
 }
 
 void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
@@ -236,7 +199,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
         "right_zp", rewriter.getI64IntegerAttr(right_zero_point)));
 
   int32_t input_zeroPoint = input_qtype.getZeroPoint();
-  bool can_merge_izp = input_zeroPoint == 0 || isa<top::WeightOp>(op.right().getDefiningOp());
+  bool can_merge_izp =
+      input_zeroPoint == 0 || isa<top::WeightOp>(op.right().getDefiningOp());
   auto right_type = op.right().getType().cast<RankedTensorType>();
   int K_idx = op.right_transpose() ? 1 : 0;
   int N_idx = op.right_transpose() ? 0 : 1;
@@ -244,16 +208,16 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   int64_t col_size = right_type.getShape()[N_idx];
   std::shared_ptr<std::vector<int32_t>> bias_quant;
   if (isa<top::WeightOp>(op.bias().getDefiningOp())) {
-    bias_quant =
-        cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
+    bias_quant = cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
   } else {
-    bias_quant = std::shared_ptr<std::vector<int32_t> >(new std::vector<int32_t>(col_size, 0));
+    bias_quant = std::shared_ptr<std::vector<int32_t>>(
+        new std::vector<int32_t>(col_size, 0));
   }
   auto bias_type = RankedTensorType::get({col_size}, rewriter.getI32Type());
 
   if (can_merge_izp) {
-    attrs.push_back(rewriter.getNamedAttr("multipliers",
-                                          rewriter.getI64ArrayAttr(multiplier)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "multipliers", rewriter.getI64ArrayAttr(multiplier)));
     attrs.push_back(
         rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(-shift)));
     attrs.push_back(rewriter.getNamedAttr(
@@ -266,9 +230,9 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
           cast<top::WeightOp>(op.right().getDefiningOp()).read<int8_t>();
       for (size_t r_ind = 0; r_ind < row_size; ++r_ind) {
         for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
-          auto right_data =
-              op.right_transpose() ? right_quant->at(c_ind * row_size + r_ind)
-                                   : right_quant->at(c_ind + r_ind * col_size);
+          auto right_data = op.right_transpose()
+                                ? right_quant->at(c_ind * row_size + r_ind)
+                                : right_quant->at(c_ind + r_ind * col_size);
           bias_quant->data()[c_ind] -=
               input_zeroPoint * (right_data - right_zero_point);
         }
@@ -283,12 +247,15 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                                operands, attrs);
   } else {
     // (M * K) (K * N)
-    // (Input - izp) Matmul (Right - kzp) ==> (Input) Matmul (Right - kzp) - (izp) Matmul (Right - kzp)
-    // - (izp) Matmul (Right - kzp) ==> izp * kzp * K - izp * reduce_sum(Right.col) for each row
+    // (Input - izp) Matmul (Right - kzp) ==> (Input) Matmul (Right - kzp) -
+    // (izp) Matmul (Right - kzp)
+    // - (izp) Matmul (Right - kzp) ==> izp * kzp * K - izp *
+    // reduce_sum(Right.col) for each row
 
     // merge izp * kzp * K to bias
     for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
-      bias_quant->data()[c_ind] += input_zeroPoint * right_zero_point * row_size;
+      bias_quant->data()[c_ind] +=
+          input_zeroPoint * right_zero_point * row_size;
     }
     auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
                                           *bias_quant, bias_type);
@@ -317,27 +284,33 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
       newType = RankedTensorType::get({col_size, 1}, rewriter.getI32Type());
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(op.right());
-    auto reduceOp = rewriter.create<tpu::ReduceOp>(name_loc, newType,
-        ValueRange{op.right(), Module::getNoneOp(op), Module::getNoneOp(op)}, attrs);
+    auto reduceOp = rewriter.create<tpu::ReduceOp>(
+        name_loc, newType,
+        ValueRange{op.right(), Module::getNoneOp(op), Module::getNoneOp(op)},
+        attrs);
     Value newValue = reduceOp.output();
     // do reshape
     attrs.erase(attrs.begin(), attrs.end());
     if (op.right_transpose()) {
-      auto reshapeType = RankedTensorType::get({1, col_size}, rewriter.getI32Type());
+      auto reshapeType =
+          RankedTensorType::get({1, col_size}, rewriter.getI32Type());
       newValue = do_reshape(newValue, reshapeType);
     }
     // do mulconst
-    newValue = do_binary_saclar<tpu::MulConstOp>(newValue, rewriter.getI32Type(), -input_zeroPoint);
+    newValue = do_binary_saclar<tpu::MulConstOp>(
+        newValue, rewriter.getI32Type(), -input_zeroPoint);
     // do add
     new_name = Module::getName(newOp.output()).str() + "_add_zp";
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(newOp);
-    auto addOp = rewriter.create<tpu::AddOp>(name_loc, matmul_type, ValueRange{newOp.output(), newValue}, attrs);
+    auto addOp = rewriter.create<tpu::AddOp>(
+        name_loc, matmul_type, ValueRange{newOp.output(), newValue}, attrs);
     // do requant
-    newValue = do_requant(op->getLoc(), addOp.output(), op.output().getType(), true,
+    newValue =
+        do_requant(op->getLoc(), addOp.output(), op.output().getType(), true,
                    multiplier, shift, tpu::RequantMode::TFlite_Lshift);
     rewriter.replaceOp(op, {newValue});
-    }
+  }
 }
 
 } // namespace bm1684x

@@ -13,25 +13,29 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
-                                 top::ConcatOp concatOp) const {
-  lowering_common_f32<tpu::ConcatOp>(rewriter, concatOp.getOperation());
+                                 top::ConcatOp op) const {
+  lowering_common_f32<tpu::ConcatOp>(rewriter, op);
 }
 
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp,
                                   bool asymmetric) const {
+  // checkout whether weight exist
+  for (auto in : concatOp.inputs()) {
+    if (isa<top::WeightOp>(in.getDefiningOp())) {
+      LoweringF16(rewriter, concatOp);
+      return;
+    }
+  }
   auto op = concatOp.getOperation();
   std::vector<Value> operands;
   for (auto in : concatOp.inputs()) {
     auto new_in = do_transfer(in, concatOp.output(), asymmetric);
     operands.push_back(new_in);
   }
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantInt8Type(concatOp.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, newType, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, newType, operands,
+                                             op->getAttrs());
 }
 
 void ConcatLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -60,12 +64,8 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
     }
   }
 
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, concatOp.output().getType(),
-                                             operands, attrs);
+                                             operands, op->getAttrs());
 }
 
 } // namespace bm1684x

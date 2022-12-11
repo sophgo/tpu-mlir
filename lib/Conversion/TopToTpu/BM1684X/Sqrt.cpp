@@ -25,13 +25,9 @@ void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
   auto stype = Module::getStorageType(op.output());
   auto table = create_lookup_table(op.input(), op.output(), asymmetric,
                                    [](double val) { return std::sqrt(val); });
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
 }
 
 void SqrtLowering::LoweringBF16(PatternRewriter &rewriter,

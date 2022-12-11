@@ -14,22 +14,22 @@ namespace bm1684x {
 
 void WhereLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::WhereOp op) const {
-  lowering_common_f32<tpu::WhereOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::WhereOp>(rewriter, op);
 }
 
 void WhereLowering::LoweringINT8(PatternRewriter &rewriter, top::WhereOp op,
                                bool asymmetric) const {
-  lowering_common_f32<tpu::WhereOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::WhereOp>(rewriter, op);
 }
 
 void WhereLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::WhereOp op) const {
-  lowering_common_bf16<tpu::WhereOp>(rewriter, op.getOperation());
+  lowering_common_bf16<tpu::WhereOp>(rewriter, op);
 }
 
 void WhereLowering::LoweringF16(PatternRewriter &rewriter,
                               top::WhereOp op) const {
-  lowering_common_f16<tpu::WhereOp>(rewriter, op.getOperation());
+  lowering_common_f16<tpu::WhereOp>(rewriter, op);
 }
 
 void WhereLowering::LoweringQuantized(PatternRewriter &rewriter,

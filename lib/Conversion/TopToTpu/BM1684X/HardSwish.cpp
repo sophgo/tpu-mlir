@@ -14,42 +14,41 @@ namespace bm1684x {
 
 static void set_hswish_attr(PatternRewriter &rewriter, top::HardSwishOp op) {
   auto op_ = op.getOperation();
-  op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::HSWISH));
+  op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
+                                                tpu::ActiveMode::HSWISH));
 }
 
-void HardSwishLowering::LoweringF32(PatternRewriter &rewriter, top::HardSwishOp op) const {
+void HardSwishLowering::LoweringF32(PatternRewriter &rewriter,
+                                    top::HardSwishOp op) const {
   set_hswish_attr(rewriter, op);
-  lowering_common_f32<tpu::ActiveOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::ActiveOp>(rewriter, op);
 }
 
 static inline double hswish(double x) {
-  return x * std::max(0.0, std::min(1.0, x / 6 + 0.5)) ;
+  return x * std::max(0.0, std::min(1.0, x / 6 + 0.5));
 }
 
-void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter, top::HardSwishOp op,
+void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter,
+                                     top::HardSwishOp op,
                                      bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());
   Value table = create_lookup_table(op.input(), op.output(), asymmetric,
                                     [](double val) { return hswish(val); });
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
 }
 
 void HardSwishLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::HardSwishOp op) const {
   set_hswish_attr(rewriter, op);
-  lowering_common_bf16<tpu::ActiveOp>(rewriter, op.getOperation());
+  lowering_common_bf16<tpu::ActiveOp>(rewriter, op);
 }
 
 void HardSwishLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::HardSwishOp op) const {
   set_hswish_attr(rewriter, op);
-  lowering_common_f16<tpu::ActiveOp>(rewriter, op.getOperation());
+  lowering_common_f16<tpu::ActiveOp>(rewriter, op);
 }
 
 void HardSwishLowering::LoweringQuantized(PatternRewriter &rewriter,

@@ -37,13 +37,9 @@ static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
   operands.push_back(noneOp);
   operands.push_back(noneOp);
   operands.push_back(noneOp);
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
   if (type.isF32()) {
     rewriter.replaceOpWithNewOp<tpu::GRUOp>(op, op.getResultTypes(), operands,
-                                            attrs);
+                                            op->getAttrs());
     return;
   }
   std::vector<Type> new_types;
@@ -56,7 +52,8 @@ static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
       new_types.push_back(out.getType());
     }
   }
-  rewriter.replaceOpWithNewOp<tpu::GRUOp>(op, new_types, operands, attrs);
+  rewriter.replaceOpWithNewOp<tpu::GRUOp>(op, new_types, operands,
+                                          op->getAttrs());
   return;
 }
 

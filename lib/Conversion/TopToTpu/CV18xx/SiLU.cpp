@@ -26,13 +26,9 @@ void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
       create_lookup_table(op.input(), op.output(), asymmetric, [](double val) {
         return val / (1 + std::exp(-val));
       });
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.emplace_back(attr);
-  }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table}, attrs);
+                                          ValueRange{op.input(), table});
   return;
 }
 
@@ -40,8 +36,8 @@ void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::SiLUOp op) const {
   Value table_weight, slope_weight;
   float range_start = -12, range_end = 12;
-  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start, range_end,
-                  active_silu, table_weight, slope_weight);
+  createBf16LutOp(op, "slope", TableMode::Slope, 0.0, 0.0, range_start,
+                  range_end, active_silu, table_weight, slope_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -55,9 +51,7 @@ void SiLULowering::LoweringBF16(PatternRewriter &rewriter,
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
   auto newType = getQuantBF16Type(op.output());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType,
-      ValueRange{op.input(), table_weight, slope_weight},
-      attrs);
+      op, newType, ValueRange{op.input(), table_weight, slope_weight}, attrs);
   return;
 }
 

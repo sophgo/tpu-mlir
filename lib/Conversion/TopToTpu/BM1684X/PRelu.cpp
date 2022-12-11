@@ -111,42 +111,12 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
 
 void PReluLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::PReluOp op) const {
-  rewriter.setInsertionPointAfter(op);
-
-  auto src_shape = Module::getShape(op.input());
-  auto slope_shape = Module::getShape(op.slope());
-
-  std::vector<Value> operands;
-  auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
-  operands.push_back(op.input());
-
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  operands.push_back(slopeOp.clone_bf16(op));
-  auto newType = getQuantBF16Type(op.output());
-  rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
+  lowering_common_bf16<tpu::PReluOp>(rewriter, op);
 }
 
 void PReluLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::PReluOp op) const {
-  rewriter.setInsertionPointAfter(op);
-
-  auto src_shape = Module::getShape(op.input());
-  auto slope_shape = Module::getShape(op.slope());
-
-  std::vector<Value> operands;
-  auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
-  operands.push_back(op.input());
-
-  std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
-  operands.push_back(slopeOp.clone_f16(op));
-  auto newType = getQuantF16Type(op.output());
-  rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
+  lowering_common_f16<tpu::PReluOp>(rewriter, op);
 }
 
 void PReluLowering::LoweringQuantized(PatternRewriter &rewriter,

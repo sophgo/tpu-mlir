@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void CompareConstLowering::LoweringF32(PatternRewriter &rewriter,
                                        top::CompareConstOp op) const {
-  lowering_common_f32<tpu::CompareConstOp>(rewriter, op.getOperation());
+  lowering_common_f32<tpu::CompareConstOp>(rewriter, op);
 }
 
 void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -35,12 +35,12 @@ void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
 
 void CompareConstLowering::LoweringBF16(PatternRewriter &rewriter,
                                         top::CompareConstOp op) const {
-  lowering_common_bf16<tpu::CompareConstOp>(rewriter, op.getOperation());
+  lowering_common_bf16<tpu::CompareConstOp>(rewriter, op);
 }
 
 void CompareConstLowering::LoweringF16(PatternRewriter &rewriter,
                                        top::CompareConstOp op) const {
-  lowering_common_f16<tpu::CompareConstOp>(rewriter, op.getOperation());
+  lowering_common_f16<tpu::CompareConstOp>(rewriter, op);
 }
 
 void CompareConstLowering::LoweringQuantized(PatternRewriter &rewriter,

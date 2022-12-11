@@ -45,6 +45,7 @@ class ONNX_IR_TESTER(object):
             "Compare": self.test_Compare,
             # "Compare2": self.test_Compare2,
             "Concat": self.test_Concat,
+            "Concat2": self.test_Concat2,
             "Conv1d": self.test_Conv1d,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
@@ -781,10 +782,45 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([concat_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
 
+    def test_Concat2(self, case_name):
+        input_shape = [1, 192, 256]
+        x_shape = [1, 192, 16]
+        output_shape = [1, 192, 288]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        x1_data = np.random.randn(*x_shape).astype(np.float32)
+        x1_node_def =onnx.helper.make_tensor(
+                name='X1',
+                data_type=onnx.TensorProto.FLOAT,
+                dims=x_shape,
+                vals=x1_data.flatten(),
+            )
+        x2_data = np.random.randn(*x_shape).astype(np.float32)
+        x2_node_def =onnx.helper.make_tensor(
+                name='X2',
+                data_type=onnx.TensorProto.FLOAT,
+                dims=x_shape,
+                vals=x2_data.flatten(),
+            )
+        concat_node = helper.make_node(
+            'Concat',
+            ['input', 'X1', 'X2'],
+            ['output'],
+            axis = -1,
+        )
+        graph_def = helper.make_graph(
+            [concat_node],
+            case_name,
+            [input],
+            [output],
+            initializer=[x1_node_def, x2_node_def]
+        )
+        self.onnx_and_test(graph_def)
+
     def test_Transpose(self, case_name):
         input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20], [1, 4, 2, 16, 20, 40]]
         transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2], 6: [0, 1, 2, 5, 3, 4]}
-        for input_shape in input_shapes:
+        for i,input_shape in enumerate(input_shapes):
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             order = transpose_orders[len(input_shape)]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
@@ -793,9 +829,8 @@ class ONNX_IR_TESTER(object):
                                              inputs=['input'],
                                              outputs=['output'],
                                              perm=order)
-            graph_def = helper.make_graph([transpose_def], case_name, [input], [output])
+            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name,i), [input], [output])
             self.onnx_and_test(graph_def)
-            print("[Success] {}D data test".format(len(input_shape)))
 
     def test_Where(self, case_name):
         # real case
