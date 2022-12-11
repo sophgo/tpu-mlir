@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 TEST_DIR=$REGRESSION_PATH/regression_out/script_test
 mkdir -p $TEST_DIR
@@ -47,7 +47,7 @@ run_calibration.py mobilenet_v2.mlir \
   -o mobilenet_v2_cali_table_by_npy
 
 # cali by list
-echo data.npy > data.list
+echo data.npy >data.list
 run_calibration.py mobilenet_v2.mlir \
   --data_list data.list \
   -o mobilenet_v2_cali_table_by_list

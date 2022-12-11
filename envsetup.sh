@@ -4,6 +4,7 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 export PROJECT_ROOT=$DIR
 export BUILD_PATH=${BUILD_PATH:-$PROJECT_ROOT/build}
 export INSTALL_PATH=${INSTALL_PATH:-$PROJECT_ROOT/install}
+export TPUC_ROOT=$INSTALL_PATH
 
 echo "PROJECT_ROOT : ${PROJECT_ROOT}"
 echo "BUILD_PATH   : ${BUILD_PATH}"
