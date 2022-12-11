@@ -4,7 +4,7 @@ set -ex
 # all test (f32/f16/bf16/int8): run_model.sh mobilenet_v2 bm1684x all
 # basic test (f32/int8): run_model.sh mobilenet_v2 bm1684x basic
 
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 model_name=$1
 chip_name=$2
@@ -17,11 +17,6 @@ fi
 
 if [ x$2 == x ]; then
   chip_name=bm1684x
-fi
-
-if [ x$chip_name != xbm1684x ] && [ x$chip_name != xcv183x ]; then
-  echo "Error: $0 model_name [bm1684x|cv183x]"
-  exit 1
 fi
 
 if [ x$test_type == x ]; then
@@ -172,39 +167,39 @@ model_transform.py \
 # deploy to float bmodel
 #########################
 if [ ${do_f32} == 1 ]; then
-model_deploy.py \
-  --mlir ${model_name}.mlir \
-  --quantize F32 \
-  --chip ${chip_name} \
-  ${test_innpz_opt} \
-  ${test_reference_opt} \
-  ${excepts_opt} \
-  --tolerance 0.99,0.99 \
-  --model ${model_name}_${chip_name}_f32.${model_type}
+  model_deploy.py \
+    --mlir ${model_name}.mlir \
+    --quantize F32 \
+    --chip ${chip_name} \
+    ${test_innpz_opt} \
+    ${test_reference_opt} \
+    ${excepts_opt} \
+    --tolerance 0.99,0.99 \
+    --model ${model_name}_${chip_name}_f32.${model_type}
 fi
 
 if [ ${do_f16} == 1 ]; then
-model_deploy.py \
-  --mlir ${model_name}.mlir \
-  --quantize F16 \
-  --chip ${chip_name} \
-  ${test_innpz_opt} \
-  ${test_reference_opt} \
-  ${excepts_opt} \
-  --tolerance 0.95,0.85 \
-  --model ${model_name}_${chip_name}_f16.${model_type}
+  model_deploy.py \
+    --mlir ${model_name}.mlir \
+    --quantize F16 \
+    --chip ${chip_name} \
+    ${test_innpz_opt} \
+    ${test_reference_opt} \
+    ${excepts_opt} \
+    --tolerance 0.95,0.85 \
+    --model ${model_name}_${chip_name}_f16.${model_type}
 fi
 
 if [ ${do_bf16} == 1 ]; then
-model_deploy.py \
-  --mlir ${model_name}.mlir \
-  --quantize BF16 \
-  --chip ${chip_name} \
-  ${test_innpz_opt} \
-  ${test_reference_opt} \
-  ${excepts_opt} \
-  --tolerance 0.95,0.85 \
-  --model ${model_name}_${chip_name}_bf16.${model_type}
+  model_deploy.py \
+    --mlir ${model_name}.mlir \
+    --quantize BF16 \
+    --chip ${chip_name} \
+    ${test_innpz_opt} \
+    ${test_reference_opt} \
+    ${excepts_opt} \
+    --tolerance 0.95,0.85 \
+    --model ${model_name}_${chip_name}_bf16.${model_type}
 fi
 #########################
 # deploy to int8 bmodel
@@ -241,45 +236,45 @@ fi
 # to symmetric
 if [ ${do_symmetric} == 1 ]; then
 
-tolerance_sym_opt=
-if [ x${int8_sym_tolerance} != x ]; then
-  tolerance_sym_opt="--tolerance ${int8_sym_tolerance}"
-fi
-model_deploy.py \
-  --mlir ${model_name}.mlir \
-  --quantize INT8 \
-  ${cali_opt} \
-  ${qtable_opt} \
-  --chip ${chip_name} \
-  ${test_innpz_opt} \
-  ${test_reference_opt} \
-  ${tolerance_sym_opt} \
-  ${excepts_opt} \
-  --quant_input \
-  --quant_output \
-  --model ${model_name}_${chip_name}_int8_sym.${model_type}
+  tolerance_sym_opt=
+  if [ x${int8_sym_tolerance} != x ]; then
+    tolerance_sym_opt="--tolerance ${int8_sym_tolerance}"
+  fi
+  model_deploy.py \
+    --mlir ${model_name}.mlir \
+    --quantize INT8 \
+    ${cali_opt} \
+    ${qtable_opt} \
+    --chip ${chip_name} \
+    ${test_innpz_opt} \
+    ${test_reference_opt} \
+    ${tolerance_sym_opt} \
+    ${excepts_opt} \
+    --quant_input \
+    --quant_output \
+    --model ${model_name}_${chip_name}_int8_sym.${model_type}
 
 fi #do_symmetric
 
 # to asymmetric
 if [ $do_asymmetric == 1 ]; then
 
-tolerance_asym_opt=
-if [ x${int8_asym_tolerance} != x ]; then
-  tolerance_asym_opt="--tolerance ${int8_asym_tolerance}"
-fi
-model_deploy.py \
-  --mlir ${model_name}.mlir \
-  --quantize INT8 \
-  --asymmetric \
-  ${cali_opt} \
-  ${qtable_opt} \
-  --chip ${chip_name} \
-  ${test_innpz_opt} \
-  ${test_reference_opt} \
-  ${tolerance_asym_opt} \
-  ${excepts_opt} \
-  --model ${model_name}_${chip_name}_int8_asym.${model_type}
+  tolerance_asym_opt=
+  if [ x${int8_asym_tolerance} != x ]; then
+    tolerance_asym_opt="--tolerance ${int8_asym_tolerance}"
+  fi
+  model_deploy.py \
+    --mlir ${model_name}.mlir \
+    --quantize INT8 \
+    --asymmetric \
+    ${cali_opt} \
+    ${qtable_opt} \
+    --chip ${chip_name} \
+    ${test_innpz_opt} \
+    ${test_reference_opt} \
+    ${tolerance_asym_opt} \
+    ${excepts_opt} \
+    --model ${model_name}_${chip_name}_int8_asym.${model_type}
 
 fi #do_asymmetric
 
@@ -288,35 +283,35 @@ fi #do_asymmetric
 #########################
 if [ x${app} != x ] && [ x${chip_name} != xcv183x ]; then
 
-# by onnx
-${app} \
-  --input ${test_input} \
-  --model ${model_path} \
-  --output output_onnx.jpg
+  # by onnx
+  ${app} \
+    --input ${test_input} \
+    --model ${model_path} \
+    --output output_onnx.jpg
 
-# by f32 bmodel
-if [ x${do_f32} == x1 ]; then
-${app} \
-  --input ${test_input} \
-  --model ${model_name}_${chip_name}_f32.${model_type} \
-  --output output_f32.jpg
-fi
+  # by f32 bmodel
+  if [ x${do_f32} == x1 ]; then
+    ${app} \
+      --input ${test_input} \
+      --model ${model_name}_${chip_name}_f32.${model_type} \
+      --output output_f32.jpg
+  fi
 
-# by int8 symmetric bmodel
-if [ x${do_symmetric} == x1 ]; then
-${app} \
-  --input ${test_input} \
-  --model ${model_name}_${chip_name}_int8_sym.${model_type} \
-  --output output_int8_sym.jpg
-fi
+  # by int8 symmetric bmodel
+  if [ x${do_symmetric} == x1 ]; then
+    ${app} \
+      --input ${test_input} \
+      --model ${model_name}_${chip_name}_int8_sym.${model_type} \
+      --output output_int8_sym.jpg
+  fi
 
-if [ $do_asymmetric == 1 ]; then
-# by int8 asymmetric bmodel
-${app} \
-  --input ${test_input} \
-  --model ${model_name}_${chip_name}_int8_asym.${model_type} \
-  --output output_int8_asym.jpg
-fi
+  if [ $do_asymmetric == 1 ]; then
+    # by int8 asymmetric bmodel
+    ${app} \
+      --input ${test_input} \
+      --model ${model_name}_${chip_name}_int8_asym.${model_type} \
+      --output output_int8_asym.jpg
+  fi
 
 fi
 

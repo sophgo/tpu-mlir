@@ -13,9 +13,11 @@ install(FILES oneDNN/lib/libdnnl.so
               caffe/lib/libprotobuf.so.10
               nntoolchain/lib/libbackend_1684.so
               nntoolchain/lib/libbackend_1684x.so
+              nntoolchain/lib/libbackend_1686.so
               nntoolchain/lib/libbmlib.so
               nntoolchain/lib/libcmodel_1684.so
               nntoolchain/lib/libcmodel_1684x.so
+              nntoolchain/lib/libcmodel_1686.so
               nntoolchain/lib/libcmodel.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmcpu.so

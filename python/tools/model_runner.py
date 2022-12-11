@@ -47,6 +47,15 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
+        # trick for runtime link chip cmodel
+        fd = os.popen("model_tool --chip {}".format(model_file))
+        chip = fd.read()
+        fd.close()
+        lib_so = 'libcmodel_1684x.so'
+        if chip == 'BM1686':
+            lib_so = 'libcmodel_1686.so'
+        cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
+        os.system(cmd)
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
     else:
