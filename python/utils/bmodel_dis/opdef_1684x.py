@@ -39,7 +39,7 @@ class DType(Enum):
     bf16 = 5
     i64 = 6
     # offset 8
-    u8 = i8 + 8  # type: ignore
+    ui8 = i8 + 8  # type: ignore
     u16 = i16 + 8  # type: ignore
     u32 = i32 + 8  # type: ignore
 
@@ -53,7 +53,7 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
 class MemRef:
     to_np_dtype = {
         DType.i8: np.int8,
-        DType.u8: np.uint8,
+        DType.ui8: np.uint8,
         DType.f16: np.float16,
         DType.f32: np.float32,
         DType.i16: np.int16,

@@ -76,7 +76,7 @@ class BmodelReader:
             0: opdef_1684x.DType.f32,
             1: opdef_1684x.DType.f16,
             2: opdef_1684x.DType.i8,
-            3: opdef_1684x.DType.u8,
+            3: opdef_1684x.DType.ui8,
             4: opdef_1684x.DType.i16,
             5: opdef_1684x.DType.u16,
             6: opdef_1684x.DType.i32,

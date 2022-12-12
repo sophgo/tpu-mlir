@@ -1082,7 +1082,7 @@ class OnnxConverter(BaseConverter):
                     len(pads), len(input_shape)))
         # opset 11, value from second input
         val = 0.0
-        if len(onnx_node.inputs) > 2:
+        if len(onnx_node.inputs) > 2 and onnx_node.inputs[2]:
             val = self.getWeight(onnx_node.inputs[2])
         else:
             val = onnx_node.attrs.get("value", 0.0)
