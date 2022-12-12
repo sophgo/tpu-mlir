@@ -33,12 +33,12 @@ export INT8_MODEL=0
 export MIX_PRECISION_TABLE='-'1
 
 # default inference and test image
-export IMAGE_PATH=$REGRESSION_PATH/tpu_compiler_porting/data/cat.jpg
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/cat.jpg
 
 if [ $NET = "resnet50" ]; then
 export MODEL_DEF=$MODEL_PATH/imagenet/resnet/caffe/ResNet-50-deploy.prototxt
 export MODEL_DAT=$MODEL_PATH/imagenet/resnet/caffe/ResNet-50-model.caffemodel
-export CALI_TABLE=$REGRESSION_PATH/tpu_compiler_porting/cali_tables/${NET}_calibration_table
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 export INPUT_SHAPE=[[1,3,224,224]]
 export NET_INPUT_DIMS=224,224
@@ -46,6 +46,7 @@ export IMAGE_RESIZE_DIMS=256,256
 export RAW_SCALE=255.0
 export MEAN=104.01,116.67,122.68  # from ilsvrc_2012_mean.npy
 export INPUT_SCALE=1.0,1.0,1.0
+export MODEL_CHANNEL_ORDER="bgr"
 export INPUT=input
 export OUTPUTS=fc1000
 export TOLERANCE_INT8=0.96,0.71
@@ -59,7 +60,7 @@ fi
 if [ $NET = "mobilenet_v1" ]; then
 export MODEL_DEF=$MODEL_PATH/imagenet/mobilenet_v1/caffe/mobilenet_deploy.prototxt
 export MODEL_DAT=$MODEL_PATH/imagenet/mobilenet_v1/caffe/mobilenet.caffemodel
-export CALI_TABLE=$REGRESSION_PATH/tpu_compiler_porting/cali_tables/${NET}_calibration_table
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
 export INPUT_SHAPE=[[1,3,224,224]]
 export NET_INPUT_DIMS=224,224
 export IMAGE_RESIZE_DIMS=256,256
@@ -74,10 +75,30 @@ export EXCEPTS=prob
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
 
+if [ $NET = "mobilenet_v2" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/mobilenet_v2/caffe/mobilenet_v2_deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/mobilenet_v2/caffe/mobilenet_v2.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,224,224]]
+export NET_INPUT_DIMS=224,224
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MEAN=103.94,116.78,123.68
+export INPUT_SCALE=0.017,0.017,0.017
+export MODEL_CHANNEL_ORDER="bgr"
+export INPUT=input
+export OUTPUTS=fc7
+export TOLERANCE_INT8=0.94,0.66
+export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export EXCEPTS=prob
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
 if [ $NET = "inception_v3" ]; then
 export MODEL_DEF=$MODEL_PATH/imagenet/inception_v3/caffe/deploy_inception-v3.prototxt
 export MODEL_DAT=$MODEL_PATH/imagenet/inception_v3/caffe/inception-v3.caffemodel
-export CALI_TABLE=$REGRESSION_PATH/tpu_compiler_porting/cali_tables/${NET}_calibration_table
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
 export INPUT_SHAPE=[[1,3,299,299]]
 export NET_INPUT_DIMS=299,299
 export IMAGE_RESIZE_DIMS=299,299
