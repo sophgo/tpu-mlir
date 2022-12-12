@@ -14,7 +14,6 @@
 
 using namespace llvm;
 
-using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 

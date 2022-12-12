@@ -29,7 +29,21 @@ void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
 
 group_info_t LocalGenInterface::getGroupInfo(mlir::Value v, int64_t n_step,
                                              int64_t h_step) {
-  return getGroupInfo(v.getDefiningOp(), n_step, h_step);
+  auto op = v.getDefiningOp();
+  if (op == nullptr || !op->hasAttr(LocalGenInterface::kLayerGroupAttrName)) {
+    // generate ginfo
+    group_info_t ginfo = {0};
+    auto dst_op = *v.getUsers().begin();
+    auto dst_lg_op = cast<LocalGenInterface>(dst_op);
+    auto g_param = dst_op->getAttr(LocalGenInterface::kLayerGroupAttrName)
+                       .cast<tpu::LayerGroupAttr>();
+    int64_t nslice = g_param.getNSlice()[0];
+    int64_t hslice = g_param.getHSlice()[0];
+    dst_lg_op.BackwardN(ginfo.n_idx, ginfo.n_slice, 0, nslice);
+    dst_lg_op.BackwardH(ginfo.h_idx, ginfo.h_slice, 0, hslice);
+    return ginfo;
+  }
+  return getGroupInfo(op, n_step, h_step);
 }
 
 group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,

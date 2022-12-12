@@ -1371,7 +1371,7 @@ def Tpu_LSTMCVIOp: Tpu_Op<"LSTMCVI"> {
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
-    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
   let summary = "Tile operation";
   let description = [{
     Returns a tensor with the same type as the input, with a new shape

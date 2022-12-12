@@ -12,8 +12,10 @@ else
   BUILD_FLAG="-DCMAKE_CXX_FLAGS=-O2"
 fi
 
+
 echo "BUILD_PATH: $BUILD_PATH"
 echo "INSTALL_PATH: $INSTALL_PATH"
+echo "BUILD_FLAG: $BUILD_FLAG"
 
 # prepare install/build dir
 mkdir -p $BUILD_PATH

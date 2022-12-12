@@ -28,6 +28,10 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
   let summary = "convert to layer group in tpu by tpuc-opt";
   let constructor = "createLayerGroupPass()";
   let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"opt", "opt", "int64_t", /*default=*/"2",
+           "opt=1: group layers length as long as possible. opt=2: dynamic programming layer group">,
+  ];
 }
 
 def AddressAssign : Pass<"address-assign", "ModuleOp"> {

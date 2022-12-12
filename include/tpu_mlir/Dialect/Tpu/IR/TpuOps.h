@@ -25,7 +25,6 @@
 #include "tpu_mlir/Support/AttrStruct.h"
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOpsDialect.h.inc"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStep.h"
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuEnum.h.inc"
 #define GET_ATTRDEF_CLASSES
