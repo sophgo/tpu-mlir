@@ -31,6 +31,7 @@ export TOLERANCE_INT8_CMDBUF=0.99,0.99,0.99
 export DO_QUANT_BF16=1
 export INT8_MODEL=0
 export MIX_PRECISION_TABLE='-'1
+export INPUT_NUM=100
 
 # default inference and test image
 export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/cat.jpg
@@ -149,8 +150,70 @@ export OUTPUTS=classifier
 # export EXCEPTS=prob
 export TOLERANCE_INT8=0.95,0.68
 export TOLERANCE_BF16=0.99,0.93
-export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export TOLERANCE_BF16_CMDBUF=0.99,0.94
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "inception_v4" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/inception_v4/caffe/deploy_inception-v4.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/inception_v4/caffe/inception-v4.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,299,299]]
+export NET_INPUT_DIMS=299,299
+export IMAGE_RESIZE_DIMS=299,299
+export RAW_SCALE=255.0
+export MEAN=128.0,128.0,128.0
+export INPUT_SCALE=0.0078125,0.0078125,0.0078125
+export INPUT=input
+export OUTPUTS=classifier
+# export EXCEPTS=prob
+export TOLERANCE_INT8=0.92,0.60
+export TOLERANCE_BF16=0.99,0.89
+export TOLERANCE_BF16_CMDBUF=0.99,0.93
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+export INPUT_NUM=100
+fi
+
+if [ $NET = "densenet_201" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/densenet/caffe/DenseNet_201.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/densenet/caffe/DenseNet_201.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,224,224]]
+export NET_INPUT_DIMS=224,224
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MEAN=103.94,116.78,123.68
+export INPUT_SCALE=0.017,0.017,0.017
+export MODEL_CHANNEL_ORDER="bgr"
+export INPUT=input
+export OUTPUTS=fc6
+export TOLERANCE_INT8=0.76,0.28
+export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+export INPUT_NUM=100
+fi
+
+if [ $NET = "resnext50" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/resnext/caffe/resnext50-deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/resnext/caffe/resnext50.caffemodel
+export LABEL_FILE=$MODEL_PATH/imagenet/resnext/caffe/corresp.txt
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,224,224]]
+export NET_INPUT_DIMS=224,224
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MODEL_CHANNEL_ORDER="rgb"
+export MEAN=0.0,0.0,0.0
+export INPUT_SCALE=1.0,1.0,1.0
+export INPUT=data
+export OUTPUTS=prob
+export EXCEPTS=data
+export TOLERANCE_INT8=0.96,0.70
+export TOLERANCE_BF16=0.99,0.95
+export TOLERANCE_BF16_CMDBUF=0.99,0.97
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+export INPUT_NUM=1000
 fi
 
 if [ $NET = "vgg16" ]; then
