@@ -22,12 +22,11 @@ if [ ! -f $cfg_file ]; then
   exit 1
 fi
 
-
 if [ x$2 != x ]; then
   MODEL_PATH=$2
 fi
 MODEL_PATH=${MODEL_PATH:-/data/mlir-models}
-if [ ! -f $MODEL_PATH]; then
+if [ ! -d $MODEL_PATH ]; then
   echo "Error: model path not exist\n"
   exit 1
 fi
@@ -36,7 +35,7 @@ if [ x$3 != x ]; then
   DATA_SET=$3
 fi
 DATA_SET=${DATA_SET:-/data/dataset}
-if [ ! -f $DATA_SET]; then
+if [ ! -d $DATA_SET ]; then
   echo "Error: model dataset not exist\n"
   exit 1
 fi
@@ -169,19 +168,19 @@ fi
 #########################
 
 do_cali=1
-input_num=100
+input_num=${INPUT_NUM}
 # only once
-if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE}_100 ]; then
+if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE}_${INPUT_NUM} ]; then
   if [ x${DATA_SET} == x ]; then
     echo "Error: ${NET} has no dataset"
     exit 1
   fi
   run_calibration.py ${NET}.mlir \
     --dataset ${CALI_IMAGES} \
-    --input_num 100 \
-    -o ${CALI_TABLE}_100
+    --input_num ${INPUT_NUM} \
+    -o ${CALI_TABLE}_${INPUT_NUM}
 fi
-CALI_TABLE=${CALI_TABLE}_100
+CALI_TABLE=${CALI_TABLE}_${INPUT_NUM}
 
 cali_opt=
 if [ -f ${CALI_TABLE} ]; then
