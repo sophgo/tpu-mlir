@@ -18,6 +18,8 @@
 LogicalResult tpu::TileOp::init(InferenceParameter &p) { return success(); }
 void tpu::TileOp::deinit(InferenceParameter &p) {}
 
+LogicalResult tpu::TileOp::LocalGenSupport() { return failure(); }
+
 LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
   auto out_shape = module::getShape(getOutput());
   auto in_shape = module::getShape(getInput());
@@ -39,6 +41,5 @@ LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
                 output + out * tile_ * inner_count + t * inner_count);
     }
   }
-  return success();
   return success();
 }

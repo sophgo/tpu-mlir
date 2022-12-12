@@ -6,8 +6,8 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/CVAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"

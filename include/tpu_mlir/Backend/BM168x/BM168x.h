@@ -525,6 +525,7 @@ typedef void (*cmd_id_merge)(void *p_cmd_dst, void *p_cmd_src0,
 typedef void (*sg_set_profile_dump)(bool enable);
 typedef void (*sg_stas_dump)(void *pid_node);
 typedef void (*sg_flops_dump)(long long flops, void *pid_node);
+typedef void (*sg_stas_reset)();
 
 namespace tpu_mlir {
 namespace backend {
@@ -603,6 +604,7 @@ public:
   sg_set_profile_dump dl_sg_set_profile_dump;
   sg_stas_dump dl_sg_stas_dump;
   sg_flops_dump dl_sg_flops_dump;
+  sg_stas_reset dl_sg_stas_reset;
 
 public:
   // -------------------------------------------------------------------
@@ -626,6 +628,18 @@ public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) = 0;
   virtual uint32_t get_gdma_len(int gdma_num, int group_id) = 0;
 
+  void set_command_issue_flag(bool value);
+  void reset_cmd_id_node();
+  int64_t get_gdma_cycle();
+  int64_t get_bdc_cycle();
+  int64_t get_cmd_cycle();
+
+  void reset_command_flag() {
+    dl_use_atomic_cmodel();
+    dl_allow_atomic_cmodel_assert();
+    dl_forbid_store_cmd();
+  }
+
 public:
   std::vector<uint32_t> bdc_buffer;
   std::vector<uint32_t> gdma_buffer;
@@ -644,7 +658,6 @@ protected:
   BM168x(){};
   virtual ~BM168x() = 0;
   virtual void load_functions();
-  void set_command_issue_flag(bool value);
 
 protected:
   static BM168x *bm168x;

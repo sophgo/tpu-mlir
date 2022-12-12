@@ -103,12 +103,15 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   for (auto &op_value : group_ops) {
     auto op = static_cast<Operation *>(op_value.op);
     if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
+      auto &last_op = gOp.getBody().back().back();
+      auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
+      assert(yield_op);
       int idx = 0;
-      gOp.getBody().walk([&](tpu::StoreOp sOp) {
+      for (auto opd : yield_op.getOperands()) {
         auto addr = module::getAddress(gOp.getResult(idx));
-        module::setAddress(sOp.getOutput(), addr);
+        module::setAddress(opd, addr);
         idx++;
-      });
+      }
     }
   }
   // 3.set inplace_ops address

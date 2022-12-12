@@ -79,12 +79,13 @@ public:
     if (func.getName() == "main" || module::getFuncMode(func) != "TPU") {
       return;
     }
+    int64_t opt = this->opt;
     auto ctx = func.getContext();
     RewritePatternSet patterns(ctx);
     patterns.add<OpReorderPattern>(ctx);
     applyPatternsAndFoldGreedily(func, std::move(patterns));
     GroupOps gOps(func);
-    gOps.process();
+    gOps.process(opt);
   }
 };
 

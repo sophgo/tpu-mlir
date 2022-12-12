@@ -30,6 +30,7 @@ uint32_t &TgConcatKernel::axis_dim(cvk_tg_shape_t &shape) {
     return shape.w;
   default:
     assert(0);
+    return shape.w;
   }
 }
 

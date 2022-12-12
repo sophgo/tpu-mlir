@@ -6,15 +6,15 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace tpu_mlir::backend;
 
@@ -277,6 +277,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(sg_set_profile_dump);
   CAST_FUNCTION(sg_stas_dump);
   CAST_FUNCTION(sg_flops_dump);
+  CAST_FUNCTION(sg_stas_reset);
 }
 
 BM168x::~BM168x() {}
@@ -296,10 +297,10 @@ void BM168x::start_env() {
                       &cmdid_groupnum);
   dl_allow_store_cmd();
   dl_forbid_atomic_cmodel(); // TODO:(no compare)
-  dl_sg_set_profile_dump(true);
 }
 
 void BM168x::end_env() {
+  BM168x::instance()->reset_command_flag();
   if (DL.isValid()) {
     if (cmdid_node != nullptr) {
       dl_destroy_cmd_id_node(gdma_node);
@@ -330,10 +331,11 @@ int BM168x::compare_mode(StringRef mode) {
 }
 
 void BM168x::before_codegen() {
+  // set_command_issue_flag(true);
+  dl_sg_set_profile_dump(true);
   dl_reset_cmd_id(cmdid_node);
   dl_reset_cmd_id(bdc_node);
   dl_reset_cmd_id(gdma_node);
-  // set_command_issue_flag(true);
   gdma_group_id.clear();
   gdma_group_id.push_back(0);
   bdc_group_id.clear();
@@ -363,3 +365,15 @@ void BM168x::set_command_issue_flag(bool value) {
     dl_forbid_atomic_cmodel_assert();
   }
 }
+
+void BM168x::reset_cmd_id_node() {
+  dl_reset_cmd_id(cmdid_node);
+  dl_reset_cmd_id(bdc_node);
+  dl_reset_cmd_id(gdma_node);
+}
+
+int64_t BM168x::get_gdma_cycle() { return dl_get_cmd_id_cycle(gdma_node); }
+
+int64_t BM168x::get_bdc_cycle() { return dl_get_cmd_id_cycle(bdc_node); }
+
+int64_t BM168x::get_cmd_cycle() { return dl_get_cmd_id_cycle(cmdid_node); }
