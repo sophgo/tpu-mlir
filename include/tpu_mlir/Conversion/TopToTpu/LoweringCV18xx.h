@@ -27,6 +27,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 LOWERING_CV18XX(Abs)
 LOWERING_CV18XX(Add)
+LOWERING_CV18XX(AddConst)
 LOWERING_CV18XX(AvgPool)
 LOWERING_CV18XX(Cast)
 LOWERING_CV18XX(Concat)
