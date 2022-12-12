@@ -15,7 +15,7 @@ if [ x$1 == x ]; then
 fi
 NET=$1
 CHIP_NAME=${SET_CHIP_NAME:-cv183x}
-cfg_file=$REGRESSION_PATH/tpu_compiler_porting/config/model_config_18xx.sh
+cfg_file=$REGRESSION_PATH/cv18xx_porting/config/model_config_18xx.sh
 
 if [ ! -f $cfg_file ]; then
   echo "Error: can't open config file ${cfg_file}"
@@ -46,7 +46,7 @@ export MODEL_PATH=${MODEL_PATH}
 export DATA_SET=${DATA_SET}
 source ${cfg_file}
 
-NET_DIR=$REGRESSION_PATH/tpu_compiler_porting/regression_out/${NET}_${CHIP_NAME}
+NET_DIR=$REGRESSION_PATH/cv18xx_porting/regression_out/${NET}_${CHIP_NAME}
 mkdir -p $NET_DIR
 pushd $NET_DIR
 
