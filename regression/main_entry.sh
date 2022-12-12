@@ -88,12 +88,12 @@ if [ "$?" -ne 0 ]; then
   ERR=1
 fi
 
-cat result.log
-
 if [ $ERR -eq 0 ]; then
+  cat result.log
   echo run ${test_type} TEST PASSED
 else
   cat fail.log
+  cat result.log
   echo run ${test_type} TEST FAILED
 fi
 
