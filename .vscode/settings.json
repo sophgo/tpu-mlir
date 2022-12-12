@@ -74,7 +74,7 @@
     "files.autoSave": "afterDelay",
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
-    "editor.tabSize":2,
+    "editor.tabSize": 2,
     "C_Cpp.formatting": "clangFormat",
     "C_Cpp.clang_format_style": "LLVM",
     "python.analysis.extraPaths": [
@@ -85,5 +85,10 @@
     "python.formatting.yapfArgs": [
         "--style={based_on_style:pep8, indent_width:4, column_limit:100}"
     ],
-    "restructuredtext.preview.name": "docutils"
+    "restructuredtext.preview.name": "docutils",
+    "cmake.configureArgs": [
+        "-DCMAKE_BUILD_TYPE=Debug",
+        "-DCMAKE_CXX_FLAGS=-ggdb",
+        "-DCMAKE_INSTALL_PREFIX=$INSTALL_PATH"
+    ]
 }
