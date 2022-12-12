@@ -90,8 +90,8 @@ class Tdb(cmd.Cmd):
 
     def __init__(self, completekey="tab", stdin=None, stdout=None):
         cmd.Cmd.__init__(self, completekey, stdin, stdout)
-        self.ddr = None
-        self.lmem = None
+        self.ddr = np.ndarray([])
+        self.lmem = np.ndarray([])
         self.record_status = False
         self.model = None
         self.current_function = None
@@ -285,29 +285,45 @@ class Tdb(cmd.Cmd):
                 .reshape(mem.shape)
                 .copy()
             )
+        if m_type == "R":
+            offset = mem.addr - opdef_1684x.memmap["R"][0]
+            # [2, 4, 3, 4]
+            # [1, 120, 80, 80]
+            tpu_lmem_size = opdef_1684x.bank_size * 16
+            tpu_offset = offset // tpu_lmem_size
+            offset = offset % tpu_lmem_size
+            lmem = self.lmem.reshape(64, -1)
+            n, c, h, w = mem.shape
+            dtype_size = np.dtype(mem.np_dtype).itemsize
+            spacial_size = h * w * dtype_size
+            tensor = lmem[: offset : offset + spacial_size * np.ceil(c / 64) * n]
+            tensor = tensor.reshape(n, -1, spacial_size)[
+                :, tpu_offset : tpu_offset + c, :
+            ]
+            return tensor.view(mem.np_dtype).reshape(n, c, h, w).copy()
 
     def get_return(self):
         outputs = self.current_function.signature[1]
         mems = [tensor2memref(x) for x in outputs]
         return [self.get_data(mem) for mem in mems]
 
-    def get_curernt_op(self):
+    def get_op(self, offset=0):
         ops = self.current_function.regions[0].blocks[0].operations
-        if self.current_line < len(ops):
-            return ops[self.current_line]
+        if self.current_line + offset < len(ops):
+            return ops[self.current_line + offset]
         raise ValueError("end of execution.")
 
     def push_status(self):
         if not self.record_status:
             return
-        op = self.get_curernt_op()
+        op = self.get_op()
         self.status[self.current_line] = self.get_data(op.results[0])
 
     def pop_status(self):
         if not self.record_status:
             raise Exception("No records, can not go back.")
 
-        op = self.get_curernt_op()
+        op = self.get_op()
         if self.current_line not in self.status:
             raise Exception("can not go back.")
         status = self.status[self.current_line]
@@ -331,7 +347,7 @@ class Tdb(cmd.Cmd):
     def next(self):
         self.push_status()
         try:
-            op = self.get_curernt_op()
+            op = self.get_op()
             op.compute()
             self.current_line += 1
         except ValueError as e:
