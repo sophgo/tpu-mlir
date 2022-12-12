@@ -106,7 +106,7 @@ class OnnxConverter(BaseConverter):
         self.weight_file = "{}_top_weight.npz".format(model_name)
         self.model = None
         self.mlir = None
-        self.node_name_mapping = {} # used in onnx opt
+        self.node_name_mapping = {}  # used in onnx opt
         self.load_onnx_model(onnx_file, input_shapes, output_names)
         self.init_MLIRImporter()
         self.preprocess_args = preprocess_args
@@ -119,7 +119,9 @@ class OnnxConverter(BaseConverter):
             "Sub": lambda node: self.convert_sub_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
+            "Cast": lambda node: self.convert_cast_op(node),
             "Concat": lambda node: self.convert_concat_op(node),
+            "Constant": lambda node: self.convert_constant_op(node),
             "Conv": lambda node: self.convert_conv_op(node),
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
@@ -497,6 +499,26 @@ class OnnxConverter(BaseConverter):
         new_op = self.mlir.create_batchnorm_op([op, mean, variance, gamma, beta], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
+    def convert_cast_op(self, onnx_node):
+        assert (onnx_node.op_type == "Cast")
+        if self.isWeight(onnx_node.inputs[0]):
+            dtype = onnx_node.attrs.get('to')
+            data = self.getWeight(onnx_node.inputs[0])
+            if dtype == "int64":
+                data = data.astype(np.int64)
+            elif dtype == "int32":
+                data = data.astype(np.int32)
+            elif dtype == "float32":
+                data = data.astype(np.float32)
+            elif dtype == "bool":
+                data = data.astype(np.bool)
+            else:
+                raise RuntimeError("{} dtype not support, please add".format(dtype))
+            self.addWeight(onnx_node.name, data)
+        else:
+            op = self.getOperand(onnx_node.inputs[0])
+            self.addOperand(onnx_node.name, op)
+
     def convert_concat_op(self, onnx_node):
         assert (onnx_node.op_type == "Concat")
         output_shape = self.getShape(onnx_node.name)
@@ -523,7 +545,7 @@ class OnnxConverter(BaseConverter):
                 operands.append(self.getOperand(x))
         if len(operands) == 0:
             # all weight
-            self.addWeight(onnx_node, weight_data)
+            self.addWeight(onnx_node.name, weight_data)
             return
         if weight_data is not None:
             w_name = onnx_node.name + "_weight"
@@ -535,6 +557,20 @@ class OnnxConverter(BaseConverter):
         p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "axis": axis}
         new_op = self.mlir.create_concat_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_constant_op(self, onnx_node):
+        """
+            Constant Op is tensor data at IR,
+            we change it to load weight tensor, and store
+        """
+        assert (onnx_node.op_type == "Constant")
+        onnx_tensor = onnx_node.attrs['value']
+        np_tensor = numpy_helper.to_array(onnx_tensor)
+        data_type = onnx_dtype(onnx_tensor.data_type)
+        if data_type in [np.float32, np.float64, np.int32, np.int64, np.uint8, np.bool]:
+            self.addWeight(onnx_node.name, np_tensor.astype(data_type))
+        else:
+            raise ValueError("Not Support {} type".format(data_type))
 
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
@@ -878,7 +914,7 @@ class OnnxConverter(BaseConverter):
             return
 
     def convert_shape_op(self, onnx_node):
-        assert(onnx_node.op_type == "Shape")
+        assert (onnx_node.op_type == "Shape")
         input_shape = self.getShape(onnx_node.inputs[0])
         data = np.array(input_shape)
         self.addWeight(onnx_node.name, data)
@@ -1627,8 +1663,11 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         alpha = onnx_node.attrs.get("alpha", 0.2)
         beta = onnx_node.attrs.get("beta", 0.5)
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
-             'alpha': alpha, 'beta': beta}
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'alpha': alpha,
+            'beta': beta
+        }
         new_op = self.mlir.create_hsigmoid_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -1641,4 +1680,3 @@ class OnnxConverter(BaseConverter):
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_hswish_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
-
