@@ -1279,11 +1279,13 @@ class OnnxConverter(BaseConverter):
                 axes[idx] += num_dims
         axes.sort()
         op = self.getOperand(onnx_node.inputs[0])
-        if onnx_node.op_type in ["ReduceMean", "ReduceMax"] and num_dims == 4 and axes == [2, 3]:
+        if onnx_node.op_type in ["ReduceMean", "ReduceMax"] \
+           and num_dims == 4 and axes == [2, 3] and input_shape[2] < 16 and input_shape[3] < 16:
             p = {
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
                 'kernel_shape': input_shape[2:],
-                'strides': [1, 1],
+                 #stride should be equal as the kernel shape in avgpool backend op if global avg/max pool
+                'strides': input_shape[2:],
                 'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
                 'do_relu': False,

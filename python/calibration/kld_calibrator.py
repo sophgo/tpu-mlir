@@ -183,6 +183,8 @@ class SimpleTuner:
                 x = np.load(data)
                 for input in self.module.input_names:
                     assert (input in x)
+                    #maybe have more than two input tensors, and have different user_count
+                    count = self.parser.get_user_count_by_op_name(input)
                     self.dq_activations[tune_idx][input] = [x[input], count]
                     self.ref_activations[tune_idx][input] = [x[input], count]
             elif self.ds.all_image:

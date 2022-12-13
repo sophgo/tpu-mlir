@@ -145,12 +145,56 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
 
 void ScaleLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::ScaleOp op) const {
-  lowering_common_bf16<tpu::ScaleOp>(rewriter, op);
+  //lowering_common_bf16<tpu::ScaleOp>(rewriter, op);
+    auto ctx = op->getContext();
+  OpBuilder builder(ctx);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    if (auto constOp =
+            dyn_cast<top::WeightOp>(op.getOperand(i).getDefiningOp())) {
+      operands.push_back(constOp.clone_bf16(op));
+    } else {
+      operands.push_back(op->getOperand(i));
+    }
+  }
+  // lshift
+  auto none = Module::getNoneOp(op);
+  operands.push_back(none);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto op_name = Module::getName(op.getOperation()).str();
+  auto newType = getQuantBF16Type(op->getResult(0));
+  rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
 
 void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::ScaleOp op) const {
-  lowering_common_f16<tpu::ScaleOp>(rewriter, op);
+  //lowering_common_f16<tpu::ScaleOp>(rewriter, op);
+  auto ctx = op->getContext();
+  OpBuilder builder(ctx);
+  std::vector<Value> operands;
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    if (auto constOp =
+            dyn_cast<top::WeightOp>(op.getOperand(i).getDefiningOp())) {
+      operands.push_back(constOp.clone_f16(op));
+    } else {
+      operands.push_back(op->getOperand(i));
+    }
+  }
+  // lshift
+  auto none = Module::getNoneOp(op);
+  operands.push_back(none);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  auto op_name = Module::getName(op.getOperation()).str();
+  auto newType = getQuantF16Type(op->getResult(0));
+  rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
 
 void ScaleLowering::LoweringQuantized(PatternRewriter &rewriter,
