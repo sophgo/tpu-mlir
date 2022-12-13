@@ -207,10 +207,10 @@ class ReForm(object):
                     if pnode.attr_name:
                         tensor_value = self.get_tensor_value(node_name)
                         pnode.attr_value = tensor_value
-                # get input from onnx node directly
-                pnode.output.clear()
-                pnode.output.append(node_name)
-            if node_name != pnode.output[0]:
+                if not pnode.output or pnode.is_tensor:
+                    pnode.output.clear()
+                    pnode.output.append(node_name)
+            if not node_name in pnode.output:
                 return False
         return True
 
@@ -460,6 +460,26 @@ def TorchLayerNormPattern():
                                dst_node=[layernorm]))
     return patterns
 
+############ torch.HardSigmodid ############
+def TorchHardSigmoidPattern():
+    # nomal case
+    add_input = OuterNode()
+    add_tensor = OuterNode(tensor_value=3)
+    clip_min = OuterNode(tensor_value=0)
+    clip_max = OuterNode(tensor_value=6)
+    div_tensor = OuterNode(tensor_value=6)
+
+    add = PatternNode("Add", [add_input, add_tensor])
+    clip = PatternNode("Clip", [add, clip_min, clip_max])
+    div = PatternNode("Div", [clip, div_tensor])
+    hard_sigmoid = PatternNode("HardSigmoid", [add_input])
+
+    patterns = []
+    patterns.append(ReformInfo(name="HardSigmoid",
+                               src_node=[add, clip, div],
+                               dst_node=[hard_sigmoid]))
+    return patterns
+
 ############ torch.HardSwish ############
 def TorchHardSwishPattern():
     input = OuterNode()
@@ -477,7 +497,8 @@ def onnx_opt(model, dump=False):
     # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,
-        #TorchHardSwishPattern,
+        TorchHardSigmoidPattern,
+        TorchHardSwishPattern,
     ]
 
     patterns = []

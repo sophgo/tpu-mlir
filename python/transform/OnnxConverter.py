@@ -1663,7 +1663,7 @@ class OnnxConverter(BaseConverter):
         assert (len(onnx_node.inputs) == 1)
         operand = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        alpha = onnx_node.attrs.get("alpha", 0.2)
+        alpha = onnx_node.attrs.get("alpha", 1./6)
         beta = onnx_node.attrs.get("beta", 0.5)
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
