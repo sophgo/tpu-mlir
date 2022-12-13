@@ -536,11 +536,92 @@ class CaffeConverter(BaseConverter):
 
     def convert_crop_op(self, layer):
         assert (self.layerType(layer) == 'Crop')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        input_dim = len(input_shape)
+        p = layer.crop_param
+        axis_index = p.axis
+        start_axis = axis_index
+        offset_size = len(p.offset)
+        crop_offset = [0] * input_dim
+        crop_step = [1] * input_dim
+        if offset_size > 1:
+            assert(offset_size + axis_index <= input_dim)
+        for i in range(input_dim):
+            offset = 0
+            if i >= start_axis:
+                if offset_size == 1:
+                    # If only one offset is given, all crops have the same offset.
+                    offset = p.offset[0]
+                elif offset_size > 1:
+                    # For several offsets, the number of offsets must be equal to the
+                    # number of dimensions to crop, that is dimensions after the axis.
+                    offset = p.offset[i - start_axis]
+            crop_offset[i] = offset
+
+        attrs = {
+            'name': self.get_loc(layer.top[0]),
+            'offset': list(crop_offset),
+            'steps': list(crop_step)
+        }
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_slice_op([in_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
+
 
     def convert_deconvolution_op(self, layer):
         assert (self.layerType(layer) == "Deconvolution")
-        raise RuntimeError("not implemented")
+        input_shape = self.getShape(layer.bottom[0])
+        p = layer.convolution_param
+        oc = p.num_output
+        dim = len(input_shape) - 2
+        g = p.group
+        kernel = [0, 0]
+        if len(p.kernel_size) != 0:
+            kernel[0] = p.kernel_size[1] if len(p.kernel_size) > 1 else p.kernel_size[0]
+            kernel[1] = p.kernel_size[0]
+        if p.HasField('kernel_h'):
+            kernel[0] = p.kernel_h
+        if p.HasField('kernel_w'):
+            kernel[1] = p.kernel_w
+        stride = [1, 1]
+        if len(p.stride) != 0:
+            stride[0] = p.stride[1] if len(p.stride) > 1 else p.stride[0]
+            stride[1] = p.stride[0]
+        if p.HasField('stride_h'):
+            stride[0] = p.stride_h
+        if p.HasField('stride_w'):
+            stride[1] = p.stride_w
+        padding = [0, 0]
+        if len(p.pad) != 0:
+            padding[0] = p.pad[1] if len(p.pad) > 1 else p.pad[0]
+            padding[1] = p.pad[0]
+        if p.HasField('pad_h'):
+            padding[0] = p.pad_h
+        if p.HasField('pad_w'):
+            padding[1] = p.pad_w
+        dilation = [1, 1]
+        if len(p.dilation) != 0:
+            dilation[0] = p.dilation[1] if len(p.dilation) > 1 else p.dilation[0]
+            dilation[1] = p.dilation[0]
+        in_op = self.getOperand(layer.bottom[0])
+        filter_op = self.blob_to_weight_op(layer, 0)
+        bias_op = self.mlir.none_op
+        if p.bias_term:
+            bias_op = self.blob_to_weight_op(layer, 1)
+        attrs = {
+            'name': self.get_loc(layer.top[0]),
+            'kernel_shape': kernel,
+            'strides': stride,
+            'dilations': dilation,
+            'pads': padding * dim,
+            'group': g,
+            'do_relu': False,
+            'ins': [],
+        }
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_conv_transpose_op([in_op, filter_op, bias_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_detection_output_op(self, layer):
         assert (self.layerType(layer) == "DetectionOutput")
@@ -675,7 +756,11 @@ class CaffeConverter(BaseConverter):
 
     def convert_reshape_op(self, layer):
         assert (self.layerType(layer) == 'Reshape')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        attrs = {'name': self.get_loc(layer.top[0])}
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_reshape_op([op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_reverse_op(self, layer):
         assert (self.layerType(layer) == 'Reverse')
