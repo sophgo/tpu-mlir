@@ -443,7 +443,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst",
   }];
 
   let arguments = (ins
-    Variadic<AnyTensor>:$input,
+    AnyTensor:$input,
     F64Attr:$const_val,
     DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,

@@ -78,22 +78,24 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
     spec.L_trans = false;
-    spec.R_trans = false;
+    spec.R_trans = right_transpose;
     spec.has_bias = with_bias;
     spec.hdim_is_batch = false;
     spec.requant_mode = -1;
     if (Quant::isUniformQuantized(input())) {
-      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
-      auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
-      assert(rshift_v->size() == 1);
-      assert(multiplier_v->size() == 1);
-      spec.requant_mode = static_cast<int>(quant_mode());
       spec.R_zp_is_const = true;
       spec.R_zp_const_val = right_zp;
-      spec.mul_val = multiplier_v->at(0);
-      spec.shift_val = -rshift_v->at(0);
-      auto output_type = Quant::getUniformQuantizedType(output());
-      spec.offset_val = output_type.getZeroPoint();
+      if (Quant::isUniformQuantized(output())) {
+        spec.requant_mode = static_cast<int>(quant_mode());
+        auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+        auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+        assert(rshift_v->size() == 1);
+        assert(multiplier_v->size() == 1);
+        spec.mul_val = multiplier_v->at(0);
+        spec.shift_val = -rshift_v->at(0);
+        auto output_type = Quant::getUniformQuantizedType(output());
+        spec.offset_val = output_type.getZeroPoint();
+      }
     }
 
     BM168x::call_global_func(
@@ -109,21 +111,25 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   spec.if_relu = relu;
   spec.relu_limit = relu_limit;
   spec.have_bias = with_bias;
+  spec.requant_mode = -1;
+  spec.R_transpose = right_transpose;
   if (Quant::isUniformQuantized(input())) {
-    auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
-    auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
-    assert(rshift_v->size() == 1);
-    assert(multiplier_v->size() == 1);
     spec.rshift = 0;
     spec.is_asymmetric = 1;
     spec.rzp_is_const = 1;
     spec.rzp_const_val = right_zp;
-    spec.requant_mode = static_cast<int>(quant_mode());
-    spec.mul_val = multiplier_v->at(0);
-    spec.shift_val = -rshift_v->at(0);
-    auto output_type = Quant::getUniformQuantizedType(output());
-    spec.offset_val = output_type.getZeroPoint();
-    spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+    if (Quant::isUniformQuantized(output())) {
+      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+      auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+      assert(rshift_v->size() == 1);
+      assert(multiplier_v->size() == 1);
+      spec.requant_mode = static_cast<int>(quant_mode());
+      spec.mul_val = multiplier_v->at(0);
+      spec.shift_val = -rshift_v->at(0);
+      auto output_type = Quant::getUniformQuantizedType(output());
+      spec.offset_val = output_type.getZeroPoint();
+      spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+    }
   }
   BM168x::call_global_func("backend_api_fc_global", &spec,
                                        sizeof(spec), input_spec->data(),

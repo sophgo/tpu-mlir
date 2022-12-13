@@ -165,24 +165,6 @@ void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
       operands.push_back(input_dequant);
     }
   }
-  // // dequant left
-  // std::string d0_name = Module::getName(op).str() + "_dequant0";
-  // auto name_loc_d0 = NameLoc::get(rewriter.getStringAttr(d0_name));
-  // auto input0_dequant =
-  //     do_dequant(name_loc_d0, addOp.inputs()[0], rewriter.getI32Type(),
-  //                multiplier_v[0], shift_v[0], tpu::DequantMode::TFlite,
-  //                lshift);
-  // // op->setOperand(0, input0_dequant);
-  // operands.push_back(input0_dequant);
-  // // dequant right
-  // std::string d1_name = Module::getName(op).str() + "_dequant1";
-  // auto name_loc_d1 = NameLoc::get(rewriter.getStringAttr(d1_name));
-  // auto input1_dequant =
-  //     do_dequant(name_loc_d1, addOp.inputs()[1], rewriter.getI32Type(),
-  //                multiplier_v[1], shift_v[1], tpu::DequantMode::TFlite,
-  //                lshift);
-  // // op->setOperand(1, input1_dequant);
-  // operands.push_back(input1_dequant);
   // add
   std::string suffix = "_add";
   std::string new_name = Module::getName(op).str() + suffix;

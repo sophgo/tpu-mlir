@@ -235,6 +235,8 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
 }
 
 Value do_reshape(Value input, RankedTensorType to_type);
+Value do_transpose(Location name_loc, Value input,
+                   std::vector<int64_t> &order);
 Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
                         int64_t shift, int64_t lshift);
 int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
