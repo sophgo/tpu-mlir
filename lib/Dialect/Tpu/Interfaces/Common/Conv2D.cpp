@@ -29,11 +29,11 @@ void tpu::Conv2DOp::parseParam(void *param) {
   p->has_bias = with_bias();
   p->n = i_s[0];
   p->ic = i_s[1];
-  p->ih = i_s[2];
-  p->iw = i_s[3];
+  p->ih = i_s.size() > 2 ? i_s[2] : 1;
+  p->iw = i_s.size() > 3 ? i_s[3] : 1;
   p->oc = o_s[1];
-  p->oh = o_s[2];
-  p->ow = o_s[3];
+  p->oh = o_s.size() > 2 ? o_s[2] : 1;
+  p->ow = o_s.size() > 3 ? o_s[3] : 1;
   auto kernel = Module::getI64Array(kernel_shape());
   p->kh = kernel->at(0);
   p->kw = kernel->at(1);

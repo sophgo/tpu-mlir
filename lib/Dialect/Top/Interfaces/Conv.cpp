@@ -58,10 +58,10 @@ void top::ConvOp::parseParam(void *param) {
     p->ins_w = ins->at(2);
   } else if (kernel->size() == 2) {
     p->id = p->od = p->kd = p->dd = p->sd = 1;
-    p->ih = i_s[2];
-    p->iw = i_s[3];
-    p->oh = o_s[2];
-    p->ow = o_s[3];
+    p->ih = i_s.size() > 2 ? i_s[2] : 1;
+    p->iw = i_s.size() > 3 ? i_s[3] : 1;
+    p->oh = o_s.size() > 2 ? o_s[2] : 1;
+    p->ow = o_s.size() > 3 ? o_s[3] : 1;
     p->kh = kernel->at(0);
     p->kw = kernel->at(1);
     p->pht = pads_v->at(0);

@@ -214,10 +214,14 @@ class CaffeConverter(BaseConverter):
         self.WeightToNpz(self.weight_file)
         print("Save mlir file: {}".format(mlir_file))
 
-    def blob_to_weight_op(self, layer, index):
+    def blob_to_weight_op(self, layer, index, shape:list=[]):
         name = layer.name + "_{}".format(index)
         blob = self.layer_dict[layer.name].blobs[index]
-        return self.create_weight_op(name, blob.data)
+        data = blob.data
+        if shape:
+            assert(np.prod(data.shape) == np.prod(shape))
+            data = data.reshape(shape)
+        return self.create_weight_op(name, data)
 
     def create_weight_op(self, name, data):
         self.addWeight(name, data)
@@ -377,8 +381,7 @@ class CaffeConverter(BaseConverter):
                 leading_pad = [p.pad, p.pad]
             else:
                 leading_pad = [p.pad_h, p.pad_w]
-            pads = set_caffe_pad(input_shape, output_shape, kernel_shape,
-                                 strides, leading_pad)
+            pads = set_caffe_pad(input_shape, output_shape, kernel_shape, strides, leading_pad)
         else:
             pads = [0] * 4
             strides = [1] * 2
@@ -410,7 +413,6 @@ class CaffeConverter(BaseConverter):
             return
         else:
             raise RuntimeError("Method {} not support".format(method))
-
 
     def convert_eltwise_op(self, layer):
         assert (self.layerType(layer) == "Eltwise")
@@ -618,7 +620,23 @@ class CaffeConverter(BaseConverter):
 
     def convert_prelu_op(self, layer):
         assert (self.layerType(layer) == 'PReLU')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        operands.append(op)
+        dim_len = len(input_shape)
+        assert (dim_len > 1)
+        slope_shape = [1] * dim_len
+        slope_shape[1] = input_shape[1]
+        # negative_slope
+        slope_op = self.blob_to_weight_op(layer, 0, slope_shape)
+        operands.append(slope_op)
+        param = {
+            'name': self.get_loc(layer.top[0]),
+        }
+        output_shape = input_shape
+        new_op = self.mlir.create_prelu_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_priorbox_op(self, layer):
         assert (self.layerType(layer) == 'PriorBox')
