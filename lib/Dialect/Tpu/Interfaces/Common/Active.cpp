@@ -19,6 +19,8 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
+static mlir::Type t;
+
 LogicalResult tpu::ActiveOp::init(InferenceParameter &p) { return success(); }
 void tpu::ActiveOp::deinit(InferenceParameter &p) {}
 
@@ -27,7 +29,13 @@ static inline double hsigmoid(double x, double alpha, double beta) {
 }
 
 static inline double hswish(double x) {
-  return x * std::max(0.0, std::min(1.0, x / 6 + 0.5)) ;
+  if (t.isBF16()) {
+    return BF16(x * std::max(0.0f, std::min(1.0f, BF16(BF16(x + 3.0) / 6.0))));
+  }
+  if (t.isF16()) {
+    return F16(x * std::max(0.0f, std::min(1.0f, F16(F16(x + 3.0) / 6.0))));
+  }
+  return x * std::max(0.0, std::min(1.0, (x + 3.0) / 6.0));
 }
 
 static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
@@ -38,6 +46,7 @@ static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 }
 
 LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
+  t = Module::getStorageType(output());
   auto num_element = Module::getNumElements(input());
   switch (mode()) {
   case ActiveMode::ABSVAL:
@@ -67,13 +76,21 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     const auto coeffs_ = Module::getF64Array(coeffs(), 2, 0);
     const double alpha = coeffs_->at(1);
     const double beta = coeffs_->at(0);
-    active_func(p, num_element,
-                [alpha, beta](double val) { return hsigmoid(val, alpha, beta); });
+    active_func(p, num_element, [alpha, beta](double val) {
+      return hsigmoid(val, alpha, beta);
+    });
     break;
   }
   case ActiveMode::HSWISH:
     active_func(p, num_element, [](double val) { return hswish(val); });
     break;
+  }
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
+  if (t.isBF16()) {
+    f32_to_bf16(p.outputs[0], p.outputs[0], num_element, is_cv18xx);
+  } else if (t.isF16()) {
+    f32_to_f16(p.outputs[0], p.outputs[0], num_element);
   }
   return success();
 }
