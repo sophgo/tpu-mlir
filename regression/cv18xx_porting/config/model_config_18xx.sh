@@ -36,6 +36,26 @@ export INPUT_NUM=100
 # default inference and test image
 export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/cat.jpg
 
+if [ $NET = "arcface_res50" ]; then
+export MODEL_DEF=$MODEL_PATH/face_recognition/arcface_res50/caffe/arcface_res50.prototxt
+export MODEL_DAT=$MODEL_PATH/face_recognition/arcface_res50/caffe/arcface_res50.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/Aaron_Eckhart_0001.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=data
+export INPUT_SHAPE=[[1,3,112,112]]
+export MODEL_CHANNEL_ORDER="rgb"
+export NET_INPUT_DIMS=112,112
+export IMAGE_RESIZE_DIMS=112,112
+export RAW_SCALE=255.0
+export MEAN=127.5,127.5,127.5
+export INPUT_SCALE=0.0078125,0.0078125,0.0078125
+export TOLERANCE_INT8=0.978,0.763
+export EXCEPTS=data
+export TOLERANCE_BF16=0.999,0.989
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+export CALI_IMAGES=$DATA_SET/lfw/lfw
+fi
+
 if [ $NET = "googlenet" ]; then
 export MODEL_DEF=$MODEL_PATH/imagenet/googlenet/caffe/deploy_bs1.prototxt
 export MODEL_DAT=$MODEL_PATH/imagenet/googlenet/caffe/bvlc_googlenet.caffemodel
@@ -53,7 +73,7 @@ export TOLERANCE_INT8=0.975,0.768     # 2 value
 export TOLERANCE_BF16=0.998,0.990     # 2 value
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
 export EXCEPTS=prob
-export MODEL_CHANNEL_ORDER=bgr      # set channel order
+export MODEL_CHANNEL_ORDER="bgr"      # set channel order
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012 # set calibration dateset
 fi
 
@@ -231,7 +251,7 @@ export OUTPUTS=fc8
 export TOLERANCE_INT8=0.997,0.928
 export TOLERANCE_BF16=0.999,0.994
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
-export MODEL_CHANNEL_ORDER=bgr
+export MODEL_CHANNEL_ORDER="bgr"
 export EXCEPTS=prob
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
