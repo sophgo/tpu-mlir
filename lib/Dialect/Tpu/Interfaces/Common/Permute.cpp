@@ -87,6 +87,19 @@ LogicalResult tpu::PermuteOp::inference(InferenceParameter &p) {
     if (num_dims > 4) {
       llvm_unreachable("permute shape not support");
     }
+  } else if (num_dims < 4) {
+    //reshape to 4 dims
+    int inserted_dims = 4 - num_dims;
+    in_shape.reserve(4);
+    order.reserve(4);
+    for (int i = 0; i < inserted_dims; i++) {
+      in_shape.insert(in_shape.begin(), 1);
+      order.insert(order.begin(), 1);
+    }
+
+    for (int i = inserted_dims; i < 4; i++) {
+      order[i] += inserted_dims;
+    }
   }
 
   in = in_shape[0], ic = in_shape[1], ih = in_shape[2], iw = in_shape[3];
