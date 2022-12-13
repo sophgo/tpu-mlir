@@ -168,6 +168,10 @@ class preprocess(object):
         if len(shape) >= 3:
             self.net_input_dims = shape[-2:]
             self.batch_size = shape[0]
+        elif len(shape) == 2:
+            #in some model, the input tensor's dims maybe 2
+            self.net_input_dims = shape[0:]
+            self.batch_size = shape[0]
         else:
             print('error, len(input_op.shape) < 3, maybe have some error')
             exit(1)

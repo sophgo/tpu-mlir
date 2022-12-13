@@ -477,7 +477,7 @@ def onnx_opt(model, dump=False):
     # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,
-        TorchHardSwishPattern,
+        #TorchHardSwishPattern,
     ]
 
     patterns = []

@@ -213,9 +213,12 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
+    std::vector<int64_t> input_shape;
+    Module::getShapeVec(op.input(), input_shape);
+
     auto cur_scale = dyn_cast<WeightOp>(op.scale().getDefiningOp());
     auto cur_bias = dyn_cast<WeightOp>(op.bias().getDefiningOp());
-    if (!(cur_scale && cur_bias)) {
+    if (!(cur_scale && cur_bias) || input_shape.size() < 4) {
       return failure();
     }
     int channel = cur_scale.getType().cast<RankedTensorType>().getNumElements();
