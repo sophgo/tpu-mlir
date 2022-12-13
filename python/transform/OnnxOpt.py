@@ -276,20 +276,26 @@ class ReForm(object):
                     matched_patterns.append(ReformInfo(name, unused_nodes, newNodes))
                     pnodeIdx = 0
                     unused_nodes = []
-                    # if pattern matched reset outer node
-                    for p in pattern:
-                        for pinp in p.input:
-                            if isinstance(pinp, OuterNode):
-                                pinp.output.clear()
+                    self.reset_outer_node(pattern)
             else:
                 pnodeIdx = 0
                 unused_nodes = []
+                self.reset_outer_node(pattern)
                 if node.op_type == pattern[0].op_type:
                     matched = self.match_node(node, pattern[0])
                 if matched:
                     pnodeIdx += 1
                     unused_nodes.append(node)
+                else:
+                    self.reset_outer_node(pattern)
         return matched_patterns
+
+    def reset_outer_node(self, pattern):
+        # reset outer node
+        for p in pattern:
+            for pinp in p.input:
+                if isinstance(pinp, OuterNode):
+                    pinp.output.clear()
 
     def replace_pattern(self, matched_pattern):
         # Recently we assume that subgraph to be replace has only one output
@@ -337,7 +343,7 @@ class ReForm(object):
             for node in src_nodes:
                 self.nodes.remove(node)
             self.remove_unused_tensor()
-            print("[ONNX OPT] RULE <<{}>> applied \n".format(reform_info.name))
+            # print("[ONNX OPT] RULE <<{}>> applied \n".format(reform_info.name))
 
     def remove_unused_tensor(self):
         # purging redundancy tensor
@@ -525,12 +531,32 @@ def TorchHardSwishPattern():
                                dst_nodes=[hard_swish]))
     return patterns
 
+def TorchHardSwishPattern2():
+    input = OuterNode()
+    add_tensor = OuterNode(tensor_value=3)
+    clip_min = OuterNode(tensor_value=0)
+    clip_max = OuterNode(tensor_value=6)
+    div_tensor = OuterNode(tensor_value=6)
+
+    add = PatternNode("Add", [input, add_tensor])
+    clip = PatternNode("Clip", [add, clip_min, clip_max])
+    mul = PatternNode("Mul", [input, clip])
+    div = PatternNode("Div", [mul, div_tensor])
+    hard_swish = PatternNode("HardSwish", [input])
+    patterns = []
+    patterns.append(ReformInfo(name="hardswish",
+                               src_nodes=[add, clip, mul, div],
+                               dst_nodes=[hard_swish]))
+    return patterns
+
+
 def onnx_opt(model, dump=False):
     # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,
         TorchHardSigmoidPattern,
         TorchHardSwishPattern,
+        TorchHardSwishPattern2,
     ]
 
     patterns = []

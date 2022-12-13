@@ -31,6 +31,10 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = p.inputs[0][i] + const_val().convertToDouble();
   }
+  if (do_relu()) {
+    auto limit = relu_limit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+  }
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
