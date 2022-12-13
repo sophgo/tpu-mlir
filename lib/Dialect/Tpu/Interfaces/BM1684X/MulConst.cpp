@@ -28,28 +28,28 @@ void tpu::MulConstOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  auto input_type = Module::getStorageType(input());
+
   constbinary_global_spec_t param = {0};
   param.common.binary_type = BINARY_MUL;
   param.common.if_relu = do_relu();
   param.common.relu_upper_limit = relu_limit().convertToDouble();
+  param.common.inversed = 0;
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
   if (Quant::isUniformQuantized(input())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.common.B_dtype = DTYPE_INT8;
-    param.common.inversed = 0;
     param.common.scale_A = multiplier();
     param.common.rshift_A = rshift();
-    BM168x::call_global_func(
-        "backend_api_constbinary_global", &param, sizeof(param),
-        input_spec->data(), output_spec->data());
   } else {
     param.common.B_const_val = const_val().convertToDouble();
-    param.common.B_dtype = DTYPE_FP32;
-    param.common.inversed = 0;
-
-    BM168x::call_global_func(
+    param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  }
+  BM168x::call_global_func(
         "backend_api_constbinary_global", &param, sizeof(param),
         input_spec->data(), output_spec->data());
-  }
+
 }
 
 // =========================================
@@ -78,6 +78,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
+  auto input_type = Module::getStorageType(input());
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   constbinary_local_spec_t param = {0};
@@ -85,16 +86,17 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.common.binary_type = BINARY_MUL;
   param.common.if_relu = do_relu();
   param.common.relu_upper_limit = relu_limit().convertToDouble();
+  param.common.inversed = 0;
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
   if (Quant::isUniformQuantized(input())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.common.B_dtype = DTYPE_INT8;
-    param.common.inversed = 0;
     param.common.scale_A = multiplier();
     param.common.rshift_A = rshift();
   } else {
     param.common.B_const_val = const_val().convertToDouble();
-    param.common.B_dtype = DTYPE_FP32; // assume coeff is fp32
-    param.common.inversed = 0;
+    param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
   }
   local_sec_info_t sec_info = {0};
   sec_info.n_slice = in_gi.n_slice;

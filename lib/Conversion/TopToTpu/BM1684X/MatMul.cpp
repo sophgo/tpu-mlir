@@ -216,13 +216,13 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto bias_type = RankedTensorType::get({col_size}, rewriter.getI32Type());
 
   if (can_merge_izp) {
-    attrs.push_back(rewriter.getNamedAttr(
-        "multipliers", rewriter.getI64ArrayAttr(multiplier)));
-    attrs.push_back(
-        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(-shift)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "quant_mode",
-        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
+//    attrs.push_back(rewriter.getNamedAttr(
+//        "multipliers", rewriter.getI64ArrayAttr(multiplier)));
+//    attrs.push_back(
+//        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(-shift)));
+//    attrs.push_back(rewriter.getNamedAttr(
+//        "quant_mode",
+//        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
     if (input_zeroPoint) {
       // merge input_zeroPoint to bias
       std::shared_ptr<std::vector<int8_t>> right_quant;
@@ -243,8 +243,19 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     } else {
       operands.push_back(op.bias());
     }
-    rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.output().getType(),
-                                               operands, attrs);
+    auto matmul_type = RankedTensorType::get(Module::getShape(op.output()),
+                                             rewriter.getI32Type());
+    auto new_name = Module::getName(op.getOperation()).str() + "_matmul_no_izp";
+    auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+    rewriter.setInsertionPointAfter(op);
+    auto newOp =
+        rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
+    // do requant
+    auto newValue = do_requant(op->getLoc(), newOp.output(), op.output().getType(), true,
+                   multiplier, shift, tpu::RequantMode::TFlite_Lshift);
+    rewriter.replaceOp(op, {newValue});
+    // rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.output().getType(),
+    //                                            operands, attrs);
   } else {
     // (M * K) (K * N)
     // (Input - izp) Matmul (Right - kzp) ==> (Input) Matmul (Right - kzp) -

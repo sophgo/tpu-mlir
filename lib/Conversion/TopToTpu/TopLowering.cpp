@@ -218,7 +218,7 @@ int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
   int32_t input_data = input_stype.isUnsignedInteger(8)
                            ? (uint8_t)(input_quant->at(0))
                            : input_quant->at(0);
-  int64_t tmp = (input_data - input_offset) * multiplier;
+  int64_t tmp = (input_data - input_offset) * (int64_t)multiplier;
   auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
   v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);
   return v;
@@ -236,14 +236,14 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
   if (input_stype.isUnsignedInteger(8)) {
     for (int64_t idx = 0; idx < num_elem; idx++) {
       int64_t tmp =
-          ((uint8_t)(input_quant->at(idx)) - input_offset) * multiplier;
+          ((uint8_t)(input_quant->at(idx)) - input_offset) * (int64_t)multiplier;
       auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
       v = RightShiftRound(v, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
       input_dequant->data()[idx] = v;
     }
   } else {
     for (int64_t idx = 0; idx < num_elem; idx++) {
-      int64_t tmp = (input_quant->at(idx) - input_offset) * multiplier;
+      int64_t tmp = (input_quant->at(idx) - input_offset) * (int64_t)multiplier;
       auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
       v = RightShiftRound(v, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
       input_dequant->data()[idx] = v;
@@ -289,6 +289,30 @@ mlir::Type getQuantBoolType(Value v) {
                                                 cali_type.getExpressedType(),
                                                 1.0, 0, qmin, qmax);
   return RankedTensorType::get(type.getShape(), qtype);
+}
+
+Value do_transpose(Location name_loc, Value input,
+                   std::vector<int64_t> &order) {
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(input);
+  auto inshape = Module::getShape(input);
+  auto dims = inshape.size();
+  auto type = Module::getElementType(input);
+  std::vector<int64_t> oshape;
+  for (int i = 0; i < dims; ++i) {
+    oshape.push_back(inshape[order[i]]);
+  }
+  auto new_type = RankedTensorType::get(oshape, type);
+  std::vector<NamedAttribute> attrs = {};
+  attrs.push_back(
+      builder.getNamedAttr("order", builder.getI64ArrayAttr(order)));
+  // std::string new_name =
+  //     Module::getName(input.getDefiningOp()).str() + "_transpose";
+  // auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
+  auto newOp = builder.create<tpu::PermuteOp>(name_loc, new_type,
+                                              ValueRange{input}, attrs);
+  return newOp.output();
 }
 
 } // namespace tpu_mlir
