@@ -22,28 +22,17 @@ extern "C" {
 #endif
 
 typedef struct {
-  unsigned long long input_global_addr;
-  unsigned long long scale_global_addr;
-  unsigned long long bias_global_addr;
-  unsigned long long shift_global_addr;
-  unsigned long long output_global_addr;
-  int input_n;
-  int input_c;
-  int input_h;
-  int input_w;
   int axis;
   int axis_num;
   int has_bias;
   int if_relu;
   float relu_upper_limit;
-  int input_sign;
   int scale_sign;
   int bias_sign;
   int merge_weight_bias;
-  ROUND_MODE_T round_mode;
-  DATA_TYPE_T idtype;
+  int round_mode;
   int version;
-} scale_global_param_t;
+} scale_global_spec_t;
 
 typedef struct {
   unsigned int input_local_addr;
@@ -89,17 +78,11 @@ typedef struct {
 
 // int8
 void tpu::ScaleOp::codegen_global_bm1684x() {
-  int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
-  scale_global_param_t p = {0};
-  p.input_global_addr = Module::getAddress(input());
-  p.scale_global_addr = Module::getAddress(scale());
-  p.bias_global_addr = Module::getAddress(bias());
-  p.output_global_addr = Module::getAddress(output());
-  p.input_n = (int)n;
-  p.input_c = (int)c;
-  p.input_h = (int)h;
-  p.input_w = (int)w;
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+
+  scale_global_spec_t p = {0};
   p.axis = 1;
   p.axis_num = 1;
   p.has_bias = true;
@@ -107,18 +90,15 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
   p.relu_upper_limit = relu_limit().convertToDouble();
   p.merge_weight_bias = 0;
   p.round_mode = ROUND_UP;
-  p.idtype = BM168x::getDataType(input());
   if (Quant::isUniformQuantized(input())) {
-    p.shift_global_addr = Module::getAddress(lshift());
-    p.input_sign = Module::getStorageType(input()).isSignedInteger();
     p.scale_sign = Module::getStorageType(scale()).isSignedInteger();
     p.bias_sign = Module::getStorageType(bias()).isSignedInteger();
     p.version = 10;
-    BM168x::call_global_func("backend_api_scale_global", &p,
-                                         sizeof(scale_global_param_t));
+    BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
+                           input_spec->data(), output_spec->data());
   } else {
-    BM168x::call_global_func("backend_api_scale_global", &p,
-                                         sizeof(scale_global_param_t));
+    BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
+                           input_spec->data(), output_spec->data());
   }
 }
 
