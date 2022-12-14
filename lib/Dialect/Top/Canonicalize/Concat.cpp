@@ -60,7 +60,7 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
       }
       if (i == 0) {
         bh = steps->at(2);
-        bw = steps->at(3);
+        bw = steps->at(3); 
         if (bh * bw != num_inputs) {
           return failure();
         }
@@ -126,6 +126,9 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
         rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(false)));
     attrs.push_back(
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
+    // change name of new op to avoid wrong comparison
+    concat_op->setLoc(NameLoc::get(
+        rewriter.getStringAttr(Module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
     rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
         concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
     return success();

@@ -1237,7 +1237,12 @@ class OnnxConverter(BaseConverter):
         if axis < 0:
             axis += num_dims
         slice = input_shape[axis] // num_output
-        split = onnx_node.attrs.get('split', [slice] * num_output)
+        split = None
+        # to avoid the case that split attr in input
+        if len(onnx_node.inputs) > 1:
+            split = self.getWeight(onnx_node.inputs[1]).astype(int)
+        else: 
+            split = onnx_node.attrs.get('split', [slice] * num_output)
         op = self.getOperand(onnx_node.inputs[0])
 
         offset = 0
