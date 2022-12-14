@@ -809,7 +809,36 @@ class CaffeConverter(BaseConverter):
 
     def convert_normalize_op(self, layer):
         assert (self.layerType(layer) == 'Normalize')
-        raise RuntimeError("not implemented")
+        input_shape = self.getShape(layer.bottom[0])
+        in_op = self.getOperand(layer.bottom[0])
+        operands = list()
+        operands.append(in_op)
+        p = layer.norm_param
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'across_spatial': p.across_spatial,
+            'channel_shared': p.channel_shared,
+        }
+        assert(False == p.across_spatial)
+        assert(len(input_shape) > 1)
+        c = input_shape[1]
+        #scale
+        scale_shape = [1, c]
+        scale_name = layer.name + "_0"
+        blob = self.layer_dict[layer.name].blobs[0]
+        scale_data = np.array
+        if p.channel_shared:
+            assert(blob.count == 1)
+            value = blob.data.flatten()[0]
+            scale_data = np.array([[value for i in range(c)]], dtype=float)
+        else:
+            assert(blob.count == c)
+            scale_data = blob.data.reshape(scale_shape)
+        scale_op = self.create_weight_op(scale_name, scale_data)
+        operands.append(scale_op)
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_normalize_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_mish_op(self, layer):
         assert (self.layerType(layer) == 'Mish')
