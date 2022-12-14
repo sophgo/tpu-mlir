@@ -157,8 +157,8 @@ class CaffeConverter(BaseConverter):
             o_shape = self.getShape(_name)
             for layer in self.layers:
                 if layer.name == _name and self.layerType(layer) == "DetectionOutput":
-                  o_shape[2] = layer.detection_output_param.keep_top_k
-                  break
+                    o_shape[2] = layer.detection_output_param.keep_top_k
+                    break
             output_shapes.append(self.getShape(_name))
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
@@ -220,12 +220,12 @@ class CaffeConverter(BaseConverter):
         self.WeightToNpz(self.weight_file)
         print("Save mlir file: {}".format(mlir_file))
 
-    def blob_to_weight_op(self, layer, index, shape:list=[]):
+    def blob_to_weight_op(self, layer, index, shape: list = []):
         name = layer.name + "_{}".format(index)
         blob = self.layer_dict[layer.name].blobs[index]
         data = blob.data
         if shape:
-            assert(np.prod(data.shape) == np.prod(shape))
+            assert (np.prod(data.shape) == np.prod(shape))
             data = data.reshape(shape)
         return self.create_weight_op(name, data)
 
@@ -490,11 +490,12 @@ class CaffeConverter(BaseConverter):
         if hasattr(p, 'bn_mode'):
             bn_mode = p.bn_mode
 
-        attrs = {'variance_epsilon': 1e-5, 'frozen': False, 'name': self.get_loc(layer.top[0])}
+        attrs = {'variance_epsilon': 1e-5, 'epsilon':1e-5, 'frozen': False, 'name': self.get_loc(layer.top[0])}
 
         if layer.HasField('bn_param'):
             if layer.bn_param.HasField('eps'):
                 attrs['variance_epsilon'] = layer.bn_param.eps
+                attrs['epsilon'] = layer.bn_param.eps
 
             if layer.bn_param.HasField('frozen'):
                 attrs['frozen'] = layer.bn_param.frozen
@@ -552,7 +553,7 @@ class CaffeConverter(BaseConverter):
         crop_offset = [0] * input_dim
         crop_step = [1] * input_dim
         if offset_size > 1:
-            assert(offset_size + axis_index <= input_dim)
+            assert (offset_size + axis_index <= input_dim)
         for i in range(input_dim):
             offset = 0
             if i >= start_axis:
@@ -573,7 +574,6 @@ class CaffeConverter(BaseConverter):
         output_shape = self.getShape(layer.top[0])
         new_op = self.mlir.create_slice_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
-
 
     def convert_deconvolution_op(self, layer):
         assert (self.layerType(layer) == "Deconvolution")
@@ -626,7 +626,8 @@ class CaffeConverter(BaseConverter):
             'ins': [],
         }
         output_shape = self.getShape(layer.top[0])
-        new_op = self.mlir.create_conv_transpose_op([in_op, filter_op, bias_op], output_shape, **attrs)
+        new_op = self.mlir.create_conv_transpose_op([in_op, filter_op, bias_op], output_shape,
+                                                    **attrs)
         self.addOperand(layer.top[0], new_op)
 
     def convert_detection_output_op(self, layer):
@@ -654,8 +655,8 @@ class CaffeConverter(BaseConverter):
             'keep_top_k': p.keep_top_k,
             'confidence_threshold': p.confidence_threshold
         }
-        assert(1.0 == p.nms_param.eta)
-        assert(False == p.variance_encoded_in_target)
+        assert (1.0 == p.nms_param.eta)
+        assert (False == p.variance_encoded_in_target)
         output_shape = [input_shape[0], 1, p.keep_top_k, 7]
         new_op = self.mlir.create_detection_output_op(operands, output_shape, **param)
         self.addOperand(layer.top[0], new_op)
@@ -692,7 +693,92 @@ class CaffeConverter(BaseConverter):
 
     def convert_interp_op(self, layer):
         assert (self.layerType(layer) == 'Interp')
-        raise RuntimeError("not implemented")
+        #
+        # all settings:
+        #
+        #height:33 width:65 (1, 1024, 1, 1)->(1, 1024, 33, 65)
+        #shrink_factor:2 (1, 3, 1025, 2049)->(1, 3, 513, 1025)
+        #zoom_factor: 2(1, 256, 33, 65)->(1, 256, 65, 129)
+        #pad_beg:0
+        #pad_end:0
+        # plz refer \interp_layer.cpp:30 for more parsing priority info
+
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        output_shape = list(input_shape)
+        p = layer.interp_param
+
+        assert (len(input_shape) == 4 and "current only support 4 dims")
+        assert ((p.pad_beg >= 0 and p.pad_end >= 0) and "pad only support positive")
+
+        # append pad
+        after_h = input_shape[2] + p.pad_beg + p.pad_end
+        after_w = input_shape[3] + p.pad_beg + p.pad_end
+
+        # only deal with > case
+        def shrink(after_h, after_w, p):
+            assert (p.shrink_factor >= 1 and "p.shrink_factor should > 1")
+            after_h = math.floor((after_h - 1) / p.shrink_factor) + 1
+            after_w = math.floor((after_w - 1) / p.shrink_factor) + 1
+            return after_h, after_w
+
+        def zoom(after_h, after_w, p):
+            assert (p.zoom_factor >= 1 and "p.zoom_factor should > 1")
+            after_h = after_h + math.floor((after_h - 1) * (p.zoom_factor - 1))
+            after_w = after_w + math.floor((after_w - 1) * (p.zoom_factor - 1))
+            return after_h, after_w
+
+        shrink_factor = 0
+        zoom_factor = 0
+        height = 0
+        width = 0
+
+        if hasattr(p, 'shrink_factor'):
+            if p.shrink_factor > 1:
+                shrink_factor = p.shrink_factor
+
+        if hasattr(p, 'zoom_factor'):
+            if p.zoom_factor > 1:
+                zoom_factor = p.zoom_factor
+        if hasattr(p, 'height'):
+            height = p.height
+        if hasattr(p, 'width'):
+            width = p.width
+
+        if shrink_factor and not zoom_factor:
+            after_h, after_w = shrink(after_h, after_w, p)
+        elif zoom_factor and not shrink_factor:
+            after_h, after_w = zoom(after_h, after_w, p)
+        elif height and width:
+            assert ((p.height > 0 and p.width > 0) and "height/width must > 0")
+            after_h = p.height
+            after_w = p.width
+        elif shrink_factor and zoom_factor:
+            after_h, after_w = shrink(after_h, after_w, p)
+            after_h, after_w = zoom(after_h, after_w, p)
+        else:
+            print("param is ", p)
+            assert (0 and "not support interp type")
+
+        output_shape[2] = after_h
+        output_shape[3] = after_w
+
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'height': p.height,
+            'pad_beg': p.pad_beg,
+            'pad_end': p.pad_end,
+            'shrink_factor': p.shrink_factor,
+            'width': p.width,
+            'zoom_factor': p.zoom_factor,
+            'scale_h': float(output_shape[2]) / input_shape[2],
+            'scale_w': float(output_shape[3]) / input_shape[3],
+            'coordinate_transformation_mode': 'align_corners',
+            'mode': 'linear',
+        }
+
+        new_op = self.mlir.create_interp_op([in_op], output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_lrn_op(self, layer):
         assert (self.layerType(layer) == 'LRN')
@@ -782,7 +868,7 @@ class CaffeConverter(BaseConverter):
         operands = list()
         operands.append(op0)
         operands.append(op1)
-        assert(len(input_shape0) == 4)
+        assert (len(input_shape0) == 4)
         h = input_shape0[2]
         w = input_shape0[3]
         p = layer.prior_box_param
@@ -790,7 +876,7 @@ class CaffeConverter(BaseConverter):
         max_size = [i for i in p.max_size]
         aspect_ratio = [i for i in p.aspect_ratio]
         variance = [i for i in p.variance]
-        assert(len(variance) == 4)
+        assert (len(variance) == 4)
 
         param = {
             'min_size': min_size,
@@ -838,14 +924,13 @@ class CaffeConverter(BaseConverter):
                     aspect_ratios_.append(1.0 / ar)
         num_priors = len(aspect_ratios_) * len(min_size)
         if len(max_size) > 0:
-            assert(len(max_size) == len(min_size))
+            assert (len(max_size) == len(min_size))
             num_priors += len(max_size)
         param['num_priors'] = num_priors
         param['aspect_ratios'] = aspect_ratios_
         param['use_default_aspect_ratio'] = use_default_aspect_ratio
         output_shape = [1, 2, int(h * w * num_priors * 4)]
-        new_op = self.mlir.create_priorbox_op(
-            operands, output_shape, **param)
+        new_op = self.mlir.create_priorbox_op(operands, output_shape, **param)
         self.addOperand(layer.top[0], new_op)
 
     def convert_proposal_op(self, layer):

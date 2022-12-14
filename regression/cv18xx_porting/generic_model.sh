@@ -59,11 +59,13 @@ fi
 
 model_data_opt=
 # caffemodel
-if [ x$MODEL_DAT != x ] && [ -f $MODEL_DAT ]; then
-  model_data_opt="--model_data ${MODEL_DAT}"
-else
-  echo "Error: no caffemodel"
-  exit 1
+if echo ${MODEL_DEF} | grep -q -E '\.prototxt$'; then
+  if [ x$MODEL_DAT != x ] && [ -f $MODEL_DAT ]; then
+    model_data_opt="--model_data ${MODEL_DAT}"
+  else
+    echo "Error: no caffemodel"
+    exit 1
+  fi
 fi
 
 excepts_opt=
