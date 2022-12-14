@@ -45,6 +45,7 @@ class Top:
     MinOp = 'top.Min'
     MulOp = 'top.Mul'
     MulConstOp = 'top.MulConst'
+    NormalizeOp = 'top.Normalize'
     PermuteOp = 'top.Permute'
     PadOp = 'top.Pad'
     PackOp = 'top.Pack'
@@ -424,6 +425,15 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.MatMulOp, operands, [output_type], **param)
 
+    def create_normalize_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'across_spatial': BoolAttr.get(kargs['across_spatial']),
+            'channel_shared': BoolAttr.get(kargs['channel_shared']),
+        }
+        return self.buildOp(Top.NormalizeOp, operands, [output_type], **param)
+
     def create_relu_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
@@ -772,8 +782,8 @@ class MLIRImporter(object):
             'clip': BoolAttr.get(kargs['clip']),
             'step_h': FloatAttr.get_f64(kargs['step_h']),
             'step_w': FloatAttr.get_f64(kargs['step_w']),
-            'img_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['step_h']),
-            'img_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['step_w']),
+            'img_h': IntegerAttr.get(self.mlir_type['INT64'], int(kargs['step_h'])),
+            'img_w': IntegerAttr.get(self.mlir_type['INT64'], int(kargs['step_w'])),
             'offset': FloatAttr.get_f64(kargs['offset']),
             'num_priors': IntegerAttr.get(self.mlir_type['INT64'], kargs['num_priors']),
             'use_default_aspect_ratio': BoolAttr.get(kargs['use_default_aspect_ratio']),

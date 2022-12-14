@@ -505,6 +505,34 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
+def Top_NormalizeOp: Top_Op<"Normalize", [InOutSameShape]> {
+  let summary = "Normalize operator";
+
+  let description = [{
+    Normalizes an array across batch and spatial dimensions.
+
+    Inputs:
+      `input`           : required, the input activation tensor.
+      `scale`           : required, the scale weight tensor. even channel_shared is true, extend to tensor.
+
+    Attributes:
+      `across_spatial`  : required, normalize cross channel or not.
+      `channel_shared`  : required, scale cross channel or not.
+      `name`            : required, name for calibration, comparing, or debug.
+
+    Result:
+      `output`          : result tensor.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$scale,
+    DefaultValuedAttr<BoolAttr, "false">:$across_spatial,
+    DefaultValuedAttr<BoolAttr, "true">:$channel_shared
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_ReciprocalOp: Top_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape]> {
   let summary = "Constant scalar divide tensor operator";
 

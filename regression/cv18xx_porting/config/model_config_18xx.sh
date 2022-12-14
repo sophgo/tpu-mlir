@@ -598,3 +598,217 @@ export EVAL_SCRIPT_INT8="eval_yolox.py"
 export CALI_IMAGES=$DATA_SET/coco/val2017/
 fi
 
+if [ $NET = "squeezenet_v1.1" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/squeezenet/caffe/deploy_v1.1.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/squeezenet/caffe/squeezenet_v1.1.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,227,227]]
+export NET_INPUT_DIMS=227,227
+export IMAGE_RESIZE_DIMS=227,227
+export RAW_SCALE=255.0
+export MEAN=104,117,123
+export INPUT_SCALE=1.0,1.0,1.0
+export INPUT=data
+export OUTPUTS=pool10
+export TOLERANCE_INT8=0.9,0.55
+export TOLERANCE_BF16=0.99,0.93
+export TOLERANCE_BF16_CMDBUF=0.99,0.93
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "densenet_121" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/densenet/caffe/DenseNet_121.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/densenet/caffe/DenseNet_121.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_NUM=1000
+export INPUT_SHAPE=[[1,3,224,224]]
+export NET_INPUT_DIMS=224,224
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MEAN=103.94,116.78,123.68
+export INPUT_SCALE=0.017,0.017,0.017
+export INPUT=input
+export OUTPUTS=fc6
+export TOLERANCE_INT8=0.82,0.37
+export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "senet_res50" ]; then
+export MODEL_DEF=$MODEL_PATH/imagenet/senet/caffe/se_resnet_50_v1_deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/imagenet/senet/caffe/se_resnet_50_v1.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_NUM=1000
+export INPUT_SHAPE=[[1,3,225,225]]
+export NET_INPUT_DIMS=225,225
+export IMAGE_RESIZE_DIMS=256,256
+export RAW_SCALE=255.0
+export MEAN=103.94,116.78,123.68
+export INPUT_SCALE=0.017,0.017,0.017
+export INPUT=input
+export OUTPUTS=fc6
+export TOLERANCE_INT8=0.96,0.73
+export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "retinaface_mnet25" ]; then
+export MODEL_DEF=$MODEL_PATH/face_detection/retinaface/caffe/mnet_320.prototxt
+export MODEL_DAT=$MODEL_PATH/face_detection/retinaface/caffe/mnet.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/parade.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=data
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,320,320]]
+export IMAGE_RESIZE_DIMS=320,320
+export NET_INPUT_DIMS=320,320
+export RAW_SCALE=255.0
+export MEAN=0,0,0
+export INPUT_SCALE=1,1,1
+export TOLERANCE_INT8=0.90,0.54
+# accuracy setting
+export NET_INPUT_DIMS=320,320
+export EVAL_MODEL_TYPE="widerface"
+export OBJ_THRESHOLD=0.005
+export NMS_THRESHOLD=0.45
+export DATASET=$DATA_SET/widerface/WIDER_val/images
+export ANNOTATION=$DATA_SET/widerface/wider_face_split
+export DO_FUSED_POSTPROCESS=1
+export MODEL_DEF_FUSED_POSTPROCESS=$MODEL_PATH/face_detection/retinaface/caffe/mnet_320_with_detection.prototxt
+export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16_CMDBUF=0.99,0.92
+export CALI_IMAGES=$DATA_SET/widerface/WIDER_val/images
+fi
+
+if [ $NET = "ssd300" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/ssd/caffe/ssd300/deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/ssd/caffe/ssd300/VGG_coco_SSD_300x300_iter_400000.caffemodel
+export LABEL_MAP=$MODEL_PATH/object_detection/ssd/caffe/ssd300/labelmap_coco.prototxt
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=data
+export INPUT_SHAPE=[[1,3,300,300]]
+export IMAGE_RESIZE_DIMS=300,300
+export NET_INPUT_DIMS=300,300
+export RAW_SCALE=255.0
+export MEAN=104.0,117.0,123.0
+export INPUT_SCALE=1.0,1.0,1.0
+export TOLERANCE_INT8=0.91,0.52
+export TOLERANCE_BF16=0.99,0.98
+export TOLERANCE_BF16_CMDBUF=0.99,0.91
+export EXCEPTS=detection_out
+# accuracy setting
+export EVAL_MODEL_TYPE="coco"
+export EVAL_SCRIPT_CAFFE="eval_caffe_detector_ssd.py"
+export EVAL_SCRIPT_INT8="eval_ssd.py"
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "yolo_v1_448" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v1/caffe/yolo_tiny_deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/yolo_v1/caffe/yolo_tiny.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=data
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,448,448]]
+export IMAGE_RESIZE_DIMS=448,448
+export NET_INPUT_DIMS=448,448
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export INPUT_SCALE=1.0,1.0,1.0
+export TOLERANCE_INT8=0.90,0.50
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "yolo_v3_608" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v3/caffe/608/yolov3_608.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/yolo_v3/caffe/608/yolov3_608.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=input
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,608,608]]
+export IMAGE_RESIZE_DIMS=608,608
+export RESIZE_KEEP_ASPECT_RATIO=1
+export NET_INPUT_DIMS=608,608
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export INPUT_SCALE=1.0,1.0,1.0
+export TOLERANCE_INT8=0.92,0.55
+export TOLERANCE_BF16=0.99,0.91
+export TOLERANCE_BF16_CMDBUF=0.99,0.98
+export YOLO_V3=1
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "yolo_v3_tiny" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v3/caffe/yolov3_tiny.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/yolo_v3/caffe/yolov3_tiny.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=input
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,416,416]]
+export IMAGE_RESIZE_DIMS=416,416
+export RESIZE_KEEP_ASPECT_RATIO=1
+export NET_INPUT_DIMS=416,416
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export INPUT_SCALE=1.0,1.0,1.0
+export EXCEPTS=output
+export TOLERANCE_INT8=0.93,0.54
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export YOLO_V3=1
+export TINY=1
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "faster_rcnn" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/frcn/caffe/faster_rcnn.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/frcn/caffe/faster_rcnn.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=input
+export INPUT_SHAPE=[[1,3,600,800]]
+export IMAGE_RESIZE_DIMS=600,800
+export RESIZE_KEEP_ASPECT_RATIO=1
+export NET_INPUT_DIMS=600,800
+export RAW_SCALE=255.0
+export MEAN=102.9801,115.9465,122.7717
+export INPUT_SCALE=1.0,1.0,1.0
+export EXCEPTS=proposal,roi_pool5,bbox_pred,output
+export TOLERANCE_INT8=0.84,0.41
+export DO_QUANT_BF16=0
+export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export EXCEPTS_BF16=proposal,roi_pool5,roi_pool5_quant,fc6_reshape,relu6,relu7,cls_score,cls_score_dequant,bbox_pred,bbox_pred_dequant,cls_prob #output is euclidean_similarity   = 0.995603
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "enet" ]; then
+export MODEL_DEF=$MODEL_PATH/segmentation/enet/caffe/enet_deploy_final.prototxt
+export MODEL_DAT=$MODEL_PATH/segmentation/enet/caffe/cityscapes_weights.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/data/city.png
+export COLOURS_LUT=$REGRESSION_PATH/data/city_lut.png
+export CALI_TABLE=$REGRESSION_PATH/data/cali_tables/enet_calibration_table
+export NET_INPUT_DIMS=512,1024
+export IMAGE_RESIZE_DIMS=512,1024
+export RAW_SCALE=255.0
+export MEAN=0,0,0
+export INPUT_SCALE=1.0
+export STD=1,1,1
+export CALIBRATION_IMAGE_COUNT=60
+export INPUT=data
+export OUTPUTS=deconv6_0_0
+export TOLERANCE_INT8=0.69,0.66,0.11
+export TOLERANCE_BF16=0.96,0.96,0.74
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export EXCEPTS=pool1_0_4_mask,pool2_0_4_mask,conv2_7_1_a,prelu2_7_0,prelu2_7_1,prelu3_3_0,conv3_3_1_a,prelu3_3_1,prelu4_0_4,upsample4_0_4,upsample5_0_4
+# export BATCH_SIZE=4
+fi
