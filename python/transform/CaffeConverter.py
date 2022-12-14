@@ -9,6 +9,7 @@ from .MLIRImporter import MLIRImporter
 from .BaseConverter import BaseConverter
 import numpy as np
 
+import math
 import caffe
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
@@ -153,6 +154,11 @@ class CaffeConverter(BaseConverter):
             input_shapes.append(self.getShape(_name))
         output_shapes = list()
         for _name in self.select_outputs:
+            o_shape = self.getShape(_name)
+            for layer in self.layers:
+                if layer.name == _name and self.layerType(layer) == "DetectionOutput":
+                  o_shape[2] = layer.detection_output_param.keep_top_k
+                  break
             output_shapes.append(self.getShape(_name))
         # init importer
         self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name)
@@ -625,7 +631,34 @@ class CaffeConverter(BaseConverter):
 
     def convert_detection_output_op(self, layer):
         assert (self.layerType(layer) == "DetectionOutput")
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        for bottom in layer.bottom:
+            op = self.getOperand(bottom)
+            operands.append(op)
+        p = layer.detection_output_param
+        code_type = "CORNER"
+        if p.code_type == 2:
+            code_type = "CENTER_SIZE"
+        elif p.code_type == 3:
+            code_type = "CORNER_SIZE"
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'num_classes': p.num_classes,
+            'share_location': p.share_location,
+            'background_label_id': p.background_label_id,
+            'nms_threshold': p.nms_param.nms_threshold,
+            'top_k': p.nms_param.top_k,
+            'code_type': code_type,
+            'keep_top_k': p.keep_top_k,
+            'confidence_threshold': p.confidence_threshold
+        }
+        assert(1.0 == p.nms_param.eta)
+        assert(False == p.variance_encoded_in_target)
+        output_shape = [input_shape[0], 1, p.keep_top_k, 7]
+        new_op = self.mlir.create_detection_output_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_dropout_op(self, layer):
         assert (self.layerType(layer) == 'Dropout')
@@ -642,7 +675,16 @@ class CaffeConverter(BaseConverter):
 
     def convert_flatten_op(self, layer):
         assert (self.layerType(layer) == 'Flatten')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        num_dims = len(input_shape)
+        assert (num_dims > 1)
+        output_shape = [input_shape[0], 1]
+        for i in range(1, num_dims):
+            output_shape[1] *= input_shape[i]
+        param = {'name': self.get_loc(layer.top[0])}
+        new_op = self.mlir.create_reshape_op([in_op], output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_frcn_detection_op(self, layer):
         assert (self.layerType(layer) == 'FrcnDetection')
@@ -693,7 +735,19 @@ class CaffeConverter(BaseConverter):
 
     def convert_permute_op(self, layer):
         assert (self.layerType(layer) == 'Permute')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        for bottom in layer.bottom:
+            op = self.getOperand(bottom)
+            operands.append(op)
+        p = layer.permute_param
+        output_shape = list(input_shape)
+        for i in range(len(p.order)):
+            output_shape[i] = input_shape[p.order[i]]
+        attrs = {'order': p.order, 'name': self.get_loc(layer.top[0])}
+        new_op = self.mlir.create_permute_op([in_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_power_op(self, layer):
         assert (self.layerType(layer) == 'Power')
@@ -721,7 +775,78 @@ class CaffeConverter(BaseConverter):
 
     def convert_priorbox_op(self, layer):
         assert (self.layerType(layer) == 'PriorBox')
-        raise RuntimeError("not implemented")
+        op0 = self.getOperand(layer.bottom[0])
+        op1 = self.getOperand(layer.bottom[1])
+        input_shape0 = self.getShape(layer.bottom[0])
+        input_shape1 = self.getShape(layer.bottom[1])
+        operands = list()
+        operands.append(op0)
+        operands.append(op1)
+        assert(len(input_shape0) == 4)
+        h = input_shape0[2]
+        w = input_shape0[3]
+        p = layer.prior_box_param
+        min_size = [i for i in p.min_size]
+        max_size = [i for i in p.max_size]
+        aspect_ratio = [i for i in p.aspect_ratio]
+        variance = [i for i in p.variance]
+        assert(len(variance) == 4)
+
+        param = {
+            'min_size': min_size,
+            'max_size': max_size,
+            'variance': variance,
+            'clip': p.clip,
+            'offset': p.offset,
+            'name': self.get_loc(layer.top[0]),
+        }
+
+        if p.HasField('step_h') and p.HasField('step_w'):
+            param['step_h'] = p.step_h
+            param['step_w'] = p.step_w
+        elif p.HasField('step'):
+            param['step_h'] = p.step
+            param['step_w'] = p.step
+        else:
+            param['step_h'] = 0
+            param['step_w'] = 0
+
+        if p.HasField('img_h') and p.HasField('img_w'):
+            param['img_h'] = p.img_h
+            param['img_w'] = p.img_w
+        elif p.HasField('img_size'):
+            param['img_h'] = p.img_size
+            param['img_w'] = p.img_size
+        else:
+            param['img_h'] = 0
+            param['img_w'] = 0
+        aspect_ratios_ = list()
+        use_default_aspect_ratio = True
+        if p.HasField('use_default_aspect_ratio'):
+            use_default_aspect_ratio = p.use_default_aspect_ratio
+        if use_default_aspect_ratio:
+            aspect_ratios_.append(1.0)
+        for ar in aspect_ratio:
+            already_exist = False
+            for j in aspect_ratios_:
+                if math.fabs(ar - j) < 1e-6:
+                    already_exist = True
+                    break
+            if not already_exist:
+                aspect_ratios_.append(ar)
+                if p.flip:
+                    aspect_ratios_.append(1.0 / ar)
+        num_priors = len(aspect_ratios_) * len(min_size)
+        if len(max_size) > 0:
+            assert(len(max_size) == len(min_size))
+            num_priors += len(max_size)
+        param['num_priors'] = num_priors
+        param['aspect_ratios'] = aspect_ratios_
+        param['use_default_aspect_ratio'] = use_default_aspect_ratio
+        output_shape = [1, 2, int(h * w * num_priors * 4)]
+        new_op = self.mlir.create_priorbox_op(
+            operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_proposal_op(self, layer):
         assert (self.layerType(layer) == 'Proposal')

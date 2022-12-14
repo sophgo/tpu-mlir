@@ -12,7 +12,8 @@
 namespace tpu_mlir {
 namespace cv18xx {
 
-static bool slice_fusible(tpu::SliceOp op) {
+template <typename T>
+static bool slice_fusible(T op) {
   std::vector<int64_t> i_s;
   std::vector<int64_t> o_s;
   std::vector<int> offset_4;
@@ -26,11 +27,14 @@ static bool is_fusible_op(Operation *op) {
   if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
     return !concatOp.only_merge();
   }
-  if (isa<tpu::ReshapeOp>(op)) {
+  if (isa<tpu::ReshapeOp>(op) || isa<top::ReshapeOp>(op)) {
     return false;
   }
   if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-    return slice_fusible(sliceOp);
+    return slice_fusible<tpu::SliceOp>(sliceOp);
+  }
+  if (auto sliceOp = dyn_cast<top::SliceOp>(op)) {
+    return false;
   }
   return true;
 }

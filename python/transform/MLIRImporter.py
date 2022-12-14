@@ -22,6 +22,7 @@ class Top:
     CompareConstOp = 'top.CompareConst'
     Depth2SpaceOp = 'top.Depth2Space'
     DeconvOp = 'top.Deconv'
+    DetectionOutputOp = 'top.DetectionOutput'
     DivOp = 'top.Div'
     ErfOp = 'top.Erf'
     ExpOp = 'top.Exp'
@@ -48,6 +49,7 @@ class Top:
     PadOp = 'top.Pad'
     PackOp = 'top.Pack'
     PowOp = 'top.Pow'
+    PriorBoxOp = 'top.PriorBox'
     PReluOp = 'top.PRelu'
     Reciprocal = 'top.Reciprocal'
     ReshapeOp = 'top.Reshape'
@@ -757,6 +759,41 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name']}
         return self.buildOp(Top.HardSwishOp, operands, [output_type], **param)
+
+    def create_priorbox_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'min_size': self.ArrayAttr(kargs['min_size'], 'F64'),
+            'max_size': self.ArrayAttr(kargs['max_size'], 'F64'),
+            'aspect_ratios': self.ArrayAttr(kargs['aspect_ratios'], 'F64'),
+            'variance': self.ArrayAttr(kargs['variance'], 'F64'),
+            'clip': BoolAttr.get(kargs['clip']),
+            'step_h': FloatAttr.get_f64(kargs['step_h']),
+            'step_w': FloatAttr.get_f64(kargs['step_w']),
+            'img_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['step_h']),
+            'img_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['step_w']),
+            'offset': FloatAttr.get_f64(kargs['offset']),
+            'num_priors': IntegerAttr.get(self.mlir_type['INT64'], kargs['num_priors']),
+            'use_default_aspect_ratio': BoolAttr.get(kargs['use_default_aspect_ratio']),
+        }
+        return self.buildOp(Top.PriorBoxOp, operands, [output_type], **param)
+
+    def create_detection_output_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'num_classes': IntegerAttr.get(self.mlir_type['INT64'], kargs['num_classes']),
+            'share_location': BoolAttr.get(kargs['share_location']),
+            'background_label_id': IntegerAttr.get(self.mlir_type['INT64'], kargs['background_label_id']),
+            'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
+            'top_k': IntegerAttr.get(self.mlir_type['INT64'], kargs['top_k']),
+            'code_type': StringAttr.get(kargs['code_type']),
+            'keep_top_k': IntegerAttr.get(self.mlir_type['INT64'], kargs['keep_top_k']),
+            'confidence_threshold': FloatAttr.get_f64(kargs['confidence_threshold']),
+        }
+        return self.buildOp(Top.DetectionOutputOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

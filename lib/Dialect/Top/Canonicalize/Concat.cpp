@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
 using namespace mlir;
 using namespace tpu_mlir::helper;
@@ -132,7 +132,60 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
   }
 };
 
+struct ConvertLoadWeightConcatToLoadWeightPattern
+    : public OpRewritePattern<ConcatOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConcatOp concat_op,
+                                PatternRewriter &rewriter) const override {
+    auto input_num = concat_op.getNumOperands();
+    for (uint32_t i = 0; i < input_num; ++i) {
+      auto formerOp = concat_op.getOperand(i).getDefiningOp();
+      if (!isa<WeightOp>(formerOp)) {
+        return failure();
+      }
+    }
+    uint32_t h, w;
+    int tmp_w = 0;
+
+    auto o_shape = Module::getShape(concat_op.output());
+    std::vector<float> resultT;
+
+    std::vector<std::shared_ptr<std::vector<float>>> input_load_weight(
+        input_num);
+
+    for (uint32_t i = 0; i < input_num; ++i) {
+      auto weight_op = cast<WeightOp>(concat_op.getOperand(i).getDefiningOp());
+      input_load_weight[i] = weight_op.read<float>();
+    }
+
+    for (uint32_t i = 0; i < input_num; ++i) {
+      auto w_shape = Module::getShape(concat_op.getOperand(i));
+      assert(3 == w_shape.size());
+      h = w_shape[1];
+      w = w_shape[2];
+
+      float *input_data = (float *)input_load_weight[i]->data();
+      for (uint32_t idx_h = 0; idx_h < h; ++idx_h) {
+        std::vector<float> shapeT(w);
+        int64_t insert_offset = ((idx_h + 1) * tmp_w) + idx_h * w;
+        shapeT.assign(&input_data[idx_h * w], &input_data[(idx_h + 1) * w]);
+        resultT.insert(resultT.begin() + insert_offset, shapeT.begin(),
+                       shapeT.end());
+      }
+      tmp_w += w;
+    }
+    auto tensor_name = Module::getName(concat_op, 0).str() + "loadweight";
+    auto weight_type = RankedTensorType::get(o_shape, rewriter.getF32Type());
+    auto weight_operand =
+        WeightOp::create(concat_op, tensor_name, resultT, weight_type);
+    rewriter.replaceOp(concat_op, weight_operand);
+    return success();
+  }
+};
+
 void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<ConcatToDepth2SpaceOp>(context);
+  results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
+                 ConcatToDepth2SpaceOp>(context);
 }

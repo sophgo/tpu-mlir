@@ -70,6 +70,7 @@ def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_h
 def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;
 def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
 def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
+def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -1175,6 +1176,49 @@ def Top_HardSwishOp : Top_Op<"HardSwish"> {
   }];
   let arguments = (ins
     AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_PriorBoxOp : Top_Op<"PriorBox"> {
+  let summary = "PriorBox operation";
+  let description = [{
+    Intended for use with MultiBox detection method to generate prior.
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    F64ArrayAttr:$min_size,
+    F64ArrayAttr:$max_size,
+    F64ArrayAttr:$aspect_ratios,
+    F64ArrayAttr:$variance,
+    DefaultValuedAttr<BoolAttr, "true">:$clip,
+    F64Attr:$step_h,
+    F64Attr:$step_w,
+    I64Attr:$img_h,
+    I64Attr:$img_w,
+    DefaultValuedAttr<F64Attr, "0.5">:$offset,
+    I64Attr:$num_priors,
+    DefaultValuedAttr<BoolAttr, "true">:$use_default_aspect_ratio
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
+def Top_DetectionOutputOp : Top_Op<"DetectionOutput"> {
+  let summary = "DetectionOutput operation";
+  let description = [{
+    Intended for use with MultiBox detection method to generate prior.
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    I64Attr:$num_classes,
+    I64Attr:$background_label_id,
+    F64Attr:$nms_threshold,
+    I64Attr:$top_k,
+    DetectionOutputCodeTypeAttr:$code_type,
+    I64Attr:$keep_top_k,
+    F64Attr:$confidence_threshold,
+    DefaultValuedAttr<BoolAttr, "true">:$share_location
   );
   let results = (outs AnyTensor:$output);
 }
