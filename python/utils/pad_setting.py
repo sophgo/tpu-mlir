@@ -23,6 +23,10 @@ def set_auto_pad(auto_pad, input_shape, kernel_shape, strides):
         padding_t = padding_along_h - padding_b
         padding_l = padding_along_w - padding_r
         pads = [padding_t, padding_l, padding_b, padding_r]
+    elif pad_method == "NOTSET":
+        pads = []
+    elif pad_method == "VALID":
+        pads = []
     else:
         raise RuntimeError("Not support {} pad method".format(pad_method))
     return pads
