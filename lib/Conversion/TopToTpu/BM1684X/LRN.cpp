@@ -15,14 +15,7 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void LRNLowering::LoweringF32(PatternRewriter &rewriter, top::LRNOp op) const {
-  std::vector<Value> operands;
-  operands.push_back(op.input());
-  auto none = Module::getNoneOp(op);
-  for (int i = 0; i < 2; i++) {
-    operands.push_back(none);
-  }
-  rewriter.replaceOpWithNewOp<tpu::LRNOp>(op, op.output().getType(), operands,
-                                          op->getAttrs());
+  lowering_common_f32<tpu::LRNOp>(rewriter, op, 3);
 }
 
 void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,

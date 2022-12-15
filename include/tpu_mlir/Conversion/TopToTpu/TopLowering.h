@@ -109,7 +109,7 @@ mlir::Type getQuantBoolType(Value v);
 // newType
 template <typename OpTy>
 static void lowering_common(PatternRewriter &rewriter, Operation *from,
-                            Type newType) {
+                            Type newType, int num_operands = 0) {
   auto stype = Module::getStorageType(newType);
   if (stype.isF16() || stype.isBF16()) {
     std::vector<Value> operands;
@@ -125,6 +125,20 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
         operands.push_back(in);
       }
     }
+    if (num_operands > from->getNumOperands()) {
+      auto noneOp = Module::getNoneOp(from);
+      for (int i = from->getNumOperands(); i < num_operands; i++) {
+        operands.push_back(noneOp);
+      }
+    }
+    rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands,
+                                      from->getAttrs());
+  } else if (num_operands > from->getNumOperands()) {
+    std::vector<Value> operands(from->operand_begin(), from->operand_end());
+    auto noneOp = Module::getNoneOp(from);
+    for (int i = from->getNumOperands(); i < num_operands; i++) {
+      operands.push_back(noneOp);
+    }
     rewriter.replaceOpWithNewOp<OpTy>(from, newType, operands,
                                       from->getAttrs());
   } else {
@@ -137,7 +151,8 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
 // f32 output to int8 output
 template <typename OpTy>
 static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
-                                 bool asymmetric = false) {
+                                 bool asymmetric = false,
+                                 int num_operands = 0) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
   lowering_common<OpTy>(rewriter, from, newType);
@@ -175,25 +190,29 @@ static mlir::Type getQuantF16Type(Value v) {
 
 // lowering to f32/f16/bf16
 template <typename OpTy, typename ElemTy>
-static void lowering_common_float(PatternRewriter &rewriter, Operation *from) {
+static void lowering_common_float(PatternRewriter &rewriter, Operation *from,
+                                  int num_operands = 0) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantFloatType<ElemTy>(from->getResult(0));
-  lowering_common<OpTy>(rewriter, from, newType);
+  lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 
 template <typename OpTy>
-static void lowering_common_f32(PatternRewriter &rewriter, Operation *from) {
-  lowering_common_float<OpTy, Float32Type>(rewriter, from);
+static void lowering_common_f32(PatternRewriter &rewriter, Operation *from,
+                                int num_operands = 0) {
+  lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands);
 }
 
 template <typename OpTy>
-static void lowering_common_bf16(PatternRewriter &rewriter, Operation *from) {
-  lowering_common_float<OpTy, BFloat16Type>(rewriter, from);
+static void lowering_common_bf16(PatternRewriter &rewriter, Operation *from,
+                                 int num_operands = 0) {
+  lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands);
 }
 
 template <typename OpTy>
-static void lowering_common_f16(PatternRewriter &rewriter, Operation *from) {
-  lowering_common_float<OpTy, Float16Type>(rewriter, from);
+static void lowering_common_f16(PatternRewriter &rewriter, Operation *from,
+                                int num_operands = 0) {
+  lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
 }
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)
@@ -235,8 +254,7 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
 }
 
 Value do_reshape(Value input, RankedTensorType to_type);
-Value do_transpose(Location name_loc, Value input,
-                   std::vector<int64_t> &order);
+Value do_transpose(Location name_loc, Value input, std::vector<int64_t> &order);
 Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
                         int64_t shift, int64_t lshift);
 int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
