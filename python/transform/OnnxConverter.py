@@ -589,9 +589,10 @@ class OnnxConverter(BaseConverter):
         strides = onnx_node.attrs.get("strides", dim * [1])
         auto_pad = onnx_node.attrs.get("auto_pad", None)
         input_shape = self.getShape(onnx_node.inputs[0])
+        pads = []
         if auto_pad:
             pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
-        else:
+        if len(pads) == 0:
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])
 
         operands = list()
@@ -734,9 +735,10 @@ class OnnxConverter(BaseConverter):
         input_shape = self.getShape(onnx_node.inputs[0])
         strides = onnx_node.attrs.get("strides", kernel_shape)
         auto_pad = onnx_node.attrs.get("auto_pad", b"NOTSET")
-        if auto_pad != b"NOTSET":
+        pads = []
+        if auto_pad:
             pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
-        else:
+        if len(pads) == 0:
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
@@ -759,9 +761,10 @@ class OnnxConverter(BaseConverter):
         strides = onnx_node.attrs.get("strides", kernel_shape)
         input_shape = self.getShape(onnx_node.inputs[0])
         auto_pad = onnx_node.attrs.get("auto_pad", None)
-        if auto_pad and auto_pad != b'NOTSET':
+        pads = []
+        if auto_pad:
             pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
-        else:
+        if len(pads) == 0:
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
@@ -1073,7 +1076,10 @@ class OnnxConverter(BaseConverter):
         mode = onnx_node.attrs.get("mode", "constant")
         if isinstance(mode, bytes):
             mode = mode.decode("utf-8")
-        pads = list(self.getWeight(onnx_node.inputs[1]))
+        if len(onnx_node.inputs) > 1:
+            pads = list(self.getWeight(onnx_node.inputs[1]))
+        else:
+            pads = onnx_node.attrs.get("pads")
         if pads == None:
             raise RuntimeError("No paddings value")
         if len(pads) != 2 * len(input_shape):
@@ -1248,7 +1254,7 @@ class OnnxConverter(BaseConverter):
         # to avoid the case that split attr in input
         if len(onnx_node.inputs) > 1:
             split = self.getWeight(onnx_node.inputs[1]).astype(int)
-        else: 
+        else:
             split = onnx_node.attrs.get('split', [slice] * num_output)
         op = self.getOperand(onnx_node.inputs[0])
 
