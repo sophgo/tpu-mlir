@@ -135,6 +135,9 @@ public:
     if (isa<top::AbsOp>(op)) {
       min = -info.threshold;
       max = info.threshold;
+    } else if (isa<top::SigmoidOp>(op)) {
+      min = 0;
+      max = 1;
     } else if (isAsymmetric == false) {
       min = info.min < 0 ? (-info.threshold) : 0;
       max = info.threshold;

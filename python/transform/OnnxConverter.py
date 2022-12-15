@@ -233,13 +233,19 @@ class OnnxConverter(BaseConverter):
             self.model.graph.output.append(x)
             self.all_outputs.append(x.name)
             output_names.remove(x.name)
-        if len(output_names) != 0:
-            raise RuntimeError("Error, can't find {} in model".format(output_names))
         # node map name
         self.all_nodes = {}
         for x in self.model.graph.node:
             for o in x.output:
                 self.all_nodes[o] = x
+                if o in output_names:
+                    intermediate_layer_value_info = onnx.helper.ValueInfoProto()
+                    intermediate_layer_value_info.name = o
+                    self.model.graph.output.append(intermediate_layer_value_info)
+                    output_names.remove(o)
+                    self.all_outputs.append(o)
+        if len(output_names) != 0:
+            raise RuntimeError("Error, can't find {} in model".format(output_names))
         # weight map name
         self.all_weights = {}
         for w in self.model.graph.initializer:
@@ -299,6 +305,8 @@ class OnnxConverter(BaseConverter):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
+        if output_names:
+            self.select_output(output_names)
         self.clean_up_shape_info()
         self.input_names = self.get_input_names(self.model)
         if "image_shape" in self.input_names:
@@ -310,8 +318,6 @@ class OnnxConverter(BaseConverter):
         model_simplified, is_ok = onnxsim.simplify(self.model)
         if is_ok:
             self.model = onnx.shape_inference.infer_shapes(model_simplified)
-        if output_names:
-            self.select_output(output_names)
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
@@ -396,6 +402,7 @@ class OnnxConverter(BaseConverter):
         def NoneAndRaise(node):
             raise RuntimeError("{} Op not support now".format(node.op_type))
 
+        self.converted_nodes.clear()
         for n in self.model.graph.node:
             node = OnnxNode(n)
             self.converted_nodes.append(node)
@@ -1289,7 +1296,7 @@ class OnnxConverter(BaseConverter):
             p = {
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
                 'kernel_shape': input_shape[2:],
-                 #stride should be equal as the kernel shape in avgpool backend op if global avg/max pool
+                #stride should be equal as the kernel shape in avgpool backend op if global avg/max pool
                 'strides': input_shape[2:],
                 'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
@@ -1668,7 +1675,7 @@ class OnnxConverter(BaseConverter):
         assert (len(onnx_node.inputs) == 1)
         operand = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        alpha = onnx_node.attrs.get("alpha", 1./6)
+        alpha = onnx_node.attrs.get("alpha", 1. / 6)
         beta = onnx_node.attrs.get("beta", 0.5)
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),

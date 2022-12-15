@@ -23,6 +23,30 @@ using namespace mlir;
 
 namespace tpu_mlir {
 
+static void BackwardReshape(top::ReshapeOp op) {
+  auto in = op.input();
+  auto out = op.output();
+  auto in_type = in.getType().cast<RankedTensorType>();
+  auto out_qtype = Quant::getCalibratedType(out);
+  auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
+  in.setType(new_type);
+  if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
+    BackwardReshape(reshapeOp);
+  }
+}
+
+static void ForwardReshape(top::ReshapeOp op) {
+  auto in = op.input();
+  auto out = op.output();
+  auto out_type = out.getType().cast<RankedTensorType>();
+  auto in_qtype = Quant::getCalibratedType(in);
+  auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+  out.setType(new_type);
+  if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
+    ForwardReshape(reshapeOp);
+  }
+}
+
 template <typename TyOp>
 struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -45,6 +69,9 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
     auto out_type = out.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
     out.setType(new_type);
+    if (auto reshapeOp = dyn_cast<top::ReshapeOp>(out.getDefiningOp())) {
+      ForwardReshape(reshapeOp);
+    }
     return success();
   }
 };
@@ -75,6 +102,9 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
     auto in_type = in.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
     in.setType(new_type);
+    if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
+      BackwardReshape(reshapeOp);
+    }
     return success();
   }
 };
@@ -151,16 +181,42 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
       }
     }
 
-    auto out = op.output();
+    Value out = op.output();
     if (!Quant::isCalibratedType(out)) {
       return failure();
     }
     auto out_qtype = Quant::getCalibratedType(out);
+    // checkout all input cali is the same
+    auto in_0 = op.inputs()[0];
+    auto in_0_qtype = Quant::getCalibratedType(in_0);
+    bool same = true;
+    for (uint i = 1; i < op.inputs().size(); i++) {
+      auto qtype = Quant::getCalibratedType(op.inputs()[i]);
+      if (qtype.getMin() != in_0_qtype.getMin() ||
+          qtype.getMax() != in_0_qtype.getMax()) {
+        same = false;
+        break;
+      }
+    }
+    if (same) {
+      if (out_qtype.getMin() == in_0_qtype.getMin() &&
+          out_qtype.getMax() == in_0_qtype.getMax()) {
+        // do nothing
+        return failure();
+      }
+      auto out_type = out.getType().cast<RankedTensorType>();
+      auto new_type = RankedTensorType::get(out_type.getShape(), in_0_qtype);
+      out.setType(new_type);
+      return success();
+    }
 
     for (Value in : op.inputs()) {
       auto in_type = in.getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
       in.setType(new_type);
+      if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
+        BackwardReshape(reshapeOp);
+      }
     }
     return success();
   }
@@ -230,6 +286,9 @@ protected:
     }
     // clang-format off
     RewritePatternSet patterns(ctx_);
+    patterns.add<ForwardCalibartion<top::ReshapeOp>>(ctx_);
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    patterns.clear();
     patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
                  BackwardMutiInSingleOut<top::MinOp>,
                  BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
@@ -237,7 +296,6 @@ protected:
     patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
-                 BackwardCalibartion<top::ReshapeOp>,
                  BackwardCalibartion<top::LeakyReluOp>,
                  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
@@ -248,10 +306,10 @@ protected:
     patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
+                 ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::SliceOp>,
                  ForwardCalibartion<top::TileOp>,
                  ForwardCalibartion<top::PadOp>,
-                 ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::PermuteOp>,
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>,
