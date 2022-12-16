@@ -1251,4 +1251,26 @@ def Top_DetectionOutputOp : Top_Op<"DetectionOutput"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
+  let summary = "YoloDetection operator";
+  let description = [{
+    Perform yolo detection on feature map
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    I64Attr:$net_input_h,
+    I64Attr:$net_input_w,
+    F64Attr:$nms_threshold,
+    F64Attr:$obj_threshold,
+    I64Attr:$keep_topk,
+    DefaultValuedAttr<BoolAttr, "false">:$spp_net,
+    DefaultValuedAttr<BoolAttr, "false">:$tiny,
+    DefaultValuedAttr<BoolAttr, "false">:$yolo_v4,
+    DefaultValuedAttr<I64Attr, "80">:$class_num,
+    DefaultValuedAttr<StrAttr, "">:$anchors
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // Top_OPS
