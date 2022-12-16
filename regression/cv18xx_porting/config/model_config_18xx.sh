@@ -369,7 +369,7 @@ export RESIZE_KEEP_ASPECT_RATIO=1
 export NET_INPUT_DIMS=608,608
 export RAW_SCALE=1.0
 export MEAN=0,0,0
-export INPUT_SCALE=1.0,1.0,1.0
+export INPUT_SCALE=0.00392,0.00392,0.00392 #1.0,1.0,1.0
 export EXCEPTS=output
 export TOLERANCE_INT8=0.86,0.32
 export TOLERANCE_BF16=0.99,0.96
@@ -422,7 +422,7 @@ export EXCEPTS=upsample2,upsample1,pool1_mask,pool2_mask
 export DO_QUANT_BF16=0
 export TOLERANCE_BF16=0.99,0.87
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
-export CALI_IMAGES=$DATA_SET/widerface/WIDER_val
+export CALI_IMAGES=$DATA_SET/VOCdevkit/VOC2012/JPEGImages
 fi
 
 if [ $NET = "resnet_res_blstm" ]; then
