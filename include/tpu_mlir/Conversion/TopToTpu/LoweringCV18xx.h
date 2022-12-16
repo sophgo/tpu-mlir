@@ -65,5 +65,6 @@ LOWERING_CV18XX(Softmax)
 LOWERING_CV18XX(Sub)
 LOWERING_CV18XX(Tile)
 LOWERING_CV18XX(Upsample)
+LOWERING_CV18XX(YoloDetection)
 } // namespace cv18xx
 } // namespace tpu_mlir

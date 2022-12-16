@@ -490,7 +490,12 @@ class CaffeConverter(BaseConverter):
         if hasattr(p, 'bn_mode'):
             bn_mode = p.bn_mode
 
-        attrs = {'variance_epsilon': 1e-5, 'epsilon':1e-5, 'frozen': False, 'name': self.get_loc(layer.top[0])}
+        attrs = {
+            'variance_epsilon': 1e-5,
+            'epsilon': 1e-5,
+            'frozen': False,
+            'name': self.get_loc(layer.top[0])
+        }
 
         if layer.HasField('bn_param'):
             if layer.bn_param.HasField('eps'):
@@ -819,8 +824,8 @@ class CaffeConverter(BaseConverter):
             'across_spatial': p.across_spatial,
             'channel_shared': p.channel_shared,
         }
-        assert(False == p.across_spatial)
-        assert(len(input_shape) > 1)
+        assert (False == p.across_spatial)
+        assert (len(input_shape) > 1)
         c = input_shape[1]
         #scale
         scale_shape = [1, c]
@@ -828,11 +833,11 @@ class CaffeConverter(BaseConverter):
         blob = self.layer_dict[layer.name].blobs[0]
         scale_data = np.array
         if p.channel_shared:
-            assert(blob.count == 1)
+            assert (blob.count == 1)
             value = blob.data.flatten()[0]
             scale_data = np.array([[value for i in range(c)]], dtype=float)
         else:
-            assert(blob.count == c)
+            assert (blob.count == c)
             scale_data = blob.data.reshape(scale_shape)
         scale_op = self.create_weight_op(scale_name, scale_data)
         operands.append(scale_op)
@@ -1066,4 +1071,36 @@ class CaffeConverter(BaseConverter):
 
     def convert_yolo_detection_op(self, layer):
         assert (self.layerType(layer) == 'YoloDetection')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+
+        operands = list()
+        for bottom in layer.bottom:
+            op = self.getOperand(bottom)
+            operands.append(op)
+        p = layer.yolo_detection_param
+
+        if not p.anchors:
+            if p.tiny:
+                p.anchors = "10,14,23,27,37,58,81,82,135,169,344,319"
+            elif p.yolo_v4:
+                p.anchors = "142,110,192,243,459,401,36,75,76,55,72,146,12,16,19,36,40,28"
+            else:
+                p.anchors = "10,13,16,30,33,23,30,61,62,45,59,119,116,90,156,198,373,326"
+
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'net_input_h': p.net_input_h,
+            "net_input_w": p.net_input_w,
+            "nms_threshold": p.nms_threshold,
+            "obj_threshold": p.obj_threshold,
+            "keep_topk": p.keep_topk,
+            "spp_net": p.spp_net,
+            "tiny": p.tiny,
+            "yolo_v4": p.yolo_v4,
+            "class_num": p.class_num,
+            "anchors": p.anchors
+        }
+        output_shape = [input_shape[0], 1, p.keep_topk, 6]
+        new_op = self.mlir.create_yolo_detection_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)

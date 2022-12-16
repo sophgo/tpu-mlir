@@ -70,6 +70,7 @@ class Top:
     UpsampleOp = 'top.Upsample'
     WeightOp = 'top.Weight'
     WhereOp = 'top.Where'
+    YoloDetection = 'top.YoloDetection'
 
 
 class State:
@@ -804,6 +805,23 @@ class MLIRImporter(object):
             'confidence_threshold': FloatAttr.get_f64(kargs['confidence_threshold']),
         }
         return self.buildOp(Top.DetectionOutputOp, operands, [output_type], **param)
+
+    def create_yolo_detection_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'class_num': IntegerAttr.get(self.mlir_type['INT64'], kargs['class_num']),
+            'net_input_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['net_input_h']),
+            'net_input_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['net_input_w']),
+            'keep_topk': IntegerAttr.get(self.mlir_type['INT64'], kargs['keep_topk']),
+            'spp_net': BoolAttr.get(kargs['spp_net']),
+            'tiny': BoolAttr.get(kargs['tiny']),
+            'yolo_v4': BoolAttr.get(kargs['yolo_v4']),
+            'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
+            'obj_threshold': FloatAttr.get_f64(kargs['obj_threshold']),
+            'anchors': StringAttr.get(kargs['anchors']),
+        }
+        return self.buildOp(Top.YoloDetection, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
