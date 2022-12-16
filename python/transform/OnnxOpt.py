@@ -252,6 +252,11 @@ class ReForm(object):
                     matched_patterns.append(ReformInfo(name, unused_nodes, newNodes))
                     pnodeIdx = 0
                     unused_nodes = []
+                    # if pattern matched reset outer node
+                    for p in pattern:
+                        for pinp in p.input:
+                            if isinstance(pinp, OuterNode):
+                                pinp.output.clear()
             else:
                 pnodeIdx = 0
                 unused_nodes = []
