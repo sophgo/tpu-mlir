@@ -344,8 +344,13 @@ class CaffeConverter(BaseConverter):
             if layer.scale_param.bias_term:
                 bias_op = self.blob_to_weight_op(layer, 1)
             else:
+              if len(layer.bottom) > 1:
                 bias_op = self.create_weight_op(
                     layer.name + "_1", np.zeros(self.getShape(layer.bottom[1]), np.float32))
+              else:
+                bias_op = self.create_weight_op(
+                    layer.name + "_1", np.zeros(input_shape[1], np.float32))
+
             new_op = self.mlir.create_scale_op([in_op, scale_op, bias_op], output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
 
@@ -517,6 +522,9 @@ class CaffeConverter(BaseConverter):
             new_op = self.mlir.create_scale_op(operands, output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
         else:
+            if len(operands) == 5:
+                operands[1],operands[3] = operands[3],operands[1]
+                operands[2],operands[4] = operands[4],operands[2]
             new_op = self.mlir.create_batchnorm_op(operands, output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
 
@@ -779,7 +787,7 @@ class CaffeConverter(BaseConverter):
             'scale_h': float(output_shape[2]) / input_shape[2],
             'scale_w': float(output_shape[3]) / input_shape[3],
             'coordinate_transformation_mode': 'align_corners',
-            'mode': 'linear',
+            'mode': 'nearest',
         }
 
         new_op = self.mlir.create_interp_op([in_op], output_shape, **param)

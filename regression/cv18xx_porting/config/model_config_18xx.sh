@@ -229,7 +229,7 @@ export INPUT_SCALE=1.0,1.0,1.0
 export INPUT=data
 export OUTPUTS=prob
 export EXCEPTS=data
-export TOLERANCE_INT8=0.96,0.70
+export TOLERANCE_INT8=0.91,0.56 #0.96,0.70
 export TOLERANCE_BF16=0.99,0.95
 export TOLERANCE_BF16_CMDBUF=0.99,0.97
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
@@ -398,7 +398,8 @@ export DO_QUANT_BF16=0
 export TOLERANCE_BF16=0.99,0.96
 export TOLERANCE_BF16_CMDBUF=0.99,0.96
 export EVAL_MODEL_TYPE="isbi"
-export CALI_IMAGES=$DATA_SET/widerface/WIDER_val
+export CALI_IMAGES=$DATA_SET/VOCdevkit/VOC2012/JPEGImages
+export INPUT_NUM=30
 fi
 
 if [ $NET = "segnet" ]; then
