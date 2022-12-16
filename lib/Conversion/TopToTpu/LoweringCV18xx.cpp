@@ -54,7 +54,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       SoftmaxLowering,
       SubLowering,
       TileLowering,
-      UpsampleLowering
+      UpsampleLowering,
+      YoloDetectionLowering
       // clang-format on
       >(patterns->getContext());
 }
