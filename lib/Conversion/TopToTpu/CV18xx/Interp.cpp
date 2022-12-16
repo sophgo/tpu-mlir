@@ -505,7 +505,8 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
       stride[1] = kw;
       padding[2] = padding[3] = padding[0] = padding[1] = 0;
 
-      ins.clear();
+      ins[0] = 0;
+      ins[1] = 0;
     }
 
     // init filter
@@ -785,7 +786,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   } else if (mode.value() == tpu::ResizeMode::nearest) {
     if (std::ceil(scale_h) == std::floor(scale_h) &&
         std::ceil(scale_w) == std::floor(scale_w)) {
-      assert(0 && "already converted in onnx_convert\n");
+      //assert(0 && "already converted in onnx_convert\n");
+      // from caffe
     }
   } else {
     llvm_unreachable("Unsupport interp mode type \n");
@@ -798,11 +800,14 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   if (oh > ih && ow > iw) {
     is_shrink = false;
   }
+#if 0
+  // TODO support
   if (!is_shrink) {
     if (resize_to_conv_deconv(rewriter, op, in, ic, ih, iw, on, oc, oh, ow)) {
       return;
     }
   }
+#endif
 
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
