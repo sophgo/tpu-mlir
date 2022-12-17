@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm"]
+Failed_Cases = ["TorchLayerNorm", "QDQConv"]
 
 
 class ONNX_IR_TESTER(object):
@@ -87,6 +87,7 @@ class ONNX_IR_TESTER(object):
             "Pow1": self.test_Pow1,  # y = x ^ n
             #"Pow2": self.test_Pow2, # y = n ^ x
             "PRelu": self.test_PRelu,
+            "QDQConv": self.test_QDQConv,
             "Resize": self.test_Resize,
             "Resize2": self.test_Resize2,
             "Reshape": self.test_Reshape,
@@ -319,7 +320,11 @@ class ONNX_IR_TESTER(object):
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data)
 
-    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None):
+    def onnx_and_test(self,
+                      graph_def,
+                      name: str = "",
+                      input_data: dict = None,
+                      no_quant: bool = False):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
@@ -347,6 +352,11 @@ class ONNX_IR_TESTER(object):
         if counter == 0:
             raise RuntimeError("No compare between onnx outs and mlir outts")
         print("Success: ONNX outs and Mlir outs are equal\n")
+        if no_quant:
+            tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, "f32")
+            self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz, "f32",
+                                       model_name)
+            return
         for quant_mode in self.quant_modes:
             if quant_mode == "int8":
                 for isAsym in [False, True]:
@@ -2358,6 +2368,65 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([exp_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_QDQConv(self, case_name):
+        input_shape = [10, 3, 224, 224]
+        y_scale_data = np.random.randn()
+        y_zero_point_data = np.random.randint(2,10)
+        x_scale_data = np.random.randn()
+        x_zero_point_data = np.random.randint(2, 10)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        y_scale = helper.make_tensor("y_scale", TensorProto.FLOAT, [1], [y_scale_data])
+        y_zero_point = helper.make_tensor("y_zero_point", TensorProto.INT8, [1],
+                                          [y_zero_point_data])
+        x_scale = helper.make_tensor("x_scale", TensorProto.FLOAT, [1], [x_scale_data])
+        x_zero_point = helper.make_tensor("x_zero_point", TensorProto.INT8, [1],
+                                          [x_zero_point_data])
+        quant_node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['a'])
+        dequant_node = helper.make_node("DequantizeLinear", ['a', 'x_scale', 'x_zero_point'],
+                                        ['output'])
+
+        graph_def = helper.make_graph([quant_node, dequant_node],
+                                      case_name, [input], [output],
+                                      initializer=[y_scale, y_zero_point, x_scale, x_zero_point])
+
+        self.onnx_and_test(graph_def)
+
+    def test_QLinear(self, case_name):
+        input_shape = [10, 3, 224, 224]
+        y_scale_data = np.random.randn()
+        y_zero_point_data = np.random.randn()
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.INT8, input_shape)
+        y_scale = helper.make_tensor("y_scale", TensorProto.FLOAT, [1], [y_scale_data])
+        y_zero_point = helper.make_tensor("y_zero_point", TensorProto.FLOAT, [1],
+                                          [y_zero_point_data])
+        node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['output'])
+
+        graph_def = helper.make_graph([node],
+                                      case_name, [input], [output],
+                                      initializer=[y_scale, y_zero_point])
+
+        self.onnx_and_test(graph_def)
+
+    def test_DeqLinear(self, case_name):
+        input_shape = [10, 3, 224, 224]
+        x_scale_data = np.random.randn()
+        x_zero_point_data = np.random.randn()
+        input = helper.make_tensor_value_info('input', TensorProto.INT8, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        x_scale = helper.make_tensor("x_scale", TensorProto.FLOAT, [1], [x_scale_data])
+        x_zero_point = helper.make_tensor("x_zero_point", TensorProto.FLOAT, [1],
+                                          [x_zero_point_data])
+        node = helper.make_node("DequantizeLinear", ['input', 'x_scale', 'x_zero_point'],
+                                ['output'])
+
+        graph_def = helper.make_graph([node],
+                                      case_name, [input], [output],
+                                      initializer=[x_scale, x_zero_point])
+
         self.onnx_and_test(graph_def)
 
 

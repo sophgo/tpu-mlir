@@ -47,7 +47,6 @@ constexpr llvm::StringRef Module::Chip::CV182x;
 constexpr llvm::StringRef Module::Chip::CV183x;
 constexpr llvm::StringRef Module::Chip::BM1686;
 
-
 top::NoneOp Module::getNoneOp(Operation *op) {
   assert(op != nullptr);
   if (auto noneOp = dyn_cast<top::NoneOp>(op)) {
@@ -112,7 +111,7 @@ Value Module::getOriValue(Value &v) {
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
-Value Module::getOperand(Operation* op, int i) {
+Value Module::getOperand(Operation *op, int i) {
   auto v = op->getOperand(i);
   return getOriValue(v);
 }
@@ -286,6 +285,31 @@ llvm::ArrayRef<int64_t> Module::getShape(Value v) {
   return type.getShape();
 }
 
+std::shared_ptr<std::vector<int32_t>> Module::getI32Array(ArrayAttr arrayAttr) {
+  auto data = std::make_shared<std::vector<int32_t>>();
+  for (auto en : llvm::enumerate(arrayAttr)) {
+    auto attr = en.value().dyn_cast<IntegerAttr>();
+    if (attr) {
+      data->push_back(attr.getInt());
+    } else {
+      arrayAttr.dump();
+      llvm_unreachable("not int32_t type");
+    }
+  }
+  return std::move(data);
+}
+
+std::shared_ptr<std::vector<int32_t>>
+Module::getI32Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+                    int32_t default_value) {
+  if (arrayAttr.has_value()) {
+    auto arr = getI32Array(arrayAttr.value());
+    assert(arr->size() == num_elem);
+    return std::move(arr);
+  }
+  return std::make_shared<std::vector<int32_t>>(num_elem, default_value);
+}
+
 std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<int64_t>>();
   for (auto en : llvm::enumerate(arrayAttr)) {
@@ -309,6 +333,26 @@ Module::getI64Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
     return std::move(arr);
   }
   return std::make_shared<std::vector<int64_t>>(num_elem, default_value);
+}
+
+std::shared_ptr<std::vector<float>> Module::getF32Array(ArrayAttr arrayAttr) {
+  auto data = std::make_shared<std::vector<float>>();
+  for (auto en : llvm::enumerate(arrayAttr)) {
+    auto attr = en.value().dyn_cast<FloatAttr>();
+    data->push_back(attr.getValueAsDouble());
+  }
+  return std::move(data);
+}
+
+std::shared_ptr<std::vector<float>>
+Module::getF32Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+                    float default_value) {
+  if (arrayAttr.has_value()) {
+    auto arr = getF32Array(arrayAttr.value());
+    assert(arr->size() == num_elem);
+    return std::move(arr);
+  }
+  return std::make_shared<std::vector<float>>(num_elem, default_value);
 }
 
 std::shared_ptr<std::vector<double>> Module::getF64Array(ArrayAttr arrayAttr) {

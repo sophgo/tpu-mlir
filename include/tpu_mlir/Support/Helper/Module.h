@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/OpDefinition.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 
 using namespace mlir;
 using namespace mlir::func;
@@ -54,7 +54,7 @@ struct Module {
 
   static top::NoneOp getNoneOp(Operation *op);
   static Value getOriValue(Value &v);
-  static Value getOperand(Operation* op, int i);
+  static Value getOperand(Operation *op, int i);
   static ModuleOp getModuleOp(Operation *op);
   static void updateModuleTypes(ModuleOp module);
   static void removeUnusedOp(ModuleOp module);
@@ -76,10 +76,18 @@ struct Module {
   static inline FuncOp getMainFuncOp(ModuleOp module) {
     return getFuncOp(module, "main");
   }
+  static std::shared_ptr<std::vector<int32_t>> getI32Array(ArrayAttr arrayAttr);
+  static std::shared_ptr<std::vector<int32_t>>
+  getI32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+              int32_t default_value);
   static std::shared_ptr<std::vector<int64_t>> getI64Array(ArrayAttr arrayAttr);
   static std::shared_ptr<std::vector<int64_t>>
   getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
               int64_t default_value);
+  static std::shared_ptr<std::vector<float>> getF32Array(ArrayAttr arrayAttr);
+  static std::shared_ptr<std::vector<float>>
+  getF32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+              float default_value);
   static std::shared_ptr<std::vector<double>> getF64Array(ArrayAttr arrayAttr);
   static std::shared_ptr<std::vector<double>>
   getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
@@ -186,17 +194,15 @@ struct Module {
     return (op->getDialect()->getNamespace() == "tpu");
   }
   static inline bool isCV18xx(StringRef chip) {
-    return (chip == Module::Chip::CV183x
-            || chip == Module::Chip::CV182x);
+    return (chip == Module::Chip::CV183x || chip == Module::Chip::CV182x);
   }
-  static inline bool isBM1684Family(StringRef chip){
+  static inline bool isBM1684Family(StringRef chip) {
     return (chip == Module::Chip::BM1684);
   }
-  static inline bool isBM1684XFamily(StringRef chip){
-    return   (chip == Module::Chip::BM1684X
-            || chip == Module::Chip::BM1686);
+  static inline bool isBM1684XFamily(StringRef chip) {
+    return (chip == Module::Chip::BM1684X || chip == Module::Chip::BM1686);
   }
-  static inline bool isBM1686(StringRef chip){
+  static inline bool isBM1686(StringRef chip) {
     return (chip == Module::Chip::BM1686);
   }
 };

@@ -21,6 +21,7 @@ class Top:
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
     Depth2SpaceOp = 'top.Depth2Space'
+    DequantizeLinearOp = 'top.DequantizeLinear'
     DeconvOp = 'top.Deconv'
     DivOp = 'top.Div'
     ErfOp = 'top.Erf'
@@ -49,6 +50,7 @@ class Top:
     PackOp = 'top.Pack'
     PowOp = 'top.Pow'
     PReluOp = 'top.PRelu'
+    QuantizeLinearOp = 'top.QuantizeLinear'
     Reciprocal = 'top.Reciprocal'
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
@@ -757,6 +759,26 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name']}
         return self.buildOp(Top.HardSwishOp, operands, [output_type], **param)
+
+    def create_qlinear_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['SINT8'])
+        param = {
+            'name': kargs['name'],
+            'y_scale': self.ArrayAttr(kargs['y_scale'], 'F32'),
+            'y_zero_point': self.ArrayAttr(kargs['y_zero_point'], 'INT32')
+        }
+        return self.buildOp(Top.QuantizeLinearOp, operands, [output_type], **param)
+
+    def create_deqlinear_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        param = {
+            'name': kargs['name'],
+            'x_scale': self.ArrayAttr(kargs['x_scale'], 'F32'),
+            'x_zero_point': self.ArrayAttr(kargs['x_zero_point'], 'INT32')
+        }
+        return self.buildOp(Top.DequantizeLinearOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
