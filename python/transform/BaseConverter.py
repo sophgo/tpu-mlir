@@ -6,7 +6,10 @@
 # ==============================================================================
 
 import numpy as np
+
+
 class BaseConverter(object):
+
     def __init__(self):
         self.operands = dict()
         self.tensors = dict()
@@ -14,7 +17,7 @@ class BaseConverter(object):
         self.input_names = list()
         self.output_names = list()
 
-    def generate_mlir(self, mlir_file:str):
+    def generate_mlir(self, mlir_file: str):
         raise NotImplementedError('generate_mlir')
 
     def addShape(self, name, shape):
@@ -83,15 +86,20 @@ class BaseConverter(object):
             raise RuntimeError("Not Scalar")
         return self.getWeight(name).flatten()[0]
 
-
-    def getWeightOp(self, name, shape:list=[]):
+    def getWeightOp(self, name, shape: list = []):
         if name not in self.tensors:
             raise KeyError("Should addWeight first:{}!!!".format(name))
         old_shape = self.getShape(name)
         if shape and old_shape != shape:
-            assert(np.prod(old_shape) == np.prod(shape))
+            assert (np.prod(old_shape) == np.prod(shape))
             old_shape = shape
-        op = self.mlir.create_weight_op(name, old_shape)
+        tp = self.tensors[name].dtype  # Ugly workaround
+        type_convert_dict = {np.dtype('int8'): "INT8", np.dtype('float32'): "F32"}
+        try:
+            tp = type_convert_dict[tp]
+        except:
+            tp = "F32"
+        op = self.mlir.create_weight_op(name, old_shape, tp)
         self.addOperand(name, op)
         return op
 

@@ -125,6 +125,7 @@ class OnnxConverter(BaseConverter):
             "Clip": lambda node: self.convert_clip_op(node),
             "ConvTranspose": lambda node: self.convert_conv_transpose_op(node),
             "DepthToSpace": lambda node: self.convert_depth2space_op(node),
+            "DequantizeLinear": lambda node: self.convert_deqlinear_op(node),
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
             "Erf": lambda node: self.convert_erf_op(node),
@@ -159,6 +160,7 @@ class OnnxConverter(BaseConverter):
             "Pad": lambda node: self.convert_pad_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
             "Pow": lambda node: self.convert_pow_op(node),
+            "QuantizeLinear": lambda node: self.convert_qlinear_op(node),
             "Reciprocal": lambda node: self.convert_reciprocal_op(node),
             "ReduceMean": lambda node: self.convert_reduce_op(node),
             "ReduceMax": lambda node: self.convert_reduce_op(node),
@@ -604,7 +606,11 @@ class OnnxConverter(BaseConverter):
 
         operands = list()
         operands.append(op)
-        filter_op = self.getWeightOp(onnx_node.inputs[1])
+        try:
+            filter_op = self.getWeightOp(onnx_node.inputs[1])
+        except:
+            filter_op = self.getOperand(
+                onnx_node.inputs[1])  # We may get a quantized weight in qdq onnx format.
         operands.append(filter_op)
         if len(onnx_node.inputs) > 2:
             bias_op = self.getWeightOp(onnx_node.inputs[2])
@@ -1710,4 +1716,47 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_hswish_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_qlinear_op(self, onnx_node):
+        assert (onnx_node.op_type == "QuantizeLinear")
+        assert (len(onnx_node.inputs) == 3)
+        operand = self.getOperand(onnx_node.inputs[0])
+        y_scale = self.getWeight(onnx_node.inputs[1]).tolist()
+        y_zero_point = self.getWeight(onnx_node.inputs[2]).tolist()
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'y_scale': y_scale,
+            'y_zero_point': y_zero_point
+        }
+        if hasattr(onnx_node, 'attrs'):
+            try:
+                p['axis'] = onnx_node.attrs['axis']
+            except:
+                pass
+        new_op = self.mlir.create_qlinear_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_deqlinear_op(self, onnx_node):
+        assert (onnx_node.op_type == "DequantizeLinear")
+        assert (len(onnx_node.inputs) == 3)
+        try:
+            operand = self.getOperand(onnx_node.inputs[0])
+        except:
+            operand = self.getWeightOp(onnx_node.inputs[0])
+        x_scale = self.getWeight(onnx_node.inputs[1])
+        x_zero_point = self.getWeight(onnx_node.inputs[2])
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'x_scale': x_scale,
+            'x_zero_point': x_zero_point
+        }
+        if hasattr(onnx_node, 'attrs'):
+            try:
+                p['axis'] = onnx_node.attrs['axis']
+            except:
+                pass
+        new_op = self.mlir.create_deqlinear_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
