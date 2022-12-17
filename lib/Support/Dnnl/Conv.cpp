@@ -42,11 +42,13 @@ void Conv::pad_init(float *input, conv_attr_t &attr) {
 
 void Conv::filter_init(float *weight, conv_attr_t &attr) {
   origin_weight = weight;
-  if (attr.kernel_zp != 0 ) {
-    int weight_size = attr.ic * attr.oc * attr.kd * attr.kh * attr.kw / attr.groups;
+  if (attr.kernel_zp != 0) {
+    int weight_size =
+        attr.ic * attr.oc * attr.kd * attr.kh * attr.kw / attr.groups;
     weight_after_zp = std::make_shared<std::vector<float>>(weight_size);
     p_weight = weight_after_zp->data();
-    tensor_sub_zp(weight_after_zp->data(), origin_weight, weight_size, attr.kernel_zp);
+    tensor_sub_zp(weight_after_zp->data(), origin_weight, weight_size,
+                  attr.kernel_zp);
   } else {
     p_weight = weight;
   }
@@ -103,13 +105,14 @@ void Conv::setup(float *input, float *weight, float *bias, float *output,
   // set mkldnn memory
   auto filter_tag = (attr.groups != 1) ? memory::format_tag::goidhw
                                        : memory::format_tag::oidhw;
-  auto filter_memory =
-      memory({{filter_shape}, memory::data_type::f32, filter_tag}, eng, p_weight);
+  auto filter_memory = memory(
+      {{filter_shape}, memory::data_type::f32, filter_tag}, eng, p_weight);
   prim_filter_memory = filter_memory;
   if (conv_prim_desc.weights_desc() != filter_memory.get_desc()) {
     prim_filter_memory = memory(conv_prim_desc.weights_desc(), eng);
-    reorder(filter_memory, prim_filter_memory)
-        .execute(eng_stream, filter_memory, prim_filter_memory);
+    net.push_back(reorder(filter_memory, prim_filter_memory));
+    net_args.push_back(
+        {{DNNL_ARG_FROM, filter_memory}, {DNNL_ARG_TO, prim_filter_memory}});
   }
 
   auto prim_bias_memory = memory();

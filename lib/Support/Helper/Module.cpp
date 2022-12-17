@@ -273,6 +273,31 @@ llvm::ArrayRef<int64_t> Module::getShape(Value v) {
   return type.getShape();
 }
 
+std::shared_ptr<std::vector<int32_t>> Module::getI32Array(ArrayAttr arrayAttr) {
+  auto data = std::make_shared<std::vector<int32_t>>();
+  for (auto en : llvm::enumerate(arrayAttr)) {
+    auto attr = en.value().dyn_cast<IntegerAttr>();
+    if (attr) {
+      data->push_back(attr.getInt());
+    } else {
+      arrayAttr.dump();
+      llvm_unreachable("not int32_t type");
+    }
+  }
+  return std::move(data);
+}
+
+std::shared_ptr<std::vector<int32_t>>
+Module::getI32Array(Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+                    int32_t default_value) {
+  if (arrayAttr.has_value()) {
+    auto arr = getI32Array(arrayAttr.value());
+    assert(arr->size() == num_elem);
+    return std::move(arr);
+  }
+  return std::make_shared<std::vector<int32_t>>(num_elem, default_value);
+}
+
 std::shared_ptr<std::vector<int64_t>> Module::getI64Array(ArrayAttr arrayAttr) {
   auto data = std::make_shared<std::vector<int64_t>>();
   for (auto en : llvm::enumerate(arrayAttr)) {
