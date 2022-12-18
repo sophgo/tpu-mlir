@@ -84,9 +84,9 @@ class OnnxNode(BaseNode):
         info = dict()
         info["name"] = node.output[0]
         info["op_type"] = node.op_type
-        info["attrs"] = [(attr.name, \
-                          translate_onnx(attr.name, convert_onnx_attribute_proto(attr))) \
-                          for attr in node.attribute]
+        info["attrs"] = [(attr.name,
+                          translate_onnx(attr.name, convert_onnx_attribute_proto(attr)))
+                         for attr in node.attribute]
         info["inputs"] = node.input
         info["outputs"] = node.output
         super().__init__(info)
@@ -241,11 +241,13 @@ class OnnxConverter(BaseConverter):
                 if o in output_names:
                     intermediate_layer_value_info = onnx.helper.ValueInfoProto()
                     intermediate_layer_value_info.name = o
-                    self.model.graph.output.append(intermediate_layer_value_info)
+                    self.model.graph.output.append(
+                        intermediate_layer_value_info)
                     output_names.remove(o)
                     self.all_outputs.append(o)
         if len(output_names) != 0:
-            raise RuntimeError("Error, can't find {} in model".format(output_names))
+            raise RuntimeError(
+                "Error, can't find {} in model".format(output_names))
         # weight map name
         self.all_weights = {}
         for w in self.model.graph.initializer:
@@ -305,12 +307,16 @@ class OnnxConverter(BaseConverter):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
+        self.clean_up_shape_info()
+        # additional simplify before select_output to aviod some cases that onnx.shape_inference doesnt work
+        model_simplified, is_ok = onnxsim.simplify(self.model)
+        if is_ok:
+            self.model = model_simplified
+        # select_output before model_shape_infer to remove useless inputs
+        # so that those inputs dont have to be specified in cfg file
         if output_names:
             self.select_output(output_names)
-        self.clean_up_shape_info()
         self.input_names = self.get_input_names(self.model)
-        if "image_shape" in self.input_names:
-            input_shapes.append([input_shapes[0][0], len(input_shapes[0]) - 2])
         self.num_input = len(self.input_names)
         self.model_shape_infer(input_shapes)
         self.input_shapes = self.get_input_shapes(self.model)
@@ -352,7 +358,8 @@ class OnnxConverter(BaseConverter):
 
         def check_shape(l, r):
             if no_shape == False and l != r:
-                raise KeyError("input shapes error:{}, {} vs {}".format(input_shapes, l, r))
+                raise KeyError(
+                    "input shapes error:{}, {} vs {}".format(input_shapes, l, r))
 
         if len(input_shapes) > 0:
             no_shape = False
@@ -380,7 +387,8 @@ class OnnxConverter(BaseConverter):
         for _name in self.output_names:
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, self.input_types)
+        self.mlir = MLIRImporter(
+            input_shapes, output_shapes, self.model_name, self.input_types)
         self.weight_file = self.mlir.weight_file
 
     def generate_mlir(self, mlir_file: str):
@@ -391,12 +399,13 @@ class OnnxConverter(BaseConverter):
             channel_axis = 1
             if self.preprocess_args and self.preprocess_args['channel_format'] == 'nhwc':
                 channel_axis = -1
-            image = (len(input_shape) == 4 and input_shape[channel_axis] <=4) or \
-                    (len(input_shape) == 3) # gray
+            image = (len(input_shape) == 4 and input_shape[channel_axis] <= 4) or \
+                    (len(input_shape) == 3)  # gray
             if not self.preprocess_args or not image:
                 input_op = self.mlir.create_input_op(_name, idx, **{})
             else:
-                input_op = self.mlir.create_input_op(_name, idx, **self.preprocess_args)
+                input_op = self.mlir.create_input_op(
+                    _name, idx, **self.preprocess_args)
             self.addOperand(_name, input_op)
 
         def NoneAndRaise(node):
@@ -449,18 +458,22 @@ class OnnxConverter(BaseConverter):
                 self.addWeight(name + '_scale', weight_data)
                 weight_op = self.getWeightOp(name + '_scale')
                 bias_op = self.getWeightOp(rhs)
-                new_op = self.mlir.create_scale_op([lhs_op, weight_op, bias_op], output_shape, **p)
+                new_op = self.mlir.create_scale_op(
+                    [lhs_op, weight_op, bias_op], output_shape, **p)
             elif self.isScalar(rhs):
                 p['do_relu'] = False
                 p['const_val'] = self.getScalar(rhs)
-                new_op = self.mlir.create_add_const_op([lhs_op], output_shape, **p)
+                new_op = self.mlir.create_add_const_op(
+                    [lhs_op], output_shape, **p)
             else:
                 rhs_op = self.getOp(rhs)
-                new_op = self.mlir.create_add_op([lhs_op, rhs_op], output_shape, **p)
+                new_op = self.mlir.create_add_op(
+                    [lhs_op, rhs_op], output_shape, **p)
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
-            new_op = self.mlir.create_add_op([lhs_op, rhs_op], output_shape, **p)
+            new_op = self.mlir.create_add_op(
+                [lhs_op, rhs_op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_sub_op(self, onnx_node):
@@ -476,7 +489,8 @@ class OnnxConverter(BaseConverter):
             # lhs_const + (-1 * rhs)
             attr = {'name': name + "_unm", 'const_val': -1}
             rhs_op = self.getOp(rhs)
-            unm_op = self.mlir.create_mul_const_op([rhs_op], output_shape, **attr)
+            unm_op = self.mlir.create_mul_const_op(
+                [rhs_op], output_shape, **attr)
             p['const_val'] = self.getScalar(lhs)
             new_op = self.mlir.create_add_const_op([unm_op], output_shape, **p)
         elif self.isScalar(rhs):
@@ -487,7 +501,8 @@ class OnnxConverter(BaseConverter):
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
-            new_op = self.mlir.create_sub_op([lhs_op, rhs_op], output_shape, **p)
+            new_op = self.mlir.create_sub_op(
+                [lhs_op, rhs_op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_batchnorm_op(self, onnx_node):
@@ -503,7 +518,8 @@ class OnnxConverter(BaseConverter):
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
             "epsilon": epsilon,
         }
-        new_op = self.mlir.create_batchnorm_op([op, mean, variance, gamma, beta], output_shape, **p)
+        new_op = self.mlir.create_batchnorm_op(
+            [op, mean, variance, gamma, beta], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_cast_op(self, onnx_node):
@@ -520,7 +536,8 @@ class OnnxConverter(BaseConverter):
             elif dtype == "bool":
                 data = data.astype(np.bool)
             else:
-                raise RuntimeError("{} dtype not support, please add".format(dtype))
+                raise RuntimeError(
+                    "{} dtype not support, please add".format(dtype))
             self.addWeight(onnx_node.name, data)
         else:
             op = self.getOperand(onnx_node.inputs[0])
@@ -539,7 +556,8 @@ class OnnxConverter(BaseConverter):
             if self.isWeight(x):
                 data = self.getWeight(x)
                 if weight_data is not None:
-                    weight_data = np.concatenate((weight_data, data), axis=axis)
+                    weight_data = np.concatenate(
+                        (weight_data, data), axis=axis)
                 else:
                     weight_data = data
                 continue
@@ -561,7 +579,8 @@ class OnnxConverter(BaseConverter):
         if len(operands) == 1:
             self.addOperand(onnx_node.name, operands[0])
             return
-        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "axis": axis}
+        p = {"name": "{}_{}".format(
+            onnx_node.name, onnx_node.op_type), "axis": axis}
         new_op = self.mlir.create_concat_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -646,7 +665,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_gemm_op(self, onnx_node):
         assert (onnx_node.op_type == "Gemm" or onnx_node.op_type == 'MatMul')
-        #(M, K) * (K, N) => (M, N)
+        # (M, K) * (K, N) => (M, N)
         alpha = onnx_node.attrs.get('alpha', 1)
         beta = onnx_node.attrs.get('beta', 1)
         trans_a = onnx_node.attrs.get('transA', 0)
@@ -663,7 +682,8 @@ class OnnxConverter(BaseConverter):
             if trans_b == 1 or alpha != 1:
                 _tensor = self.getWeight(B)
                 if trans_b == 1:
-                    _tensor = np.ascontiguousarray(np.transpose(_tensor, (1, 0)))
+                    _tensor = np.ascontiguousarray(
+                        np.transpose(_tensor, (1, 0)))
                 if alpha != 1:
                     _tensor *= alpha
                 B += '_fix'
@@ -685,7 +705,8 @@ class OnnxConverter(BaseConverter):
         else:
             operands.append(self.mlir.none_op)
 
-        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type), 'do_relu': False}
+        p = {'name': "{}_{}".format(
+            onnx_node.name, onnx_node.op_type), 'do_relu': False}
         output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_matmul_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -794,7 +815,8 @@ class OnnxConverter(BaseConverter):
             output_shape = self.getShape(onnx_node.name)
             if self.isScalar(rhs):
                 p = {'name': name, 'const_val': self.getScalar(rhs)}
-                mul_const_op = self.mlir.create_mul_const_op([op0], output_shape, **p)
+                mul_const_op = self.mlir.create_mul_const_op(
+                    [op0], output_shape, **p)
                 self.addOperand(onnx_node.name, mul_const_op)
                 return
             weight_num_elem = np.prod(self.getShape(rhs))
@@ -806,12 +828,14 @@ class OnnxConverter(BaseConverter):
                 weight_op = self.getWeightOp(rhs)
                 offset_op = self.getWeightOp(name + '_bias')
                 p = {'name': name}
-                scale_op = self.mlir.create_scale_op([op0, weight_op, offset_op], output_shape, **p)
+                scale_op = self.mlir.create_scale_op(
+                    [op0, weight_op, offset_op], output_shape, **p)
                 self.addOperand(onnx_node.name, scale_op)
                 return
             const_op = self.getWeightOp(rhs)
             p = {'name': name}
-            scale_op = self.mlir.create_mul_op([op0, const_op], output_shape, **p)
+            scale_op = self.mlir.create_mul_op(
+                [op0, const_op], output_shape, **p)
             self.addOperand(onnx_node.name, scale_op)
             return
         else:
@@ -914,9 +938,11 @@ class OnnxConverter(BaseConverter):
             self.addOperand(onnx_node.name, op)
             return
 
-        coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
+        coord_mode = onnx_node.attrs.get(
+            "coordinate_transformation_mode", "half_pixel")
         if mode == b'nearest' and scale_h == int(scale_h) and scale_w == int(scale_w):
-            self.resize_to_upsample(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
+            self.resize_to_upsample(
+                onnx_node, op, input_shape, output_shape, scale_h, scale_w)
             return
         else:
             self.resize_to_interp(onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode,
@@ -970,7 +996,8 @@ class OnnxConverter(BaseConverter):
         if self.isWeight(onnx_node.inputs[0]):
             tensor_data = self.getWeight(onnx_node.inputs[0])
             for start, end, axis, step in zip(starts, ends, axes, steps):
-                start, end, axis, step = int(start), int(end), int(axis), int(step)
+                start, end, axis, step = int(start), int(
+                    end), int(axis), int(step)
                 if axis < 0:
                     axis = axis + num_dims
                 s = slice(start, end, step)
@@ -1115,7 +1142,8 @@ class OnnxConverter(BaseConverter):
             # lhs_const * (1 / rhs)
             attr = {'name': name + "_rcp"}
             rhs_op = self.getOp(rhs)
-            rcp_op = self.mlir.create_reciprocal_op([rhs_op], output_shape, **attr)
+            rcp_op = self.mlir.create_reciprocal_op(
+                [rhs_op], output_shape, **attr)
             p['const_val'] = self.getScalar(lhs)
             new_op = self.mlir.create_mul_const_op([rcp_op], output_shape, **p)
         elif self.isScalar(rhs):
@@ -1126,14 +1154,16 @@ class OnnxConverter(BaseConverter):
         else:
             lhs_op = self.getOp(lhs)
             rhs_op = self.getOp(rhs)
-            new_op = self.mlir.create_div_op([lhs_op, rhs_op], output_shape, **p)
+            new_op = self.mlir.create_div_op(
+                [lhs_op, rhs_op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_reciprocal_op(self, onnx_node):
         assert (onnx_node.op_type == "Reciprocal")
         assert len(onnx_node.inputs) == 1
         op0 = self.getOperand(onnx_node.inputs[0])
-        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "const_val": 1}
+        p = {"name": "{}_{}".format(
+            onnx_node.name, onnx_node.op_type), "const_val": 1}
         output_shape = self.getShape(onnx_node.name)
         div_op = self.mlir.create_reciprocal_op([op0], output_shape, **p)
         self.addOperand(onnx_node.name, div_op)
@@ -1171,7 +1201,8 @@ class OnnxConverter(BaseConverter):
             }
             new_op = self.mlir.create_relu_op([input], input_shape, **p)
         else:
-            p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type), 'min': min, 'max': max}
+            p = {'name': "{}_{}".format(
+                onnx_node.name, onnx_node.op_type), 'min': min, 'max': max}
             new_op = self.mlir.create_clip_op([input], input_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -1194,7 +1225,8 @@ class OnnxConverter(BaseConverter):
         # (ic, oc, kh, kw) --> (oc, ic, kh, kw)
         old_weight = self.tensors[weight_name]
         order = [1, 0] + list(range(len(old_weight.shape))[2:])
-        self.tensors[weight_name] = np.ascontiguousarray(np.transpose(old_weight, order))
+        self.tensors[weight_name] = np.ascontiguousarray(
+            np.transpose(old_weight, order))
         self.shapes[weight_name] = self.tensors[weight_name].shape
         filter_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
@@ -1217,7 +1249,8 @@ class OnnxConverter(BaseConverter):
 
             input_shape = [input_shape[0], input_shape[1], 1, input_shape[2]]
             p = {'name': '{}_to4dim'.format(onnx_node.name)}
-            reshape0_op = self.mlir.create_reshape_op([input_opd], input_shape, **p)
+            reshape0_op = self.mlir.create_reshape_op(
+                [input_opd], input_shape, **p)
             operands[0] = reshape0_op
             new_name += "_reshape"
         p = {
@@ -1231,12 +1264,14 @@ class OnnxConverter(BaseConverter):
             'ins': [],
         }
 
-        new_op = self.mlir.create_conv_transpose_op(operands, output_shape, **p)
+        new_op = self.mlir.create_conv_transpose_op(
+            operands, output_shape, **p)
 
         if is_shape_3:
             output_shape = [output_shape[0], output_shape[1], output_shape[3]]
             p = {'name': onnx_node.name}
-            reshape1_op = self.mlir.create_reshape_op([new_op], output_shape, **p)
+            reshape1_op = self.mlir.create_reshape_op(
+                [new_op], output_shape, **p)
             self.addOperand(onnx_node.name, reshape1_op)
         else:
             self.addOperand(onnx_node.name, new_op)
@@ -1259,7 +1294,7 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
 
         offset = 0
-        #replace the split with slice
+        # replace the split with slice
         for i, name in zip(split, onnx_node.outputs):
             output_shape = list(input_shape)
             output_shape[axis] = i
@@ -1275,7 +1310,7 @@ class OnnxConverter(BaseConverter):
             self.addOperand(name, new_op)
             offset = offset + i
 
-    #support max ndims to 6
+    # support max ndims to 6
     def convert_reduce_op(self, onnx_node):
         assert (onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceMax"
                 or onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceL2"
@@ -1290,7 +1325,7 @@ class OnnxConverter(BaseConverter):
         num_dims = len(input_shape)
         assert (num_dims <= 6)
         axes = onnx_node.attrs.get('axes', list(range(num_dims))) \
-               if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
+            if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
         keepdims = onnx_node.attrs.get('keepdims', 1)
         for idx, ax in enumerate(axes):
             if ax < 0:
@@ -1302,7 +1337,7 @@ class OnnxConverter(BaseConverter):
             p = {
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
                 'kernel_shape': input_shape[2:],
-                #stride should be equal as the kernel shape in avgpool backend op if global avg/max pool
+                # stride should be equal as the kernel shape in avgpool backend op if global avg/max pool
                 'strides': input_shape[2:],
                 'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
@@ -1328,7 +1363,8 @@ class OnnxConverter(BaseConverter):
         op = self.getOperand(onnx_node.inputs[0])
 
         size = onnx_node.attrs.get("size")
-        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "size": size}
+        p = {"name": "{}_{}".format(
+            onnx_node.name, onnx_node.op_type), "size": size}
 
         def add_if_valid(key):
             value = onnx_node.attrs.get(key)
@@ -1357,7 +1393,8 @@ class OnnxConverter(BaseConverter):
         if num_inputs > 3:
             bias_op = self.getWeightOp(onnx_node.inputs[3])
         if num_inputs > 4 and len(onnx_node.inputs[4]) != 0:
-            raise RuntimeError("LSTM does not test the case of specify the sequence_lens.")
+            raise RuntimeError(
+                "LSTM does not test the case of specify the sequence_lens.")
         if num_inputs > 5 and len(onnx_node.inputs[5]) != 0:
             init_h_op = self.getOp(onnx_node.inputs[5])
         operands.extend([bias_op, init_h_op])
@@ -1396,7 +1433,8 @@ class OnnxConverter(BaseConverter):
         if num_inputs > 3 and len(onnx_node.inputs[3]) != 0:
             bias_op = self.getWeightOp(onnx_node.inputs[3])
         if num_inputs > 4 and len(onnx_node.inputs[4]) != 0:
-            raise RuntimeError("LSTM does not test the case of specify the sequence_lens.")
+            raise RuntimeError(
+                "LSTM does not test the case of specify the sequence_lens.")
         if num_inputs > 5 and len(onnx_node.inputs[5]) != 0:
             init_h_op = self.getOp(onnx_node.inputs[5])
         if num_inputs > 6 and len(onnx_node.inputs[5]) != 0:
@@ -1416,7 +1454,8 @@ class OnnxConverter(BaseConverter):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
-        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, out_shapes, **p)
+        new_op, h_op, c_op = self.mlir.create_lstm_op(
+            operands, out_shapes, **p)
         out_ops = [new_op, h_op, c_op]
         for idx, need in enumerate(out_needs):
             if need:
@@ -1438,7 +1477,8 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs.get('axis')
         if axis is None:
             axis = 0
-        p = {'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type), 'axis': axis}
+        p = {'name': '{}_{}'.format(
+            onnx_node.name, onnx_node.op_type), 'axis': axis}
 
         new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -1450,7 +1490,8 @@ class OnnxConverter(BaseConverter):
         input_shape = self.getShape(onnx_node.inputs[0])
         assert len(output_shape) >= len(input_shape)
         # tile one axis each time to avoid gmem buffer
-        count = sum([input_shape[-i] != output_shape[-i] for i in range(1, len(input_shape) + 1)])
+        count = sum([input_shape[-i] != output_shape[-i]
+                    for i in range(1, len(input_shape) + 1)])
         # remove leading 1
         len_diff = len(output_shape) - len(input_shape)
         for i in range(len_diff):
@@ -1468,10 +1509,12 @@ class OnnxConverter(BaseConverter):
             if output_shape[-i] != out_shape[-i]:
                 p = {'axis': axis, 'tile': output_shape[-i] // out_shape[-i]}
                 if count == 1:
-                    p['name'] = '{}_{}'.format(onnx_node.name, onnx_node.op_type)
+                    p['name'] = '{}_{}'.format(
+                        onnx_node.name, onnx_node.op_type)
                     out_shape = output_shape
                 else:
-                    p["name"] = "{}_{}_{}".format(onnx_node.name, onnx_node.op_type, count)
+                    p["name"] = "{}_{}_{}".format(
+                        onnx_node.name, onnx_node.op_type, count)
                     out_shape[-i] = output_shape[-i]
                 new_op = self.mlir.create_tile_op([in0], out_shape, **p)
                 in0 = new_op
@@ -1540,7 +1583,8 @@ class OnnxConverter(BaseConverter):
         operand = self.getOperand(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         p = {'name': name, 'const_val': -1.0}
-        mul_const_op = self.mlir.create_mul_const_op([operand], output_shape, **p)
+        mul_const_op = self.mlir.create_mul_const_op(
+            [operand], output_shape, **p)
         self.addOperand(onnx_node.name, mul_const_op)
 
     def convert_prelu_op(self, onnx_node):
@@ -1604,7 +1648,8 @@ class OnnxConverter(BaseConverter):
                 self.addOperand(onnx_node.name, base_op)
                 return
             if expn_const == 2.0:
-                mul_op = self.mlir.create_mul_op([base_op, base_op], output_shape, **p)
+                mul_op = self.mlir.create_mul_op(
+                    [base_op, base_op], output_shape, **p)
                 self.addOperand(onnx_node.name, mul_op)
                 return
             else:
@@ -1637,7 +1682,8 @@ class OnnxConverter(BaseConverter):
                     )  # do not support broadcastable case recently
         output_shape = self.getShape(onnx_node.name)
         if num_const == 0:
-            new_op = self.mlir.create_where_op([cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
+            new_op = self.mlir.create_where_op(
+                [cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
         elif num_const == 1:
             brn_opd = fbrn_opd if self.isScalar(tbrn) else tbrn_opd
             if self.isScalar(tbrn):
@@ -1646,16 +1692,19 @@ class OnnxConverter(BaseConverter):
             else:
                 p['inversed'] = False
                 p['const_val'] = self.getScalar(fbrn)
-            new_op = self.mlir.create_masked_fill_op([cond_opd, brn_opd], output_shape, **p)
+            new_op = self.mlir.create_masked_fill_op(
+                [cond_opd, brn_opd], output_shape, **p)
         else:
             assert (0)  # TODO: to be implement
         self.addOperand(onnx_node.name, new_op)
 
     def convert_cmp_op(self, onnx_node):
-        supports = {"Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual"}
+        supports = {"Equal", "Greater",
+                    "GreaterOrEqual", "Less", "LessOrEqual"}
         assert (onnx_node.op_type in supports)
         assert (len(onnx_node.inputs) == 2)
-        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "mode": onnx_node.op_type}
+        p = {"name": "{}_{}".format(
+            onnx_node.name, onnx_node.op_type), "mode": onnx_node.op_type}
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         output_shape = self.getShape(onnx_node.name)
@@ -1663,16 +1712,19 @@ class OnnxConverter(BaseConverter):
             rhs_opd = self.getOp(rhs)
             p['const_val'] = self.getScalar(lhs)
             p['inversed'] = True
-            cmp_op = self.mlir.create_compare_const_op([rhs_opd], output_shape, **p)
+            cmp_op = self.mlir.create_compare_const_op(
+                [rhs_opd], output_shape, **p)
         elif self.isScalar(rhs):
             lhs_opd = self.getOp(lhs)
             p['const_val'] = self.getScalar(rhs)
             p['inversed'] = False
-            cmp_op = self.mlir.create_compare_const_op([lhs_opd], output_shape, **p)
+            cmp_op = self.mlir.create_compare_const_op(
+                [lhs_opd], output_shape, **p)
         else:
             rhs_opd = self.getOp(rhs)
             lhs_opd = self.getOp(lhs)
-            cmp_op = self.mlir.create_compare_op([lhs_opd, rhs_opd], output_shape, **p)
+            cmp_op = self.mlir.create_compare_op(
+                [lhs_opd, rhs_opd], output_shape, **p)
         self.addOperand(onnx_node.name, cmp_op)
 
     def convert_hsigmoid_op(self, onnx_node):
