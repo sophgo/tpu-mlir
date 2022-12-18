@@ -9,16 +9,17 @@
 
 #pragma once
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 using namespace mlir;
 namespace tpu_mlir {
 namespace top {
 
 std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
+std::unique_ptr<OperationPass<ModuleOp>> createQDQConvertPass();
 std::unique_ptr<OperationPass<ModuleOp>> createMarkFLOPsPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass();
 #define GEN_PASS_REGISTRATION
@@ -26,4 +27,4 @@ std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass();
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h.inc"
 
 } // namespace top
-} // namespace mlir
+} // namespace tpu_mlir

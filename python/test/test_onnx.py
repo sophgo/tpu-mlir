@@ -6,6 +6,7 @@
 #
 # ==============================================================================
 
+from copy import deepcopy
 from re import T
 import numpy as np
 import onnx
@@ -21,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "QDQConv"]
+Failed_Cases = ["TorchLayerNorm", "QDQConv", "QDQ"]
 
 
 class ONNX_IR_TESTER(object):
@@ -88,6 +89,7 @@ class ONNX_IR_TESTER(object):
             #"Pow2": self.test_Pow2, # y = n ^ x
             "PRelu": self.test_PRelu,
             "QDQConv": self.test_QDQConv,
+            "QDQ": self.test_QDQ,
             "Resize": self.test_Resize,
             "Resize2": self.test_Resize2,
             "Reshape": self.test_Reshape,
@@ -2371,11 +2373,107 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_QDQConv(self, case_name):
+        oc = 32
+        input_shape = [10, 3, 224, 224]
+        filter_shape = [oc, input_shape[1], 3, 3]
+        output_shape = [10, oc, 224, 224]
+        kernel = [3, 3]
+        padding = [1, 1, 1, 1]
+        stride = [1, 1]
+        dilation = [1, 1]
+        groups = 1
+
+        y_scale_data = np.random.randn()
+        y_zero_point_data = np.random.randint(0, 255)
+        x_scale_data = deepcopy(y_scale_data)
+        x_zero_point_data = deepcopy(y_zero_point_data)
+
+        weight_data = np.random.randint(0, 255, filter_shape)
+        bias_data = np.random.randn(output_shape[1]).astype(np.float32)
+
+        weight_x_scale_data = np.random.randn(oc)
+        weight_x_zero_point_data = np.random.randint(0, 255, oc)
+
+        output_y_scale_data = np.random.randn()
+        output_y_zero_point_data = np.random.randint(0, 255)
+        output_x_scale_data = deepcopy(output_y_scale_data)
+        output_x_zero_point_data = deepcopy(output_y_zero_point_data)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.INT8, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+
+        y_scale = helper.make_tensor("y_scale", TensorProto.FLOAT, [1], [y_scale_data])
+        y_zero_point = helper.make_tensor("y_zero_point", TensorProto.INT8, [1],
+                                          [y_zero_point_data])
+        x_scale = helper.make_tensor("x_scale", TensorProto.FLOAT, [1], [x_scale_data])
+        x_zero_point = helper.make_tensor("x_zero_point", TensorProto.INT8, [1],
+                                          [x_zero_point_data])
+
+        weight_x_scale = helper.make_tensor("weight_x_scale", TensorProto.FLOAT, [oc],
+                                            weight_x_scale_data)
+        weight_x_zero_point = helper.make_tensor("weight_x_zero_point", TensorProto.INT8, [oc],
+                                                 weight_x_zero_point_data)
+
+        quant_node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['a'],
+                                      axis=0)
+        dequant_node = helper.make_node("DequantizeLinear", ['a', 'x_scale', 'x_zero_point'], ['b'],
+                                        axis=0)
+
+        weight_dequant_node = helper.make_node("DequantizeLinear",
+                                               ['weight', 'weight_x_scale', 'weight_x_zero_point'],
+                                               ['weight_output'],
+                                               axis=0)
+
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['b', 'weight_output', 'bias'],
+            outputs=['conv_output'],
+            kernel_shape=kernel,
+            pads=padding,
+            strides=stride,
+            dilations=dilation,
+            group=groups,
+        )
+
+        output_y_scale = helper.make_tensor("output_y_scale", TensorProto.FLOAT, [1],
+                                            [output_y_scale_data])
+        output_y_zero_point = helper.make_tensor("output_y_zero_point", TensorProto.INT8, [1],
+                                                 [output_y_zero_point_data])
+        output_x_scale = helper.make_tensor("output_x_scale", TensorProto.FLOAT, [1],
+                                            [output_x_scale_data])
+        output_x_zero_point = helper.make_tensor("output_x_zero_point", TensorProto.INT8, [1],
+                                                 [output_x_zero_point_data])
+
+        output_quant_node = helper.make_node(
+            "QuantizeLinear", ['conv_output', 'output_y_scale', 'output_y_zero_point'], ['c'],
+            axis=0)
+        output_dequant_node = helper.make_node("DequantizeLinear",
+                                               ['c', 'output_x_scale', 'output_x_zero_point'],
+                                               ['output'],
+                                               axis=0)
+
+        graph_def = helper.make_graph([
+            quant_node, dequant_node, weight_dequant_node, conv_def, output_quant_node,
+            output_dequant_node
+        ],
+                                      case_name, [input], [output],
+                                      initializer=[
+                                          y_scale, y_zero_point, x_scale, x_zero_point,
+                                          weight_x_scale, weight_x_zero_point, weight, bias,
+                                          output_x_scale, output_x_zero_point, output_y_scale,
+                                          output_y_zero_point
+                                      ])
+
+        self.onnx_and_test(graph_def)
+
+    def test_QDQ(self, case_name):
         input_shape = [10, 3, 224, 224]
         y_scale_data = np.random.randn()
-        y_zero_point_data = np.random.randint(2,10)
-        x_scale_data = np.random.randn()
-        x_zero_point_data = np.random.randint(2, 10)
+        y_zero_point_data = np.random.randint(0, 255)
+        x_scale_data = deepcopy(y_scale_data)
+        x_zero_point_data = deepcopy(y_zero_point_data)
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         y_scale = helper.make_tensor("y_scale", TensorProto.FLOAT, [1], [y_scale_data])
@@ -2391,41 +2489,6 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([quant_node, dequant_node],
                                       case_name, [input], [output],
                                       initializer=[y_scale, y_zero_point, x_scale, x_zero_point])
-
-        self.onnx_and_test(graph_def)
-
-    def test_QLinear(self, case_name):
-        input_shape = [10, 3, 224, 224]
-        y_scale_data = np.random.randn()
-        y_zero_point_data = np.random.randn()
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.INT8, input_shape)
-        y_scale = helper.make_tensor("y_scale", TensorProto.FLOAT, [1], [y_scale_data])
-        y_zero_point = helper.make_tensor("y_zero_point", TensorProto.FLOAT, [1],
-                                          [y_zero_point_data])
-        node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['output'])
-
-        graph_def = helper.make_graph([node],
-                                      case_name, [input], [output],
-                                      initializer=[y_scale, y_zero_point])
-
-        self.onnx_and_test(graph_def)
-
-    def test_DeqLinear(self, case_name):
-        input_shape = [10, 3, 224, 224]
-        x_scale_data = np.random.randn()
-        x_zero_point_data = np.random.randn()
-        input = helper.make_tensor_value_info('input', TensorProto.INT8, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        x_scale = helper.make_tensor("x_scale", TensorProto.FLOAT, [1], [x_scale_data])
-        x_zero_point = helper.make_tensor("x_zero_point", TensorProto.FLOAT, [1],
-                                          [x_zero_point_data])
-        node = helper.make_node("DequantizeLinear", ['input', 'x_scale', 'x_zero_point'],
-                                ['output'])
-
-        graph_def = helper.make_graph([node],
-                                      case_name, [input], [output],
-                                      initializer=[x_scale, x_zero_point])
 
         self.onnx_and_test(graph_def)
 

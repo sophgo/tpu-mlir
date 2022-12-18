@@ -527,7 +527,11 @@ class OnnxConverter(BaseConverter):
 
         operands = list()
         operands.append(op)
-        filter_op = self.getWeightOp(onnx_node.inputs[1])
+        try:
+            filter_op = self.getWeightOp(onnx_node.inputs[1])
+        except:
+            filter_op = self.getOperand(
+                onnx_node.inputs[1])  # We may get a quantized weight in qdq onnx format.
         operands.append(filter_op)
         if len(onnx_node.inputs) > 2:
             bias_op = self.getWeightOp(onnx_node.inputs[2])
@@ -1617,13 +1621,26 @@ class OnnxConverter(BaseConverter):
             'y_scale': y_scale,
             'y_zero_point': y_zero_point
         }
+        if hasattr(onnx_node, 'attrs'):
+            try:
+                p['axis'] = onnx_node.attrs['axis']
+            except:
+                pass
         new_op = self.mlir.create_qlinear_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_deqlinear_op(self, onnx_node):
         assert (onnx_node.op_type == "DequantizeLinear")
         assert (len(onnx_node.inputs) == 3)
-        operand = self.getOperand(onnx_node.inputs[0])
+        try:
+            operand = self.getOperand(onnx_node.inputs[0])
+        except:
+            operand = self.getWeightOp(onnx_node.inputs[0])
+        if hasattr(onnx_node, 'attrs'):
+            try:
+                p['axis'] = onnx_node.attrs['axis']
+            except:
+                pass
         x_scale = self.getWeight(onnx_node.inputs[1])
         x_zero_point = self.getWeight(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)

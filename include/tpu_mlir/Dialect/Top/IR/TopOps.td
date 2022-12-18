@@ -1188,7 +1188,8 @@ def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear", [InOutSameShape]> {
   let arguments = (ins
     AnyTensor:$input,
     F32ArrayAttr:$y_scale,
-    I32ArrayAttr:$y_zero_point
+    I32ArrayAttr:$y_zero_point,
+    DefaultValuedAttr<I64Attr, "1">:$axis
   );
 
   let results = (outs AnyTensor:$output);
@@ -1203,7 +1204,8 @@ def Top_DequantizeLinearOp : Top_Op<"DequantizeLinear", [InOutSameShape]> {
   let arguments = (ins
     AnyTensor:$input,
     F32ArrayAttr:$x_scale,
-    I32ArrayAttr:$x_zero_point
+    I32ArrayAttr:$x_zero_point,
+    DefaultValuedAttr<I64Attr, "1">:$axis
   );
 
   let results = (outs AnyTensor:$output);
