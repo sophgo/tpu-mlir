@@ -21,6 +21,7 @@ npz_tool_func = {
     "to_bin": npz_to_bin,
     "to_dat": npz_to_dat,
     "to_npy": npz_to_npy,
+    "cali_test": npz_cali_test,
 }
 
 def main():
