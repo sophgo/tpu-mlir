@@ -532,17 +532,17 @@ def TorchHardSwishPattern():
     return patterns
 
 def TorchHardSwishPattern2():
-    input = OuterNode()
+    add_input = OuterNode()
     add_tensor = OuterNode(tensor_value=3)
     clip_min = OuterNode(tensor_value=0)
     clip_max = OuterNode(tensor_value=6)
     div_tensor = OuterNode(tensor_value=6)
 
-    add = PatternNode("Add", [input, add_tensor])
+    add = PatternNode("Add", [add_input, add_tensor])
     clip = PatternNode("Clip", [add, clip_min, clip_max])
-    mul = PatternNode("Mul", [input, clip])
+    mul = PatternNode("Mul", [add_input, clip])
     div = PatternNode("Div", [mul, div_tensor])
-    hard_swish = PatternNode("HardSwish", [input])
+    hard_swish = PatternNode("HardSwish", [add_input])
     patterns = []
     patterns.append(ReformInfo(name="hardswish",
                                src_nodes=[add, clip, mul, div],
