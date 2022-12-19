@@ -1028,7 +1028,18 @@ class CaffeConverter(BaseConverter):
 
     def convert_shufflechannel_op(self, layer):
         assert (self.layerType(layer) == 'ShuffleChannel')
-        raise RuntimeError("not implemented")
+        in_op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        group = layer.shuffle_channel_param.group
+        operands = list()
+        operands.append(in_op)
+        output_shape = input_shape
+        attrs = {
+            'name': self.get_loc(layer.top[0]),
+            'group': group
+        }
+        new_op = self.mlir.create_shuffle_channel_op(operands, output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_sigmoid_op(self, layer):
         assert (self.layerType(layer) == 'Sigmoid')
@@ -1041,7 +1052,46 @@ class CaffeConverter(BaseConverter):
 
     def convert_slice_op(self, layer):
         assert (self.layerType(layer) == 'Slice')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        operands.append(op)
+        assert(len(input_shape) == 4)
+        p = layer.slice_param
+        axis = p.axis
+        bottom_slice_axis = input_shape[axis]
+        top_size = len(layer.top)
+        slice_num = len(p.slice_point)
+        slices = list()
+        if slice_num > 0:
+            assert(slice_num == top_size - 1)
+            assert(top_size <= bottom_slice_axis)
+            prev = 0
+            for i in range(slice_num):
+                assert(p.slice_point[i] > prev)
+                slices.append(p.slice_point[i] - prev)
+                prev = p.slice_point[i]
+            slices.append(bottom_slice_axis - prev)
+        else:
+            assert(bottom_slice_axis % top_size == 0)
+            for i in range(top_size):
+                slices.append(int(bottom_slice_axis / top_size))
+        offset = 0
+        for i in range(top_size):
+            output_shape = list(input_shape)
+            output_shape[axis] = slices[i]
+            crop_offset = [0] * len(input_shape)
+            crop_offset[axis] = offset
+            steps = [1] * len(input_shape)
+            param = {
+                'name': self.get_loc(layer.top[i]),
+                'offset': crop_offset,
+                'steps': steps,
+            }
+            new_op = self.mlir.create_slice_op(operands, output_shape, **param)
+            self.addOperand(layer.top[i], new_op)
+            offset += slices[i]
+        #raise RuntimeError("not implemented")
 
     def convert_split_op(self, layer):
         assert (self.layerType(layer) == 'Split')
