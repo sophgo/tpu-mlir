@@ -36,6 +36,10 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
     function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
   }
   if (out_type.isa<FloatType>()) {
+    if (do_relu()) {
+      auto limit = relu_limit().convertToDouble();
+      function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+    }
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
@@ -43,20 +47,23 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
     }
   } else if (Quant::isUniformQuantized(output())) {
     if (asym == false) {
-  #pragma omp parallel for schedule(static, omp_schedule(num_elem))
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // coeff has been merge in multiplier&&rshift
-        double sum = applyMultiplierAndRShift(p.outputs[0][i], multiplier(), rshift());
-        if (do_relu() && sum < 0) sum = 0;
+        double sum =
+            applyMultiplierAndRShift(p.outputs[0][i], multiplier(), rshift());
+        if (do_relu() && sum < 0)
+          sum = 0;
         p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
                                                         : Quant::to_int8(sum);
       }
     } else {
-  #pragma omp parallel for schedule(static, omp_schedule(num_elem))
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // inputs has been requant
         double sum = p.outputs[0][i];
-        if (do_relu() && sum < 0) sum = 0;
+        if (do_relu() && sum < 0)
+          sum = 0;
         p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
                                                         : Quant::to_int8(sum);
       }

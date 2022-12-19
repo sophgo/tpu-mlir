@@ -452,19 +452,19 @@ class OnnxConverter(BaseConverter):
             opd1_num_elem = np.prod(self.getShape(rhs))
             channel = output_shape[1]
             lhs_op = self.getOp(lhs)
-            if opd1_num_elem == channel:
+            if self.isScalar(rhs):
+                p['do_relu'] = False
+                p['const_val'] = self.getScalar(rhs)
+                new_op = self.mlir.create_add_const_op([lhs_op], output_shape, **p)
+            elif opd1_num_elem == channel:
                 bias = self.getWeight(rhs)
                 weight_data = np.ones_like(bias)
                 self.addWeight(name + '_scale', weight_data)
                 weight_op = self.getWeightOp(name + '_scale')
                 bias_op = self.getWeightOp(rhs)
                 new_op = self.mlir.create_scale_op(
-                    [lhs_op, weight_op, bias_op], output_shape, **p)
-            elif self.isScalar(rhs):
-                p['do_relu'] = False
-                p['const_val'] = self.getScalar(rhs)
-                new_op = self.mlir.create_add_const_op(
-                    [lhs_op], output_shape, **p)
+                    [lhs_op, weight_op, bias_op], output_shape, **p
+                )
             else:
                 rhs_op = self.getOp(rhs)
                 new_op = self.mlir.create_add_op(
