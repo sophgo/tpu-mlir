@@ -212,7 +212,8 @@ class ONNX_IR_TESTER(object):
                       mode=quant_mode,
                       chip=self.chip,
                       cali_table=table_name,
-                      asymmetric=isAsym)
+                      asymmetric=isAsym,
+                      qdq=quant_mode == "qdq")
 
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
@@ -241,6 +242,8 @@ class ONNX_IR_TESTER(object):
         np.savez(ref_npz, **top_mlir_output)
         # tpu mlir inference and compare
         if quant_mode == "int8":
+            ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        if quant_mode == "qdq":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
@@ -322,26 +325,28 @@ class ONNX_IR_TESTER(object):
         self.torch_and_onnx_compare(in_data, onnx_file, origin_output)
         self.onnx_and_test(onnx_model.graph, name=model_name, input_data=in_data)
 
-    def onnx_and_test(self,
-                      graph_def,
-                      name: str = "",
-                      input_data: dict = None,
-                      no_quant: bool = False):
+    def onnx_and_test(self, graph_def, name: str = "", input_data: dict = None, qdq: bool = False):
         if input_data is None:
             input_data = self.create_random_input(graph_def)
         model_name = name if name else graph_def.name
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data, graph_def, model_name)
         # test onnx and mlir outputs
-        rtol = 1e-5
-        atol = 1e-1
+        rtol = 1e-5 if not qdq else 1e-5
+        atol = 1e-1 if not qdq else 1
         counter = 0
         for name in onnx_outs:
+            if qdq:
+                continue
             if name in top_mlir_outs:
                 print("Compare:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
-                np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=rtol, atol=atol)
+                np.testing.assert_allclose(top_mlir_output,
+                                           onnx_output,
+                                           rtol=rtol,
+                                           atol=atol,
+                                           verbose=True)
                 counter += 1
             if name in node_name_mapping:
                 mapped_name = node_name_mapping[name]
@@ -351,12 +356,12 @@ class ONNX_IR_TESTER(object):
                     onnx_output = onnx_outs[name].flatten()
                     np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=rtol, atol=atol)
                     counter += 1
-        if counter == 0:
+        if counter == 0 and not qdq:
             raise RuntimeError("No compare between onnx outs and mlir outts")
         print("Success: ONNX outs and Mlir outs are equal\n")
-        if no_quant:
-            tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, "f32")
-            self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz, "f32",
+        if qdq:
+            tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, "qdq")
+            self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz, "qdq",
                                        model_name)
             return
         for quant_mode in self.quant_modes:
@@ -2383,7 +2388,7 @@ class ONNX_IR_TESTER(object):
         dilation = [1, 1]
         groups = 1
 
-        y_scale_data = np.random.randn()
+        y_scale_data = np.random.uniform(0, 10)
         y_zero_point_data = np.random.randint(0, 255)
         x_scale_data = deepcopy(y_scale_data)
         x_zero_point_data = deepcopy(y_zero_point_data)
@@ -2391,10 +2396,10 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randint(0, 255, filter_shape)
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
-        weight_x_scale_data = np.random.randn(oc)
+        weight_x_scale_data = np.random.uniform(0, 10, oc)
         weight_x_zero_point_data = np.random.randint(0, 255, oc)
 
-        output_y_scale_data = np.random.randn()
+        output_y_scale_data = np.random.uniform(0, 10)
         output_y_zero_point_data = np.random.randint(0, 255)
         output_x_scale_data = deepcopy(output_y_scale_data)
         output_x_zero_point_data = deepcopy(output_y_zero_point_data)
@@ -2466,11 +2471,11 @@ class ONNX_IR_TESTER(object):
                                           output_y_zero_point
                                       ])
 
-        self.onnx_and_test(graph_def)
+        self.onnx_and_test(graph_def, qdq=True)
 
     def test_QDQ(self, case_name):
         input_shape = [10, 3, 224, 224]
-        y_scale_data = np.random.randn()
+        y_scale_data = np.random.uniform(0, 1)
         y_zero_point_data = np.random.randint(0, 255)
         x_scale_data = deepcopy(y_scale_data)
         x_zero_point_data = deepcopy(y_zero_point_data)
@@ -2484,13 +2489,15 @@ class ONNX_IR_TESTER(object):
                                           [x_zero_point_data])
         quant_node = helper.make_node("QuantizeLinear", ['input', 'y_scale', 'y_zero_point'], ['a'])
         dequant_node = helper.make_node("DequantizeLinear", ['a', 'x_scale', 'x_zero_point'],
-                                        ['output'])
+                                        ['a_output'])
 
-        graph_def = helper.make_graph([quant_node, dequant_node],
+        log_node = helper.make_node("Log", inputs=['a_output'], outputs=['output'])
+
+        graph_def = helper.make_graph([quant_node, dequant_node, log_node],
                                       case_name, [input], [output],
                                       initializer=[y_scale, y_zero_point, x_scale, x_zero_point])
 
-        self.onnx_and_test(graph_def)
+        self.onnx_and_test(graph_def, qdq=True)
 
 
 if __name__ == "__main__":

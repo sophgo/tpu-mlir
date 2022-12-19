@@ -765,7 +765,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['SINT8'])
         param = {
             'name': kargs['name'],
-            'y_scale': self.ArrayAttr(kargs['y_scale'], 'F32'),
+            'y_scale': self.ArrayAttr(kargs['y_scale'], 'F64'),
             'y_zero_point': self.ArrayAttr(kargs['y_zero_point'], 'INT32'),
             'axis': IntegerAttr.get(self.mlir_type['INT64'], axis)
         }
@@ -776,7 +776,7 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
         param = {
             'name': kargs['name'],
-            'x_scale': self.ArrayAttr(kargs['x_scale'], 'F32'),
+            'x_scale': self.ArrayAttr(kargs['x_scale'], 'F64'),
             'x_zero_point': self.ArrayAttr(kargs['x_zero_point'], 'INT32'),
             'axis': IntegerAttr.get(self.mlir_type['INT64'], axis)
         }

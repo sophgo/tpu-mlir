@@ -68,10 +68,29 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
-  auto filter_f32 = filterOp.read<float>();
+  bool is_quantized; // Make it uninitialized intentionally。
+  if (filterOp.getResult()
+          .getType()
+          .dyn_cast<RankedTensorType>()
+          .getElementType()
+          .dyn_cast<IntegerType>()) {
+    is_quantized = true;
+  } else {
+    is_quantized = false;
+  }
+  assert(!is_quantized ||
+         (is_quantized && filterOp.weight_scale().has_value()) &&
+             "Conv quant weight input must have scale attribute.");
+  auto filter_f32 = is_quantized ? nullptr : filterOp.read<float>();
+  auto filter_size = filterOp.getResult()
+                         .getType()
+                         .dyn_cast<RankedTensorType>()
+                         .getNumElements();
   float fmax, fmin;
-  findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
-  bool fsign = (fmin < 0 || attr.has_bias == true);
+  if (filter_f32)
+    findMinMax(filter_f32->data(), filter_size, &fmin, &fmax);
+  bool fsign = (fmin < 0 || attr.has_bias == true ||
+                is_quantized); // We only support signed qdq quant now.
   float fqmax = fsign ? 127 : 255;
   std::shared_ptr<std::vector<double>> weight_scale_v;
   if (filterOp.weight_scale().has_value()) {
@@ -80,8 +99,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
-  auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
-  auto filter_u8 = std::make_shared<std::vector<uint8_t>>(filter_f32->size());
+  auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_size);
+  auto filter_u8 = std::make_shared<std::vector<uint8_t>>(filter_size);
   if (attr.has_bias) {
     auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
@@ -94,9 +113,10 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   std::vector<int64_t> multiplier_v;
   double scale_w;
   int int32_multiplier, shift;
-  int inner_dim = filter_f32->size() / attr.oc;
+  int inner_dim = filter_size / attr.oc;
   for (int c = 0; c < attr.oc; c++) { // per-channel量化
-    float *p_filter = filter_f32->data() + c * inner_dim;
+    float *p_filter =
+        is_quantized ? nullptr : (filter_f32->data() + c * inner_dim);
     if (filterOp.weight_scale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
     } else {
@@ -107,15 +127,18 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     get_scale_and_shift(scale_f, int32_multiplier, shift, 32);
     multiplier_v.push_back(int32_multiplier);
     rshift_v.push_back(shift);
-    if (fsign) {
-      for (int t = 0; t < inner_dim; t++) {
-        filter_i8->data()[c * inner_dim + t] =
-            Quant::to_int8(p_filter[t] / scale_w);
-      }
-    } else {
-      for (int t = 0; t < inner_dim; t++) {
-        filter_u8->data()[c * inner_dim + t] =
-            Quant::to_uint8(p_filter[t] / scale_w);
+
+    if (!is_quantized) {
+      if (fsign) {
+        for (int t = 0; t < inner_dim; t++) {
+          filter_i8->data()[c * inner_dim + t] =
+              Quant::to_int8(p_filter[t] / scale_w);
+        }
+      } else {
+        for (int t = 0; t < inner_dim; t++) {
+          filter_u8->data()[c * inner_dim + t] =
+              Quant::to_uint8(p_filter[t] / scale_w);
+        }
       }
     }
 
@@ -138,7 +161,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   auto filter_type = op.filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
                                         rewriter.getIntegerType(8, fsign));
-  if (fsign) {
+  if (is_quantized) {
+    operands.push_back(op.filter());
+  } else if (fsign) {
     auto new_filter =
         top::WeightOp::create(op, "filter_i8", *filter_i8, new_type);
     operands.push_back(new_filter);

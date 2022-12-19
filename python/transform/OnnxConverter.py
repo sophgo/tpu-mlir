@@ -1636,11 +1636,6 @@ class OnnxConverter(BaseConverter):
             operand = self.getOperand(onnx_node.inputs[0])
         except:
             operand = self.getWeightOp(onnx_node.inputs[0])
-        if hasattr(onnx_node, 'attrs'):
-            try:
-                p['axis'] = onnx_node.attrs['axis']
-            except:
-                pass
         x_scale = self.getWeight(onnx_node.inputs[1])
         x_zero_point = self.getWeight(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)
@@ -1649,5 +1644,10 @@ class OnnxConverter(BaseConverter):
             'x_scale': x_scale,
             'x_zero_point': x_zero_point
         }
+        if hasattr(onnx_node, 'attrs'):
+            try:
+                p['axis'] = onnx_node.attrs['axis']
+            except:
+                pass
         new_op = self.mlir.create_deqlinear_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)

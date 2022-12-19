@@ -53,7 +53,7 @@ public:
       return failure(); // This op is calibrated.
     }
     auto y_scale =
-        *Module::getF32Array(op->getAttr("y_scale").dyn_cast<ArrayAttr>());
+        *Module::getF64Array(op->getAttr("y_scale").dyn_cast<ArrayAttr>());
     auto y_zero_point =
         *Module::getI32Array(op->getAttr("y_zero_point").dyn_cast<ArrayAttr>());
     for (auto i : y_scale)
@@ -63,6 +63,7 @@ public:
            "y_scale.size() & y_zero_point.size() must be the same.");
     assert(y_scale.size() == 1 &&
            "Cannot support per chanel quant for activation tensor now.");
+    assert(y_scale[0] > 0 && "Scale should be positive.");
     // TO-Do : support asymmetric
     float min = (std::numeric_limits<int8_t>::min() - y_zero_point[0]) *
                 y_scale[0],
@@ -119,9 +120,32 @@ public:
 
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
-    Value oprand = op->getOperand(0);
+    Value operand = op->getOperand(0);
+    auto formerOp = op->getOperand(0).getDefiningOp();
+    if (auto weightOp = dyn_cast<WeightOp>(formerOp)) {
+      auto scale =
+          *Module::getF64Array(dyn_cast<DequantizeLinearOp>(op).x_scale());
+      weightOp->setAttr("weight_scale",
+                        rewriter.getF64ArrayAttr(ArrayRef<double>(scale)));
+      auto element_type = rewriter.getIntegerType(8, true);
+      auto operand_type = operand.getType().cast<RankedTensorType>();
+      auto new_type =
+          RankedTensorType::get(operand_type.getShape(), element_type);
+      weightOp.getResult().setType(new_type);
+    } else if (auto quantOp = dyn_cast<QuantizeLinearOp>(formerOp)) {
+      // To-Do: Check Type and scale.
+    } else if (auto result_type = formerOp->getResult(0)
+                                      .getType()
+                                      .dyn_cast<RankedTensorType>()) {
+      if (!result_type.getElementType()
+               .dyn_cast<quant::CalibratedQuantizedType>()) {
+        llvm_unreachable("Cannot handle this case.");
+      }
+    } else {
+      llvm_unreachable("Cannot handle this case.");
+    }
     while (!op->getUses().empty()) {
-      op->getUses().begin()->set(oprand);
+      op->getUses().begin()->set(operand);
     }
     rewriter.eraseOp(op);
     return success();

@@ -16,6 +16,26 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
+int64_t onnx_rounding(float f) {
+  if (f > 0) {
+    int a = f;
+    double b = f - a;
+    if (fabs(b - 0.5) < 1e-8) {
+
+      return a + (a & 1);
+    } else
+      return std::nearbyintf(f);
+  } else {
+    int a = f;
+    double b = a - f;
+    if (fabs(b - 0.5) < 1e-8) {
+
+      return a - (a & 1);
+    } else
+      return std::nearbyintf(f);
+  }
+}
+
 int64_t top::QuantizeLinearOp::getFLOPs() {
   return Module::getNumElements(output());
 }
@@ -30,7 +50,7 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
   auto shape = input().getType().cast<RankedTensorType>().getShape();
   auto zero_point = Module::getI32Array(y_zero_point());
   auto raw_zero_point = *zero_point;
-  auto scale = Module::getF32Array(y_scale());
+  auto scale = Module::getF64Array(y_scale());
   auto raw_scale = *scale;
   assert(raw_scale.size() == raw_zero_point.size() &&
          "zero point & scale size missmatch");
@@ -38,10 +58,11 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
     for (int i = 0; i < num_element; ++i) {
       auto val = p.inputs[0][i];
-      p.outputs[0][i] = std::nearbyintf(val / raw_scale[0] + raw_zero_point[0]);
+      p.outputs[0][i] = onnx_rounding(val / raw_scale[0] + raw_zero_point[0]);
     }
   } else {
-    assert(raw_scale.size() == shape[0] &&
+    assert(axis() == 0 && "Cannot handle axis!=0");
+    assert(raw_scale.size() == shape[axis()] &&
            "zero point & input shape missmatch");
     int64_t res = 1;
     for (int i = 1; i < shape.size(); i++)
@@ -51,7 +72,7 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
       for (int j = 0; j < res; j++) {
         auto val = p.inputs[0][i * res + j];
         p.outputs[0][i * res + j] =
-            std::nearbyintf(val / raw_scale[i] + raw_zero_point[i]);
+            onnx_rounding(val / raw_scale[i] + raw_zero_point[i]);
       }
     }
   }

@@ -84,10 +84,6 @@ struct Module {
   static std::shared_ptr<std::vector<int64_t>>
   getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
               int64_t default_value);
-  static std::shared_ptr<std::vector<float>> getF32Array(ArrayAttr arrayAttr);
-  static std::shared_ptr<std::vector<float>>
-  getF32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
-              float default_value);
   static std::shared_ptr<std::vector<double>> getF64Array(ArrayAttr arrayAttr);
   static std::shared_ptr<std::vector<double>>
   getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,

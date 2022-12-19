@@ -30,7 +30,7 @@ LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
   auto shape = input().getType().cast<RankedTensorType>().getShape();
   auto zero_point = Module::getI32Array(x_zero_point());
   auto raw_zero_point = *zero_point;
-  auto scale = Module::getF32Array(x_scale());
+  auto scale = Module::getF64Array(x_scale());
   auto raw_scale = *scale;
   assert(raw_scale.size() == raw_zero_point.size() &&
          "zero point & scale size missmatch");
@@ -41,7 +41,8 @@ LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = (val - raw_zero_point[0]) * raw_scale[0];
     }
   } else {
-    assert(raw_scale.size() == shape[0] &&
+    assert(axis() == 0 && "Cannot handle axis!=0");
+    assert(raw_scale.size() == shape[axis()] &&
            "zero point & input shape missmatch");
     int64_t res = 1;
     for (int i = 1; i < shape.size(); i++)
