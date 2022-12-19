@@ -1006,6 +1006,23 @@ def Tpu_PermuteOp: Tpu_Op<"Permute"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
+
+  let summary = "ShuffleChannel operator";
+
+  let description = [{
+      Perform ShuffleChannel on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$group,
+    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {

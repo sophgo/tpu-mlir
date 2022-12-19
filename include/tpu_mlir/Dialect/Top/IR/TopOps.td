@@ -611,6 +611,21 @@ def Top_PermuteOp: Top_Op<"Permute"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
+  let summary = "ShuffleChannel operator";
+
+  let description = [{
+      Perform ShuffleChannel on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$group
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ReluOp: Top_Op<"Relu",[InOutSameShape]> {
   let summary = "Relu operator";
 
