@@ -2388,7 +2388,7 @@ class ONNX_IR_TESTER(object):
         dilation = [1, 1]
         groups = 1
 
-        y_scale_data = np.random.uniform(0, 10)
+        y_scale_data = np.random.uniform(0, 1)
         y_zero_point_data = np.random.randint(0, 255)
         x_scale_data = deepcopy(y_scale_data)
         x_zero_point_data = deepcopy(y_zero_point_data)
@@ -2396,10 +2396,10 @@ class ONNX_IR_TESTER(object):
         weight_data = np.random.randint(0, 255, filter_shape)
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
-        weight_x_scale_data = np.random.uniform(0, 10, oc)
+        weight_x_scale_data = np.random.uniform(0, 1, oc)
         weight_x_zero_point_data = np.random.randint(0, 255, oc)
 
-        output_y_scale_data = np.random.uniform(0, 10)
+        output_y_scale_data = np.random.uniform(0, 1)
         output_y_zero_point_data = np.random.randint(0, 255)
         output_x_scale_data = deepcopy(output_y_scale_data)
         output_x_zero_point_data = deepcopy(output_y_zero_point_data)

@@ -24,7 +24,7 @@ int64_t onnx_rounding(float f) {
 
       return a + (a & 1);
     } else
-      return std::nearbyintf(f);
+      return std::clamp<int64_t>(std::nearbyintf(f), -128, 127);
   } else {
     int a = f;
     double b = a - f;
@@ -32,7 +32,7 @@ int64_t onnx_rounding(float f) {
 
       return a - (a & 1);
     } else
-      return std::nearbyintf(f);
+      return std::clamp<int64_t>(std::nearbyintf(f), -128, 127);
   }
 }
 
