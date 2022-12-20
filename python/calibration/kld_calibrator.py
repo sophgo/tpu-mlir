@@ -122,9 +122,8 @@ def cosine_sim(x, y):
 
 
 class SimpleTuner:
-
     def __init__(self, args, ds: DataSelector, ppa_list):
-        self.args = args
+        self.args = copy.deepcopy(args)
         self.start_time = time.time()
         self.args.tune_num = min(len(ds.data_list), args.tune_num)
         self.tuned_op_list = []
@@ -147,6 +146,7 @@ class SimpleTuner:
             if n != 0:
                 for i in range(self.batch_size - n):
                     self.data_list.append(self.data_list[-1])
+                    self.args.tune_num += 1
             self.args.tune_num = self.args.tune_num // self.batch_size
         log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         self.logger = setup_logger('auto_tune', log_level=log_level)
@@ -442,7 +442,6 @@ class SimpleTuner:
     def run(self):
         #pdb.set_trace()
         self.layer_cos_sim = {}
-
         all_tensors = self.module.all_tensor_names
         self.initial_threshold = copy.deepcopy(self.threshold_table.thresholds_map)
         pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
@@ -521,6 +520,252 @@ class SimpleTuner:
         }
         return tuned_th_dict
 
+
+
+class ActivationCalibrator2(BaseKldCalibrator):
+    def __init__(self, args, ds: DataSelector):
+        super().__init__()
+        self.args = copy.deepcopy(args)
+        self.start_time = time.time()
+        self.tuned_op_list = []
+        self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        # if 'input_calibration_table' in self.debug_cmd:
+        self.module = pymlir.module()
+        self.module.load(args.mlir_file)
+        self.parser = MlirParser(args.mlir_file)
+        self.batch_size = self.parser.get_batch_size()
+        self.input_num = self.parser.get_input_num()
+        self.ppa_list = []
+        for i in range(self.input_num):
+            tmp = preprocess()
+            tmp.load_config(self.parser.get_input_op_by_idx(i))
+            self.ppa_list.append(tmp)
+        self.ds = ds
+        self.data_list = ds.data_list
+        self.args.input_num = len(self.data_list)
+        if ds.all_image:
+            n = self.args.input_num % self.batch_size
+            if n != 0:
+                for i in range(self.batch_size - n):
+                    self.data_list.append(self.data_list[-1])
+                    self.args.input_num += 1
+            self.args.input_num = self.args.input_num // self.batch_size
+        log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
+        self.logger = setup_logger('auto_tune', log_level=log_level)
+        self.histogram_bin_num = args.histogram_bin_num
+        self.tune_steps = 20
+        self.num_samples = self.args.input_num
+        if 'tune_steps' in self.debug_cmd:
+            self.tune_steps = int(self.debug_cmd['tune_steps'])
+        self.load_net_input()
+
+    def _clean_resource(self):
+        del self.module
+        self.module = None
+
+    def load_net_input(self):
+        self.dq_activations = {}
+        self.ref_activations = {}
+        count = self.parser.get_user_count_by_op_name(self.ppa_list[0].input_name)
+        batched_inputs = self.input_num * ['']
+        idx, tune_idx = 0, 0
+        self.dq_activations[tune_idx] = {}
+        self.ref_activations[tune_idx] = {}
+        for data in self.data_list:
+            if self.ds.all_npz:
+                x = np.load(data)
+                for input in self.module.input_names:
+                    assert (input in x)
+                    self.dq_activations[tune_idx][input] = [x[input], count]
+                    self.ref_activations[tune_idx][input] = [x[input], count]
+            elif self.ds.all_image:
+                idx += 1
+                inputs = data.split(',')
+                inputs = [s.strip() for s in inputs]
+                assert (self.input_num == len(inputs))
+                for i in range(self.input_num):
+                    batched_inputs[i] += '{},'.format(inputs[i])
+                    if idx == self.batch_size:
+                        x = self.ppa_list[i].run(batched_inputs[i][:-1])
+                        self.dq_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
+                        self.ref_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
+                if idx == self.batch_size:
+                    idx = 0
+                    batched_inputs = self.input_num * ['']
+                else:
+                    continue
+            else:
+                self.dq_activations[tune_idx] = {}
+                self.ref_activations[tune_idx] = {}
+                inputs = data.split(',')
+                inputs = [s.strip() for s in inputs]
+                assert (self.input_num == len(inputs))
+                for name, input in zip(self.module.input_names, inputs):
+                    x = np.load(input)
+                    self.dq_activations[tune_idx][name] = [x, count]
+                    self.ref_activations[tune_idx][name] = [x, count]
+            tune_idx += 1
+            self.dq_activations[tune_idx] = {}
+            self.ref_activations[tune_idx] = {}
+
+    def clear_ref_tensor(self, i, evaled_op):
+        if self.ref_activations[i][evaled_op][1] == 0:  #清除残留的网络输出
+            self.ref_activations[i].pop(evaled_op)
+        input_ops = self.parser.get_pre_op_by_op_name(evaled_op)
+        for input_op in input_ops:
+            if input_op in self.ref_activations[i]:
+                if self.ref_activations[i][input_op][1] == 1:
+                    self.ref_activations[i].pop(input_op)
+                else:
+                    self.ref_activations[i][input_op][1] -= 1
+
+    def get_ref_tensor(self, i, evaled_op):
+        if evaled_op in self.ref_activations[i]:
+            return self.ref_activations[i][evaled_op][0]
+        print('error, idx:{} evaled_op:{} not in ref_activations'.format(i, evaled_op))
+        return None
+
+    def gen_ref_tensor(self, i, op_name):
+        if op_name in self.ref_activations[i]:
+            return
+        input_ops = self.parser.get_pre_op_by_op_name(op_name)
+        for input_op in input_ops:
+            data = self.ref_activations[i][input_op][0]
+            self.module.set_tensor(input_op, data)
+        if len(input_ops) > 0:
+            value = self.module.invoke_at(op_name)
+            count = self.parser.get_user_count_by_op_name(op_name)
+            self.ref_activations[i][op_name] = [value, count]
+
+    def find_threshold(self, histogram_data_map, histogram_width_map):
+        thresholds = {}
+        num = len(histogram_data_map)
+        pbar = tqdm(range(num), total=num, position=0, leave=True)
+        for item in histogram_data_map:
+            pbar.set_description("[{}] threshold: {}".format(self.histogram_bin_num, item))
+            pbar.update(1)
+            thresholds[item] = self.kld_threshold(histogram_data_map[item],
+                                                  histogram_width_map[item], self.histogram_bin_num)
+        pbar.close()
+        return thresholds
+
+    def activation_collect_and_calc_th(self):
+        histogram_data_map = {}
+        histogram_width_map = {}
+        self.activations_statistics = {}
+        all_tensors = self.module.all_tensor_names
+        pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
+        for i, evaled_op in enumerate(all_tensors):
+            pbar.set_description("activation_collect_and_calc_th for op: {}".format(evaled_op))
+            pbar.update(1)
+            type = self.parser.get_op_type_by_op_name(evaled_op)
+            if type is None:
+                continue
+            for idx in range(self.args.input_num):
+                self.gen_ref_tensor(idx, evaled_op)
+
+            min_value = inf
+            max_value = -inf
+            abs_value = None
+            for idx in range(self.args.input_num):
+                activation = self.get_ref_tensor(idx, evaled_op)
+                min_value = min(np.min(activation), min_value)
+                max_value = max(np.max(activation), max_value)
+                abs_value = max(abs(min_value), abs(max_value))
+            self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
+
+            for idx in range(self.args.input_num):
+                activation = self.get_ref_tensor(idx, evaled_op)
+                _, _, abs_value = self.activations_statistics[evaled_op]
+                hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                if evaled_op not in histogram_data_map:
+                    histogram_data_map[evaled_op] = hist
+                    histogram_width_map[evaled_op] = width
+                else:
+                    histogram_data_map[evaled_op] += hist
+
+            for idx in range(self.args.input_num):
+                self.clear_ref_tensor(idx, evaled_op)
+        pbar.close()
+
+        thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
+        thresholds_map['abs_max'] = {}
+        for k, v in self.activations_statistics.items():
+            _, _, abs_val = v
+            thresholds_map['abs_max'][k] = abs_val
+            if thresholds_map[k] > abs_val:
+                thresholds_map[k] = abs_val
+        return thresholds_map
+
+    def run(self):
+        layer_name_list = []
+        thresholds_map_list = []
+        op_layers = self.module.all_tensor_names
+        if 'input_calibration_table' in self.debug_cmd:
+            assert self.args.tune_num > 0
+            input_calibration_table = self.debug_cmd['input_calibration_table']
+            if input_calibration_table != '' and os.path.exists(input_calibration_table):
+                os.system('cp -f {name} {name}.1'.format(name=input_calibration_table))
+                threshold_table = CalibrationTable(input_calibration_table)
+                for op_name in op_layers:
+                    thresholds_map_list.append(threshold_table.thresholds_map[op_name][0])
+            else:
+                print('input_calibration_table error')
+                exit(1)
+        else:
+            thresholds_map = self.activation_collect_and_calc_th()
+            self._clean_resource()
+            # step 3: dump threshold table of default histogram bins
+            cali_table = self.args.calibration_table
+            if self.args.tune_num > 0:
+                cali_table += ".1"
+            with open(cali_table, 'w') as f:
+                f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+                f.write("# histogram number: {}\n".format(self.histogram_bin_num))
+                f.write("# sample number: {}\n###\n".format(self.num_samples))
+                f.write("# op_name    threshold    min    max\n")
+                for i, op_name in enumerate(op_layers):
+                    threshold = thresholds_map[op_name]
+                    thresholds_map_list.append(threshold)
+                    min_value, max_value, _ = self.activations_statistics[op_name]
+                    f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                            max_value))
+
+        if self.args.tune_num <= 0:
+            return
+
+        # setp 4: tune to get better threshold of each layers.
+        self.tunner = SimpleTuner(self.args, self.ds, self.ppa_list)
+        thresholds = self.tunner.run()
+
+        # step 5: dump threshold table after tuning
+        tuned_threshold_list = []
+        with open(self.args.calibration_table, 'w') as f:
+            f.write("# genetated time: {}\n".format(datetime.datetime.now()))
+            f.write("# histogram number: {}\n".format(self.histogram_bin_num))
+            f.write("# sample number: {}\n".format(self.num_samples))
+            f.write("# tune number: {}\n###\n".format(self.args.tune_num))
+            f.write("# op_name    threshold    min    max\n")
+            for i, op_name in enumerate(op_layers):
+                threshold = thresholds[op_name]
+                layer_name_list.append('{}_{}'.format(i, op_name))
+                tuned_threshold_list.append(threshold)
+                if 'input_calibration_table' in self.debug_cmd:
+                    min_value = threshold_table.thresholds_map[op_name][1]
+                    max_value = threshold_table.thresholds_map[op_name][2]
+                else:
+                    min_value, max_value, _ = self.activations_statistics[op_name]
+                f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
+                                                        max_value))
+        os.remove(cali_table)
+        if 'print_debug_info' in self.debug_cmd:
+            th_before_tuned = np.array(thresholds_map_list)
+            th_after_tuned = np.array(tuned_threshold_list)
+            file_prefix = './{}_{}pics_{}_times_tuned_th_statistic'.format(
+                self.args.mlir_file.split('.')[0], self.tunner.args.tune_num,
+                self.tunner.tune_steps)
+            save_tensor_diff_subplot(th_before_tuned, th_after_tuned, layer_name_list,
+                                    'before_tuned', 'after_tuned', file_prefix)
 
 class ActivationCalibrator(BaseKldCalibrator):
 
