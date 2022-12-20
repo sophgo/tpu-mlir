@@ -346,7 +346,9 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     if (coeff_merged()) {
       spec.merge_coeff = 2;
       auto out_etype = Module::getStorageType(output());
-      common.if_relu = out_etype.isUnsignedInteger(8);
+      if (out_etype.isUnsignedInteger(8)) {
+        common.if_relu = true;
+      }
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
@@ -448,7 +450,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
       p.spec.merge_coeff = 2;
       p.spec.with_requant = 1;
       auto out_etype = Module::getStorageType(output());
-      common.if_relu = out_etype.isUnsignedInteger(8);
+      if (out_etype.isUnsignedInteger(8)) {
+        common.if_relu = true;
+      }
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();

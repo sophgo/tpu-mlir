@@ -112,6 +112,7 @@ LogicalResult tpu::MaxPoolWithMaskOp::BackwardH(int64_t &in_idx,
   parseParam(&attrs);
   in_slice = (out_slice - 1) * attrs.sh + attrs.kh;
   in_idx = out_idx * attrs.sh - attrs.pad_h;
-  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih);
+  bool is_last = (out_idx + out_slice == attrs.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih, is_last);
   return success();
 }

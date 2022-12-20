@@ -137,9 +137,11 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
     pad_h = in_idx * attrs.sh + pad_h - out_idx;
     in_slice = std::ceil((out_slice - pad_h + kh_ext - 1) / (float)attrs.sh);
   }
-  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih);
-  if (in_slice == 0)
+  bool is_last = (out_idx + out_slice == attrs.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih, is_last);
+  if (in_slice == 0) {
     return failure();
+  }
   return success();
 }
 

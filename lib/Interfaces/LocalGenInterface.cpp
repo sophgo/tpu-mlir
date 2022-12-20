@@ -16,13 +16,13 @@ namespace tpu_mlir {
 
 constexpr llvm::StringRef LocalGenInterface::kLayerGroupAttrName;
 void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
-                                 int64_t in_length) {
+                                 int64_t in_length, bool last) {
   // avoid leak
   auto end_idx = in_idx + in_slice;
   if (in_idx < 0) {
     in_idx = 0;
   }
-  if (end_idx > in_length) {
+  if (end_idx > in_length || last) {
     end_idx = in_length;
   }
   in_slice = end_idx - in_idx;
