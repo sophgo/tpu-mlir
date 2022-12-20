@@ -37,6 +37,7 @@ class ONNX_IR_TESTER(object):
             "AvgPool1D": self.test_AvgPool1D,
             "AvgPool2D": self.test_AvgPool2D,
             "AvgPool3D": self.test_AvgPool3D,
+            "AvgPoolOdd": self.test_AvgPoolOdd,
             "BatchMatMul": self.test_BatchMatMul,
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
@@ -406,6 +407,9 @@ class ONNX_IR_TESTER(object):
 
     def test_AvgPool2D(self, case_name):
         self.AvgPoolBase(case_name, [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
+
+    def test_AvgPoolOdd(self, case_name):
+        self.AvgPoolBase(case_name, [1, 32, 143, 143], [1, 32, 71, 71], [2, 2], [2, 2])
 
     def test_AvgPool3D(self, case_name):
         self.AvgPoolBase(case_name, [2, 32, 16, 32, 64], [2, 32, 8, 16, 32], [2, 2, 2], [2, 2, 2])

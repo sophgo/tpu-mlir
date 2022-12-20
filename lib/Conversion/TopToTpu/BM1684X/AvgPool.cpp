@@ -29,14 +29,21 @@ void AvgPoolLowering::LoweringF32(PatternRewriter &rewriter,
 void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                    top::AvgPoolOp poolOp,
                                    bool asymmetric) const {
+  pool_attr_t p;
+  poolOp.parseParam(&p);
   const size_t kernel_size = poolOp.kernel_shape().size();
-  auto kernel = Module::getI64Array(poolOp.kernel_shape());
-  int64_t kd = kernel_size == 3 ? kernel->at(0) : 1;
-  int64_t kh = kernel_size == 3 ? kernel->at(1) : kernel->at(0);
-  int64_t kw =
-      kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);
-
+  int64_t kd = p.kd, kh = p.kh, kw = p.kw;
   auto op = poolOp.getOperation();
+  if (asymmetric) {
+    // Odd case to f16, [143,143]=>[71,71]
+    int ih = (p.oh - 1) * p.sh + p.kh;
+    int iw = (p.ow - 1) * p.sw + p.kw;
+    if ((iw < p.iw + p.pad_w + p.pad_w_after) ||
+        (kernel_size > 1 && ih < p.ih + p.pad_h + p.pad_h_after)) {
+      LoweringF16(rewriter, poolOp);
+      return;
+    }
+  }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
