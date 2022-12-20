@@ -12,7 +12,7 @@ import re
 import argparse
 import pymlir
 
-from calibration.kld_calibrator import ActivationCalibrator
+from calibration.kld_calibrator import ActivationCalibrator, ActivationCalibrator2
 from calibration.data_selector import DataSelector
 
 
@@ -34,5 +34,8 @@ if __name__ == '__main__':
 
     selector = DataSelector(args.dataset, args.input_num, args.data_list)
     # calibration
-    calibrator = ActivationCalibrator(args, selector)
+    if 'use_old_cali' in args.debug_cmd:
+        calibrator = ActivationCalibrator(args, selector)
+    else:
+        calibrator = ActivationCalibrator2(args, selector)
     calibrator.run()
