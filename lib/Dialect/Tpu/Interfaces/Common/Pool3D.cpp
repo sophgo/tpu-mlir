@@ -136,11 +136,12 @@ LogicalResult tpu::Pool3DOp::LocalGenSupport() {
 }
 
 LogicalResult tpu::Pool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
-                                          int64_t out_idx, int64_t out_slice) {
+                                       int64_t out_idx, int64_t out_slice) {
   pool_attr_t attrs;
   parseParam(&attrs);
   in_slice = (out_slice - 1) * attrs.sh + attrs.kh;
   in_idx = out_idx * attrs.sh - attrs.pad_h;
-  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih);
+  bool is_last = (out_idx + out_slice == attrs.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih, is_last);
   return success();
 }

@@ -131,7 +131,8 @@ LogicalResult tpu::Conv1DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   in_slice = (out_slice - 1) * attr.sh +
              (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
   in_idx = out_idx * attr.sh - attr.pht;
-  LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih);
+  bool is_last = (out_idx + out_slice == attr.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih, is_last);
   return success();
 }
 

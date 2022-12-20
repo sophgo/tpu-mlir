@@ -114,13 +114,12 @@ LogicalResult tpu::Conv3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   in_slice = (out_slice - 1) * attr.sh +
              (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
   in_idx = out_idx * attr.sh - attr.pht;
-  LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih);
+  bool is_last = (out_idx + out_slice == attr.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih, is_last);
   return success();
 }
 
-LogicalResult tpu::Conv3DOp::LocalGenSupport() {
-  return failure();
-}
+LogicalResult tpu::Conv3DOp::LocalGenSupport() { return failure(); }
 
 mlir::Type tpu::Conv3DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
