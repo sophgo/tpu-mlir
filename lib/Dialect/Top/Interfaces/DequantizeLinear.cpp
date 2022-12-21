@@ -50,6 +50,8 @@ LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[0]))
     for (int i = 0; i < shape[0]; ++i) {
       for (int j = 0; j < res; j++) {
+        assert(raw_zero_point[i] == 0 &&
+               "Cannot support per channel zero point dequant.");
         auto val = p.inputs[0][i * res + j];
         p.outputs[0][i * res + j] = (val - raw_zero_point[i]) * raw_scale[i];
       }

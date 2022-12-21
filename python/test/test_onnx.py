@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "QDQConv", "QDQ"]
+Failed_Cases = ["TorchLayerNorm", "QDQ"]
 
 
 class ONNX_IR_TESTER(object):
@@ -239,17 +239,23 @@ class ONNX_IR_TESTER(object):
         input_data = np.load(input_npz)
         # save ref
         ref_npz = "{}_top_out.npz".format(model_name)
-        np.savez(ref_npz, **top_mlir_output)
         # tpu mlir inference and compare
         if quant_mode == "int8":
-            ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
-        if quant_mode == "qdq":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
-        np.savez(tpu_npz, **tpu_mlir_outs)
+        if quant_mode == "qdq":
+            np.savez(
+                ref_npz, **{"qdq_out": top_mlir_output[list(top_mlir_output)[-1]]}
+            )  # Try to get the last output of dict. However, dict doesn't has order. So this implement may misbehave on other version of python.
+            np.savez(tpu_npz, **{"qdq_out": tpu_mlir_outs[list(tpu_mlir_outs)[-1]]})
+        else:
+            np.savez(ref_npz, **top_mlir_output)
+            np.savez(tpu_npz, **tpu_mlir_outs)
         npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
+        if quant_mode == "qdq":
+            np.savez(tpu_npz, **tpu_mlir_outs)
         # bmodel / cvimodel inference and compare
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         show_fake_cmd(input_npz, bmodel, model_npz)
@@ -332,12 +338,10 @@ class ONNX_IR_TESTER(object):
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data, graph_def, model_name)
         # test onnx and mlir outputs
-        rtol = 1e-5 if not qdq else 1e-5
-        atol = 1e-1 if not qdq else 1
+        rtol = 1e-5
+        atol = 1e-1 if not qdq else 2  # We set 2 here for we have some precision error when doing rounding and the maximum scale is 2.
         counter = 0
         for name in onnx_outs:
-            if qdq:
-                continue
             if name in top_mlir_outs:
                 print("Compare:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
@@ -2388,19 +2392,20 @@ class ONNX_IR_TESTER(object):
         dilation = [1, 1]
         groups = 1
 
-        y_scale_data = np.random.uniform(0, 1)
-        y_zero_point_data = np.random.randint(0, 255)
+        y_scale_data = np.random.uniform(0, 5)
+        # y_zero_point_data = np.random.randint(0, 255)
+        y_zero_point_data = 0
         x_scale_data = deepcopy(y_scale_data)
         x_zero_point_data = deepcopy(y_zero_point_data)
 
-        weight_data = np.random.randint(0, 255, filter_shape)
+        weight_data = np.random.randint(-128, 127, filter_shape)
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
 
-        weight_x_scale_data = np.random.uniform(0, 1, oc)
-        weight_x_zero_point_data = np.random.randint(0, 255, oc)
+        weight_x_scale_data = np.random.uniform(1e-5, 5, oc)
+        weight_x_zero_point_data = np.zeros(oc).astype(np.int32)
 
-        output_y_scale_data = np.random.uniform(0, 1)
-        output_y_zero_point_data = np.random.randint(0, 255)
+        output_y_scale_data = np.random.uniform(1e-5, 2)
+        output_y_zero_point_data = 0
         output_x_scale_data = deepcopy(output_y_scale_data)
         output_x_zero_point_data = deepcopy(output_y_zero_point_data)
 

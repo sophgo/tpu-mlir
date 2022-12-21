@@ -16,12 +16,11 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-int64_t onnx_rounding(float f) {
+int64_t onnx_rounding(double f) {
   if (f > 0) {
     int a = f;
     double b = f - a;
     if (fabs(b - 0.5) < 1e-8) {
-
       return a + (a & 1);
     } else
       return std::clamp<int64_t>(std::nearbyintf(f), -128, 127);
@@ -29,7 +28,6 @@ int64_t onnx_rounding(float f) {
     int a = f;
     double b = a - f;
     if (fabs(b - 0.5) < 1e-8) {
-
       return a - (a & 1);
     } else
       return std::clamp<int64_t>(std::nearbyintf(f), -128, 127);
