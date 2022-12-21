@@ -308,8 +308,11 @@ class OnnxConverter(BaseConverter):
         else:
             self.model = onnx_file
         self.clean_up_shape_info()
-        # additional simplify before select_output to aviod some cases that onnx.shape_inference doesnt work
-        model_simplified, is_ok = onnxsim.simplify(self.model)
+        try:
+            # additional simplify before select_output to aviod some cases that onnx.shape_inference doesnt work
+            model_simplified, is_ok = onnxsim.simplify(self.model)
+        except:
+            is_ok = False
         if is_ok:
             self.model = model_simplified
         # select_output before model_shape_infer to remove useless inputs
