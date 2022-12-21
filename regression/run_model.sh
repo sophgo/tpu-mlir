@@ -128,6 +128,16 @@ if [ x${channel_format} != x ]; then
   channel_format_opt="--channel_format=${channel_format}"
 fi
 
+pad_value_opt=
+if [ x${pad_value} != x ]; then
+  channel_format_opt="--pad_value=${pad_value}"
+fi
+
+pad_type_opt=
+if [ x${pad_type} != x ]; then
+  channel_format_opt="--pad_type=${pad_type}"
+fi
+
 model_format_opt=
 if [ x${model_format} != x ]; then
   model_format_opt="--model_format=${model_format}"
