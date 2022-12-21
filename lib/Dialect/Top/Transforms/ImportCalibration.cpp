@@ -43,8 +43,10 @@ public:
       module.dump();
       llvm_unreachable("wrong mlir state");
     }
+    OpBuilder builder(module);
     std::map<std::string, cali_info> calibration_map;
-    std::map<std::string, std::shared_ptr<std::vector<double>>> per_chan_scales_map;
+    std::map<std::string, std::shared_ptr<std::vector<double>>>
+        per_chan_scales_map;
     std::ifstream infile(this->tableFile);
     if (!infile) {
       llvm_unreachable("can't open calibration table file!");
@@ -109,20 +111,17 @@ public:
               getMinMax(op, info, min, max);
               auto quant_type = quant::CalibratedQuantizedType::get(
                   type.getElementType(), min, max);
-              auto new_type = RankedTensorType::get(type.getShape(), quant_type);
+              auto new_type =
+                  RankedTensorType::get(type.getShape(), quant_type);
               value.setType(new_type);
             }
           }
         } else if (isa<WeightOp>(op)) {
-          auto type = op->getResult(0).getType().cast<RankedTensorType>();
-          if (type.getShape().size() > 1) { //?????weight??scale/zp????finetune??bias??scale??????weight/input??scale??zp?0
-            auto user = op->getUsers().begin();
-            std::string str = Module::getName(*user).str() + "_weight";
-            if (per_chan_scales_map.count(str)) {
-              OpBuilder builder(op);
-              op->setAttr("weight_scale",
-                          builder.getF64ArrayAttr(ArrayRef<double>{*per_chan_scales_map[str]}));
-            }
+          auto user = op->getUsers().begin();
+          std::string str = Module::getName(*user).str() + "_weight";
+          if (per_chan_scales_map.count(str)) {
+            op->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{
+                                     *per_chan_scales_map[str]}));
           }
         }
       });

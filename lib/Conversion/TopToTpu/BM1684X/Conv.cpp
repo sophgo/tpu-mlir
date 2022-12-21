@@ -74,8 +74,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   bool fsign = (fmin < 0 || attr.has_bias == true);
   float fqmax = fsign ? 127 : 255;
   std::shared_ptr<std::vector<double>> weight_scale_v;
-  if (filterOp.weight_scale().has_value()) {
-    weight_scale_v = Module::getF64Array(filterOp.weight_scale().value());
+  if (filterOp.scale().has_value()) {
+    weight_scale_v = Module::getF64Array(filterOp.scale().value());
   }
 
   std::shared_ptr<std::vector<int32_t>> bias_int32;
@@ -97,7 +97,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   int inner_dim = filter_f32->size() / attr.oc;
   for (int c = 0; c < attr.oc; c++) { // per-channel量化
     float *p_filter = filter_f32->data() + c * inner_dim;
-    if (filterOp.weight_scale().has_value() && weight_scale_v->size()) {
+    if (filterOp.scale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
     } else {
       float w_max = findMaxabs(p_filter, inner_dim);
