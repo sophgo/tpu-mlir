@@ -28,8 +28,8 @@ LogicalResult WeightOp::update(const std::vector<T> &data, size_t count) {
     auto weight_file = Module::getWeightFile(moduleOp);
     topDialect->loadWeightFile(weight_file);
   }
-  return topDialect->wFile->updateTensorData(Module::getName(op).str(), &data[0],
-                                             count);
+  return topDialect->wFile->updateTensorData(Module::getName(op).str(),
+                                             &data[0], count);
 }
 
 template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
@@ -140,13 +140,12 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
     topDialect->loadWeightFile(weight_file);
   }
   std::string op_name = Module::getName(OwnerOp).str();
-  std::string new_name = op_name +  "_" + suffix.str();
+  std::string new_name = op_name + "_" + suffix.str();
   std::set<StringRef> all_tensor_names;
   topDialect->wFile->getAllNames(all_tensor_names);
   auto it = all_tensor_names.find(new_name.c_str());
   int index = 1;
-  while (it != all_tensor_names.end())
-  {
+  while (it != all_tensor_names.end()) {
     new_name = op_name + "_" + std::to_string((index++)) + "_" + suffix.str();
     it = all_tensor_names.find(new_name.c_str());
   }
@@ -154,9 +153,8 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto ret = topDialect->wFile->addTensor(new_name, &data, type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  std::vector<mlir::Attribute> attrElements;
-  auto nulldataAttr = builder.getArrayAttr(attrElements);
-  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), type, nulldataAttr);
+  auto newOp =
+      builder.create<top::WeightOp>(NameLoc::get(nameAttr), type, ValueRange{});
   return newOp.getResult();
 }
 template LogicalResult WeightOp::update(const std::vector<uint8_t> &data,
@@ -212,17 +210,16 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto dialect = ctx->getLoadedDialect("top");
   auto topDialect = llvm::cast<TopDialect>(dialect);
   assert(topDialect->wFile != nullptr);
-  //if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = Module::getName(OwnerOp).str() + Module::getName(getOperation()).str() + "_bf16";
+  // if the weightop will be used by 2 ops, it need to create a new WeightOp
+  std::string new_name = Module::getName(OwnerOp).str() +
+                         Module::getName(getOperation()).str() + "_bf16";
   auto new_type = RankedTensorType::get(type.getShape(), builder.getBF16Type());
   auto ret =
       topDialect->wFile->addTensor(new_name, data_bf16->data(), new_type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  std::vector<mlir::Attribute> attrElements;
-  auto nulldataAttr = builder.getArrayAttr(attrElements);
-  auto newOp =
-      builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type, nulldataAttr);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                             ValueRange{});
   return newOp.getResult();
 };
 
@@ -244,14 +241,14 @@ mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto dialect = ctx->getLoadedDialect("top");
   auto topDialect = llvm::cast<TopDialect>(dialect);
   assert(topDialect->wFile != nullptr);
-  //if the weightop will be used by 2 ops, it need to create a new WeightOp
-  std::string new_name = Module::getName(OwnerOp).str() + Module::getName(getOperation()).str() + "_f16";
+  // if the weightop will be used by 2 ops, it need to create a new WeightOp
+  std::string new_name = Module::getName(OwnerOp).str() +
+                         Module::getName(getOperation()).str() + "_f16";
   auto new_type = RankedTensorType::get(type.getShape(), builder.getF16Type());
   auto ret = topDialect->wFile->addTensor(new_name, data_f16->data(), new_type);
   assert(succeeded(ret));
   auto nameAttr = builder.getStringAttr(new_name);
-  std::vector<mlir::Attribute> attrElements;
-  auto nulldataAttr = builder.getArrayAttr(attrElements);
-  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type, nulldataAttr);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                             ValueRange{});
   return newOp.getResult();
 };
