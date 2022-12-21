@@ -43,8 +43,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       return;
     }
     std::shared_ptr<std::vector<double>> weight_scale_v;
-    if (filterOp.weight_scale().has_value() && weight_scale_v->size()) {
-      weight_scale_v = Module::getF64Array(filterOp.weight_scale().value());
+    if (filterOp.scale().has_value() && weight_scale_v->size()) {
+      weight_scale_v = Module::getF64Array(filterOp.scale().value());
       w_scale = weight_scale_v->data()[0];
     } else {
       double w_max = findMaxabs(filter_f32->data(), filter_f32->size());

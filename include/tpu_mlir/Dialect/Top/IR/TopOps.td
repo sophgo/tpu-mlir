@@ -111,7 +111,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   }];
 
   let arguments = (ins
-    OptionalAttr<F64ArrayAttr>:$weight_scale
+    OptionalAttr<F64ArrayAttr>:$scale
   );
 
   let results = (outs AnyTensor:$output);
