@@ -19,19 +19,38 @@ void LeakyReluLowering::LoweringBF16(PatternRewriter &rewriter,
 void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::LeakyReluOp op,
                                      bool asymmetric) const {
+  auto threshold_x = Quant::getThreshold(op.input());
+  auto threshold_y = Quant::getThreshold(op.output());
+  double negative_slope = op.alpha().convertToDouble();
+  int64_t multiplier_pos, multiplier_neg;
+  int64_t rshift_pos, rshift_neg;
 
-  int multiplier, rshift;
-  get_scale_and_shift(op.alpha().convertToDouble(), multiplier, rshift, 8);
+  double qscale_pos = threshold_x / threshold_y;
+  if (std::fabs(threshold_x - threshold_y) <
+      1e-5 * std::min(threshold_x, threshold_y)) {
+    rshift_pos = 0;
+    multiplier_pos = 1;
+  } else {
+    getRShiftAndMultiplierFromQScale(qscale_pos, &multiplier_pos, &rshift_pos,
+                                     false);
+  }
+  float qscale_neg = std::fabs(qscale_pos * negative_slope);
+  getRShiftAndMultiplierFromQScale(qscale_neg, &multiplier_neg, &rshift_neg,
+                                   false);
 
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr(
-      "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
+      "multiplier", rewriter.getSI32IntegerAttr(multiplier_pos)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "multiplier_neg", rewriter.getSI32IntegerAttr(multiplier_neg)));
   attrs.push_back(
-      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift_pos)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "rshift_neg", rewriter.getI64IntegerAttr(rshift_neg)));
 
   auto newType = getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType,
-                                                Value(op.input()), attrs);
+  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType, Value(op.input()),
+                                                attrs);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

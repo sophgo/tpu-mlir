@@ -32,11 +32,12 @@ void tpu::LeakyReluOp::codegen_global_cv18xx( int64_t layer_id) {
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
   if (Quant::isUniformQuantized(output())) {
-    int GT_rshift = 0, GT_scale = 0;
-    int LE_rshift = this->rshift().value();
-    int LE_scale = this->multiplier().value();
+    auto pos_rshift = this->rshift().value();
+    auto pos_m = this->multiplier().value();
+    auto neg_rshift = this->rshift_neg().value();
+    auto neg_m = this->multiplier_neg().value();
     cvi_backend_tg_fixed_leakyrelu_kernel( layer_id, ga_input, ga_output,
-                                          n, c, h, w, GT_rshift, LE_rshift, GT_scale, LE_scale);
+                                          n, c, h, w, pos_rshift, neg_rshift, pos_m, neg_m);
   } else {
     float negative_slope = static_cast<float>(alphaAttr().getValueAsDouble());
     cvi_backend_tg_bf16_leakyrelu_kernel( layer_id, ga_input, ga_output,
