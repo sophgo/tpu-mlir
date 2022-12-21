@@ -532,6 +532,23 @@ class ActivationCalibrator2(BaseKldCalibrator):
         # if 'input_calibration_table' in self.debug_cmd:
         self.module = pymlir.module()
         self.module.load(args.mlir_file)
+        self.torchObserver_dict = {}
+        if 'use_torch_observer_for_cali' in self.debug_cmd:
+            from torch import qint8, per_tensor_affine
+            Observer_type = 'HistogramObserver'
+            if 'Observer_type' in self.debug_cmd:
+                Observer_type = self.debug_cmd['Observer_type']
+            if Observer_type == 'MovingAverageMinMaxObserver':
+                from torch.quantization import MovingAverageMinMaxObserver
+                for tensor in self.module.all_tensor_names:
+                    self.torchObserver_dict[tensor] = MovingAverageMinMaxObserver(averaging_constant=0.1, dtype=qint8, qscheme=per_tensor_affine)
+            elif Observer_type == 'HistogramObserver':
+                from torch.quantization import HistogramObserver
+                for tensor in self.module.all_tensor_names:
+                    self.torchObserver_dict[tensor] = HistogramObserver(bins=args.histogram_bin_num, dtype=qint8, qscheme=per_tensor_affine)
+            else:
+                print('Observer_type in debug_cmd is error')
+                exit(1)
         self.parser = MlirParser(args.mlir_file)
         self.batch_size = self.parser.get_batch_size()
         self.input_num = self.parser.get_input_num()
@@ -669,32 +686,39 @@ class ActivationCalibrator2(BaseKldCalibrator):
             abs_value = None
             for idx in range(self.args.input_num):
                 activation = self.get_ref_tensor(idx, evaled_op)
-                min_value = min(np.min(activation), min_value)
-                max_value = max(np.max(activation), max_value)
-                abs_value = max(abs(min_value), abs(max_value))
+                if 'use_torch_observer_for_cali' in self.debug_cmd:
+                    from torch import Tensor
+                    self.torchObserver_dict[evaled_op](Tensor(activation.astype(np.float32)))
+                else:
+                    min_value = min(np.min(activation), min_value)
+                    max_value = max(np.max(activation), max_value)
+                    abs_value = max(abs(min_value), abs(max_value))
             self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
 
-            for idx in range(self.args.input_num):
-                activation = self.get_ref_tensor(idx, evaled_op)
-                _, _, abs_value = self.activations_statistics[evaled_op]
-                hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
-                if evaled_op not in histogram_data_map:
-                    histogram_data_map[evaled_op] = hist
-                    histogram_width_map[evaled_op] = width
-                else:
-                    histogram_data_map[evaled_op] += hist
+            if 'use_torch_observer_for_cali' not in self.debug_cmd:
+                for idx in range(self.args.input_num):
+                    activation = self.get_ref_tensor(idx, evaled_op)
+                    _, _, abs_value = self.activations_statistics[evaled_op]
+                    hist, width = self.histogram(activation, abs_value, self.histogram_bin_num)
+                    if evaled_op not in histogram_data_map:
+                        histogram_data_map[evaled_op] = hist
+                        histogram_width_map[evaled_op] = width
+                    else:
+                        histogram_data_map[evaled_op] += hist
 
             for idx in range(self.args.input_num):
                 self.clear_ref_tensor(idx, evaled_op)
         pbar.close()
 
-        thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
-        thresholds_map['abs_max'] = {}
-        for k, v in self.activations_statistics.items():
-            _, _, abs_val = v
-            thresholds_map['abs_max'][k] = abs_val
-            if thresholds_map[k] > abs_val:
-                thresholds_map[k] = abs_val
+        thresholds_map = {}
+        if 'use_torch_observer_for_cali' not in self.debug_cmd:
+            thresholds_map = self.find_threshold(histogram_data_map, histogram_width_map)
+            thresholds_map['abs_max'] = {}
+            for k, v in self.activations_statistics.items():
+                _, _, abs_val = v
+                thresholds_map['abs_max'][k] = abs_val
+                if thresholds_map[k] > abs_val:
+                    thresholds_map[k] = abs_val
         return thresholds_map
 
     def run(self):
@@ -725,12 +749,20 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 f.write("# sample number: {}\n###\n".format(self.num_samples))
                 f.write("# op_name    threshold    min    max\n")
                 for i, op_name in enumerate(op_layers):
-                    threshold = thresholds_map[op_name]
+                    if 'use_torch_observer_for_cali' in self.debug_cmd:
+                        qmin,qmax=-128,127
+                        scale, zp = self.torchObserver_dict[op_name].calculate_qparams()
+                        threshold = float(scale * max(-qmin, qmax))
+                        min_value = float(scale * (qmin - zp))
+                        max_value = float(scale * (qmax - zp))
+                    else:
+                        threshold = thresholds_map[op_name]
+                        min_value, max_value, _ = self.activations_statistics[op_name]
                     thresholds_map_list.append(threshold)
-                    min_value, max_value, _ = self.activations_statistics[op_name]
                     f.write("{} {:.7f} {:.7f} {:.7f}\n".format(op_name, threshold, min_value,
                                                             max_value))
-
+            # if 'use_torch_observer_for_cali' in self.debug_cmd:
+            #     exit(0)
         if self.args.tune_num <= 0:
             return
 
