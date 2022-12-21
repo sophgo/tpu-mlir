@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm"]
+Failed_Cases = ["TorchLayerNorm", "PadAvgPool2D"]
 
 
 class ONNX_IR_TESTER(object):
@@ -38,6 +38,7 @@ class ONNX_IR_TESTER(object):
             "AvgPool2D": self.test_AvgPool2D,
             "AvgPool3D": self.test_AvgPool3D,
             "AvgPoolOdd": self.test_AvgPoolOdd,
+            "PadAvgPool2D": self.test_PadAvgPool2D,
             "BatchMatMul": self.test_BatchMatMul,
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
@@ -413,6 +414,33 @@ class ONNX_IR_TESTER(object):
 
     def test_AvgPool3D(self, case_name):
         self.AvgPoolBase(case_name, [2, 32, 16, 32, 64], [2, 32, 8, 16, 32], [2, 2, 2], [2, 2, 2])
+
+    def test_PadAvgPool2D(self, case_name):
+        input_shape = [1, 16, 56, 56]
+        pad_out_shape = [1, 16, 58, 58]
+        output_shape = [1, 16, 56, 56]
+        kernel_shape = [3, 3]
+        strides = [1, 1]
+        pads = np.array([0, 0, 1, 1, 0, 0, 1, 1]).astype(np.int64)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        pad_val = helper.make_tensor(name='pads',
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pads.shape,
+                                     vals=pads.flatten())
+        pad_def = helper.make_node("Pad", ['input', 'pads'],
+                                   outputs=['pad_output'],
+                                   mode='constant')
+        avgpool_def = helper.make_node("AveragePool",
+                                       inputs=['pad_output'],
+                                       outputs=['output'],
+                                       kernel_shape=kernel_shape,
+                                       strides=strides,)
+        graph_def = helper.make_graph([pad_def, avgpool_def],
+                                      case_name, [input], [output],
+                                      initializer=[pad_val])
+        self.onnx_and_test(graph_def)
 
     def test_BatchMatMul(self, case_name):
         # matmul(1x16x40x64, 1x16x64x40) => 1x16x40x40
@@ -793,38 +821,34 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         x1_data = np.random.randn(*x_shape).astype(np.float32)
-        x1_node_def =onnx.helper.make_tensor(
-                name='X1',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=x_shape,
-                vals=x1_data.flatten(),
-            )
+        x1_node_def = onnx.helper.make_tensor(
+            name='X1',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=x_shape,
+            vals=x1_data.flatten(),
+        )
         x2_data = np.random.randn(*x_shape).astype(np.float32)
-        x2_node_def =onnx.helper.make_tensor(
-                name='X2',
-                data_type=onnx.TensorProto.FLOAT,
-                dims=x_shape,
-                vals=x2_data.flatten(),
-            )
+        x2_node_def = onnx.helper.make_tensor(
+            name='X2',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=x_shape,
+            vals=x2_data.flatten(),
+        )
         concat_node = helper.make_node(
             'Concat',
             ['input', 'X1', 'X2'],
             ['output'],
-            axis = -1,
+            axis=-1,
         )
-        graph_def = helper.make_graph(
-            [concat_node],
-            case_name,
-            [input],
-            [output],
-            initializer=[x1_node_def, x2_node_def]
-        )
+        graph_def = helper.make_graph([concat_node],
+                                      case_name, [input], [output],
+                                      initializer=[x1_node_def, x2_node_def])
         self.onnx_and_test(graph_def)
 
     def test_Transpose(self, case_name):
         input_shapes = [[1, 16, 32, 32], [4, 3, 85, 20, 20], [1, 4, 2, 16, 20, 40]]
         transpose_orders = {4: [0, 2, 1, 3], 5: [0, 1, 3, 4, 2], 6: [0, 1, 2, 5, 3, 4]}
-        for i,input_shape in enumerate(input_shapes):
+        for i, input_shape in enumerate(input_shapes):
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             order = transpose_orders[len(input_shape)]
             output_shape = [input_shape[order[i]] for i in range(len(order))]
@@ -833,7 +857,8 @@ class ONNX_IR_TESTER(object):
                                              inputs=['input'],
                                              outputs=['output'],
                                              perm=order)
-            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name,i), [input], [output])
+            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, i), [input],
+                                          [output])
             self.onnx_and_test(graph_def)
 
     def test_Where(self, case_name):

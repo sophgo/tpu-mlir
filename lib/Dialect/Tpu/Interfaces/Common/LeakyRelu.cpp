@@ -29,6 +29,8 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
   auto out_type = Module::getStorageType(output());
   auto module = Module::getModuleOp(getOperation());
   auto asym = Module::getAsymmetric(module);
+  auto chip = Module::getChip(getOperation());
+  bool is_cv18xx = Module::isCV18xx(chip);
 
   if (out_type.isa<FloatType>()) {
     float *src = p.inputs[0];
@@ -44,15 +46,31 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       f32_to_bf16(dst, dst, num_elements);
     }
   } else if (asym == false) {
+    int64_t scale_neg, shift_neg;
     int64_t scalei = multiplier().value();
     int64_t shifti = rshift().value();
+    bool do_pos_scale = false;
+    if (is_cv18xx) {
+      scale_neg = multiplier_neg().value();
+      shift_neg = rshift_neg().value();
+      do_pos_scale = scalei != 0 ? true : false;
+    }
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
     for (int64_t i = 0; i < num_elements; ++i) {
       int64_t dst = 0;
       int64_t src = static_cast<int64_t>(p.inputs[0][i]);
-      dst = src >= 0 ? src : applyMultiplierAndRShift(src, scalei, shifti);
-
+      if (is_cv18xx) {
+        if (src >= 0) {
+          dst = do_pos_scale
+                    ? applyMultiplierAndRShift(src, scalei, shifti, CVI_QUANT)
+                    : src;
+        } else {
+          dst = applyMultiplierAndRShift(src, scale_neg, shift_neg, CVI_QUANT);
+        }
+      } else {
+        dst = src >= 0 ? src : applyMultiplierAndRShift(src, scalei, shifti);
+      }
       p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(dst)
                                                       : Quant::to_int8(dst);
     }

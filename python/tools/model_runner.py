@@ -45,6 +45,7 @@ def show_fake_cmd(in_npz: str, model: str, out_npz: str):
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
+    is_cv18xx = False
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
         # trick for runtime link chip cmodel
@@ -58,6 +59,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         os.system(cmd)
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
+        is_cv18xx = True
     else:
         raise RuntimeError("not support modle file:{}".format(model_file))
     pyruntime = importlib.import_module(pyruntime)
@@ -89,9 +91,12 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     net.forward()
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
-            zp = i.qzero_point
-            outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
-                                       dtype=np.float32)
+            if is_cv18xx and i.name in inputs:
+                outputs[i.name] = np.array(i.data.astype(np.float32)/ np.float32(i.qscale))
+            else :
+                zp = i.qzero_point
+                outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
+                                           dtype=np.float32)
         elif (i.dtype == "f16"):
             outputs[i.name] = np.array(i.data.astype(np.float32))
         elif (i.dtype == "bf16"):
