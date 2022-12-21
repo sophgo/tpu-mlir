@@ -72,6 +72,9 @@ class Top:
     WeightOp = 'top.Weight'
     WhereOp = 'top.Where'
     YoloDetection = 'top.YoloDetection'
+    Proposal = 'top.Proposal'
+    ROIPooling = 'top.ROIPooling'
+    FrcnDetection = 'top.FrcnDetection'
 
 
 class State:
@@ -831,6 +834,41 @@ class MLIRImporter(object):
             'group': IntegerAttr.get(self.mlir_type['INT64'], kargs['group']),
         }
         return self.buildOp(Top.ShuffleChannelOp, operands, [output_type], **param)
+
+    def create_proposal_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'net_input_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['net_input_h']),
+            'net_input_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['net_input_w']),
+            'feat_stride': IntegerAttr.get(self.mlir_type['INT64'], kargs['feat_stride']),
+            'anchor_base_size': IntegerAttr.get(self.mlir_type['INT64'], kargs['anchor_base_size']),
+            'rpn_obj_threshold': FloatAttr.get_f64(kargs['rpn_obj_threshold']),
+            'rpn_nms_threshold': FloatAttr.get_f64(kargs['rpn_nms_threshold']),
+            'rpn_nms_post_top_n': IntegerAttr.get(self.mlir_type['INT64'], kargs['rpn_nms_post_top_n'])
+        }
+        return self.buildOp(Top.Proposal, operands, [output_type], **param)
+
+    def create_roipooling_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'pooled_h': IntegerAttr.get(self.mlir_type['INT64'], kargs['pooled_h']),
+            'pooled_w': IntegerAttr.get(self.mlir_type['INT64'], kargs['pooled_w']),
+            'spatial_scale': FloatAttr.get_f64(kargs['spatial_scale'])
+        }
+        return self.buildOp(Top.ROIPooling, operands, [output_type], **param)
+
+    def create_frcn_detection_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'class_num': IntegerAttr.get(self.mlir_type['INT64'], kargs['class_num']),
+            'keep_topk': IntegerAttr.get(self.mlir_type['INT64'], kargs['keep_topk']),
+            'obj_threshold': FloatAttr.get_f64(kargs['obj_threshold']),
+            'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
+        }
+        return self.buildOp(Top.FrcnDetection, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

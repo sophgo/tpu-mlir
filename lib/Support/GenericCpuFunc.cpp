@@ -644,23 +644,23 @@ YoloDetectionFunc::YoloDetectionFunc(YoloDetParam &param) : param_(param) {
           10, 14, 23,  27,  37,  58, // layer23-conv (26*26)
           81, 82, 135, 169, 344, 319 // layer16-conv (13*13)
       };
-    } else {
-      assert(param_.inputs.size() == 3);
-      if (_anchors.size() == 0) {
-        if (param_.yolo_v4) {
-          _anchors = {
-              142, 110, 192, 243, 459, 401, // layer161-conv
-              36,  75,  76,  55,  72,  146, // layer150-conv
-              12,  16,  19,  36,  40,  28,  // layer139-conv
-          };
-        } else {
-          // Yolov3 default anchors
-          _anchors = {
-              10,  13, 16,  30,  33,  23,  // layer106-conv (52*52)
-              30,  61, 62,  45,  59,  119, // layer94-conv  (26*26)
-              116, 90, 156, 198, 373, 326  // layer82-conv  (13*13)
-          };
-        }
+    }
+  } else {
+    assert(param_.inputs.size() == 3);
+    if (_anchors.size() == 0) {
+      if (param_.yolo_v4) {
+        _anchors = {
+            142, 110, 192, 243, 459, 401, // layer161-conv
+            36,  75,  76,  55,  72,  146, // layer150-conv
+            12,  16,  19,  36,  40,  28,  // layer139-conv
+        };
+      } else {
+        // Yolov3 default anchors
+        _anchors = {
+            10,  13, 16,  30,  33,  23,  // layer106-conv (52*52)
+            30,  61, 62,  45,  59,  119, // layer94-conv  (26*26)
+            116, 90, 156, 198, 373, 326  // layer82-conv  (13*13)
+        };
       }
     }
   }
@@ -729,6 +729,484 @@ void YoloDetectionFunc::invoke() {
       //               dets[i].bbox.h, dets[i].cls, dets[i].score);
     }
   }
+}
+
+static void _mkanchors(std::vector<float> ctrs, std::vector<float> &anchors) {
+  anchors.push_back(ctrs[2] - 0.5 * (ctrs[0] - 1));
+  anchors.push_back(ctrs[3] - 0.5 * (ctrs[1] - 1));
+  anchors.push_back(ctrs[2] + 0.5 * (ctrs[0] - 1));
+  anchors.push_back(ctrs[3] + 0.5 * (ctrs[1] - 1));
+}
+
+static void _whctrs(std::vector<float> anchor, std::vector<float> &ctrs) {
+  float w = anchor[2] - anchor[0] + 1;
+  float h = anchor[3] - anchor[1] + 1;
+  float x_ctr = anchor[0] + 0.5 * (w - 1);
+  float y_ctr = anchor[1] + 0.5 * (h - 1);
+  ctrs.push_back(w);
+  ctrs.push_back(h);
+  ctrs.push_back(x_ctr);
+  ctrs.push_back(y_ctr);
+}
+
+static void _ratio_enum(std::vector<float> anchor,
+                        std::vector<float> anchor_ratio,
+                        std::vector<float> &ratio_anchors) {
+  std::vector<float> ctrs;
+  _whctrs(anchor, ctrs);
+  float size = ctrs[0] * ctrs[1];
+  int ratio_num = anchor_ratio.size();
+  for (int i = 0; i < ratio_num; i++) {
+    float ratio = size / anchor_ratio[i];
+    int ws = int(std::round(std::sqrt(ratio)));
+    int hs = int(std::round(ws * anchor_ratio[i]));
+    std::vector<float> ctrs_in;
+    ctrs_in.push_back(ws);
+    ctrs_in.push_back(hs);
+    ctrs_in.push_back(ctrs[2]);
+    ctrs_in.push_back(ctrs[3]);
+    _mkanchors(ctrs_in, ratio_anchors);
+  }
+}
+
+static void _scale_enum(std::vector<float> ratio_anchors,
+                        std::vector<float> anchor_scale,
+                        std::vector<float> &anchor_boxes) {
+  int anchors_ratio_num = ratio_anchors.size() / 4;
+  for (int i = 0; i < anchors_ratio_num; i++) {
+    std::vector<float> anchor;
+    anchor.push_back(ratio_anchors[i * 4]);
+    anchor.push_back(ratio_anchors[i * 4 + 1]);
+    anchor.push_back(ratio_anchors[i * 4 + 2]);
+    anchor.push_back(ratio_anchors[i * 4 + 3]);
+    std::vector<float> ctrs;
+    _whctrs(anchor, ctrs);
+    int scale_num = anchor_scale.size();
+    for (int j = 0; j < scale_num; j++) {
+      float ws = ctrs[0] * anchor_scale[j];
+      float hs = ctrs[1] * anchor_scale[j];
+      std::vector<float> ctrs_in;
+      ctrs_in.push_back(ws);
+      ctrs_in.push_back(hs);
+      ctrs_in.push_back(ctrs[2]);
+      ctrs_in.push_back(ctrs[3]);
+      _mkanchors(ctrs_in, anchor_boxes);
+    }
+  }
+}
+
+static void generate_anchors(int anchor_base_size,
+                             std::vector<float> anchor_scale,
+                             std::vector<float> anchor_ratio,
+                             std::vector<float> &anchor_boxes) {
+  std::vector<float> base_anchor = {0, 0, (float)(anchor_base_size - 1),
+                                    (float)(anchor_base_size - 1)};
+  std::vector<float> ratio_anchors;
+  _ratio_enum(base_anchor, anchor_ratio, ratio_anchors);
+  _scale_enum(ratio_anchors, anchor_scale, anchor_boxes);
+}
+
+static void
+anchor_box_transform_inv(float img_width, float img_height,
+                         std::vector<std::vector<float>> bbox,
+                         std::vector<std::vector<float>> select_anchor,
+                         std::vector<std::vector<float>> &pred) {
+  int num = bbox.size();
+  for (int i = 0; i < num; i++) {
+    float dx = bbox[i][0];
+    float dy = bbox[i][1];
+    float dw = bbox[i][2];
+    float dh = bbox[i][3];
+    float pred_ctr_x = select_anchor[i][0] + select_anchor[i][2] * dx;
+    float pred_ctr_y = select_anchor[i][1] + select_anchor[i][3] * dy;
+    float pred_w = select_anchor[i][2] * std::exp(dw);
+    float pred_h = select_anchor[i][3] * std::exp(dh);
+    std::vector<float> tmp_pred;
+    tmp_pred.push_back(
+        std::max(std::min((float)(pred_ctr_x - 0.5 * pred_w), img_width - 1),
+                 (float)0.0));
+    tmp_pred.push_back(
+        std::max(std::min((float)(pred_ctr_y - 0.5 * pred_h), img_height - 1),
+                 (float)0.0));
+    tmp_pred.push_back(
+        std::max(std::min((float)(pred_ctr_x + 0.5 * pred_w), img_width - 1),
+                 (float)0.0));
+    tmp_pred.push_back(
+        std::max(std::min((float)(pred_ctr_y + 0.5 * pred_h), img_height - 1),
+                 (float)0.0));
+    pred.push_back(tmp_pred);
+  }
+}
+
+static void anchor_box_nms(std::vector<std::vector<float>> &pred_boxes,
+                           std::vector<float> &confidence,
+                           float nms_threshold) {
+  for (size_t i = 0; i < pred_boxes.size() - 1; i++) {
+    float s1 = (pred_boxes[i][2] - pred_boxes[i][0] + 1) *
+               (pred_boxes[i][3] - pred_boxes[i][1] + 1);
+    for (size_t j = i + 1; j < pred_boxes.size(); j++) {
+      float s2 = (pred_boxes[j][2] - pred_boxes[j][0] + 1) *
+                 (pred_boxes[j][3] - pred_boxes[j][1] + 1);
+
+      float x1 = std::max(pred_boxes[i][0], pred_boxes[j][0]);
+      float y1 = std::max(pred_boxes[i][1], pred_boxes[j][1]);
+      float x2 = std::min(pred_boxes[i][2], pred_boxes[j][2]);
+      float y2 = std::min(pred_boxes[i][3], pred_boxes[j][3]);
+
+      float width = x2 - x1;
+      float height = y2 - y1;
+      if (width > 0 && height > 0) {
+        float IOU = width * height / (s1 + s2 - width * height);
+        if (IOU > nms_threshold) {
+          if (confidence[i] >= confidence[j]) {
+            pred_boxes.erase(pred_boxes.begin() + j);
+            confidence.erase(confidence.begin() + j);
+            j--;
+          } else {
+            pred_boxes.erase(pred_boxes.begin() + i);
+            confidence.erase(confidence.begin() + i);
+            i--;
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+ProposalFunc::ProposalFunc(ProposalParam &param) : param_(param) {
+  generate_anchors(param_.anchor_base_size, anchor_scale, anchor_ratio, anchor_boxes);
+}
+
+void ProposalFunc::invoke() {
+  assert(param_.inputs.size() == 2);
+  auto score_shape = param_.inputs[0].shape;
+  auto bbox_shape = param_.inputs[1].shape;
+  int batch = score_shape[0];
+  int channel = score_shape[1];
+  int height = score_shape[2];
+  int width = score_shape[3];
+  
+  int feat_stride = param_.feat_stride;
+  int net_input_h = param_.net_input_h;
+  int net_input_w = param_.net_input_w;
+  float rpn_nms_threshold = param_.rpn_nms_threshold;
+  int rpn_nms_post_top_n = param_.rpn_nms_post_top_n;
+  float thresh = param_.rpn_obj_threshold;
+  
+  float *score = param_.inputs[0].ptr;
+  float *bbox_deltas = param_.inputs[1].ptr;
+  float *output_data = param_.output.ptr;
+  auto output_shape = param_.output.shape;
+  auto anchor_boxes = this->anchor_boxes;
+
+  for (int b = 0; b < batch; ++b) {
+    auto batched_score = score + b * channel * height * width;
+    auto batched_bbox_deltas =
+        bbox_deltas + b * bbox_shape[1] * bbox_shape[2] * bbox_shape[3];
+    std::vector<std::vector<float>> select_anchor;
+    std::vector<float> confidence;
+    std::vector<std::vector<float>> bbox;
+    int anchor_num = anchor_scale.size() * anchor_ratio.size();
+
+    for (int k = 0; k < anchor_num; k++) {
+      float w = anchor_boxes[4 * k + 2] - anchor_boxes[4 * k] + 1;
+      float h = anchor_boxes[4 * k + 3] - anchor_boxes[4 * k + 1] + 1;
+      float x_ctr = anchor_boxes[4 * k] + 0.5 * (w - 1);
+      float y_ctr = anchor_boxes[4 * k + 1] + 0.5 * (h - 1);
+
+      for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+          if (batched_score[anchor_num * height * width +
+                            (k * height + i) * width + j] >= thresh) {
+            std::vector<float> tmp_anchor;
+            std::vector<float> tmp_bbox;
+
+            tmp_anchor.push_back(j * feat_stride + x_ctr);
+            tmp_anchor.push_back(i * feat_stride + y_ctr);
+            tmp_anchor.push_back(w);
+            tmp_anchor.push_back(h);
+            select_anchor.push_back(tmp_anchor);
+            confidence.push_back(batched_score[anchor_num * height * width +
+                                               (k * height + i) * width + j]);
+            tmp_bbox.push_back(
+                batched_bbox_deltas[(4 * k * height + i) * width + j]);
+            tmp_bbox.push_back(
+                batched_bbox_deltas[((4 * k + 1) * height + i) * width + j]);
+            tmp_bbox.push_back(
+                batched_bbox_deltas[((4 * k + 2) * height + i) * width + j]);
+            tmp_bbox.push_back(
+                batched_bbox_deltas[((4 * k + 3) * height + i) * width + j]);
+            bbox.push_back(tmp_bbox);
+          }
+        }
+      }
+    }
+    std::vector<std::vector<float>> pred_boxes;
+    anchor_box_transform_inv(net_input_w, net_input_h, bbox, select_anchor,
+                             pred_boxes);
+    anchor_box_nms(pred_boxes, confidence, rpn_nms_threshold);
+    int num = pred_boxes.size() > rpn_nms_post_top_n ? rpn_nms_post_top_n
+                                                     : pred_boxes.size();
+
+    auto batched_output =
+        output_data + b * output_shape[1] * output_shape[2] * output_shape[3];
+    for (int i = 0; i < num; i++) {
+      batched_output[5 * i] = b;
+      batched_output[5 * i + 1] = pred_boxes[i][0];
+      batched_output[5 * i + 2] = pred_boxes[i][1];
+      batched_output[5 * i + 3] = pred_boxes[i][2];
+      batched_output[5 * i + 4] = pred_boxes[i][3];
+    }
+  }  
+}
+
+ROIPoolingFunc::ROIPoolingFunc(ROIPoolingParam &param) : param_(param) {
+
+}
+
+void ROIPoolingFunc::invoke() {
+  assert(param_.inputs.size() == 2);
+  float *input_data = param_.inputs[0].ptr;
+  float *rois = param_.inputs[1].ptr;
+  float *output_data = param_.output.ptr;
+  auto input_shape =  param_.inputs[0].shape;
+  auto roi_shape = param_.inputs[1].shape;
+  int64_t pooled_h = param_.pooled_h;
+  int64_t pooled_w = param_.pooled_w;
+  double spatial_scale = param_.spatial_scale;
+
+  int batch = input_shape[0];
+  int channel = input_shape[1];
+  int height = input_shape[2];
+  int width = input_shape[3];
+  int num_rois = roi_shape[2];
+
+  for (int b = 0; b < batch; ++b) {
+    auto batched_rois = rois + b * num_rois * 5;
+    auto batched_output =
+        output_data + b * num_rois * channel * pooled_h * pooled_w;
+    for (int n = 0; n < num_rois; ++n) {
+      int roi_batch_ind = batched_rois[0];
+      int roi_start_w = std::round(batched_rois[1] * spatial_scale);
+      int roi_start_h = std::round(batched_rois[2] * spatial_scale);
+      int roi_end_w = std::round(batched_rois[3] * spatial_scale);
+      int roi_end_h = std::round(batched_rois[4] * spatial_scale);
+      assert(roi_batch_ind < batch);
+
+      int roi_height = std::max(roi_end_h - roi_start_h + 1, 1);
+      int roi_width = std::max(roi_end_w - roi_start_w + 1, 1);
+      const float bin_size_h =
+          static_cast<float>(roi_height) / static_cast<float>(pooled_h);
+      const float bin_size_w =
+          static_cast<float>(roi_width) / static_cast<float>(pooled_w);
+
+      float *batch_data =
+          input_data + roi_batch_ind * channel * height * width;
+
+      for (int c = 0; c < channel; ++c) {
+        for (int ph = 0; ph < pooled_h; ++ph) {
+          for (int pw = 0; pw < pooled_w; ++pw) {
+            // Compute pooling region for this output unit:
+            //  start (included) = floor(ph * roi_height / pooled_height_)
+            //  end (excluded) = ceil((ph + 1) * roi_height / pooled_height_)
+            int hstart = static_cast<int>(
+                std::floor(static_cast<float>(ph) * bin_size_h));
+            int wstart = static_cast<int>(
+                std::floor(static_cast<float>(pw) * bin_size_w));
+            int hend = static_cast<int>(
+                std::ceil(static_cast<float>(ph + 1) * bin_size_h));
+            int wend = static_cast<int>(
+                std::ceil(static_cast<float>(pw + 1) * bin_size_w));
+
+            hstart = std::min(std::max(hstart + roi_start_h, 0), height);
+            hend = std::min(std::max(hend + roi_start_h, 0), height);
+            wstart = std::min(std::max(wstart + roi_start_w, 0), width);
+            wend = std::min(std::max(wend + roi_start_w, 0), width);
+
+            bool is_empty = (hend <= hstart) || (wend <= wstart);
+
+            const int pool_index = ph * pooled_w + pw;
+            if (is_empty) {
+              batched_output[pool_index] = 0;
+            }
+
+            for (int h = hstart; h < hend; ++h) {
+              for (int w = wstart; w < wend; ++w) {
+                const int index = h * width + w;
+                if (batch_data[index] > batched_output[pool_index]) {
+                  batched_output[pool_index] = batch_data[index];
+                }
+              }
+            }
+          }
+        }
+        batch_data += height * width;
+        batched_output += pooled_h * pooled_w;
+      }
+      batched_rois += 5;
+    }
+  }
+}
+
+static void bbox_transform_inv(const float *boxes, const float *deltas,
+                               float *pred, int num, int class_num) {
+  for (int i = 0; i < num; ++i) {
+    float height = boxes[i * 4 + 3] - boxes[i * 4 + 1] + 1;
+    float width = boxes[i * 4 + 2] - boxes[i * 4 + 0] + 1;
+    float ctr_x = boxes[i * 4 + 0] + width * 0.5;
+    float ctr_y = boxes[i * 4 + 1] + height * 0.5;
+
+    for (int j = 0; j < class_num; ++j) {
+      float dx = deltas[i * class_num * 4 + j * 4 + 0];
+      float dy = deltas[i * class_num * 4 + j * 4 + 1];
+      float dw = deltas[i * class_num * 4 + j * 4 + 2];
+      float dh = deltas[i * class_num * 4 + j * 4 + 3];
+
+      float pred_ctr_x = dx * width + ctr_x;
+      float pred_ctr_y = dy * height + ctr_y;
+      float pred_w = std::exp(dw) * width;
+      float pred_h = std::exp(dh) * height;
+
+      pred[i * class_num * 4 + j * 4 + 0] = pred_ctr_x - pred_w / 2;
+      pred[i * class_num * 4 + j * 4 + 1] = pred_ctr_y - pred_h / 2;
+      pred[i * class_num * 4 + j * 4 + 2] = pred_ctr_x + pred_w / 2;
+      pred[i * class_num * 4 + j * 4 + 3] = pred_ctr_y + pred_h / 2;
+    }
+  }
+}
+
+static void nms(detections *dets, int num, float nms_threshold) {
+  for (int i = 0; i < num; i++) {
+    if (dets[i].score == 0) {
+      // erased already
+      continue;
+    }
+
+    float s1 = (dets[i].bbox.x2 - dets[i].bbox.x1 + 1) *
+               (dets[i].bbox.y2 - dets[i].bbox.y1 + 1);
+    for (int j = i + 1; j < num; j++) {
+      if (dets[j].score == 0) {
+        // erased already
+        continue;
+      }
+      if (dets[i].cls != dets[j].cls) {
+        // not the same class
+        continue;
+      }
+
+      float s2 = (dets[j].bbox.x2 - dets[j].bbox.x1 + 1) *
+                 (dets[j].bbox.y2 - dets[j].bbox.y1 + 1);
+
+      float x1 = std::max(dets[i].bbox.x1, dets[j].bbox.x1);
+      float y1 = std::max(dets[i].bbox.y1, dets[j].bbox.y1);
+      float x2 = std::min(dets[i].bbox.x2, dets[j].bbox.x2);
+      float y2 = std::min(dets[i].bbox.y2, dets[j].bbox.y2);
+
+      float width = x2 - x1;
+      float height = y2 - y1;
+      if (width > 0 && height > 0) {
+        float iou = width * height / (s1 + s2 - width * height);
+        assert(iou <= 1.0f);
+        if (iou > nms_threshold) {
+          // overlapped, select one to erase
+          if (dets[i].score < dets[j].score) {
+            dets[i].score = 0;
+          } else {
+            dets[j].score = 0;
+          }
+        }
+      }
+    }
+  }
+}
+
+FrcnDetctionFunc::FrcnDetctionFunc(FrcnDetParam &param) : param_(param) {
+
+}
+
+void FrcnDetctionFunc::invoke() {
+  assert(param_.inputs.size() == 3);
+  float *bbox_deltas = param_.inputs[0].ptr;
+  float *scores = param_.inputs[1].ptr;
+  float *rois = param_.inputs[2].ptr;
+  float *output_data = param_.output.ptr;
+  
+  auto rois_shape = param_.inputs[2].shape;
+  auto output_shape = param_.output.shape;
+  int64_t class_num = param_.class_num;
+  int64_t keep_topk = param_.keep_topk;
+  double nms_threshold = param_.nms_threshold;
+  double obj_threshold = param_.obj_threshold;
+
+  int batch = rois_shape[0];
+  int num = rois_shape[2];
+
+  for (int b = 0; b < batch; ++b) {
+    auto batched_bbox_deltas = bbox_deltas + b * num * class_num * 4;
+    auto batched_scores = scores + b * num * class_num;
+    auto batched_rois = rois + b * num * 5;
+
+    std::vector<float> boxes(num * 4, 0);
+    for (int i = 0; i < num; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        boxes[i * 4 + j] = batched_rois[i * 5 + j + 1];
+      }
+    }
+
+    std::vector<float> pred(num * class_num * 4, 0);
+    float *pred_data = pred.data();
+    std::vector<float> deltas(batched_bbox_deltas,
+                              batched_bbox_deltas + num * class_num * 4);
+    bbox_transform_inv(boxes.data(), deltas.data(), pred_data, num, class_num);
+
+    int det_num = 0;
+    auto dets = new detections[num];
+
+    for (int i = 0; i < num; ++i) {
+      for (int j = 1; j < (int)class_num; ++j) {
+        if (batched_scores[i * class_num + j] > obj_threshold) {
+          dets[det_num].bbox.x1 = pred[i * class_num * 4 + j * 4 + 0];
+          dets[det_num].bbox.y1 = pred[i * class_num * 4 + j * 4 + 1];
+          dets[det_num].bbox.x2 = pred[i * class_num * 4 + j * 4 + 2];
+          dets[det_num].bbox.y2 = pred[i * class_num * 4 + j * 4 + 3];
+          dets[det_num].cls = j;
+          dets[det_num].score = batched_scores[i * class_num + j];
+          det_num++;
+        }
+      }
+    }
+
+    nms(dets, det_num, nms_threshold);
+    auto dets_nms = new detections[det_num];
+    int det_idx = 0;
+    for (int i = 0; i < det_num; i++) {
+      if (dets[i].score > 0) {
+        dets_nms[det_idx] = dets[i];
+        det_idx++;
+      }
+    }
+
+    if (keep_topk > det_idx)
+      keep_topk = det_idx;
+
+    long long count = 0;
+    auto batched_output =
+        output_data + b * output_shape[1] * output_shape[2] * output_shape[3];
+    for (int i = 0; i < keep_topk; ++i) {
+      batched_output[count++] = dets_nms[i].bbox.x1;
+      batched_output[count++] = dets_nms[i].bbox.y1;
+      batched_output[count++] = dets_nms[i].bbox.x2;
+      batched_output[count++] = dets_nms[i].bbox.y2;
+      batched_output[count++] = dets_nms[i].cls;
+      batched_output[count++] = dets_nms[i].score;
+      // printf("x1: %f, y1: %f, x2: %f, y2: %f, cls: %d, score: %f\n",
+      //     dets_nms[i].bbox.x1, dets_nms[i].bbox.y1, dets_nms[i].bbox.x2,
+      //     dets_nms[i].bbox.y2, dets_nms[i].cls, dets_nms[i].score);
+    }
+    delete[] dets_nms;
+    delete[] dets;
+  }  
 }
 
 } // namespace tpu_mlir

@@ -518,7 +518,6 @@ def Top_NormalizeOp: Top_Op<"Normalize", [InOutSameShape]> {
     Attributes:
       `across_spatial`  : required, normalize cross channel or not.
       `channel_shared`  : required, scale cross channel or not.
-      `name`            : required, name for calibration, comparing, or debug.
 
     Result:
       `output`          : result tensor.
@@ -1288,4 +1287,95 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_ProposalOp: Top_Op<"Proposal"> {
+  let summary = "Proposal operator";
+
+  let description = [{
+    Inputs:
+      `inputs`                : required, the input activation tensor.
+
+    Attributes:
+      `net_input_h`           : required, net input height
+      `net_input_w`           : required, net input width
+      `feat_stride`           : required, anchor box stride size
+      `anchor_base_size`      : required, anchor box base size
+      `rpn_obj_threshold`     : required, obj threshold
+      `rpn_nms_threshold`     : required, nms threshold for generate proposal boxes
+      `rpn_nms_post_top_n`    : required, keep num boxes after nms
+
+    Result:
+      `output`                : result tensor.
+  }];
+
+  let arguments = (
+    ins Variadic<AnyTensor>:$inputs,
+    I64Attr:$net_input_h,
+    I64Attr:$net_input_w,
+    I64Attr:$feat_stride,
+    I64Attr:$anchor_base_size,
+    F64Attr:$rpn_obj_threshold,
+    F64Attr:$rpn_nms_threshold,
+    I64Attr:$rpn_nms_post_top_n
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ROIPoolingOp : Top_Op<"ROIPooling">  {
+
+  let summary = "ROIPooling operator";
+
+  let description = [{
+    Max pooling on ROI.
+
+    Inputs:
+      `inputs`          : required, the input activation tensor.
+
+    Attributes:
+      `pooled_h`        : required, pooled output height.
+      `pooled_w`        : required, pooled output width
+      `spatial_scale`   : required, spatial_scale
+
+    Result:
+      `output`          : result tensor.
+  }];
+
+  let arguments = (
+    ins Variadic<AnyTensor>:$inputs,
+    I64Attr:$pooled_h,
+    I64Attr:$pooled_w,
+    F64Attr:$spatial_scale
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_FrcnDetectionOp : Top_Op<"FrcnDetection"> {
+  let summary = "Faster rcnn detection operator";
+
+  let description = [{
+
+    Inputs:
+      `inputs`          : required, input tensors.
+
+    Attributes:
+      `class_num`       : required, detection class num.
+      `obj_threshold`   : required, object threshold.
+      `nms_threshold`   : required, nms threshold.
+      `keep_topk`       : required, keep top k.
+
+    Result:
+      `output`          : result tensor.
+  }];
+
+  let arguments = (
+    ins Variadic<AnyTensor>:$inputs,
+    I64Attr:$class_num,
+    F64Attr:$obj_threshold,
+    F64Attr:$nms_threshold,
+    I64Attr:$keep_topk
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // Top_OPS

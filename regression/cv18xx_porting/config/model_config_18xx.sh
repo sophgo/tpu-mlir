@@ -787,13 +787,13 @@ export NET_INPUT_DIMS=600,800
 export RAW_SCALE=255.0
 export MEAN=102.9801,115.9465,122.7717
 export INPUT_SCALE=1.0,1.0,1.0
-export EXCEPTS=proposal,roi_pool5,bbox_pred,output
-export TOLERANCE_INT8=0.84,0.41
+export EXCEPTS=rois,pool5,bbox_pred,output
+export TOLERANCE_INT8=0.83,0.40
 export DO_QUANT_BF16=0
 export TOLERANCE_BF16=0.99,0.92
 export TOLERANCE_BF16_CMDBUF=0.99,0.96
 export EXCEPTS_BF16=proposal,roi_pool5,roi_pool5_quant,fc6_reshape,relu6,relu7,cls_score,cls_score_dequant,bbox_pred,bbox_pred_dequant,cls_prob #output is euclidean_similarity   = 0.995603
-export CALI_IMAGES=$DATA_SET/coco/val2017
+export CALI_IMAGES=$DATA_SET/VOCdevkit/VOC2012/JPEGImages
 fi
 
 if [ $NET = "enet" ]; then

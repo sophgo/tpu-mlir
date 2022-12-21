@@ -61,6 +61,16 @@ struct detection {
   float score;
 };
 
+typedef struct {
+  float x1, y1, x2, y2;
+} coord;
+
+typedef struct {
+  coord bbox;
+  int cls;
+  float score;
+} detections;
+
 struct DetParam {
   std::vector<int64_t> loc_shape;
   std::vector<int64_t> conf_shape;
@@ -109,5 +119,61 @@ public:
 private:
   YoloDetParam param_;
   std::vector<float> _anchors;
+};
+
+struct ProposalParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int64_t net_input_h;
+  int64_t net_input_w;
+  int64_t feat_stride;
+  int64_t anchor_base_size;
+  double rpn_obj_threshold;
+  double rpn_nms_threshold;
+  int64_t rpn_nms_post_top_n;
+};
+
+class ProposalFunc {
+public:
+  ProposalFunc(ProposalParam &param);
+  void invoke();
+private:
+  ProposalParam param_;
+  std::vector<float> anchor_scale = {8, 16, 32};
+  std::vector<float> anchor_ratio = {0.5, 1, 2};
+  std::vector<float> anchor_boxes;
+};
+
+struct ROIPoolingParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int64_t pooled_h;
+  int64_t pooled_w;
+  double spatial_scale;
+};
+
+class ROIPoolingFunc {
+public:
+  ROIPoolingFunc(ROIPoolingParam &param);
+  void invoke();
+private:
+  ROIPoolingParam param_;
+};
+
+struct FrcnDetParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int64_t class_num;
+  double obj_threshold;
+  double nms_threshold;
+  int64_t keep_topk;
+};
+
+class FrcnDetctionFunc {
+public:
+  FrcnDetctionFunc(FrcnDetParam &param);
+  void invoke();
+private:
+  FrcnDetParam param_;
 };
 } // namespace tpu_mlir
