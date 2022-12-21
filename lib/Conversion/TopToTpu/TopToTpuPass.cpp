@@ -47,6 +47,30 @@ static void ForwardReshape(top::ReshapeOp op) {
   }
 }
 
+static void BackwardPermute(top::PermuteOp op) {
+  auto in = op.input();
+  auto out = op.output();
+  auto in_type = in.getType().cast<RankedTensorType>();
+  auto out_qtype = Quant::getCalibratedType(out);
+  auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
+  in.setType(new_type);
+  if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
+    BackwardPermute(permuteOp);
+  }
+}
+
+static void ForwardPermute(top::PermuteOp op) {
+  auto in = op.input();
+  auto out = op.output();
+  auto out_type = out.getType().cast<RankedTensorType>();
+  auto in_qtype = Quant::getCalibratedType(in);
+  auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
+  out.setType(new_type);
+  if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
+    ForwardPermute(permuteOp);
+  }
+}
+
 template <typename TyOp>
 struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -71,6 +95,8 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
     out.setType(new_type);
     if (auto reshapeOp = dyn_cast<top::ReshapeOp>(out.getDefiningOp())) {
       ForwardReshape(reshapeOp);
+    } else if (auto permuteOp = dyn_cast<top::PermuteOp>(out.getDefiningOp())) {
+      ForwardPermute(permuteOp);
     }
     return success();
   }
@@ -104,6 +130,8 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
     in.setType(new_type);
     if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
       BackwardReshape(reshapeOp);
+    } else if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
+      BackwardPermute(permuteOp);
     }
     return success();
   }
@@ -216,6 +244,9 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
       in.setType(new_type);
       if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
         BackwardReshape(reshapeOp);
+      } else if (auto permuteOp =
+                     dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
+        BackwardPermute(permuteOp);
       }
     }
     return success();
@@ -286,7 +317,8 @@ protected:
     }
     // clang-format off
     RewritePatternSet patterns(ctx_);
-    patterns.add<ForwardCalibartion<top::ReshapeOp>>(ctx_);
+    patterns.add<ForwardCalibartion<top::ReshapeOp>,
+                 ForwardCalibartion<top::PermuteOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
     patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
