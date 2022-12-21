@@ -575,6 +575,65 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     Module::getShapeVec(output(), yolo_param.output.shape);
     YoloDetectionFunc yolo_func(yolo_param);
     yolo_func.invoke();
+  } else if (func_name == "proposal") {
+    ProposalParam proposal_param;
+    mlir::DictionaryAttr param = this->param().value();
+    proposal_param.anchor_base_size = param.get("anchor_base_size").cast<IntegerAttr>().getInt();
+    proposal_param.feat_stride = param.get("feat_stride").cast<IntegerAttr>().getInt();
+    proposal_param.net_input_h = param.get("net_input_h").cast<IntegerAttr>().getInt();
+    proposal_param.net_input_w = param.get("net_input_w").cast<IntegerAttr>().getInt();
+    proposal_param.rpn_nms_post_top_n = param.get("rpn_nms_post_top_n").cast<IntegerAttr>().getInt();
+    proposal_param.rpn_obj_threshold = param.get("rpn_obj_threshold").cast<FloatAttr>().getValueAsDouble();
+    proposal_param.rpn_nms_threshold = param.get("rpn_nms_threshold").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < inputs().size(); ++i) {
+      tensor_list_t tensor_list;
+      tensor_list.ptr = p.inputs[i];
+      tensor_list.size = Module::getNumElements(inputs()[i]);
+      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      proposal_param.inputs.emplace_back(std::move(tensor_list));
+    }
+    proposal_param.output.ptr = p.outputs[0];
+    proposal_param.output.size = Module::getNumElements(output());
+    Module::getShapeVec(output(), proposal_param.output.shape);
+    ProposalFunc proposal_func(proposal_param);
+    proposal_func.invoke();
+  } else if (func_name == "roi_pooling") {
+    ROIPoolingParam roip_param;
+    mlir::DictionaryAttr param = this->param().value();
+    roip_param.pooled_h = param.get("pooled_h").cast<IntegerAttr>().getInt();
+    roip_param.pooled_w = param.get("pooled_w").cast<IntegerAttr>().getInt();
+    roip_param.spatial_scale = param.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < inputs().size(); ++i) {
+      tensor_list_t tensor_list;
+      tensor_list.ptr = p.inputs[i];
+      tensor_list.size = Module::getNumElements(inputs()[i]);
+      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      roip_param.inputs.emplace_back(std::move(tensor_list));
+    }
+    roip_param.output.ptr = p.outputs[0];
+    roip_param.output.size = Module::getNumElements(output());
+    Module::getShapeVec(output(), roip_param.output.shape);
+    ROIPoolingFunc roip_func(roip_param);
+    roip_func.invoke();
+  } else if (func_name == "frcn_detection") {
+    FrcnDetParam frcn_param;
+    mlir::DictionaryAttr param = this->param().value();
+    frcn_param.class_num = param.get("class_num").cast<IntegerAttr>().getInt();
+    frcn_param.keep_topk = param.get("keep_topk").cast<IntegerAttr>().getInt();
+    frcn_param.nms_threshold = param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
+    frcn_param.obj_threshold = param.get("obj_threshold").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < inputs().size(); ++i) {
+      tensor_list_t tensor_list;
+      tensor_list.ptr = p.inputs[i];
+      tensor_list.size = Module::getNumElements(inputs()[i]);
+      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      frcn_param.inputs.emplace_back(std::move(tensor_list));
+    }
+    frcn_param.output.ptr = p.outputs[0];
+    frcn_param.output.size = Module::getNumElements(output());
+    Module::getShapeVec(output(), frcn_param.output.shape);
+    FrcnDetctionFunc frcn_func(frcn_param);
+    frcn_func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }

@@ -977,7 +977,33 @@ class CaffeConverter(BaseConverter):
 
     def convert_proposal_op(self, layer):
         assert (self.layerType(layer) == 'Proposal')
-        raise RuntimeError("not implemented")
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        for bottom in layer.bottom:
+            in_op = self.getOperand(bottom)
+            operands.append(in_op)
+        p = layer.proposal_param
+        feat_stride = p.feat_stride
+        anchor_base_size = p.anchor_base_size
+        rpn_obj_threshold = p.rpn_obj_threshold
+        rpn_nms_threshold = p.rpn_nms_threshold
+        rpn_nms_post_top_n = p.rpn_nms_post_top_n
+        net_input_h = p.net_input_h
+        net_input_w = p.net_input_w
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'net_input_h': net_input_h,
+            'net_input_w': net_input_w,
+            'feat_stride': feat_stride,
+            'anchor_base_size': anchor_base_size,
+            'rpn_obj_threshold': rpn_obj_threshold,
+            'rpn_nms_threshold': rpn_nms_threshold,
+            'rpn_nms_post_top_n': rpn_nms_post_top_n
+        }
+        output_shape = [input_shape[0], 1, rpn_nms_post_top_n, 5]
+        new_op = self.mlir.create_proposal_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
+
 
     def convert_relu6_op(self, layer):
         assert (self.layerType(layer) == 'ReLU6')
@@ -1024,7 +1050,51 @@ class CaffeConverter(BaseConverter):
 
     def convert_roipooling_op(self, layer):
         assert (self.layerType(layer) == 'ROIPooling')
-        raise RuntimeError("not implemented")
+        operands = list()
+        assert(len(layer.bottom) == 2)
+        op0 = self.getOperand(layer.bottom[0])
+        op1 = self.getOperand(layer.bottom[1])
+        bottom0_shape = self.getShape(layer.bottom[0])
+        bottom1_shape = self.getShape(layer.bottom[1])
+        operands.append(op0)
+        operands.append(op1)
+        p = layer.roi_pooling_param
+        pooled_h = p.pooled_h
+        pooled_w = p.pooled_w
+        spatial_scale = p.spatial_scale
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'pooled_h': pooled_h,
+            'pooled_w': pooled_w,
+            'spatial_scale': spatial_scale
+        }
+        output_shape = [bottom1_shape[0] * bottom1_shape[2], bottom0_shape[1], pooled_h, pooled_w]
+        new_op = self.mlir.create_roipooling_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
+
+    def convert_frcn_detection_op(self, layer):
+        assert(self.layerType(layer) == 'FrcnDetection')
+        input_shape = self.getShape(layer.bottom[2])
+        operands = list()
+        for bottom in layer.bottom:
+            op = self.getOperand(bottom)
+            operands.append(op)
+        p = layer.frcn_detection_param
+        class_num = p.class_num
+        obj_threshold = p.obj_threshold
+        nms_threshold = p.nms_threshold
+        keep_topk = p.keep_topk
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'class_num': class_num,
+            'obj_threshold': obj_threshold,
+            'nms_threshold': nms_threshold,
+            'keep_topk': keep_topk
+        }
+
+        output_shape = [input_shape[0], 1, keep_topk, 6]
+        new_op = self.mlir.create_frcn_detection_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_shufflechannel_op(self, layer):
         assert (self.layerType(layer) == 'ShuffleChannel')
