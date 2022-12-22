@@ -159,7 +159,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   bool relu, with_bias, transpose;
   double relu_limit;
   op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
-  assert(batch == 1);
+  // assert(batch == 1);
   auto input_qtype = Quant::getUniformQuantizedType(op.input());
   auto right_qtype = Quant::getUniformQuantizedType(op.right());
   auto output_qtype = Quant::getUniformQuantizedType(op.output());
@@ -204,8 +204,12 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto right_type = op.right().getType().cast<RankedTensorType>();
   int K_idx = op.right_transpose() ? 1 : 0;
   int N_idx = op.right_transpose() ? 0 : 1;
-  int64_t row_size = right_type.getShape()[K_idx];
-  int64_t col_size = right_type.getShape()[N_idx];
+  if (batch > 1) {
+    K_idx++;
+    N_idx++;
+  }
+  int64_t row_size = K;
+  int64_t col_size = N;
   std::shared_ptr<std::vector<int32_t>> bias_quant;
   if (isa<top::WeightOp>(op.bias().getDefiningOp())) {
     bias_quant = cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
@@ -216,13 +220,14 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto bias_type = RankedTensorType::get({col_size}, rewriter.getI32Type());
 
   if (can_merge_izp) {
-//    attrs.push_back(rewriter.getNamedAttr(
-//        "multipliers", rewriter.getI64ArrayAttr(multiplier)));
-//    attrs.push_back(
-//        rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(-shift)));
-//    attrs.push_back(rewriter.getNamedAttr(
-//        "quant_mode",
-//        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
+    //    attrs.push_back(rewriter.getNamedAttr(
+    //        "multipliers", rewriter.getI64ArrayAttr(multiplier)));
+    //    attrs.push_back(
+    //        rewriter.getNamedAttr("rshifts",
+    //        rewriter.getI64ArrayAttr(-shift)));
+    //    attrs.push_back(rewriter.getNamedAttr(
+    //        "quant_mode",
+    //        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
     if (input_zeroPoint) {
       // merge input_zeroPoint to bias
       std::shared_ptr<std::vector<int8_t>> right_quant;
@@ -251,7 +256,8 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto newOp =
         rewriter.create<tpu::MatMulOp>(name_loc, matmul_type, operands, attrs);
     // do requant
-    auto newValue = do_requant(op->getLoc(), newOp.output(), op.output().getType(), true,
+    auto newValue =
+        do_requant(op->getLoc(), newOp.output(), op.output().getType(), true,
                    multiplier, shift, tpu::RequantMode::TFlite_Lshift);
     rewriter.replaceOp(op, {newValue});
     // rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.output().getType(),
@@ -290,9 +296,12 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
         rewriter.getNamedAttr("keepdims", rewriter.getI64IntegerAttr(1)));
     attrs.push_back(
         rewriter.getNamedAttr("mode", rewriter.getStringAttr("ReduceSum")));
-    auto newType = RankedTensorType::get({1, col_size}, rewriter.getI32Type());
+    auto reduce_shape = std::vector<int64_t>(Module::getShape(op.right()));
+    reduce_shape[K_idx] = 1;
+
+    auto newType = RankedTensorType::get(reduce_shape, rewriter.getI32Type());
     if (op.right_transpose())
-      newType = RankedTensorType::get({col_size, 1}, rewriter.getI32Type());
+      newType = RankedTensorType::get(reduce_shape, rewriter.getI32Type());
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfterValue(op.right());
     auto reduceOp = rewriter.create<tpu::ReduceOp>(
