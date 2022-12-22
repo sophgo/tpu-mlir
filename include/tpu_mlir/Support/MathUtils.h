@@ -136,6 +136,10 @@ void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
             int k, int n, bool transpose);
 
+int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
+                            uint32_t rshift);
+
+
 static inline int32_t saturate(int32_t input, mlir::Type stype) {
   int32_t output;
   if (stype.isUnsignedInteger(8))
