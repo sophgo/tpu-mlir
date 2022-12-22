@@ -448,24 +448,6 @@ export POSTPROCESS_SCRIPT=$REGRESSION_PATH/data/run_postprocess/ctc_greedy_decod
 export CALI_IMAGES=$REGRESSION_PATH/dataset/MNIST
 fi
 
-if [ $NET = "alphapose" ]; then
-export MODEL_DEF=$MODEL_PATH/pose/alphapose/onnx/alphapose_resnet50_256x192.onnx
-export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/pose_256_192.jpg
-export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
-export INPUT_SHAPE=[[1,3,256,192]]
-export IMAGE_RESIZE_DIMS=256,192
-export NET_INPUT_DIMS=256,192
-export MODEL_CHANNEL_ORDER="rgb"
-export MEAN=123.675,116.28,103.53 # RGB
-export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
-export INPUT=input
-export EXCEPTS=404_Relu
-export TOLERANCE_INT8=0.91,0.49
-export TOLERANCE_BF16=0.99,0.91
-export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
-export CALI_IMAGES=$DATA_SET/coco/val2017/
-fi
-
 if [ $NET = "blazeface" ]; then
 export MODEL_TYPE="onnx"
 export MODEL_DEF=$MODEL_PATH/face_detection/blazeface/onnx/blazeface.onnx
@@ -704,6 +686,34 @@ export TOLERANCE_BF16_CMDBUF=0.99,0.92
 export CALI_IMAGES=$DATA_SET/widerface/WIDER_val/images
 fi
 
+if [ $NET = "retinaface_res50" ]; then
+export MODEL_DEF=$MODEL_PATH/face_detection/retinaface/caffe/R50-0000.prototxt
+export MODEL_DAT=$MODEL_PATH/face_detection/retinaface/caffe/R50-0000.caffemodel
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/parade.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=data
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,600,600]]
+export IMAGE_RESIZE_DIMS=600,600
+export NET_INPUT_DIMS=600,600
+export RAW_SCALE=255.0
+export MEAN=0,0,0
+export INPUT_SCALE=1,1,1
+export TOLERANCE_INT8=0.86,0.49
+# accuracy setting
+export NET_INPUT_DIMS=600,600
+export EVAL_MODEL_TYPE="widerface"
+export OBJ_THRESHOLD=0.005
+export NMS_THRESHOLD=0.45
+export DATASET=$DATASET_PATH/widerface/WIDER_val/images
+export ANNOTATION=$DATASET_PATH/widerface/wider_face_split
+export DO_FUSED_POSTPROCESS=1
+export MODEL_DEF_FUSED_POSTPROCESS=$MODEL_PATH/face_detection/retinaface/caffe/R50-0000_with_detection.prototxt
+export TOLERANCE_BF16=0.99,0.87
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+export CALI_IMAGES=$DATA_SET/widerface/WIDER_val/images
+fi
+
 if [ $NET = "ssd300" ]; then
 export MODEL_DEF=$MODEL_PATH/object_detection/ssd/caffe/ssd300/deploy.prototxt
 export MODEL_DAT=$MODEL_PATH/object_detection/ssd/caffe/ssd300/VGG_coco_SSD_300x300_iter_400000.caffemodel
@@ -817,14 +827,15 @@ fi
 if [ $NET = "enet" ]; then
 export MODEL_DEF=$MODEL_PATH/segmentation/enet/caffe/enet_deploy_final.prototxt
 export MODEL_DAT=$MODEL_PATH/segmentation/enet/caffe/cityscapes_weights.caffemodel
-export IMAGE_PATH=$REGRESSION_PATH/data/city.png
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/city.png
 export COLOURS_LUT=$REGRESSION_PATH/data/city_lut.png
 export CALI_TABLE=$REGRESSION_PATH/data/cali_tables/enet_calibration_table
+export INPUT_SHAPE=[[1,3,512,1024]]
 export NET_INPUT_DIMS=512,1024
 export IMAGE_RESIZE_DIMS=512,1024
 export RAW_SCALE=255.0
 export MEAN=0,0,0
-export INPUT_SCALE=1.0
+export INPUT_SCALE=1.0,1.0,1.0
 export STD=1,1,1
 export CALIBRATION_IMAGE_COUNT=60
 export INPUT=data
@@ -834,6 +845,7 @@ export TOLERANCE_BF16=0.96,0.96,0.74
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
 export EXCEPTS=pool1_0_4_mask,pool2_0_4_mask,conv2_7_1_a,prelu2_7_0,prelu2_7_1,prelu3_3_0,conv3_3_1_a,prelu3_3_1,prelu4_0_4,upsample4_0_4,upsample5_0_4
 # export BATCH_SIZE=4
+export CALI_IMAGES=$DATA_SET/VOCdevkit/VOC2012/JPEGImages
 fi
 
 if [ $NET = "efficientnet_b0" ]; then
@@ -924,6 +936,53 @@ export TOLERANCE_INT8=0.78,0.19
 export CALI_IMAGES=$DATA_SET/coco/val2017
 fi
 
+if [ $NET = "yolo_v2_416" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v2/caffe/caffe_deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/yolo_v2/caffe/yolov2.caffemodel
+export EVAL_SCRIPT=$REGRESSION_PATH/data/eval/accuracy_yolo_v3.sh
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=data
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,416,416]]
+export IMAGE_RESIZE_DIMS=416,416
+export RESIZE_KEEP_ASPECT_RATIO=1
+export NET_INPUT_DIMS=416,416
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
+export TOLERANCE_INT8=0.89,0.48
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.99
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "yolo_v4" ]; then
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v4/caffe/yolov4.prototxt
+export MODEL_DAT=$MODEL_PATH/object_detection/yolo_v4/caffe/yolov4.caffemodel
+export EVAL_SCRIPT=$REGRESSION_PATH/data/eval/accuracy_yolo_v3.sh
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=input
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,608,608]]
+export IMAGE_RESIZE_DIMS=608,608
+export RESIZE_KEEP_ASPECT_RATIO=1
+export NET_INPUT_DIMS=608,608
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
+export TOLERANCE_INT8=0.87,0.42
+# mish layer
+export EXCEPTS="layer137-conv,layer138-conv/1,layer138-conv,layer142-conv,layer149-conv"
+export OUTPUTS="layer139-conv,layer150-conv,layer161-conv"
+export DO_QUANT_BF16=0
+export TOLERANCE_BF16=0.99,0.94
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export YOLO_V4=1
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
 if [ $NET = "yolo_v4_s" ]; then
 export MODEL_TYPE="onnx"
 export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v4/onnx/yolov4-csp-s-leaky.onnx
@@ -935,6 +994,7 @@ export INPUT_SHAPE=[[1,3,640,640]]
 export NET_INPUT_DIMS=640,640
 export IMAGE_RESIZE_DIMS=640,640
 export RESIZE_KEEP_ASPECT_RATIO=1
+export RAW_SCALE=1.0
 export MEAN=0,0,0
 export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
 export TOLERANCE_INT8=0.984,0.813
@@ -1085,4 +1145,106 @@ export MODEL_CHANNEL_ORDER="gray"
 export BGRAY=1
 export CALI_IMAGES=$DATA_SET/GaitDatasetB-silh
 export INPUT_NUM=100
+fi
+
+if [ $NET = "alphapose" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/pose/alphapose/onnx/alphapose_resnet50_256x192.onnx
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/pose_256_192.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,256,192]]
+export IMAGE_RESIZE_DIMS=256,192
+export NET_INPUT_DIMS=256,192
+export RAW_SCALE=1.0
+export MODEL_CHANNEL_ORDER="rgb"
+export MEAN=103.53,116.535,122.399  #0.406,0.457,0.48 # in RGB
+export STD=1.0,1.0,1.0
+export INPUT_SCALE=0.00392,0.00392,0.00392
+export INPUT=input
+export EXCEPTS=404_Relu
+export TOLERANCE_INT8=0.91,0.49
+export TOLERANCE_BF16=0.99,0.91
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export CALI_IMAGES=$DATA_SET/hico_20160224_det/images/test2015/
+fi
+
+if [ $NET = "fcn-8s" ]; then
+export MODEL_DEF=$MODEL_PATH/segmentation/fcn-8s/caffe/deploy.prototxt
+export MODEL_DAT=$MODEL_PATH/segmentation/fcn-8s/caffe/fcn-8s-pascalcontext.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,500,500]]
+export NET_INPUT_DIMS=500,500
+export IMAGE_RESIZE_DIMS=500,500
+export RAW_SCALE=255.0
+export MEAN=104.01,116.67,122.68  # from ilsvrc_2012_mean.npy
+export INPUT_SCALE=1.0,1.0,1.0
+export INPUT=input
+export TOLERANCE_INT8=0.92,0.44
+export DO_QUANT_BF16=0
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "yolact" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/segmentation/yolact/onnx/yolact_resnet50_coco_4outputs.onnx
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,550,550]]
+export NET_INPUT_DIMS=550,550
+export IMAGE_RESIZE_DIMS=550,550
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export INPUT_SCALE=0.00392,0.00392,0.00392
+export INPUT=input
+export DO_QUANT_BF16=0
+export TOLERANCE_INT8=0.82,0.29
+export TOLERANCE_BF16=0.99,0.97
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.98
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "erfnet" ]; then
+export MODEL_DEF=$MODEL_PATH/segmentation/erfnet/caffe/erfnet_deploy_mergebn.prototxt
+export MODEL_DAT=$MODEL_PATH/segmentation/erfnet/caffe/erfnet_cityscapes_mergebn.caffemodel
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/city.png
+export COLOURS_LUT=$REGRESSION_PATH/data/city_lut.png
+export INPUT_SHAPE=[[1,3,512,1024]]
+export NET_INPUT_DIMS=512,1024
+export IMAGE_RESIZE_DIMS=512,1024
+export RAW_SCALE=255.0
+export MEAN=0,0,0
+export INPUT_SCALE=1.0,1.0,1.0
+export STD=1,1,1
+export CALIBRATION_IMAGE_COUNT=60
+export INPUT=data
+export OUTPUTS=Deconvolution23_deconv
+export TOLERANCE_INT8=0.78,0.25
+export TOLERANCE_BF16=0.99,0.93
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.91
+export EXCEPTS=NBD19_add_conv1_3x1/relu,NBD19_add_conv1_1x3/relu,NBD19_add_conv2_3x1/relu,NBD19_add_conv2_1x3
+# export BATCH_SIZE=4
+export CALI_IMAGES=$DATA_SET/cityscaps/val
+export INPUT_NUM=60
+fi
+
+if [ $NET = "nasnet_mobile" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/imagenet/nasnet_mobile/onnx/nasnet_mobile.onnx
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export RAW_SCALE=1
+export INPUT_SHAPE=[[1,3,224,224]]
+export NET_INPUT_DIMS=224,224
+export MEAN=127.5,127.5,127.5  #0.5,0.5,0.5  # in BGR, pytorch mean=[0.5, 0.5, 0.5]
+export STD=0.5,0.5,0.5   # in BGR, pytorch std=[0.5, 0.5, 0.5]
+export INPUT_SCALE=0.007843,0.007843,0.007843   # 1.0
+export IMAGE_RESIZE_DIMS=256,256
+export INPUT=input
+export TOLERANCE_INT8=0.77,0.277
+export CALIBRATION_IMAGE_COUNT=2000
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi

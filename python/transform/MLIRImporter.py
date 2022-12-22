@@ -43,6 +43,7 @@ class Top:
     MaxUnpoolOp = 'top.MaxUnpool'
     MaxOp = 'top.Max'
     MinOp = 'top.Min'
+    MishOp = 'top.Mish'
     MulOp = 'top.Mul'
     MulConstOp = 'top.MulConst'
     NormalizeOp = 'top.Normalize'
@@ -537,6 +538,13 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.TanhOp, operands, [output_type], **param)
+
+    def create_mish_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.MishOp, operands, [output_type], **param)
 
     def create_erf_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

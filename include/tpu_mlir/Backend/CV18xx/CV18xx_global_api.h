@@ -345,6 +345,10 @@ void cvi_backend_tg_bf16_pixel_shuffle_kernel(
     uint32_t layer_id, gaddr_t ga_ifmap, gaddr_t ga_ofmap, int input_n,
     int input_c, int input_h, int input_w, int factor, bool isDCR);
 
+void cvi_backend_tg_reorg_kernel(uint32_t layer_id, gaddr_t input_gaddr,
+                                 gaddr_t output_gaddr, int n, int c, int h,
+                                 int w, int stride, cvk_fmt_t fmt);
+
 void cvi_backend_tg_bf16_lrn_kernel(uint32_t layer_id, gaddr_t input_gaddr,
                                     gaddr_t output_gaddr,
                                     gaddr_t exp_table_gaddr,

@@ -21,6 +21,18 @@
 
 namespace tpu_mlir {
 
+static float softplus_activate(float x) {
+  return std::log(std::exp(x) + 1);
+}
+
+static inline float tanh_activate (float x) {
+  return (2 / (1 + std::exp(-2 * x)) - 1);
+}
+
+float my_mish_activate(float x_val) {
+  return x_val * tanh_activate(softplus_activate(x_val));
+}
+
 static bool SortScoreCmp0(const std::pair<float, int> &pair1,
                           const std::pair<float, int> &pair2) {
   return pair1.first > pair2.first;
@@ -886,14 +898,14 @@ void ProposalFunc::invoke() {
   int channel = score_shape[1];
   int height = score_shape[2];
   int width = score_shape[3];
-  
+
   int feat_stride = param_.feat_stride;
   int net_input_h = param_.net_input_h;
   int net_input_w = param_.net_input_w;
   float rpn_nms_threshold = param_.rpn_nms_threshold;
   int rpn_nms_post_top_n = param_.rpn_nms_post_top_n;
   float thresh = param_.rpn_obj_threshold;
-  
+
   float *score = param_.inputs[0].ptr;
   float *bbox_deltas = param_.inputs[1].ptr;
   float *output_data = param_.output.ptr;
@@ -958,7 +970,7 @@ void ProposalFunc::invoke() {
       batched_output[5 * i + 3] = pred_boxes[i][2];
       batched_output[5 * i + 4] = pred_boxes[i][3];
     }
-  }  
+  }
 }
 
 ROIPoolingFunc::ROIPoolingFunc(ROIPoolingParam &param) : param_(param) {
@@ -1131,7 +1143,7 @@ void FrcnDetctionFunc::invoke() {
   float *scores = param_.inputs[1].ptr;
   float *rois = param_.inputs[2].ptr;
   float *output_data = param_.output.ptr;
-  
+
   auto rois_shape = param_.inputs[2].shape;
   auto output_shape = param_.output.shape;
   int64_t class_num = param_.class_num;
@@ -1206,7 +1218,7 @@ void FrcnDetctionFunc::invoke() {
     }
     delete[] dets_nms;
     delete[] dets;
-  }  
+  }
 }
 
 } // namespace tpu_mlir

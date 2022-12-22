@@ -853,6 +853,20 @@ def Top_TanhOp: Top_Op<"Tanh", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_MishOp: Top_Op<"Mish", [InOutSameShape]> {
+  let summary = "Mish operator";
+
+  let description = [{
+    Calculates the mish of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
   let summary = "Div operator";
 

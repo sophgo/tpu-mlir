@@ -28,12 +28,23 @@ void tpu::Depth2SpaceOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t scale_w = block_w();
   assert(scale_h == scale_w);
   bool isDCR = !is_CRD();
+  bool isInversed = is_inversed();
   if (Quant::isUniformQuantized(output())) {
-    cvi_backend_tg_fixed_pixel_shuffle_kernel(layer_id, ga_input, ga_output, n,
-                                              c, h, w, scale_h, isDCR);
-
+    if (isInversed) {
+      cvi_backend_tg_reorg_kernel(layer_id, ga_input, ga_output, n, c, h, w,
+                                  scale_h, CVK_FMT_I8);
+    } else {
+      cvi_backend_tg_fixed_pixel_shuffle_kernel(layer_id, ga_input, ga_output,
+                                                n, c, h, w, scale_h, isDCR);
+    }
   } else {
-    cvi_backend_tg_bf16_pixel_shuffle_kernel(layer_id, ga_input, ga_output, n,
-                                             c, h, w, scale_h, isDCR);
+    if (isInversed) {
+      cvi_backend_tg_reorg_kernel(layer_id, ga_input, ga_output, n, c, h, w,
+                                  scale_h, CVK_FMT_BF16);
+
+    } else {
+      cvi_backend_tg_bf16_pixel_shuffle_kernel(layer_id, ga_input, ga_output, n,
+                                               c, h, w, scale_h, isDCR);
+    }
   }
 }
