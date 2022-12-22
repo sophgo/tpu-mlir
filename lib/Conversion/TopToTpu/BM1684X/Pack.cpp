@@ -16,7 +16,10 @@ void PackLowering::LoweringINT8(PatternRewriter &rewriter, top::PackOp op,
                                bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
-
+void PackLowering::LoweringINT4(PatternRewriter &rewriter, top::PackOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void PackLowering::LoweringF32(PatternRewriter &rewriter,
                               top::PackOp op) const {
   llvm_unreachable("Not Implemented");

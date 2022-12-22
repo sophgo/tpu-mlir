@@ -31,7 +31,10 @@ void DeconvLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, deconvOp.output().getType(),
                                              operands, attrs);
 }
-
+void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
   if (asymmetric) {

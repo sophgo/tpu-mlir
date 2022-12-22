@@ -21,14 +21,19 @@ namespace helper {
 constexpr double Quant::QMAX_INT8;
 constexpr int Quant::BITS_INT8;
 constexpr llvm::StringRef Quant::Type::INT8;
+constexpr llvm::StringRef Quant::Type::INT4;
 constexpr llvm::StringRef Quant::Type::BF16;
 constexpr llvm::StringRef Quant::Type::F16;
 constexpr llvm::StringRef Quant::Type::F32;
 
 void Quant::getScaleAndZeroPoint(double rmin, double rmax, double &scale,
-                                 int64_t &zeroPoint) {
+                                 int64_t &zeroPoint, int bitwidth) {
   int qmin = rmin < 0 ? -128 : 0;
   int qmax = rmin < 0 ? 127 : 255;
+  if (bitwidth == 4) {
+    qmin = rmin < 0 ? -8 : 0;
+    qmax = rmin < 0 ? 7 : 15;
+  }
   // Determine the scale.
   double qminDouble = qmin;
   double qmaxDouble = qmax;
@@ -46,32 +51,40 @@ void Quant::getScaleAndZeroPoint(double rmin, double rmax, double &scale,
   }
 }
 
-double Quant::getScale(double threshold, bool sign) {
-  if (sign) {
-    return threshold / 127.0;
+double Quant::getScale(double threshold, bool sign, int bitwidth) {
+  if (bitwidth == 8) {
+    if (sign) {
+      return threshold / 127.0;
+    } else {
+      return threshold / 255.0;
+    }
   } else {
-    return threshold / 255.0;
+    if (sign) {
+      return threshold / 7.0;
+    } else {
+      return threshold / 15.0;
+    }
   }
 }
 
 void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
-                                 bool asymmetric) {
+                                 bool asymmetric, int bitwidth) {
   bool sign;
-  getScaleAndZeroPoint(v, scale, zeropoint, sign, asymmetric);
+  getScaleAndZeroPoint(v, scale, zeropoint, sign, asymmetric, bitwidth);
 }
 
 void Quant::getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
-                                 bool &sign, bool asymmetric) {
+                                 bool &sign, bool asymmetric, int bitwidth) {
   if (isCalibratedType(v)) {
     auto qtype = getCalibratedType(v);
     auto max = qtype.getMax();
     auto min = qtype.getMin();
     sign = min < 0;
     if (asymmetric) {
-      getScaleAndZeroPoint(min, max, scale, zeropoint);
+      getScaleAndZeroPoint(min, max, scale, zeropoint, bitwidth);
     } else {
       zeropoint = 0;
-      scale = getScale(max, sign);
+      scale = getScale(max, sign, bitwidth);
     }
   } else if (isUniformQuantized(v)) {
     auto qtype = getUniformQuantizedType(v);

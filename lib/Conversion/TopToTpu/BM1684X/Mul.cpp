@@ -15,7 +15,10 @@ namespace bm1684x {
 void MulLowering::LoweringF32(PatternRewriter &rewriter, top::MulOp op) const {
   lowering_common_f32<tpu::MulOp>(rewriter, op);
 }
-
+void MulLowering::LoweringINT4(PatternRewriter &rewriter, top::MulOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
                                bool asymmetric) const {
   if (asymmetric) {

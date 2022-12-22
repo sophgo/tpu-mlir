@@ -50,7 +50,10 @@ void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.input(), table});
 }
-
+void PowLowering::LoweringINT4(PatternRewriter &rewriter, top::PowOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
   LoweringF32(rewriter, op);
 }

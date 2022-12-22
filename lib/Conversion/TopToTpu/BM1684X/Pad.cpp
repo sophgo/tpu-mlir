@@ -15,7 +15,10 @@ namespace bm1684x {
 void PadLowering::LoweringF32(PatternRewriter &rewriter, top::PadOp op) const {
   lowering_common_f32<tpu::PadOp>(rewriter, op, 3);
 }
-
+void PadLowering::LoweringINT4(PatternRewriter &rewriter, top::PadOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
                                bool asymmetric) const {
   int64_t in_zp;

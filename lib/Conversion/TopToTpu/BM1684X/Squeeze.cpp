@@ -21,7 +21,10 @@ void SqueezeLowering::LoweringINT8(PatternRewriter &rewriter, top::SqueezeOp op,
                                    bool asymmetric) const {
   lowering_common_int8<tpu::SqueezeOp>(rewriter, op, asymmetric);
 }
-
+void SqueezeLowering::LoweringINT4(PatternRewriter &rewriter, top::SqueezeOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void SqueezeLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::SqueezeOp op) const {
   lowering_common_bf16<tpu::SqueezeOp>(rewriter, op);

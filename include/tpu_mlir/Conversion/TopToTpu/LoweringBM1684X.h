@@ -21,6 +21,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
     OP##Lowering(MLIRContext *ctx) : TopLowering<top::OP##Op>(ctx) {}          \
     void LoweringINT8(PatternRewriter &rewriter, top::OP##Op op,               \
                       bool asymmetric) const override;                         \
+    void LoweringINT4(PatternRewriter &rewriter, top::OP##Op op,               \
+                      bool asymmetric) const override;                         \
     void LoweringBF16(PatternRewriter &rewriter,                               \
                       top::OP##Op op) const override;                          \
     void LoweringF16(PatternRewriter &rewriter,                                \
