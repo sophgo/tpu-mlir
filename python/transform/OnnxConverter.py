@@ -177,6 +177,7 @@ class OnnxConverter(BaseConverter):
             "Split": lambda node: self.convert_split_op(node),
             "Sum": lambda node: self.convert_sum_op(node),
             "Sqrt": lambda node: self.convert_sqrt_op(node),
+            "Tanh": lambda node: self.convert_tanh_op(node),
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
@@ -1596,6 +1597,14 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_sqrt_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_tanh_op(self, onnx_node):
+        assert (onnx_node.op_type == "Tanh")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_tanh_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_pow_op(self, onnx_node):

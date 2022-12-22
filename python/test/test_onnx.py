@@ -21,7 +21,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["TorchLayerNorm", "PadAvgPool2D"]
+Failed_Cases = ["TorchLayerNorm", "PadAvgPool2D", "Tanh"]
 
 
 class ONNX_IR_TESTER(object):
@@ -111,6 +111,7 @@ class ONNX_IR_TESTER(object):
             "Sub": self.test_Sub,
             "Sub2": self.test_Sub2,
             "Sum": self.test_Sum,
+            "Tanh": self.test_Tanh,
             "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
             "Where": self.test_Where,
@@ -1235,6 +1236,14 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([exp_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_Tanh(self, case_name):
+        input_shape = [1, 3, 32, 32]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        tanh_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([tanh_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Log(self, case_name):

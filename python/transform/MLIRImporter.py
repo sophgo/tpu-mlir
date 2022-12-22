@@ -67,6 +67,7 @@ class Top:
     SqrtOp = 'top.Sqrt'
     ShuffleChannelOp = 'top.ShuffleChannel'
     TileOp = 'top.Tile'
+    TanhOp = 'top.Tanh'
     UnpackOp = 'top.Unpack'
     UpsampleOp = 'top.Upsample'
     WeightOp = 'top.Weight'
@@ -529,6 +530,13 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.ExpOp, operands, [output_type], **param)
+
+    def create_tanh_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.TanhOp, operands, [output_type], **param)
 
     def create_erf_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

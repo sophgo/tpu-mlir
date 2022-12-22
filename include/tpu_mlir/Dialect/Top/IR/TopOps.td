@@ -608,6 +608,7 @@ def Top_PermuteOp: Top_Op<"Permute"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
@@ -829,6 +830,20 @@ def Top_ExpOp: Top_Op<"Exp", [InOutSameShape]> {
 
   let description = [{
     Calculates the exponent of the given input tensor, element-wise.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_TanhOp: Top_Op<"Tanh", [InOutSameShape]> {
+  let summary = "Tanh operator";
+
+  let description = [{
+    Calculates the tanh of the given input tensor, element-wise.
   }];
 
   let arguments = (ins
