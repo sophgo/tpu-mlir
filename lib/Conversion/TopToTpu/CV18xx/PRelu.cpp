@@ -24,12 +24,28 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
 
+  //quantize positive
+  auto threshold_x = Quant::getThreshold(op.input());
+  auto threshold_y = Quant::getThreshold(op.output());
+  double qscale_pos = threshold_x / threshold_y;
+  int64_t multiplier_pos, rshift_pos;
+  if (std::fabs(threshold_x - threshold_y) <
+      1e-5 * std::min(threshold_x, threshold_y)) {
+    // no positive scale
+    rshift_pos = 0;
+    multiplier_pos = 1;
+  } else {
+    getRShiftAndMultiplierFromQScale(qscale_pos, &multiplier_pos, &rshift_pos,
+                                     false);
+  }    
+
+  //quantize negtive
   auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
   auto slope_f32 = slopeOp.read<float>();
   std::vector<int8_t> slope_int8(num_slope);
-  auto scale_max = std::abs(slope_f32->at(0));
+  auto scale_max = std::fabs(slope_f32->at(0) * qscale_pos);
   for (int idx = 1; idx < num_slope; idx++) {
-    auto scale = std::abs(slope_f32->at(idx));
+    auto scale = std::fabs(slope_f32->at(idx) * qscale_pos);
     if (scale > scale_max) {
       scale_max = scale;
     }
@@ -39,7 +55,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
 
   for (int idx = 0; idx < num_slope; idx++) {
     slope_int8[idx] =
-        getMultiplierI8FromQScaleAndRShift(slope_f32->at(idx), rshifti);
+        quantizeFilterRShift(slope_f32->at(idx), threshold_y, threshold_x, rshifti);
   }
 
   operands.push_back(op.input());
@@ -52,6 +68,10 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
   }
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshifti)));
+  attrs.push_back(
+      rewriter.getNamedAttr("rshift_pos", rewriter.getSI32IntegerAttr(rshift_pos)));
+  attrs.push_back(
+      rewriter.getNamedAttr("muliplier_pos", rewriter.getSI32IntegerAttr(multiplier_pos)));
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
 }

@@ -1428,6 +1428,8 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
     AnyTensor:$input,
     AnyTensor:$slope,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
+    OptionalAttr<SI32Attr>:$rshift_pos,
+    OptionalAttr<SI32Attr>:$muliplier_pos,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 
