@@ -978,3 +978,74 @@ export TOLERANCE_BF16_CMDBUF=0.99,0.96
 export EXCEPTS=data
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
+
+if [ $NET = "yolo_v7" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v7/yolov7.onnx
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=input
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,640,640]]
+export IMAGE_RESIZE_DIMS=640,640
+export NET_INPUT_DIMS=640,640
+export RAW_SCALE=1.0
+export MEAN=0,0,0
+export STD=1,1,1
+export INPUT_SCALE=0.00392,0.00392,0.00392
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.98
+export TOLERANCE_INT8=0.93,0.6
+# accuracy setting
+export EVAL_MODEL_TYPE="coco"
+export EVAL_SCRIPT_ONNX="eval_yolo_v7.py"
+export EVAL_SCRIPT_INT8="eval_yolo_v7.py"
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "ppyolo_tiny" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/object_detection/ppyolo/ppyolo_tiny.onnx
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export MIX_PRECISION_TABLE=$REGRESSION_PATH/data/cali_tables/ppyolo_tiny_mix_table
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export RAW_SCALE=1
+export RESIZE_KEEP_ASPECT_RATIO=0
+export INPUT_SHAPE=[[1,3,320,320]]
+export NET_INPUT_DIMS=320,320
+export IMAGE_RESIZE_DIMS=320,320
+export MEAN=123.675,116.28,103.53 #     # in RGB
+export STD=0.229,0.224,0.225
+export INPUT_SCALE=0.0171,0.0175,0.0174   # 1.0,1.0,1.0
+export INPUT=input
+export EXCEPTS=relu_17.tmp_0_Relu  # almost all zeros
+export MODEL_CHANNEL_ORDER="rgb"
+export TOLERANCE_INT8=0.78,0.78,0.29
+export TOLERANCE_BF16=0.99,0.99,0.93
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.98
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "gaitset" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/pose/gaitset/onnx/gaitset.onnx
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/002-bg-02-018-124.png
+export INPUT_SHAPE=[[1,1,64,64]]
+export IMAGE_RESIZE_DIMS=64,64
+export NET_INPUT_DIMS=64,64
+export MEAN=0
+export INPUT_SCALE=0.00392 #1.0,1.0,1.0
+export STD=1
+export RAW_SCALE=1.0
+export INPUT=input
+export TOLERANCE_INT8=0.95,0.63
+export DO_QUANT_BF16=0
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
+export EXCEPTS=97_Conv  # almost all zeros
+export MODEL_CHANNEL_ORDER="gray"
+export BGRAY=1
+export CALI_IMAGES=$DATA_SET/GaitDatasetB-silh
+export INPUT_NUM=100
+fi
