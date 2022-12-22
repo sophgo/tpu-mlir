@@ -231,7 +231,7 @@ def Top_PackOp: Top_Op<"Pack", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
-  // let hasCanonicalizer = 1;
+  let hasCanonicalizer = 1;
 }
 
 def Top_UnpackOp: Top_Op<"Unpack", [SupportFuseRelu]> {
