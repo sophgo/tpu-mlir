@@ -15,6 +15,89 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
+
+static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
+                          conv_attr_t &attr) {
+  // deal with pad > 16
+  bool insert_pad = false;
+  auto kernel_size = Module::getI64Array(op.kernel_shape())->size();
+  std::vector<int64_t> input_shape;
+  Module::getShapeVec(op.input(), input_shape);
+  auto _pads = Module::getI64Array(op.pads());
+  std::vector<int64_t> pad_v;
+  std::vector<int64_t> new_pad_v(2 * input_shape.size(), 0);
+  pad_v.assign(_pads->begin(), _pads->end());
+  for (auto p : pad_v) {
+    if (p > 15) {
+      insert_pad = true;
+      break;
+    }
+  }
+  if (insert_pad && kernel_size > 3) {
+    // todo pad 3d (padOp not support now)
+    llvm_unreachable("Not supported now");
+  }
+  if (insert_pad) {
+    if (kernel_size == 2) {
+      if (attr.pht > 15) {
+        assert(attr.pht == pad_v[0]);
+        pad_v[0] = 0;
+        new_pad_v[2] = attr.pht;
+        input_shape[2] += attr.pht;
+      }
+      if (attr.pwl > 15) {
+        assert(attr.pwl == pad_v[1]);
+        pad_v[1] = 0;
+        new_pad_v[3] = attr.pwl;
+        input_shape[3] += attr.pwl;
+      }
+      if (attr.phb > 15) {
+        assert(attr.phb == pad_v[2]);
+        pad_v[2] = 0;
+        new_pad_v[6] = attr.phb;
+        input_shape[2] += attr.phb;
+      }
+      if (attr.pwr > 15) {
+        assert(attr.pwr == pad_v[3]);
+        pad_v[3] = 0;
+        new_pad_v[7] = attr.pwr;
+        input_shape[3] += attr.pwr;
+      }
+    }
+    if (kernel_size == 1) {
+      if (attr.pht > 15) {
+        assert(attr.pht == pad_v[0]);
+        pad_v[0] = 0;
+        new_pad_v[2] = attr.pht;
+        input_shape[2] += attr.pht;
+      }
+      if (attr.phb > 15) {
+        assert(attr.phb == pad_v[1]);
+        pad_v[1] = 0;
+        new_pad_v[5] = attr.phb;
+        input_shape[2] += attr.phb;
+      }
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(rewriter.getNamedAttr(
+        "paddings", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{new_pad_v})));
+    auto op_name = Module::getName(op.getOperation()).str();
+    auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_pad"));
+    auto type = op.input().getType().cast<RankedTensorType>();
+    auto new_type = RankedTensorType::get(input_shape, type.getElementType());
+    auto padOp = rewriter.create<top::PadOp>(loc, new_type,
+                                             ValueRange{
+                                                 op.input(),
+                                             },
+                                             attrs);
+    op->setAttr("pads", rewriter.getI64ArrayAttr(pad_v));
+    op->setOperand(0, padOp);
+    auto convOp = rewriter.create<top::ConvOp>(
+        op->getLoc(), op->getResultTypes(), op->getOperands(), op->getAttrs());
+    rewriter.replaceOp(op, {convOp.output()});
+  }
+  return insert_pad;
+}
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   rewriter.setInsertionPointAfter(op);
@@ -22,8 +105,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   operands.push_back(op.input());
   conv_attr_t attr = {0};
   op.parseParam(&attr);
-  if (attr.pht > 15 || attr.phb > 15 || attr.pwl > 15 || attr.pwr > 15) {
-    llvm_unreachable("Fix me. Not supported now");
+  if (ConvertPading(rewriter, op, attr)) {
+    return;
   }
   double in_thr, out_thr;
   in_thr = Quant::getThreshold(op.input());
@@ -133,16 +216,15 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
+  conv_attr_t attr = {0};
+  op.parseParam(&attr);
+  if (ConvertPading(rewriter, op, attr)) {
+    return;
+  }
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   operands.push_back(op.input());
   operands.push_back(filterOp.clone_bf16(op));
   operands.push_back(op.bias());
-
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
-  if (attr.pht > 15 || attr.phb > 15 || attr.pwl > 15 || attr.pwr > 15) {
-    llvm_unreachable("Fix me. Not supported now");
-  }
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {

@@ -448,6 +448,24 @@ export POSTPROCESS_SCRIPT=$REGRESSION_PATH/data/run_postprocess/ctc_greedy_decod
 export CALI_IMAGES=$REGRESSION_PATH/dataset/MNIST
 fi
 
+if [ $NET = "alphapose" ]; then
+export MODEL_DEF=$MODEL_PATH/pose/alphapose/onnx/alphapose_resnet50_256x192.onnx
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/pose_256_192.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,256,192]]
+export IMAGE_RESIZE_DIMS=256,192
+export NET_INPUT_DIMS=256,192
+export MODEL_CHANNEL_ORDER="rgb"
+export MEAN=123.675,116.28,103.53 # RGB
+export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
+export INPUT=input
+export EXCEPTS=404_Relu
+export TOLERANCE_INT8=0.91,0.49
+export TOLERANCE_BF16=0.99,0.91
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
+export CALI_IMAGES=$DATA_SET/coco/val2017/
+fi
+
 if [ $NET = "blazeface" ]; then
 export MODEL_TYPE="onnx"
 export MODEL_DEF=$MODEL_PATH/face_detection/blazeface/onnx/blazeface.onnx
@@ -903,6 +921,25 @@ export OUTPUTS=2249,3945,5305
 export DO_QUANT_BF16=0
 export EXCEPTS=2367,2365,2366
 export TOLERANCE_INT8=0.78,0.19
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
+if [ $NET = "yolo_v4_s" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v4/onnx/yolov4-csp-s-leaky.onnx
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT=input
+export MODEL_CHANNEL_ORDER="rgb"
+export INPUT_SHAPE=[[1,3,640,640]]
+export NET_INPUT_DIMS=640,640
+export IMAGE_RESIZE_DIMS=640,640
+export RESIZE_KEEP_ASPECT_RATIO=1
+export MEAN=0,0,0
+export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
+export TOLERANCE_INT8=0.984,0.813
+export TOLERANCE_BF16=0.99,0.98
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
 export CALI_IMAGES=$DATA_SET/coco/val2017
 fi
 
