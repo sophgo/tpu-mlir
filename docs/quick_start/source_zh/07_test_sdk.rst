@@ -226,6 +226,14 @@ SOC 中。这里介绍一种通过 linux nfs 远程文件系统挂载来实现�
    $ cd model-zoo
    $ python3 -m tpu_perf.run --mlir -l full_cases.txt
 
+注意：如果主机上安装了多块SOPHGO的加速卡，可以在使用 ``tpu_perf`` 的时候，通过添加
+``--devices id`` 来指定 ``tpu_perf`` 的运行设备。如：
+
+.. code-block:: shell
+
+   $ python3 -m tpu_perf.run --devices 2 --mlir -l full_cases.txt
+
+
 2. SOC 设备使用以下步骤, 测试生成的 ``bmodel`` 性能。
 
 从 https://github.com/sophgo/tpu-perf/releases 地址下载最新的 ``tpu-perf``

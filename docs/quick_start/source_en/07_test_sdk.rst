@@ -216,6 +216,15 @@ Running the test needs to be done in an environment outside Docker (it is assume
    $ cd model-zoo
    $ python3 -m tpu_perf.run --mlir -l full_cases.txt
 
+Note: If multiple SOPHGO accelerator cards are installed on the host, you can
+specify the running device of ``tpu_perf`` by adding ``--devices id`` when using
+``tpu_perf``. Such as:
+
+.. code-block:: shell
+
+   $ python3 -m tpu_perf.run --devices 2 --mlir -l full_cases.txt
+
+
 2. The SOC device uses the following steps to test the performance of the generated ``bmodel``.
 
 Download the latest ``tpu-perf``, ``tpu_perf-x.x.x-py3-none-manylinux2014_aarch64.whl``, from https://github.com/sophgo/tpu-perf/releases to the SOC device and execute the following operations:
