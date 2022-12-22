@@ -51,7 +51,6 @@ def parse_args(args_list):
                         type=int,
                         default=1,
                         help="whether int8 tensor compare close")
-    parser.add_argument("--qdq", type=bool, default=False, help="whether this is a qdq model.")
     parser.add_argument("--save", type=str, help="Save result as a csv file")
     args = parser.parse_args(args_list)
     return args
