@@ -13,6 +13,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <math.h>
 
 namespace tpu_mlir {
 #define MAX_DET 200
@@ -176,4 +177,7 @@ public:
 private:
   FrcnDetParam param_;
 };
+
+float my_mish_activate(float x_val);
+
 } // namespace tpu_mlir

@@ -11,6 +11,7 @@ import numpy as np
 
 import math
 import caffe
+import torch
 from caffe.proto import caffe_pb2
 from google.protobuf import text_format
 from utils.pad_setting import set_caffe_pad
@@ -220,10 +221,17 @@ class CaffeConverter(BaseConverter):
         self.WeightToNpz(self.weight_file)
         print("Save mlir file: {}".format(mlir_file))
 
-    def blob_to_weight_op(self, layer, index, shape: list = []):
+    def blob_to_weight_op(self, layer, index, shape: list = [], permute_order = []):
         name = layer.name + "_{}".format(index)
         blob = self.layer_dict[layer.name].blobs[index]
-        data = blob.data
+        if permute_order != None and len(permute_order) != 0:
+            value = blob.data
+            value_tensor = torch.tensor(value)
+            value_tensor = value_tensor.permute(permute_order)
+            value = np.array(value_tensor)
+            data = value
+        else:
+            data = blob.data
         if shape:
             assert (np.prod(data.shape) == np.prod(shape))
             data = data.reshape(shape)
@@ -624,7 +632,8 @@ class CaffeConverter(BaseConverter):
             dilation[0] = p.dilation[1] if len(p.dilation) > 1 else p.dilation[0]
             dilation[1] = p.dilation[0]
         in_op = self.getOperand(layer.bottom[0])
-        filter_op = self.blob_to_weight_op(layer, 0)
+        permute_order = [1, 0, 2, 3]
+        filter_op = self.blob_to_weight_op(layer, 0, [], permute_order)
         bias_op = self.mlir.none_op
         if p.bias_term:
             bias_op = self.blob_to_weight_op(layer, 1)
@@ -855,7 +864,12 @@ class CaffeConverter(BaseConverter):
 
     def convert_mish_op(self, layer):
         assert (self.layerType(layer) == 'Mish')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        output_shape = input_shape
+        attrs = {'name': self.get_loc(layer.top[0])}
+        new_op = self.mlir.create_mish_op([op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_padding_op(self, layer):
         assert (self.layerType(layer) == 'Padding')
