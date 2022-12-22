@@ -318,7 +318,11 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
     OptionalAttr<I64ArrayAttr>:$dilations,
     OptionalAttr<I64ArrayAttr>:$inserts,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64Attr>:$in_int4_scale,
+    OptionalAttr<F64Attr>:$in_int4_zp,
+    OptionalAttr<F64Attr>:$out_int8_scale,
+    OptionalAttr<F64Attr>:$out_int8_zp
   );
 
   let results = (outs AnyTensor:$output);
@@ -564,7 +568,11 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensorOrNone:$bias,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    OptionalAttr<F64Attr>:$in_int4_scale,
+    OptionalAttr<F64Attr>:$in_int4_zp,
+    OptionalAttr<F64Attr>:$out_int8_scale,
+    OptionalAttr<F64Attr>:$out_int8_zp
   );
 
   let results = (outs AnyTensor:$output);

@@ -34,7 +34,10 @@ void HardSigmoidLowering::LoweringF32(PatternRewriter &rewriter,
 static inline double hsigmoid(double x, double alpha, double beta) {
   return std::max(0.0, std::min(1.0, alpha * x + beta));
 }
-
+void HardSigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::HardSigmoidOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void HardSigmoidLowering::LoweringINT8(PatternRewriter &rewriter,
                                        top::HardSigmoidOp op,
                                        bool asymmetric) const {

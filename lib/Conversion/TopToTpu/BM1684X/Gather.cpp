@@ -21,7 +21,10 @@ void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
                                   bool asymmetric) const {
   lowering_common_f32<tpu::GatherOp>(rewriter, op);
 }
-
+void GatherLowering::LoweringINT4(PatternRewriter &rewriter, top::GatherOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::GatherOp op) const {
   lowering_common_bf16<tpu::GatherOp>(rewriter, op);

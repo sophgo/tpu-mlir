@@ -26,6 +26,11 @@ void AvgPoolLowering::LoweringF32(PatternRewriter &rewriter,
   }
 }
 
+void AvgPoolLowering::LoweringINT4(PatternRewriter &rewriter, top::AvgPoolOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
+
 void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                    top::AvgPoolOp poolOp,
                                    bool asymmetric) const {

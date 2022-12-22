@@ -19,7 +19,10 @@ void SqrtLowering::LoweringF32(PatternRewriter &rewriter,
       "mode", tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::SQRT));
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
-
+void SqrtLowering::LoweringINT4(PatternRewriter &rewriter, top::SqrtOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void SqrtLowering::LoweringINT8(PatternRewriter &rewriter, top::SqrtOp op,
                                 bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());

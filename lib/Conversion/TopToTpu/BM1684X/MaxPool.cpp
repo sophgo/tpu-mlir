@@ -38,6 +38,12 @@ void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
   }
 }
 
+void MaxPoolLowering::LoweringINT4(PatternRewriter &rewriter, top::MaxPoolOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
+
+
 void MaxPoolLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::MaxPoolOp op) const {
   op->setAttr("pool_mode",

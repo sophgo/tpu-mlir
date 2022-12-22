@@ -17,7 +17,10 @@ void MaxPoolWithMaskLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::MaxPoolWithMaskOp>(
       op, op->getResultTypes(), op->getOperands(), op->getAttrs());
 }
-
+void MaxPoolWithMaskLowering::LoweringINT4(PatternRewriter &rewriter, top::MaxPoolWithMaskOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void MaxPoolWithMaskLowering::LoweringINT8(PatternRewriter &rewriter,
                                            top::MaxPoolWithMaskOp op,
                                            bool asymmetric) const {

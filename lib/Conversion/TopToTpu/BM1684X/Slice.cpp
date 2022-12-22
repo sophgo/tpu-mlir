@@ -16,7 +16,10 @@ void SliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
   lowering_common_f32<tpu::SliceOp>(rewriter, op);
 }
-
+void SliceLowering::LoweringINT4(PatternRewriter &rewriter, top::SliceOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void SliceLowering::LoweringINT8(PatternRewriter &rewriter, top::SliceOp op,
                                  bool asymmetric) const {
   lowering_common_int8<tpu::SliceOp>(rewriter, op, asymmetric);

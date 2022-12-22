@@ -18,7 +18,10 @@ void LogLowering::LoweringF32(PatternRewriter &rewriter, top::LogOp op) const {
                tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::LN));
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
-
+void LogLowering::LoweringINT4(PatternRewriter &rewriter, top::LogOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
                                bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());

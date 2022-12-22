@@ -21,7 +21,10 @@ void StridedSliceLowering::LoweringINT8(PatternRewriter &rewriter, top::StridedS
                                  bool asymmetric) const {
   lowering_common_int8<tpu::StridedSliceOp>(rewriter, op, asymmetric);
 }
-
+void StridedSliceLowering::LoweringINT4(PatternRewriter &rewriter, top::StridedSliceOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void StridedSliceLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::StridedSliceOp op) const {
   lowering_common_bf16<tpu::StridedSliceOp>(rewriter, op);

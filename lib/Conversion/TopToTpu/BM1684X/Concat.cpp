@@ -16,7 +16,10 @@ void ConcatLowering::LoweringF32(PatternRewriter &rewriter,
                                  top::ConcatOp op) const {
   lowering_common_f32<tpu::ConcatOp>(rewriter, op);
 }
-
+void ConcatLowering::LoweringINT4(PatternRewriter &rewriter, top::ConcatOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp,
                                   bool asymmetric) const {

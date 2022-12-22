@@ -126,8 +126,12 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
                                        m_type) +
               o_qtype.getZeroPoint();
-          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                            : Quant::to_int8(v);
+          if (sType.isInteger(8))
+            p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
+                                                              : Quant::to_int8(v);
+          else
+            p.outputs[0][offset] = sType.isUnsignedInteger(4) ? Quant::to_uint4(v)
+                                                              : Quant::to_int4(v);
         }
       }
     }

@@ -16,7 +16,10 @@ void WhereLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::WhereOp op) const {
   lowering_common_f32<tpu::WhereOp>(rewriter, op);
 }
-
+void WhereLowering::LoweringINT4(PatternRewriter &rewriter, top::WhereOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void WhereLowering::LoweringINT8(PatternRewriter &rewriter, top::WhereOp op,
                                bool asymmetric) const {
   lowering_common_f32<tpu::WhereOp>(rewriter, op);

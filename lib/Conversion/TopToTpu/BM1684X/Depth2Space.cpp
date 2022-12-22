@@ -23,7 +23,10 @@ void Depth2SpaceLowering::LoweringINT8(PatternRewriter &rewriter,
   lowering_common_int8<tpu::Depth2SpaceOp>(rewriter, op.getOperation(),
                                            asymmetric);
 }
-
+void Depth2SpaceLowering::LoweringINT4(PatternRewriter &rewriter, top::Depth2SpaceOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void Depth2SpaceLowering::LoweringBF16(PatternRewriter &rewriter,
                                        top::Depth2SpaceOp op) const {
   lowering_common_bf16<tpu::Depth2SpaceOp>(rewriter, op);

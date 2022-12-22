@@ -16,7 +16,10 @@ void UpsampleLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::UpsampleOp op) const {
   lowering_common_f32<tpu::UpsampleOp>(rewriter, op);
 }
-
+void UpsampleLowering::LoweringINT4(PatternRewriter &rewriter, top::UpsampleOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void UpsampleLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::UpsampleOp op, bool asymmetric) const {
   lowering_common_int8<tpu::UpsampleOp>(rewriter, op, asymmetric);

@@ -196,6 +196,29 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   return newOp.output();
 }
 
+Value do_requantFp(Value input, double scale, double offset, Type to_type, std::string& to_name) {
+  auto from_stype = Module::getStorageType(input);
+  auto ctx = input.getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPointAfterValue(input);
+  auto in_name = Module::getName(input).str()+"_"+ to_name;
+  std::vector<NamedAttribute> attrs;
+  auto name_loc = NameLoc::get(builder.getStringAttr(in_name));
+  attrs.push_back(builder.getNamedAttr(
+      "scale", builder.getF64FloatAttr(scale)));
+  attrs.push_back(
+      builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
+  attrs.push_back(builder.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+  auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
+                                               ValueRange{input}, attrs);
+
+
+  return rqOp.output();
+}
+
+
 Value do_reshape(Value input, RankedTensorType to_type) {
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -269,6 +292,53 @@ mlir::Type getQuantInt8Type(Value v, bool asymmetric) {
     flag = 0;
   }
   auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
+                                                cali_type.getExpressedType(),
+                                                scale, zeropoint, qmin, qmax);
+  return RankedTensorType::get(type.getShape(), qtype);
+}
+
+mlir::Type getQuantIntType(Value v, double scale, double offset, int bits) {
+  assert(bits == 8 || bits == 4);
+  auto type = v.getType().cast<RankedTensorType>();
+  auto ctx = v.getContext();
+  auto cali_type = Quant::getCalibratedType(v);
+  auto min = cali_type.getMin();
+  int64_t qmin = -128, qmax = 127;
+  if (bits == 4) {
+    qmin = -8;
+    qmax = 7;
+  }
+  uint32_t flag = quant::QuantizationFlags::Signed;
+  if (min >= 0) {
+    qmin = 0;
+    qmax = 255;
+    if (bits == 4)
+      qmax = 15;
+    flag = 0;
+  }
+  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, bits),
+                                                cali_type.getExpressedType(),
+                                                scale, offset, qmin, qmax);
+  return RankedTensorType::get(type.getShape(), qtype);
+}
+
+mlir::Type getQuantInt4Type(Value v, bool asymmetric) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto ctx = v.getContext();
+  auto cali_type = Quant::getCalibratedType(v);
+  auto min = cali_type.getMin();
+  double scale;
+  int64_t zeropoint = 0;
+  int bitwidth = 4;
+  Quant::getScaleAndZeroPoint(v, scale, zeropoint, asymmetric, bitwidth);
+  int64_t qmin = -8, qmax = 7;
+  uint32_t flag = quant::QuantizationFlags::Signed;
+  if (min >= 0) {
+    qmin = 0;
+    qmax = 15;
+    flag = 0;
+  }
+  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 4),
                                                 cali_type.getExpressedType(),
                                                 scale, zeropoint, qmin, qmax);
   return RankedTensorType::get(type.getShape(), qtype);

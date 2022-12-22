@@ -13,6 +13,7 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
+#include "tpu_mlir/Support/Helper/Module.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU
@@ -20,6 +21,7 @@ namespace mlir {
 } // namespace mlir
 
 using namespace mlir;
+using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
 
@@ -427,6 +429,17 @@ protected:
         return user->getResult(0);
       }
     }
+
+    bool all_next_layer_is_int4 = false;
+    if (LoweringConfig::mode == Quant::Type::INT4) {
+      all_next_layer_is_int4 = true;
+      for (auto user : v.getUsers()) {
+        if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
+          all_next_layer_is_int4 = false;
+        }
+      }
+    }
+    
     auto ctx = v.getContext();
     OpBuilder builder(ctx);
     builder.setInsertionPointAfterValue(v);
@@ -446,6 +459,9 @@ protected:
         llvm_unreachable("Only calibrated type can do quantize");
       }
       auto newType = getQuantInt8Type(v, LoweringConfig::isAsymmetric);
+      if (all_next_layer_is_int4) {
+        newType = getQuantInt4Type(v, LoweringConfig::isAsymmetric);
+      }
       name += "_" + type_string(newType);
       auto loc = NameLoc::get(builder.getStringAttr(name));
       if (Module::isCV18xx(LoweringConfig::chip)) {

@@ -16,7 +16,10 @@ void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
   lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 5);
 }
-
+void SoftmaxLowering::LoweringINT4(PatternRewriter &rewriter, top::SoftmaxOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
                                    bool asymmetric) const {
   LoweringF32(rewriter, op);

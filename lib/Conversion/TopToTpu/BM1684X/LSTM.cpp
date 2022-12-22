@@ -60,7 +60,10 @@ void LSTMLowering::LoweringF32(PatternRewriter &rewriter,
                                top::LSTMOp op) const {
   LoweringLSTM(rewriter, op, rewriter.getF32Type());
 }
-
+void LSTMLowering::LoweringINT4(PatternRewriter &rewriter, top::LSTMOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void LSTMLowering::LoweringINT8(PatternRewriter &rewriter, top::LSTMOp op,
                                 bool asymmetric) const {
   LoweringLSTM(rewriter, op, rewriter.getF32Type());

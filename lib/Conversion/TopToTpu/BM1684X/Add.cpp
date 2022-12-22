@@ -84,6 +84,11 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
   rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, operands, attrs);
 }
 
+void AddLowering::LoweringINT4(PatternRewriter &rewriter, top::AddOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
+
 void AddLowering::LoweringF32(PatternRewriter &rewriter, top::AddOp op) const {
   lowering_common_f32<tpu::AddOp>(rewriter, op);
 }
