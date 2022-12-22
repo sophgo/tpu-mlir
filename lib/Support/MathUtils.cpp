@@ -386,6 +386,14 @@ int8_t getMultiplierI8FromQScaleAndRShift(double qscale, int8_t rshift) {
   return (uint32_t)(qscale * (1 << rshift));
 }
 
+
+int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
+                            uint32_t rshift) {
+  double factor = (threshold_x / threshold_y) * (1 << rshift);
+  float q_f = (float)(w * factor);
+  return helper::Quant::to_int8(q_f, ROUNDING_HALF_UP);
+}
+
 void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst, int len,
                                        float threshold_y, float threshold_x,
                                        int64_t rshift, int64_t multiplier,

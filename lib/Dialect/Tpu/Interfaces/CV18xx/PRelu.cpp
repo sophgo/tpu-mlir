@@ -33,8 +33,10 @@ void tpu::PReluOp::codegen_global_cv18xx( int64_t layer_id) {
   Module::getNCHW(input(), n, c, h, w);
   if (Quant::isUniformQuantized(output())) {
     int LE_scale = this->rshift();
+    int rshift_pos = this->rshift_pos().value();
+    int m_i8_pos = this->muliplier_pos().value();
     cvi_backend_tg_fixed_prelu_kernel( layer_id, ga_input, ga_output, ga_slope,
-                                        n, c, h, w, 0, 0, LE_scale);
+                                        n, c, h, w, rshift_pos, m_i8_pos, LE_scale);
   } else {
     cvi_backend_tg_bf16_prelu_kernel( layer_id, ga_input, ga_output,
                                       ga_slope, n, c, h, w);
