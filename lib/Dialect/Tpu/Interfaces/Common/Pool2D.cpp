@@ -143,9 +143,18 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::Pool2DOp::LocalGenSupport() {
+  pool_attr_t attrs;
+  parseParam(&attrs);
   auto stride = Module::getI64Array(strides());
   if ((stride->at(0) > 15 || stride->at(1) > 15)) {
     return failure();
+  }
+  if (attrs.is_global) {
+    // TODO: bug, need to be fixed
+    auto in_stype = Module::getStorageType(input());
+    if (in_stype.isF16() || in_stype.isBF16()) {
+      return failure();
+    }
   }
   return success();
 }
@@ -154,6 +163,14 @@ LogicalResult tpu::Pool2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
   pool_attr_t attrs;
   parseParam(&attrs);
+  if (attrs.is_global) {
+    if (out_idx != 0 || out_slice != attrs.oh) {
+      return failure();
+    }
+    in_idx = 0;
+    in_slice = attrs.ih;
+    return success();
+  }
   in_slice = (out_slice - 1) * attrs.sh + attrs.kh;
   in_idx = out_idx * attrs.sh - attrs.pad_h;
   bool is_last = (out_idx + out_slice == attrs.oh);
