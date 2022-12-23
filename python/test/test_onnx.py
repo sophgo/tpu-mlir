@@ -212,8 +212,7 @@ class ONNX_IR_TESTER(object):
                       mode=quant_mode,
                       chip=self.chip,
                       cali_table=table_name,
-                      asymmetric=isAsym,
-                      qdq=quant_mode == "qdq")
+                      asymmetric=isAsym)
 
         # transform
         tpu_final = tpu_mlir + "_final.mlir"

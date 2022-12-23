@@ -56,9 +56,6 @@ public:
         *Module::getF64Array(op->getAttr("y_scale").dyn_cast<ArrayAttr>());
     auto y_zero_point =
         *Module::getI32Array(op->getAttr("y_zero_point").dyn_cast<ArrayAttr>());
-    for (auto i : y_scale)
-      std::cout << i << " ";
-    std::cout << std::endl;
     assert(y_scale.size() == y_zero_point.size() &&
            "y_scale.size() & y_zero_point.size() must be the same.");
     assert(y_scale.size() == 1 &&
@@ -152,6 +149,63 @@ public:
   }
 };
 
+// Not a graceful pattern. We make the quantized type transparent for Ops like
+// reshape, permute, etc...
+class CalibratedTypeTransparentPattern : public RewritePattern {
+public:
+  CalibratedTypeTransparentPattern(PatternBenefit benefit, MLIRContext *context)
+      : RewritePattern(MatchAnyOpTypeTag(), benefit, context) {}
+
+  CalibratedTypeTransparentPattern(MLIRContext *context)
+      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
+
+  LogicalResult matchAndRewrite(Operation *op,
+                                PatternRewriter &rewriter) const override {
+    if (op->getResults().empty() ||
+        isa<top::WeightOp, ReturnOp, NoneOp, top::NoneOp>(op) ||
+        isa<tpu::TpuDialect>(op->getDialect())) {
+      return failure();
+    }
+    if (!op->getResult(0).getType().isa_and_nonnull<RankedTensorType>()) {
+      return failure();
+    }
+    auto result_tensor_type =
+        op->getResult(0).getType().dyn_cast<RankedTensorType>();
+    auto result_quant_type = result_tensor_type.getElementType();
+    if (isa<quant::CalibratedQuantizedType, quant::UniformQuantizedType>(
+            result_quant_type)) {
+      return failure();
+    }
+    auto successiveOps = op->getUsers();
+    while (!successiveOps.empty()) {
+      auto successiveOp =
+          *successiveOps.begin(); // We only use the first user of this op. Not
+                                  // a good choice.
+      if (!successiveOp->getResult(0)
+               .getType()
+               .isa_and_nonnull<RankedTensorType>()) {
+        return failure();
+      }
+      auto result_tensor_type =
+          successiveOp->getResult(0).getType().dyn_cast<RankedTensorType>();
+      auto result_quant_type = result_tensor_type.getElementType();
+      if (isa<quant::CalibratedQuantizedType>(
+              result_quant_type)) { // We only update the result type. However,
+                                    // operations like Reshape seems that they
+                                    // aren't designed for different InOut quant
+                                    // data type. It simply works magically.
+        op->getResult(0).setType(result_tensor_type);
+        return success();
+      } else if (isa<quant::UniformQuantizedType>(result_quant_type)) {
+        op->getResult(0).setType(result_tensor_type);
+        return success();
+      }
+      successiveOps = successiveOp->getUsers();
+    }
+    return failure();
+  }
+};
+
 class QDQConvertPass : public QDQConvertBase<QDQConvertPass> {
 public:
   QDQConvertPass() {}
@@ -162,11 +216,13 @@ public:
 
     target.addIllegalOp<QuantizeLinearOp, DequantizeLinearOp>();
 
-    RewritePatternSet patterns(context);
+    RewritePatternSet patterns(context), b_patterns(context);
     patterns.add<QuantizeLinearCastTypePattern>(context);
     patterns.add<QuantizeLinearFusePattern>(context);
     patterns.add<RemoveDequantizeLinearPattern>(context);
     (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
+    b_patterns.add<CalibratedTypeTransparentPattern>(context);
+    (void)applyPatternsAndFoldGreedily(func, std::move(b_patterns));
     Module::updateModuleTypes(func);
     Module::setState(func, Module::State::TOP_CALIBRATED);
   }
