@@ -819,11 +819,101 @@ class CaffeConverter(BaseConverter):
 
     def convert_lstm_op(self, layer):
         assert (self.layerType(layer) == 'LSTM')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        # seq_length = input_shape[0]
+        # batch_size = input_shape[1]
+        input_size = input_shape[2]
+        hidden_size = layer.recurrent_param.num_output
+        operands = list()
+        operands.append(op)
+        # weight
+        wname = layer.name + "_0"
+        weight = self.layer_dict[layer.name].blobs[0].data
+        weight = weight.reshape([4, hidden_size*input_size])
+        weight[[1, 2], :] = weight[[2, 1], :]  # ifoc =>iofc
+        weight = weight.reshape([1, 4*hidden_size, input_size])
+        weight_op = self.create_weight_op(wname, weight)
+        operands.append(weight_op)
+        # recurrence
+        rname = layer.name + "_1"
+        r = self.layer_dict[layer.name].blobs[2].data
+        r = r.reshape([4, hidden_size*hidden_size])
+        r[[1, 2], :] = r[[2, 1], :]  # ifoc =>iofc
+        r = r.reshape([1, 4*hidden_size, hidden_size])
+        recurrence_op = self.create_weight_op(rname, r)
+        operands.append(recurrence_op)
+        # bias
+        bname = layer.name + "_2"
+        bias = self.layer_dict[layer.name].blobs[1].data
+        bias = bias.reshape([4, hidden_size])
+        bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
+        bias = bias.reshape([1, 4*hidden_size])
+        bias_op = self.create_weight_op(bname, bias)
+        operands.append(bias_op)
+        if len(layer.bottom) > 1:
+            operands.append(self.mlir.none_op) # initial_h
+            operands.append(self.mlir.none_op) # initial_c
+        name = self.get_loc(layer.top[0])
+        param = {
+            "name": [name + '_LSTM', name + '_H', name + '_C'],
+            "hidden_size": hidden_size,
+            "bidirectional": bool(False),
+            "batch_first": bool(False),
+        }
+        out_shape = list(self.getShape(layer.top[0]))
+        out_shapes = [out_shape, [], []]
+        new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_lstm_jun_op(self, layer):
         assert (self.layerType(layer) == 'Lstm')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        input_shape = self.getShape(layer.bottom[0])
+        # seq_length = input_shape[0]
+        # batch_size = input_shape[1]
+        input_size = input_shape[2]
+        hidden_size = layer.lstm_param.num_output
+        operands = list()
+        operands.append(op)
+        # weight
+        wname = layer.name + "_0"
+        weight = self.layer_dict[layer.name].blobs[0].data
+        weight = weight.reshape([4, hidden_size*input_size])
+        weight[[1, 2], :] = weight[[2, 1], :]  # ifoc =>iofc
+        weight = weight.reshape([1, 4*hidden_size, input_size])
+        weight_op = self.create_weight_op(wname, weight)
+        operands.append(weight_op)
+        # recurrence
+        rname = layer.name + "_1"
+        r = self.layer_dict[layer.name].blobs[1].data
+        r = r.reshape([4, hidden_size*hidden_size])
+        r[[1, 2], :] = r[[2, 1], :]  # ifoc =>iofc
+        r = r.reshape([1, 4*hidden_size, hidden_size])
+        recurrence_op = self.create_weight_op(rname, r)
+        operands.append(recurrence_op)
+        # bias
+        bname = layer.name + "_2"
+        bias = self.layer_dict[layer.name].blobs[2].data
+        bias = bias.reshape([4, hidden_size])
+        bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
+        bias = bias.reshape([1, 4*hidden_size])
+        bias_op = self.create_weight_op(bname, bias)
+        operands.append(bias_op)
+        if len(layer.bottom) > 1:
+            operands.append(self.mlir.none_op) # initial_h
+            operands.append(self.mlir.none_op) # initial_c
+        name = self.get_loc(layer.top[0])
+        param = {
+            "name": [name + '_LSTM', name + '_H', name + '_C'],
+            "hidden_size": hidden_size,
+            "bidirectional": bool(False),
+            "batch_first": bool(False),
+        }
+        out_shape = list(self.getShape(layer.top[0]))
+        out_shapes = [out_shape, [], []]
+        new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_matmul_op(self, layer):
         assert (self.layerType(layer) == 'MatMul')

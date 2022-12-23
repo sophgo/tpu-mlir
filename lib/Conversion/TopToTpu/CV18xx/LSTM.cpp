@@ -51,25 +51,33 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
       newFilter.at(j * N + i) = filterF32->at(i * K + j);
     }
   }
-  // split bias to filterBias and recurrenceBias
+
   std::vector<int64_t> biasShape;
   Module::getShapeVec(op.bias(), biasShape);
-  assert(biasShape.size() == 2 && biasShape[0] * biasShape[1] == 2 * N &&
-         biasShape[1] % 2 == 0 && "please check bias shape.");
+  assert(biasShape.size() == 2 && "please check bias shape.");
   auto biasF32 = biasOp.read<float>();
   std::vector<int64_t> newBiasShape = {N};
   std::vector<float_t> filterBias;
   std::vector<float_t> recurrenceBias;
-  for (int ndir = 0; ndir < biasShape[0]; ndir++) {
-    filterBias.insert(
-        filterBias.end(),
-        biasF32->begin() + ndir * biasShape[1],
-        biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2);
-    recurrenceBias.insert(
-        recurrenceBias.end(),
-        biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2,
-        biasF32->begin() + ndir * biasShape[1] + biasShape[1]);
+  if (biasShape[0] * biasShape[1] == 2 * N && biasShape[1] % 2 == 0) {
+    // for onnx split bias to filterBias and recurrenceBias
+    for (int ndir = 0; ndir < biasShape[0]; ndir++) {
+      filterBias.insert(
+          filterBias.end(),
+          biasF32->begin() + ndir * biasShape[1],
+          biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2);
+      recurrenceBias.insert(
+          recurrenceBias.end(),
+          biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2,
+          biasF32->begin() + ndir * biasShape[1] + biasShape[1]);
+    }
+  } else if (biasShape[0] * biasShape[1] == N) {
+    // for caffe only has filterBias
+    filterBias.assign(biasF32->begin(), biasF32->end());
+  } else {
+     llvm_unreachable("invalid bias shape.");
   }
+
   // creat fcOp
   auto new_type = RankedTensorType::get(newFilterShape, rewriter.getF32Type());
   auto newFilterOp =
@@ -93,11 +101,16 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   Module::getShapeVec(op.recurrence(), recurrenceShape);
   auto numDir = recurrenceShape[0];
   auto hiddenSize = recurrenceShape[2];
-  std::vector<int64_t> newRecurrenceBiasShape = {numDir, 4 * hiddenSize};
-  new_type =
-      RankedTensorType::get(newRecurrenceBiasShape, rewriter.getF32Type());
-  newBiasOp = top::WeightOp::create(op, "r_bias", recurrenceBias, new_type);
-  operands.push_back(newBiasOp);
+  if (recurrenceBias.size()) {
+    std::vector<int64_t> newRecurrenceBiasShape = {numDir, 4 * hiddenSize};
+    new_type =
+        RankedTensorType::get(newRecurrenceBiasShape, rewriter.getF32Type());
+    newBiasOp = top::WeightOp::create(op, "r_bias", recurrenceBias, new_type);
+    operands.push_back(newBiasOp);
+  } else {
+    // for caffe
+    operands.push_back(Module::getNoneOp(op));
+  }
 
   // convert intit_h intit_c
   if (auto castOp = dyn_cast<top::WeightOp>(op.initial_h().getDefiningOp())) {

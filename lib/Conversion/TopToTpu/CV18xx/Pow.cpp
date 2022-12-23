@@ -7,40 +7,40 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
 #include "llvm/Support/Debug.h"
-
-#define DEBUG_TYPE "lowering-reciprocal"
+#define DEBUG_TYPE "lowering-pow"
 namespace tpu_mlir {
 namespace cv18xx {
 
-static double g_max = 0;
-void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
-                                      top::ReciprocalOp op,
-                                      bool asymmetric) const {
-  // for convert from DivOp
-  if (!Quant::isCalibratedType(op.output()) &&
-      !Quant::isUniformQuantized(op.output())) {
-    LoweringBF16(rewriter, op);
-    return;
-  }
+static double g_ex, g_max;
+void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
+                               bool asymmetric) const {
+  auto stype = Module::getStorageType(op.output());
   auto qtype = Quant::getCalibratedType(op.output());
+  g_ex = op.exponent().convertToDouble();
   g_max = qtype.getMax();
-  double const_s = op.const_val().convertToDouble();
-  Value table = create_lookup_table(
-      op.input(), op.output(), asymmetric,
-      [const_s](double val) { return (val == 0 ? g_max : const_s / val);});
+  auto fn = [](double val) {
+    if (g_ex < 0 && val == 0) {
+      return g_max;
+    } else if (g_ex != (int)(g_ex) && val < 0) {
+      return (double)(0.0);
+    } else {
+      return std::pow(val, g_ex);
+    }
+  };
+  Value table = create_lookup_table(op.input(), op.output(), asymmetric, fn);
+                                    // , ROUNDING_HALF_UP);
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
                                           ValueRange{op.input(), table});
 }
 
-void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
-                                      top::ReciprocalOp op) const {
+void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
   Value table_weight, mantissa_weight;
   float range_start = -62, range_end = 63;
-  createBf16LutOp(op, "pow", TableMode::Mantissa, -1.0, 0.0, range_start,
-                  range_end, nullptr, table_weight, mantissa_weight);
+  createBf16LutOp(op, "pow", TableMode::Mantissa,
+                  op.exponent().convertToDouble(), 0.0, range_start, range_end,
+                  nullptr, table_weight, mantissa_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
@@ -56,7 +56,6 @@ void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
       op, newType, ValueRange{op.input(), table_weight, mantissa_weight},
       attrs);
-  return;
 }
 } // namespace cv18xx
 } // namespace tpu_mlir

@@ -200,7 +200,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
-  if (attr.dh > 1 || attr.dw > 1) {
+  if (attr.dh > 15 || attr.dw > 15) {
     // TODO do dilation here, ins in top/tpu_common interpreter
     llvm_unreachable("Not supported now");
   }
@@ -233,7 +233,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   auto filter_u16 = filterOp.read<uint16_t>();
-  if (attr.dh > 1 || attr.dw > 1) {
+  if (attr.dh > 15 || attr.dw > 15) {
     // TODO do dilation here, ins in top/tpu_common interpreter
     llvm_unreachable("dilation is not supported now");
   }
