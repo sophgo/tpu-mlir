@@ -162,7 +162,7 @@ public:
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
     if (op->getResults().empty() ||
-        isa<top::WeightOp, ReturnOp, NoneOp, top::NoneOp>(op) ||
+        isa<top::WeightOp, ReturnOp, top::NoneOp>(op) ||
         isa<tpu::TpuDialect>(op->getDialect())) {
       return failure();
     }
