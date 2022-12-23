@@ -44,6 +44,7 @@ def mlir_lowering(top_mlir: str,
                   quantize_table: str = None,
                   qdq: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--init"]
+    qdq = mode.upper() == 'QDQ'
     if qdq:
         assert cali_table == None, "qdq cannot work with cali_table"
         assert quantize_table == None, "qdq cannot work with quantize_table"
