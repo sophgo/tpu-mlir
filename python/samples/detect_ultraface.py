@@ -21,8 +21,7 @@ size_variance = 0.2
 min_boxes = [[10, 16, 24], [32, 48], [64, 96], [128, 192, 256]]
 shrinkage_list = []
 image_size = [320, 240]  # default input size 320*240
-feature_map_w_h_list = [[40, 20, 10, 5], [
-    30, 15, 8, 4]]  # default feature map size
+feature_map_w_h_list = [[40, 20, 10, 5], [30, 15, 8, 4]]  # default feature map size
 priors = []
 
 
@@ -46,8 +45,7 @@ def vis(img, boxes, scores, color, conf=0.5):
         txt_bk_color = color
         cv2.rectangle(img, (x0, y0 + 1), (x0 + txt_size[0] + 1, y0 + int(1.5 * txt_size[1])),
                       txt_bk_color, -1)
-        cv2.putText(
-            img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
+        cv2.putText(img, text, (x0, y0 + txt_size[1]), font, 0.4, txt_color, thickness=1)
     return img
 
 
@@ -99,8 +97,7 @@ def define_img_size(size):
         for k in range(0, len(feature_map_w_h_list[i])):
             item_list.append(image_size[i] / feature_map_w_h_list[i][k])
         shrinkage_list.append(item_list)
-    priors = generate_priors(feature_map_w_h_list,
-                             shrinkage_list, image_size, min_boxes)
+    priors = generate_priors(feature_map_w_h_list, shrinkage_list, image_size, min_boxes)
 
 
 def convert_locations_to_boxes(locations, priors, center_variance, size_variance):
@@ -124,8 +121,7 @@ def convert_locations_to_boxes(locations, priors, center_variance, size_variance
         priors = np.expand_dims(priors, 0)
     return np.concatenate(
         [
-            locations[..., :2] * center_variance *
-            priors[..., 2:] + priors[..., :2],
+            locations[..., :2] * center_variance * priors[..., 2:] + priors[..., :2],
             np.exp(locations[..., 2:] * size_variance) * priors[..., 2:]
         ],
         axis=len(locations.shape) - 1,
@@ -134,8 +130,7 @@ def convert_locations_to_boxes(locations, priors, center_variance, size_variance
 
 def center_form_to_corner_form(locations):
     return np.concatenate(
-        [locations[..., :2] - locations[..., 2:] / 2,
-            locations[..., :2] + locations[..., 2:] / 2],
+        [locations[..., :2] - locations[..., 2:] / 2, locations[..., :2] + locations[..., 2:] / 2],
         axis=len(locations.shape) - 1,
     )
 
@@ -239,8 +234,7 @@ def predict(width, height, confidences, boxes, prob_threshold, iou_threshold=0.5
             continue
         subset_boxes = boxes[mask, :]
         # print(subset_boxes)
-        box_probs = np.concatenate(
-            [subset_boxes, probs.reshape(-1, 1)], axis=1)
+        box_probs = np.concatenate([subset_boxes, probs.reshape(-1, 1)], axis=1)
         box_probs = hard_nms(
             box_probs,
             iou_threshold=iou_threshold,
@@ -289,20 +283,12 @@ def cropImage(image, box):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Inference ultraface network.')
-    parser.add_argument("--model", type=str, required=True,
-                        help="Model definition file")
-    parser.add_argument("--model_data", type=str,
-                        help="Caffemodel data, only for caffe model")
-    parser.add_argument("--net_input_dims", type=str,
-                        default="640,480", help="(h,w) of net input")
-    parser.add_argument("--input", type=str, required=True,
-                        help="Input image for testing")
-    parser.add_argument("--output",
-                        type=str,
-                        required=True,
-                        help="Output image after detection")
+    parser = argparse.ArgumentParser(description='Inference ultraface network.')
+    parser.add_argument("--model", type=str, required=True, help="Model definition file")
+    parser.add_argument("--model_data", type=str, help="Caffemodel data, only for caffe model")
+    parser.add_argument("--net_input_dims", type=str, default="640,480", help="(h,w) of net input")
+    parser.add_argument("--input", type=str, required=True, help="Input image for testing")
+    parser.add_argument("--output", type=str, required=True, help="Output image after detection")
     args = parser.parse_args()
     return args
 
@@ -335,22 +321,17 @@ def main():
 
         confidences = output['scores_Softmax']
         boxes = output['460_Concat']
-        boxes = convert_locations_to_boxes(
-            boxes, priors, center_variance, size_variance)
+        boxes = convert_locations_to_boxes(boxes, priors, center_variance, size_variance)
         boxes = center_form_to_corner_form(boxes)
 
         boxes, label, probs = predict(origin_image.shape[1], origin_image.shape[0], confidences,
                                       boxes, 0.7)
 
     if boxes is not None:
-        fix_img = vis(origin_image,
-                      boxes,
-                      probs,
-                      color)
+        fix_img = vis(origin_image, boxes, probs, color)
         cv2.imwrite(args.output, fix_img)
     else:
-        raise RuntimeError(
-            "model:[{}] nothing detect out:{}".format(args.model, args.input))
+        raise RuntimeError("model:[{}] nothing detect out:{}".format(args.model, args.input))
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------
