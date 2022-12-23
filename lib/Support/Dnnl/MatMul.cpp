@@ -33,13 +33,24 @@ void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
     right_has_zp_ = right_zp != 0;
     has_transpose_ = right_transpose;
   }
+}
 
+void MatMul::input_init(float *input, int64_t input_zp, int64_t batch,
+                        int64_t M, int64_t K) {
+  int64_t input_len = batch * K * M;
+  p_input = input;
+  origin_input = input;
+  if (input_zp != 0) {
+    input_after_init = std::make_shared<std::vector<float>>(input_len);
+    p_input = input_after_init->data();
+    input_has_zp_ = input_zp != 0;
+  }
 }
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
                    int64_t batch, int64_t M, int64_t K, int64_t N,
                    bool do_relu, double relu_limit, int64_t right_zp,
-                   bool right_transpose) {
+                   bool right_transpose, int64_t input_zp) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
@@ -47,11 +58,13 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch, M, N};
   right_init(right, right_zp, batch, K, N, right_transpose);
+  input_init(left, input_zp, batch, M, K);
   batch_ = batch;
   M_ = M;
   N_ = N;
   K_ = K;
   right_zp_ = right_zp;
+  input_zp_ = input_zp;
   net.clear();
   net_args.clear();
   auto src_md = memory::desc(src_dims, memory::data_type::f32, tag::abc);
@@ -69,7 +82,7 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   matmul_pd = matmul::primitive_desc(matmul_d, matmul_attr, eng);
 
   auto src_float_memory = memory(
-      {{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, left);
+      {{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, p_input);
   auto prim_src_memory = src_float_memory;
   if (matmul_pd.src_desc() != src_float_memory.get_desc()) {
     prim_src_memory = memory(matmul_pd.src_desc(), eng);
@@ -129,6 +142,10 @@ void MatMul::run() {
   if (right_has_zp_) {
     int64_t weight_len = batch_ * K_ * N_;
     tensor_sub_zp(right_after_init->data(), p_input_after, weight_len, right_zp_);
+  }
+  if (input_has_zp_) {
+    int64_t input_len = batch_ * K_ * M_;
+    tensor_sub_zp(input_after_init->data(), origin_input, input_len, input_zp_);
   }
   for (size_t i = 0; i < net.size(); ++i)
     net.at(i).execute(engine_stream, net_args.at(i));

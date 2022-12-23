@@ -26,10 +26,12 @@ using namespace mlir;
 // clang-format on
 void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
                                int64_t &N, bool &with_bias, bool &relu,
-                               double &limit, int64_t &zp, bool &transpose) {
+                               double &limit, int64_t &zp, bool &transpose,
+                               int64_t &izp) {
   auto a_s = Module::getShape(input());
   auto b_s = Module::getShape(right());
   auto o_s = Module::getShape(output());
+  izp = input_zp();
   with_bias = !bias().getType().isa<mlir::NoneType>();
   relu = do_relu();
   limit = this->relu_limit().convertToDouble();
@@ -55,13 +57,13 @@ void tpu::MatMulOp::parseParam(int64_t &batch, int64_t &M, int64_t &K,
 
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
-  int64_t batch, M, K, N, zp;
+  int64_t batch, M, K, N, zp, izp;
   bool relu, with_bias, right_transpose;
   double limit;
-  parseParam(batch, M, K, N, with_bias, relu, limit, zp, right_transpose);
+  parseParam(batch, M, K, N, with_bias, relu, limit, zp, right_transpose, izp);
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], batch, M,
-                K, N, relu, limit, zp, right_transpose);
+                K, N, relu, limit, zp, right_transpose, izp);
   p.handle = (void *)matmul;
   return success();
 }
@@ -93,10 +95,10 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     }
   } else if (Quant::isUniformQuantized(output())) {
     if (is_cv18xx) {
-      int64_t batch, M, K, N, zp;
+      int64_t batch, M, K, N, zp, izp;
       bool relu, with_bias, transpose;
       double limit;
-      parseParam(batch, M, K, N, with_bias, relu, limit, zp, transpose);
+      parseParam(batch, M, K, N, with_bias, relu, limit, zp, transpose, izp);
       bool is_fc = isa<top::WeightOp>(right().getDefiningOp());
       std::shared_ptr<std::vector<int64_t>> rshift_v;
       std::shared_ptr<std::vector<int64_t>> multiplier_v;

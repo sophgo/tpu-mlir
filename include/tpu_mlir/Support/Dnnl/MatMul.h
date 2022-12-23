@@ -17,9 +17,12 @@ public:
 
   void right_init(float *right, int64_t right_zp, int64_t batch,
                   int64_t K, int64_t N, bool right_transpose);
+  void input_init(float *input, int64_t input_zp, int64_t batch,
+                  int64_t M, int64_t K);
   void setup(float *left, float *right, float *bias, float *output,
              int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
-             double relu_limit, int64_t right_zp, bool right_transpose);
+             double relu_limit, int64_t right_zp, bool right_transpose,
+             int64_t input_zp);
 
   void run();
 
@@ -29,10 +32,11 @@ private:
   std::vector<primitive> net;
   std::vector<std::unordered_map<int, memory>> net_args;
   std::shared_ptr<std::vector<float>> bias0;
-  float *p_right;
+  float *p_right, *p_input;
   float *origin_input, *origin_right;
   std::shared_ptr<std::vector<float>> right_after_init;
-  int64_t batch_, M_, N_, K_, right_zp_;
+  std::shared_ptr<std::vector<float>> input_after_init;
+  int64_t batch_, M_, N_, K_, right_zp_, input_zp_;
   bool right_has_zp_ = 0, input_has_zp_ = 0, has_transpose_ = 0;
 };
 } // namespace tpu_mlir

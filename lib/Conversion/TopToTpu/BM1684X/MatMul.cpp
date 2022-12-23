@@ -487,16 +487,20 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // reduce_sum(Right.col) for each row
 
     // merge izp * kzp * K to bias
-    for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
-      bias_quant->data()[c_ind] +=
-          input_zeroPoint * right_zero_point * row_size;
-    }
-    auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
-                                          *bias_quant, bias_type);
-    operands.push_back(new_bias);
+    // for (size_t c_ind = 0; c_ind < col_size; ++c_ind) {
+    //   bias_quant->data()[c_ind] +=
+    //       input_zeroPoint * right_zero_point * row_size;
+    // }
+    // auto new_bias = top::WeightOp::create(op, "MergedInputZeroPoint",
+    //                                       *bias_quant, bias_type);
+    // operands.push_back(new_bias);
+    operands.push_back(op.bias());
+    if (input_zeroPoint)
+      attrs.push_back(rewriter.getNamedAttr(
+          "input_zp", rewriter.getI64IntegerAttr(input_zeroPoint)));
     auto matmul_type = RankedTensorType::get(Module::getShape(op.output()),
                                              rewriter.getI32Type());
-    auto new_name = Module::getName(op.getOperation()).str() + "_matmul_no_izp";
+    auto new_name = Module::getName(op.getOperation()).str() + "_int32";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     rewriter.setInsertionPointAfter(op);
     auto newOp =
@@ -504,6 +508,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
 
     // rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.output().getType(),
     //                                            operands, attrs);
+#if 0
     // do reduce
     new_name = Module::getName(op.right()).str() + "_reduce_h";
     attrs.erase(attrs.begin(), attrs.end());
@@ -542,9 +547,10 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfterValue(newOp);
     auto addOp = rewriter.create<tpu::AddOp>(
         name_loc, matmul_type, ValueRange{newOp.output(), newValue}, attrs);
+#endif
     // do requant
-    newValue =
-        do_requant(op->getLoc(), addOp.output(), op.output().getType(), true,
+    auto newValue =
+        do_requant(op->getLoc(), newOp.output(), op.output().getType(), true,
                    multiplier, shift, tpu::RequantMode::TFlite_Lshift);
     rewriter.replaceOp(op, {newValue});
   }

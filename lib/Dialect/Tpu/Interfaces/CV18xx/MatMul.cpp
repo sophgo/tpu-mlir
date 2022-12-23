@@ -62,11 +62,11 @@ static void transposeBiasInt32(std::vector<int32_t> &bias_int32,
 void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
 
   OpBuilder builder(getContext());
-  int64_t batch, M, K, N, right_zp;
+  int64_t batch, M, K, N, right_zp, input_zp;
   bool with_bias, relu, right_transpose;
   double relu_limit;
   parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp,
-             right_transpose);
+             right_transpose, input_zp);
   // TODO get batch_high and batch_low, group_fc bias transpose
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_filter = Module::getAddress(right());

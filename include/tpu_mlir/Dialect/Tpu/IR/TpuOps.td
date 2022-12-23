@@ -684,6 +684,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
     DefaultValuedAttr<I64ArrayAttr, "{0}">:$rshifts,
     DefaultValuedAttr<I64Attr, "0">:$right_zp,
+    DefaultValuedAttr<I64Attr, "0">:$input_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
@@ -692,7 +693,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
   let extraClassDeclaration = [{
     void parseParam(
       int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit, int64_t &zp, bool &right_transpose);
+      double &relu_limit, int64_t &zp, bool &right_transpose, int64_t &izp);
   }];
 }
 

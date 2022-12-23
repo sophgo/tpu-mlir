@@ -38,7 +38,8 @@ void populateWeightReorderPatterns(RewritePatternSet *patterns) {
     WeightReorder<tpu::DeconvOp, Float16Type>,
     WeightReorder<tpu::DeconvOp, Float32Type>,
     WeightReorder<tpu::GRUOp, Float32Type>,
-    WeightReorder<tpu::LSTMOp, Float32Type>
+    WeightReorder<tpu::LSTMOp, Float32Type>,
+    WeightReorder<tpu::MatMulOp, int8_t>
   >(patterns->getContext());
   // clang-format on
 };
