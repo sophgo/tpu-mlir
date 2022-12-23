@@ -460,9 +460,7 @@ class OnnxConverter(BaseConverter):
                 self.addWeight(name + '_scale', weight_data)
                 weight_op = self.getWeightOp(name + '_scale')
                 bias_op = self.getWeightOp(rhs)
-                new_op = self.mlir.create_scale_op(
-                    [lhs_op, weight_op, bias_op], output_shape, **p
-                )
+                new_op = self.mlir.create_scale_op([lhs_op, weight_op, bias_op], output_shape, **p)
             else:
                 rhs_op = self.getOp(rhs)
                 new_op = self.mlir.create_add_op([lhs_op, rhs_op], output_shape, **p)
@@ -1286,9 +1284,8 @@ class OnnxConverter(BaseConverter):
 
     # support max ndims to 6
     def convert_reduce_op(self, onnx_node):
-        assert (onnx_node.op_type == "ReduceMin" or onnx_node.op_type == "ReduceMax"
-                or onnx_node.op_type == "ReduceMean" or onnx_node.op_type == "ReduceL2"
-                or onnx_node.op_type == "ReduceL1" or onnx_node.op_type == "ReduceSum")
+        assert (onnx_node.op_type
+                in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1", "ReduceSum"])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         if (np.prod(input_shape) == np.prod(output_shape)):
@@ -1297,7 +1294,6 @@ class OnnxConverter(BaseConverter):
             self.addOperand(onnx_node.name, new_op)
             return
         num_dims = len(input_shape)
-        assert (num_dims <= 6)
         axes = onnx_node.attrs.get('axes', list(range(num_dims))) \
             if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
         keepdims = onnx_node.attrs.get('keepdims', 1)
@@ -1306,13 +1302,11 @@ class OnnxConverter(BaseConverter):
                 axes[idx] += num_dims
         axes.sort()
         op = self.getOperand(onnx_node.inputs[0])
-        if onnx_node.op_type in ["ReduceMean", "ReduceMax"] \
-           and num_dims == 4 and axes == [2, 3] and input_shape[2] < 16 and input_shape[3] < 16:
+        if onnx_node.op_type in ["ReduceMean", "ReduceMax"] and (num_dims == 4 and axes == [2, 3]):
             p = {
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
                 'kernel_shape': input_shape[2:],
-                # stride should be equal as the kernel shape in avgpool backend op if global avg/max pool
-                'strides': input_shape[2:],
+                'strides': [1, 1],
                 'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
                 'do_relu': False,
