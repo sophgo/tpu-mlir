@@ -32,10 +32,10 @@ typedef struct {
 } FcQParams;
 
 void tpu::MatMulOp::codegen_global_bm1684() {
-  int64_t batch, M, K, N, right_zp;
+  int64_t batch, M, K, N, right_zp, input_zp;
   bool with_bias, relu, right_transpose;
   double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp, right_transpose);
+  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp, right_transpose, input_zp);
   int using_bias = with_bias ? 1 : 0;
   int if_relu = relu ? 1 : 0;
   int if_right_active = isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1;
