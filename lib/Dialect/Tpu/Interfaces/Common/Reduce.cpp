@@ -114,7 +114,12 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
             // divisor in multiplier
             output_v[o * attr.inner_dims + i] = sum;
           } else {
-            float coeff_mean = 1.0f / attr.axis_dims;
+            float coeff_mean = 1.0 / attr.axis_dims;
+            if (out_type.isBF16()) {
+              coeff_mean = BF16(coeff_mean);
+            } else if (out_type.isF16()) {
+              coeff_mean = F16(coeff_mean);
+            }
             output_v[o * attr.inner_dims + i] = sum * coeff_mean;
           }
         }
@@ -150,23 +155,21 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
       }
     }
   }
-  if (is_cv18xx) {
-    auto num_elem = Module::getNumElements(output());
-    if (out_type.isa<FloatType>()) {
-      if (out_type.isBF16()) {
-        f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
-      } else if (out_type.isF16()) {
-        f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
-      }
-    } else if (Quant::isUniformQuantized(output())) {
-      int64_t shift = Module::getI64Array(rshift().value())->at(0);
-      int64_t multi = Module::getI64Array(multiplier().value())->at(0);
-      if (shift != 0 || multi != 1) {
-        for (size_t i = 0; i < num_elem; ++i) {
-          int64_t v =
-              applyMultiplierAndRShift(output_v[i], multi, shift, CVI_QUANT);
-          output_v[i] = Quant::to_int8(v);
-        }
+  auto num_elem = Module::getNumElements(output());
+  if (out_type.isa<FloatType>()) {
+    if (out_type.isBF16()) {
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
+    } else if (out_type.isF16()) {
+      f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+    }
+  } else if (Quant::isUniformQuantized(output())) {
+    int64_t shift = Module::getI64Array(rshift().value())->at(0);
+    int64_t multi = Module::getI64Array(multiplier().value())->at(0);
+    if (shift != 0 || multi != 1) {
+      for (size_t i = 0; i < num_elem; ++i) {
+        int64_t v =
+            applyMultiplierAndRShift(output_v[i], multi, shift, CVI_QUANT);
+        output_v[i] = Quant::to_int8(v);
       }
     }
   }
