@@ -243,6 +243,8 @@ class ONNX_IR_TESTER(object):
         # tpu mlir inference and compare
         if quant_mode == "int8":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        elif quant_mode == "bf16":
+            ref_tpu_tolerance = "0.95,0.85"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
