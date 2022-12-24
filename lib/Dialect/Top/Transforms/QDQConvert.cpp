@@ -176,31 +176,28 @@ public:
             result_quant_type)) {
       return failure();
     }
-    auto successiveOps = op->getUsers();
-    while (!successiveOps.empty()) {
-      auto successiveOp =
-          *successiveOps.begin(); // We only use the first user of this op. Not
+    auto succeedingOps = op->getUsers();
+    while (!succeedingOps.empty()) {
+      auto succeedingOp =
+          *succeedingOps.begin(); // We only use the first user of this op. Not
                                   // a good choice.
-      if (!successiveOp->getResult(0)
+      if (!succeedingOp->getResult(0)
                .getType()
                .isa_and_nonnull<RankedTensorType>()) {
         return failure();
       }
       auto result_tensor_type =
-          successiveOp->getResult(0).getType().dyn_cast<RankedTensorType>();
+          succeedingOp->getResult(0).getType().dyn_cast<RankedTensorType>();
       auto result_quant_type = result_tensor_type.getElementType();
-      if (isa<quant::CalibratedQuantizedType>(
+      if (isa<quant::CalibratedQuantizedType, quant::UniformQuantizedType>(
               result_quant_type)) { // We only update the result type. However,
                                     // operations like Reshape seems that they
                                     // aren't designed for different InOut quant
                                     // data type. It simply works magically.
         op->getResult(0).setType(result_tensor_type);
         return success();
-      } else if (isa<quant::UniformQuantizedType>(result_quant_type)) {
-        op->getResult(0).setType(result_tensor_type);
-        return success();
       }
-      successiveOps = successiveOp->getUsers();
+      succeedingOps = succeedingOp->getUsers();
     }
     return failure();
   }
