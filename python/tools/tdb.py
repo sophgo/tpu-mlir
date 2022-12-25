@@ -8,7 +8,7 @@
 #
 # ==============================================================================
 from bmodel_dis import Bmodel2MLIR, opdef_1684x, tensor2memref
-from utils.cmodel import lib
+from utils.cmodel import lib, gen_lookup_table
 import cmd
 import ctypes
 import traceback
@@ -122,8 +122,11 @@ class Tdb(cmd.Cmd):
         self.lmem = c_array_to_ndarray(
             lib.get_local_mem(0).contents.raw_ptr, (64, 16, 1024 * 16)
         )
+        self.smem = c_array_to_ndarray(lib.get_static_memaddr_by_node(0), (16 * 1024,))
         self.ddr[...] = 0
         self.lmem[...] = 0
+        lut = np.array(gen_lookup_table(), np.uint32).view(np.uint8)
+        self.smem[: len(lut)] = lut[...]
 
     def message(self, msg):
         print(msg, file=self.stdout)
@@ -164,6 +167,7 @@ class Tdb(cmd.Cmd):
         Continue execution, only stop when a breakpoint is encountered.
         """
         try:
+            self.next()
             while self.current_line not in self.breakpoint:
                 self.next()
         except ValueError:
@@ -272,7 +276,7 @@ class Tdb(cmd.Cmd):
             raise Exception("Not implemented.")
 
     def get_data(self, mem: opdef_1684x.MemRef):
-        m_type = mem.addr_str[1]
+        m_type = mem.mem_type
         if m_type == "L":
             raise Exception("Not implemented.")
         if m_type == "G":
@@ -286,9 +290,8 @@ class Tdb(cmd.Cmd):
                 .copy()
             )
         if m_type == "R":
+            # TODO: switch to stride
             offset = mem.addr - opdef_1684x.memmap["R"][0]
-            # [2, 4, 3, 4]
-            # [1, 120, 80, 80]
             tpu_lmem_size = opdef_1684x.bank_size * 16
             tpu_offset = offset // tpu_lmem_size
             offset = offset % tpu_lmem_size
@@ -296,11 +299,11 @@ class Tdb(cmd.Cmd):
             n, c, h, w = mem.shape
             dtype_size = np.dtype(mem.np_dtype).itemsize
             spacial_size = h * w * dtype_size
-            tensor = lmem[: offset : offset + spacial_size * np.ceil(c / 64) * n]
+            tensor = lmem[:, offset : offset + spacial_size * int(np.ceil(c / 64)) * n]
             tensor = tensor.reshape(n, -1, spacial_size)[
                 :, tpu_offset : tpu_offset + c, :
             ]
-            return tensor.view(mem.np_dtype).reshape(n, c, h, w).copy()
+            return tensor.copy().view(mem.np_dtype).reshape(n, c, h, w)
 
     def get_return(self):
         outputs = self.current_function.signature[1]

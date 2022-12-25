@@ -50,7 +50,15 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
     return DType(prec + (sign == 0) * 8)
 
 
+class Layout(Enum):
+    alignEU = 0  # 64 bytes aligment
+    compact = 1
+    offset = 2
+    stride = 3
+
+
 class MemRef:
+    # static memory type
     to_np_dtype = {
         DType.i8: np.int8,
         DType.ui8: np.uint8,
@@ -62,39 +70,62 @@ class MemRef:
         DType.u32: np.uint32,
     }
 
-    def __init__(self, addr, shape, dtype: DType, stride=None, relative_addr=False):
-        self.addr = addr
+    def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
+        self.addr = address
         self.shape = shape
         self.dtype = dtype
-        self.relative_addr = relative_addr
-        self.stride = stride
 
-    @property
-    def np_dtype(self):
-        return self.to_np_dtype[self.dtype]
+        self.np_dtype = self.to_np_dtype[self.dtype]
+        self.mem_type = self.__mem_type()
 
-    @property
-    def addr_str(self):
-        if self.relative_addr:
-            return f"%R{self.fmt_lmem(self.addr)}"
+        if stride:
+            self.stride = stride
+        else:
+            self.stride = self.__layout_to_stride(layout)
+
+        self.addr_str = self.__addr_str()
+        self.shape_str = self.__shape_str()
+
+    def __layout_to_stride(self, mode: Layout):
+        # local memory
+        assert mode != Layout.stride
+        if len(self.shape) != 4 or self.mem_type != "R":
+            return None  # TODO
+
+        n, c, h, w = self.shape
+        tpu_offset = (self.addr - memmap["R"][0]) // (bank_size * 16)
+
+        if mode == Layout.alignEU:
+            data_bytes = np.dtype(self.to_np_dtype[self.dtype]).itemsize
+            align_type = 64 / data_bytes
+            c_stride = int(np.ceil(w * h / align_type))
+            n_stride = int(np.ceil((c + tpu_offset) / 64) * c_stride)
+            return [n_stride, c_stride, w, 1]
+
+        if mode == Layout.compact:
+            c_stride = w * h
+            n_stride = int(np.ceil((c + tpu_offset) / 64) * c_stride)
+            return [n_stride, c_stride, w, 1]
+
+        if mode == Layout.offset:
+            return [0, 1, 0, 0]
+
+    def __mem_type(self):
         for k, v in memmap.items():
             if self.addr >= v[0] and self.addr < v[1]:
-                if k == "R":
-                    return f"%R{self.fmt_lmem(self.addr - v[0])}"
-                return f"%{k}.{self.addr - v[0]}"
-        return f"%?.{self.addr}"
+                return k
+        return "?"
 
-    @property
-    def shape_str(self):
-        s = list(self.shape)
-        if s == ["*"]:
-            s = ["?"] * 4
-        elif isinstance(s, list):
-            for i, x in enumerate(s):
-                s[i] = "?"
-                if x != 0:
-                    s[i] = str(x)
+    def __addr_str(self):
+        k = self.mem_type
+        if k == "R":
+            return f"%R{self.fmt_lmem(self.addr - memmap[k][0])}"
+        if k in memmap:
+            return f"%{k}.{self.addr - memmap[k][0]}"
+        return f"%{k}.{self.addr}"
 
+    def __shape_str(self):
+        s = [str(x) for x in self.shape]
         if self.stride and any((x != 0 for x in self.stride)):
             return f"memref<{'x'.join(s)}x{self.dtype.name}, offset: 0, strides: {self.stride}>"
         return f"memref<{'x'.join(s)}x{self.dtype.name}>"
@@ -241,18 +272,24 @@ class bdc_base:
 
     def __memref(self, reg_field):
         for opoperad in reg_field:
-            addr, shape, dtype, *stride = opoperad
+            addr, shape, dtype, *layout_or_stride = opoperad
+            layout, stride = None, None
             addr = self.attr[addr]
             if shape != "*":
                 shape = [self.attr[x] for x in shape]
-            if stride:
-                stride = [self.attr[x] for x in stride[0]]
+            if layout_or_stride:
+                if isinstance(layout_or_stride[0], str):
+                    layout = self.attr[layout_or_stride[0]]
+                else:
+                    stride = [self.attr[x] for x in layout_or_stride[0]]
             if isinstance(dtype, str):
                 dtype = get_dtype(self.attr[dtype])
             elif isinstance(dtype, tuple):
                 _type, _sign = dtype
                 dtype = get_dtype(self.attr[_type], self.attr[_sign])
-            yield MemRef(addr, shape, dtype, stride, True)
+            if addr < bank_size * 64:
+                addr += memmap["R"][0]
+            yield MemRef(addr, shape, dtype, stride, layout)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
@@ -299,8 +336,9 @@ class sconv_op(conv_op):
         operands = (
             (
                 "des_opd0_addr",
-                ("des_opd0_c", "des_opd0_h", "des_opd0_w"),
+                ("des_res0_n", "des_opd0_c", "des_opd0_h", "des_opd0_w"),
                 ("des_opt_opd0_prec", "des_opt_opd0_sign"),
+                "des_short_opd0_str",
             ),
             (
                 "des_opd1_addr",
@@ -747,7 +785,7 @@ class dma_base:
             shape = [self.attr[x] for x in shape]
             stride = [self.attr[x] for x in stride]
             dtype = get_dtype(self.attr[dtype])
-            yield MemRef(addr, shape, dtype, stride, False)
+            yield MemRef(addr, shape, dtype, stride)
 
     def memref(self, reg_field):
         return list(self.__memref(reg_field))
