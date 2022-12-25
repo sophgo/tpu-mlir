@@ -94,9 +94,8 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
   if (out_type.isInteger(8)) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto module = Module::getModuleOp(getOperation());
 
-    if (Module::getAsymmetric(module) == false) {
+    if (Module::isAsymmetric() == false) {
       auto multi = multiplier().value();
       auto rs = rshift().value();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -110,9 +109,9 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
-        p.outputs[0][i] = p.outputs[0][i] * pooling->kh *
-                              scale().value().convertToDouble() +
-                          offset().value().convertToDouble();
+        p.outputs[0][i] =
+            p.outputs[0][i] * pooling->kh * scale().value().convertToDouble() +
+            offset().value().convertToDouble();
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
                               ? Quant::to_uint8(p.outputs[0][i])
                               : Quant::to_int8(p.outputs[0][i]);
@@ -142,7 +141,7 @@ LogicalResult tpu::Pool1DOp::LocalGenSupport() {
 }
 
 LogicalResult tpu::Pool1DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
-                                          int64_t out_idx, int64_t out_slice) {
+                                       int64_t out_idx, int64_t out_slice) {
   pool_attr_t attrs;
   parseParam(&attrs);
   in_slice = (out_slice - 1) * attrs.sh + attrs.kh;

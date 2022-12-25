@@ -369,10 +369,7 @@ LogicalResult tpu::GRUOp::init(InferenceParameter &p) { return success(); }
 void tpu::GRUOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::GRUOp::inference(InferenceParameter &p) {
-  auto module = Module::getModuleOp(getOperation());
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
-  if (is_cv18xx) {
+  if (Module::isCV18xx()) {
     CvGruInference::inference(p, this);
   } else {
     BmGruInference::inference(p, this);

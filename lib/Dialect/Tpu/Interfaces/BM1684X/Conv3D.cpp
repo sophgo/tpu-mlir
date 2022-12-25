@@ -298,7 +298,7 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
   conv_attr_t attr = {0};
   parseParam(&attr);
   int64_t sz = 0;
-  auto chip = Module::getChip(getOperation());
+  auto chip = Module::getChip();
   int64_t npu_num = BM168x::NPU_NUM;
 
   int32_t oc_per_npu = 0;

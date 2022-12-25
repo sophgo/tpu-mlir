@@ -83,7 +83,7 @@ void getInputsOutputs(std::vector<Operation *> &ops, std::vector<Value> &inputs,
   }
 }
 
-void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
+void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   // std::vector<Operation *> fnOps;
   std::vector<Value> fnInputs;
   std::vector<Value> fnOutputs;
@@ -97,7 +97,7 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
     if (auto op = ori_input.getDefiningOp()) {
       argLoc.push_back(op->getLoc());
     } else {
-      argLoc.push_back(module.getLoc());
+      argLoc.push_back(Module::getLoc());
     }
   }
   for (auto output : fnOutputs) {
@@ -105,19 +105,19 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   }
   int64_t id = SubFunction::count - 1;
   std::string func_name = "subfunc_" + std::to_string(id);
-  OpBuilder builder(module.getContext());
+  OpBuilder builder(Module::getCtx());
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
   attrs.push_back(
       builder.getNamedAttr("mode", builder.getStringAttr(sf->mode)));
   auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
                                         llvm::ArrayRef<Type>{resType});
-  auto fnOp = FuncOp::create(module.getLoc(), func_name, fnType,
+  auto fnOp = FuncOp::create(Module::getLoc(), func_name, fnType,
                              ArrayRef<NamedAttribute>(attrs));
   auto block = fnOp.addEntryBlock();
   builder.setInsertionPointAfterValue(fnOutputs.back());
-  func::CallOp callOp = builder.create<func::CallOp>(module.getLoc(), func_name,
-                                                     resType, fnInputs);
+  func::CallOp callOp = builder.create<func::CallOp>(
+      Module::getLoc(), func_name, resType, fnInputs);
   for (auto it : llvm::enumerate(callOp.getResults())) {
     fnOutputs[it.index()].replaceUsesWithIf(
         it.value(), [&](OpOperand &operand) {
@@ -129,9 +129,9 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
   top::NoneOp noneOp;
   if (sf->have_none) {
     noneOp =
-        builder.create<top::NoneOp>(module.getLoc(), builder.getNoneType());
+        builder.create<top::NoneOp>(Module::getLoc(), builder.getNoneType());
   }
-  auto retOp = builder.create<func::ReturnOp>(module.getLoc(), fnOutputs);
+  auto retOp = builder.create<func::ReturnOp>(Module::getLoc(), fnOutputs);
   for (auto op : sf->ops) {
     if (isa<top::NoneOp>(op)) {
       continue;
@@ -143,7 +143,7 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf, ModuleOp module) {
     }
     op->moveBefore(retOp);
   }
-  module.push_back(fnOp);
+  Module::push_back(fnOp);
   for (auto it : llvm::enumerate(fnInputs)) {
     auto arg = block->getArgument(it.index());
     arg.setLoc(argLoc[it.index()]);
@@ -165,7 +165,8 @@ static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
   for (auto opd : op->getOperands()) {
     auto op_ = opd.getDefiningOp();
     if (isa<top::WeightOp>(op_)) {
-      if (std::find(subf->ops.begin(), subf->ops.end(), op_) == subf->ops.end()) {
+      if (std::find(subf->ops.begin(), subf->ops.end(), op_) ==
+          subf->ops.end()) {
         subf->ops.push_back(op_);
       }
     } else if (isa<top::NoneOp>(op_) && subf->have_none == false) {
@@ -179,22 +180,20 @@ class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
 public:
   SubnetDividePass() {}
   void runOnOperation() override {
-    auto module = getOperation();
-    auto state = Module::getState(module);
-    if (state != Module::State::TPU_REORDERED) {
+    if (!Module::isState(Module::State::TPU_REORDERED)) {
       llvm_unreachable("module should be reordered");
     }
-    if (Module::isCV18xx(Module::getChip(module))) {
-      divide_func_cv(module);
+    if (Module::isCV18xx()) {
+      divide_func_cv();
     } else {
-      divide_func_bm(module);
+      divide_func_bm();
     }
-    Module::removeUnusedOp(module);
-    Module::setState(module, Module::State::TPU_DIVIDED);
+    Module::removeUnusedOp();
+    Module::setState(Module::State::TPU_DIVIDED);
   }
 
-  void divide_func_cv(mlir::ModuleOp &module) {
-    auto mainFunc = Module::getMainFuncOp(module);
+  void divide_func_cv() {
+    auto mainFunc = Module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
@@ -206,32 +205,32 @@ public:
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
           if (mode == FUNC_CPU) {
-            buildSubFunction(subf, module);
+            buildSubFunction(subf);
             subf.reset();
           }
         } else if (subf->mode == mode) {
           insert_subop(subf, op);
         } else if (mode == FUNC_CPU) {
-          buildSubFunction(subf, module);
+          buildSubFunction(subf);
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
-          buildSubFunction(subf, module);
+          buildSubFunction(subf);
           subf.reset();
         } else {
-          buildSubFunction(subf, module);
+          buildSubFunction(subf);
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
         }
       }
     });
     if (subf != nullptr) {
-      buildSubFunction(subf, module);
+      buildSubFunction(subf);
       subf = nullptr;
     }
   }
 
-  void divide_func_bm(mlir::ModuleOp &module) {
-    auto mainFunc = Module::getMainFuncOp(module);
+  void divide_func_bm() {
+    auto mainFunc = Module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
@@ -245,14 +244,14 @@ public:
         } else if (subf->mode == mode) {
           insert_subop(subf, op);
         } else {
-          buildSubFunction(subf, module);
+          buildSubFunction(subf);
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
         }
       }
     });
     if (subf != nullptr) {
-      buildSubFunction(subf, module);
+      buildSubFunction(subf);
       subf = nullptr;
     }
   }

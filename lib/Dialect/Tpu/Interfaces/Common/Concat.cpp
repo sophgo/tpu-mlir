@@ -22,8 +22,7 @@ void tpu::ConcatOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
   auto axis_ = axis();
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_cv18xx = Module::isCV18xx();
   auto nInputs = inputs().size();
   // allocate tmp input
   std::vector<float *> tmp_inputs(nInputs);

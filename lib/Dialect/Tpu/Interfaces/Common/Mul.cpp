@@ -46,14 +46,12 @@ void tpu::MulOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
-  auto module = Module::getModuleOp(getOperation());
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
-  auto asym = Module::getAsymmetric(module);
+  auto asym = Module::isAsymmetric();
   auto binary = (Binary *)p.handle;
   binary->run();
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_cv18xx = Module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       f32_to_bf16(p.outputs[0], p.outputs[0], num_elem);

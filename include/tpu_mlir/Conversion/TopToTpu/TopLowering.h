@@ -33,10 +33,6 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 
 struct LoweringConfig {
-  static MLIRContext *context;
-  static std::string chip;
-  static std::string mode;
-  static bool isAsymmetric;
   static bool isQuantized;
   static std::map<std::string, llvm::StringRef> quantize_map;
 };
@@ -53,9 +49,8 @@ public:
       LoweringQuantized(rewriter, opTy);
       return success();
     }
-    auto real_mode = LoweringConfig::mode;
+    auto real_mode = Module::getMode();
     auto op_name = Module::getName(op);
-    auto chip_name = Module::getChip(op);
     auto iter = LoweringConfig::quantize_map.find(op_name.str());
     if (iter != LoweringConfig::quantize_map.end()) {
       real_mode = iter->second;
@@ -64,18 +59,18 @@ public:
       if (op->hasTrait<trait::SupportFuseRelu>() || isa<top::ReluOp>(op)) {
         op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
       }
-      LoweringINT8(rewriter, opTy, LoweringConfig::isAsymmetric);
+      LoweringINT8(rewriter, opTy, Module::isAsymmetric());
     } else if (real_mode == Quant::Type::INT4) {
       if (op->hasTrait<trait::SupportFuseRelu>() || isa<top::ReluOp>(op)) {
         op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
       }
       if (isa<top::ConvOp, top::MatMulOp>(op)) {
-        LoweringINT4(rewriter, opTy, LoweringConfig::isAsymmetric);
+        LoweringINT4(rewriter, opTy, Module::isAsymmetric());
       } else {
-        LoweringINT8(rewriter, opTy, LoweringConfig::isAsymmetric);
+        LoweringINT8(rewriter, opTy, Module::isAsymmetric());
       }
     } else if (real_mode == Quant::Type::F16) {
-      if (Module::isCV18xx(chip_name)) {
+      if (Module::isCV18xx()) {
         LoweringBF16(rewriter, opTy);
       } else {
         LoweringF16(rewriter, opTy);
@@ -246,7 +241,8 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
 
-Value do_requantFp(Value input, double scale, double offset, Type to_type, std::string& to_name);
+Value do_requantFp(Value input, double scale, double offset, Type to_type,
+                   std::string &to_name);
 
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {

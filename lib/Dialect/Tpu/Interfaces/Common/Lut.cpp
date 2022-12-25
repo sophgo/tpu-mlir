@@ -23,7 +23,6 @@ void tpu::LutOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
   auto num_element = Module::getNumElements(input());
-  auto chip = Module::getChip(getOperation());
   auto stype = Module::getStorageType(input());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {

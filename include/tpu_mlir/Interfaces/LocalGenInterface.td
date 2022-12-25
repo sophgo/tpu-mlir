@@ -112,16 +112,13 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
                       "int64_t":$out_nslice, "int64_t":$out_hslice),
         [{}],
         [{
-          auto module = Module::getModuleOp($_op);
-          auto chip = Module::getChip(module);
-          if (Module::isBM1684Family(chip)) {
+          if (Module::isBM1684Family()) {
             return $_op.getBufferSize_bm1684(in_lmem_bytes, out_lmem_bytes,
                                              in_nslice, in_hslice, out_nslice, out_hslice);
-          } else if (Module::isBM1684XFamily(chip)) {
+          } else if (Module::isBM1684XFamily()) {
             return $_op.getBufferSize_bm1684x(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_hslice, out_nslice, out_hslice);
-          } else if (chip == Module::Chip::CV182x
-                     || chip == Module::Chip::CV183x) {
+          } else if (Module::isCV18xx()) {
             return $_op.getBufferSize_cv18xx(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_hslice, out_nslice, out_hslice);
           }

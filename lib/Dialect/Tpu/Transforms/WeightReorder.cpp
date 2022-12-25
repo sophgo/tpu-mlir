@@ -37,25 +37,23 @@ public:
   WeightReorderPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    auto state = Module::getState(module);
-    if (state != Module::State::TPU_LOWERED) {
+    if (!Module::isState(Module::State::TPU_LOWERED)) {
       llvm_unreachable("module should be tpu quantized");
     }
-    auto chip = Module::getChip(module);
-    Arch::init(chip);
+    Arch::init();
     RewritePatternSet patterns(module.getContext());
-    if (Module::isBM1684Family(chip)) {
+    if (Module::isBM1684Family()) {
       bm1684::populateWeightReorderPatterns(&patterns);
-    } else if (Module::isBM1684XFamily(chip)) {
+    } else if (Module::isBM1684XFamily()) {
       bm1684x::populateWeightReorderPatterns(&patterns);
-    } else if (Module::isCV18xx(chip)) {
+    } else if (Module::isCV18xx()) {
       cv18xx::populateWeightReorderPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
     config.maxIterations = 0; // apply each pattern only once.
     applyPatternsAndFoldGreedily(module, std::move(patterns), config);
-    Module::updateModuleTypes(module);
-    Module::setState(module, Module::State::TPU_REORDERED);
+    Module::updateModuleTypes();
+    Module::setState(Module::State::TPU_REORDERED);
   }
 };
 

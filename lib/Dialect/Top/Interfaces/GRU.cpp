@@ -154,8 +154,6 @@ static void gru_compute(InferenceParameter &p,
 }
 
 LogicalResult top::GRUOp::inference(InferenceParameter &p) {
-
-  auto module = Module::getModuleOp(getOperation());
   auto attr = parseParam();
 
   auto h0_buffer = std::make_shared<std::vector<float>>(

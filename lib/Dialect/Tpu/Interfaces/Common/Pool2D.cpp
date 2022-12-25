@@ -89,17 +89,15 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
     return success();
   }
   // average pooling
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_cv18xx = Module::isCV18xx();
   auto m_type = is_cv18xx ? CVI_QUANT : BM_QUANT;
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
   if (out_type.isInteger(8)) {
     auto i_qtype = Quant::getUniformQuantizedType(input());
     auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto module = Module::getModuleOp(getOperation());
 
-    if (Module::getAsymmetric(module) == false) {
+    if (Module::isAsymmetric() == false) {
       auto multi = multiplier().value();
       auto rs = rshift().value();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

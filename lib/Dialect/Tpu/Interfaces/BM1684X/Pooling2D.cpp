@@ -103,7 +103,6 @@ static bool has_pad(const pool_attr_t &attrs) {
 
 void tpu::Pool2DOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  auto module = Module::getModuleOp(op);
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   pool_attr_t attrs;
@@ -115,7 +114,7 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
     if (Quant::isUniformQuantized(input())) {
       bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
-          Module::getAsymmetric(module) ? (with_pad ? 1 : 2) : 0;
+          Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
 
       if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier = multiplier().has_value() ? multiplier().value() : 1;
@@ -129,9 +128,8 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
       }
     }
   }
-  BM168x::call_global_func("backend_api_pooling_global", &spec,
-                                       sizeof(spec), input_spec->data(),
-                                       output_spec->data());
+  BM168x::call_global_func("backend_api_pooling_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }
 
 // =========================================
@@ -146,8 +144,7 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     return 0;
   case tpu::PoolMode::Avg:
     int64_t size = 0;
-    auto module = Module::getModuleOp(getOperation());
-    if (Module::getAsymmetric(module)) {
+    if (Module::isAsymmetric()) {
       auto kernel = Module::getI64Array(kernel_shape());
       int64_t dtype_bytes =
           kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
@@ -166,7 +163,6 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
 
 void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
-  auto module = Module::getModuleOp(op);
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
@@ -186,7 +182,7 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
     common.is_avg_pooling = true;
     common.avg_pooling_quant_mode =
-        Module::getAsymmetric(module) ? (with_pad ? 1 : 2) : 0;
+        Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
 
     if (common.avg_pooling_quant_mode == 0) {
       common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
@@ -218,7 +214,6 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   sec_info.out_h_idx = gi.h_idx;
   sec_info.out_h_slice = gi.h_slice;
   sec_info.out_w_slice = attrs.ow;
-  BM168x::call_local_func("backend_api_pooling_local", &spec,
-                                      sizeof(spec), &sec_info,
-                                      input_spec->data(), output_spec->data());
+  BM168x::call_local_func("backend_api_pooling_local", &spec, sizeof(spec),
+                          &sec_info, input_spec->data(), output_spec->data());
 }

@@ -32,9 +32,8 @@ struct ConvertReluLimitPattern : public RewritePattern {
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
     rewriter.setInsertionPointAfter(op);
-    auto chip = Module::getChip(op);
-    bool is_cv18xx = Module::isCV18xx(chip);
-    if (isa<func::ReturnOp> (op)) {
+    bool is_cv18xx = Module::isCV18xx();
+    if (isa<func::ReturnOp>(op)) {
       return failure();
     }
     if (is_cv18xx && op->hasTrait<trait::SupportFuseRelu>() &&

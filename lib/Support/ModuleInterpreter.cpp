@@ -26,8 +26,9 @@ using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
-  state = Module::getState(module);
-  if (state != Module::State::TOP_F32 && state != Module::State::TPU_LOWERED) {
+  Module::init(module);
+  if (!Module::isState(Module::State::TOP_F32) &&
+      !Module::isState(Module::State::TPU_LOWERED)) {
     llvm_unreachable("mlir state not support");
   }
 }
@@ -166,7 +167,7 @@ void ModuleInterpreter::invoke(bool express_type) {
       }
     });
   }
-  if (express_type && state == Module::State::TPU_LOWERED) {
+  if (express_type && Module::isState(Module::State::TPU_LOWERED)) {
     for (auto &name : all_tensor_names) {
       auto mem = mem_map.at(name);
       auto value = value_map.at(name);
@@ -182,7 +183,7 @@ void ModuleInterpreter::invoke(bool express_type) {
 
 std::shared_ptr<std::vector<float>>
 ModuleInterpreter::invoke_at(const std::string op_name) {
-  if (state != Module::State::TOP_F32) {
+  if (!Module::isState(Module::State::TOP_F32)) {
     llvm_unreachable("invoke_at failed!!");
   }
   if (value_map.find(op_name) == value_map.end()) {

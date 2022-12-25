@@ -36,8 +36,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       addr = align_up(addr + bytes, weight_alignment);
     });
   }
-  Module::setCoeffAddr(module, start_addr);
-  Module::setCoeffSize(module, addr - start_addr);
+  Module::setCoeffAddr(start_addr);
+  Module::setCoeffSize(addr - start_addr);
   // key: the operation pointer & output index
 
   std::map<Operation *, uint32_t> ops_loc;
@@ -64,9 +64,10 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  Module::getInputsOutputs(module, inputs, outputs);
+  Module::getInputsOutputs(inputs, outputs);
   for (auto iter = ops.rbegin(); iter != ops.rend(); ++iter) {
-    updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs, neuron_alignment);
+    updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs,
+                    neuron_alignment);
   }
   std::reverse(inplace_ops.begin(), inplace_ops.end());
   updateConcatOpTargetV(inplace_ops, op_infos);
@@ -108,8 +109,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
 
   for (auto &targetOuts : shared_outs_regions) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
-    auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange, reuse_addr,
-                                          sharedGmemOffset);
+    auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange,
+                                          reuse_addr, sharedGmemOffset);
     if (sharedGmemSize < sharedGmemOffset + gmemUsed) {
       sharedGmemSize = sharedGmemOffset + gmemUsed;
     }
@@ -140,10 +141,10 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // TODO markGmemReusedOp
   // TODO crop concat pattern
 
-  Module::setNeuronSize(module, sharedGmemSize);
-  Module::setGmemPrivateSize(module, privateGmemSize);
-  Module::updateModuleTypes(module);
-  Module::setState(module, Module::State::TPU_ADDRESSED);
+  Module::setNeuronSize(sharedGmemSize);
+  Module::setGmemPrivateSize(privateGmemSize);
+  Module::updateModuleTypes();
+  Module::setState(Module::State::TPU_ADDRESSED);
 }
 
 void CVAddressAssign::updateLiveRangeofPreOp(
@@ -276,15 +277,14 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
         assert(0);
       }
       int this_index = operand.cast<OpResult>().getResultNumber();
-      //uint32_t tensor_size = getTensorGmemSize(opd, this_index, alignment);
+      // uint32_t tensor_size = getTensorGmemSize(opd, this_index, alignment);
       uint32_t tensor_size = Module::getBytes(opd->getResult(this_index));
       Module::setAddress(opd->getResult(this_index), base_addr + offset);
       offset += tensor_size;
     }
   } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     auto operand = Module::getOperand(op, 0);
-    Module::setAddress(reshapeOp.output(),
-                       Module::getAddress(operand));
+    Module::setAddress(reshapeOp.output(), Module::getAddress(operand));
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     std::vector<int64_t> i_s;
     std::vector<int64_t> o_s;
@@ -345,7 +345,9 @@ bool CVAddressAssign::isOutput(Operation *op, int index) {
   return false;
 }
 
-void CVAddressAssign::updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops, std::map<ValueInfo, OpElement> &op_infos) {
+void CVAddressAssign::updateConcatOpTargetV(
+    std::vector<ValueInfo> &inplace_ops,
+    std::map<ValueInfo, OpElement> &op_infos) {
   for (auto iter = inplace_ops.rbegin(); iter != inplace_ops.rend(); ++iter) {
     auto value_info = *iter;
     auto op = static_cast<Operation *>(value_info.op);
@@ -355,10 +357,13 @@ void CVAddressAssign::updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops,
       if (isa<tpu::ConcatOp>(target_v_op)) {
         auto target_vv_info = op_infos[target_v_info].target_v;
         assert(op_infos.find(target_vv_info) != op_infos.end());
-        if (op_infos[target_v_info].live.tensor_size > op_infos[target_vv_info].live.tensor_size) {
-          op_infos[target_vv_info].live.tensor_size = op_infos[target_v_info].live.tensor_size;
+        if (op_infos[target_v_info].live.tensor_size >
+            op_infos[target_vv_info].live.tensor_size) {
+          op_infos[target_vv_info].live.tensor_size =
+              op_infos[target_v_info].live.tensor_size;
         }
-        if (op_infos[target_v_info].live.end > op_infos[target_vv_info].live.end) {
+        if (op_infos[target_v_info].live.end >
+            op_infos[target_vv_info].live.end) {
           op_infos[target_vv_info].live.end = op_infos[target_v_info].live.end;
         }
       }

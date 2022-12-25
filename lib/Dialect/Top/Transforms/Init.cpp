@@ -8,8 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 
+#include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+
+#include <set>
 
 using namespace llvm;
 using namespace mlir;
@@ -17,21 +22,17 @@ using namespace tpu_mlir::helper;
 namespace tpu_mlir {
 namespace top {
 
-class MarkFLOPsPass : public MarkFLOPsBase<MarkFLOPsPass> {
+class InitPass : public InitBase<InitPass> {
 public:
-  MarkFLOPsPass() {}
+  InitPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    int64_t flops = 0;
-    for (auto func : module.getOps<FuncOp>()) {
-      func.walk([&](FlopsInterface op) { flops += op.getFLOPs(); });
-    }
-    Module::setFLOPs(flops);
+    Module::init(module);
   }
 };
 
-std::unique_ptr<OperationPass<ModuleOp>> createMarkFLOPsPass() {
-  return std::make_unique<MarkFLOPsPass>();
+std::unique_ptr<OperationPass<ModuleOp>> createInitPass() {
+  return std::make_unique<InitPass>();
 }
 } // namespace top
 } // namespace tpu_mlir

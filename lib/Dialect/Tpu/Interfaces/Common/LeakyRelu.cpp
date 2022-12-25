@@ -27,10 +27,8 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
   int64_t num_elements = Module::getNumElements(input());
   memset(p.outputs[0], 0, sizeof(float) * num_elements);
   auto out_type = Module::getStorageType(output());
-  auto module = Module::getModuleOp(getOperation());
-  auto asym = Module::getAsymmetric(module);
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  auto asym = Module::isAsymmetric();
+  bool is_cv18xx = Module::isCV18xx();
 
   if (out_type.isa<FloatType>()) {
     float *src = p.inputs[0];

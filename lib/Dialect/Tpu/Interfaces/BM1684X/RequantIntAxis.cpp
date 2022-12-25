@@ -55,7 +55,7 @@ int64_t tpu::RequantIntAxisOp::getBufferSize_bm1684x(
   int64_t buffer_size = 0;
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  auto chip = Module::getChip(getOperation());
+  auto chip = Module::getChip();
   if (quant_mode() == tpu::RequantMode::TFlite_Lshift) {
     buffer_size = in_lmem_bytes;
     buffer_size += ceiling_func(c, BM168x::NPU_NUM) *

@@ -22,7 +22,7 @@ namespace backend {
 
 class Arch {
 public:
-  static void init(const llvm::StringRef chip);
+  static void init();
   static int64_t NPU_NUM;
   static int64_t EU_BYTES;
   static int64_t LMEM_BYTES;

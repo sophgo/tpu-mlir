@@ -172,8 +172,6 @@ static void lstm_compute(InferenceParameter &p,
 }
 
 LogicalResult top::LSTMOp::inference(InferenceParameter &p) {
-
-  auto module = Module::getModuleOp(getOperation());
   auto attr = parseParam();
 
   auto h0_buffer = std::make_shared<std::vector<float>>(

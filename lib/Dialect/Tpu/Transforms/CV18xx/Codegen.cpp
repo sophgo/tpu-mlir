@@ -30,22 +30,19 @@ public:
   CVCodegenPass() {}
   void runOnOperation() override {
     module = getOperation();
-    state = Module::getState(module);
-    chip = Module::getChip(module);
-    assert(state == Module::State::TPU_ADDRESSED);
-    assert(chip == Module::Chip::CV182x || chip == Module::Chip::CV183x);
+    assert(Module::isState(Module::State::TPU_ADDRESSED));
+    assert(Module::isCV18xx());
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    Arch::init(chip);
+    Arch::init();
     CviModelBuilder builder(module);
     builder.storeModel(filename);
   }
 
 private:
   ModuleOp module;
-  StringRef state;
   StringRef chip;
 };
 

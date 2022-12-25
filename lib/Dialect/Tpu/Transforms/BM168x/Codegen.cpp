@@ -38,14 +38,13 @@ public:
   CodegenPass() {}
   void runOnOperation() override {
     module = getOperation();
-    state = Module::getState(module);
-    assert(state == Module::State::TPU_ADDRESSED);
-    chip = Module::getChip(module);
+    assert(Module::isState(Module::State::TPU_ADDRESSED));
+    chip = Module::getChip();
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    Arch::init(chip);
+    Arch::init();
     bm168x = BM168x::instance();
     bm168x->start_env();
     std::vector<top::WeightOp> weights;
@@ -58,12 +57,12 @@ public:
     }
     std::vector<Value> inputs;
     std::vector<Value> outputs;
-    Module::getInputsOutputs(module, inputs, outputs);
+    Module::getInputsOutputs(inputs, outputs);
 
-    auto coeff_addr = Module::getCoeffAddr(module);
-    auto coeff_size = Module::getCoeffSize(module);
-    auto neuron_addr = Module::getNeuronAddr(module);
-    auto neuron_size = Module::getNeuronSize(module);
+    auto coeff_addr = Module::getCoeffAddr();
+    auto coeff_size = Module::getCoeffSize();
+    auto neuron_addr = Module::getNeuronAddr();
+    auto neuron_size = Module::getNeuronSize();
     model_gen = std::make_shared<bmodel::ModelGen>();
     // add chip name
     model_gen->AddChip(chip.str());
@@ -75,7 +74,7 @@ public:
     auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
     // codegen all subnet
     cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-    auto main_func = Module::getMainFuncOp(module);
+    auto main_func = Module::getMainFuncOp();
     std::vector<Offset<bmodel::SubNet>> subnet_v;
     main_func.walk([&](func::CallOp call) {
       auto subnet = CreateSubNet(call);
@@ -96,7 +95,7 @@ public:
     npb.add_cmd_group(cmd_group);
     // create subnet
     npb.add_sub_net(subnets);
-    model_gen->AddNet(Module::getName(module).str(), npb.Finish());
+    model_gen->AddNet(Module::getModuleName().str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
     bm168x->end_env();
@@ -314,9 +313,9 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         // add prefix to each cmd in profile.txt
         std::string prefix = Module::getName(group_ops[id]).str();
         if (ginfo.overstepped == false) {
-          if (Module::isBM1684Family(chip)) {
+          if (Module::isBM1684Family()) {
             lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
-          } else if (Module::isBM1684XFamily(chip)) {
+          } else if (Module::isBM1684XFamily()) {
             auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
             if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
               pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
@@ -358,9 +357,9 @@ void CodegenPass::codegen(Operation *op) {
   } else if (Module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (Module::isBM1684Family(chip)) {
+    if (Module::isBM1684Family()) {
       castOp.codegen_global_bm1684();
-    } else if (Module::isBM1684XFamily(chip)) {
+    } else if (Module::isBM1684XFamily()) {
       castOp.codegen_global_bm1684x();
     } else {
       llvm_unreachable("chip not support");
@@ -370,9 +369,9 @@ void CodegenPass::codegen(Operation *op) {
 
 Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
-  auto func = Module::getFuncOp(module, call.getCallee());
+  auto func = Module::getFuncOp(call.getCallee());
   func.walk([&](Operation *op) { codegen(op); });
-  bm168x->after_codegen(Module::getFLOPs(module));
+  bm168x->after_codegen(Module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   std::vector<Value> inputs;
   std::vector<Value> outputs;
@@ -385,7 +384,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
       if (isa<func::ReturnOp>(user)) {
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = Module::getFuncOp(module, call.getCallee());
+        auto func = Module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
         next_id_v.push_back(id);
       } else {

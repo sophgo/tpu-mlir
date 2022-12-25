@@ -44,8 +44,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       addr = align_up(addr + bytes, alignment);
     });
   }
-  Module::setCoeffAddr(module, start_addr);
-  Module::setCoeffSize(module, addr - start_addr);
+  Module::setCoeffAddr(start_addr);
+  Module::setCoeffSize(addr - start_addr);
   // assign activation
   start_addr = addr;
   uint32_t loc = 0;
@@ -118,10 +118,10 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       Module::setAddress(reshapeOp.output(), addr);
     }
   }
-  Module::setNeuronAddr(module, start_addr);
-  Module::setNeuronSize(module, addr - start_addr);
-  Module::updateModuleTypes(module);
-  Module::setState(module, Module::State::TPU_ADDRESSED);
+  Module::setNeuronAddr(start_addr);
+  Module::setNeuronSize(addr - start_addr);
+  Module::updateModuleTypes();
+  Module::setState(Module::State::TPU_ADDRESSED);
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(

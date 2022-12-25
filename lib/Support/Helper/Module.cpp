@@ -47,6 +47,9 @@ constexpr llvm::StringRef Module::Chip::CV182x;
 constexpr llvm::StringRef Module::Chip::CV183x;
 constexpr llvm::StringRef Module::Chip::BM1686;
 
+ModuleOp Module::m = nullptr;
+mlir::MLIRContext *Module::ctx = nullptr;
+llvm::StringRef Module::chip = "";
 
 top::NoneOp Module::getNoneOp(Operation *op) {
   assert(op != nullptr);
@@ -77,9 +80,8 @@ Value Module::getOriValue(Value &v) {
     int idx = block_arg.getArgNumber();
     auto parent_op = v.getParentBlock()->getParentOp();
     if (auto func_op = dyn_cast_or_null<FuncOp>(parent_op)) {
-      auto module = getModuleOp(parent_op);
       // cur call op
-      auto call_op = getCallOp(module, func_op);
+      auto call_op = getCallOp(func_op);
       // pre call op
       auto operand = call_op.getOperand(idx);
       auto result = operand.cast<OpResult>();
@@ -88,16 +90,15 @@ Value Module::getOriValue(Value &v) {
         return operand;
       }
       auto pre_call_op = dyn_cast<func::CallOp>(opd);
-      auto pre_func_op = getFuncOp(module, pre_call_op.getCallee());
+      auto pre_func_op = getFuncOp(pre_call_op.getCallee());
       auto return_op = dyn_cast<func::ReturnOp>(pre_func_op.front().back());
       return return_op.getOperand(result.getResultNumber());
     }
   } else if (auto pre_op = v.getDefiningOp()) {
     if (isa<func::CallOp>(pre_op)) {
-      auto module = getModuleOp(pre_op);
       auto call_op = dyn_cast<func::CallOp>(pre_op);
       int index = v.cast<OpResult>().getResultNumber();
-      for (auto func : module.getOps<FuncOp>()) {
+      for (auto func : m.getOps<FuncOp>()) {
         if (call_op.getCallee() == func.getName()) {
           Block &entryBlock = func.front();
           auto returnOp =
@@ -112,29 +113,15 @@ Value Module::getOriValue(Value &v) {
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
-Value Module::getOperand(Operation* op, int i) {
+Value Module::getOperand(Operation *op, int i) {
   auto v = op->getOperand(i);
   return getOriValue(v);
 }
 
-ModuleOp Module::getModuleOp(Operation *op) {
-  auto moduleOp = op;
-  while (moduleOp && !isa<ModuleOp>(moduleOp)) {
-    moduleOp = moduleOp->getParentOp();
-  }
-  if (!moduleOp) {
-    op->dump();
-    llvm_unreachable("can't get module op");
-  }
-  auto mOp = llvm::cast<ModuleOp>(moduleOp);
-  return mOp;
-}
-
-void Module::updateModuleTypes(ModuleOp module) {
-  auto ctx = module.getContext();
+void Module::updateModuleTypes() {
   Builder builder(ctx);
   // update callee func's return types
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     if (func.getName() == "main") {
       continue;
     }
@@ -147,7 +134,7 @@ void Module::updateModuleTypes(ModuleOp module) {
     auto fnType = builder.getFunctionType(func.getArgumentTypes(),
                                           llvm::ArrayRef<Type>{returns});
     func.setType(fnType);
-    auto callee = getCallOp(module, func);
+    auto callee = getCallOp(func);
     if (callee) {
       for (auto it : llvm::zip(callee.getResults(), returns)) {
         std::get<0>(it).setType(std::get<1>(it));
@@ -155,11 +142,11 @@ void Module::updateModuleTypes(ModuleOp module) {
     }
   }
   // update callee arg types
-  for (auto func : module.getOps<FuncOp>()) {
+  for (auto func : m.getOps<FuncOp>()) {
     if (func.getName() == "main") {
       continue;
     }
-    auto callee = getCallOp(module, func);
+    auto callee = getCallOp(func);
     if (!callee) {
       continue;
     }
@@ -174,7 +161,7 @@ void Module::updateModuleTypes(ModuleOp module) {
     func.setType(fnType);
   }
   // update main op return types
-  auto mainFunc = getMainFuncOp(module);
+  auto mainFunc = getMainFuncOp();
   Block &entryBlock = mainFunc.front();
   auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
   std::vector<Type> returns;
@@ -186,8 +173,8 @@ void Module::updateModuleTypes(ModuleOp module) {
   mainFunc.setType(fnType);
 }
 
-void Module::removeUnusedOp(ModuleOp module) {
-  for (auto func : module.getOps<FuncOp>()) {
+void Module::removeUnusedOp() {
+  for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
       if (isa<func::ReturnOp, FuncOp, tpu::YieldOp>(op)) {
       } else {
@@ -199,18 +186,18 @@ void Module::removeUnusedOp(ModuleOp module) {
   }
 }
 
-std::string Module::genWeightFileName(ModuleOp module, bool &same_name) {
-  auto name = getName(module);
-  auto state = getState(module);
-  auto chip = getChip(module);
-  auto old_name = getWeightFile(module);
+std::string Module::genWeightFileName(bool &same_name) {
+  auto name = getModuleName();
+  auto state = getState();
+  auto chip = getChip();
+  auto old_name = getWeightFile();
   std::string file_name = name.lower() + std::string("_") + state.lower() +
                           std::string("_") + chip.lower();
   if (std::string(chip) != "ALL") {
-    auto mode = getMode(module);
+    auto mode = getMode();
     std::string sym = "";
     if (mode == Quant::Type::INT8) {
-      sym = getAsymmetric(module) ? "_asym" : "_sym";
+      sym = isAsymmetric() ? "_asym" : "_sym";
     }
     file_name += std::string("_") + mode.lower() + sym;
   }
@@ -233,7 +220,7 @@ int64_t Module::getAddress(Value v) {
       auto parent_op = v.getParentBlock()->getParentOp();
       auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
       if (funcOp) {
-        mlir::func::CallOp callee = getCallOp(getModuleOp(parent_op), funcOp);
+        mlir::func::CallOp callee = getCallOp(funcOp);
         return Module::getAddress(callee.getOperand(index));
       }
     }
@@ -436,8 +423,8 @@ bool Module::isOpInGroup(Operation *Op) {
   return false;
 }
 
-FuncOp Module::getFuncOp(ModuleOp module, StringRef func_name) {
-  for (auto func : module.getOps<FuncOp>()) {
+FuncOp Module::getFuncOp(StringRef func_name) {
+  for (auto func : m.getOps<FuncOp>()) {
     if (func.getName() == func_name) {
       return func;
     }
@@ -447,8 +434,8 @@ FuncOp Module::getFuncOp(ModuleOp module, StringRef func_name) {
   return nullptr;
 }
 
-func::CallOp Module::getCallOp(ModuleOp module, FuncOp func) {
-  auto mainFunc = getMainFuncOp(module);
+func::CallOp Module::getCallOp(FuncOp func) {
+  auto mainFunc = getMainFuncOp();
   func::CallOp call = nullptr;
   mainFunc.walk([&](func::CallOp op) {
     if (!call && op.getCallee() == func.getName()) {
@@ -494,20 +481,15 @@ StringRef Module::getName(Value v) {
   return "";
 }
 
-StringRef Module::getChip(Operation *op) {
-  auto module = getModuleOp(op);
-  return getChip(module);
-}
-
-void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
+void Module::getInputsOutputs(std::vector<Value> &inputs,
                               std::vector<Value> &outputs) {
-  auto main_func = Module::getMainFuncOp(module);
+  auto main_func = Module::getMainFuncOp();
   main_func.walk([&](top::InputOp op) { inputs.push_back(op.output()); });
   main_func.walk([&](func::ReturnOp op) {
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
       auto call_op = result.getDefiningOp<func::CallOp>();
-      auto func_op = getFuncOp(module, call_op.getCallee());
+      auto func_op = getFuncOp(call_op.getCallee());
       auto return_op = dyn_cast<func::ReturnOp>(func_op.front().back());
       assert(return_op);
       outputs.push_back(return_op.getOperand(result.getResultNumber()));
@@ -517,14 +499,13 @@ void Module::getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
 
 void Module::getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                               std::vector<Value> &outputs) {
-  auto module = getModuleOp(call);
   for (auto opd : call.getOperands()) {
     auto result = opd.cast<OpResult>();
     auto op = result.getDefiningOp();
     if (isa<top::InputOp>(op)) {
       inputs.push_back(opd);
     } else if (auto call_ = dyn_cast<func::CallOp>(op)) {
-      auto func_op = getFuncOp(module, call_.getCallee());
+      auto func_op = getFuncOp(call_.getCallee());
       auto return_op = dyn_cast<func::ReturnOp>(func_op.front().back());
       assert(return_op);
       inputs.push_back(return_op.getOperand(result.getResultNumber()));
@@ -532,7 +513,7 @@ void Module::getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
       llvm_unreachable("input is illegal");
     }
   }
-  auto func = getFuncOp(module, call.getCallee());
+  auto func = getFuncOp(call.getCallee());
   func.walk([&](func::ReturnOp op) {
     for (auto output : op.getOperands()) {
       outputs.push_back(output);

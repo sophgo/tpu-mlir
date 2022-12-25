@@ -87,10 +87,7 @@ class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
 public:
   StripIOQuantPass() {}
   void runOnOperation() override {
-    auto func = getOperation();
-    if (func.getName() != "main") {
-      return;
-    }
+    auto func = Module::getMainFuncOp();
     auto ctx = func.getContext();
     RewritePatternSet patterns(ctx);
     if (quant_input) {
@@ -102,11 +99,11 @@ public:
       patterns.add<StripOutputQuantCpuCastPattern>(ctx);
     }
     applyPatternsAndFoldGreedily(func, std::move(patterns));
-    Module::updateModuleTypes(Module::getModuleOp(func));
+    Module::updateModuleTypes();
   }
 };
 
-std::unique_ptr<OperationPass<FuncOp>> createStripIOQuant() {
+std::unique_ptr<OperationPass<ModuleOp>> createStripIOQuant() {
   return std::make_unique<StripIOQuantPass>();
 }
 } // namespace tpu

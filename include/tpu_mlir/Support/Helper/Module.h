@@ -54,11 +54,10 @@ struct Module {
 
   static top::NoneOp getNoneOp(Operation *op);
   static Value getOriValue(Value &v);
-  static Value getOperand(Operation* op, int i);
-  static ModuleOp getModuleOp(Operation *op);
-  static void updateModuleTypes(ModuleOp module);
-  static void removeUnusedOp(ModuleOp module);
-  static std::string genWeightFileName(ModuleOp module, bool &same_name);
+  static Value getOperand(Operation *op, int i);
+  static void updateModuleTypes();
+  static void removeUnusedOp();
+  static std::string genWeightFileName(bool &same_name);
   static int64_t getAddress(Value v);
   static void setAddress(Value v, int64_t addr);
   static void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
@@ -73,9 +72,7 @@ struct Module {
   static Type getStorageType(Type type);
   static Type getElementType(Value v);
   static llvm::ArrayRef<int64_t> getShape(Value v);
-  static inline FuncOp getMainFuncOp(ModuleOp module) {
-    return getFuncOp(module, "main");
-  }
+  static inline FuncOp getMainFuncOp() { return getFuncOp("main"); }
   static std::shared_ptr<std::vector<int64_t>> getI64Array(ArrayAttr arrayAttr);
   static std::shared_ptr<std::vector<int64_t>>
   getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
@@ -85,120 +82,125 @@ struct Module {
   getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
               double default_value);
   static bool isOpInGroup(Operation *Op);
-  static FuncOp getFuncOp(ModuleOp module, StringRef func_name);
-  static func::CallOp getCallOp(ModuleOp module, FuncOp func);
-  static inline llvm::StringRef getName(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::NAME).getValue();
+  static FuncOp getFuncOp(StringRef func_name);
+  static func::CallOp getCallOp(FuncOp func);
+  static inline llvm::StringRef getModuleName() {
+    return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
   }
   static llvm::StringRef getName(Operation *op, int index = 0);
   static llvm::StringRef getName(Value v);
-  static void getInputsOutputs(ModuleOp module, std::vector<Value> &inputs,
+  static void getInputsOutputs(std::vector<Value> &inputs,
                                std::vector<Value> &outputs);
   static void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                                std::vector<Value> &outputs);
-  static inline int64_t getCoeffSize(ModuleOp module) {
-    return module->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
+  static inline int64_t getCoeffSize() {
+    return m->getAttrOfType<IntegerAttr>(Attr::COEFF_SIZE).getInt();
   }
-  static inline void setCoeffSize(ModuleOp module, int64_t size) {
-    module->setAttr(Attr::COEFF_SIZE,
-                    Builder(module.getContext()).getI64IntegerAttr(size));
+  static inline void setCoeffSize(int64_t size) {
+    m->setAttr(Attr::COEFF_SIZE, Builder(ctx).getI64IntegerAttr(size));
   }
-  static inline int64_t getGmemPrivateSize(ModuleOp module) {
-    return module->getAttrOfType<IntegerAttr>(Attr::GMEM_PRIVATE_SIZE).getInt();
+  static inline int64_t getGmemPrivateSize() {
+    return m->getAttrOfType<IntegerAttr>(Attr::GMEM_PRIVATE_SIZE).getInt();
   }
-  static inline void setGmemPrivateSize(ModuleOp module, int64_t size) {
-    module->setAttr(Attr::GMEM_PRIVATE_SIZE,
-                    Builder(module.getContext()).getI64IntegerAttr(size));
+  static inline void setGmemPrivateSize(int64_t size) {
+    m->setAttr(Attr::GMEM_PRIVATE_SIZE, Builder(ctx).getI64IntegerAttr(size));
   }
-  static inline int64_t getCoeffAddr(ModuleOp module) {
-    return module->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
+  static inline int64_t getCoeffAddr() {
+    return m->getAttrOfType<IntegerAttr>(Attr::COEFF_ADDR).getInt();
   }
-  static inline void setCoeffAddr(ModuleOp module, int64_t addr) {
-    module->setAttr(Attr::COEFF_ADDR,
-                    Builder(module.getContext()).getI64IntegerAttr(addr));
+  static inline void setCoeffAddr(int64_t addr) {
+    m->setAttr(Attr::COEFF_ADDR, Builder(ctx).getI64IntegerAttr(addr));
   }
-  static inline int64_t getNeuronSize(ModuleOp module) {
-    return module->getAttrOfType<IntegerAttr>(Attr::NEURON_SIZE).getInt();
+  static inline int64_t getNeuronSize() {
+    return m->getAttrOfType<IntegerAttr>(Attr::NEURON_SIZE).getInt();
   }
-  static inline void setNeuronSize(ModuleOp module, int64_t size) {
-    module->setAttr(Attr::NEURON_SIZE,
-                    Builder(module.getContext()).getI64IntegerAttr(size));
+  static inline void setNeuronSize(int64_t size) {
+    m->setAttr(Attr::NEURON_SIZE, Builder(ctx).getI64IntegerAttr(size));
   }
-  static inline int64_t getNeuronAddr(ModuleOp module) {
-    return module->getAttrOfType<IntegerAttr>(Attr::NEURON_ADDR).getInt();
+  static inline int64_t getNeuronAddr() {
+    return m->getAttrOfType<IntegerAttr>(Attr::NEURON_ADDR).getInt();
   }
-  static inline void setNeuronAddr(ModuleOp module, int64_t addr) {
-    module->setAttr(Attr::NEURON_ADDR,
-                    Builder(module.getContext()).getI64IntegerAttr(addr));
+  static inline void setNeuronAddr(int64_t addr) {
+    m->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
   }
-  static inline llvm::StringRef getChip(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
+  static inline llvm::StringRef getChip() { return chip; }
+  static inline llvm::StringRef getMode() {
+    return m->getAttrOfType<StringAttr>(Attr::MODE).getValue();
   }
-  static StringRef getChip(Operation *op);
-  static inline llvm::StringRef getMode(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::MODE).getValue();
-  }
-  static inline llvm::StringRef getMode(FuncOp func) {
+  static inline llvm::StringRef getFuncMode(FuncOp func) {
     return func->getAttr("mode").cast<StringAttr>().getValue();
   }
-  static inline void setChip(ModuleOp module, StringRef chip) {
-    module->setAttr(Attr::CHIP,
-                    StringAttr::get(module.getContext(), chip.upper()));
+  static inline void setChip(StringRef chip_) {
+    m->setAttr(Attr::CHIP, StringAttr::get(m.getContext(), chip_.upper()));
+    chip = m->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
   }
-  static inline void setMode(ModuleOp module, StringRef mode) {
-    module->setAttr(Attr::MODE,
-                    StringAttr::get(module.getContext(), mode.upper()));
+
+  static inline void setMode(StringRef mode) {
+    m->setAttr(Attr::MODE, StringAttr::get(ctx, mode.upper()));
   }
-  static inline StringRef getWeightFile(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
+  static inline StringRef getWeightFile() {
+    return m->getAttrOfType<StringAttr>(Attr::WEIGHT_FILE).getValue();
   }
-  static inline void setWeightFile(ModuleOp module, StringRef weight_file) {
-    module->setAttr(Attr::WEIGHT_FILE,
-                    StringAttr::get(module.getContext(), weight_file));
+  static inline void setWeightFile(StringRef weight_file) {
+    m->setAttr(Attr::WEIGHT_FILE, StringAttr::get(ctx, weight_file));
   }
-  static inline int64_t getFLOPs(ModuleOp module) {
-    return module->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
+  static inline int64_t getFLOPs() {
+    return m->getAttrOfType<IntegerAttr>(Attr::FLOPS).getInt();
   }
-  static inline void setFLOPs(ModuleOp module, int64_t flops) {
-    auto intType = IntegerType::get(module.getContext(), 64);
-    module->setAttr(Attr::FLOPS, IntegerAttr::get(intType, flops));
+  static inline void setFLOPs(int64_t flops) {
+    auto intType = IntegerType::get(ctx, 64);
+    m->setAttr(Attr::FLOPS, IntegerAttr::get(intType, flops));
   }
-  static inline bool getAsymmetric(ModuleOp module) {
-    if (module->hasAttrOfType<BoolAttr>(Attr::ASYMMETRIC)) {
-      return module->getAttrOfType<BoolAttr>(Attr::ASYMMETRIC).getValue();
+  static inline bool isAsymmetric() {
+    if (m->hasAttrOfType<BoolAttr>(Attr::ASYMMETRIC)) {
+      return m->getAttrOfType<BoolAttr>(Attr::ASYMMETRIC).getValue();
     }
     return false;
   }
-  static inline void setAsymmetric(ModuleOp module, bool is_asymmetric) {
-    module->setAttr(Attr::ASYMMETRIC,
-                    BoolAttr::get(module.getContext(), is_asymmetric));
+  static inline void setAsymmetric(bool is_asymmetric) {
+    m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
   }
-  static inline StringRef getState(ModuleOp module) {
-    return module->getAttrOfType<StringAttr>(Attr::STATE).getValue();
+  static inline StringRef getState() {
+    return m->getAttrOfType<StringAttr>(Attr::STATE).getValue();
   }
-  static inline void setState(ModuleOp module, StringRef state) {
-    module->setAttr(Attr::STATE, StringAttr::get(module.getContext(), state));
+  static inline void setState(StringRef state) {
+    m->setAttr(Attr::STATE, StringAttr::get(ctx, state));
   }
-  static inline bool isState(ModuleOp module, llvm::StringRef state) {
-    return state == getState(module);
+  static inline bool isState(llvm::StringRef state) {
+    return state == getState();
   }
   static inline bool isTpuOp(Operation *op) {
     return (op->getDialect()->getNamespace() == "tpu");
   }
-  static inline bool isCV18xx(StringRef chip) {
-    return (chip == Module::Chip::CV183x
-            || chip == Module::Chip::CV182x);
+  static inline bool isCV18xx() {
+    return (chip == Module::Chip::CV183x || chip == Module::Chip::CV182x);
   }
-  static inline bool isBM1684Family(StringRef chip){
-    return (chip == Module::Chip::BM1684);
+  static inline bool isBM1684Family() { return (chip == Module::Chip::BM1684); }
+  static inline bool isBM1684XFamily() {
+    return (chip == Module::Chip::BM1684X || chip == Module::Chip::BM1686);
   }
-  static inline bool isBM1684XFamily(StringRef chip){
-    return   (chip == Module::Chip::BM1684X
-            || chip == Module::Chip::BM1686);
+  static inline bool isBM1686() { return (chip == Module::Chip::BM1686); }
+
+  static inline ModuleOp getModuleOp() { return m; }
+
+  static inline mlir::Location getLoc() { return m.getLoc(); }
+
+  static inline mlir::MLIRContext *getCtx() { return ctx; }
+
+  static inline void push_back(mlir::func::FuncOp funcOp) {
+    m.push_back(funcOp);
   }
-  static inline bool isBM1686(StringRef chip){
-    return (chip == Module::Chip::BM1686);
+
+  static void init(ModuleOp module) {
+    m = module;
+    ctx = m.getContext();
+    chip = m->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
   }
+
+private:
+  static ModuleOp m;
+  static llvm::StringRef chip;
+  static mlir::MLIRContext *ctx;
 };
 } // namespace helper
 } // namespace tpu_mlir
