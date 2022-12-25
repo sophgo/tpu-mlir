@@ -60,7 +60,7 @@ def CVCodegen : Pass<"cv-codegen", "ModuleOp"> {
   ];
 }
 
-def StripIOQuant : Pass<"strip-io-quant", "FuncOp"> {
+def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
   let summary = "remove input & output fp32<->int8 converiton in int8model";
   let constructor = "createStripIOQuant()";
   let dependentDialects = ["TpuDialect"];

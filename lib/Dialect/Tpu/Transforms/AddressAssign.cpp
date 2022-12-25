@@ -25,15 +25,13 @@ public:
   AddressAssignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    auto state = Module::getState(module);
-    if (state != Module::State::TPU_DIVIDED) {
+    if (!Module::isState(Module::State::TPU_DIVIDED)) {
       llvm_unreachable("module should be divided");
     }
-    Module::removeUnusedOp(module);
-    auto chip = Module::getChip(module);
-    Arch::init(chip);
+    Module::removeUnusedOp();
+    Arch::init();
 
-    if (Module::isCV18xx(chip)) {
+    if (Module::isCV18xx()) {
       CVAddressAssign addr_assign;
       addr_assign.assign(module, reuse_addr);
     } else {

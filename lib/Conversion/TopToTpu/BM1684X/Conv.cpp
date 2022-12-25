@@ -166,7 +166,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
 
   bool output_int32 = false;
-  if (Module::isBM1686(LoweringConfig::chip) || op.kernel_shape().size() == 3) {
+  if (Module::isBM1686() || op.kernel_shape().size() == 3) {
     output_int32 = true;
   }
   if (output_int32) {
@@ -209,10 +209,10 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   return;
 }
 
-
 void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
-  llvm::errs() <<"start conv LoweringINT4, name:"<<Module::getName(op.getOperation()).str()<<"\n";
+  llvm::errs() << "start conv LoweringINT4, name:"
+               << Module::getName(op.getOperation()).str() << "\n";
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   conv_attr_t attr = {0};
@@ -224,31 +224,39 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   int64_t in_int8_zp;
   int bitwidth = 4;
   Value value;
-  if (op.in_int4_scale().has_value()) { //存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
-    in_scale = op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
+  if (op.in_int4_scale().has_value()) {
+    // 存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
+    in_scale =
+        op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
     in_zp = op->getAttr("in_int4_zp").cast<FloatAttr>().getValueAsDouble();
-    Quant::getScaleAndZeroPoint(op.input(), in_int8_scale, in_int8_zp, asymmetric);
-    //input int8, requant to int4
-    // auto ctx = op.input().getContext();
-    // auto cali_type = Quant::getCalibratedType(op.input());
-    // auto qtype = quant::UniformQuantizedType::get(quant::QuantizationFlags::Signed,
-    //                                               IntegerType::get(ctx, 4),
-    //                                               cali_type.getExpressedType(),
-    //                                               in_scale, in_zp, -8, 7);
-    // auto output_type = RankedTensorType::get(op.input().getType().cast<RankedTensorType>().getShape(), qtype);
+    Quant::getScaleAndZeroPoint(op.input(), in_int8_scale, in_int8_zp,
+                                asymmetric);
+    // input int8, requant to int4
+    //  auto ctx = op.input().getContext();
+    //  auto cali_type = Quant::getCalibratedType(op.input());
+    //  auto qtype =
+    //  quant::UniformQuantizedType::get(quant::QuantizationFlags::Signed,
+    //                                                IntegerType::get(ctx, 4),
+    //                                                cali_type.getExpressedType(),
+    //                                                in_scale, in_zp, -8, 7);
+    //  auto output_type =
+    //  RankedTensorType::get(op.input().getType().cast<RankedTensorType>().getShape(),
+    //  qtype);
     auto output_type = getQuantIntType(op.input(), in_scale, in_zp, 4);
-    double scale = in_int8_scale/in_scale; //将int8转为int4的rq参数
-    double offset = in_zp - in_int8_zp*scale;
-    auto to_name = "to_b4_for_"+Module::getName(op.getOperation()).str();
+    double scale = in_int8_scale / in_scale; // 将int8转为int4的rq参数
+    double offset = in_zp - in_int8_zp * scale;
+    auto to_name = "to_b4_for_" + Module::getName(op.getOperation()).str();
     value = do_requantFp(op.input(), scale, offset, output_type, to_name);
-    llvm::errs() <<"conv input requantFp, to_name:"<<to_name<<"\n";
+    llvm::errs() << "conv input requantFp, to_name:" << to_name << "\n";
     value.dump();
     operands.push_back(value);
-  } else {//输入tensor也是int4
+  } else { // 输入tensor也是int4
     operands.push_back(op.input());
-    Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric, bitwidth);
+    Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric,
+                                bitwidth);
   }
-  Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric, bitwidth);
+  Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric,
+                              bitwidth);
   // filter
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
@@ -277,7 +285,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   bool all_next_layer_is_int4 = true;
   double out_int8_scale = 1;
   double out_int8_zp = 0;
-  for (auto user:op->getUsers()) {
+  for (auto user : op->getUsers()) {
     if (isa<top::ConvOp, top::MatMulOp, tpu::Conv2DOp, tpu::MatMulOp>(user)) {
       all_next_layer_is_int8 = false;
     } else {
@@ -285,11 +293,12 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     }
   }
 
-  llvm::errs() <<"all_next_layer_is_int4:"<< all_next_layer_is_int4<<",all_next_layer_is_int8:"<< all_next_layer_is_int8<<"\n";
+  llvm::errs() << "all_next_layer_is_int4:" << all_next_layer_is_int4
+               << ",all_next_layer_is_int8:" << all_next_layer_is_int8 << "\n";
   if (all_next_layer_is_int8)
-      llvm::errs() <<"directly output int8\n";
+    llvm::errs() << "directly output int8\n";
   else
-      llvm::errs() <<"directly output int4\n";
+    llvm::errs() << "directly output int4\n";
 
   std::vector<int64_t> rshift_v;
   std::vector<int64_t> multiplier_v;
@@ -307,7 +316,8 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     double scale_f;
     if (all_next_layer_is_int8) {
       if (op.out_int8_scale().has_value()) {
-        out_int8_scale = op->getAttr("out_int8_scale").cast<FloatAttr>().getValueAsDouble();
+        out_int8_scale =
+            op->getAttr("out_int8_scale").cast<FloatAttr>().getValueAsDouble();
       }
       scale_f = scale_w * in_scale / out_int8_scale;
     } else {
@@ -375,7 +385,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
 
   bool output_int32 = false;
-  if (Module::isBM1686(LoweringConfig::chip) || op.kernel_shape().size() == 3) {
+  if (Module::isBM1686() || op.kernel_shape().size() == 3) {
     output_int32 = true;
   }
   if (output_int32) {
@@ -417,30 +427,34 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   auto newValue = CreateConvOp(rewriter, op.kernel_shape().size(), op->getLoc(),
                                newType, operands, attrs);
 
-
   if (!all_next_layer_is_int8 && !all_next_layer_is_int4) {
     bool first = true;
     Value value;
-    for (auto user:op->getUsers()) {
+    for (auto user : op->getUsers()) {
       if (!isa<top::ConvOp>(user) && !isa<top::MatMulOp>(user)) {
         if (first) {
           first = false;
           if (op.out_int8_scale().has_value()) {
-            out_int8_scale = op->getAttr("out_int8_scale").cast<FloatAttr>().getValueAsDouble();
-            out_int8_zp = op->getAttr("out_int8_zp").cast<FloatAttr>().getValueAsDouble();
+            out_int8_scale = op->getAttr("out_int8_scale")
+                                 .cast<FloatAttr>()
+                                 .getValueAsDouble();
+            out_int8_zp =
+                op->getAttr("out_int8_zp").cast<FloatAttr>().getValueAsDouble();
           }
-          //requant to int8
-          double scale = out_scale/out_int8_scale;
-          double offset = out_int8_zp - out_zp*scale;
-          auto output_type = getQuantIntType(op.output(), out_int8_scale, out_int8_zp);
-          auto to_name = Module::getName(op.getOperation()).str()+"_to_b8";
+          // requant to int8
+          double scale = out_scale / out_int8_scale;
+          double offset = out_int8_zp - out_zp * scale;
+          auto output_type =
+              getQuantIntType(op.output(), out_int8_scale, out_int8_zp);
+          auto to_name = Module::getName(op.getOperation()).str() + "_to_b8";
           value = do_requantFp(newValue, scale, offset, output_type, to_name);
-          llvm::errs() <<"conv output requantFp, to_name:"<<to_name<<",value:";
+          llvm::errs() << "conv output requantFp, to_name:" << to_name
+                       << ",value:";
           value.dump();
         }
         for (uint32_t idx = 0; idx < user->getNumOperands(); idx++) {
           if (op.output() == user->getOperand(idx)) {
-            llvm::errs() <<"setOperand, idx:"<<idx<<"\n";
+            llvm::errs() << "setOperand, idx:" << idx << "\n";
             user->setOperand(idx, value);
           }
         }

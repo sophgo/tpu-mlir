@@ -22,7 +22,6 @@ LogicalResult tpu::ScaleOp::init(InferenceParameter &p) { return success(); }
 void tpu::ScaleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
-  auto module = Module::getModuleOp(getOperation());
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
   const float *src = p.inputs[0];
@@ -31,7 +30,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
   float *dst = p.outputs[0];
 
   auto out_type = Module::getStorageType(output());
-  auto asym = Module::getAsymmetric(module);
+  auto asym = Module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int64_t i = 0; i < c; ++i) {

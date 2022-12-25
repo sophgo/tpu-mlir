@@ -6,11 +6,6 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-/*
- * Written by:
- *   Wanwei CAI <wanwei.cai@bitmain.com>
- * Created Time: 2018-02-06 15:43
- */
 
 #include <stdio.h>
 #include <execinfo.h>

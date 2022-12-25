@@ -16,6 +16,12 @@
 
 include "mlir/Pass/PassBase.td"
 
+def Init : Pass<"init", "ModuleOp"> {
+  let summary = "init module";
+  let constructor = "createInitPass()";
+  let dependentDialects = ["TopDialect"];
+}
+
 def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let summary = "Import calibration table by tpuc-opt";
   let constructor = "createImportCalibrationTablePass()";

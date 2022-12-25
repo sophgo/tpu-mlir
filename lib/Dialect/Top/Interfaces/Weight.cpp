@@ -24,8 +24,7 @@ LogicalResult WeightOp::update(const std::vector<T> &data, size_t count) {
   auto dialect = op->getDialect();
   auto topDialect = llvm::cast<TopDialect>(dialect);
   if (topDialect->wFile == nullptr) {
-    auto moduleOp = Module::getModuleOp(op);
-    auto weight_file = Module::getWeightFile(moduleOp);
+    auto weight_file = Module::getWeightFile();
     topDialect->loadWeightFile(weight_file);
   }
   return topDialect->wFile->updateTensorData(Module::getName(op).str(),
@@ -37,8 +36,7 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
   auto dialect = op->getDialect();
   auto topDialect = llvm::cast<TopDialect>(dialect);
   if (topDialect->wFile == nullptr) {
-    auto moduleOp = Module::getModuleOp(op);
-    auto weight_file = Module::getWeightFile(moduleOp);
+    auto weight_file = Module::getWeightFile();
     topDialect->loadWeightFile(weight_file);
   }
   auto type = output().getType().cast<RankedTensorType>();
@@ -135,8 +133,7 @@ Value WeightOp::create(Operation *OwnerOp, llvm::StringRef suffix,
   auto dialect = ctx->getLoadedDialect("top");
   auto topDialect = llvm::cast<TopDialect>(dialect);
   if (topDialect->wFile == nullptr) {
-    auto moduleOp = Module::getModuleOp(OwnerOp);
-    auto weight_file = Module::getWeightFile(moduleOp);
+    auto weight_file = Module::getWeightFile();
     topDialect->loadWeightFile(weight_file);
   }
   std::string op_name = Module::getName(OwnerOp).str();
@@ -198,7 +195,7 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto data = read<float>();
   auto count = data->size();
   auto data_bf16 = std::make_shared<std::vector<uint16_t>>(count);
-  auto is_cv18xx = Module::isCV18xx(Module::getChip(OwnerOp));
+  auto is_cv18xx = Module::isCV18xx();
 
 #pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {

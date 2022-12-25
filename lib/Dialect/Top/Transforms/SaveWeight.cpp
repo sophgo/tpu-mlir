@@ -27,7 +27,7 @@ public:
   SaveWeightPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    Module::removeUnusedOp(module);
+    Module::removeUnusedOp();
     // check name conflict
     std::set<StringRef> all_names;
     for (auto func : module.getOps<FuncOp>()) {
@@ -47,7 +47,7 @@ public:
       });
     }
     bool same_name;
-    auto file_name = Module::genWeightFileName(module, same_name);
+    auto file_name = Module::genWeightFileName(same_name);
     // weight remove unused in npz
     auto dialect = module->getContext()->getLoadedDialect("top");
     auto top_dialect = llvm::cast<top::TopDialect>(dialect);
@@ -55,10 +55,10 @@ public:
       if (same_name) {
         return;
       }
-      auto weight_file = Module::getWeightFile(module);
+      auto weight_file = Module::getWeightFile();
       top_dialect->loadWeightFile(weight_file);
       top_dialect->wFile->save(file_name);
-      Module::setWeightFile(module, file_name);
+      Module::setWeightFile(file_name);
       return;
     }
     if (top_dialect->wFile->changed() == false && same_name) {
@@ -85,7 +85,7 @@ public:
       return;
     }
     top_dialect->wFile->save(file_name);
-    Module::setWeightFile(module, file_name);
+    Module::setWeightFile(file_name);
   }
 };
 

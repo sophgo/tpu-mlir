@@ -23,10 +23,7 @@ void tpu::LutBF16Op::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LutBF16Op::inference(InferenceParameter &p) {
   auto num_element = Module::getNumElements(input());
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
-
-  if (is_cv18xx) {
+  if (Module::isCV18xx()) {
     auto _lut_mode = lut_mode();
     if (_lut_mode == LutBF16Mode::Slope) {
       bf16_lut_slope(p.inputs[0], p.outputs[0], num_element, p.inputs[1],

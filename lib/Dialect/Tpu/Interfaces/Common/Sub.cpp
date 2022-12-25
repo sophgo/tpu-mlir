@@ -46,13 +46,11 @@ void tpu::SubOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
-  auto module = Module::getModuleOp(getOperation());
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   memset(p.outputs[0], 0, num_elem * sizeof(float));
-  auto asym = Module::getAsymmetric(module);
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  auto asym = Module::isAsymmetric();
+  bool is_cv18xx = Module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     auto binary = (Binary *)p.handle;
     binary->run();

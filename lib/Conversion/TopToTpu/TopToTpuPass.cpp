@@ -260,26 +260,20 @@ public:
   void runOnOperation() override {
     module_ = getOperation();
     ctx_ = &getContext();
-    mainFunc_ = Module::getMainFuncOp(module_);
-    state_ = Module::getState(module_);
-    LoweringConfig::context = ctx_;
-    LoweringConfig::chip = StringRef(chip).upper();
-    LoweringConfig::mode = StringRef(mode).upper();
-    LoweringConfig::isAsymmetric = isAsymmetric;
+    mainFunc_ = Module::getMainFuncOp();
     LoweringConfig::isQuantized = false;
-    Module::setChip(module_, LoweringConfig::chip);
-    Module::setMode(module_, LoweringConfig::mode);
+    Module::setChip(StringRef(chip).upper());
+    Module::setMode(StringRef(mode).upper());
 
-    if (Module::State::TOP_QUANTIZED == state_) {
-      Module::setAsymmetric(module_, true);
-      LoweringConfig::isAsymmetric = true;
+    if (Module::isState(Module::State::TOP_QUANTIZED)) {
+      Module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;
     } else {
       LoweringConfig::isQuantized = false;
-      Module::setAsymmetric(module_, LoweringConfig::isAsymmetric);
-      if (Module::isCV18xx(LoweringConfig::chip)) {
+      Module::setAsymmetric(isAsymmetric);
+      if (Module::isCV18xx()) {
         all_int8_process();
-        Module::updateModuleTypes(module_);
+        Module::updateModuleTypes();
       }
       calibration_process();
     }
@@ -289,11 +283,11 @@ public:
     target.addLegalDialect<tpu::TpuDialect, func::FuncDialect>();
     // no need to lowering:
     target.addLegalOp<top::InputOp, top::WeightOp, top::NoneOp>();
-    if (Module::isBM1684XFamily(LoweringConfig::chip)) {
+    if (Module::isBM1684XFamily()) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
-    } else if (Module::isBM1684Family(LoweringConfig::chip)) {
+    } else if (Module::isBM1684Family()) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
-    } else if (Module::isCV18xx(LoweringConfig::chip)) {
+    } else if (Module::isCV18xx()) {
       cv18xx::populateTopToTpuConversionPatterns(&patterns);
     } else {
       llvm_unreachable("Not Implemented");
@@ -308,13 +302,13 @@ public:
     patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     cast_process();
-    Module::updateModuleTypes(module_);
-    Module::setState(module_, Module::State::TPU_LOWERED);
+    Module::updateModuleTypes();
+    Module::setState(Module::State::TPU_LOWERED);
   }
 
 protected:
   void calibration_process() {
-    if (state_ != Module::State::TOP_CALIBRATED) {
+    if (!Module::isState(Module::State::TOP_CALIBRATED)) {
       return;
     }
     // clang-format off
@@ -351,7 +345,7 @@ protected:
                  ForwardCalibartion<top::AbsOp>
                 >(ctx_);
     // clang-format on
-    if (LoweringConfig::chip == Module::Chip::BM1684) {
+    if (Module::isBM1684Family()) {
       // TODO: support asymmetric mode
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
     }
@@ -431,7 +425,7 @@ protected:
     }
 
     bool all_next_layer_is_int4 = false;
-    if (LoweringConfig::mode == Quant::Type::INT4) {
+    if (Module::getMode() == Quant::Type::INT4) {
       all_next_layer_is_int4 = true;
       for (auto user : v.getUsers()) {
         if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
@@ -439,7 +433,7 @@ protected:
         }
       }
     }
-    
+
     auto ctx = v.getContext();
     OpBuilder builder(ctx);
     builder.setInsertionPointAfterValue(v);
@@ -458,13 +452,13 @@ protected:
         v.dump();
         llvm_unreachable("Only calibrated type can do quantize");
       }
-      auto newType = getQuantInt8Type(v, LoweringConfig::isAsymmetric);
+      auto newType = getQuantInt8Type(v, Module::isAsymmetric());
       if (all_next_layer_is_int4) {
-        newType = getQuantInt4Type(v, LoweringConfig::isAsymmetric);
+        newType = getQuantInt4Type(v, Module::isAsymmetric());
       }
       name += "_" + type_string(newType);
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      if (Module::isCV18xx(LoweringConfig::chip)) {
+      if (Module::isCV18xx()) {
         auto parentOp = v.getDefiningOp();
         if (isa<top::InputOp>(parentOp)) {
           return insert_18xx_cpu_cast(builder, v, loc, newType);
@@ -565,7 +559,6 @@ protected:
   ModuleOp module_;
   FuncOp mainFunc_;
   MLIRContext *ctx_;
-  llvm::StringRef state_;
 };
 
 std::unique_ptr<Pass> createConvertTopToTpu() {

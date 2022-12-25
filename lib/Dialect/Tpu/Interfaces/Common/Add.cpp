@@ -56,18 +56,15 @@ void tpu::AddOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
-  auto module = Module::getModuleOp(getOperation());
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
   memset(p.outputs[0], 0, num_elem * sizeof(float));
-  auto asym = Module::getAsymmetric(module);
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  auto asym = Module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
     auto binary = (Binary *)p.handle;
     binary->run();
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
+      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, Module::isCV18xx());
     } else if (out_type.isF16()) {
       f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
     }
@@ -78,7 +75,7 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto binary = (Binary *)p.handle;
     binary->run();
   } else if (asym == false) {
-    if (is_cv18xx) {
+    if (Module::isCV18xx()) {
       // cv18xx interpreter
       auto multiplier_v = Module::getI64Array(multipliers(), 2, 1);
       auto rshift_v = Module::getI64Array(rshifts(), 1, 0);

@@ -83,8 +83,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_cv18xx = Module::isCV18xx();
   // requant
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());

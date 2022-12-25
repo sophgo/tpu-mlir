@@ -43,10 +43,8 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
 
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
-  auto module = Module::getModuleOp(getOperation());
-  bool asym = Module::getAsymmetric(module);
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool asym = Module::isAsymmetric();
+  bool is_cv18xx = Module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     auto prelu = (PRelu *)p.handle;
     prelu->run();

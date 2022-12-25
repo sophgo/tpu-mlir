@@ -40,7 +40,7 @@ public:
     // llvm::errs() << "import calibration table:" << this->tableFile
     //              << ", is asymmetric " << this->isAsymmetric << "\n";
     auto module = getOperation();
-    if (!Module::isState(module, Module::State::TOP_F32)) {
+    if (!Module::isState(Module::State::TOP_F32)) {
       module.dump();
       llvm_unreachable("wrong mlir state");
     }
@@ -210,8 +210,8 @@ public:
         }
       });
     }
-    Module::updateModuleTypes(module);
-    Module::setState(module, Module::State::TOP_CALIBRATED);
+    Module::updateModuleTypes();
+    Module::setState(Module::State::TOP_CALIBRATED);
   }
   void getMinMax(Operation *op, const cali_info &info, double &min,
                  double &max) {

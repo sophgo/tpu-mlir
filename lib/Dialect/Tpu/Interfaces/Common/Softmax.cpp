@@ -27,8 +27,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   auto input_shape = Module::getShape(input());
   auto out_type = Module::getStorageType(output());
   auto num_elem = Module::getNumElements(output());
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_cv18xx = Module::isCV18xx();
 
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {
@@ -188,9 +187,7 @@ mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto o_stype = Module::getStorageType(output());
   if (opd_idx == 0) {
     if (o_stype.isF32() && (i_stype.isInteger(8) || i_stype.isF32())) {
-      auto m_op = Module::getModuleOp(op);
-      bool is_asymetric = Module::getAsymmetric(m_op);
-      if (is_asymetric == false) {
+      if (Module::isAsymmetric() == false) {
         return do_nothing(mode);
       }
     }

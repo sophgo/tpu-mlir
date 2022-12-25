@@ -23,10 +23,9 @@ LogicalResult tpu::MulConstOp::init(InferenceParameter &p) { return success(); }
 void tpu::MulConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
-  auto module = Module::getModuleOp(getOperation());
   auto num_elem = Module::getNumElements(output());
   auto out_type = Module::getStorageType(output());
-  auto asym = Module::getAsymmetric(module);
+  auto asym = Module::isAsymmetric();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = p.inputs[0][i] * const_val().convertToDouble();
@@ -42,8 +41,10 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // coeff has been merge in multiplier&&rshift
-        double sum = applyMultiplierAndRShift(p.inputs[0][i], multiplier(), rshift());
-        if (do_relu() && sum < 0) sum = 0;
+        double sum =
+            applyMultiplierAndRShift(p.inputs[0][i], multiplier(), rshift());
+        if (do_relu() && sum < 0)
+          sum = 0;
         p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
                                                         : Quant::to_int8(sum);
       }
@@ -52,7 +53,8 @@ LogicalResult tpu::MulConstOp::inference(InferenceParameter &p) {
       for (int i = 0; i < num_elem; i++) {
         // inputs has been requant
         double sum = p.inputs[0][i];
-        if (do_relu() && sum < 0) sum = 0;
+        if (do_relu() && sum < 0)
+          sum = 0;
         p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
                                                         : Quant::to_int8(sum);
       }

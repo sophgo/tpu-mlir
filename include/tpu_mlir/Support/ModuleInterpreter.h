@@ -40,24 +40,25 @@ public:
   void invoke(bool express_type = true);
   void fake_quant_weight();
   std::shared_ptr<std::vector<float>> invoke_at(std::string name);
-  void setTensor(const std::string &name, const void *data, size_t size, bool is_integer=false);
+  void setTensor(const std::string &name, const void *data, size_t size,
+                 bool is_integer = false);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
 
 public:
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
-  std::vector<std::string> all_tensor_names; // activation tensor, without weight
+  std::vector<std::string>
+      all_tensor_names; // activation tensor, without weight
   std::vector<std::string> all_weight_names; // weight tensor
 
 private:
   ModuleOp module;
-  llvm::StringRef state;
   std::map<std::string, mlir::Value> value_map;
   std::map<std::string, std::shared_ptr<InferenceParameter>> inference_map;
   std::map<std::string, std::shared_ptr<std::vector<float>>> mem_map;
 };
 
-} // namespace mlir
+} // namespace tpu_mlir
 
 #endif // MLIR_DIALECT_TPU_MODULEINTERPRETER_H_

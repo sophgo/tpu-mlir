@@ -93,6 +93,10 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }
+    if (stype.isF32() && Quant::isUniformQuantized(output())) {
+      mode = TypeCastMode::DO_QUANTIZE;
+      return Module::getStorageType(output());
+    }
     mode = TypeCastMode::DO_CAST;
     auto bitwith = stype.getIntOrFloatBitWidth();
     return Builder(op).getIntegerType(bitwith);

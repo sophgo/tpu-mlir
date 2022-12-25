@@ -103,7 +103,6 @@ static bool has_pad(const pool_attr_t &attrs) {
 
 void tpu::Pool1DOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  auto module = Module::getModuleOp(op);
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   (*input_spec)[0].dims = 4;
@@ -119,7 +118,7 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
     if (Quant::isUniformQuantized(input())) {
       bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
-          Module::getAsymmetric(module) ? (with_pad ? 1 : 2) : 0;
+          Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
       if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier = multiplier().value_or((int64_t)1);
         spec.rshiftbits = rshift().value_or((int64_t)0);
@@ -146,8 +145,7 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
     return 0;
   case tpu::PoolMode::Avg:
     int64_t size = 0;
-    auto module = Module::getModuleOp(getOperation());
-    if (Module::getAsymmetric(module)) {
+    if (Module::isAsymmetric()) {
       auto kernel = Module::getI64Array(kernel_shape());
       int64_t dtype_bytes = kernel->at(0) ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
@@ -164,7 +162,6 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
 
 void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto op = getOperation();
-  auto module = Module::getModuleOp(op);
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
@@ -185,7 +182,7 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     if (Quant::isUniformQuantized(input())) {
       bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
       common.avg_pooling_quant_mode =
-          Module::getAsymmetric(module) ? (with_pad ? 1 : 2) : 0;
+          Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
       if (common.avg_pooling_quant_mode == 0) {
         common.multiplier = multiplier().value_or(0l);
         common.rshiftbits = rshift().value_or(0l);

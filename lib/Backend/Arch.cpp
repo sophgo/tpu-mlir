@@ -32,17 +32,18 @@ llvm::StringRef Arch::LIB_NAME = "";
 
 Arch *Arch::inst = nullptr;
 
-void Arch::init(const llvm::StringRef chip) {
+void Arch::init() {
   if (inst != nullptr) {
     return;
   }
+  auto chip = Module::getChip();
   if (chip == Module::Chip::BM1684) {
     inst = &BM1684::instance();
   } else if (chip == Module::Chip::BM1684X) {
     inst = &BM1684X::instance();
   } else if (chip == Module::Chip::BM1686) {
     inst = &BM1686::instance();
-  } else if (Module::isCV18xx(chip)) {
+  } else if (Module::isCV18xx()) {
     inst = &CV18xx::instance(chip);
   } else {
     llvm_unreachable("unsupport chip");

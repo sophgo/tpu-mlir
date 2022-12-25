@@ -23,6 +23,7 @@ def _os_system(cmd: list):
 def mlir_opt_for_top(mlirfile, opt_mlirfile):
     cmd = [
         "tpuc-opt",
+        "--init",
         "--canonicalize",
         "--mark-FLOPs",
         "--save-weight",
@@ -41,7 +42,7 @@ def mlir_lowering(top_mlir: str,
                   cali_table: str = None,
                   asymmetric: bool = False,
                   quantize_table: str = None):
-    cmd = ["tpuc-opt", top_mlir]
+    cmd = ["tpuc-opt", top_mlir, "--init"]
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
@@ -73,6 +74,7 @@ def mlir_to_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         tpu_mlir,
+        "--init",
         strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",
@@ -104,6 +106,7 @@ def mlir_to_cvi_model(tpu_mlir: str,
     cmd = [
         "tpuc-opt",
         tpu_mlir,
+        "--init",
         "--convert-relu-limit",
         strip_io_quant_param,
         "--weight-reorder",

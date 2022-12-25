@@ -139,7 +139,6 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t buffer_size = 0;
-  auto module = Module::getModuleOp(getOperation());
   auto out_dtype = output().getType();
   pool_attr_t attrs;
   parseParam(&attrs);
@@ -175,8 +174,6 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
 void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   pool_attr_t attrs;
   parseParam(&attrs);
-  auto op = getOperation();
-  auto module = Module::getModuleOp(op);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   pooling3d_spec_t spec = {0};

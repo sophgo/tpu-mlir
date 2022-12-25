@@ -78,7 +78,7 @@ public:
   LayerGroupPass() {}
   void runOnOperation() override {
     auto func = getOperation();
-    if (func.getName() == "main") {
+    if (func.getName() == "main" || Module::getFuncMode(func) != "TPU") {
       return;
     }
     auto ctx = func.getContext();

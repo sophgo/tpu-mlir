@@ -87,8 +87,7 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
   float *output_v = p.outputs[0];
   auto type_val = mode();
 
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
+  bool is_cv18xx = Module::isCV18xx();
   auto out_type = Module::getStorageType(output());
   auto attr = parseParam();
   int64_t outer_dims = attr.outer_n * attr.outer_c;

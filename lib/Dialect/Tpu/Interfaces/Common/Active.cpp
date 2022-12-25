@@ -85,10 +85,8 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     active_func(p, num_element, [](double val) { return hswish(val); });
     break;
   }
-  auto chip = Module::getChip(getOperation());
-  bool is_cv18xx = Module::isCV18xx(chip);
   if (t.isBF16()) {
-    f32_to_bf16(p.outputs[0], p.outputs[0], num_element, is_cv18xx);
+    f32_to_bf16(p.outputs[0], p.outputs[0], num_element, Module::isCV18xx());
   } else if (t.isF16()) {
     f32_to_f16(p.outputs[0], p.outputs[0], num_element);
   }
