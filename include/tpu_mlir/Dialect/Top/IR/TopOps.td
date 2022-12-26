@@ -1336,6 +1336,23 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
   let results = (outs AnyTensor:$output);
 }
 
+
+def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear", [InOutSameShape]> {
+  let summary = "Linear quantize operation";
+  let description = [{
+    QuantizeLinear(x) := saturate ((x / y_scale) + y_zero_point)
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64ArrayAttr:$y_scale,
+    I32ArrayAttr:$y_zero_point,
+    DefaultValuedAttr<I64Attr, "1">:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ProposalOp: Top_Op<"Proposal"> {
   let summary = "Proposal operator";
 
@@ -1394,6 +1411,23 @@ def Top_ROIPoolingOp : Top_Op<"ROIPooling">  {
     I64Attr:$pooled_h,
     I64Attr:$pooled_w,
     F64Attr:$spatial_scale
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+
+def Top_DequantizeLinearOp : Top_Op<"DequantizeLinear", [InOutSameShape]> {
+  let summary = "Linear dequantize operation";
+  let description = [{
+    DequantizeLinear(x) := (x - x_zero_point) * x_scale
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64ArrayAttr:$x_scale,
+    I32ArrayAttr:$x_zero_point,
+    DefaultValuedAttr<I64Attr, "1">:$axis
   );
 
   let results = (outs AnyTensor:$output);

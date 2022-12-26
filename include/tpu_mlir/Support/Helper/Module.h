@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/OpDefinition.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 
 using namespace mlir;
 using namespace mlir::func;
@@ -73,6 +73,10 @@ struct Module {
   static Type getElementType(Value v);
   static llvm::ArrayRef<int64_t> getShape(Value v);
   static inline FuncOp getMainFuncOp() { return getFuncOp("main"); }
+  static std::shared_ptr<std::vector<int32_t>> getI32Array(ArrayAttr arrayAttr);
+  static std::shared_ptr<std::vector<int32_t>>
+  getI32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
+              int32_t default_value);
   static std::shared_ptr<std::vector<int64_t>> getI64Array(ArrayAttr arrayAttr);
   static std::shared_ptr<std::vector<int64_t>>
   getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,

@@ -21,6 +21,7 @@ class Top:
     CompareOp = 'top.Compare'
     CompareConstOp = 'top.CompareConst'
     Depth2SpaceOp = 'top.Depth2Space'
+    DequantizeLinearOp = 'top.DequantizeLinear'
     DeconvOp = 'top.Deconv'
     DetectionOutputOp = 'top.DetectionOutput'
     DivOp = 'top.Div'
@@ -53,6 +54,7 @@ class Top:
     PowOp = 'top.Pow'
     PriorBoxOp = 'top.PriorBox'
     PReluOp = 'top.PRelu'
+    QuantizeLinearOp = 'top.QuantizeLinear'
     Reciprocal = 'top.Reciprocal'
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
@@ -904,6 +906,28 @@ class MLIRImporter(object):
             'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
         }
         return self.buildOp(Top.FrcnDetection, operands, [output_type], **param)
+
+    def create_qlinear_op(self, operands, output_shape, axis=1, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['SINT8'])
+        param = {
+            'name': kargs['name'],
+            'y_scale': self.ArrayAttr(kargs['y_scale'], 'F64'),
+            'y_zero_point': self.ArrayAttr(kargs['y_zero_point'], 'INT32'),
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], axis)
+        }
+        return self.buildOp(Top.QuantizeLinearOp, operands, [output_type], **param)
+
+    def create_deqlinear_op(self, operands, output_shape, axis=1, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        param = {
+            'name': kargs['name'],
+            'x_scale': self.ArrayAttr(kargs['x_scale'], 'F64'),
+            'x_zero_point': self.ArrayAttr(kargs['x_zero_point'], 'INT32'),
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], axis)
+        }
+        return self.buildOp(Top.DequantizeLinearOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)

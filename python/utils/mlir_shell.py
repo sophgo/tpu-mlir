@@ -41,8 +41,14 @@ def mlir_lowering(top_mlir: str,
                   chip: str,
                   cali_table: str = None,
                   asymmetric: bool = False,
-                  quantize_table: str = None):
+                  quantize_table: str = None,
+                  qdq: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--init"]
+    if qdq:
+        assert cali_table == None, "qdq cannot work with cali_table"
+        assert quantize_table == None, "qdq cannot work with quantize_table"
+        cmd.extend(["--convert-qdq-to-calibrated-dialect"])
+        mode = 'int8'
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)

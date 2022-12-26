@@ -8,11 +8,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/ModuleInterpreter.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
