@@ -34,6 +34,12 @@ def ImportCalibrationTable : Pass<"import-calibration-table", "ModuleOp"> {
   let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
+def QDQConvert : Pass<"convert-qdq-to-calibrated-dialect", "ModuleOp"> {
+  let summary = "Convert from qdq model to regular quantized model";
+  let constructor = "createQDQConvertPass()";
+  let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
+}
+
 def MarkFLOPs : Pass<"mark-FLOPs", "ModuleOp"> {
   let summary = "mark FLOPs in mlir by tpuc-opt";
   let constructor = "createMarkFLOPsPass()";
