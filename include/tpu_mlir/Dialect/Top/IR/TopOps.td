@@ -665,6 +665,18 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_ReverseOp:Top_Op<"Reverse", [InOutSameShape]> {
+  let summary = "Reverse operation";
+  let description = [{
+    Reverse on input.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SigmoidOp : Top_Op<"Sigmoid", [InOutSameShape]> {
   let summary = " Exp operator,  scale * Sigmoid + bias";
   let description = [{
