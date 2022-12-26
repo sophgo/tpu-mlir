@@ -195,11 +195,10 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto data = read<float>();
   auto count = data->size();
   auto data_bf16 = std::make_shared<std::vector<uint16_t>>(count);
-  auto is_cv18xx = Module::isCV18xx();
 
 #pragma omp parallel for schedule(static, omp_schedule(count))
   for (uint32_t i = 0; i < count; i++) {
-    data_bf16->at(i) = f32_to_bf16(data->at(i), is_cv18xx, true);
+    data_bf16->at(i) = f32_to_bf16(data->at(i));
   }
   auto ctx = OwnerOp->getContext();
   OpBuilder builder(ctx);

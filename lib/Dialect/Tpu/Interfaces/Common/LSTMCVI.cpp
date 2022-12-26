@@ -21,13 +21,13 @@ using namespace tpu_mlir::helper;
 using namespace mlir;
 
 static float sigmoid_(float data, InferenceParameter &p) {
-  float var = cvi_f32_to_fbf16(data);
+  float var = BF16(data);
   bf16_lut_slope(&var, &var, 1, p.inputs[5], p.inputs[6], -12, 12);
   return var;
 }
 
 static float tanh_(float data, InferenceParameter &p) {
-  float var = cvi_f32_to_fbf16(data);
+  float var = BF16(data);
   bf16_lut_slope(&var, &var, 1, p.inputs[7], p.inputs[8], -15, 15);
   return var;
 }
@@ -103,10 +103,10 @@ static void lstm_compute(InferenceParameter &p,
     dnnl_mm(h, r_wc, r_bc, gate_c.data(), attr.batch_size, attr.hidden_size,
             attr.hidden_size, false);
 
-    f32_to_bf16(gate_i.data(), gate_i.data(), gate_i.size(), true);
-    f32_to_bf16(gate_o.data(), gate_o.data(), gate_o.size(), true);
-    f32_to_bf16(gate_f.data(), gate_f.data(), gate_f.size(), true);
-    f32_to_bf16(gate_c.data(), gate_c.data(), gate_c.size(), true);
+    BF16(gate_i.data(), gate_i.data(), gate_i.size());
+    BF16(gate_o.data(), gate_o.data(), gate_o.size());
+    BF16(gate_f.data(), gate_f.data(), gate_f.size());
+    BF16(gate_c.data(), gate_c.data(), gate_c.size());
 
     for (int batch = 0; batch < attr.batch_size; batch++) {
       float *xi = x + batch * attr.input_size;
@@ -130,10 +130,8 @@ static void lstm_compute(InferenceParameter &p,
         go[i] = sigmoid_(xo[i] + go[i], p);
         gf[i] = sigmoid_(xf[i] + gf[i], p);
         gc[i] = tanh_(xc[i] + gc[i], p);
-        cell_state[i] =
-            cvi_f32_to_fbf16(cvi_f32_to_fbf16(gf[i] * cell_state[i]) +
-                             cvi_f32_to_fbf16(gi[i] * gc[i]));
-        hidden_state[i] = cvi_f32_to_fbf16(go[i] * tanh_(cell_state[i], p));
+        cell_state[i] = BF16(BF16(gf[i] * cell_state[i]) + BF16(gi[i] * gc[i]));
+        hidden_state[i] = BF16(go[i] * tanh_(cell_state[i], p));
       }
     }
     if (attr.output_y) {

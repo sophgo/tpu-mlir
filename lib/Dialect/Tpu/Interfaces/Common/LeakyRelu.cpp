@@ -39,9 +39,9 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       dst[i] = src[i] > 0 ? src[i] : (alpha * src[i]);
     }
     if (out_type.isF16()) {
-      f32_to_f16(dst, dst, num_elements);
+      F16(dst, dst, num_elements);
     } else if (out_type.isBF16()) {
-      f32_to_bf16(dst, dst, num_elements);
+      BF16(dst, dst, num_elements);
     }
   } else if (asym == false) {
     int64_t scale_neg, shift_neg;

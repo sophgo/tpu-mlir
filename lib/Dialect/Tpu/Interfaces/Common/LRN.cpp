@@ -22,10 +22,15 @@ LogicalResult tpu::LRNOp::init(InferenceParameter &p) {
   auto alpha_ = alpha().convertToDouble();
   auto beta_ = beta().convertToDouble();
   auto bias_ = bias().convertToDouble();
-  if (Module::isCV18xx()) {
-    alpha_ = cvi_f32_to_fbf16(alpha_);
-    beta_ = cvi_f32_to_fbf16(beta_);
-    bias_ = cvi_f32_to_fbf16(bias_);
+  auto out_type = Module::getStorageType(output());
+  if (out_type.isBF16()) {
+    alpha_ = BF16(alpha_);
+    beta_ = BF16(beta_);
+    bias_ = BF16(bias_);
+  } else if (out_type.isF16()) {
+    alpha_ = F16(alpha_);
+    beta_ = F16(beta_);
+    bias_ = F16(bias_);
   }
 
   auto lrn = new LRN();
@@ -57,9 +62,9 @@ LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
     auto lrn = (LRN *)p.handle;
     lrn->run();
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, Module::isCV18xx());
+      BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
-      f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+      F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else {
     dump();

@@ -70,8 +70,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
           for (int k = 0; k < inner_dim; k++) {
             auto idx = j * inner_dim + k;
-            sub_arr[idx] =
-                cvi_f32_to_fbf16(bottom_data[c_offset + k] - max_arr[k]);
+            sub_arr[idx] = BF16(bottom_data[c_offset + k] - max_arr[k]);
           }
         }
         // e^x
@@ -79,8 +78,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         bf16_lut_slope(sub_arr.data(), ex_arr.data(), sub_arr.size(),
                        p.inputs[1], p.inputs[2], -15, 15);
         // sum of (e^x)
-        float const_val =
-            cvi_f32_to_fbf16(cvi_f32_to_fbf16(1.0 * channel) / channel);
+        float const_val = BF16(BF16(1.0 * channel) / channel);
         memset(sum_arr.data(), 0, inner_dim * sizeof(float));
         for (int j = 0; j < channel; ++j) {
           for (int k = 0; k < inner_dim; k++) {
@@ -89,7 +87,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
           }
         }
         // convert to bf16
-        f32_to_bf16(sum_arr.data(), sum_arr.data(), sum_arr.size(), true);
+        BF16(sum_arr.data(), sum_arr.data(), sum_arr.size());
 
         std::string mehod = log() ? "log" : "mantissa";
         bf16_lut_mantissa(sum_arr.data(), sum_arr.data(), sum_arr.size(),
@@ -130,9 +128,9 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
       }
     }
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, is_cv18xx);
+      BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
-      f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+      F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (Quant::isUniformQuantized(input(),
                                        output())) { // for quant softmax
