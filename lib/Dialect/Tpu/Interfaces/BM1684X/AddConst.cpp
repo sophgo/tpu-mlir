@@ -50,11 +50,12 @@ void tpu::AddConstOp::codegen_global_bm1684x() {
     param.common.scale_A = multiplier();
     param.common.rshift_A = rshift();
   } else {
-    param.common.B_dtype = input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+    param.common.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
   }
-  BM168x::call_global_func(
-        "backend_api_constbinary_global", &param, sizeof(param),
-        input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_constbinary_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 // =========================================
@@ -77,17 +78,34 @@ int64_t tpu::AddConstOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::AddConstOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                      void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  Module::getNCHW(output(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                            void *sec_info_) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto input_type = Module::getStorageType(input());
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   constbinary_local_spec_t param = {0};
-
   param.common.binary_type = BINARY_ADD;
   param.common.if_relu = do_relu();
   param.common.relu_upper_limit = relu_limit().convertToDouble();
@@ -103,21 +121,9 @@ void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     param.common.B_dtype = DTYPE_FP32; // assume coeff is fp32
   } else {
     param.common.B_dtype = DTYPE_INT32; // assume coeff is fp32
-
   }
-  local_sec_info_t sec_info = {0};
-  sec_info.n_slice = in_gi.n_slice;
-  sec_info.d_slice = 1;
-  sec_info.h_slice = in_gi.h_slice;
-  sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
-  sec_info.w_slice = w;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = w;
 
   BM168x::call_local_func("backend_api_constbinary_local", &param,
-                          sizeof(param), &sec_info, input_spec->data(),
+                          sizeof(param), sec_info_, input_spec->data(),
                           output_spec->data());
 }

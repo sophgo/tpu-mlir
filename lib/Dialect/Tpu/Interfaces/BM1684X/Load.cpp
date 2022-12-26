@@ -30,8 +30,28 @@ int64_t tpu::LoadOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto chip = Module::getChip();
+void tpu::LoadOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                   void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  sec_info->n_slice = gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = gi.h_slice;
+  sec_info->h_idx = gi.h_idx;
+  sec_info->is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                        void *sec_info_) {
   auto pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
@@ -49,7 +69,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     g_stride.H = 0;
   }
   auto s_stride = BM168x::getLocalStride(gi.n_slice, C, gi.h_slice, W,
-                                           fmt_bytes, gi.eu_align);
+                                         fmt_bytes, gi.eu_align);
   auto g_addr = Module::getAddress(input());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;

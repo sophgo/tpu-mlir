@@ -7,12 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
+#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -109,13 +109,44 @@ int64_t tpu::MaxPoolWithMaskOp::getBufferSize_bm1684x(
   return 0;
 }
 
+void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                             void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  pool_attr_t attrs;
+  parseParam(&attrs);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  int64_t pad_h_b =
+      (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attrs.ih);
+  // to be compatible with nntoolchain
+  if (sec_info->is_h_split) {
+    sec_info->h_idx = h_step == 0 ? -attrs.pad_h : in_gi.h_idx;
+    sec_info->h_slice = sec_info->h_idx < 0
+                            ? sec_info->h_slice - sec_info->h_idx
+                            : sec_info->h_slice;
+    sec_info->h_slice = sec_info->h_slice + pad_h_b;
+  }
+  sec_info->w_slice = attrs.iw;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = attrs.ow;
+}
+
 void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step,
-                                                   int64_t h_step) {
+                                                   int64_t h_step,
+                                                   void *sec_info_) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
   pool_attr_t attrs;
   parseParam(&attrs);
@@ -127,24 +158,6 @@ void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step,
   common.pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
 
-  local_sec_info_t sec_info;
-  memset(&sec_info, 0, sizeof(sec_info));
-  sec_info.n_slice = in_gi.n_slice;
-  sec_info.h_slice = in_gi.h_slice;
-  sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attrs.ih);
-  // to be compatible with nntoolchain
-  if (sec_info.is_h_split) {
-    sec_info.h_idx = h_step == 0 ? -attrs.pad_h : in_gi.h_idx;
-    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
-                                          : sec_info.h_slice;
-    sec_info.h_slice = sec_info.h_slice + common.pad_h_b;
-  }
-  sec_info.w_slice = attrs.iw;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = attrs.ow;
   BM168x::call_local_func("backend_api_pooling_local", &spec, sizeof(spec),
-                          &sec_info, input_spec->data(), output_spec->data());
+                          sec_info_, input_spec->data(), output_spec->data());
 }
