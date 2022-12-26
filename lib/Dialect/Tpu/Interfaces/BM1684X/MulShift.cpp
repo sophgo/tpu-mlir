@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -63,8 +63,8 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
       param.mode = 2;
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
-      BM168x::call_global_func("backend_api_requant_int_global",
-                                           &param, sizeof(param));
+      BM168x::call_global_func("backend_api_requant_int_global", &param,
+                               sizeof(param));
       return;
     }
   }
@@ -82,7 +82,7 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUND_UP;
   BM168x::call_global_func("backend_api_mulshift_global", &param,
-                                       sizeof(param));
+                           sizeof(param));
 }
 
 int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
@@ -104,12 +104,35 @@ int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
-                                                 int64_t h_step) {
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+void tpu::MulShiftOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                      void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                            void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+
   if (Quant::isUniformQuantized(input())) {
     auto in_qtype = Quant::getUniformQuantizedType(input());
     auto out_qtype = Quant::getUniformQuantizedType(output());
@@ -120,9 +143,9 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
       param.input_addr = (uint32_t)in_gi.out_addr;
       param.output_addr = (uint32_t)gi.out_addr;
       param.buffer_local_addr = (uint32_t)gi.buffer_addr;
-      param.n = gi.n_slice;
+      param.n = sec_info->out_n_slice;
       param.c = c;
-      param.h = gi.h_slice;
+      param.h = sec_info->out_h_slice;
       param.w = w;
       param.mul_value = multiplier();
       param.shift_value = -rshift();
@@ -131,8 +154,8 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
       param.input_dtype = BM168x::getDataType(input());
       param.output_dtype = BM168x::getDataType(output());
       param.mode = 2;
-      BM168x::call_local_func("backend_api_requant_int_local",
-                                          &param, sizeof(param));
+      BM168x::call_local_func("backend_api_requant_int_local", &param,
+                              sizeof(param));
       return;
     }
   }
@@ -140,9 +163,9 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
   param.input_addr = in_gi.out_addr;
   param.output_addr = gi.out_addr;
   param.buffer_addr = gi.buffer_addr;
-  param.input_n = in_gi.n_slice;
+  param.input_n = sec_info->n_slice;
   param.input_c = c;
-  param.input_h = in_gi.h_slice;
+  param.input_h = sec_info->h_slice;
   param.input_w = w;
   param.scale_val = multiplier();
   param.rshift_num = rshift();
@@ -150,6 +173,5 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step,
   param.scale_dtype = param.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
   param.output_dtype = BM168x::getDataType(output());
   param.round_mode = ROUND_UP;
-  BM168x::call_local_func("backend_api_mulshift_local", &param,
-                                      sizeof(param));
+  BM168x::call_local_func("backend_api_mulshift_local", &param, sizeof(param));
 }

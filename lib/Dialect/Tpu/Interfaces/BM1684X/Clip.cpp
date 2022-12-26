@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -38,6 +38,12 @@ int64_t tpu::ClipOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::ClipOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::ClipOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                  void *sec_info_) {
+  llvm_unreachable("Not Implemented");
+}
+
+void tpu::ClipOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                        void *sec_info_) {
   llvm_unreachable("Not Implemented");
 }

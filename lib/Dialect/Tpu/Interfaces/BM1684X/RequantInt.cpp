@@ -44,10 +44,11 @@ void tpu::RequantIntOp::codegen_global_bm1684x() {
   param.mode = static_cast<int>(quant_mode());
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
-  param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
-                     ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.round_mode = quant_mode() == tpu::RequantMode::Normal
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
   BM168x::call_global_func("backend_api_requant_int_global", &param,
-                                       sizeof(param));
+                           sizeof(param));
 }
 
 // =========================================
@@ -69,21 +70,44 @@ int64_t tpu::RequantIntOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  requant_int_param_t param = {0};
+void tpu::RequantIntOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                        void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                              void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto oqtype = Quant::getUniformQuantizedType(output());
+
+  requant_int_param_t param = {0};
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
-  param.n = gi.n_slice;
+  param.n = sec_info->n_slice;
   param.c = c;
-  param.h = gi.h_slice;
+  param.h = sec_info->h_slice;
   param.w = w;
-
-  auto oqtype = Quant::getUniformQuantizedType(output());
   param.mul_value = multiplier();
   param.shift_value = -rshift();
   param.offset_value = oqtype.getZeroPoint();
@@ -95,8 +119,9 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.input_dtype = BM168x::getDataType(input());
   param.output_dtype = BM168x::getDataType(output());
   param.mode = static_cast<int>(quant_mode());
-  param.round_mode = quant_mode() == tpu::RequantMode::Normal ?
-                     ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
+  param.round_mode = quant_mode() == tpu::RequantMode::Normal
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
   BM168x::call_local_func("backend_api_requant_int_local", &param,
-                                      sizeof(param));
+                          sizeof(param));
 }

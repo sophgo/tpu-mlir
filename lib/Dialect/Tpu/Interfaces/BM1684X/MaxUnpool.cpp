@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -60,7 +60,7 @@ void tpu::MaxUnpoolOp::codegen_global_bm1684x() {
   spec.top_h = oh;
   spec.top_w = ow;
   BM168x::call_global_func("backend_api_upsamplemask_global", &spec,
-                                       sizeof(spec));
+                           sizeof(spec));
 }
 
 // =========================================
@@ -73,6 +73,12 @@ int64_t tpu::MaxUnpoolOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::MaxUnpoolOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                             void *sec_info_) {
+  llvm_unreachable("Not Implemented");
+}
+
+void tpu::MaxUnpoolOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                             void *sec_info_) {
   llvm_unreachable("Not Implemented");
 }

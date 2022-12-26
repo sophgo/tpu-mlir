@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -75,10 +75,34 @@ int64_t tpu::LutOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::LutOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                 void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                       void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto table_gi = LocalGenInterface::getGroupInfo(table(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
+
   lut_param_t p = {0};
   p.input_addr = in_gi.out_addr;
   p.table_addr = table_gi.out_addr;
@@ -91,9 +115,9 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   p.shape_dim = 4;
   int64_t n, c, h, w;
   Module::getNCHW(input(), n, c, h, w);
-  p.shape[0] = gi.n_slice;
+  p.shape[0] = sec_info->out_n_slice;
   p.shape[1] = c;
-  p.shape[2] = gi.h_slice;
+  p.shape[2] = sec_info->out_h_slice;
   p.shape[3] = w;
   BM168x::call_local_func("backend_api_lut", &p, sizeof(p));
 }

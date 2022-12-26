@@ -66,33 +66,37 @@ int64_t tpu::SubOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::SubOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
-  auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
+void tpu::SubOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                 void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
-  auto out_type = Module::getStorageType(output());
-  auto in_type = Module::getStorageType(inputs()[0]);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
+  sec_info->n_slice = gi.n_slice;
+  sec_info->h_slice = in0_gi.h_slice;
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
+  sec_info->h_idx = in0_gi.h_idx;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->is_w_split = false;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::SubOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                       void *sec_info_) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  local_sec_info_t sec_info{0};
-  sec_info.n_slice = gi.n_slice;
-  sec_info.h_slice = in0_gi.h_slice;
-  sec_info.w_slice = w;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
-  sec_info.h_idx = in0_gi.h_idx;
-
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.is_w_split = false;
-  sec_info.out_w_slice = w;
+  auto gi = getGroupInfo(n_step, h_step);
 
   std::vector<int64_t> multi_v(2, 1);
   std::vector<int64_t> rshift_v(2, 0);
-
   if (Quant::isUniformQuantized(inputs()[0], output())) {
     auto m_v = Module::getI64Array(multipliers(), 2, 1);
     auto r_v = Module::getI64Array(rshifts(), 2, 0);
@@ -112,5 +116,5 @@ void tpu::SubOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.A_is_coeff = false;
   param.B_is_coeff = false;
   BM168x::call_local_func("backend_api_bcbinary_local", &param, sizeof(param),
-                          &sec_info, input_spec->data(), output_spec->data());
+                          sec_info_, input_spec->data(), output_spec->data());
 }

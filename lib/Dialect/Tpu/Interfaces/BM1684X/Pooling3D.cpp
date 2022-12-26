@@ -171,24 +171,49 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
   return buffer_size;
 }
 
-void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  // auto op = getOperation();
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+
   pool_attr_t attrs;
   parseParam(&attrs);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
   pooling3d_spec_t spec = {0};
   spec.input_addr = in_gi.out_addr;
   spec.output_addr = gi.out_addr;
   spec.buffer_addr = gi.buffer_addr;
-  spec.input_shape[0] = in_gi.n_slice;
+  spec.input_shape[0] = sec_info->n_slice;
   spec.input_shape[1] = attrs.c;
   spec.input_shape[2] = attrs.id;
-  spec.input_shape[3] = in_gi.h_slice;
+  spec.input_shape[3] = sec_info->h_slice;
   spec.input_shape[4] = attrs.iw;
-  spec.output_shape[0] = gi.n_slice;
+  spec.output_shape[0] = sec_info->out_n_slice;
   spec.output_shape[1] = attrs.c;
   spec.output_shape[2] = attrs.od;
-  spec.output_shape[3] = gi.h_slice;
+  spec.output_shape[3] = sec_info->out_h_slice;
   spec.output_shape[4] = attrs.ow;
   spec.in_dtype = BM168x::getDataType(input());
   spec.out_dtype = BM168x::getDataType(output());
