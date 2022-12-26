@@ -24,6 +24,7 @@ struct Quant {
   struct Type {
     static constexpr llvm::StringRef INT8 = "INT8";
     static constexpr llvm::StringRef UINT8 = "UINT8";
+    static constexpr llvm::StringRef INT4 = "INT4";
     static constexpr llvm::StringRef BF16 = "BF16";
     static constexpr llvm::StringRef F16 = "F16";
     static constexpr llvm::StringRef F32 = "F32";
@@ -78,13 +79,13 @@ struct Quant {
 
   // for asymmetric
   static void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
-                                   int64_t &zeroPoint);
+                                   int64_t &zeroPoint, int bitwidth = 8);
   // for symmetric
-  static double getScale(double threshold, bool sign);
+  static double getScale(double threshold, bool sign, int bitwidth = 8);
   static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
-                                   bool asymmetric);
+                                   bool asymmetric, int bitwidth = 8);
   static void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
-                                   bool &sign, bool asymmetric);
+                                   bool &sign, bool asymmetric, int bitwidth = 8);
 
   template <typename T> static int64_t to_int(T v, RoundingMode round_mode) {
     // round_mode:
@@ -135,6 +136,21 @@ struct Quant {
     auto v = to_int(value, round_mode);
     return v > 255 ? 255 : v < 0 ? 0 : v;
   }
+
+  template <typename T>
+  static int8_t
+  to_int4(T value, RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+    auto v = to_int(value, round_mode);
+    return v > 7 ? 7 : v < -8 ? -8 : v;
+  };
+
+  template <typename T>
+  static uint8_t
+  to_uint4(T value, RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+    auto v = to_int(value, round_mode);
+    return v > 15 ? 15 : v < 0 ? 0 : v;
+  }
+
   static uint16_t to_bf16(float src, bool rounding);
   static void to_bf16(float *src, uint16_t *dst, size_t size,
                       bool rounding = true);

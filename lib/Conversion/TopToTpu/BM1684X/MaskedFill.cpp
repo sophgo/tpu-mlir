@@ -21,7 +21,10 @@ void MaskedFillLowering::LoweringINT8(PatternRewriter &rewriter, top::MaskedFill
                                       bool asymmetric) const {
   lowering_common_f32<tpu::MaskedFillOp>(rewriter, op);
 }
-
+void MaskedFillLowering::LoweringINT4(PatternRewriter &rewriter, top::MaskedFillOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void MaskedFillLowering::LoweringBF16(PatternRewriter &rewriter,
                                       top::MaskedFillOp op) const {
   lowering_common_bf16<tpu::MaskedFillOp>(rewriter, op);

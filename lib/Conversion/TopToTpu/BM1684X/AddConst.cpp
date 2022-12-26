@@ -22,6 +22,11 @@ void AddConstLowering::LoweringINT8(PatternRewriter &rewriter,
   lowering_common_f32<tpu::AddConstOp>(rewriter, op);
 }
 
+void AddConstLowering::LoweringINT4(PatternRewriter &rewriter, top::AddConstOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
+
 void AddConstLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::AddConstOp op) const {
   lowering_common_bf16<tpu::AddConstOp>(rewriter, op);

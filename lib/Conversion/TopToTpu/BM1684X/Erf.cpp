@@ -18,7 +18,10 @@ void ErfLowering::LoweringF32(PatternRewriter &rewriter, top::ErfOp op) const {
                tpu::ActiveModeAttr::get(op.getContext(), tpu::ActiveMode::ERF));
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
-
+void ErfLowering::LoweringINT4(PatternRewriter &rewriter, top::ErfOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void ErfLowering::LoweringINT8(PatternRewriter &rewriter, top::ErfOp op,
                                bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());

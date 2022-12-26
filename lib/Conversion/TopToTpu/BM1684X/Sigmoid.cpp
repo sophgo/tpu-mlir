@@ -19,7 +19,10 @@ void SigmoidLowering::LoweringF32(PatternRewriter &rewriter,
                                                 tpu::ActiveMode::SIGMOID));
   lowering_common_f32<tpu::ActiveOp>(rewriter, op_);
 }
-
+void SigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::SigmoidOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
   auto stype = Module::getStorageType(op.output());

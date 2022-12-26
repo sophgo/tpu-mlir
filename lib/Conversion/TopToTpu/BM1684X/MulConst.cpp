@@ -16,7 +16,10 @@ void MulConstLowering::LoweringF32(PatternRewriter &rewriter,
                                    top::MulConstOp op) const {
   lowering_common_f32<tpu::MulConstOp>(rewriter, op);
 }
-
+void MulConstLowering::LoweringINT4(PatternRewriter &rewriter, top::MulConstOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
   double scale_i, scale_o;

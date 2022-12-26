@@ -27,6 +27,11 @@ void AbsLowering::LoweringINT8(PatternRewriter &rewriter, top::AbsOp absOp,
   lowering_common_int8<tpu::ActiveOp>(rewriter, op, asymmetric);
 }
 
+void AbsLowering::LoweringINT4(PatternRewriter &rewriter, top::AbsOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
+
 void AbsLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::AbsOp absOp) const {
   auto op = absOp.getOperation();

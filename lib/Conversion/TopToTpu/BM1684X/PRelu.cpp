@@ -11,7 +11,10 @@
 
 namespace tpu_mlir {
 namespace bm1684x {
-
+void PReluLowering::LoweringINT4(PatternRewriter &rewriter, top::PReluOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                  bool asymmetric) const {
   if (asymmetric == false) {

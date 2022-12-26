@@ -86,10 +86,18 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       } else {
         v = requant(p.inputs[0][i], qtype);
       }
-      if (out_type.isUnsignedInteger(8)) {
-        p.outputs[0][i] = Quant::to_uint8(v, round_mode);
+      if (out_type.isInteger(4)) {
+        if (out_type.isUnsignedInteger(4)) {
+          p.outputs[0][i] = Quant::to_uint4(v, round_mode);
+        } else  {
+          p.outputs[0][i] = Quant::to_int4(v, round_mode);
+        }
       } else {
-        p.outputs[0][i] = Quant::to_int8(v, round_mode);
+        if (out_type.isUnsignedInteger(8)) {
+          p.outputs[0][i] = Quant::to_uint8(v, round_mode);
+        } else  {
+          p.outputs[0][i] = Quant::to_int8(v, round_mode);
+        }
       }
     }
   } else if (isInQuant && false == isOutQuant) {
