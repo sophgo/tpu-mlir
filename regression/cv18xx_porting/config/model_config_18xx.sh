@@ -447,7 +447,7 @@ export MODEL_DEF=$MODEL_PATH/rnn/resnet_res_blstm/caffe/deploy_fix.prototxt
 export MODEL_DAT=$MODEL_PATH/rnn/resnet_res_blstm/caffe/model.caffemodel
 export LABEL_MAP=$MODEL_PATH/rnn/resnet_res_blstm/caffe/label.txt
 export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
-export IMAGE_PATH=$REGRESSION_PATH/data/poem.jpg
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/poem.jpg
 export INPUT_SHAPE=[[1,3,32,280]]
 export NET_INPUT_DIMS=32,280
 export IMAGE_RESIZE_DIMS=32,280
@@ -461,7 +461,8 @@ export TOLERANCE_BF16=0.99,0.98
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
 export DO_POSTPROCESS=1
 export POSTPROCESS_SCRIPT=$REGRESSION_PATH/data/run_postprocess/ctc_greedy_decoder.sh
-export CALI_IMAGES=$REGRESSION_PATH/dataset/MNIST
+export CALI_IMAGES=$DATA_SET/OCR/images
+#https://github.com/senlinuc/caffe_ocr
 fi
 
 if [ $NET = "blazeface" ]; then
@@ -745,6 +746,7 @@ export MODEL_DEF_FUSED_POSTPROCESS=$MODEL_PATH/face_detection/retinaface/caffe/R
 export TOLERANCE_BF16=0.99,0.87
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
 export CALI_IMAGES=$DATA_SET/widerface/WIDER_val/images
+export INPUT_NUM=300
 fi
 
 if [ $NET = "ssd300" ]; then
@@ -896,6 +898,26 @@ export EXCEPTS=424_Mul,422_Conv,388_Sigmoid
 export TOLERANCE_INT8=0.68,0.13
 export TOLERANCE_BF16=0.99,0.93
 export TOLERANCE_BF16_CMDBUF=0.99,0.96
+export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
+fi
+
+if [ $NET = "efficientnet-lite_b0" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/imagenet/efficientnet-lite/b0/onnx/efficientnet_lite.onnx
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export INPUT_SHAPE=[[1,3,224,224]]
+export IMAGE_RESIZE_DIMS=256,256
+export NET_INPUT_DIMS=224,224
+export RAW_SCALE=255.0
+export MODEL_CHANNEL_ORDER="rgb"
+export MEAN=127,127,127
+export STD=128,128,128
+export INPUT_SCALE=0.0078125,0.0078125,0.0078125  # 1.0
+export INPUT=input
+#export OUTPUTS=output
+export TOLERANCE_INT8=0.98,0.79
+export TOLERANCE_BF16=0.99,0.96
+export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
 

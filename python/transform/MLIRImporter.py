@@ -57,6 +57,7 @@ class Top:
     ReshapeOp = 'top.Reshape'
     ReluOp = 'top.Relu'
     ReduceOp = 'top.Reduce'
+    ReverseOp = 'top.Reverse'
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
     SigmoidOp = 'top.Sigmoid'
@@ -459,6 +460,14 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         return self.buildOp(Top.ReshapeOp, operands, [output_type], name=kargs['name'])
 
+    def create_reverse_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis'])
+        }
+        return self.buildOp(Top.ReverseOp, operands, [output_type], **param)
+
     def create_slice_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
@@ -814,15 +823,24 @@ class MLIRImporter(object):
     def create_detection_output_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {
-            'name': kargs['name'],
-            'num_classes': IntegerAttr.get(self.mlir_type['INT64'], kargs['num_classes']),
-            'share_location': BoolAttr.get(kargs['share_location']),
-            'background_label_id': IntegerAttr.get(self.mlir_type['INT64'], kargs['background_label_id']),
-            'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
-            'top_k': IntegerAttr.get(self.mlir_type['INT64'], kargs['top_k']),
-            'code_type': StringAttr.get(kargs['code_type']),
-            'keep_top_k': IntegerAttr.get(self.mlir_type['INT64'], kargs['keep_top_k']),
-            'confidence_threshold': FloatAttr.get_f64(kargs['confidence_threshold']),
+            'name':
+            kargs['name'],
+            'num_classes':
+            IntegerAttr.get(self.mlir_type['INT64'], kargs['num_classes']),
+            'share_location':
+            BoolAttr.get(kargs['share_location']),
+            'background_label_id':
+            IntegerAttr.get(self.mlir_type['INT64'], kargs['background_label_id']),
+            'nms_threshold':
+            FloatAttr.get_f64(kargs['nms_threshold']),
+            'top_k':
+            IntegerAttr.get(self.mlir_type['INT64'], kargs['top_k']),
+            'code_type':
+            StringAttr.get(kargs['code_type']),
+            'keep_top_k':
+            IntegerAttr.get(self.mlir_type['INT64'], kargs['keep_top_k']),
+            'confidence_threshold':
+            FloatAttr.get_f64(kargs['confidence_threshold']),
         }
         return self.buildOp(Top.DetectionOutputOp, operands, [output_type], **param)
 
@@ -861,7 +879,8 @@ class MLIRImporter(object):
             'anchor_base_size': IntegerAttr.get(self.mlir_type['INT64'], kargs['anchor_base_size']),
             'rpn_obj_threshold': FloatAttr.get_f64(kargs['rpn_obj_threshold']),
             'rpn_nms_threshold': FloatAttr.get_f64(kargs['rpn_nms_threshold']),
-            'rpn_nms_post_top_n': IntegerAttr.get(self.mlir_type['INT64'], kargs['rpn_nms_post_top_n'])
+            'rpn_nms_post_top_n': IntegerAttr.get(self.mlir_type['INT64'],
+                                                  kargs['rpn_nms_post_top_n'])
         }
         return self.buildOp(Top.Proposal, operands, [output_type], **param)
 

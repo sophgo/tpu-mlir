@@ -726,6 +726,18 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
+  let summary = "Load operation";
+  let description = [{
+    Reverse on input
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_CastOp:Tpu_Op<"Cast", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>,
