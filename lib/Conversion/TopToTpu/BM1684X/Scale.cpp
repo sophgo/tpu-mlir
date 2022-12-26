@@ -42,7 +42,10 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands,
                                             op->getAttrs());
 }
-
+void ScaleLowering::LoweringINT4(PatternRewriter &rewriter, top::ScaleOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
                                  bool asymmetric) const {
   int64_t n, c, h, w;

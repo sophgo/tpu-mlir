@@ -150,6 +150,10 @@ static inline int32_t saturate(int32_t input, mlir::Type stype) {
     output = input > 65535 ? 65535 : input < 0 ? 0 : input;
   else if (stype.isSignedInteger(16))
     output = input > 32767 ? 32767 : input < -32768 ? -32768 : input;
+  else if (stype.isUnsignedInteger(4))
+    output = input > 15 ? 15 : input < 0 ? 0 : input;
+  else if (stype.isSignedInteger(4))
+    output = input > 7 ? 7 : input < -8 ? -8 : input;
   else
     output = input;
   return output;

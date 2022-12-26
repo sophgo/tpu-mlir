@@ -21,7 +21,10 @@ void ReciprocalLowering::LoweringF32(PatternRewriter &rewriter,
                                      top::ReciprocalOp op) const {
   lowering_common_f32<tpu::ReciprocalOp>(rewriter, op);
 }
-
+void ReciprocalLowering::LoweringINT4(PatternRewriter &rewriter, top::ReciprocalOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::ReciprocalOp op,
                                       bool asymmetric) const {

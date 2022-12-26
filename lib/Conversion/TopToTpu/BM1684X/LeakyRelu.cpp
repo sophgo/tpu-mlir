@@ -16,7 +16,10 @@ void LeakyReluLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::LeakyReluOp op) const {
   lowering_common_f32<tpu::LeakyReluOp>(rewriter, op);
 }
-
+void LeakyReluLowering::LoweringINT4(PatternRewriter &rewriter, top::LeakyReluOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::LeakyReluOp op,
                                      bool asymmetric) const {

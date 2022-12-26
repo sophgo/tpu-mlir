@@ -151,10 +151,18 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
         for (int i = 0; i < num_output; ++i) {
           auto v = applyMultiplierAndRShift(
               p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0));
-          if (out_type.isUnsignedInteger(8)) {
-            p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
+          if (out_type.isInteger(8)) {
+            if (out_type.isUnsignedInteger(8)) {
+              p.outputs[0][i] = Quant::to_uint8(v + o_qtype.getZeroPoint());
+            } else {
+              p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+            }
           } else {
-            p.outputs[0][i] = Quant::to_int8(v + o_qtype.getZeroPoint());
+            if (out_type.isUnsignedInteger(4)) {
+              p.outputs[0][i] = Quant::to_uint4(v + o_qtype.getZeroPoint());
+            } else {
+              p.outputs[0][i] = Quant::to_int4(v + o_qtype.getZeroPoint());
+            }
           }
         }
       }

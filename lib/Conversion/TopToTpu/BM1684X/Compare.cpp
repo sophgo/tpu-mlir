@@ -33,6 +33,11 @@ void CompareLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareOp op,
   lowering_common<tpu::CompareOp>(rewriter, op_, newType);
 }
 
+void CompareLowering::LoweringINT4(PatternRewriter &rewriter, top::CompareOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
+
 void CompareLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::CompareOp compareOp) const {
   lowering_common_bf16<tpu::CompareOp>(rewriter, compareOp.getOperation());

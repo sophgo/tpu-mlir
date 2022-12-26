@@ -16,7 +16,10 @@ void SplitLowering::LoweringINT8(PatternRewriter &rewriter,
                                  top::SplitOp unpackOp, bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
-
+void SplitLowering::LoweringINT4(PatternRewriter &rewriter, top::SplitOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void SplitLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SplitOp unpackOp) const {
   llvm_unreachable("Not Implemented");

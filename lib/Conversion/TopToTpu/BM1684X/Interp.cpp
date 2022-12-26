@@ -28,7 +28,10 @@ void InterpLowering::LoweringF32(PatternRewriter &rewriter,
 
   lowering_common_f32<tpu::InterpOp>(rewriter, op);
 }
-
+void InterpLowering::LoweringINT4(PatternRewriter &rewriter, top::InterpOp op,
+                                   bool asymmetric) const {
+  LoweringINT8(rewriter, op, asymmetric);
+}
 void InterpLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::InterpOp op, bool asymmetric) const {
   auto op_ = op.getOperation();

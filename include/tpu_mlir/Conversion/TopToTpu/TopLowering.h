@@ -65,6 +65,15 @@ public:
         op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
       }
       LoweringINT8(rewriter, opTy, LoweringConfig::isAsymmetric);
+    } else if (real_mode == Quant::Type::INT4) {
+      if (op->hasTrait<trait::SupportFuseRelu>() || isa<top::ReluOp>(op)) {
+        op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
+      }
+      if (isa<top::ConvOp, top::MatMulOp>(op)) {
+        LoweringINT4(rewriter, opTy, LoweringConfig::isAsymmetric);
+      } else {
+        LoweringINT8(rewriter, opTy, LoweringConfig::isAsymmetric);
+      }
     } else if (real_mode == Quant::Type::F16) {
       if (Module::isCV18xx(chip_name)) {
         LoweringBF16(rewriter, opTy);
@@ -83,6 +92,10 @@ public:
   virtual void LoweringINT8(PatternRewriter &rewriter, OpTy opTy,
                             bool asymmetric) const {
     llvm_unreachable("Not Implemented");
+  }
+  virtual void LoweringINT4(PatternRewriter &rewriter, OpTy opTy,
+                            bool asymmetric) const {
+    LoweringINT8(rewriter, opTy, asymmetric);
   }
   virtual void LoweringBF16(PatternRewriter &rewriter, OpTy opTy) const {
     llvm_unreachable("Not Implemented");
@@ -103,6 +116,8 @@ public:
 // ================================
 
 mlir::Type getQuantInt8Type(Value v, bool asymmetric = false);
+mlir::Type getQuantIntType(Value v, double scale, double offset, int bits = 8);
+mlir::Type getQuantInt4Type(Value v, bool asymmetric = false);
 mlir::Type getQuantBoolType(Value v);
 
 // Lowering to a new Operation, with the same operands and same attrs, and
@@ -230,6 +245,8 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
+
+Value do_requantFp(Value input, double scale, double offset, Type to_type, std::string& to_name);
 
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
