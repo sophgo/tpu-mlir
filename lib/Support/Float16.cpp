@@ -9,9 +9,39 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "bitcasts.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Helper/Module.h"
 #include <math.h>
 
+using namespace tpu_mlir::helper;
 namespace tpu_mlir {
+
+typedef union {
+  uint16_t bits;
+  struct {
+    uint16_t frac : 10; // mantissa
+    uint16_t exp : 5;   // exponent
+    uint16_t sign : 1;  // sign
+  } format;
+} fp16;
+
+typedef union {
+  uint16_t bits;
+  struct {
+    uint16_t frac : 7; // mantissa
+    uint16_t exp : 8;  // exponent
+    uint16_t sign : 1; // sign
+  } format;
+} bf16;
+
+typedef union {
+  float fval;
+  uint32_t bits;
+  struct {
+    uint32_t frac : 23; // mantissa
+    uint32_t exp : 8;   // exponent
+    uint32_t sign : 1;  // sign
+  } format;
+} fp32;
 
 /*
  * Convert a 16-bit floating-point number in IEEE half-precision format, in bit
@@ -253,7 +283,7 @@ static inline float fp16_ieee_to_fp32_value(uint16_t h) {
  * mode and no operations on denormals) floating-point operations and bitcasts
  * between integer and floating-point variables.
  */
-uint16_t fp16_ieee_from_fp32_value(float f) {
+static uint16_t fp16_ieee_from_fp32_value(float f) {
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) ||              \
     defined(__GNUC__) && !defined(__STRICT_ANSI__)
   const float scale_to_inf = 0x1.0p+112f;
@@ -713,57 +743,16 @@ static inline fp16 fp32_to_fp16_all(fp32 &src, RoundingMode round_mode) {
   return dst;
 }
 
-float f16_to_f32(uint16_t src) {
-  fp16 half = {.bits = src};
-  if (half.format.exp == 31 && half.format.frac != 0) {
-    fp32 res = {0};
-    // NAN which had beed checked with IC
-    res.bits = UINT32_C(0xFFC00000);
-    return res.fval;
-  }
-
-  return fp16_ieee_to_fp32_value(src);
-}
-
-float bf16_to_f32(uint16_t src) {
-  unsigned int tmp = src;
-  tmp = tmp << 16;
-  return *((float *)&tmp);
-}
-
-uint16_t bm_f32_to_bf16(float src) {
+static uint16_t bm_f32_to_bf16(float src) {
   fp32 tmp = {.fval = src};
   bf16 ret = fp32_to_bf16_all(tmp, tpu_mlir::ROUNDING_HALF_TO_EVEN);
   return ret.bits;
 }
 
-uint16_t f32_to_f16(float src) {
-  fp32 tmp = {.fval = src};
-  fp16 ret = fp32_to_fp16_all(tmp, tpu_mlir::ROUNDING_HALF_TO_EVEN);
-  return ret.bits;
-}
-
-void f32_to_f16(float *p_src, float *p_dst, int num) {
-#pragma omp parallel for schedule(static, omp_schedule(num))
-  for (int i = 0; i < num; i++) {
-    p_dst[i] = F16(p_src[i]);
-  }
-}
-
-float F16(float src) {
-  uint16_t tmp = f32_to_f16(src);
-  return f16_to_f32(tmp);
-}
-
-float BF16(float src) {
-  uint16_t tmp = bm_f32_to_bf16(src);
-  return bf16_to_f32(tmp);
-}
-
 /*
 for cv18xx
 */
-uint16_t cvi_f32_to_bf16(float src, bool is_tpu) {
+static uint16_t cvi_f32_to_bf16(float src, bool is_tpu) {
   // To convert a float 32 to bfloat16, a float 32 can be viewed as 32 bits
   // with the following tags:
   //
@@ -801,41 +790,58 @@ uint16_t cvi_f32_to_bf16(float src, bool is_tpu) {
   return u16_val;
 }
 
-float cvi_f32_to_fbf16(float src, bool is_tpu) {
-  auto u16_val = cvi_f32_to_bf16(src, is_tpu);
-  return bf16_to_f32(u16_val);
+uint16_t f32_to_f16(float src) {
+  fp32 tmp = {.fval = src};
+  fp16 ret = fp32_to_fp16_all(tmp, tpu_mlir::ROUNDING_HALF_TO_EVEN);
+  return ret.bits;
 }
 
-// f32 to bf16 common
-uint16_t f32_to_bf16(float src, bool is_cv18xx, bool is_tpu) {
-  return is_cv18xx ? cvi_f32_to_bf16(src, is_tpu) : bm_f32_to_bf16(src);
+uint16_t f32_to_bf16(float src, bool is_tpu) {
+  if (Module::isCV18xx()) {
+    return cvi_f32_to_bf16(src, is_tpu);
+  }
+  return bm_f32_to_bf16(src);
 }
 
-void f32_to_bf16(float *p_src, float *p_dst, int num, bool is_cv18xx,
-                 bool is_tpu) {
+float f16_to_f32(uint16_t src) {
+  fp16 half = {.bits = src};
+  if (half.format.exp == 31 && half.format.frac != 0) {
+    fp32 res = {0};
+    // NAN which had beed checked with IC
+    res.bits = UINT32_C(0xFFC00000);
+    return res.fval;
+  }
+
+  return fp16_ieee_to_fp32_value(src);
+}
+
+float bf16_to_f32(uint16_t src) {
+  unsigned int tmp = src;
+  tmp = tmp << 16;
+  return *((float *)&tmp);
+}
+
+void BF16(float *p_src, float *p_dst, int num, bool is_tpu) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
   for (int i = 0; i < num; i++) {
-    uint16_t tmp = f32_to_bf16(p_src[i], is_cv18xx, is_tpu);
-    p_dst[i] = bf16_to_f32(tmp);
+    p_dst[i] = BF16(p_src[i], is_tpu);
   }
 }
 
-void cvi_int8_to_bf16(float *p_src, float *p_dst, float scale, int zero_point,
-                      int num, bool is_tpu) {
-  // int8 / uint8 ==> bf16 / fp32
-  if (is_tpu) {
-    scale = cvi_f32_to_fbf16(scale);
-    zero_point = cvi_f32_to_fbf16(zero_point);
+void F16(float *p_src, float *p_dst, int num) {
 #pragma omp parallel for schedule(static, omp_schedule(num))
-    for (int i = 0; i < num; i++) {
-      p_dst[i] = cvi_f32_to_fbf16(
-          cvi_f32_to_fbf16(p_src[i] + zero_point, (zero_point != 0)) * scale);
-    }
-  } else {
-#pragma omp parallel for schedule(static, omp_schedule(num))
-    for (int i = 0; i < num; i++) {
-      p_dst[i] = (p_src[i] + zero_point) * scale;
-    }
+  for (int i = 0; i < num; i++) {
+    p_dst[i] = F16(p_src[i]);
   }
+}
+
+float F16(float src) {
+  uint16_t tmp = f32_to_f16(src);
+  return f16_to_f32(tmp);
+}
+
+float BF16(float src, bool is_tpu) {
+  auto u16_val = f32_to_bf16(src, is_tpu);
+  return bf16_to_f32(u16_val);
 }
 } // namespace tpu_mlir

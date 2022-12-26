@@ -64,9 +64,9 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
     auto binary = (Binary *)p.handle;
     binary->run();
     if (out_type.isBF16()) {
-      f32_to_bf16(p.outputs[0], p.outputs[0], num_elem, Module::isCV18xx());
+      BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
-      f32_to_f16(p.outputs[0], p.outputs[0], num_elem);
+      F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (out_type.isInteger(32)) {
     // auto in0 = reinterpret_cast<int32_t*>(p.inputs[0]);
