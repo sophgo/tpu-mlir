@@ -221,7 +221,7 @@ class CaffeConverter(BaseConverter):
         self.WeightToNpz(self.weight_file)
         print("Save mlir file: {}".format(mlir_file))
 
-    def blob_to_weight_op(self, layer, index, shape: list = [], permute_order = []):
+    def blob_to_weight_op(self, layer, index, shape: list = [], permute_order=[]):
         name = layer.name + "_{}".format(index)
         blob = self.layer_dict[layer.name].blobs[index]
         if permute_order != None and len(permute_order) != 0:
@@ -352,12 +352,12 @@ class CaffeConverter(BaseConverter):
             if layer.scale_param.bias_term:
                 bias_op = self.blob_to_weight_op(layer, 1)
             else:
-              if len(layer.bottom) > 1:
-                bias_op = self.create_weight_op(
-                    layer.name + "_1", np.zeros(self.getShape(layer.bottom[1]), np.float32))
-              else:
-                bias_op = self.create_weight_op(
-                    layer.name + "_1", np.zeros(input_shape[1], np.float32))
+                if len(layer.bottom) > 1:
+                    bias_op = self.create_weight_op(
+                        layer.name + "_1", np.zeros(self.getShape(layer.bottom[1]), np.float32))
+                else:
+                    bias_op = self.create_weight_op(layer.name + "_1",
+                                                    np.zeros(input_shape[1], np.float32))
 
             new_op = self.mlir.create_scale_op([in_op, scale_op, bias_op], output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
@@ -531,8 +531,8 @@ class CaffeConverter(BaseConverter):
             self.addOperand(layer.top[0], new_op)
         else:
             if len(operands) == 5:
-                operands[1],operands[3] = operands[3],operands[1]
-                operands[2],operands[4] = operands[4],operands[2]
+                operands[1], operands[3] = operands[3], operands[1]
+                operands[2], operands[4] = operands[4], operands[2]
             new_op = self.mlir.create_batchnorm_op(operands, output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
 
@@ -830,17 +830,17 @@ class CaffeConverter(BaseConverter):
         # weight
         wname = layer.name + "_0"
         weight = self.layer_dict[layer.name].blobs[0].data
-        weight = weight.reshape([4, hidden_size*input_size])
+        weight = weight.reshape([4, hidden_size * input_size])
         weight[[1, 2], :] = weight[[2, 1], :]  # ifoc =>iofc
-        weight = weight.reshape([1, 4*hidden_size, input_size])
+        weight = weight.reshape([1, 4 * hidden_size, input_size])
         weight_op = self.create_weight_op(wname, weight)
         operands.append(weight_op)
         # recurrence
         rname = layer.name + "_1"
         r = self.layer_dict[layer.name].blobs[2].data
-        r = r.reshape([4, hidden_size*hidden_size])
+        r = r.reshape([4, hidden_size * hidden_size])
         r[[1, 2], :] = r[[2, 1], :]  # ifoc =>iofc
-        r = r.reshape([1, 4*hidden_size, hidden_size])
+        r = r.reshape([1, 4 * hidden_size, hidden_size])
         recurrence_op = self.create_weight_op(rname, r)
         operands.append(recurrence_op)
         # bias
@@ -848,12 +848,11 @@ class CaffeConverter(BaseConverter):
         bias = self.layer_dict[layer.name].blobs[1].data
         bias = bias.reshape([4, hidden_size])
         bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
-        bias = bias.reshape([1, 4*hidden_size])
+        bias = bias.reshape([1, 4 * hidden_size])
         bias_op = self.create_weight_op(bname, bias)
         operands.append(bias_op)
-        if len(layer.bottom) > 1:
-            operands.append(self.mlir.none_op) # initial_h
-            operands.append(self.mlir.none_op) # initial_c
+        operands.append(self.mlir.none_op)  # initial_h
+        operands.append(self.mlir.none_op)  # initial_c
         name = self.get_loc(layer.top[0])
         param = {
             "name": [name + '_LSTM', name + '_H', name + '_C'],
@@ -879,17 +878,17 @@ class CaffeConverter(BaseConverter):
         # weight
         wname = layer.name + "_0"
         weight = self.layer_dict[layer.name].blobs[0].data
-        weight = weight.reshape([4, hidden_size*input_size])
+        weight = weight.reshape([4, hidden_size * input_size])
         weight[[1, 2], :] = weight[[2, 1], :]  # ifoc =>iofc
-        weight = weight.reshape([1, 4*hidden_size, input_size])
+        weight = weight.reshape([1, 4 * hidden_size, input_size])
         weight_op = self.create_weight_op(wname, weight)
         operands.append(weight_op)
         # recurrence
         rname = layer.name + "_1"
         r = self.layer_dict[layer.name].blobs[1].data
-        r = r.reshape([4, hidden_size*hidden_size])
+        r = r.reshape([4, hidden_size * hidden_size])
         r[[1, 2], :] = r[[2, 1], :]  # ifoc =>iofc
-        r = r.reshape([1, 4*hidden_size, hidden_size])
+        r = r.reshape([1, 4 * hidden_size, hidden_size])
         recurrence_op = self.create_weight_op(rname, r)
         operands.append(recurrence_op)
         # bias
@@ -897,12 +896,11 @@ class CaffeConverter(BaseConverter):
         bias = self.layer_dict[layer.name].blobs[2].data
         bias = bias.reshape([4, hidden_size])
         bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
-        bias = bias.reshape([1, 4*hidden_size])
+        bias = bias.reshape([1, 4 * hidden_size])
         bias_op = self.create_weight_op(bname, bias)
         operands.append(bias_op)
-        if len(layer.bottom) > 1:
-            operands.append(self.mlir.none_op) # initial_h
-            operands.append(self.mlir.none_op) # initial_c
+        operands.append(self.mlir.none_op)  # initial_h
+        operands.append(self.mlir.none_op)  # initial_c
         name = self.get_loc(layer.top[0])
         param = {
             "name": [name + '_LSTM', name + '_H', name + '_C'],
@@ -1108,7 +1106,6 @@ class CaffeConverter(BaseConverter):
         new_op = self.mlir.create_proposal_op(operands, output_shape, **param)
         self.addOperand(layer.top[0], new_op)
 
-
     def convert_relu6_op(self, layer):
         assert (self.layerType(layer) == 'ReLU6')
         raise RuntimeError("not implemented")
@@ -1146,7 +1143,12 @@ class CaffeConverter(BaseConverter):
 
     def convert_reverse_op(self, layer):
         assert (self.layerType(layer) == 'Reverse')
-        raise RuntimeError("not implemented")
+        op = self.getOperand(layer.bottom[0])
+        axis = layer.reverse_param.axis
+        attrs = {'name': self.get_loc(layer.top[0]), 'axis': axis}
+        output_shape = self.getShape(layer.top[0])
+        new_op = self.mlir.create_reverse_op([op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_retinaface_detection_op(self, layer):
         assert (self.layerType(layer) == 'RetinaFaceDetection')
@@ -1155,7 +1157,7 @@ class CaffeConverter(BaseConverter):
     def convert_roipooling_op(self, layer):
         assert (self.layerType(layer) == 'ROIPooling')
         operands = list()
-        assert(len(layer.bottom) == 2)
+        assert (len(layer.bottom) == 2)
         op0 = self.getOperand(layer.bottom[0])
         op1 = self.getOperand(layer.bottom[1])
         bottom0_shape = self.getShape(layer.bottom[0])
@@ -1177,7 +1179,7 @@ class CaffeConverter(BaseConverter):
         self.addOperand(layer.top[0], new_op)
 
     def convert_frcn_detection_op(self, layer):
-        assert(self.layerType(layer) == 'FrcnDetection')
+        assert (self.layerType(layer) == 'FrcnDetection')
         input_shape = self.getShape(layer.bottom[2])
         operands = list()
         for bottom in layer.bottom:
@@ -1208,10 +1210,7 @@ class CaffeConverter(BaseConverter):
         operands = list()
         operands.append(in_op)
         output_shape = input_shape
-        attrs = {
-            'name': self.get_loc(layer.top[0]),
-            'group': group
-        }
+        attrs = {'name': self.get_loc(layer.top[0]), 'group': group}
         new_op = self.mlir.create_shuffle_channel_op(operands, output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
@@ -1230,7 +1229,7 @@ class CaffeConverter(BaseConverter):
         input_shape = self.getShape(layer.bottom[0])
         operands = list()
         operands.append(op)
-        assert(len(input_shape) == 4)
+        assert (len(input_shape) == 4)
         p = layer.slice_param
         axis = p.axis
         bottom_slice_axis = input_shape[axis]
@@ -1238,16 +1237,16 @@ class CaffeConverter(BaseConverter):
         slice_num = len(p.slice_point)
         slices = list()
         if slice_num > 0:
-            assert(slice_num == top_size - 1)
-            assert(top_size <= bottom_slice_axis)
+            assert (slice_num == top_size - 1)
+            assert (top_size <= bottom_slice_axis)
             prev = 0
             for i in range(slice_num):
-                assert(p.slice_point[i] > prev)
+                assert (p.slice_point[i] > prev)
                 slices.append(p.slice_point[i] - prev)
                 prev = p.slice_point[i]
             slices.append(bottom_slice_axis - prev)
         else:
-            assert(bottom_slice_axis % top_size == 0)
+            assert (bottom_slice_axis % top_size == 0)
             for i in range(top_size):
                 slices.append(int(bottom_slice_axis / top_size))
         offset = 0
