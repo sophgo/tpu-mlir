@@ -339,6 +339,7 @@ protected:
                  ForwardCalibartion<top::TileOp>,
                  ForwardCalibartion<top::PadOp>,
                  ForwardCalibartion<top::PermuteOp>,
+                 ForwardCalibartion<top::ReverseOp>,
                  ForwardCalibartion<top::UpsampleOp>,
                  ForwardCalibartion<top::LeakyReluOp>,
                  ForwardCalibartion<top::PReluOp>,
