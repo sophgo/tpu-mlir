@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Helper/Quant.h"
 
 using namespace mlir;
 using namespace tpu_mlir;
@@ -27,7 +27,28 @@ int64_t tpu::StoreOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::StoreOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                   void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  sec_info->n_slice = gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = gi.h_slice;
+  sec_info->h_idx = gi.h_idx;
+  sec_info->is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                         void *sec_info_) {
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   auto data_type = BM168x::getDataType(output());

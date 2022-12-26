@@ -36,8 +36,14 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
+        /*methodName=*/"assign_sec_info",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "void *":$sec_info_)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
         /*methodName=*/"codegen_local_bm1684x",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "void *":$sec_info_)
       >,
       InterfaceMethod<
         /*desc=*/[{}],

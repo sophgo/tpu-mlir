@@ -291,6 +291,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
   int64_t draining_idx = 0;
   bool draining_period = false;
   SoftwarePipeline timestep_swpipl;
+  local_sec_info_t sec_info;
   for (uint64_t nstep = 0, hstep = 0; nstep < nsecs || draining_period;) {
     /* add for software pipeline */
     timestep_swpipl.write_swloop_buffer(nstep, hstep, swpipl_stage_num);
@@ -321,7 +322,8 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
               pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
             }
             BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
-            lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep);
+            lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep, &sec_info);
+            lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep, &sec_info);
           } else {
             llvm_unreachable("chip not support");
           }
