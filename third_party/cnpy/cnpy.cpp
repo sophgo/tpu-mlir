@@ -551,6 +551,8 @@ template void npz_add_array<uint16_t>(npz_t &, std::string,
         const uint16_t*, const std::vector<size_t>);
 template void npz_add_array<uint32_t>(npz_t &, std::string,
         const uint32_t*, const std::vector<size_t>);
+template void npz_add_array<int32_t>(npz_t &, std::string,
+        const int32_t*, const std::vector<size_t>);
 
 template<typename T>
 void npz_add_array(npz_t &map, std::string fname,

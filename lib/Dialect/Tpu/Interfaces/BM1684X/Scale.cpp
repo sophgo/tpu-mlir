@@ -95,10 +95,10 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
     p.bias_sign = Module::getStorageType(bias()).isSignedInteger();
     p.version = 10;
     BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
-                           input_spec->data(), output_spec->data());
+                             input_spec->data(), output_spec->data());
   } else {
     BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
-                           input_spec->data(), output_spec->data());
+                             input_spec->data(), output_spec->data());
   }
 }
 
@@ -119,17 +119,39 @@ int64_t tpu::ScaleOp::getBufferSize_bm1684x(
   return 0;
 }
 
-void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::ScaleOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                   void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  int64_t n, c, h, w;
+  Module::getNCHW(input(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info->w_slice = w;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = w;
+}
+
+void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *sec_info_) {
   // out_zp is should be passed to backend
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
   Module::getNCHW(output(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto scale_gi = LocalGenInterface::getGroupInfo(scale(), n_step, h_step);
   auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
 
-  auto gi = getGroupInfo(n_step, h_step);
-  llvm::SmallVector<int32_t, 4> input_shape = {(int)gi.n_slice, (int)c,
-                                               (int)gi.h_slice, (int)w};
+  llvm::SmallVector<int32_t, 4> input_shape = {
+      (int)sec_info->out_n_slice, (int)c, (int)sec_info->out_h_slice, (int)w};
   llvm::SmallVector<int32_t, 4> scale_shape = {1, (int)c, 1, 1};
   if (Quant::isUniformQuantized(input())) {
     auto lshift_gi = LocalGenInterface::getGroupInfo(lshift(), n_step, h_step);
@@ -152,7 +174,7 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     p.round_mode = ROUND_UP;
     p.version = 10;
     BM168x::call_local_func("backend_api_scale_fixed_local", &p,
-                                        sizeof(scale_fixed_local_param_t));
+                            sizeof(scale_fixed_local_param_t));
   } else {
     scale_float_local_param_t p = {0};
     p.input_local_addr = in_gi.out_addr;
@@ -168,6 +190,6 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     p.is_bias_coeff = 1;
     p.dtype = BM168x::getDataType(input());
     BM168x::call_local_func("backend_api_scale_float_local", &p,
-                                        sizeof(scale_float_local_param_t));
+                            sizeof(scale_float_local_param_t));
   }
 }

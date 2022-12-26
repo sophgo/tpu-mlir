@@ -332,7 +332,30 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
+  conv_attr_t attr = {0};
+  parseParam(&attr);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
+  sec_info->w_slice = attr.iw;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = attr.ow;
+}
+
+void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   conv_attr_t attr = {0};
   parseParam(&attr);
   auto op = getOperation();
@@ -340,6 +363,7 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+
   conv3d_local_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.input_local_addr = in_gi.out_addr;
@@ -352,9 +376,9 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   spec.buffer_local_addr = gi.buffer_addr;
   spec.output_local_addr = gi.out_addr;
   spec.input_shape[0] = attr.id;
-  spec.input_shape[1] = in_gi.n_slice;
+  spec.input_shape[1] = sec_info->n_slice;
   spec.input_shape[2] = attr.ic;
-  spec.input_shape[3] = in_gi.h_slice;
+  spec.input_shape[3] = sec_info->h_slice;
   spec.input_shape[4] = attr.iw;
   spec.groups = attr.groups;
   spec.output_c = attr.oc;
@@ -369,8 +393,8 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   spec.dilation[2] = attr.dw;
   spec.pad[0] = attr.pdf;
   spec.pad[1] = attr.pdb;
-  spec.pad[2] = in_gi.h_idx == 0 ? attr.pht : 0;
-  spec.pad[3] = in_gi.h_idx + in_gi.h_slice >= attr.ih ? attr.phb : 0;
+  spec.pad[2] = sec_info->h_idx == 0 ? attr.pht : 0;
+  spec.pad[3] = sec_info->h_idx + sec_info->h_slice >= attr.ih ? attr.phb : 0;
   spec.pad[4] = attr.pwl;
   spec.pad[5] = attr.pwr;
   spec.input_dtype = BM168x::getDataType(input());

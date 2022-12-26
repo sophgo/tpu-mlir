@@ -31,7 +31,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
   OpBuilder builder(op);
   auto in_name = Module::getName(in.getDefiningOp());
   auto out_name = Module::getName(op);
-  auto new_name = in_name + "_to_" + out_name;
+  auto new_name = in_name.str() + "_to_" + out_name.str();
   int multiplier, rshift;
   get_scale_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
   if (in_zp == 0 && out_zp == 0) {

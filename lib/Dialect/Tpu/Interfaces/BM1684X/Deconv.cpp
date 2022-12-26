@@ -337,22 +337,46 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::DeconvOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(local_sec_info_t));
+
   deconv_attr_t attrs;
   parseParam(&attrs);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->d_slice = 1;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attrs.ih);
+  sec_info->w_slice = attrs.iw;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = attrs.ow;
+}
+
+void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  deconv_attr_t attrs;
+  parseParam(&attrs);
+  auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto filter_gi = LocalGenInterface::getGroupInfo(filter(), n_step, h_step);
   auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
-  auto gi = getGroupInfo(n_step, h_step);
+
   deconv_local_param_t param = {0};
   param.input_local_addr = (uint32_t)in_gi.out_addr;
   param.weight_local_addr = (uint32_t)filter_gi.out_addr;
   param.bias_local_addr = (uint32_t)bias_gi.out_addr;
   param.output_local_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = gi.buffer_addr;
-  param.input_shape[0] = in_gi.n_slice;
+  param.input_shape[0] = sec_info->n_slice;
   param.input_shape[1] = attrs.ic;
-  param.input_shape[2] = in_gi.h_slice;
+  param.input_shape[2] = sec_info->h_slice;
   param.input_shape[3] = attrs.iw;
   param.groups = attrs.g;
   param.output_c = attrs.oc;

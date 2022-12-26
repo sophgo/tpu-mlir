@@ -410,14 +410,47 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
   return sz;
 }
 
-void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    void *sec_info_) {
+  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  memset(sec_info, 0, sizeof(sec_info));
+
   conv_attr_t attr = {0};
   parseParam(&attr);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
+  sec_info->n_slice = in_gi.n_slice;
+  sec_info->h_slice = in_gi.h_slice;
+  sec_info->h_idx = in_gi.h_idx;
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
+  // to be compatible with nntoolchain
+  if (sec_info->is_h_split) {
+    sec_info->h_idx = h_step == 0 ? -attr.pht : in_gi.h_idx;
+    sec_info->h_slice = sec_info->h_idx < 0
+                            ? sec_info->h_slice - sec_info->h_idx
+                            : sec_info->h_slice;
+    sec_info->h_slice = sec_info->h_slice + pad_h_b;
+  }
+  sec_info->w_slice = attr.iw;
+  sec_info->out_n_slice = gi.n_slice;
+  sec_info->out_h_idx = gi.h_idx;
+  sec_info->out_h_slice = gi.h_slice;
+  sec_info->out_w_slice = attr.ow;
+}
+
+void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          void *sec_info_) {
+  // local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
+  conv_attr_t attr = {0};
+  parseParam(&attr);
+
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+
   conv_local_param_t p;
   memset(&p, 0, sizeof(p));
   p.spec.buffer_local_addr = gi.buffer_addr;
@@ -457,24 +490,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
   }
-  local_sec_info_t sec_info;
-  memset(&sec_info, 0, sizeof(sec_info));
-  sec_info.n_slice = in_gi.n_slice;
-  sec_info.h_slice = in_gi.h_slice;
-  sec_info.h_idx = in_gi.h_idx;
-  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
-  // to be compatible with nntoolchain
-  if (sec_info.is_h_split) {
-    sec_info.h_idx = h_step == 0 ? -attr.pht : in_gi.h_idx;
-    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
-                                          : sec_info.h_slice;
-    sec_info.h_slice = sec_info.h_slice + common.pad_h_b;
-  }
-  sec_info.w_slice = attr.iw;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.out_w_slice = attr.ow;
-  BM168x::call_local_func("backend_api_conv_local", &p, sizeof(p), &sec_info,
+
+  BM168x::call_local_func("backend_api_conv_local", &p, sizeof(p), sec_info_,
                           input_spec->data(), output_spec->data());
 }
