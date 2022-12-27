@@ -84,6 +84,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::HSWISH:
     active_func(p, num_element, [](double val) { return hswish(val); });
     break;
+  case ActiveMode::TANH:
+    active_func(p, num_element, [](double val) { return std::tanh(val); });
+    break;
   }
   if (t.isBF16()) {
     BF16(p.outputs[0], p.outputs[0], num_element);
