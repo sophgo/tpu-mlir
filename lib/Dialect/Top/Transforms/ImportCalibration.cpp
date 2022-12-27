@@ -136,9 +136,6 @@ public:
                 } else {
                   if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
                     info = calibration_map_int4[name];
-                  } else {
-                    llvm::errs() <<"not find "<< name<<"\n";
-                    llvm_unreachable("cali_info not exist\n");
                   }
                 }
               }

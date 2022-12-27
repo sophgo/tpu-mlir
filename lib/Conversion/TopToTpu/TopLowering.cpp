@@ -74,7 +74,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   }
   auto op = out.getDefiningOp();
   OpBuilder builder(op);
-  auto in_name = Module::getName(in.getDefiningOp());
+  auto in_name = Module::getName(in).str();
   auto in_stype = Module::getStorageType(in);
   float offset = out_zp;
   auto in_shape = Module::getShape(in);
@@ -93,7 +93,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
     offset = in_scale / out_scale * (-in_zp);
   }
 
-  auto out_name = Module::getName(op);
+  auto out_name = Module::getName(op).str();
   auto new_name = in_name + "_to_" + out_name;
 
   auto rq_stype = Module::getElementType(out);
