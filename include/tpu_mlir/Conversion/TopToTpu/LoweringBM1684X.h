@@ -89,5 +89,6 @@ LOWERING_BM1684X(Erf)
 LOWERING_BM1684X(HardSigmoid)
 LOWERING_BM1684X(HardSwish)
 LOWERING_BM1684X(LayerNorm)
+LOWERING_BM1684X(Tanh)
 } // namespace bm1684x
 } // namespace tpu_mlir

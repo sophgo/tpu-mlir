@@ -70,7 +70,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       ErfLowering,
       HardSigmoidLowering,
       HardSwishLowering,
-      LayerNormLowering
+      LayerNormLowering,
+      TanhLowering
       // clang-format on
       >(patterns->getContext());
 }
