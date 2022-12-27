@@ -52,6 +52,7 @@ class ONNX_IR_TESTER(object):
             "Conv1d": self.test_Conv1d,
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
+            "ConvStride": self.test_ConvStride,
             "ConvTranspose": self.test_ConvTranspose,
             "ConvTranspose2": self.test_ConvTranspose2,  #no pad
             "Clip": self.test_Clip,
@@ -786,6 +787,54 @@ class ONNX_IR_TESTER(object):
                       stride=[1, 1],
                       dilation=[1, 1],
                       groups=1)
+
+    def test_ConvStride(self, case_name):
+        in_shape0 = [1, 32, 320, 320]
+        f_shape0 = [64, 32, 3, 3]
+        f_shape1 = [32, 64, 1, 1]
+        out_shape = [1, 32, 160, 160]
+
+        f_data0 = np.random.randn(*f_shape0).astype(np.float32)
+        f_data1 = np.random.randn(*f_shape1).astype(np.float32)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, in_shape0)
+        filter0 = helper.make_tensor('filter0', TensorProto.FLOAT, f_shape0, f_data0)
+        filter1 = helper.make_tensor('filter1', TensorProto.FLOAT, f_shape1, f_data1)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape)
+
+        conv0_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'filter0'],
+            outputs=['x1'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[2, 2],
+            dilations=[1, 1],
+            group=1,
+        )
+        sigmoid_def = helper.make_node(
+            "Sigmoid",
+            inputs=['x1'],
+            outputs=['x2'],
+        )
+        mul_def = helper.make_node(
+            "Mul",
+            inputs=['x1', 'x2'],
+            outputs=['x3'],
+        )
+        conv1_def = helper.make_node(
+            "Conv",
+            inputs=['x3', 'filter1'],
+            outputs=['output'],
+            kernel_shape=[1, 1],
+            pads=[0, 0, 0, 0],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+        graph_def = helper.make_graph([conv0_def, sigmoid_def, mul_def, conv1_def],
+                                      case_name, [input], [output],
+                                      initializer=[filter0, filter1])
+        self.onnx_and_test(graph_def)
 
     def test_Conv3d(self, case_name):
         oc = 32
