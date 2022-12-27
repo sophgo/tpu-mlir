@@ -132,7 +132,7 @@ if __name__ == '__main__':
     parser.add_argument("--mlir", required=True, help="optimized mlir fp32 model")
     parser.add_argument("--calibration_table", help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table", help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8'],
+    parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8','QDQ'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true', default=False,
                         help="for INT8 quantization")

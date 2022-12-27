@@ -29,7 +29,6 @@ namespace tpu_mlir {
 namespace top {
 
 // A pattern to convert QuantizeLinearOp return element type to quant.calibrated
-// for I don't want to do the conversion using python.
 class QuantizeLinearCastTypePattern : public RewritePattern {
 public:
   QuantizeLinearCastTypePattern(PatternBenefit benefit, MLIRContext *context)
@@ -56,9 +55,6 @@ public:
         *Module::getF64Array(op->getAttr("y_scale").dyn_cast<ArrayAttr>());
     auto y_zero_point =
         *Module::getI32Array(op->getAttr("y_zero_point").dyn_cast<ArrayAttr>());
-    for (auto i : y_scale)
-      std::cout << i << " ";
-    std::cout << std::endl;
     assert(y_scale.size() == y_zero_point.size() &&
            "y_scale.size() & y_zero_point.size() must be the same.");
     assert(y_scale.size() == 1 &&
@@ -152,6 +148,57 @@ public:
   }
 };
 
+// Not a graceful pattern. We make the quantized type transparent for Ops like
+// reshape, permute, etc...
+class CalibratedTypeTransparentPattern : public RewritePattern {
+public:
+  CalibratedTypeTransparentPattern(PatternBenefit benefit, MLIRContext *context)
+      : RewritePattern(MatchAnyOpTypeTag(), benefit, context) {}
+
+  CalibratedTypeTransparentPattern(MLIRContext *context)
+      : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
+
+  LogicalResult matchAndRewrite(Operation *op,
+                                PatternRewriter &rewriter) const override {
+    if (op->getResults().empty() ||
+        isa<top::WeightOp, ReturnOp, top::NoneOp>(op) ||
+        isa<tpu::TpuDialect>(op->getDialect())) {
+      return failure();
+    }
+    if (!op->getResult(0).getType().isa_and_nonnull<RankedTensorType>()) {
+      return failure();
+    }
+    auto result_tensor_type =
+        op->getResult(0).getType().dyn_cast<RankedTensorType>();
+    auto result_quant_type = result_tensor_type.getElementType();
+    if (isa<quant::CalibratedQuantizedType, quant::UniformQuantizedType>(
+            result_quant_type)) {
+      return failure();
+    }
+    auto succeedingOps = op->getUsers();
+    while (!succeedingOps.empty()) {
+      auto succeedingOp =
+          *succeedingOps.begin(); // We only use the first user of this op. Not
+                                  // a good choice.
+      if (!succeedingOp->getResult(0)
+               .getType()
+               .isa_and_nonnull<RankedTensorType>()) {
+        return failure();
+      }
+      auto result_tensor_type =
+          succeedingOp->getResult(0).getType().dyn_cast<RankedTensorType>();
+      auto result_quant_type = result_tensor_type.getElementType();
+      if (isa<quant::CalibratedQuantizedType, quant::UniformQuantizedType>(
+              result_quant_type)) {
+        op->getResult(0).setType(result_tensor_type);
+        return success();
+      }
+      succeedingOps = succeedingOp->getUsers();
+    }
+    return failure();
+  }
+};
+
 class QDQConvertPass : public QDQConvertBase<QDQConvertPass> {
 public:
   QDQConvertPass() {}
@@ -162,11 +209,13 @@ public:
 
     target.addIllegalOp<QuantizeLinearOp, DequantizeLinearOp>();
 
-    RewritePatternSet patterns(context);
+    RewritePatternSet patterns(context), b_patterns(context);
     patterns.add<QuantizeLinearCastTypePattern>(context);
     patterns.add<QuantizeLinearFusePattern>(context);
     patterns.add<RemoveDequantizeLinearPattern>(context);
     (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
+    b_patterns.add<CalibratedTypeTransparentPattern>(context);
+    (void)applyPatternsAndFoldGreedily(func, std::move(b_patterns));
     Module::updateModuleTypes();
     Module::setState(Module::State::TOP_CALIBRATED);
   }
