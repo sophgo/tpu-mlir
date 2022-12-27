@@ -51,31 +51,33 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
       newFilter.at(j * N + i) = filterF32->at(i * K + j);
     }
   }
-
+  // split bias to filterBias and recurrenceBias
   std::vector<int64_t> biasShape;
   Module::getShapeVec(op.bias(), biasShape);
-  assert(biasShape.size() == 2 && "please check bias shape.");
+  assert(biasShape.size() == 2 && biasShape[0] * biasShape[1] == 2 * N &&
+         biasShape[1] % 2 == 0 && "please check bias shape.");
   auto biasF32 = biasOp.read<float>();
   std::vector<int64_t> newBiasShape = {N};
   std::vector<float_t> filterBias;
   std::vector<float_t> recurrenceBias;
-  if (biasShape[0] * biasShape[1] == 2 * N && biasShape[1] % 2 == 0) {
-    // for onnx split bias to filterBias and recurrenceBias
-    for (int ndir = 0; ndir < biasShape[0]; ndir++) {
-      filterBias.insert(
-          filterBias.end(),
-          biasF32->begin() + ndir * biasShape[1],
-          biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2);
-      recurrenceBias.insert(
-          recurrenceBias.end(),
-          biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2,
-          biasF32->begin() + ndir * biasShape[1] + biasShape[1]);
+  for (int ndir = 0; ndir < biasShape[0]; ndir++) {
+    filterBias.insert(
+        filterBias.end(),
+        biasF32->begin() + ndir * biasShape[1],
+        biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2);
+    recurrenceBias.insert(
+        recurrenceBias.end(),
+        biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2,
+        biasF32->begin() + ndir * biasShape[1] + biasShape[1]);
+  }
+
+  // for caffe which these is no recurrenceBias
+  bool has_rBias = false;
+  for (auto v : recurrenceBias) {
+    if ( v != 0) {
+      has_rBias = true;
+      break;
     }
-  } else if (biasShape[0] * biasShape[1] == N) {
-    // for caffe only has filterBias
-    filterBias.assign(biasF32->begin(), biasF32->end());
-  } else {
-     llvm_unreachable("invalid bias shape.");
   }
 
   // creat fcOp
@@ -101,7 +103,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   Module::getShapeVec(op.recurrence(), recurrenceShape);
   auto numDir = recurrenceShape[0];
   auto hiddenSize = recurrenceShape[2];
-  if (recurrenceBias.size()) {
+  if (has_rBias) {
     std::vector<int64_t> newRecurrenceBiasShape = {numDir, 4 * hiddenSize};
     new_type =
         RankedTensorType::get(newRecurrenceBiasShape, rewriter.getF32Type());

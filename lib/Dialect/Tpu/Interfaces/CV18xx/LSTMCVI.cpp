@@ -83,15 +83,15 @@ LogicalResult WeightReorder<tpu::LSTMCVIOp, BFloat16Type>::matchAndRewrite(
   auto recc_u16 = reccOp.read<uint16_t>();
   transposeRecurrence(*recc_u16, recc_shape);
   reccOp.update(*recc_u16, recc_u16->size());
-
-  auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-  auto bias_data = biasOp.read<float_t>();
-  std::vector<uint32_t> bias_u32(bias_data->size());
-  transposeBiasFp32(*bias_data, bias_u32);
-  biasOp.update(bias_u32, bias_u32.size());
-  auto new_bias_type = RankedTensorType::get(Module::getShape(op.bias()),
-                                             rewriter.getIntegerType(32));
-  op.bias().setType(new_bias_type);
+  if (auto biasOp = op.bias().getDefiningOp<top::WeightOp>()) {
+    auto bias_data = biasOp.read<float_t>();
+    std::vector<uint32_t> bias_u32(bias_data->size());
+    transposeBiasFp32(*bias_data, bias_u32);
+    biasOp.update(bias_u32, bias_u32.size());
+    auto new_bias_type = RankedTensorType::get(Module::getShape(op.bias()),
+                                              rewriter.getIntegerType(32));
+    op.bias().setType(new_bias_type);
+  }
   return success();
 }
 

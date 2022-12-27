@@ -270,6 +270,10 @@ class OnnxConverter(BaseConverter):
         for o in unuse_output:
             self.model.graph.output.remove(o)
 
+    def get_outputs(self, model: onnx.ModelProto):
+        initializer_names = [x.name for x in model.graph.initializer]
+        return [opt for opt in model.graph.output if opt.name not in initializer_names]
+
     def get_inputs(self, model: onnx.ModelProto):
         initializer_names = [x.name for x in model.graph.initializer]
         return [ipt for ipt in model.graph.input if ipt.name not in initializer_names]
@@ -357,6 +361,7 @@ class OnnxConverter(BaseConverter):
 
     def model_shape_infer(self, input_shapes):
         inputs = self.get_inputs(self.model)
+        outputs = self.get_outputs(self.model)
         no_shape = True
 
         def check_shape(l, r):
@@ -379,6 +384,13 @@ class OnnxConverter(BaseConverter):
                     check_shape(_dim.dim_value, input_shapes[idx][_i])
                 _shape.append(_dim.dim_value)
             self.addShape(input.name, _shape)
+
+        for o in outputs:
+            # for some paddle paddle model dynamic dim is constant value
+            _odims = o.type.tensor_type.shape.dim
+            for _odim in _odims:
+                if  _odim.dim_value <= 0:
+                    _odim.dim_param = '?'
         self.model = onnx.shape_inference.infer_shapes(self.model)
 
     def init_MLIRImporter(self):
