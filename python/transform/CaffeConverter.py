@@ -821,8 +821,8 @@ class CaffeConverter(BaseConverter):
         assert (self.layerType(layer) == 'LSTM')
         op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
-        # seq_length = input_shape[0]
-        # batch_size = input_shape[1]
+        seq_length = input_shape[0]
+        batch_size = input_shape[1]
         input_size = input_shape[2]
         hidden_size = layer.recurrent_param.num_output
         operands = list()
@@ -849,28 +849,34 @@ class CaffeConverter(BaseConverter):
         bias = bias.reshape([4, hidden_size])
         bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
         bias = bias.reshape([1, 4 * hidden_size])
-        bias_op = self.create_weight_op(bname, bias)
+        rbias = np.zeros_like(bias)
+        merge_bias = np.concatenate((bias, rbias), 1)
+        bias_op = self.create_weight_op(bname, merge_bias)
         operands.append(bias_op)
         operands.append(self.mlir.none_op)  # initial_h
         operands.append(self.mlir.none_op)  # initial_c
         name = self.get_loc(layer.top[0])
         param = {
-            "name": [name + '_LSTM', name + '_H', name + '_C'],
+            "name": [name + '_lstm', name + '_H', name + '_C'],
             "hidden_size": hidden_size,
             "bidirectional": bool(False),
             "batch_first": bool(False),
         }
-        out_shape = list(self.getShape(layer.top[0]))
+        out_shape = [seq_length, 1, batch_size, hidden_size]
         out_shapes = [out_shape, [], []]
         new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
-        self.addOperand(layer.top[0], new_op)
+        # reshape back
+        attrs = {'name': name}
+        output_shape = self.getShape(layer.top[0])
+        new_reshape_op = self.mlir.create_reshape_op([new_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_reshape_op)
 
     def convert_lstm_jun_op(self, layer):
         assert (self.layerType(layer) == 'Lstm')
         op = self.getOperand(layer.bottom[0])
         input_shape = self.getShape(layer.bottom[0])
-        # seq_length = input_shape[0]
-        # batch_size = input_shape[1]
+        seq_length = input_shape[0]
+        batch_size = input_shape[1]
         input_size = input_shape[2]
         hidden_size = layer.lstm_param.num_output
         operands = list()
@@ -897,21 +903,27 @@ class CaffeConverter(BaseConverter):
         bias = bias.reshape([4, hidden_size])
         bias[[1, 2], :] = bias[[2, 1], :]  # ifoc =>iofc
         bias = bias.reshape([1, 4 * hidden_size])
-        bias_op = self.create_weight_op(bname, bias)
+        rbias = np.zeros_like(bias)
+        merge_bias = np.concatenate((bias, rbias), 1)
+        bias_op = self.create_weight_op(bname, merge_bias)
         operands.append(bias_op)
         operands.append(self.mlir.none_op)  # initial_h
         operands.append(self.mlir.none_op)  # initial_c
         name = self.get_loc(layer.top[0])
         param = {
-            "name": [name + '_LSTM', name + '_H', name + '_C'],
+            "name": [name + '_lstm', name + '_H', name + '_C'],
             "hidden_size": hidden_size,
             "bidirectional": bool(False),
             "batch_first": bool(False),
         }
-        out_shape = list(self.getShape(layer.top[0]))
+        out_shape = [seq_length, 1, batch_size, hidden_size]
         out_shapes = [out_shape, [], []]
         new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
-        self.addOperand(layer.top[0], new_op)
+        # reshape back
+        attrs = {'name': name}
+        output_shape = self.getShape(layer.top[0])
+        new_reshape_op = self.mlir.create_reshape_op([new_op], output_shape, **attrs)
+        self.addOperand(layer.top[0], new_reshape_op)
 
     def convert_matmul_op(self, layer):
         assert (self.layerType(layer) == 'MatMul')
