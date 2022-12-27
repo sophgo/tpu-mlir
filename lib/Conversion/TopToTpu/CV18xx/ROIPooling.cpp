@@ -14,7 +14,7 @@
 #define DEBUG_TYPE "lowering-roipooling"
 namespace tpu_mlir {
 namespace cv18xx {
-void loweringProposal(PatternRewriter &rewriter,
+void loweringROIPooling(PatternRewriter &rewriter,
                              top::ROIPoolingOp op) {
   auto o_shape = Module::getShape(op.output());
   // lowering to cpu op
@@ -41,12 +41,12 @@ void loweringProposal(PatternRewriter &rewriter,
 void ROIPoolingLowering::LoweringINT8(PatternRewriter &rewriter,
                                            top::ROIPoolingOp op,
                                            bool asymmetric) const {
-  loweringProposal(rewriter, op);
+  loweringROIPooling(rewriter, op);
 }
 
 void ROIPoolingLowering::LoweringBF16(PatternRewriter &rewriter,
                                            top::ROIPoolingOp op) const {
-  loweringProposal(rewriter, op);
+  loweringROIPooling(rewriter, op);
 }
 }
 }
