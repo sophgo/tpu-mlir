@@ -563,7 +563,7 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   return nullptr;
 }
 
-void GroupOps::slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
+bool GroupOps::slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
                                  int64_t hsecs) {
   for (auto &linfo : *group_lmem) {
     if (linfo.is_output == false) {
@@ -589,20 +589,27 @@ void GroupOps::slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
     }
     if (hsecs == 1) {
       si.h.emplace_back(slice_pair_t(0, h));
+    } else if (hsecs > h) {
+      no_more_try_secs = true;
+      return false;
     } else {
-      auto max_slice = ceiling_func(h, hsecs);
+      auto per_slice = h / hsecs;
+      std::vector<int64_t> slice_v(hsecs, per_slice);
+      auto left = h - per_slice * hsecs;
+      for (int64_t i = 0; i < left; i++) {
+        slice_v[i]++;
+      }
       auto offset = 0l;
       for (auto i = 0; i < hsecs; i++) {
-        slice_pair.first = offset;
-        slice_pair.second = std::min(max_slice, h - offset);
-        si.h.emplace_back(slice_pair);
-        offset += slice_pair.second;
+        si.h.emplace_back(slice_pair_t(offset, slice_v[i]));
+        offset += slice_v[i];
       }
     }
     auto op_info = find_lmem_info(group_lmem, linfo.op);
     assert(op_info != nullptr);
     op_info->slice_info = si;
   }
+  return true;
 }
 
 bool GroupOps::is_same_slice(const std::vector<slice_pair_t> &a,
@@ -658,7 +665,7 @@ bool GroupOps::backward_from_tensor(group_lmem_t &group_lmem,
   for (auto &s : si.h) {
     int64_t h_idx = 0, h_slice = 0;
     auto ret = lg_op.BackwardH(h_idx, h_slice, s.first, s.second);
-    if (failed(ret)) {
+    if (failed(ret) || h_slice == 0) {
       return false;
     }
     slice_h.emplace_back(slice_pair_t(h_idx, h_slice));
@@ -947,8 +954,11 @@ void GroupOps::check_group_lmem(group_lmem_t &group_lmem,
 group_lmem_t GroupOps::CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
                                          int64_t nsecs, int64_t hsecs) {
   auto group_lmem = list_lmems(start_idx, end_idx);
-  slice_all_outputs(group_lmem, nsecs, hsecs);
-  auto ret = backward_entry(group_lmem);
+  auto ret = slice_all_outputs(group_lmem, nsecs, hsecs);
+  if (ret == false) {
+    return nullptr;
+  }
+  ret = backward_entry(group_lmem);
   if (ret == false) {
     return nullptr;
   }

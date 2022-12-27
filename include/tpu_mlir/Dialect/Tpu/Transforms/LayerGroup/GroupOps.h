@@ -82,7 +82,7 @@ protected:
   bool isLgSupport(int64_t op_idx);
   bool check_group(int64_t start_idx, int64_t end_idx);
   bool check_hsecs(lmem_info_t &lmem_info);
-  void slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
+  bool slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
                          int64_t hsecs);
   bool backward_entry(group_lmem_t &group_lmem);
   bool backward_from_tensor(group_lmem_t &group_lmem, lmem_info_t *linfo);
