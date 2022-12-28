@@ -78,9 +78,9 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
       int64_t multi, rshift_val, zero_point;
       if (Module::isBM1686()) {
         multi = p.inputs[1][c * 2];
-        int tmp = p.inputs[1][c * 2 + 1];
+        uint32_t tmp = p.inputs[1][c * 2 + 1];
         rshift_val = (int64_t)(-(char)(tmp & 0xff));
-        zero_point = (tmp & 0xffff0000) >> 16;
+        zero_point = (int64_t)(short)((tmp & 0xffff0000) >> 16);
       } else {
         multi = p.inputs[1][c * 3];
         rshift_val = -p.inputs[1][c * 3 + 1];
