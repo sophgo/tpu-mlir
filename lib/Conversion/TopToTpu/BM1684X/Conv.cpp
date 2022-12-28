@@ -205,13 +205,23 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     // requant
     auto output_type = getQuantInt8Type(op.output(), asymmetric);
     std::vector<int32_t> quant(attr.oc * 3, 0);
-    for (size_t i = 0; i < attr.oc; ++i) {
-      quant[i * 3] = multiplier_v[i];
-      quant[i * 3 + 1] = -rshift_v[i];
-      quant[i * 3 + 2] = out_zp;
+    int64_t  quant_dim = 0;
+    if (Module::isBM1686()) {
+      quant_dim = 2;
+      for (size_t i = 0; i < attr.oc; ++i) {
+        quant[i * 2] = multiplier_v[i];
+        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) | (((int32_t)out_zp & 0xffff) << 16);
+      }
+    } else {
+      quant_dim = 3;
+      for (size_t i = 0; i < attr.oc; ++i) {
+        quant[i * 3] = multiplier_v[i];
+        quant[i * 3 + 1] = -rshift_v[i];
+        quant[i * 3 + 2] = out_zp;
+      }
     }
     auto quant_type =
-        RankedTensorType::get({1, attr.oc, 1, 1, 3}, rewriter.getI32Type());
+        RankedTensorType::get({1, attr.oc, 1, 1, quant_dim}, rewriter.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue = do_requant(op->getLoc(), conv_out, quant_value, output_type,
                                true, tpu::RequantMode::Normal);
