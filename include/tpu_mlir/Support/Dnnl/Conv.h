@@ -9,33 +9,9 @@
 
 #pragma once
 #include "oneapi/dnnl/dnnl.hpp"
+#include "tpu_mlir/Support/AttrStruct.h"
 using namespace dnnl;
 namespace tpu_mlir {
-
-typedef struct {
-  int64_t n;
-  int64_t ic;
-  int64_t id;
-  int64_t ih;
-  int64_t iw;
-  int64_t oc;
-  int64_t od;
-  int64_t oh;
-  int64_t ow;
-  int64_t kd, dd, sd, ins_d;
-  int64_t kh, dh, sh, ins_h;
-  int64_t kw, dw, sw, ins_w;
-  int64_t pdf, pdb;
-  int64_t pht, phb;
-  int64_t pwl, pwr;
-  int64_t groups;
-  int64_t pad_value;
-  int64_t kernel_zp;
-  bool has_bias;
-  bool is_dw;
-  bool do_relu;
-  double relu_limit;
-} conv_attr_t;
 
 class Conv {
 public:

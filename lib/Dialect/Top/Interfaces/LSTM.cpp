@@ -19,7 +19,12 @@ using namespace mlir;
 
 int64_t top::LSTMOp::getFLOPs() { return 0; }
 
-top::LSTMOp::lstm_attr_t top::LSTMOp::parseParam() {
+const lstm_attr_t &top::LSTMOp::parseParam() {
+  auto op = getOperation();
+  auto iter = Module::lstm_attrs.find(op);
+  if (iter != Module::lstm_attrs.end()) {
+    return iter->second;
+  }
   lstm_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
   assert(in_shape.size() == 3);
@@ -41,7 +46,8 @@ top::LSTMOp::lstm_attr_t top::LSTMOp::parseParam() {
   attr.output_y = !Y().getType().isa<NoneType>();
   attr.output_yh = !Y_h().getType().isa<NoneType>();
   attr.output_yc = !Y_c().getType().isa<NoneType>();
-  return attr;
+  Module::lstm_attrs[op] = attr;
+  return Module::lstm_attrs[op];
 }
 
 LogicalResult top::LSTMOp::init(InferenceParameter &p) { return success(); }
@@ -54,9 +60,8 @@ static inline float sigmoid_(float x) {
 
 static inline float tanh_(float x) { return tanh(x); }
 
-static void lstm_compute(InferenceParameter &p,
-                         const top::LSTMOp::lstm_attr_t &attr, float *bias,
-                         float *h, float *c, bool forward) {
+static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
+                         float *bias, float *h, float *c, bool forward) {
   //(TODO) num_layers > 1
   // input += seq_length * batch * input_size * num_layer; //(TODO check!)
   float *input = p.inputs[0];

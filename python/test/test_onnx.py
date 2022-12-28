@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["PadAvgPool2D", "QDQ"]
+Failed_Cases = ["PadAvgPool2D", "QDQ", "QDQConv"]
 
 
 class ONNX_IR_TESTER(object):

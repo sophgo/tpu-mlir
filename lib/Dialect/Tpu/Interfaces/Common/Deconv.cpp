@@ -18,54 +18,57 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-void tpu::DeconvOp::parseParam(void *param) {
-  deconv_attr_t *p = (deconv_attr_t *)param;
-  memset(p, 0, sizeof(deconv_attr_t));
-  p->id = 1;
-  p->od = 1;
-  p->kd = 1;
-  p->sd = 1;
-  p->dd = 1;
+const deconv_attr_t &tpu::DeconvOp::parseParam() {
+  auto op = getOperation();
+  auto iter = Module::deconv_attrs.find(op);
+  if (iter != Module::deconv_attrs.end()) {
+    return iter->second;
+  }
+  deconv_attr_t p = {0};
+  p.id = 1;
+  p.od = 1;
+  p.kd = 1;
+  p.sd = 1;
+  p.dd = 1;
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  Module::getNCHW(ishape, p->n, p->ic, p->ih, p->iw);
-  Module::getNCHW(oshape, p->n, p->oc, p->oh, p->ow);
+  Module::getNCHW(ishape, p.n, p.ic, p.ih, p.iw);
+  Module::getNCHW(oshape, p.n, p.oc, p.oh, p.ow);
 
   auto kernel = Module::getI64Array(kernel_shape());
-  p->kh = kernel->at(0);
-  p->kw = kernel->at(1);
+  p.kh = kernel->at(0);
+  p.kw = kernel->at(1);
   auto stride = Module::getI64Array(strides());
-  p->sh = stride->at(0);
-  p->sw = stride->at(1);
+  p.sh = stride->at(0);
+  p.sw = stride->at(1);
   auto pad = Module::getI64Array(pads());
-  p->pad_h = pad->at(0);
-  p->pad_w = pad->at(1);
-  p->pad_h_after = pad->at(2);
-  p->pad_w_after = pad->at(3);
+  p.pad_h = pad->at(0);
+  p.pad_w = pad->at(1);
+  p.pad_h_after = pad->at(2);
+  p.pad_w_after = pad->at(3);
   auto dilation = Module::getI64Array(dilations(), 2, 1);
-  p->dh = dilation->at(0);
-  p->dw = dilation->at(1);
+  p.dh = dilation->at(0);
+  p.dw = dilation->at(1);
   auto ins = Module::getI64Array(inserts(), 2, 0);
-  p->ins_h = ins->at(0);
-  p->ins_w = ins->at(1);
-  p->g = group();
-  p->do_relu = do_relu();
-  p->relu_limit = relu_limit().convertToDouble();
-  p->with_bias = with_bias();
-  p->is_dw = (p->oc == p->ic && p->oc == p->g && p->g > 1);
-  return;
+  p.ins_h = ins->at(0);
+  p.ins_w = ins->at(1);
+  p.g = group();
+  p.do_relu = do_relu();
+  p.relu_limit = relu_limit().convertToDouble();
+  p.with_bias = with_bias();
+  p.is_dw = (p.oc == p.ic && p.oc == p.g && p.g > 1);
+  Module::deconv_attrs[op] = p;
+  return Module::deconv_attrs[op];
 }
 
 LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
-  deconv_attr_t attrs;
-  parseParam(&attrs);
+  auto &attr = parseParam();
   int izp = 0;
   if (Quant::isUniformQuantized(input())) {
     izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
-  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attrs,
-                izp);
+  deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr, izp);
   p.handle = (void *)deconv;
   return success();
 }
@@ -163,11 +166,9 @@ tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
 
 LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
-  deconv_attr_t attrs;
-  parseParam(&attrs);
-  int kh_ext = (attrs.kh - 1) * attrs.dh + 1;
-  if (auto ret =
-          DeconvSlice(out_idx, out_slice, attrs.sh, kh_ext, attrs.pad_h)) {
+  auto &attr = parseParam();
+  int kh_ext = (attr.kh - 1) * attr.dh + 1;
+  if (auto ret = DeconvSlice(out_idx, out_slice, attr.sh, kh_ext, attr.pad_h)) {
     in_idx = ret.value()[2];
     in_slice = ret.value()[3];
     if (in_slice + ret.value()[0] + ret.value()[1] < kh_ext) {
@@ -177,8 +178,8 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
     return failure();
   }
 
-  bool is_last = (out_idx + out_slice == attrs.oh);
-  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih, is_last);
+  bool is_last = (out_idx + out_slice == attr.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih, is_last);
   return success();
 }
 

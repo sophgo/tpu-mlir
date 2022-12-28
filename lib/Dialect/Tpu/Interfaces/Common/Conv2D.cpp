@@ -18,51 +18,57 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-void tpu::Conv2DOp::parseParam(void *param) {
-  conv_attr_t *p = (conv_attr_t *)param;
-  memset(p, 0, sizeof(conv_attr_t));
-  p->id = p->od = p->kd = p->sd = p->dd = 1;
+const conv_attr_t &tpu::Conv2DOp::parseParam() {
+  auto op = getOperation();
+  auto iter = Module::conv_attrs.find(op);
+  if (iter != Module::conv_attrs.end()) {
+    return iter->second;
+  }
+  conv_attr_t p = {0};
+  p.id = p.od = p.kd = p.sd = p.dd = 1;
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
-  p->do_relu = this->do_relu();
-  p->relu_limit = relu_limit().convertToDouble();
-  p->has_bias = with_bias();
-  p->n = i_s[0];
-  p->ic = i_s[1];
-  p->ih = i_s.size() > 2 ? i_s[2] : 1;
-  p->iw = i_s.size() > 3 ? i_s[3] : 1;
-  p->oc = o_s[1];
-  p->oh = o_s.size() > 2 ? o_s[2] : 1;
-  p->ow = o_s.size() > 3 ? o_s[3] : 1;
+  p.do_relu = do_relu();
+  p.relu_limit = relu_limit().convertToDouble();
+  p.has_bias = with_bias();
+  p.n = i_s[0];
+  p.ic = i_s[1];
+  p.ih = i_s.size() > 2 ? i_s[2] : 1;
+  p.iw = i_s.size() > 3 ? i_s[3] : 1;
+  p.oc = o_s[1];
+  p.oh = o_s.size() > 2 ? o_s[2] : 1;
+  p.ow = o_s.size() > 3 ? o_s[3] : 1;
   auto kernel = Module::getI64Array(kernel_shape());
-  p->kh = kernel->at(0);
-  p->kw = kernel->at(1);
+  p.kh = kernel->at(0);
+  p.kw = kernel->at(1);
   auto pads_v = Module::getI64Array(pads());
-  p->pht = pads_v->at(0);
-  p->pwl = pads_v->at(1);
-  p->phb = pads_v->at(2);
-  p->pwr = pads_v->at(3);
+  p.pht = pads_v->at(0);
+  p.pwl = pads_v->at(1);
+  p.phb = pads_v->at(2);
+  p.pwr = pads_v->at(3);
   if (Quant::isUniformQuantized(input())) {
-    p->pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
+    p.pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
   }
-  p->kernel_zp = kernel_zp();
+  p.kernel_zp = kernel_zp();
   auto strides_v = Module::getI64Array(strides());
-  p->sh = strides_v->at(0);
-  p->sw = strides_v->at(1);
+  p.sh = strides_v->at(0);
+  p.sw = strides_v->at(1);
   auto dhdw = Module::getI64Array(dilations(), 2, 1);
-  p->dh = dhdw->at(0);
-  p->dw = dhdw->at(1);
+  p.dh = dhdw->at(0);
+  p.dw = dhdw->at(1);
   auto ins = Module::getI64Array(inserts(), 2, 0);
-  p->ins_h = ins->at(0);
-  p->ins_w = ins->at(1);
-  assert(p->ins_h == 0 && p->ins_w == 0);
-  p->groups = group();
-  p->is_dw = (p->oc == p->ic && p->oc == p->groups && p->groups > 1);
+  p.ins_h = ins->at(0);
+  p.ins_w = ins->at(1);
+  assert(p.ins_h == 0 && p.ins_w == 0);
+  p.groups = group();
+  p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
+  Module::conv_attrs[op] = p;
+  return Module::conv_attrs[op];
 }
+
 LogicalResult tpu::Conv2DOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+  auto &attr = parseParam();
 
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
@@ -126,11 +132,13 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
                                        m_type) +
               o_qtype.getZeroPoint();
           if (sType.isInteger(8))
-            p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                              : Quant::to_int8(v);
+            p.outputs[0][offset] = sType.isUnsignedInteger(8)
+                                       ? Quant::to_uint8(v)
+                                       : Quant::to_int8(v);
           else
-            p.outputs[0][offset] = sType.isUnsignedInteger(4) ? Quant::to_uint4(v)
-                                                              : Quant::to_int4(v);
+            p.outputs[0][offset] = sType.isUnsignedInteger(4)
+                                       ? Quant::to_uint4(v)
+                                       : Quant::to_int4(v);
         }
       }
     }
@@ -141,8 +149,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::Conv2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+  auto &attr = parseParam();
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
   in_slice = (out_slice - 1) * attr.sh +
              (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);

@@ -28,8 +28,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
-  deconv_attr_t attr;
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;

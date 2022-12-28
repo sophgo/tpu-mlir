@@ -17,8 +17,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
-  deconv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());

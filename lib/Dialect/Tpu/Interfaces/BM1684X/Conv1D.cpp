@@ -32,8 +32,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8) || op.coeff_merged())
     return failure();
 
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
 
   bool merge = true;
   auto out_stype = Module::getStorageType(op.output());
@@ -150,8 +149,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
 
 LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv1DOp op,
                                           PatternRewriter &rewriter) {
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   if (attr.is_dw || attr.groups > 1) {
     llvm_unreachable("depthwise should support !!");
@@ -200,8 +198,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, Float32Type>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isF32())
     return failure();
 
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   auto out_type = Module::getStorageType(op.output());
   // filter reorder
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
@@ -232,8 +229,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, Float32Type>::matchAndRewrite(
 // ======================================
 
 void tpu::Conv1DOp::codegen_global_bm1684x() {
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+  auto &attr = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -289,8 +285,7 @@ void tpu::Conv1DOp::codegen_global_bm1684x() {
 int64_t tpu::Conv1DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  conv_attr_t p = {0};
-  parseParam(&p);
+  auto &p = parseParam();
   int64_t sz = 0;
   auto in_type = BM168x::getDataType(input());
   auto out_type = BM168x::getDataType(output());
@@ -331,8 +326,7 @@ void tpu::Conv1DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+  auto &attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
@@ -358,8 +352,7 @@ void tpu::Conv1DOp::assign_sec_info(int64_t n_step, int64_t h_step,
 void tpu::Conv1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                           void *sec_info_) {
   // local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+  auto &attr = parseParam();
 
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);

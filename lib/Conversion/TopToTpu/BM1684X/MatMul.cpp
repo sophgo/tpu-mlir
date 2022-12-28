@@ -22,14 +22,11 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   // refer quantize_convlike_layer_int8
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  int64_t batch, M, K, N;
-  bool relu, with_bias, transpose;
-  double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
+  auto &p = op.parseParam();
   int scale = 1, shift = 0;
-  if (batch > 1 && with_bias != 0) {
+  if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = Module::getNumElements(op.bias());
-    if (bias_size > N)
+    if (bias_size > p.N)
       llvm_unreachable("BatchMatMul does not support batch-bias yet.");
   }
   if (auto filterOp = dyn_cast<top::WeightOp>(op.right().getDefiningOp())) {
@@ -38,7 +35,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     double in_scale = 1, out_scale = 1, w_scale = 1;
     Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
     Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
-    if (batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
+    if (p.batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
       LoweringF32(rewriter, op);
       return;
     }
@@ -59,28 +56,28 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 
     std::shared_ptr<std::vector<int32_t>> bias_int32;
     std::shared_ptr<std::vector<float>> bias_fp32;
-    if (with_bias) {
+    if (p.with_bias) {
       auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
       bias_fp32 = biasOp.read<float>();
       bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
     } else if (in_zp) {
-      bias_int32 = std::make_shared<std::vector<int32_t>>(N);
+      bias_int32 = std::make_shared<std::vector<int32_t>>(p.N);
     }
 
-    for (int j = 0; j < N; j++) { // vector [1xN]
+    for (int j = 0; j < p.N; j++) { // vector [1xN]
       int64_t bias_w_xz = 0;
-      for (int i = 0; i < K; i++) {
-        bias_w_xz += (int64_t)filter_int8->at(i * N + j) * in_zp;
+      for (int i = 0; i < p.K; i++) {
+        bias_w_xz += (int64_t)filter_int8->at(i * p.N + j) * in_zp;
       }
 
-      if (with_bias) {
+      if (p.with_bias) {
         bias_int32->data()[j] =
             std::round(bias_fp32->at(j) / (w_scale * in_scale) - bias_w_xz);
       } else if (in_zp) {
         bias_int32->data()[j] = -bias_w_xz;
       }
     }
-    with_bias = with_bias || in_zp != 0;
+    bool with_bias = p.with_bias || in_zp != 0;
     float scale_f = in_scale * w_scale / out_scale;
     get_scale_and_shift(scale_f, scale, shift, 32);
     auto filter_type = op.right().getType().cast<RankedTensorType>();
@@ -92,7 +89,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     operands.push_back(new_filter);
     auto new_bias = op.bias();
     if (with_bias) {
-      std::vector<int64_t> shape = {N};
+      std::vector<int64_t> shape = {p.N};
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands.push_back(new_bias);
@@ -113,7 +110,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     get_scale_and_shift(scale_f, scale, shift, 32);
     for (auto operand : op.getOperands())
       operands.push_back(operand);
-    if (with_bias) {
+    if (p.with_bias) {
       auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
       auto bias_fp32 = biasOp.read<float>();
       int bias_n = bias_fp32->size();
@@ -141,20 +138,18 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 }
 
 void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
-                                   bool asymmetric) const {
+                                  bool asymmetric) const {
 
- // refer quantize_convlike_layer_int8
-  llvm::errs() <<"start MatMul LoweringINT4, name:"<<Module::getName(op.getOperation()).str()<<"\n";
+  // refer quantize_convlike_layer_int8
+  llvm::errs() << "start MatMul LoweringINT4, name:"
+               << Module::getName(op.getOperation()).str() << "\n";
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  int64_t batch, M, K, N;
-  bool relu, with_bias, transpose;
-  double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
+  auto &p = op.parseParam();
   int scale = 1, shift = 0;
-  if (batch > 1 && with_bias != 0) {
+  if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = Module::getNumElements(op.bias());
-    if (bias_size > N)
+    if (bias_size > p.N)
       llvm_unreachable("BatchMatMul does not support batch-bias yet.");
   }
   double in_int8_scale;
@@ -170,30 +165,39 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     auto filter_f32 = filterOp.read<float>();
     int bitwidth = 4;
     Value value;
-    if (op.in_int4_scale().has_value()) { //存在int4的输入scale，说明上一层是int8，故输入tensor也是int8，需要requant为int4
-      in_scale = op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
+    if (op.in_int4_scale().has_value()) {
+      // 瀛樺湪int4鐨勮緭鍏cale锛岃鏄庝笂涓�灞傛槸int8锛屾晠杈撳叆tensor涔熸槸int8锛岄渶瑕乺equant涓篿nt4
+      in_scale =
+          op->getAttr("in_int4_scale").cast<FloatAttr>().getValueAsDouble();
       in_zp = op->getAttr("in_int4_zp").cast<FloatAttr>().getValueAsDouble();
-      Quant::getScaleAndZeroPoint(op.input(), in_int8_scale, in_int8_zp, asymmetric);
-      //input int8, requant to int4
-      // auto ctx = op.input().getContext();
-      // auto cali_type = Quant::getCalibratedType(op.input());
-      // auto qtype = quant::UniformQuantizedType::get(quant::QuantizationFlags::Signed,
-      //                                               IntegerType::get(ctx, 4),
-      //                                               cali_type.getExpressedType(),
-      //                                               in_scale, in_zp, -8, 7);
-      // auto output_type = RankedTensorType::get(op.input().getType().cast<RankedTensorType>().getShape(), qtype);
+      Quant::getScaleAndZeroPoint(op.input(), in_int8_scale, in_int8_zp,
+                                  asymmetric);
+      // input int8, requant to int4
+      //  auto ctx = op.input().getContext();
+      //  auto cali_type = Quant::getCalibratedType(op.input());
+      //  auto qtype =
+      //  quant::UniformQuantizedType::get(quant::QuantizationFlags::Signed,
+      //                                                IntegerType::get(ctx,
+      //                                                4),
+      //                                                cali_type.getExpressedType(),
+      //                                                in_scale, in_zp, -8, 7);
+      //  auto output_type =
+      //  RankedTensorType::get(op.input().getType().cast<RankedTensorType>().getShape(),
+      //  qtype);
       auto output_type = getQuantIntType(op.input(), in_scale, in_zp, 4);
-      double scale = in_int8_scale/in_scale; //将int8转为int4的rq参数
-      double offset = in_zp - in_int8_zp*scale;
-      auto to_name = "to_b4_for_"+Module::getName(op.getOperation()).str();
+      double scale = in_int8_scale / in_scale; //灏唅nt8杞负int4鐨剅q鍙傛暟
+      double offset = in_zp - in_int8_zp * scale;
+      auto to_name = "to_b4_for_" + Module::getName(op.getOperation()).str();
       value = do_requantFp(op.input(), scale, offset, output_type, to_name);
       operands.push_back(value);
-    } else {//输入tensor也是int4
+    } else { //杈撳叆tensor涔熸槸int4
       operands.push_back(op.input());
-      Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric, bitwidth);
+      Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric,
+                                  bitwidth);
     }
-    Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric, bitwidth);
-    if (batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
+    Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric,
+                                bitwidth);
+    if (p.batch > 1 && in_zp != 0) { // Cannot merge zp to bias in BatchMatMul
       LoweringF32(rewriter, op);
       return;
     }
@@ -214,21 +218,21 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
 
     std::shared_ptr<std::vector<int32_t>> bias_int32;
     std::shared_ptr<std::vector<float>> bias_fp32;
-    if (with_bias) {
+    if (p.with_bias) {
       auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
       bias_fp32 = biasOp.read<float>();
       bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
     } else if (in_zp) {
-      bias_int32 = std::make_shared<std::vector<int32_t>>(N);
+      bias_int32 = std::make_shared<std::vector<int32_t>>(p.N);
     }
 
-    for (int j = 0; j < N; j++) { // vector [1xN]
+    for (int j = 0; j < p.N; j++) { // vector [1xN]
       int64_t bias_w_xz = 0;
-      for (int i = 0; i < K; i++) {
-        bias_w_xz += (int64_t)filter_int8->at(i * N + j) * in_zp;
+      for (int i = 0; i < p.K; i++) {
+        bias_w_xz += (int64_t)filter_int8->at(i * p.N + j) * in_zp;
       }
 
-      if (with_bias) {
+      if (p.with_bias) {
         bias_int32->data()[j] =
             std::round(bias_fp32->at(j) / (w_scale * in_scale) - bias_w_xz);
       } else if (in_zp) {
@@ -236,7 +240,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       }
     }
 
-    for (auto user:op->getUsers()) {
+    for (auto user : op->getUsers()) {
       if (isa<top::ConvOp>(user) || isa<top::MatMulOp>(user)) {
         all_next_layer_is_int8 = false;
       } else {
@@ -250,17 +254,20 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       }
     }
 
-    llvm::errs() <<"all_next_layer_is_int4:"<< all_next_layer_is_int4<<",all_next_layer_is_int8:"<< all_next_layer_is_int8<<"\n";
+    llvm::errs() << "all_next_layer_is_int4:" << all_next_layer_is_int4
+                 << ",all_next_layer_is_int8:" << all_next_layer_is_int8
+                 << "\n";
     if (all_next_layer_is_int8)
-        llvm::errs() <<"directly output int8\n";
+      llvm::errs() << "directly output int8\n";
     else
-        llvm::errs() <<"directly output int4\n";
+      llvm::errs() << "directly output int4\n";
 
-    with_bias = with_bias || in_zp != 0;
+    bool with_bias = p.with_bias || in_zp != 0;
     float scale_f;
     if (all_next_layer_is_int8) {
       if (op.out_int8_scale().has_value()) {
-        out_int8_scale = op->getAttr("out_int8_scale").cast<FloatAttr>().getValueAsDouble();
+        out_int8_scale =
+            op->getAttr("out_int8_scale").cast<FloatAttr>().getValueAsDouble();
       }
       scale_f = w_scale * in_scale / out_int8_scale;
     } else {
@@ -276,7 +283,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     operands.push_back(new_filter);
     auto new_bias = op.bias();
     if (with_bias) {
-      std::vector<int64_t> shape = {N};
+      std::vector<int64_t> shape = {p.N};
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands.push_back(new_bias);
@@ -297,7 +304,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     get_scale_and_shift(scale_f, scale, shift, 32);
     for (auto operand : op.getOperands())
       operands.push_back(operand);
-    if (with_bias) {
+    if (p.with_bias) {
       auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
       auto bias_fp32 = biasOp.read<float>();
       int bias_n = bias_fp32->size();
@@ -324,32 +331,39 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
   auto newType = getQuantInt4Type(op.output(), asymmetric);
   if (all_next_layer_is_int8)
     newType = getQuantInt8Type(op.output(), asymmetric);
-  auto newOp = rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
+  auto newOp =
+      rewriter.create<tpu::MatMulOp>(op->getLoc(), newType, operands, attrs);
   rewriter.replaceOp(op, {newOp.output()});
 
   if (!all_next_layer_is_int8 && !all_next_layer_is_int4) {
     bool first = true;
     Value value;
-    for (auto user:op->getUsers()) {
+    for (auto user : op->getUsers()) {
       if (!isa<top::ConvOp>(user) && !isa<top::MatMulOp>(user)) {
         if (first) {
           first = false;
           if (op.out_int8_scale().has_value()) {
-            out_int8_scale = op->getAttr("out_int8_scale").cast<FloatAttr>().getValueAsDouble();
-            out_int8_zp = op->getAttr("out_int8_zp").cast<FloatAttr>().getValueAsDouble();
+            out_int8_scale = op->getAttr("out_int8_scale")
+                                 .cast<FloatAttr>()
+                                 .getValueAsDouble();
+            out_int8_zp =
+                op->getAttr("out_int8_zp").cast<FloatAttr>().getValueAsDouble();
           }
-          //requant to int8
-          double scale = out_scale/out_int8_scale;
-          double offset = out_int8_zp - out_zp*scale;
-          auto output_type = getQuantIntType(op.output(), out_int8_scale, out_int8_zp);
-          auto to_name = Module::getName(op.getOperation()).str()+"to_b8";
-          value = do_requantFp(newOp.output(), scale, offset, output_type, to_name);
-          llvm::errs() <<"MatMul output requantFp, to_name:"<<to_name<<",value:";
+          // requant to int8
+          double scale = out_scale / out_int8_scale;
+          double offset = out_int8_zp - out_zp * scale;
+          auto output_type =
+              getQuantIntType(op.output(), out_int8_scale, out_int8_zp);
+          auto to_name = Module::getName(op.getOperation()).str() + "to_b8";
+          value =
+              do_requantFp(newOp.output(), scale, offset, output_type, to_name);
+          llvm::errs() << "MatMul output requantFp, to_name:" << to_name
+                       << ",value:";
           value.dump();
         }
         for (uint32_t idx = 0; idx < user->getNumOperands(); idx++) {
           if (op.output() == user->getOperand(idx)) {
-            llvm::errs() <<"setOperand, idx:"<<idx<<"\n";
+            llvm::errs() << "setOperand, idx:" << idx << "\n";
             user->setOperand(idx, value);
           }
         }
@@ -372,10 +386,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (!Quant::isUniformQuantized(op.input(), op.right(), op.output())) {
     llvm_unreachable("input output should be quantized");
   }
-  int64_t batch, M, K, N;
-  bool relu, with_bias, transpose;
-  double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
+  auto &p = op.parseParam();
   // assert(batch == 1);
   auto input_qtype = Quant::getUniformQuantizedType(op.input());
   auto right_qtype = Quant::getUniformQuantizedType(op.right());
@@ -398,7 +409,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   }
 
   operands.push_back(op.right());
-  if (with_bias) {
+  if (p.with_bias) {
     auto bias_stype = Module::getStorageType(op.bias());
     auto bias_new_type =
         RankedTensorType::get(Module::getShape(op.bias()), bias_stype);
@@ -421,12 +432,12 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto right_type = op.right().getType().cast<RankedTensorType>();
   int K_idx = op.right_transpose() ? 1 : 0;
   int N_idx = op.right_transpose() ? 0 : 1;
-  if (batch > 1) {
+  if (p.batch > 1) {
     K_idx++;
     N_idx++;
   }
-  int64_t row_size = K;
-  int64_t col_size = N;
+  int64_t row_size = p.K;
+  int64_t col_size = p.N;
   std::shared_ptr<std::vector<int32_t>> bias_quant;
   if (isa<top::WeightOp>(op.bias().getDefiningOp())) {
     bias_quant = cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();

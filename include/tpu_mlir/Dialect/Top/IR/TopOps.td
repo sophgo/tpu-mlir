@@ -327,7 +327,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const conv_attr_t& parseParam();
   }];
 }
 
@@ -352,7 +352,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const pool_attr_t& parseParam();
   }];
 }
 
@@ -592,9 +592,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit, bool &right_transpose);
+    const matmul_attr_t& parseParam();
   }];
 }
 
@@ -976,7 +974,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const deconv_attr_t& parseParam();
   }];
 }
 
@@ -1025,19 +1023,7 @@ def Top_GRUOp: Top_Op<"GRU"> {
     AnyTensorOrNone:$Y_h);
 
   let extraClassDeclaration = [{
-    typedef struct {
-      int64_t seq_len;
-      int64_t batch_size;
-      int64_t input_size;
-      int64_t num_direction;
-      int64_t hidden_size;
-      bool batch_first;
-      bool have_bias;
-      bool have_h0;
-      bool output_y;
-      bool output_yh;
-    } gru_attr_t;
-    gru_attr_t parseParam();
+    const gru_attr_t& parseParam();
   }];
 }
 
@@ -1065,21 +1051,7 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
-    typedef struct {
-      int64_t seq_len;
-      int64_t batch_size;
-      int64_t input_size;
-      int64_t num_direction;
-      int64_t hidden_size;
-      bool batch_first;
-      bool have_bias;
-      bool have_h0;
-      bool have_c0;
-      bool output_y;
-      bool output_yh;
-      bool output_yc;
-    } lstm_attr_t;
-    lstm_attr_t parseParam();
+    const lstm_attr_t& parseParam();
   }];
 }
 

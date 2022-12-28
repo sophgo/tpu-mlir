@@ -59,8 +59,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -116,7 +115,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   int inner_dim = filter_size / attr.oc;
   for (int c = 0; c < attr.oc; c++) { // per-channel量化
     // float *p_filter = filter_f32->data() + c * inner_dim;
-    float *p_filter = is_quantized ? nullptr : (filter_f32->data() + c * inner_dim);
+    float *p_filter =
+        is_quantized ? nullptr : (filter_f32->data() + c * inner_dim);
     if (filterOp.scale().has_value() && weight_scale_v->size()) {
       scale_w = weight_scale_v->data()[c];
     } else {
@@ -156,7 +156,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  attr.has_bias = (bias_int32 != nullptr);
+  bool has_bias = (bias_int32 != nullptr);
 
   auto filter_type = op.filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
@@ -172,7 +172,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
         top::WeightOp::create(op, "filter_u8", *filter_u8, new_type);
     operands.push_back(new_filter);
   }
-  if (attr.has_bias) {
+  if (has_bias) {
     std::vector<int64_t> bias_shape(Module::getShape(op.output()).size(), 1);
     bias_shape[1] = attr.oc;
     auto new_type = RankedTensorType::get(bias_shape, rewriter.getI32Type());
@@ -188,7 +188,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     attrs.push_back(attr);
   }
   attrs.push_back(
-      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(has_bias)));
 
   bool output_int32 = false;
   if (Module::isBM1686() || op.kernel_shape().size() == 3) {
@@ -205,12 +205,13 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     // requant
     auto output_type = getQuantInt8Type(op.output(), asymmetric);
     std::vector<int32_t> quant(attr.oc * 3, 0);
-    int64_t  quant_dim = 0;
+    int64_t quant_dim = 0;
     if (Module::isBM1686()) {
       quant_dim = 2;
       for (size_t i = 0; i < attr.oc; ++i) {
         quant[i * 2] = multiplier_v[i];
-        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) | (((int32_t)out_zp & 0xffff) << 16);
+        quant[i * 2 + 1] = ((-(int32_t)rshift_v[i]) & 0xff) |
+                           (((int32_t)out_zp & 0xffff) << 16);
       }
     } else {
       quant_dim = 3;
@@ -220,8 +221,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
         quant[i * 3 + 2] = out_zp;
       }
     }
-    auto quant_type =
-        RankedTensorType::get({1, attr.oc, 1, 1, quant_dim}, rewriter.getI32Type());
+    auto quant_type = RankedTensorType::get({1, attr.oc, 1, 1, quant_dim},
+                                            rewriter.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue = do_requant(op->getLoc(), conv_out, quant_value, output_type,
                                true, tpu::RequantMode::Normal);
@@ -250,8 +251,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
                << Module::getName(op.getOperation()).str() << "\n";
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -387,7 +387,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       bias_int32->data()[c] = std::round(-bias_w_xz);
     }
   }
-  attr.has_bias = (bias_int32 != nullptr);
+  bool has_bias = (bias_int32 != nullptr);
 
   auto filter_type = op.filter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
@@ -401,7 +401,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
         top::WeightOp::create(op, "filter_u4", *filter_u8, new_type);
     operands.push_back(new_filter);
   }
-  if (attr.has_bias) {
+  if (has_bias) {
     std::vector<int64_t> bias_shape(Module::getShape(op.output()).size(), 1);
     bias_shape[1] = attr.oc;
     auto new_type = RankedTensorType::get(bias_shape, rewriter.getI32Type());
@@ -417,7 +417,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
     attrs.push_back(attr);
   }
   attrs.push_back(
-      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
+      rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(has_bias)));
 
   bool output_int32 = false;
   if (Module::isBM1686() || op.kernel_shape().size() == 3) {
@@ -548,8 +548,7 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (Quant::isUniformQuantized(op.input(), op.output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   auto input_qtype = Quant::getUniformQuantizedType(op.input());
   auto output_qtype = Quant::getUniformQuantizedType(op.output());
   auto filter_type = op.filter().getType().cast<RankedTensorType>();

@@ -17,6 +17,7 @@
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/AttrStruct.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/Location.h"

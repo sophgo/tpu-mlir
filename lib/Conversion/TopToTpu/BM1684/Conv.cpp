@@ -50,8 +50,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   std::vector<Value> operands;
   operands.push_back(op.input());
   std::vector<NamedAttribute> attrs;
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto& attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   auto th_input = Quant::getThreshold(op.input());

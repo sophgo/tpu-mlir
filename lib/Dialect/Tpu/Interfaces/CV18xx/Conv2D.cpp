@@ -176,8 +176,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   // first, merge conv rshift/multiplier/bias into one packed tensor
   std::shared_ptr<std::vector<int32_t>> bias_new;
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
@@ -226,8 +225,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isBF16())
     return failure();
 
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   // first lower weight
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
@@ -265,10 +263,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
 // GlobalGenInterface
 // ======================================
 
-void tpu::Conv2DOp::codegen_global_cv18xx( int64_t layer_id) {
-
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
+  auto &attr = parseParam();
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   gaddr_t ga_filter = Module::getAddress(filter());
@@ -290,7 +286,6 @@ void tpu::Conv2DOp::codegen_global_cv18xx( int64_t layer_id) {
     float fused_negative_slope = 0.0f; // Todo this->do_leaky_relu()
 
     cvi_backend_tg_fixed_conv_kernel(
-
         layer_id,   // layer_id,
         ga_input,   // input_data_gaddr,
         ga_output,  // output_data_gaddr,
@@ -320,8 +315,7 @@ void tpu::Conv2DOp::codegen_global_cv18xx( int64_t layer_id) {
     bool do_quant = false;
     gaddr_t ga_scale = GA_INVALID;
     gaddr_t ga_zeropoint = GA_INVALID;
-    cvi_backend_tg_bf16_conv_kernel(
-                                    layer_id,   // layer_id
+    cvi_backend_tg_bf16_conv_kernel(layer_id,   // layer_id
                                     ga_input,   // input_data_gaddr,
                                     ga_output,  // output_data_gaddr,
                                     ga_filter,  // weight_data_gaddr,

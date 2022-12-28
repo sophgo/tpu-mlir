@@ -34,8 +34,7 @@ void AvgPoolLowering::LoweringINT4(PatternRewriter &rewriter, top::AvgPoolOp op,
 void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                    top::AvgPoolOp poolOp,
                                    bool asymmetric) const {
-  pool_attr_t p;
-  poolOp.parseParam(&p);
+  auto &p = poolOp.parseParam();
   const size_t kernel_size = poolOp.kernel_shape().size();
   int64_t kd = p.kd, kh = p.kh, kw = p.kw;
   auto op = poolOp.getOperation();
