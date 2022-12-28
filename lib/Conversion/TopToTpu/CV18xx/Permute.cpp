@@ -15,13 +15,13 @@
 namespace tpu_mlir {
 namespace cv18xx {
 void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
-                                bool asymmetric) const {
-  lowering_common_int8<tpu::PermuteOp>(rewriter, op, asymmetric);
+                                   bool asymmetric) const {
+  lowering_common_int8<tpu::PermuteOp>(rewriter, op, asymmetric, 2);
 }
 
 void PermuteLowering::LoweringBF16(PatternRewriter &rewriter,
-                                top::PermuteOp op) const {
-  lowering_common_bf16<tpu::PermuteOp>(rewriter, op);
+                                   top::PermuteOp op) const {
+  lowering_common_bf16<tpu::PermuteOp>(rewriter, op, 2);
 }
 
 } // namespace cv18xx

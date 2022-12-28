@@ -166,7 +166,7 @@ static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
                                  int num_operands = 0) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
-  lowering_common<OpTy>(rewriter, from, newType);
+  lowering_common<OpTy>(rewriter, from, newType, num_operands);
 }
 
 template <typename ElemTy = Float32Type>

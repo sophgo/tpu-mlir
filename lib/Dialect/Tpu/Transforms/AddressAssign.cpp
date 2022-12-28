@@ -35,11 +35,14 @@ public:
       CVAddressAssign addr_assign;
       addr_assign.assign(module, reuse_addr);
     } else {
+      auto bm168x = backend::BM168x::instance();
+      bm168x->start_env();
       RewritePatternSet patterns(module.getContext());
       bm168x::populateGlobalBufferPatterns(&patterns);
       applyPatternsAndFoldGreedily(module, std::move(patterns));
       BMAddressAssign addr_assign;
       addr_assign.assign(module, reuse_addr);
+      bm168x->end_env();
     }
   }
 };
