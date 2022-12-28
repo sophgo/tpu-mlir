@@ -386,8 +386,15 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.stride[1] = attrs.sw;
   param.dilation[0] = attrs.dh;
   param.dilation[1] = attrs.dw;
-  param.pad[0] = attrs.kh - attrs.pad_h - 1;
-  param.pad[1] = attrs.kh - attrs.pad_h_after - 1;
+  int kh_ext = (attrs.kh - 1) * attrs.dh + 1;
+  if (auto deconv_in_slice =
+          DeconvSlice(gi.h_idx, gi.h_slice, attrs.sh, kh_ext, attrs.pad_h)) {
+    param.pad[0] = deconv_in_slice.value()[0];
+    param.pad[1] = deconv_in_slice.value()[1];
+  } else {
+    param.pad[0] = attrs.kh - attrs.pad_h - 1;
+    param.pad[1] = attrs.kh - attrs.pad_h_after - 1;
+  }
   param.pad[2] = attrs.kw - attrs.pad_w - 1;
   param.pad[3] = attrs.kw - attrs.pad_w_after - 1;
   param.has_bias = attrs.with_bias;
