@@ -360,6 +360,21 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   }];
 }
 
+def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
+  let summary = "pool mask operator";
+
+  let description = [{
+    pooling mask on input
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$scale
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu,
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {

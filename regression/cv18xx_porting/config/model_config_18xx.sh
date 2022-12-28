@@ -860,7 +860,7 @@ export MODEL_DEF=$MODEL_PATH/segmentation/enet/caffe/enet_deploy_final.prototxt
 export MODEL_DAT=$MODEL_PATH/segmentation/enet/caffe/cityscapes_weights.caffemodel
 export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/city.png
 export COLOURS_LUT=$REGRESSION_PATH/data/city_lut.png
-export CALI_TABLE=$REGRESSION_PATH/data/cali_tables/enet_calibration_table
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
 export INPUT_SHAPE=[[1,3,512,1024]]
 export NET_INPUT_DIMS=512,1024
 export IMAGE_RESIZE_DIMS=512,1024
@@ -871,12 +871,12 @@ export STD=1,1,1
 export CALIBRATION_IMAGE_COUNT=60
 export INPUT=data
 export OUTPUTS=deconv6_0_0
-export TOLERANCE_INT8=0.69,0.66,0.11
-export TOLERANCE_BF16=0.96,0.96,0.74
+export TOLERANCE_INT8=0.69,0.11
+export TOLERANCE_BF16=0.96,0.74
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
 export EXCEPTS=pool1_0_4_mask,pool2_0_4_mask,conv2_7_1_a,prelu2_7_0,prelu2_7_1,prelu3_3_0,conv3_3_1_a,prelu3_3_1,prelu4_0_4,upsample4_0_4,upsample5_0_4
 # export BATCH_SIZE=4
-export CALI_IMAGES=$DATA_SET/VOCdevkit/VOC2012/JPEGImages
+export CALI_IMAGES=$DATA_SET/cityscaps/val
 fi
 
 if [ $NET = "efficientnet_b0" ]; then

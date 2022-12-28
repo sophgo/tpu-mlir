@@ -365,6 +365,21 @@ def Top_MaxPoolWithMaskOp:Top_PoolOp<"MaxPoolWithMask"> {
     AnyTensor:$mask);
 }
 
+def Top_PoolMaskOp: Top_Op<"PoolMask"> {
+  let summary = "pool mask operator";
+
+  let description = [{
+    pooling mask on input
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$scale
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
 
   let summary = "Depth2Space operator";
