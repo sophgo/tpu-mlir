@@ -12,6 +12,42 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
+static void tans_shape(std::vector<int64_t> &order, int64_t axis, bool front) {
+  for (int i = 0; i < 4; i++) {
+    if (i == 1) {
+      order.push_back(front ? axis : 1);
+    } else if (i == axis) {
+      order.push_back(front ? 1 : axis);
+    } else {
+      order.push_back(i);
+    }
+  }
+  return;
+}
+
+static mlir::RankedTensorType
+getQuantInt8TypeNewShape(Value v, std::vector<int64_t> new_shape,
+                         bool asymmetric) {
+  auto type = v.getType().cast<RankedTensorType>();
+  auto ctx = v.getContext();
+  auto cali_type = module::getCalibratedType(v);
+  auto min = cali_type.getMin();
+  double scale;
+  int64_t zeropoint = 0;
+  module::getScaleAndZeroPoint(v, scale, zeropoint, asymmetric);
+  int64_t qmin = -128, qmax = 127;
+  uint32_t flag = quant::QuantizationFlags::Signed;
+  if (min >= 0) {
+    qmin = 0;
+    qmax = 255;
+    flag = 0;
+  }
+  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
+                                                cali_type.getExpressedType(),
+                                                scale, zeropoint, qmin, qmax);
+  return RankedTensorType::get(new_shape, qtype);
+}
+
 void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
   lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 5);
@@ -22,7 +58,127 @@ void SoftmaxLowering::LoweringINT4(PatternRewriter &rewriter, top::SoftmaxOp op,
 }
 void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
                                    bool asymmetric) const {
-  LoweringF32(rewriter, op);
+  auto in_shape = module::getShape(op);
+  std::vector<int64_t> new_shape(in_shape);
+  bool need_reshape = false;
+  auto dims = in_shape.size();
+
+  if (op.getLog() || dims > 4 || op.getAxis() != 1)
+    return LoweringF32(rewriter, op);
+
+  if (dims < 4) {
+    for (int i = dims; i < 4; i++) {
+      new_shape.push_back(1);
+    }
+    need_reshape = true;
+  }
+
+  auto in_type =
+      RankedTensorType::get(in_shape, module::getElementType(op.getInput()));
+  auto in_reshaped_type =
+      getQuantInt8TypeNewShape(op.getInput(), new_shape, asymmetric);
+  auto out_type = getQuantInt8Type(op.getOutput(), asymmetric);
+  auto out_ttype =
+      RankedTensorType::get(in_shape, module::getStorageType(out_type));
+
+  auto in = op.getOperand();
+  double scale;
+  int64_t zeropoint;
+  auto beta_v = op.getBeta().convertToDouble();
+  module::getScaleAndZeroPoint(in, scale, zeropoint, asymmetric);
+  std::vector<float> table(256, 0.0f);
+  for (int i = 0; i < 256; ++i) {
+    table[i] = std::exp(-1.0 * scale * i * beta_v);
+  }
+  auto table_opd = create_lookup_table(op, table);
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    if (attr.getName() == "axis" && op.getAxis() != 1) {
+      attrs.push_back(
+          rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(1)));
+    } else
+      attrs.push_back(attr);
+  }
+
+  if (op.getAxis() == 1) {
+    if (need_reshape) {
+      auto ctx = op.getInput().getContext();
+      OpBuilder builder(ctx);
+      auto in_reshaped = do_reshape(op.getInput(), in_reshaped_type);
+
+      builder.setInsertionPointAfterValue(in_reshaped);
+      auto new_name = (module::getName(op.getOperation())).str() + "__softmax";
+      auto sftmax_name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+      auto sft_out_type =
+          getQuantInt8TypeNewShape(op.getOutput(), new_shape, asymmetric);
+      auto newOp = rewriter.create<tpu::SoftmaxOp>(
+          sftmax_name_loc, sft_out_type,
+          ValueRange{in_reshaped, table_opd,
+                     module::getNoneOp(op.getOperation()),
+                     module::getNoneOp(op.getOperation()),
+                     module::getNoneOp(op.getOperation())},
+          attrs);
+
+      auto reshaped_out = do_reshape(newOp.getOutput(), out_ttype);
+      builder.setInsertionPointAfterValue(reshaped_out);
+      rewriter.replaceOp(op, {reshaped_out});
+    } else {
+      rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
+          op, out_type,
+          ValueRange{op.getInput(), table_opd,
+                     module::getNoneOp(op.getOperation()),
+                     module::getNoneOp(op.getOperation()),
+                     module::getNoneOp(op.getOperation())},
+          attrs);
+    }
+  } else {
+    // dead code
+    auto ctx = op.getInput().getContext();
+    OpBuilder builder(ctx);
+
+    auto handle_transposed = [&](mlir::Value in) {
+      std::vector<int64_t> order_in;
+      tans_shape(order_in, op.getAxis(), true);
+      std::string new_name =
+          module::getName(op.getInput()).str() + "__transpose";
+      auto in_trans_name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+      auto trans_in_op = do_transpose(in_trans_name_loc, in, order_in);
+
+      // builder.setInsertionPointAfterValue(trans_in_op);
+      new_name = (module::getName(op.getOperation())).str() + "__softmax";
+      auto sftmax_name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+      auto sft_out_type = getQuantInt8TypeNewShape(
+          op.getOutput(), module::getShape(trans_in_op), asymmetric);
+      auto newOp = rewriter.create<tpu::SoftmaxOp>(
+          sftmax_name_loc, sft_out_type,
+          ValueRange{trans_in_op, table_opd,
+                     module::getNoneOp(op.getOperation()),
+                     module::getNoneOp(op.getOperation()),
+                     module::getNoneOp(op.getOperation())},
+          attrs);
+
+      new_name = (module::getName(op.getOutput()).str()) + "__transpose";
+      auto out_trans_name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
+      std::vector<int64_t> order_out;
+      tans_shape(order_out, op.getAxis(), true);
+      auto trans_out_op =
+          do_transpose(out_trans_name_loc, newOp.getOutput(), order_out);
+      return trans_out_op;
+    };
+
+    if (need_reshape) {
+      auto in_reshaped = do_reshape(op.getInput(), in_reshaped_type);
+      auto trans_out_op = handle_transposed(in_reshaped);
+      auto reshaped_out = do_reshape(trans_out_op, out_ttype);
+      builder.setInsertionPointAfterValue(reshaped_out);
+      rewriter.replaceOp(op, {reshaped_out});
+    } else {
+      auto trans_out_op = handle_transposed(op.getInput());
+      builder.setInsertionPointAfterValue(trans_out_op);
+      rewriter.replaceOp(op, {trans_out_op});
+    }
+  }
 }
 
 void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -79,7 +235,8 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (op.getAxis() == 1) {
     rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
         op, op.getOutput().getType(),
-        ValueRange{op.getInput(), table_opd, module::getNoneOp(op.getOperation()),
+        ValueRange{op.getInput(), table_opd,
+                   module::getNoneOp(op.getOperation()),
                    module::getNoneOp(op.getOperation()),
                    module::getNoneOp(op.getOperation())},
         attrs);
@@ -95,8 +252,8 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
     rewriter.setInsertionPointAfter(op);
     new_name = (module::getName(op.getOutput()).str()) + "__softmax";
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    auto newType = RankedTensorType::get(module::getShape(TransOp),
-                                         module::getElementType(op.getOutput()));
+    auto newType = RankedTensorType::get(
+        module::getShape(TransOp), module::getElementType(op.getOutput()));
     auto newOp = rewriter.create<tpu::SoftmaxOp>(
         name_loc, newType,
         ValueRange{TransOp, table_opd, module::getNoneOp(op.getOperation()),

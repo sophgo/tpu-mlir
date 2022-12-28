@@ -1284,13 +1284,15 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Softmax(self, case_name):
-        input_shape = [3, 100, 32]
-        axis = 2
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-        softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
-        graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
-        self.onnx_and_test(graph_def)
+        input_shapes = [[3, 100, 32], [3, 100, 32, 1]]
+        axiss = [1, 2]
+        for input_shape in input_shapes:
+            for axis in axiss:
+                input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+                output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+                softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
+                graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+                self.onnx_and_test(graph_def)
 
     def test_LogSoftmax(self, case_name):
         input_shape = [3, 100, 32]

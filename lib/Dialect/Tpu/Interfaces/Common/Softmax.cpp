@@ -157,14 +157,16 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
               max_val - p.inputs[0][out_offset + c * inner_dim + j]);
           float prob_rescaled = exp_table[offset];
           prob_rescaled = prob_rescaled / (sum * scale);
-          if (out_type.isInteger(8)) {
+          if (out_type.isSignedInteger(8)) {
             int prob_rnd = static_cast<int32_t>(std::round(prob_rescaled));
             p.outputs[0][out_offset + c * inner_dim + j] =
                 to_int8(prob_rnd + zp);
-          } else {
+          } else if(out_type.isUnsignedInteger(8)) {
             int prob_rnd = static_cast<int32_t>(prob_rescaled + 0.5);
             p.outputs[0][out_offset + c * inner_dim + j] =
                 to_uint8(prob_rnd + zp);
+          } else {
+            llvm_unreachable("not support type");
           }
         }
       }
