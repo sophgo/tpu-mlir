@@ -27,11 +27,11 @@ void top::MaxUnpoolOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MaxUnpoolOp::inference(InferenceParameter &p) {
   int64_t N, C, H, W;
+  int64_t ON, OC, OH, OW;
   Module::getNCHW(input(), N, C, H, W);
+  Module::getNCHW(output(), ON, OC, OH, OW);
   auto scale_h_ = scale_h();
   auto scale_w_ = scale_w();
-  int64_t OH = H * scale_h_;
-  int64_t OW = W * scale_w_;
   auto num_elem = Module::getNumElements(output());
 
   int64_t NC = N * C;

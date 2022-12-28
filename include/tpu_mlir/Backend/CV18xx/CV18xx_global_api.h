@@ -367,5 +367,9 @@ void cvi_backend_tg_bf16_gru_kernel(
 void cvi_backend_tg_reverse_kernel(uint32_t layer_id, gaddr_t ga_input,
                                    gaddr_t ga_output, int n, int c, int h,
                                    int w, int axis, cvk_fmt_t fmt);
+
+void cvi_backend_tg_pool_mask_kernel(uint32_t layer_id, gaddr_t input_gaddr,
+                                     gaddr_t output_gaddr, int n, int c, int h,
+                                     int w, int scale, cvk_fmt_t fmt);
 } // namespace backend
 } // namespace tpu_mlir
