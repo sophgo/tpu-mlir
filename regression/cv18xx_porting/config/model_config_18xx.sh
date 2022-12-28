@@ -733,7 +733,7 @@ export NET_INPUT_DIMS=600,600
 export RAW_SCALE=255.0
 export MEAN=0,0,0
 export INPUT_SCALE=1,1,1
-export TOLERANCE_INT8=0.86,0.49
+export TOLERANCE_INT8=0.916,0.579 #0.86,0.49
 # accuracy setting
 export NET_INPUT_DIMS=600,600
 export EVAL_MODEL_TYPE="widerface"
