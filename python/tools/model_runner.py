@@ -92,7 +92,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
             if is_cv18xx and i.name in inputs:
-                outputs[i.name] = np.array(i.data.astype(np.float32)/ np.float32(i.qscale))
+                name = i.name + "_si8" if i.data.dtype == np.int8 else "_ui8"
+                outputs[name] = np.array(i.data.astype(np.float32)/ np.float32(i.qscale))
             else :
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
