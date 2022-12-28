@@ -221,7 +221,8 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(tmp_shape1, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
     auto newOp1 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp0.output()}, attrs);
+        name_loc, newType, ValueRange{newOp0.output(), Module::getNoneOp(op)},
+        attrs);
     // 3. do pool last dim
     tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
     newType = RankedTensorType::get(tmp_shape1, type);
@@ -243,7 +244,8 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     auto newOp3 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp2.output()}, attrs);
+        name_loc, newType, ValueRange{newOp2.output(), Module::getNoneOp(op)},
+        attrs);
     // 5. reshape back
     newType = RankedTensorType::get(output_shape, type);
     auto reshape_backOp =

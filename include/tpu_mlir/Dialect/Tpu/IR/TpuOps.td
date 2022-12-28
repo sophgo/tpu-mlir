@@ -1028,6 +1028,7 @@ def Tpu_PermuteOp: Tpu_Op<"Permute"> {
   let arguments = (
     ins AnyTensor:$input,
     I64ArrayAttr:$order,
+    AnyTensorOrNone:$buffer,
     OptionalAttr<Tpu_LayerGroupAttr>:$group_info
   );
 

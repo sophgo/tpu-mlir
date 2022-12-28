@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void PermuteLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::PermuteOp op) const {
-  lowering_common_f32<tpu::PermuteOp>(rewriter, op);
+  lowering_common_f32<tpu::PermuteOp>(rewriter, op, 2);
 }
 void PermuteLowering::LoweringINT4(PatternRewriter &rewriter, top::PermuteOp op,
                                    bool asymmetric) const {
@@ -22,22 +22,22 @@ void PermuteLowering::LoweringINT4(PatternRewriter &rewriter, top::PermuteOp op,
 }
 void PermuteLowering::LoweringINT8(PatternRewriter &rewriter, top::PermuteOp op,
                                    bool asymmetric) const {
-  lowering_common_int8<tpu::PermuteOp>(rewriter, op, asymmetric);
+  lowering_common_int8<tpu::PermuteOp>(rewriter, op, asymmetric, 2);
 }
 
 void PermuteLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::PermuteOp op) const {
-  lowering_common_bf16<tpu::PermuteOp>(rewriter, op);
+  lowering_common_bf16<tpu::PermuteOp>(rewriter, op, 2);
 }
 
 void PermuteLowering::LoweringF16(PatternRewriter &rewriter,
                                   top::PermuteOp op) const {
-  lowering_common_f16<tpu::PermuteOp>(rewriter, op);
+  lowering_common_f16<tpu::PermuteOp>(rewriter, op, 2);
 }
 
 void PermuteLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::PermuteOp op) const {
-  lowering_common<tpu::PermuteOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::PermuteOp>(rewriter, op, op.output().getType(), 2);
 }
 
 } // namespace bm1684x

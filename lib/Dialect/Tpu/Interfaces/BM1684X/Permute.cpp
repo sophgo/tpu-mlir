@@ -52,11 +52,12 @@ void tpu::PermuteOp::codegen_global_bm1684x() {
   auto perm = Module::getI64Array(order());
   auto in_shape = Module::getShape(input());
   int dims = in_shape.size();
-  param.spec.buffer_global_addr = 0;
+  param.spec.buffer_global_addr = Module::getAddress(buffer());
   for (int i = 0; i < dims; i++) {
-    param.spec.order[i] =perm->at(i);
+    param.spec.order[i] = perm->at(i);
   }
   param.buffer_size_ptr = 0;
   BM168x::call_global_func("backend_api_transpose_global", &param,
-                                       sizeof(param), input_spec->data(), output_spec->data());
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }

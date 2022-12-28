@@ -171,15 +171,14 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   if (auto ret = DeconvSlice(out_idx, out_slice, attr.sh, kh_ext, attr.pad_h)) {
     in_idx = ret.value()[2];
     in_slice = ret.value()[3];
-    if (in_slice + ret.value()[0] + ret.value()[1] < kh_ext) {
-      return failure();
-    }
   } else {
     return failure();
   }
 
   bool is_last = (out_idx + out_slice == attr.oh);
   LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih, is_last);
+  if (in_slice == 0)
+    return failure();
   return success();
 }
 

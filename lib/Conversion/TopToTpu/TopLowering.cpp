@@ -376,8 +376,9 @@ Value do_transpose(Location name_loc, Value input,
   // std::string new_name =
   //     Module::getName(input.getDefiningOp()).str() + "_transpose";
   // auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
-  auto newOp = builder.create<tpu::PermuteOp>(name_loc, new_type,
-                                              ValueRange{input}, attrs);
+  auto newOp = builder.create<tpu::PermuteOp>(
+      name_loc, new_type,
+      ValueRange{input, Module::getNoneOp(input.getDefiningOp())}, attrs);
   return newOp.output();
 }
 

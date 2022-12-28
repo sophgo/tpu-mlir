@@ -135,12 +135,75 @@ public:
   }
 };
 
+class PermuteGlobalBuffer : public OpRewritePattern<tpu::PermuteOp> {
+public:
+  using OpRewritePattern<tpu::PermuteOp>::OpRewritePattern;
+
+  typedef struct tranpose_spec {
+    uint64_t buffer_global_addr;
+    uint32_t order[MAX_SHAPE_DIMS];
+    uint32_t is_dynamic;
+  } transpose_spec_t;
+
+  typedef struct transpose_param {
+    transpose_spec_t spec;
+
+    int32_t if_getting_buffer_size;
+    uint64_t buffer_size_ptr;
+  } transpose_param_t;
+
+  LogicalResult matchAndRewrite(tpu::PermuteOp permuteOp,
+                                PatternRewriter &rewriter) const override {
+    if (!permuteOp.buffer().getType().isa<mlir::NoneType>()) {
+      return failure();
+    }
+    transpose_param_t param = {0};
+    param.if_getting_buffer_size = 0;
+    param.spec.buffer_global_addr = 0;
+
+    auto order = Module::getI64Array(permuteOp.order());
+    for (int i = 0, n = order->size(); i < n; ++i) {
+      param.spec.order[i] = order->at(i);
+    }
+    int64_t buffer_size = 0;
+    param.buffer_size_ptr = (uint64_t)&buffer_size;
+
+    auto value_to_spec = [](mlir::Value v) -> tensor_spec_t {
+      tensor_spec_t spec;
+      memset(&spec, 0, sizeof(spec));
+      spec.dtype = backend::BM168x::getDataType(v);
+      auto shape = Module::getShape(v);
+      spec.dims = shape.size();
+      for (int i = 0; i < spec.dims; i++) {
+        spec.shape[i] = shape[i];
+      }
+      spec.elem_num = 0;
+      return spec;
+    };
+
+    auto input_sepc = value_to_spec(permuteOp.input());
+    auto output_sepc = value_to_spec(permuteOp.output());
+    backend::BM168x::call_global_func("backend_api_transpose_global", &param,
+                                      sizeof(param), &input_sepc, &output_sepc);
+    auto type = Module::getStorageType(permuteOp.input());
+    // add buffer
+    if (buffer_size > 0) {
+      auto buffer_type = RankedTensorType::get({buffer_size}, type);
+      auto buffer = tpu::BufferOp::create(permuteOp, buffer_type);
+      permuteOp.setOperand(1, buffer);
+      return success();
+    }
+    return failure();
+  }
+};
+
 void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
-      ReduceGlobalBuffer
+      ReduceGlobalBuffer,
+      PermuteGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }
