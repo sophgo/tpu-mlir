@@ -120,26 +120,65 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
   return success();
 }
 
+Optional<SmallVector<float, 4>>
+tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
+                      int64_t filter, int64_t pad) {
+  // Define y as the output space, x as the input space.
+  // y should satisfy the constrain:
+  // y \in {x | Union [x_i * stride, x_i * stride + filter)}
+  // define: x_l, x_u: the lower and upper bound of x space.
+  //         x_range = x_u - x_l + 1
+  //         x_start = x_l
+  //  x \in [x_l, x_u]
+
+  // x_l * stride <= y < x_u * stride + filter
+  // x_u * stride <= y_max
+  // assert (x_l - 1) * stride + filter <= y_min
+  // assert x_l * stride + filter > y_min
+  // assert (x_u + 1) * stride > y_max
+
+  // The solution to those inequations is the valid space of x and y.
+
+  float pad_f, pad_e, x_l, x_u;
+  float y_min = out_idx + pad, y_max = y_min + out_slice - 1; // closed interval
+
+  x_l = std::floor(y_min / stride);
+  x_l = std::min(std::floor(std::max(y_min - filter, float(0)) / stride) + 1,
+                 x_l);
+  if (x_l * stride + filter <= y_min)
+    return {};
+
+  x_u = std::floor(y_max / stride);
+  x_u = std::max(std::ceil((y_max - filter) / stride), x_u);
+  if ((x_u + 1) * stride <= y_max)
+    return {};
+
+  pad_f = std::max(x_l * stride + filter - y_min - 1, float(0));
+  pad_e = std::max(y_max - x_u * stride, float(0));
+
+  assert(pad_f < filter);
+  assert(pad_e < filter);
+  return Optional<SmallVector<float, 4>>({pad_f, pad_e, x_l, x_u - x_l + 1});
+}
+
 LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
   deconv_attr_t attrs;
   parseParam(&attrs);
   int kh_ext = (attrs.kh - 1) * attrs.dh + 1;
-  int pad_h = kh_ext - attrs.pad_h - 1;
-  in_idx = out_idx - attrs.pad_h;
-  in_idx = in_idx <= 0 ? in_idx : std::ceil((float)in_idx / attrs.sh);
-  if (in_idx <= 0) {
-    pad_h = -in_idx;
-    in_slice =
-        std::ceil((out_slice - pad_h + kh_ext - 1) / (float)(attrs.sh)) + pad_h;
+  if (auto ret =
+          DeconvSlice(out_idx, out_slice, attrs.sh, kh_ext, attrs.pad_h)) {
+    in_idx = ret.value()[2];
+    in_slice = ret.value()[3];
+    if (in_slice + ret.value()[0] + ret.value()[1] < kh_ext) {
+      return failure();
+    }
   } else {
-    in_slice = std::ceil((out_slice + kh_ext / 2) / (float)attrs.sh);
-  }
-  bool is_last = (out_idx + out_slice == attrs.oh);
-  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih, is_last);
-  if (in_slice == 0) {
     return failure();
   }
+
+  bool is_last = (out_idx + out_slice == attrs.oh);
+  LocalGenInterface::fixSlice(in_idx, in_slice, attrs.ih, is_last);
   return success();
 }
 

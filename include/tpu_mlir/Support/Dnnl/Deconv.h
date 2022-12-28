@@ -8,7 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
+#include "mlir/Support/LLVM.h"
 #include "oneapi/dnnl/dnnl.hpp"
+#include "llvm/ADT/SmallVector.h"
+
 using namespace dnnl;
 namespace tpu_mlir {
 
@@ -60,8 +63,10 @@ public:
              deconv_attr_t &attr, int izp = 0);
 
   void run();
+
 private:
   void pad_init(float *input, deconv_attr_t &attr, int izp);
+
 public:
   int kd, kh, kw;
 
@@ -83,4 +88,8 @@ private:
   deconv_attr_t _attrs;
   int _izp;
 };
+
+llvm::Optional<llvm::SmallVector<float, 4>>
+DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride, int64_t filter,
+            int64_t pad);
 } // namespace tpu_mlir
