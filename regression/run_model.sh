@@ -38,6 +38,11 @@ eval do_asymmetric=\${${chip_name}_support_asym}
 eval do_symmetric=\${${chip_name}_support_sym}
 eval model_type=\${${chip_name}_model_type}
 
+if [ x${model_type} == x ]; then
+  echo "Error: chip ${chip_name} not support in chip.cfg"
+  exit 1
+fi
+
 # basic test don't run bf16/f16
 if [ x${test_type} == xbasic ]; then
   do_f16=0

@@ -1,0 +1,157 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
+#pragma once
+#include <stdint.h>
+
+namespace tpu_mlir {
+
+typedef struct {
+  int64_t n;
+  int64_t ic;
+  int64_t id;
+  int64_t ih;
+  int64_t iw;
+  int64_t oc;
+  int64_t od;
+  int64_t oh;
+  int64_t ow;
+  int64_t kd, dd, sd, ins_d;
+  int64_t kh, dh, sh, ins_h;
+  int64_t kw, dw, sw, ins_w;
+  int64_t pdf, pdb;
+  int64_t pht, phb;
+  int64_t pwl, pwr;
+  int64_t groups;
+  int64_t pad_value;
+  int64_t kernel_zp;
+  bool has_bias;
+  bool is_dw;
+  bool do_relu;
+  double relu_limit;
+} conv_attr_t;
+
+typedef struct {
+  int64_t n;
+  int64_t ic;
+  int64_t id;
+  int64_t ih;
+  int64_t iw;
+  int64_t oc;
+  int64_t od;
+  int64_t oh;
+  int64_t ow;
+  int64_t kd;
+  int64_t kh;
+  int64_t kw;
+  int64_t sd;
+  int64_t sh;
+  int64_t sw;
+  int64_t dd;
+  int64_t dh;
+  int64_t dw;
+  int64_t ins_d;
+  int64_t ins_h;
+  int64_t ins_w;
+  int64_t pad_d;
+  int64_t pad_d_after;
+  int64_t pad_h;
+  int64_t pad_h_after;
+  int64_t pad_w;
+  int64_t pad_w_after;
+  int64_t output_pad_d;
+  int64_t output_pad_h;
+  int64_t output_pad_w;
+  int64_t pad_value;
+  int64_t g;
+  bool with_bias;
+  bool do_relu;
+  double relu_limit;
+  bool is_dw;
+  bool pad_insert_is_const;
+} deconv_attr_t;
+
+typedef struct {
+  int64_t batch;
+  int64_t M;
+  int64_t K;
+  int64_t N;
+  bool with_bias;
+  bool do_relu;
+  double relu_limit;
+  bool right_transpose;
+  int64_t input_zp;
+  int64_t right_zp;
+} matmul_attr_t;
+
+typedef struct {
+  int64_t n;
+  int64_t c;
+  int64_t id;
+  int64_t ih;
+  int64_t iw;
+  int64_t od;
+  int64_t oh;
+  int64_t ow;
+  int64_t kd;
+  int64_t kh;
+  int64_t kw;
+  int64_t sd;
+  int64_t sh;
+  int64_t sw;
+  int64_t pad_d;
+  int64_t pad_d_after;
+  int64_t pad_h;
+  int64_t pad_h_after;
+  int64_t pad_w;
+  int64_t pad_w_after;
+  int64_t pad_value;
+  bool do_relu;
+  double relu_limit;
+  bool is_global;
+  bool count_include_pad;
+} pool_attr_t;
+
+typedef struct {
+  int64_t seq_len;
+  int64_t batch_size;
+  int64_t input_size;
+  int64_t num_direction;
+  int64_t hidden_size;
+  bool batch_first;
+  bool have_bias;
+  bool have_h0;
+  bool have_c0;
+  bool output_y;
+  bool output_yh;
+  bool output_yc;
+} lstm_attr_t;
+
+typedef struct {
+  int64_t seq_len;
+  int64_t batch_size;
+  int64_t input_size;
+  int64_t num_direction;
+  int64_t hidden_size;
+  bool batch_first;
+  bool have_bias;
+  bool have_h0;
+  bool output_y;
+  bool output_yh;
+} gru_attr_t;
+
+typedef struct {
+  int64_t outer_n;
+  int64_t outer_c;
+  int64_t axis_dims;
+  int64_t inner_dims;
+  bool simplified;
+} reduce_attr_t;
+
+} // namespace tpu_mlir

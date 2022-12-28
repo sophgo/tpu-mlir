@@ -23,11 +23,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   OpBuilder builder(op);
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  int64_t batch, M, K, N;
-  bool with_bias, relu, transpose;
-  double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
-  assert(batch == 1); // only for fullyconnected now
+  auto &p = op.parseParam();
+  assert(p.batch == 1); // only for fullyconnected now
   auto th_output = Quant::getThreshold(op.output());
   auto th_input = Quant::getThreshold(op.input());
   auto filterOp = cast<top::WeightOp>(op.right().getDefiningOp());
@@ -37,7 +34,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       calRightShiftNum(filter_max, th_input, th_output, Quant::BITS_INT8);
   rshift = rshift >= 0 ? rshift : 0;
   std::shared_ptr<std::vector<int16_t>> bias_int16;
-  if (with_bias) {
+  if (p.with_bias) {
     float bias_scale = 1.0 * (1 << rshift) * Quant::QMAX_INT8 / th_output;
     auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
     auto bias_f32 = biasOp.read<float>();
@@ -66,7 +63,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   operands.push_back(op.input());
   operands.push_back(new_filter);
   auto new_bias = op.bias();
-  if (with_bias) {
+  if (p.with_bias) {
     auto bias_type = op.bias().getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(bias_type.getShape(),
                                           rewriter.getIntegerType(16));

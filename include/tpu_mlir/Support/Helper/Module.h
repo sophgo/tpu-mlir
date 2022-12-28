@@ -11,6 +11,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/OpDefinition.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/AttrStruct.h"
 
 using namespace mlir;
 using namespace mlir::func;
@@ -199,7 +200,23 @@ struct Module {
     m = module;
     ctx = m.getContext();
     chip = m->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
+    conv_attrs.clear();
+    pool_attrs.clear();
+    matmul_attrs.clear();
+    deconv_attrs.clear();
+    lstm_attrs.clear();
+    gru_attrs.clear();
+    reduce_attrs.clear();
   }
+
+public:
+  static std::map<Operation *, conv_attr_t> conv_attrs;
+  static std::map<Operation *, pool_attr_t> pool_attrs;
+  static std::map<Operation *, matmul_attr_t> matmul_attrs;
+  static std::map<Operation *, deconv_attr_t> deconv_attrs;
+  static std::map<Operation *, lstm_attr_t> lstm_attrs;
+  static std::map<Operation *, gru_attr_t> gru_attrs;
+  static std::map<Operation *, reduce_attr_t> reduce_attrs;
 
 private:
   static ModuleOp m;

@@ -264,7 +264,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const conv_attr_t& parseParam();
   }];
 }
 
@@ -325,7 +325,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const pool_attr_t& parseParam();
   }];
 }
 
@@ -356,7 +356,7 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
 
   let results = (outs AnyTensor:$output, AnyTensor:$mask);
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const pool_attr_t& parseParam();
   }];
 }
 
@@ -706,9 +706,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(
-      int64_t &batch, int64_t &M, int64_t &K, int64_t &N, bool &with_bias, bool &do_relu,
-      double &relu_limit, int64_t &zp, bool &right_transpose, int64_t &izp);
+    const matmul_attr_t& parseParam();
   }];
 }
 
@@ -1218,7 +1216,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
   let results = (outs AnyTensor:$output);
 
   let extraClassDeclaration = [{
-    void parseParam(void *param);
+    const deconv_attr_t& parseParam();
   }];
 }
 
@@ -1310,19 +1308,7 @@ def Tpu_GRUOp: Tpu_Op<"GRU"> {
     AnyTensorOrNone:$Y_h);
 
   let extraClassDeclaration = [{
-    typedef struct {
-      int64_t seq_len;
-      int64_t batch_size;
-      int64_t input_size;
-      int64_t num_direction;
-      int64_t hidden_size;
-      bool batch_first;
-      bool have_bias;
-      bool have_h0;
-      bool output_y;
-      bool output_yh;
-    } gru_attr_t;
-    gru_attr_t parseParam();
+    const gru_attr_t& parseParam();
   }];
 }
 
@@ -1351,21 +1337,7 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
-    typedef struct {
-      int64_t seq_len;
-      int64_t batch_size;
-      int64_t input_size;
-      int64_t num_direction;
-      int64_t hidden_size;
-      bool batch_first;
-      bool have_bias;
-      bool have_h0;
-      bool have_c0;
-      bool output_y;
-      bool output_yh;
-      bool output_yc;
-    } lstm_attr_t;
-    lstm_attr_t parseParam();
+    const lstm_attr_t& parseParam();
   }];
 }
 
@@ -1395,21 +1367,7 @@ def Tpu_LSTMCVIOp: Tpu_Op<"LSTMCVI"> {
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
-    typedef struct {
-      int64_t seq_len;
-      int64_t batch_size;
-      int64_t input_size;
-      int64_t num_direction;
-      int64_t hidden_size;
-      bool batch_first;
-      bool have_bias;
-      bool have_h0;
-      bool have_c0;
-      bool output_y;
-      bool output_yh;
-      bool output_yc;
-    } lstm_attr_t;
-    lstm_attr_t parseParam();
+    const lstm_attr_t& parseParam();
   }];
 }
 
@@ -1515,14 +1473,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    typedef struct {
-      int64_t outer_n;
-      int64_t outer_c;
-      int64_t axis_dims;
-      int64_t inner_dims;
-      bool simplified;
-    } reduce_attr_t;
-    reduce_attr_t parseParam();
+    const reduce_attr_t& parseParam();
   }];
 }
 

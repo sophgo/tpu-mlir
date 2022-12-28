@@ -11,56 +11,16 @@
 #include "mlir/Support/LLVM.h"
 #include "oneapi/dnnl/dnnl.hpp"
 #include "llvm/ADT/SmallVector.h"
-
+#include "tpu_mlir/Support/AttrStruct.h"
 using namespace dnnl;
 namespace tpu_mlir {
-
-typedef struct {
-  int64_t n;
-  int64_t ic;
-  int64_t id;
-  int64_t ih;
-  int64_t iw;
-  int64_t oc;
-  int64_t od;
-  int64_t oh;
-  int64_t ow;
-  int64_t kd;
-  int64_t kh;
-  int64_t kw;
-  int64_t sd;
-  int64_t sh;
-  int64_t sw;
-  int64_t dd;
-  int64_t dh;
-  int64_t dw;
-  int64_t ins_d;
-  int64_t ins_h;
-  int64_t ins_w;
-  int64_t pad_d;
-  int64_t pad_d_after;
-  int64_t pad_h;
-  int64_t pad_h_after;
-  int64_t pad_w;
-  int64_t pad_w_after;
-  int64_t output_pad_d;
-  int64_t output_pad_h;
-  int64_t output_pad_w;
-  int64_t pad_value;
-  int64_t g;
-  bool with_bias;
-  bool do_relu;
-  double relu_limit;
-  bool is_dw;
-  bool pad_insert_is_const;
-} deconv_attr_t;
 
 class Deconv {
 public:
   Deconv();
   ~Deconv();
   void setup(float *input, float *weight, float *bias, float *output,
-             deconv_attr_t &attr, int izp = 0);
+             const deconv_attr_t &attr, int izp = 0);
 
   void run();
 

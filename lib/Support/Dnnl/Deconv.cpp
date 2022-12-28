@@ -46,9 +46,10 @@ void Deconv::pad_init(float *input, deconv_attr_t &attr, int izp) {
 }
 
 void Deconv::setup(float *input, float *weight, float *bias, float *output,
-                   deconv_attr_t &attr, int izp) {
+                   const deconv_attr_t &attr_, int izp) {
   // printf("Conv para:%d,%d,%d,%d,%d,%d,%d,%d\n", idt, wdt, bdt, odt,
   // per_channel, izp, ozp, do_relu);
+  auto attr = attr_;
   this->kd = attr.kd;
   this->kh = attr.kh;
   this->kw = attr.kw;

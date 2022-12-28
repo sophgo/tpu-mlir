@@ -27,8 +27,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
@@ -56,8 +55,7 @@ LogicalResult WeightReorder<tpu::Conv1DOp, int8_t>::matchAndRewrite(
 }
 
 void tpu::Conv1DOp::codegen_global_bm1684() {
-  conv_attr_t attr = {0};
-  parseParam(&attr);
+  auto &attr = parseParam();
   if (attr.is_dw) {
     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
         Module::getAddress(input()), Module::getAddress(output()),
@@ -65,8 +63,8 @@ void tpu::Conv1DOp::codegen_global_bm1684() {
         attr.has_bias ? Module::getAddress(bias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
         attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w,
-        rshift().value()[0].cast<IntegerAttr>().getInt(),
-        attr.has_bias ? 1 : 0, 0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
+        rshift().value()[0].cast<IntegerAttr>().getInt(), attr.has_bias ? 1 : 0,
+        0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
@@ -76,8 +74,8 @@ void tpu::Conv1DOp::codegen_global_bm1684() {
         attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
         attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
         attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0,
-        rshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0,
-        0, 0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        rshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0,
+        0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }
 

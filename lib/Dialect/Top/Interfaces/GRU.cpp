@@ -19,7 +19,12 @@ using namespace mlir;
 
 int64_t top::GRUOp::getFLOPs() { return 0; }
 
-top::GRUOp::gru_attr_t top::GRUOp::parseParam() {
+const gru_attr_t &top::GRUOp::parseParam() {
+  auto op = getOperation();
+  auto iter = Module::gru_attrs.find(op);
+  if (iter != Module::gru_attrs.end()) {
+    return iter->second;
+  }
   gru_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
   assert(in_shape.size() == 3);
@@ -39,7 +44,8 @@ top::GRUOp::gru_attr_t top::GRUOp::parseParam() {
   attr.have_h0 = !initial_h().getType().isa<NoneType>();
   attr.output_y = !Y().getType().isa<NoneType>();
   attr.output_yh = !Y_h().getType().isa<NoneType>();
-  return attr;
+  Module::gru_attrs[op] = attr;
+  return Module::gru_attrs[op];
 }
 
 LogicalResult top::GRUOp::init(InferenceParameter &p) { return success(); }
@@ -52,9 +58,8 @@ static inline float sigmoid_(float x) {
 
 static inline float tanh_(float x) { return tanh(x); }
 
-static void gru_compute(InferenceParameter &p,
-                        const top::GRUOp::gru_attr_t &attr, float *bias,
-                        float *h, bool forward) {
+static void gru_compute(InferenceParameter &p, const gru_attr_t &attr,
+                        float *bias, float *h, bool forward) {
   //(TODO) num_layers > 1
   // input += seq_length * batch * input_size * num_layer; //(TODO check!)
   float *input = p.inputs[0];

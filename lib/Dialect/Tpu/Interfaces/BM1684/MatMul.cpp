@@ -32,20 +32,17 @@ typedef struct {
 } FcQParams;
 
 void tpu::MatMulOp::codegen_global_bm1684() {
-  int64_t batch, M, K, N, right_zp, input_zp;
-  bool with_bias, relu, right_transpose;
-  double relu_limit;
-  parseParam(batch, M, K, N, with_bias, relu, relu_limit, right_zp, right_transpose, input_zp);
-  int using_bias = with_bias ? 1 : 0;
-  int if_relu = relu ? 1 : 0;
+  auto &p = parseParam();
+  int using_bias = p.with_bias ? 1 : 0;
+  int if_relu = p.do_relu ? 1 : 0;
   int if_right_active = isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1;
   auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
   assert(rshift_v->size() == 1);
   FcQParams quant_param{0, 0, 0, 0, 0};
   BM1684::instance().dl_nodechip_fc_fix8b_forward_parallel(
       Module::getAddress(input()), Module::getAddress(right()),
-      with_bias ? Module::getAddress(bias()) : 0, Module::getAddress(output()),
-      0, M, K, N, 0, using_bias, 1, 1, 1, rshift_v->at(0), 0, if_relu, 1,
-      if_right_active, 1, 0, FcPerLayerShift, &quant_param,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      p.with_bias ? Module::getAddress(bias()) : 0,
+      Module::getAddress(output()), 0, p.M, p.K, p.N, 0, using_bias, 1, 1, 1,
+      rshift_v->at(0), 0, if_relu, 1, if_right_active, 1, 0, FcPerLayerShift,
+      &quant_param, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
 }

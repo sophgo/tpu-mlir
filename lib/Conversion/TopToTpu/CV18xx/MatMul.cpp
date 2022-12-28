@@ -81,10 +81,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  int64_t batch, M, K, N;
-  bool with_bias, relu, transpose;
-  double relu_limit;
-  op.parseParam(batch, M, K, N, with_bias, relu, relu_limit, transpose);
+  auto &p = op.parseParam();
   auto th_output = Quant::getThreshold(op.output());
   auto th_input = Quant::getThreshold(op.input());
   std::vector<int64_t> multipliers;
@@ -96,23 +93,23 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     // fc
     auto rightOp = cast<top::WeightOp>(op.right().getDefiningOp());
     auto right_f32 = rightOp.read<float>();
-    assert(right_f32->size() == batch * K * N);
+    assert(right_f32->size() == p.batch * p.K * p.N);
     auto right_i8 = std::vector<int8_t>(right_f32->size());
 
     std::shared_ptr<std::vector<float>> bias_f32;
     std::vector<int32_t> bias_i32;
-    if (with_bias) {
+    if (p.with_bias) {
       auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
       bias_f32 = biasOp.read<float>();
       bias_i32.resize(bias_f32->size());
     }
 
-    multipliers.resize(batch);
-    rshifts.resize(batch);
+    multipliers.resize(p.batch);
+    rshifts.resize(p.batch);
     quantizeWeightInt8ForFC(right_f32->data(),
-                            with_bias ? bias_f32->data() : nullptr, batch, N, K,
-                            th_output, th_input, right_i8.data(),
-                            with_bias ? bias_i32.data() : nullptr,
+                            p.with_bias ? bias_f32->data() : nullptr, p.batch,
+                            p.N, p.K, th_output, th_input, right_i8.data(),
+                            p.with_bias ? bias_i32.data() : nullptr,
                             rshifts.data(), multipliers.data());
 
     auto right_type = op.right().getType().cast<RankedTensorType>();
@@ -120,7 +117,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
         right_type.getShape(), rewriter.getIntegerType(8, true));
     right_operand =
         top::WeightOp::create(op, "filter_i8", right_i8, new_right_type);
-    if (with_bias) {
+    if (p.with_bias) {
       auto bias_type = op.bias().getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(bias_type.getShape(),
                                             rewriter.getIntegerType(32, true));

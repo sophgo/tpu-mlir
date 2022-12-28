@@ -17,7 +17,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
-                            conv_attr_t &attr) {
+                            const conv_attr_t &attr) {
   const int DILATION_H_MAX = 15;
   const int DILATION_W_MAX = 15;
   if (attr.dh <= DILATION_H_MAX && attr.dw <= DILATION_W_MAX)
@@ -112,7 +112,7 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
 }
 
 static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
-                          conv_attr_t &attr) {
+                          const conv_attr_t &attr) {
   // deal with pad > 16
   bool insert_pad = false;
   auto kernel_size = Module::getI64Array(op.kernel_shape())->size();
@@ -199,8 +199,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   if (ConvertPading(rewriter, op, attr)) {
     return;
   }
@@ -315,8 +314,7 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  conv_attr_t attr = {0};
-  op.parseParam(&attr);
+  auto &attr = op.parseParam();
   if (ConvertPading(rewriter, op, attr)) {
     return;
   }

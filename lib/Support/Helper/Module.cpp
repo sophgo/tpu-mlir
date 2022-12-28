@@ -47,6 +47,14 @@ constexpr llvm::StringRef Module::Chip::CV182x;
 constexpr llvm::StringRef Module::Chip::CV183x;
 constexpr llvm::StringRef Module::Chip::BM1686;
 
+std::map<Operation *, conv_attr_t> Module::conv_attrs;
+std::map<Operation *, pool_attr_t> Module::pool_attrs;
+std::map<Operation *, matmul_attr_t> Module::matmul_attrs;
+std::map<Operation *, deconv_attr_t> Module::deconv_attrs;
+std::map<Operation *, lstm_attr_t> Module::lstm_attrs;
+std::map<Operation *, gru_attr_t> Module::gru_attrs;
+std::map<Operation *, reduce_attr_t> Module::reduce_attrs;
+
 ModuleOp Module::m = nullptr;
 mlir::MLIRContext *Module::ctx = nullptr;
 llvm::StringRef Module::chip = "";

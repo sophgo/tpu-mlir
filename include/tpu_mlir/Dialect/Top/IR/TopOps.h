@@ -20,6 +20,7 @@
 #include "tpu_mlir/Interfaces/InferenceInterface.h"
 #include "tpu_mlir/Interfaces/FlopsInterface.h"
 #include "tpu_mlir/Support/TensorFile.h"
+#include "tpu_mlir/Support/AttrStruct.h"
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOpsDialect.h.inc"
 #define GET_ATTRDEF_CLASSES

@@ -24,23 +24,21 @@ using namespace tpu_mlir::backend;
 // =========================================
 // GlobalGenInterface
 // =========================================
-void tpu::Pool1DOp::codegen_global_cv18xx( int64_t layer_id) {
-    pool_attr_t attrs = {0};
-  parseParam(&attrs);
-  assert(!attrs.do_relu);
+void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
+  auto &attr = parseParam();
+  assert(!attr.do_relu);
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   if (pool_mode() == tpu::PoolMode::Avg) {
     if (Quant::isUniformQuantized(output())) {
       cvi_backend_tg_fixed_avg_pooling_kernel(
-
           layer_id,  // layer_id,
           ga_input,  // input_data_gaddr,
           ga_output, // output_data_gaddr,
-          attrs.n, attrs.c, attrs.ih, attrs.iw, attrs.kh, attrs.kw, attrs.pad_h,
-          attrs.pad_h_after, attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
-          attrs.sh, attrs.sw,
-          attrs.do_relu,                // int do_relu,
+          attr.n, attr.c, attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h,
+          attr.pad_h_after, attr.pad_w, attr.pad_w_after, // pad (t, b, l, r)
+          attr.sh, attr.sw,
+          attr.do_relu,                 // int do_relu,
           (int8_t)rshift().value(),     // int right_shift_width,
           (int8_t)multiplier().value(), // &threshold_x_quantized,
           true);
@@ -52,12 +50,12 @@ void tpu::Pool1DOp::codegen_global_cv18xx( int64_t layer_id) {
           ga_output,  // output_data_gaddr,
           GA_INVALID, // index_data_gaddr,
           GA_INVALID, // o_findex_data_gaddr,
-          attrs.n, attrs.c, attrs.ih, attrs.iw, attrs.kh, attrs.kw, attrs.pad_h,
-          attrs.pad_h_after, attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
-          attrs.sh, attrs.sw,
-          1,    // is_avg_pooling,
-          0.0f, // float avg_const,  // default(passing 0.0f) is 1/kh*kw
-          attrs.do_relu, // int do_relu,
+          attr.n, attr.c, attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h,
+          attr.pad_h_after, attr.pad_w, attr.pad_w_after, // pad (t, b, l, r)
+          attr.sh, attr.sw,
+          1,            // is_avg_pooling,
+          0.0f,         // float avg_const,  // default(passing 0.0f) is 1/kh*kw
+          attr.do_relu, // int do_relu,
           true);
     }
   } else if (pool_mode() == tpu::PoolMode::Max) {
@@ -67,10 +65,10 @@ void tpu::Pool1DOp::codegen_global_cv18xx( int64_t layer_id) {
           layer_id,  // layer_id,
           ga_input,  // input_data_gaddr,
           ga_output, // output_data_gaddr,
-          attrs.n, attrs.c, attrs.ih, attrs.iw, attrs.kh, attrs.kw, attrs.pad_h,
-          attrs.pad_h_after, attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
-          attrs.sh, attrs.sw,
-          attrs.do_relu, // int do_relu,
+          attr.n, attr.c, attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h,
+          attr.pad_h_after, attr.pad_w, attr.pad_w_after, // pad (t, b, l, r)
+          attr.sh, attr.sw,
+          attr.do_relu, // int do_relu,
           true);
     } else {
       cvi_backend_tg_bf16_pooling_kernel(
@@ -80,12 +78,12 @@ void tpu::Pool1DOp::codegen_global_cv18xx( int64_t layer_id) {
           ga_output,  // output_data_gaddr,
           GA_INVALID, // index_data_gaddr,
           GA_INVALID, // o_findex_data_gaddr,
-          attrs.n, attrs.c, attrs.ih, attrs.iw, attrs.kh, attrs.kw, attrs.pad_h,
-          attrs.pad_h_after, attrs.pad_w, attrs.pad_w_after, // pad (t, b, l, r)
-          attrs.sh, attrs.sw,
-          0,    // is_avg_pooling,
-          0.0f, // float avg_const,  // default(passing 0.0f) is 1/kh*kw
-          attrs.do_relu, // int do_relu,
+          attr.n, attr.c, attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h,
+          attr.pad_h_after, attr.pad_w, attr.pad_w_after, // pad (t, b, l, r)
+          attr.sh, attr.sw,
+          0,            // is_avg_pooling,
+          0.0f,         // float avg_const,  // default(passing 0.0f) is 1/kh*kw
+          attr.do_relu, // int do_relu,
           true);
     }
   } else {

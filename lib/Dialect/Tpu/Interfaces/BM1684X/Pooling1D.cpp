@@ -62,37 +62,36 @@ typedef struct {
 }
 #endif
 
-static void SpecAssign(const pool_attr_t &attrs, pooling_common_spec_t &spec) {
-  spec.kh = attrs.kh;
-  spec.kw = attrs.kw;
-  spec.pad_h_t = attrs.pad_h;
-  spec.pad_h_b = attrs.pad_h_after;
-  spec.pad_w_l = attrs.pad_w;
-  spec.pad_w_r = attrs.pad_w_after;
-  spec.stride_h = attrs.sh;
-  spec.stride_w = attrs.sw;
+static void SpecAssign(const pool_attr_t &attr, pooling_common_spec_t &spec) {
+  spec.kh = attr.kh;
+  spec.kw = attr.kw;
+  spec.pad_h_t = attr.pad_h;
+  spec.pad_h_b = attr.pad_h_after;
+  spec.pad_w_l = attr.pad_w;
+  spec.pad_w_r = attr.pad_w_after;
+  spec.stride_h = attr.sh;
+  spec.stride_w = attr.sw;
   spec.dh = 1;
   spec.dw = 1;
-  spec.is_global_pooling = attrs.is_global;
-  spec.avg_pooling_mode = attrs.count_include_pad ? 0 : 1;
-  spec.if_relu = attrs.do_relu;
-  spec.relu_limit = attrs.relu_limit;
+  spec.is_global_pooling = attr.is_global;
+  spec.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
+  spec.if_relu = attr.do_relu;
+  spec.relu_limit = attr.relu_limit;
   spec.ceil_mode = 0;
   spec.round_mode = ROUND_UP;
   /// TODO: may be need support pad value for pooling2D and pooling 3D
-  /// spec.pad_value = attrs.pad_value;
+  /// spec.pad_value = attr.pad_value;
 }
 
-static bool has_pad(const pool_attr_t &attrs) {
-  if (attrs.pad_h != 0 || attrs.pad_w != 0 || attrs.pad_d != 0)
+static bool has_pad(const pool_attr_t &attr) {
+  if (attr.pad_h != 0 || attr.pad_w != 0 || attr.pad_d != 0)
     return true;
-  if ((attrs.ih - attrs.kh) % attrs.sh != 0 ||
-      (attrs.iw - attrs.kw) % attrs.sw != 0 ||
-      (attrs.id - attrs.kd) % attrs.sd != 0)
+  if ((attr.ih - attr.kh) % attr.sh != 0 ||
+      (attr.iw - attr.kw) % attr.sw != 0 || (attr.id - attr.kd) % attr.sd != 0)
     return true;
-  if ((attrs.ih - attrs.kh) / attrs.sh + 1 != attrs.oh ||
-      (attrs.iw - attrs.kw) / attrs.sw + 1 != attrs.ow ||
-      (attrs.id - attrs.kd) / attrs.sd + 1 != attrs.od)
+  if ((attr.ih - attr.kh) / attr.sh + 1 != attr.oh ||
+      (attr.iw - attr.kw) / attr.sw + 1 != attr.ow ||
+      (attr.id - attr.kd) / attr.sd + 1 != attr.od)
     return true;
   return false;
 }
@@ -109,14 +108,13 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
   (*input_spec)[0].shape[3] = 1;
   (*output_spec)[0].dims = 4;
   (*output_spec)[0].shape[3] = 1;
-  pool_attr_t attrs;
-  parseParam(&attrs);
+  auto &attr = parseParam();
   pooling_common_spec_t spec = {0};
-  SpecAssign(attrs, spec);
+  SpecAssign(attr, spec);
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
     if (Quant::isUniformQuantized(input())) {
-      bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
           Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
       if (spec.avg_pooling_quant_mode == 0) {
@@ -165,29 +163,28 @@ void tpu::Pool1DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
-  pool_attr_t attrs;
-  parseParam(&attrs);
+  auto &attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t pad_h_b =
-      (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
+      (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->h_slice = in_gi.h_slice;
   sec_info->h_idx = in_gi.h_idx;
-  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attrs.ih);
+  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
   // to be compatible with nntoolchain
   if (sec_info->is_h_split) {
-    sec_info->h_idx = h_step == 0 ? -attrs.pad_h : in_gi.h_idx;
+    sec_info->h_idx = h_step == 0 ? -attr.pad_h : in_gi.h_idx;
     sec_info->h_slice = sec_info->h_idx < 0
                             ? sec_info->h_slice - sec_info->h_idx
                             : sec_info->h_slice;
     sec_info->h_slice = sec_info->h_slice + pad_h_b;
   }
-  sec_info->w_slice = attrs.iw;
+  sec_info->w_slice = attr.iw;
   sec_info->out_n_slice = gi.n_slice;
   sec_info->out_h_idx = gi.h_idx;
   sec_info->out_h_slice = gi.h_slice;
-  sec_info->out_w_slice = attrs.ow;
+  sec_info->out_w_slice = attr.ow;
 }
 
 void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
@@ -198,20 +195,19 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
-  pool_attr_t attrs;
-  parseParam(&attrs);
+  auto &attr = parseParam();
   pooling_local_spec_t spec = {0};
   auto &common = spec.common;
-  SpecAssign(attrs, common);
+  SpecAssign(attr, common);
   spec.buffer_addr = gi.buffer_addr;
-  common.pad_h_t = (in_gi.h_idx == 0 ? attrs.pad_h : 0);
+  common.pad_h_t = (in_gi.h_idx == 0 ? attr.pad_h : 0);
   common.pad_h_b =
-      (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
+      (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     common.is_avg_pooling = true;
     if (Quant::isUniformQuantized(input())) {
-      bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       common.avg_pooling_quant_mode =
           Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
       if (common.avg_pooling_quant_mode == 0) {

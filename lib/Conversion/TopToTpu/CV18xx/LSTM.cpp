@@ -161,7 +161,6 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
       dyn_cast<top::WeightOp>(slope_table_op.getDefiningOp());
   operands.push_back(table_weight_op.clone_bf16(op));
   operands.push_back(slope_table_weight_op.clone_bf16(op));
-  auto attr = op.parseParam();
   attrs.clear();
   attrs.push_back(
       rewriter.getNamedAttr("bidirectional", op.bidirectionalAttr()));
