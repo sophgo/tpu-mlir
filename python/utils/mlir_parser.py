@@ -25,6 +25,7 @@ class Operation:
         self.opds = Operation.operands(op, body, idx)
         self.attrs = Operation.attrs(op)
         self.attrs = Operation.append_attr(op, self.attrs)
+        self.outputs = Operation.outputs(op)
         self.op = op
 
     def __str__(self):
@@ -38,6 +39,14 @@ class Operation:
             return None
         # loc(fused["pool1", "pool1_mask"]) => pool1
         return re.search(r'\"(\S+?)\"', str(loc)).group(1)
+
+    @staticmethod
+    def outputs(op):
+        loc = op.location
+        loc = str(loc)
+        if 'loc(fused[' in loc:
+            loc = eval(loc[9:-1])
+            return loc
 
     @staticmethod
     def type(op):
@@ -174,6 +183,12 @@ class MlirParser:
             if op_name in op.opds:
                 count += 1
         return count
+
+    def get_outputs_by_op_name(self, op_name):
+        for op in self.ops:
+            if op.name == op_name:
+                return op.outputs
+        return None
 
     def get_op_by_op_name(self, op_name):
         for op in self.ops:
