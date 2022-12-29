@@ -54,8 +54,7 @@ if __name__ == '__main__':
   elif args.dataset_type == 'coco':
     image_list = get_image_list(args.dataset, args.count)
     with tqdm(total = len(image_list)) as pbar:
-        for i, image_name in enumerate(image_list):
-            image_path = os.path.join(args.dataset, image_name)
+        for i, image_path in enumerate(image_list):
             engine.run(i, image_path)
             pbar.update(1)
   elif args.dataset_type == 'user_define':
