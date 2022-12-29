@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/Debug.h"
 
 namespace tpu_mlir {
@@ -34,22 +35,17 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
   attrs.clear();
   attrs.emplace_back(rewriter.getNamedAttr(
       "scale", rewriter.getI64IntegerAttr(kernel_shape->at(0))));
-  std::string name = Module::getName(op.mask()).str();
+  std::string name = Module::getName(op.mask()).str() + "convert";
   auto loc = NameLoc::get(rewriter.getStringAttr(name));
   auto input_shape = Module::getShape(op.input());
-  auto align_up = [](int64_t x, int64_t n) {
-    if (n == 0 || n == 1) {
-      return x;
-    }
-    return (x +n -1)/n * n;
-  };
   std::vector<int64_t> mask_shape = input_shape.vec();
   mask_shape[2] = align_up(mask_shape[2], kernel_shape->at(0));
   mask_shape[3] = align_up(mask_shape[3], kernel_shape->at(0));
 
   auto pool_mask_type =
       RankedTensorType::get(mask_shape, rewriter.getF32Type());
-  auto pool_mask_op = rewriter.create<top::PoolMaskOp>(loc, pool_mask_type, ValueRange{op.input()}, attrs);
+  auto pool_mask_op = rewriter.create<top::PoolMaskOp>(
+      loc, pool_mask_type, ValueRange{op.input()}, attrs);
   op.mask().replaceAllUsesWith(pool_mask_op.output());
   rewriter.replaceOp(op, {max_pool_op, pool_mask_op});
 }

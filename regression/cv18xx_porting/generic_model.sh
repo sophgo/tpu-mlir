@@ -118,6 +118,11 @@ if [ x${DO_QUANT_BF16} != x ];then
   do_bf16=${DO_QUANT_BF16}
 fi
 
+tolerance_top_opt=
+if [ x${TOLERANCE_TOP} != x ];then
+  tolerance_top_opt="--tolerance ${TOLERANCE_TOP}"
+fi
+
 test_input_opt=
 test_result_opt=
 test_innpz_opt=
@@ -144,6 +149,7 @@ model_transform.py \
   ${channel_format_opt} \
   ${test_input_opt} \
   ${test_result_opt} \
+  ${tolerance_top_opt} \
   ${excepts_opt} \
   --mlir ${NET}.mlir
 

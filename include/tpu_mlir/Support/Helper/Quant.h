@@ -61,6 +61,10 @@ struct Quant {
     return v.getType().cast<RankedTensorType>().getElementType().cast<quant::CalibratedQuantizedType>();
   }
 
+  static inline quant::CalibratedQuantizedType getCalibratedType(mlir::Type t) {
+    return t.cast<RankedTensorType>().getElementType().cast<quant::CalibratedQuantizedType>();
+  }
+
   static inline quant::UniformQuantizedType getUniformQuantizedType(Value v) {
     return v.getType().cast<RankedTensorType>().getElementType().cast<quant::UniformQuantizedType>();
   }

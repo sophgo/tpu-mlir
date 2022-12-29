@@ -324,6 +324,7 @@ protected:
     patterns.clear();
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
+                 BackwardCalibartion<top::MaxPoolWithMaskOp>,
                  BackwardCalibartion<top::LeakyReluOp>,
                  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
@@ -334,6 +335,8 @@ protected:
     patterns.clear();
     patterns.add<ForwardCalibartion<top::ReluOp>,
                  ForwardCalibartion<top::MaxPoolOp>,
+                 ForwardCalibartion<top::MaxPoolWithMaskOp>,
+                 ForwardCalibartion<top::MaxUnpoolOp>,
                  ForwardCalibartion<top::ReshapeOp>,
                  ForwardCalibartion<top::SliceOp>,
                  ForwardCalibartion<top::TileOp>,
