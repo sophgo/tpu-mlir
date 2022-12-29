@@ -327,7 +327,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const conv_attr_t& parseParam();
+    conv_attr_t parseParam();
   }];
 }
 
@@ -352,7 +352,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const pool_attr_t& parseParam();
+    pool_attr_t parseParam();
   }];
 }
 
@@ -592,7 +592,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const matmul_attr_t& parseParam();
+    matmul_attr_t parseParam();
   }];
 }
 
@@ -974,7 +974,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const deconv_attr_t& parseParam();
+    deconv_attr_t parseParam();
   }];
 }
 
@@ -1023,7 +1023,7 @@ def Top_GRUOp: Top_Op<"GRU"> {
     AnyTensorOrNone:$Y_h);
 
   let extraClassDeclaration = [{
-    const gru_attr_t& parseParam();
+    gru_attr_t parseParam();
   }];
 }
 
@@ -1051,7 +1051,7 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
-    const lstm_attr_t& parseParam();
+    lstm_attr_t parseParam();
   }];
 }
 

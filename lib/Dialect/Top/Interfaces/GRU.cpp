@@ -19,12 +19,7 @@ using namespace mlir;
 
 int64_t top::GRUOp::getFLOPs() { return 0; }
 
-const gru_attr_t &top::GRUOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::gru_attrs.find(op);
-  if (iter != Module::gru_attrs.end()) {
-    return iter->second;
-  }
+gru_attr_t top::GRUOp::parseParam() {
   gru_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
   assert(in_shape.size() == 3);
@@ -44,8 +39,7 @@ const gru_attr_t &top::GRUOp::parseParam() {
   attr.have_h0 = !initial_h().getType().isa<NoneType>();
   attr.output_y = !Y().getType().isa<NoneType>();
   attr.output_yh = !Y_h().getType().isa<NoneType>();
-  Module::gru_attrs[op] = attr;
-  return Module::gru_attrs[op];
+  return attr;
 }
 
 LogicalResult top::GRUOp::init(InferenceParameter &p) { return success(); }

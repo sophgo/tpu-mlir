@@ -23,7 +23,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   OpBuilder builder(op);
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  auto &p = op.parseParam();
+  auto p = op.parseParam();
   assert(p.batch == 1); // only for fullyconnected now
   auto th_output = Quant::getThreshold(op.output());
   auto th_input = Quant::getThreshold(op.input());

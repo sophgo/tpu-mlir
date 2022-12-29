@@ -16,12 +16,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const pool_attr_t &top::MaxPoolWithMaskOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::pool_attrs.find(op);
-  if (iter != Module::pool_attrs.end()) {
-    return iter->second;
-  }
+pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
   assert(kernel_shape().size() == 2); // only support 2d now
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
@@ -49,12 +44,11 @@ const pool_attr_t &top::MaxPoolWithMaskOp::parseParam() {
   p.is_global = p.id == p.kd && p.ih == p.kh && p.iw == p.kw && p.od == 1 &&
                 p.oh == 1 && p.ow == 1;
   p.count_include_pad = count_include_pad();
-  Module::pool_attrs[op] = p;
-  return Module::pool_attrs[op];
+  return p;
 }
 
 int64_t top::MaxPoolWithMaskOp::getFLOPs() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto extra = attr.do_relu ? 1 : 0;
   return Module::getNumElements(output()) *
          (attr.kd * attr.kh * attr.kw + extra);
@@ -67,7 +61,7 @@ LogicalResult top::MaxPoolWithMaskOp::init(InferenceParameter &p) {
 void top::MaxPoolWithMaskOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult top::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   int64_t nc = attr.n * attr.c;
   auto num_elem = Module::getNumElements(output());
   std::fill_n(p.outputs[0], num_elem, (float)(-FLT_MAX));

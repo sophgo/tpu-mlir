@@ -19,12 +19,7 @@ using namespace mlir;
 
 int64_t top::LSTMOp::getFLOPs() { return 0; }
 
-const lstm_attr_t &top::LSTMOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::lstm_attrs.find(op);
-  if (iter != Module::lstm_attrs.end()) {
-    return iter->second;
-  }
+lstm_attr_t top::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
   assert(in_shape.size() == 3);
@@ -46,8 +41,7 @@ const lstm_attr_t &top::LSTMOp::parseParam() {
   attr.output_y = !Y().getType().isa<NoneType>();
   attr.output_yh = !Y_h().getType().isa<NoneType>();
   attr.output_yc = !Y_c().getType().isa<NoneType>();
-  Module::lstm_attrs[op] = attr;
-  return Module::lstm_attrs[op];
+  return attr;
 }
 
 LogicalResult top::LSTMOp::init(InferenceParameter &p) { return success(); }
