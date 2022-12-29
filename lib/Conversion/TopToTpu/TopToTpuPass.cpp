@@ -325,9 +325,15 @@ protected:
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::MaxPoolWithMaskOp>,
+                 // notice when it's dominated by negative value
+                 // and factor is very small it'll cause cumulative error
                  BackwardCalibartion<top::LeakyReluOp>,
-                 BackwardCalibartion<top::PReluOp>,
+                //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
+    if (!Module::isCV18xx()) {
+      // notice it will cause cumulative error
+      patterns.add<BackwardCalibartion<top::PReluOp>>(ctx_);
+    }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
     patterns.add<CompareCalibartion>(ctx_);
@@ -344,11 +350,16 @@ protected:
                  ForwardCalibartion<top::PermuteOp>,
                  ForwardCalibartion<top::ReverseOp>,
                  ForwardCalibartion<top::UpsampleOp>,
+                 // same issue as backward
                  ForwardCalibartion<top::LeakyReluOp>,
-                 ForwardCalibartion<top::PReluOp>,
+                //  ForwardCalibartion<top::PReluOp>,
                  ForwardCalibartion<top::AbsOp>
                 >(ctx_);
     // clang-format on
+    if (!Module::isCV18xx()) {
+      // notice it will cause cumulative error
+      patterns.add<ForwardCalibartion<top::PReluOp>>(ctx_);
+    }
     if (Module::isBM1684Family()) {
       // TODO: support asymmetric mode
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
@@ -386,13 +397,6 @@ protected:
       bool is_tpu = Module::isTpuOp(op);
       if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
-          if (auto cpuOp = dyn_cast<tpu::GenericCpuOp>(op)) {
-            // embedding function's first operand is the indices,shouldn't do
-            // cast.
-            if (cpuOp.operation_name() == "embedding" && idx == 0) {
-              return;
-            }
-          }
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
