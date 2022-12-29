@@ -37,7 +37,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
   } else {
     getRShiftAndMultiplierFromQScale(qscale_pos, &multiplier_pos, &rshift_pos,
                                      false);
-  }    
+  }
 
   //quantize negtive
   auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());

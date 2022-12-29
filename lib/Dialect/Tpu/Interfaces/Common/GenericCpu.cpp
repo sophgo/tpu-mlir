@@ -639,3 +639,13 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  std::string func_name = operation_name().str();
+  auto op = getOperation();
+  if (func_name == "embedding" && opd_idx == 0) {
+    return do_nothing(mode);
+  }
+  return type_verify_case_same(op, opd_idx, mode);
+}
+

@@ -1423,7 +1423,8 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
   let results = (outs AnyTensor:$output);
 }
 
-def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp"> {
+def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp", [
+  DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "generic cpu operator";
   let description = [{
     Generic Cpu Op.
