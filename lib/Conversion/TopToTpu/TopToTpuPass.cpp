@@ -13,7 +13,7 @@
 #include <fstream>
 #include <regex>
 #include <sstream>
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU
@@ -21,7 +21,7 @@ namespace mlir {
 } // namespace mlir
 
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 
 namespace tpu_mlir {
 
@@ -29,7 +29,7 @@ static void BackwardReshape(top::ReshapeOp op) {
   auto in = op.input();
   auto out = op.output();
   auto in_type = in.getType().cast<RankedTensorType>();
-  auto out_qtype = Quant::getCalibratedType(out);
+  auto out_qtype = module::getCalibratedType(out);
   auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
   in.setType(new_type);
   if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
@@ -41,7 +41,7 @@ static void ForwardReshape(top::ReshapeOp op) {
   auto in = op.input();
   auto out = op.output();
   auto out_type = out.getType().cast<RankedTensorType>();
-  auto in_qtype = Quant::getCalibratedType(in);
+  auto in_qtype = module::getCalibratedType(in);
   auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
   out.setType(new_type);
   if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
@@ -53,7 +53,7 @@ static void BackwardPermute(top::PermuteOp op) {
   auto in = op.input();
   auto out = op.output();
   auto in_type = in.getType().cast<RankedTensorType>();
-  auto out_qtype = Quant::getCalibratedType(out);
+  auto out_qtype = module::getCalibratedType(out);
   auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
   in.setType(new_type);
   if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
@@ -65,7 +65,7 @@ static void ForwardPermute(top::PermuteOp op) {
   auto in = op.input();
   auto out = op.output();
   auto out_type = out.getType().cast<RankedTensorType>();
-  auto in_qtype = Quant::getCalibratedType(in);
+  auto in_qtype = module::getCalibratedType(in);
   auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
   out.setType(new_type);
   if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
@@ -81,12 +81,12 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op.input();
     Value out = op.output();
-    if (!Quant::isCalibratedType(in)) {
+    if (!module::isCalibratedType(in)) {
       return failure();
     }
-    auto in_qtype = Quant::getCalibratedType(in);
-    if (Quant::isCalibratedType(out)) {
-      auto out_qtype = Quant::getCalibratedType(out);
+    auto in_qtype = module::getCalibratedType(in);
+    if (module::isCalibratedType(out)) {
+      auto out_qtype = module::getCalibratedType(out);
       if (in_qtype.getMax() == out_qtype.getMax() &&
           in_qtype.getMin() == out_qtype.getMin()) {
         return failure();
@@ -112,16 +112,16 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     Value in = op->getOperand(0);
     Value out = op.output();
-    if (!Quant::isCalibratedType(out)) {
+    if (!module::isCalibratedType(out)) {
       return failure();
     }
     if (in.hasOneUse() == false) {
       return failure();
     }
 
-    auto out_qtype = Quant::getCalibratedType(out);
-    if (Quant::isCalibratedType(in)) {
-      auto in_qtype = Quant::getCalibratedType(in);
+    auto out_qtype = module::getCalibratedType(out);
+    if (module::isCalibratedType(in)) {
+      auto in_qtype = module::getCalibratedType(in);
       if (in_qtype.getMax() == out_qtype.getMax() &&
           in_qtype.getMin() == out_qtype.getMin()) {
         return failure();
@@ -168,13 +168,13 @@ struct CompareCalibartion : public OpRewritePattern<top::CompareOp> {
                                 PatternRewriter &rewriter) const override {
     Value l = op.lhs();
     Value r = op.rhs();
-    if (false == Quant::isCalibratedType(l) ||
-        false == Quant::isCalibratedType(r)) {
+    if (false == module::isCalibratedType(l) ||
+        false == module::isCalibratedType(r)) {
       return failure();
     }
-    auto stype = Module::getStorageType(l);
-    auto l_ctype = Quant::getCalibratedType(l);
-    auto r_ctype = Quant::getCalibratedType(r);
+    auto stype = module::getStorageType(l);
+    auto l_ctype = module::getCalibratedType(l);
+    auto r_ctype = module::getCalibratedType(r);
     auto max = std::max(l_ctype.getMax(), r_ctype.getMax());
     auto min = std::min(l_ctype.getMin(), r_ctype.getMin());
     if (l_ctype.getMax() == r_ctype.getMax() &&
@@ -182,8 +182,8 @@ struct CompareCalibartion : public OpRewritePattern<top::CompareOp> {
       return failure();
     }
     auto new_ctype = quant::CalibratedQuantizedType::get(stype, min, max);
-    auto new_ltype = RankedTensorType::get(Module::getShape(l), new_ctype);
-    auto new_rtype = RankedTensorType::get(Module::getShape(r), new_ctype);
+    auto new_ltype = RankedTensorType::get(module::getShape(l), new_ctype);
+    auto new_rtype = RankedTensorType::get(module::getShape(r), new_ctype);
     l.setType(new_ltype);
     r.setType(new_rtype);
     return success();
@@ -198,7 +198,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
                                 PatternRewriter &rewriter) const override {
     // TODO: need to be more clever
     for (auto in : op.inputs()) {
-      if (!Quant::isCalibratedType(in)) {
+      if (!module::isCalibratedType(in)) {
         return failure();
       }
       if (in.hasOneUse()) {
@@ -212,16 +212,16 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
     }
 
     Value out = op.output();
-    if (!Quant::isCalibratedType(out)) {
+    if (!module::isCalibratedType(out)) {
       return failure();
     }
-    auto out_qtype = Quant::getCalibratedType(out);
+    auto out_qtype = module::getCalibratedType(out);
     // checkout all input cali is the same
     auto in_0 = op.inputs()[0];
-    auto in_0_qtype = Quant::getCalibratedType(in_0);
+    auto in_0_qtype = module::getCalibratedType(in_0);
     bool same = true;
     for (uint i = 1; i < op.inputs().size(); i++) {
-      auto qtype = Quant::getCalibratedType(op.inputs()[i]);
+      auto qtype = module::getCalibratedType(op.inputs()[i]);
       if (qtype.getMin() != in_0_qtype.getMin() ||
           qtype.getMax() != in_0_qtype.getMax()) {
         same = false;
@@ -260,20 +260,20 @@ public:
   void runOnOperation() override {
     module_ = getOperation();
     ctx_ = &getContext();
-    mainFunc_ = Module::getMainFuncOp();
+    mainFunc_ = module::getMainFuncOp();
     LoweringConfig::isQuantized = false;
-    Module::setChip(StringRef(chip).upper());
-    Module::setMode(StringRef(mode).upper());
+    module::setChip(StringRef(chip).upper());
+    module::setMode(StringRef(mode).upper());
 
-    if (Module::isState(Module::State::TOP_QUANTIZED)) {
-      Module::setAsymmetric(true);
+    if (module::isState(module::State::TOP_QUANTIZED)) {
+      module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;
     } else {
       LoweringConfig::isQuantized = false;
-      Module::setAsymmetric(isAsymmetric);
-      if (Module::isCV18xx()) {
+      module::setAsymmetric(isAsymmetric);
+      if (module::isCV18xx()) {
         all_int8_process();
-        Module::updateModuleTypes();
+        module::updateModuleTypes();
       }
       calibration_process();
     }
@@ -283,11 +283,11 @@ public:
     target.addLegalDialect<tpu::TpuDialect, func::FuncDialect>();
     // no need to lowering:
     target.addLegalOp<top::InputOp, top::WeightOp, top::NoneOp>();
-    if (Module::isBM1684XFamily()) {
+    if (module::isBM1684XFamily()) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
-    } else if (Module::isBM1684Family()) {
+    } else if (module::isBM1684Family()) {
       bm1684::populateTopToTpuConversionPatterns(&patterns);
-    } else if (Module::isCV18xx()) {
+    } else if (module::isCV18xx()) {
       cv18xx::populateTopToTpuConversionPatterns(&patterns);
     } else {
       llvm_unreachable("Not Implemented");
@@ -303,13 +303,13 @@ public:
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     cast_process();
     relu_process();
-    Module::updateModuleTypes();
-    Module::setState(Module::State::TPU_LOWERED);
+    module::updateModuleTypes();
+    module::setState(module::State::TPU_LOWERED);
   }
 
 protected:
   void calibration_process() {
-    if (!Module::isState(Module::State::TOP_CALIBRATED)) {
+    if (!module::isState(module::State::TOP_CALIBRATED)) {
       return;
     }
     // clang-format off
@@ -331,7 +331,7 @@ protected:
                  BackwardCalibartion<top::LeakyReluOp>,
                 //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
-    if (!Module::isCV18xx()) {
+    if (!module::isCV18xx()) {
       // notice it will cause cumulative error
       patterns.add<BackwardCalibartion<top::PReluOp>>(ctx_);
     }
@@ -357,11 +357,11 @@ protected:
                  ForwardCalibartion<top::AbsOp>
                 >(ctx_);
     // clang-format on
-    if (!Module::isCV18xx()) {
+    if (!module::isCV18xx()) {
       // notice it will cause cumulative error
       patterns.add<ForwardCalibartion<top::PReluOp>>(ctx_);
     }
-    if (Module::isBM1684Family()) {
+    if (module::isBM1684Family()) {
       // TODO: support asymmetric mode
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
     }
@@ -374,16 +374,16 @@ protected:
       if (isa<tpu_mlir::InferenceInterface>(op) || isa<top::InputOp>(op)) {
         for (auto value : op->getResults()) {
           if (value.getType().isa<mlir::NoneType>() ||
-              !Quant::isCalibratedType(value)) {
+              !module::isCalibratedType(value)) {
             continue;
           }
-          auto out_qtype = Quant::getCalibratedType(value);
+          auto out_qtype = module::getCalibratedType(value);
           if (out_qtype.getMin() != -out_qtype.getMax()) {
             auto max = out_qtype.getMax();
             auto quant_type = quant::CalibratedQuantizedType::get(
                 out_qtype.getExpressedType(), -max, max);
             auto new_type =
-                RankedTensorType::get(Module::getShape(value), quant_type);
+                RankedTensorType::get(module::getShape(value), quant_type);
             value.setType(new_type);
           }
         }
@@ -394,10 +394,10 @@ protected:
   void relu_process() {
     Builder builder(ctx_);
     mainFunc_.walk([&](Operation *op) {
-      if (Module::isTpuOp(op)) {
+      if (module::isTpuOp(op)) {
         if (op->hasTrait<trait::SupportFuseRelu>() || isa<tpu::ReluOp>(op)) {
-          if (Quant::isUniformQuantized(op->getResult(0)) ||
-              Quant::isUniformQuantized(op->getOperand(0))) {
+          if (module::isUniformQuantized(op->getResult(0)) ||
+              module::isUniformQuantized(op->getOperand(0))) {
             op->setAttr("relu_limit", builder.getF64FloatAttr(-1.0));
           }
         }
@@ -409,7 +409,7 @@ protected:
     // return types
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
-      bool is_tpu = Module::isTpuOp(op);
+      bool is_tpu = module::isTpuOp(op);
       if (is_tpu || isa<func::ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
@@ -433,8 +433,8 @@ protected:
   }
 
   Value do_cast(Value v, Type to, TypeCastMode mode) {
-    auto from_stype = Module::getStorageType(v);
-    auto to_stype = Module::getStorageType(to);
+    auto from_stype = module::getStorageType(v);
+    auto to_stype = module::getStorageType(to);
     // check whether value has been casted
     for (auto user : v.getUsers()) {
       if (false == isa<tpu::CastOp>(user) &&
@@ -448,7 +448,7 @@ protected:
     }
 
     bool all_next_layer_is_int4 = false;
-    if (Module::getMode() == Quant::Type::INT4) {
+    if (module::getMode() == module::Mode::INT4) {
       all_next_layer_is_int4 = true;
       for (auto user : v.getUsers()) {
         if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
@@ -460,28 +460,28 @@ protected:
     auto ctx = v.getContext();
     OpBuilder builder(ctx);
     builder.setInsertionPointAfterValue(v);
-    auto name = Module::getName(v).str();
+    auto name = module::getName(v).str();
     switch (mode) {
     case TypeCastMode::DO_DEQUANTIZE:
     case TypeCastMode::DO_CAST: {
       name += "_" + type_string(to_stype);
-      auto newType = RankedTensorType::get(Module::getShape(v), to_stype);
+      auto newType = RankedTensorType::get(module::getShape(v), to_stype);
       auto loc = NameLoc::get(builder.getStringAttr(name));
       auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
       return castOp.output();
     }
     case TypeCastMode::DO_QUANTIZE: {
-      if (Quant::isCalibratedType(v) == false) {
+      if (module::isCalibratedType(v) == false) {
         v.dump();
         llvm_unreachable("Only calibrated type can do quantize");
       }
-      auto newType = getQuantInt8Type(v, Module::isAsymmetric());
+      auto newType = getQuantInt8Type(v, module::isAsymmetric());
       if (all_next_layer_is_int4) {
-        newType = getQuantInt4Type(v, Module::isAsymmetric());
+        newType = getQuantInt4Type(v, module::isAsymmetric());
       }
       name += "_" + type_string(newType);
       auto loc = NameLoc::get(builder.getStringAttr(name));
-      if (Module::isCV18xx()) {
+      if (module::isCV18xx()) {
         auto parentOp = v.getDefiningOp();
         if (isa<top::InputOp>(parentOp)) {
           return insert_18xx_cpu_cast(builder, v, loc, newType);
@@ -508,7 +508,7 @@ protected:
         builder.getNamedAttr("to", builder.getStringAttr("INT8")));
     param.emplace_back(builder.getNamedAttr(
         "scale", builder.getF64FloatAttr(
-                     1. / Quant::getUniformQuantizedType(newType).getScale())));
+                     1. / module::getUniformQuantizedType(newType).getScale())));
     attrs.emplace_back(
         builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
     auto castOp = builder.create<tpu::GenericCpuOp>(
@@ -518,17 +518,17 @@ protected:
 
   static StringRef qmode(const std::string &mode) {
     std::string tmp = StringRef(mode).upper();
-    if (tmp == Quant::Type::INT8) {
-      return Quant::Type::INT8;
+    if (tmp == module::Mode::INT8) {
+      return module::Mode::INT8;
     }
-    if (tmp == Quant::Type::F16) {
-      return Quant::Type::F16;
+    if (tmp == module::Mode::F16) {
+      return module::Mode::F16;
     }
-    if (tmp == Quant::Type::BF16) {
-      return Quant::Type::BF16;
+    if (tmp == module::Mode::BF16) {
+      return module::Mode::BF16;
     }
-    if (tmp == Quant::Type::F32) {
-      return Quant::Type::F32;
+    if (tmp == module::Mode::F32) {
+      return module::Mode::F32;
     }
     llvm::errs() << "Unknown quantize mode: [" << mode << "]\n";
     llvm_unreachable("Unknown quantize mode");

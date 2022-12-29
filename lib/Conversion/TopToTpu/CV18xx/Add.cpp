@@ -26,7 +26,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   float max_qscale = 0.0;
   assert(nInputs == 2);
 
-  o_scale = Quant::getThreshold(op.output());
+  o_scale = module::getThreshold(op.output());
   bool hasConst = false;
   for (int i = 1; i < nInputs; ++i) {
     if (isa<top::WeightOp>(op->getOperand(i).getDefiningOp())) {
@@ -42,20 +42,20 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
     } else {
       auto opd0 = op->getOperand(0);
       assert(!isa<top::WeightOp>(opd0.getDefiningOp()));
-      double i_scale = Quant::getThreshold(opd0);
+      double i_scale = module::getThreshold(opd0);
 
       int const_idx = 1;
       auto weightOp =
           cast<top::WeightOp>(op->getOperand(const_idx).getDefiningOp());
       auto const_f32 = weightOp.read<float>();
-      auto const_shape = Module::getShape(weightOp.getResult());
+      auto const_shape = module::getShape(weightOp.getResult());
       auto const_size = const_f32->size();
       auto max_elem = findMaxabs(const_f32->data(), const_size);
 
       std::vector<int8_t> quant_const(const_size, 0);
       for (size_t i = 0; i < const_size; ++i) {
         float float_quant = const_f32->at(i) * 127.0 / max_elem;
-        quant_const[i] = Quant::to_int8(float_quant, ROUNDING_HALF_UP);
+        quant_const[i] = to_int8(float_quant, ROUNDING_HALF_UP);
       }
 
       auto weight_type = weightOp.getType().cast<RankedTensorType>();
@@ -72,12 +72,12 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
       max_qscale = std::max(qscale[0], qscale[1]);
     }
   } else {
-    auto coeff_v = Module::getF64Array(op.coeff(), nInputs, 1.0);
+    auto coeff_v = module::getF64Array(op.coeff(), nInputs, 1.0);
 
     for (int i = 0; i < nInputs; i++) {
       auto input = op->getOperand(i);
       operands.push_back(input);
-      double i_scale = Quant::getThreshold(input);
+      double i_scale = module::getThreshold(input);
       auto scale_f = i_scale / o_scale;
       qscale[i] = coeff_v->at(i) * scale_f;
     }

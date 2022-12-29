@@ -10,27 +10,25 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::ScaleOp::init(InferenceParameter &p) { return success(); }
 void tpu::ScaleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   const float *src = p.inputs[0];
   const float *scale = p.inputs[1];
   const float *bias = p.inputs[2];
   float *dst = p.outputs[0];
 
-  auto out_type = Module::getStorageType(output());
-  auto asym = Module::isAsymmetric();
+  auto out_type = module::getStorageType(output());
+  auto asym = module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int64_t i = 0; i < c; ++i) {
@@ -58,14 +56,14 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           if (do_relu() && res < 0) {
             res = 0;
           }
-          dst[idx] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(res)
-                                                   : Quant::to_int8(res);
+          dst[idx] = out_type.isUnsignedInteger(8) ? to_uint8(res)
+                                                   : to_int8(res);
         }
       }
     }
   } else {
     const float *lshift = p.inputs[3];
-    auto o_qtype = Quant::getUniformQuantizedType(output());
+    auto o_qtype = module::getUniformQuantizedType(output());
     int64_t out_zp = o_qtype.getZeroPoint();
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int64_t i = 0; i < c; ++i) {
@@ -80,14 +78,14 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           if (do_relu() && res < 0) {
             res = 0;
           }
-          dst[idx] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(res)
-                                                   : Quant::to_int8(res);
+          dst[idx] = out_type.isUnsignedInteger(8) ? to_uint8(res)
+                                                   : to_int8(res);
         }
       }
     }
   }
 
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
   if (do_relu()) {
     function_relu(p.outputs[0], p.outputs[0], num_elem);
   }

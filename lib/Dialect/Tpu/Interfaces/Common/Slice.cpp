@@ -9,14 +9,12 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 #include <valarray>
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 template <typename T>
 static int remove_value(std::vector<T> &v, T value) {
@@ -37,8 +35,8 @@ void tpu::SliceOp::parseParam(std::vector<int64_t> &is_4,
   auto is = input().getType().cast<RankedTensorType>().getShape().vec();
   auto os = output().getType().cast<RankedTensorType>().getShape().vec();
   int num_dims = is.size();
-  auto crop_offset = Module::getI64Array(offset());
-  auto crop_steps = Module::getI64Array(steps());
+  auto crop_offset = module::getI64Array(offset());
+  auto crop_steps = module::getI64Array(steps());
 
   assert(crop_offset->size() == crop_steps->size());
   assert(is.size() == crop_steps->size());
@@ -113,11 +111,11 @@ LogicalResult tpu::SliceOp::init(InferenceParameter &p) { return success(); }
 void tpu::SliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
-  auto out_num_elem = Module::getNumElements(output());
-  auto offset_v = Module::getI64Array(offset());
-  auto steps_v = Module::getI64Array(steps());
-  auto out_shape = Module::getShape(output());
-  auto in_shape = Module::getShape(input());
+  auto out_num_elem = module::getNumElements(output());
+  auto offset_v = module::getI64Array(offset());
+  auto steps_v = module::getI64Array(steps());
+  auto out_shape = module::getShape(output());
+  auto in_shape = module::getShape(input());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.

@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) {
   return success();
@@ -23,10 +21,10 @@ LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) {
 void tpu::RequantFpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
-  auto o_sType = Module::getStorageType(output());
-  auto o_qtype = Quant::getUniformQuantizedType(output());
+  auto o_sType = module::getStorageType(output());
+  auto o_qtype = module::getUniformQuantizedType(output());
   auto mode = quant_mode();
-  auto shape = Module::getShape(output());
+  auto shape = module::getShape(output());
   int64_t length = 1;
   for (int i = 0; i < shape.size(); ++i) {
     length *= shape[i];
@@ -63,7 +61,7 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
 mlir::Type tpu::RequantFpOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = Module::getStorageType(input());
+    auto stype = module::getStorageType(input());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }

@@ -10,13 +10,12 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -28,20 +27,20 @@ void tpu::CastOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t n, c, h, w;
   int64_t offset = 0;
   float_t scale = 1.;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   cvk_fmt_t from = CV18xx::getDataType(input());
   cvk_fmt_t to = CV18xx::getDataType(output());
-  gaddr_t ga_input = Module::getAddress(input());
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(input());
+  gaddr_t ga_output = module::getAddress(output());
 
-  bool qInput = Quant::isUniformQuantized(input());
-  bool qOutput = Quant::isUniformQuantized(output());
+  bool qInput = module::isUniformQuantized(input());
+  bool qOutput = module::isUniformQuantized(output());
   if (qInput || qOutput) {
     if (!qInput && qOutput) {
-      auto qtype = Quant::getUniformQuantizedType(output());
+      auto qtype = module::getUniformQuantizedType(output());
       scale = 1. / qtype.getScale();
     } else {
-      auto qtype = Quant::getUniformQuantizedType(input());
+      auto qtype = module::getUniformQuantizedType(input());
       scale = qtype.getScale();
     }
   }

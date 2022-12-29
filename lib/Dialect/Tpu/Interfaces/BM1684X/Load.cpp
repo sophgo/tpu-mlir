@@ -9,13 +9,12 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 void tpu::LoadOp::codegen_global_bm1684x() {
@@ -36,7 +35,7 @@ void tpu::LoadOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->d_slice = 1;
@@ -59,7 +58,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
-  Module::getNCHW(output(), N, C, H, W);
+  module::getNCHW(output(), N, C, H, W);
   auto g_stride = BM168x::getGlobalStride(N, C, H, W);
 
   if (do_bcast() == true) {
@@ -70,14 +69,14 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   }
   auto s_stride = BM168x::getLocalStride(gi.n_slice, C, gi.h_slice, W,
                                          fmt_bytes, gi.eu_align);
-  auto g_addr = Module::getAddress(input());
+  auto g_addr = module::getAddress(input());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;
   int64_t use_3ic = use_3ic_optimize();
   if (use_3ic < 4 && use_3ic > 0) {
     auto use_op = *output().getUsers().begin();
     auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
-    auto kernel = Module::getI64Array(conv_op.kernel_shape());
+    auto kernel = module::getI64Array(conv_op.kernel_shape());
     int64_t to_ic =
         use_3ic == 1
             ? kernel->at(0)

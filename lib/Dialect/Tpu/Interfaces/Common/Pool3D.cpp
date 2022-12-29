@@ -10,22 +10,20 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 pool_attr_t tpu::Pool3DOp::parseParam() {
   pool_attr_t p = {0};
   assert(kernel_shape().size() == 3);
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  auto kernel = Module::getI64Array(kernel_shape());
-  auto stride = Module::getI64Array(strides());
-  auto pad = Module::getI64Array(pads());
+  auto kernel = module::getI64Array(kernel_shape());
+  auto stride = module::getI64Array(strides());
+  auto pad = module::getI64Array(pads());
 
   p.n = ishape[0];
   p.c = ishape[1];
@@ -91,14 +89,14 @@ LogicalResult tpu::Pool3DOp::inference(InferenceParameter &p) {
     if (do_relu()) {
       auto limit = relu_limit().convertToDouble();
       function_relu(p.outputs[0], p.outputs[0],
-                    Module::getNumElements(output()), limit,
-                    Module::getStorageType(output()));
+                    module::getNumElements(output()), limit,
+                    module::getStorageType(output()));
     }
     return success();
   }
 
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isInteger(8)) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; ++i) {
@@ -106,8 +104,8 @@ LogicalResult tpu::Pool3DOp::inference(InferenceParameter &p) {
                             pooling->kw * scale().value().convertToDouble() +
                         offset().value().convertToDouble();
       p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                            ? Quant::to_uint8(p.outputs[0][i])
-                            : Quant::to_int8(p.outputs[0][i]);
+                            ? to_uint8(p.outputs[0][i])
+                            : to_int8(p.outputs[0][i]);
     }
   } else if (out_type.isa<FloatType>()) {
     if (do_relu()) {

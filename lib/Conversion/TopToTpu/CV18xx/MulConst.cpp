@@ -14,7 +14,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   double const_val = op.const_val().convertToDouble();
   auto active_mulconst = [const_val](double val) { return val * const_val; };
   Value table =

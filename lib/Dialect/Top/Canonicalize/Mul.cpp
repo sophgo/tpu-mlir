@@ -8,14 +8,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-
+#include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+
 
 using namespace mlir;
 using namespace tpu_mlir::top;
-using namespace tpu_mlir::helper;
+
 
 struct MulToSiLU : public OpRewritePattern<MulOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -25,7 +25,7 @@ struct MulToSiLU : public OpRewritePattern<MulOp> {
     if (op.do_relu() || op.inputs().size() != 2) {
       return failure();
     }
-    if (Quant::isUniformQuantized(op.output()))
+    if (module::isUniformQuantized(op.output()))
       return failure();
     auto in0_op = op.inputs()[0].getDefiningOp();
     auto in1_op = op.inputs()[1].getDefiningOp();

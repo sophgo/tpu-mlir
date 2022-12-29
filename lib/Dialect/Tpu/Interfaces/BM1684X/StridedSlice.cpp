@@ -10,12 +10,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -61,8 +60,8 @@ void tpu::StridedSliceOp::codegen_global_bm1684x() {
   param.begin_mask = begin_mask();
   param.end_mask = end_mask();
 
-  std::vector<int64_t> input_shape = Module::getShape(input());
-  std::vector<int64_t> output_shape = Module::getShape(output());
+  std::vector<int64_t> input_shape = module::getShape(input());
+  std::vector<int64_t> output_shape = module::getShape(output());
 
   auto in_dims = input_shape.size();
   auto out_dims = output_shape.size();

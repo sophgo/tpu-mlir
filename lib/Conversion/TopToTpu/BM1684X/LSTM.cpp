@@ -32,7 +32,7 @@ static void LoweringLSTM(PatternRewriter &rewriter, top::LSTMOp op, Type type) {
     }
   }
   // add buffer
-  operands.push_back(Module::getNoneOp(op));
+  operands.push_back(module::getNoneOp(op));
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

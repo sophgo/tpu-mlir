@@ -461,7 +461,7 @@ WeightCompresser::WeightCompresser(Operation* op, bool do_compress) {
   if (auto w_cast_op = dyn_cast<top::WeightOp>(weight_op)) {
     // TODO check if weight is redundant
     // or remve redundant weight before codegen
-    // by use Module::removeUnusedOp(module);
+    // by use module::removeUnusedOp(module);
     if (weight_op->hasOneUse() == false) {
     return;
     }

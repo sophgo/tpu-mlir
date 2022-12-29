@@ -9,23 +9,21 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::UpsampleOp::init(InferenceParameter &p) { return success(); }
 void tpu::UpsampleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::UpsampleOp::inference(InferenceParameter &p) {
   int64_t n, c, ih, iw;
-  Module::getNCHW(input(), n, c, ih, iw);
+  module::getNCHW(input(), n, c, ih, iw);
   int64_t oh = ih * scale_h();
   int64_t ow = iw * scale_w();
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t d0 = 0; d0 < n; d0++) {
     for (int64_t d1 = 0; d1 < c; d1++) {

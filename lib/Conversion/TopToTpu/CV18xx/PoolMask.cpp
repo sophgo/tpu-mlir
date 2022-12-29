@@ -17,7 +17,7 @@ mlir::Type createQuantInt8Type(mlir::Type &t) {
   // TODO refine
   auto type = t.cast<RankedTensorType>();
   auto ctx = t.getContext();
-  auto cali_type = Quant::getCalibratedType(t);
+  auto cali_type = module::getCalibratedType(t);
   double scale = 1.0;
   int64_t zeropoint = 0;
   int64_t qmin = -128, qmax = 127;
@@ -35,7 +35,7 @@ void PoolMaskLowering::LoweringINT8(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
   }
-  auto mask_shape = Module::getShape(op.output());
+  auto mask_shape = module::getShape(op.output());
   auto output_type = op.output().getType().cast<RankedTensorType>();
   auto quant_type =
       quant::CalibratedQuantizedType::get(output_type.getElementType(), -127, 127);

@@ -10,13 +10,12 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -109,10 +108,10 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   SpecAssign(attr, spec);
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (Quant::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(input())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
-          Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
 
       if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier = multiplier().has_value() ? multiplier().value() : 1;
@@ -142,9 +141,9 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     return 0;
   case tpu::PoolMode::Avg:
     int64_t size = 0;
-    if (Module::isAsymmetric()) {
+    if (module::isAsymmetric()) {
       auto &p = getPool2DParam(*this);
-      auto kernel = Module::getI64Array(kernel_shape());
+      auto kernel = module::getI64Array(kernel_shape());
       int64_t dtype_bytes = p.kh * p.kw > 256 ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       int64_t npu_num = BM168x::NPU_NUM;
@@ -206,7 +205,7 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
     common.is_avg_pooling = true;
     common.avg_pooling_quant_mode =
-        Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+        module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
 
     if (common.avg_pooling_quant_mode == 0) {
       common.multiplier = multiplier().has_value() ? multiplier().value() : -1;

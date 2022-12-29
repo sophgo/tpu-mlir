@@ -8,12 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::UnpackOp::getFLOPs() { return 0; }
 
@@ -23,7 +21,7 @@ void top::UnpackOp::deinit(InferenceParameter &p) {}
 LogicalResult top::UnpackOp::inference(InferenceParameter &p) {
   auto axis_ = axis();
   auto num_ = num();
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
 
   int64_t high = 1, inner = 1;
   for (int64_t i = 0; i < axis_; ++i)

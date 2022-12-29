@@ -9,23 +9,21 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 
 int64_t top::MaskedFillOp::getFLOPs() {
-  return Module::getNumElements(output());
+  return module::getNumElements(output());
 }
 
 LogicalResult top::MaskedFillOp::init(InferenceParameter &p) { return success(); }
 void top::MaskedFillOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
-  const auto num_element = Module::getNumElements(output());
+  const auto num_element = module::getNumElements(output());
   const float const_val_ = const_val().convertToDouble();
   const float* in = p.inputs[0];
   const float* brn = p.inputs[1];

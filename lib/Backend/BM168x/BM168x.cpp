@@ -11,14 +11,13 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
-using namespace tpu_mlir;
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 
 void *BM168x::get_gmem_addr(uint64_t addr) {
   auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
@@ -39,14 +38,14 @@ void BM168x::bm_memcpy_d2s(void *dst, const bm_device_mem_t &src) {
 }
 
 void BM168x::value_s2d(Value v, void *src) {
-  auto addr = Module::getAddress(v);
-  auto bytes = Module::getBytes(v);
+  auto addr = module::getAddress(v);
+  auto bytes = module::getBytes(v);
   memcpy(get_gmem_addr(addr), src, bytes);
 }
 
 void BM168x::value_d2s(Value v, void *dst) {
-  auto addr = Module::getAddress(v);
-  auto bytes = Module::getBytes(v);
+  auto addr = module::getAddress(v);
+  auto bytes = module::getBytes(v);
   memcpy(dst, get_gmem_addr(addr), bytes);
 }
 
@@ -59,7 +58,7 @@ void BM168x::merge_sync_id() {
 }
 
 DATA_TYPE_T BM168x::getDataType(Value v) {
-  auto type = Module::getStorageType(v);
+  auto type = module::getStorageType(v);
   return getDataType(type);
 }
 
@@ -145,14 +144,14 @@ int BM168x::getFmtBytes(DATA_TYPE_T data_type) {
 tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
   tensor_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  if (Module::isOpInGroup(v.getDefiningOp())) {
+  if (module::isOpInGroup(v.getDefiningOp())) {
     auto gi = LocalGenInterface::getGroupInfo(v);
     spec.addr = gi.out_addr;
   } else {
-    spec.addr = Module::getAddress(v);
+    spec.addr = module::getAddress(v);
   }
   spec.dtype = getDataType(v);
-  auto shape = Module::getShape(v);
+  auto shape = module::getShape(v);
   spec.dims = shape.size();
   for (int i = 0; i < spec.dims; i++) {
     spec.shape[i] = shape[i];

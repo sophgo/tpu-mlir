@@ -7,7 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+
 #include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "lowering-reciprocal"
@@ -19,12 +19,12 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::ReciprocalOp op,
                                       bool asymmetric) const {
   // for convert from DivOp
-  if (!Quant::isCalibratedType(op.output()) &&
-      !Quant::isUniformQuantized(op.output())) {
+  if (!module::isCalibratedType(op.output()) &&
+      !module::isUniformQuantized(op.output())) {
     LoweringBF16(rewriter, op);
     return;
   }
-  auto qtype = Quant::getCalibratedType(op.output());
+  auto qtype = module::getCalibratedType(op.output());
   g_max = qtype.getMax();
   double const_s = op.const_val().convertToDouble();
   Value table = create_lookup_table(

@@ -9,20 +9,18 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 pool_attr_t top::MaxPoolOp::parseParam() {
   pool_attr_t p = {0};
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  auto kernel = Module::getI64Array(kernel_shape());
-  auto stride = Module::getI64Array(strides());
-  auto pad = Module::getI64Array(pads());
+  auto kernel = module::getI64Array(kernel_shape());
+  auto stride = module::getI64Array(strides());
+  auto pad = module::getI64Array(pads());
   if (kernel_shape().size() == 3) {
     p.n = ishape[0];
     p.c = ishape[1];
@@ -49,8 +47,8 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.od = 1;
     p.kd = 1;
     p.sd = 1;
-    Module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
-    Module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
+    module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
+    module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
     p.kh = kernel->at(0);
     p.kw = kernel->at(1);
     p.sh = stride->at(0);
@@ -66,8 +64,8 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.kw = 1;
     p.sd = 1;
     p.sw = 1;
-    Module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
-    Module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
+    module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
+    module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
     p.kh = kernel->at(0);
     p.sh = stride->at(0);
     p.pad_h = pad->at(0);
@@ -85,7 +83,7 @@ pool_attr_t top::MaxPoolOp::parseParam() {
 int64_t top::MaxPoolOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.do_relu ? 1 : 0;
-  return Module::getNumElements(output()) *
+  return module::getNumElements(output()) *
          (attr.kd * attr.kh * attr.kw + extra);
 }
 
@@ -114,7 +112,7 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   pooling->run();
   if (do_relu()) {
     auto limit = relu_limit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
+    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(output()),
                   limit);
   }
   return success();

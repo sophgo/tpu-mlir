@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 
 LogicalResult tpu::SplitOp::init(InferenceParameter &p) { return success(); }
@@ -24,7 +22,7 @@ void tpu::SplitOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::SplitOp::inference(InferenceParameter &p) {
   int out_num = num();
   int split_axis = axis();
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   int64_t out_max_size = (in_shape[split_axis] + out_num - 1) / out_num;
   std::vector<int64_t>out_size(out_num);
   for (int i = 0; i < out_num - 1; ++i) {

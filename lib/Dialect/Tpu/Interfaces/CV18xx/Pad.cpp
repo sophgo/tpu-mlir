@@ -11,20 +11,19 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
+
 using namespace tpu_mlir::backend;
 
 static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
                           std::vector<int64_t> &os_4, std::vector<int> &pad_4) {
   std::vector<int64_t> is, os, pads;
   auto castOp = llvm::dyn_cast<tpu::PadOp>(op);
-  Module::getShapeVec(castOp.input(), is);
-  Module::getShapeVec(castOp.output(), os);
-  auto _pads = Module::getI64Array(castOp.paddings());
+  module::getShapeVec(castOp.input(), is);
+  module::getShapeVec(castOp.output(), os);
+  auto _pads = module::getI64Array(castOp.paddings());
   pads.assign(_pads->begin(), _pads->end());
 
   int num_dims = is.size();
@@ -96,10 +95,10 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
   std::vector<int64_t> i_s;
   std::vector<int64_t> o_s;
   std::vector<int> pads;
-  gaddr_t ga_input = Module::getAddress(input());
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(input());
+  gaddr_t ga_output = module::getAddress(output());
   cvk_fmt_t fmt =
-      Quant::isUniformQuantized(output()) ? CVK_FMT_I8 : CVK_FMT_BF16;
+      module::isUniformQuantized(output()) ? CVK_FMT_I8 : CVK_FMT_BF16;
   if (mode() == 0) {
     parsePadParam(getOperation(), i_s, o_s, pads);
     float const_val = val().convertToDouble();
@@ -109,8 +108,8 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
   } else if (mode() == 1) {
     // reflect
     std::vector<int> pads(4, 0);
-    auto num_dims = Module::getShape(input()).size();
-    auto _pads = Module::getI64Array(paddings());
+    auto num_dims = module::getShape(input()).size();
+    auto _pads = module::getI64Array(paddings());
     pads[0] = _pads->at(num_dims - 1);
     pads[1] = _pads->at(num_dims * 2 - 1);
     pads[num_dims * 2 - 1] = 0;
@@ -119,13 +118,13 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
       pads[3] = _pads->at(num_dims * 2 - 2);
     }
 
-    Module::getShapeVec(input(), i_s);
+    module::getShapeVec(input(), i_s);
     int outer_size = std::accumulate(i_s.begin(), i_s.end() - 2, 1,
                                      std::multiplies<int64_t>());
     int ih = *(i_s.end() - 2);
     int iw = i_s.back();
-    gaddr_t ga_left_select = Module::getAddress(left_select());
-    gaddr_t ga_right_select = Module::getAddress(right_select());
+    gaddr_t ga_left_select = module::getAddress(left_select());
+    gaddr_t ga_right_select = module::getAddress(right_select());
     cvi_backend_tg_reflectionpad_kernel(layer_id, ga_input, ga_output,
                                         ga_left_select, ga_right_select,
                                         outer_size, ih, iw, pads, fmt);

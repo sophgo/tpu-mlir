@@ -9,17 +9,15 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::PadOp::getFLOPs() { return 0; }
 
 LogicalResult top::PadOp::init(InferenceParameter &p) {
   float *dst = p.outputs[0];
-  auto total_num = Module::getNumElements(output());
+  auto total_num = module::getNumElements(output());
   if (mode() == 0) {
     float val_ = val().convertToDouble();
     for (int i = 0; i < total_num; i++) {
@@ -31,12 +29,12 @@ LogicalResult top::PadOp::init(InferenceParameter &p) {
 void top::PadOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PadOp::inference(InferenceParameter &p) {
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   int64_t in = in_shape[0];
   int64_t ic = in_shape[1];
   int64_t ih = in_shape[2];
   int64_t iw = in_shape[3];
-  auto pads_ = Module::getI64Array(paddings());
+  auto pads_ = module::getI64Array(paddings());
   auto pad_mode = mode();
   int num_dims = in_shape.size();
   std::vector<int> pads;

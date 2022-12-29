@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::DequantizeLinearOp::getFLOPs() {
-  return Module::getNumElements(output());
+  return module::getNumElements(output());
 }
 
 LogicalResult top::DequantizeLinearOp::init(InferenceParameter &p) {
@@ -26,11 +24,11 @@ LogicalResult top::DequantizeLinearOp::init(InferenceParameter &p) {
 void top::DequantizeLinearOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
-  auto num_element = Module::getNumElements(output());
+  auto num_element = module::getNumElements(output());
   auto shape = input().getType().cast<RankedTensorType>().getShape();
-  auto zero_point = Module::getI32Array(x_zero_point());
+  auto zero_point = module::getI32Array(x_zero_point());
   auto raw_zero_point = *zero_point;
-  auto scale = Module::getF64Array(x_scale());
+  auto scale = module::getF64Array(x_scale());
   auto raw_scale = *scale;
   assert(raw_scale.size() == raw_zero_point.size() &&
          "zero point & scale size missmatch");

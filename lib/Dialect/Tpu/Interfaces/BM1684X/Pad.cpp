@@ -9,13 +9,12 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -37,9 +36,9 @@ typedef struct {
 // =========================================
 void tpu::PadOp::codegen_global_bm1684x() {
   pad_param_t param = {0};
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   int pad_dim = in_shape.size();
-  auto pads = Module::getI64Array(paddings());
+  auto pads = module::getI64Array(paddings());
   for (int i = 0; i < pad_dim; i++) {
     param.pad[i][0] = pads->at(i);
     param.pad[i][1] = pads->at(i + pad_dim);

@@ -10,20 +10,18 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
   auto prelu = new PRelu();
   (*prelu)
-      .src(p.inputs[0], Module::getShape(input()))
-      .weights(p.inputs[1], Module::getShape(slope()))
-      .dst(p.outputs[0], Module::getShape(output()))
+      .src(p.inputs[0], module::getShape(input()))
+      .weights(p.inputs[1], module::getShape(slope()))
+      .dst(p.outputs[0], module::getShape(output()))
       .setup();
   p.handle = (void *)prelu;
   return success();
@@ -41,10 +39,10 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
     return failure();
   }
 
-  auto num_elem = Module::getNumElements(output());
-  auto out_type = Module::getStorageType(output());
-  bool asym = Module::isAsymmetric();
-  bool is_cv18xx = Module::isCV18xx();
+  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  bool asym = module::isAsymmetric();
+  bool is_cv18xx = module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     auto prelu = (PRelu *)p.handle;
     prelu->run();
@@ -60,8 +58,8 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
       shift_pos = rshift_pos().value();
       multiplier_pos = muliplier_pos().value();
     }
-    auto num_slope = Module::getNumElements(slope());
-    auto in_shape = Module::getShape(input());
+    auto num_slope = module::getNumElements(slope());
+    auto in_shape = module::getShape(input());
     int64_t num_inner = 1;
     int64_t num_outer = 1;
     if (in_shape.size() > 1) {
@@ -86,13 +84,13 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
           } else {
             v = applyMultiplierAndRShift(p.inputs[0][idx], multiplier_pos, shift_pos, CVI_QUANT);
           }
-          p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                  : Quant::to_int8(v);
+          p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? to_uint8(v)
+                                                  : to_int8(v);
         } else {
           if (p.inputs[0][idx] < 0) {
             auto v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift);
-            p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                              : Quant::to_int8(v);
+            p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? to_uint8(v)
+                                                              : to_int8(v);
           } else {
             p.outputs[0][idx] = p.inputs[0][idx];
           }

@@ -18,7 +18,7 @@ namespace cv18xx {
 
 void loweringYoloDetection(PatternRewriter &rewriter,
                              top::YoloDetectionOp op) {
-  auto o_shape = Module::getShape(op.output());
+  auto o_shape = module::getShape(op.output());
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;

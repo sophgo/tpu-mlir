@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+#include "tpu_mlir/Support/Module.h"
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -55,15 +54,15 @@ void tpu::SliceOp::codegen_global_bm1684x() {
   param.begin_mask = 0;
   param.end_mask = 0;
 
-  std::vector<int64_t> input_shape = Module::getShape(input());
-  std::vector<int64_t> output_shape = Module::getShape(output());
+  std::vector<int64_t> input_shape = module::getShape(input());
+  std::vector<int64_t> output_shape = module::getShape(output());
 
   auto in_dims = input_shape.size();
   auto out_dims = output_shape.size();
   assert(in_dims == out_dims);
 
-  auto offset_v = Module::getI64Array(offset());
-  auto steps_v = Module::getI64Array(steps());
+  auto offset_v = module::getI64Array(offset());
+  auto steps_v = module::getI64Array(steps());
   for (int i = 0; i < in_dims; i++) {
     param.begin_index[i] = offset_v->at(i);
     param.end_index[i] = output_shape[i] * steps_v->at(i) + offset_v->at(i);

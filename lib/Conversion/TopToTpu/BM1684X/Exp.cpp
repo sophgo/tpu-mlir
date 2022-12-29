@@ -24,7 +24,7 @@ void ExpLowering::LoweringINT4(PatternRewriter &rewriter, top::ExpOp op,
 }
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   Value table = create_lookup_table(op.input(), op.output(), asymmetric,
                                     [](double val) { return std::exp(val); });
   auto newType = getQuantInt8Type(op.output(), asymmetric);

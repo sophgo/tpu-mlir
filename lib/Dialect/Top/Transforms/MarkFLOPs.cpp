@@ -13,7 +13,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace top {
 
@@ -26,7 +26,7 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](FlopsInterface op) { flops += op.getFLOPs(); });
     }
-    Module::setFLOPs(flops);
+    module::setFLOPs(flops);
   }
 };
 

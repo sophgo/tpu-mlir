@@ -9,28 +9,26 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::MulShiftOp::init(InferenceParameter &p) { return success(); }
 void tpu::MulShiftOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
-  auto num_elem = Module::getNumElements(output());
-  auto sType = Module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
+  auto sType = module::getStorageType(output());
   bool isUnsignInt = sType.isUnsignedInteger(8);
   int64_t in_zp = 0, out_zp = 0;
-  if (Quant::isUniformQuantized(input())) {
-    auto qtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto qtype = module::getUniformQuantizedType(input());
     in_zp = qtype.getZeroPoint();
   }
-  if (Quant::isUniformQuantized(output())) {
-    auto qtype = Quant::getUniformQuantizedType(output());
+  if (module::isUniformQuantized(output())) {
+    auto qtype = module::getUniformQuantizedType(output());
     out_zp = qtype.getZeroPoint();
   }
 
@@ -40,7 +38,7 @@ LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
                                       (int64_t)multiplier(), rshift());
     // should add zp to the outputs.
     v += out_zp;
-    p.outputs[0][i] = isUnsignInt ? Quant::to_uint8(v) : Quant::to_int8(v);
+    p.outputs[0][i] = isUnsignInt ? to_uint8(v) : to_int8(v);
   }
   return success();
 }

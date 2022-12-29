@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -67,14 +65,14 @@ typedef struct batch_matmul_common_spec {
 template <>
 LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {
-  // if (!Module::getStorageType(op.bias()).isInteger(32))
+  // if (!module::getStorageType(op.bias()).isInteger(32))
   //   return failure();
   auto p = op.parseParam();
 
   // bias merge input zp
   if (p.input_zp == 0)
     return failure();
-  std::shared_ptr<std::vector<int32_t>> bias_quant;
+  i32_array_t bias_quant;
   if (isa<top::WeightOp>(op.bias().getDefiningOp())) {
     bias_quant = cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
     for (size_t i = 0; i < p.N; ++i) {
@@ -82,11 +80,11 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     }
   } else {
     bias_quant =
-        std::shared_ptr<std::vector<int32_t>>(new std::vector<int32_t>(p.N, 0));
+        i32_array_t(new std::vector<int32_t>(p.N, 0));
     for (size_t i = 0; i < p.N; ++i) {
       bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
-    auto stype = Module::getStorageType(op.bias());
+    auto stype = module::getStorageType(op.bias());
     // std::vector<int64_t> bias_shape = {N};
     auto new_type = RankedTensorType::get({p.N}, rewriter.getI32Type());
     auto new_op =
@@ -115,19 +113,19 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.has_bias =p.with_bias;
     spec.hdim_is_batch = false;
     spec.requant_mode = -1;
-    if (Quant::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(input())) {
       spec.R_zp_is_const = true;
       spec.R_zp_const_val = p.right_zp;
       spec.izp_const_val = p.input_zp;
-      if (Quant::isUniformQuantized(output())) {
+      if (module::isUniformQuantized(output())) {
         spec.requant_mode = static_cast<int>(quant_mode());
-        auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
-        auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+        auto rshift_v = module::getI64Array(rshifts(), 1, 0);
+        auto multiplier_v = module::getI64Array(multipliers(), 1, 1);
         assert(rshift_v->size() == 1);
         assert(multiplier_v->size() == 1);
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
-        auto output_type = Quant::getUniformQuantizedType(output());
+        auto output_type = module::getUniformQuantizedType(output());
         spec.offset_val = output_type.getZeroPoint();
       }
     }
@@ -147,21 +145,21 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   spec.have_bias = p.with_bias;
   spec.requant_mode = -1;
   spec.R_transpose = p.right_transpose;
-  if (Quant::isUniformQuantized(input())) {
+  if (module::isUniformQuantized(input())) {
     spec.rshift = 0;
     spec.is_asymmetric = 1;
     spec.rzp_is_const = 1;
     spec.rzp_const_val = p.right_zp;
     spec.izp_const_val = p.input_zp;
-    if (Quant::isUniformQuantized(output())) {
-      auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
-      auto multiplier_v = Module::getI64Array(multipliers(), 1, 1);
+    if (module::isUniformQuantized(output())) {
+      auto rshift_v = module::getI64Array(rshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(multipliers(), 1, 1);
       assert(rshift_v->size() == 1);
       assert(multiplier_v->size() == 1);
       spec.requant_mode = static_cast<int>(quant_mode());
       spec.mul_val = multiplier_v->at(0);
       spec.shift_val = -rshift_v->at(0);
-      auto output_type = Quant::getUniformQuantizedType(output());
+      auto output_type = module::getUniformQuantizedType(output());
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
     }

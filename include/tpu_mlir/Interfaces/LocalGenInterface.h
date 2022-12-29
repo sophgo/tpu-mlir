@@ -29,8 +29,8 @@ typedef struct {
 } group_info_t;
 } // namespace tpu_mlir
 
-#include "tpu_mlir/Support/Helper/Module.h"
-using namespace tpu_mlir::helper;
+#include "tpu_mlir/Support/Module.h"
+
 
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/LocalGenInterface.h.inc"

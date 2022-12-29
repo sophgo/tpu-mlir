@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -22,7 +22,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace tpu {
 
@@ -32,17 +32,17 @@ struct ConvertReluLimitPattern : public RewritePattern {
   LogicalResult matchAndRewrite(Operation *op,
                                 PatternRewriter &rewriter) const override {
     rewriter.setInsertionPointAfter(op);
-    bool is_cv18xx = Module::isCV18xx();
+    bool is_cv18xx = module::isCV18xx();
     if (isa<func::ReturnOp>(op)) {
       return failure();
     }
     if (is_cv18xx && op->hasTrait<trait::SupportFuseRelu>() &&
-        Module::getStorageType(op->getResult(0)).isBF16()) {
+        module::getStorageType(op->getResult(0)).isBF16()) {
       auto max = op->getAttr("relu_limit").cast<FloatAttr>().getValueAsDouble();
       if (max == -1) {
         return failure();
       }
-      auto op_name = Module::getName(op).str();
+      auto op_name = module::getName(op).str();
       op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.));
       auto uses = op->getResult(0).getUses();
       std::vector<NamedAttribute> attrs;

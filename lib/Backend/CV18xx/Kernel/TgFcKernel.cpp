@@ -13,9 +13,6 @@
 
 #define DEBUG_TYPE "fc_kernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
-
 namespace tpu_mlir {
 namespace backend {
 void TgFcKernel::init(

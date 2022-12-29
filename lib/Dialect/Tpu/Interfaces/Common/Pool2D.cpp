@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 pool_attr_t tpu::Pool2DOp::parseParam() {
   pool_attr_t p = {0};
@@ -26,16 +24,16 @@ pool_attr_t tpu::Pool2DOp::parseParam() {
   p.sd = 1;
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  Module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
-  Module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
+  module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
+  module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
 
-  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(kernel_shape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
-  auto stride = Module::getI64Array(strides());
+  auto stride = module::getI64Array(strides());
   p.sh = stride->at(0);
   p.sw = stride->at(1);
-  auto pad = Module::getI64Array(pads());
+  auto pad = module::getI64Array(pads());
   p.pad_h = pad->at(0);
   p.pad_w = pad->at(1);
   p.pad_h_after = pad->at(2);
@@ -82,36 +80,36 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
     if (do_relu()) {
       auto limit = relu_limit().convertToDouble();
       function_relu(p.outputs[0], p.outputs[0],
-                    Module::getNumElements(output()), limit,
-                    Module::getStorageType(output()));
+                    module::getNumElements(output()), limit,
+                    module::getStorageType(output()));
     }
     return success();
   }
   // average pooling
-  bool is_cv18xx = Module::isCV18xx();
+  bool is_cv18xx = module::isCV18xx();
   auto m_type = is_cv18xx ? CVI_QUANT : BM_QUANT;
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isInteger(8)) {
-    auto i_qtype = Quant::getUniformQuantizedType(input());
-    auto o_qtype = Quant::getUniformQuantizedType(output());
+    auto i_qtype = module::getUniformQuantizedType(input());
+    auto o_qtype = module::getUniformQuantizedType(output());
 
-    if (Module::isAsymmetric() == false) {
+    if (module::isAsymmetric() == false) {
       auto multi = multiplier().value();
       auto rs = rshift().value();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         int64_t v = 0;
         if (is_cv18xx) {
-          v = Quant::to_int(p.outputs[0][i] * pooling->kh * pooling->kw,
+          v = to_int(p.outputs[0][i] * pooling->kh * pooling->kw,
                             ROUNDING_HALF_UP);
         } else {
           v = std::round(p.outputs[0][i] * pooling->kh * pooling->kw);
         }
         p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs, m_type);
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                              ? Quant::to_uint8(p.outputs[0][i])
-                              : Quant::to_int8(p.outputs[0][i]);
+                              ? to_uint8(p.outputs[0][i])
+                              : to_int8(p.outputs[0][i]);
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -120,8 +118,8 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
                               scale().value().convertToDouble() +
                           offset().value().convertToDouble();
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                              ? Quant::to_uint8(p.outputs[0][i])
-                              : Quant::to_int8(p.outputs[0][i]);
+                              ? to_uint8(p.outputs[0][i])
+                              : to_int8(p.outputs[0][i]);
       }
     }
   } else if (out_type.isa<FloatType>()) {
@@ -141,13 +139,13 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::Pool2DOp::LocalGenSupport() {
   auto attr = parseParam();
-  auto stride = Module::getI64Array(strides());
+  auto stride = module::getI64Array(strides());
   if ((stride->at(0) > 15 || stride->at(1) > 15)) {
     return failure();
   }
   if (attr.is_global) {
     // TODO: bug, need to be fixed
-    auto in_stype = Module::getStorageType(input());
+    auto in_stype = module::getStorageType(input());
     if (in_stype.isF16() || in_stype.isBF16()) {
       return failure();
     }

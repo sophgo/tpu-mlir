@@ -37,7 +37,7 @@ void SubLowering::LoweringF16(PatternRewriter &rewriter, top::SubOp op) const {
 //                \ input1 -> dequant /
 void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SubOp subOp) const {
-  if (Quant::isUniformQuantized(subOp.inputs()[0], subOp.output()) == false) {
+  if (module::isUniformQuantized(subOp.inputs()[0], subOp.output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   auto op = subOp.getOperation();
@@ -50,13 +50,13 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<double> scale_v(nInputs);
   int64_t zeropoint;
   double o_scale;
-  Quant::getScaleAndZeroPoint(subOp.output(), o_scale, zeropoint, true);
+  module::getScaleAndZeroPoint(subOp.output(), o_scale, zeropoint, true);
 
   // generate quant param from given scale
   double scale, scale_max;
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
-    Quant::getScaleAndZeroPoint(input, scale, zeropoint, true);
+    module::getScaleAndZeroPoint(input, scale, zeropoint, true);
     scale_v[i] = scale;
     if (i == 0) {
       scale_max = scale;
@@ -81,7 +81,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto input = subOp->getOperand(i);
     if (isa<top::WeightOp>(input.getDefiningOp())) {
       // do weight dequant in here
-      int64_t num_elem = Module::getNumElements(input);
+      int64_t num_elem = module::getNumElements(input);
       if (num_elem != 1) {
         auto new_input = do_weight_dequant(input, rewriter.getI32Type(),
                                            multiplier_v[i], shift_v[i], lshift);
@@ -95,7 +95,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
     } else {
       // do dequant
       std::string name =
-          Module::getName(op).str() + "_dequant_" + std::to_string(i);
+          module::getName(op).str() + "_dequant_" + std::to_string(i);
       auto name_loc = NameLoc::get(rewriter.getStringAttr(name));
       auto input_dequant =
           do_dequant(name_loc, input, rewriter.getI32Type(), multiplier_v[i],
@@ -104,7 +104,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
     }
   }
   // // dequant left
-  // std::string d0_name = Module::getName(op).str() + "_dequant0";
+  // std::string d0_name = module::getName(op).str() + "_dequant0";
   // auto name_loc_d0 = NameLoc::get(rewriter.getStringAttr(d0_name));
   // auto input0_dequant =
   //     do_dequant(name_loc_d0, subOp.inputs()[0], rewriter.getI32Type(),
@@ -113,7 +113,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   // // op->setOperand(0, input0_dequant);
   // operands.push_back(input0_dequant);
   // // dequant right
-  // std::string d1_name = Module::getName(op).str() + "_dequant1";
+  // std::string d1_name = module::getName(op).str() + "_dequant1";
   // auto name_loc_d1 = NameLoc::get(rewriter.getStringAttr(d1_name));
   // auto input1_dequant =
   //     do_dequant(name_loc_d1, subOp.inputs()[1], rewriter.getI32Type(),
@@ -123,9 +123,9 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   // operands.push_back(input1_dequant);
   // sub
   std::string suffix = "_sub";
-  std::string new_name = Module::getName(op).str() + suffix;
+  std::string new_name = module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
-  auto newType = RankedTensorType::get(Module::getShape(subOp.output()),
+  auto newType = RankedTensorType::get(module::getShape(subOp.output()),
                                        rewriter.getI32Type());
   // auto sub_quant = lowering_common<tpu::SubOp>(op, newType);
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));

@@ -10,18 +10,16 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::LSTMOp::getFLOPs() { return 0; }
 
 lstm_attr_t top::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   assert(in_shape.size() == 3);
   if (batch_first()) {
     attr.batch_size = in_shape[0];

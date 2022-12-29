@@ -9,24 +9,23 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 void tpu::ReshapeOp::codegen_global_bm1684() {
-  auto in_addr = Module::getAddress(input());
-  auto out_addr = Module::getAddress(output());
+  auto in_addr = module::getAddress(input());
+  auto out_addr = module::getAddress(output());
   if (in_addr == out_addr) {
     return;
   }
   int64_t in, ic, ih, iw, on, oc, oh, ow;
-  Module::getNCHW(input(), in, ic, ih, iw);
-  Module::getNCHW(output(), on, oc, oh, ow);
+  module::getNCHW(input(), in, ic, ih, iw);
+  module::getNCHW(output(), on, oc, oh, ow);
   if (on != in) {
     llvm_unreachable("Not Implemented");
   } else {

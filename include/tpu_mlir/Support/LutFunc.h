@@ -13,8 +13,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -35,9 +34,6 @@
 #define GELU_BF16_LUT_RANGE 8
 
 using namespace llvm;
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
 
 namespace tpu_mlir {
 enum TableMode {

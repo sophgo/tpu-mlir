@@ -13,8 +13,6 @@
 
 #define DEBUG_TYPE "cvi_backend_reduce_kernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
 
 namespace tpu_mlir {
 namespace backend {

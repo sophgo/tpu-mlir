@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 float requant(const float &data, const quant::UniformQuantizedType &qtype) {
   auto stype = qtype.getExpressedType();
@@ -74,16 +72,16 @@ LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
 void tpu::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
-  auto num_elem = Module::getNumElements(output());
-  auto in_type = Module::getStorageType(input());
-  auto out_type = Module::getStorageType(output());
-  bool isInQuant = Quant::isUniformQuantized(input());
-  bool isOutQuant = Quant::isUniformQuantized(output());
+  auto num_elem = module::getNumElements(output());
+  auto in_type = module::getStorageType(input());
+  auto out_type = module::getStorageType(output());
+  bool isInQuant = module::isUniformQuantized(input());
+  bool isOutQuant = module::isUniformQuantized(output());
   auto op = getOperation();
-  bool is_cv18xx = Module::isCV18xx();
+  bool is_cv18xx = module::isCV18xx();
   auto round_mode =
       is_cv18xx ? ROUNDING_HALF_TO_EVEN : ROUNDING_HALF_AWAY_FROM_ZERO;
-  bool is_tpu = Module::isTpuOp(op);
+  bool is_tpu = module::isTpuOp(op);
 
   if (in_type.isF32() && out_type.isF16()) {
     F16(p.inputs[0], p.outputs[0], num_elem);
@@ -91,7 +89,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     BF16(p.inputs[0], p.outputs[0], num_elem, false);
   } else if (isOutQuant && false == isInQuant) {
     // FP32|BF16|F16|... => INT8|UINT8|...
-    auto qtype = Quant::getUniformQuantizedType(output());
+    auto qtype = module::getUniformQuantizedType(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       float v;
@@ -102,21 +100,21 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       }
       if (out_type.isInteger(4)) {
         if (out_type.isUnsignedInteger(4)) {
-          p.outputs[0][i] = Quant::to_uint4(v, round_mode);
+          p.outputs[0][i] = to_uint4(v, round_mode);
         } else {
-          p.outputs[0][i] = Quant::to_int4(v, round_mode);
+          p.outputs[0][i] = to_int4(v, round_mode);
         }
       } else {
         if (out_type.isUnsignedInteger(8)) {
-          p.outputs[0][i] = Quant::to_uint8(v, round_mode);
+          p.outputs[0][i] = to_uint8(v, round_mode);
         } else {
-          p.outputs[0][i] = Quant::to_int8(v, round_mode);
+          p.outputs[0][i] = to_int8(v, round_mode);
         }
       }
     }
   } else if (isInQuant && false == isOutQuant) {
     // INT8|UINT8|... ==> FP32|BF16|F16|...
-    auto qtype = Quant::getUniformQuantizedType(input());
+    auto qtype = module::getUniformQuantizedType(input());
     if (is_cv18xx) {
       cvi_int8_to_bf16(p.inputs[0], p.outputs[0], qtype.getScale(), num_elem,
                        is_tpu);
@@ -127,8 +125,8 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       }
     }
     //   } else if (isInQuant && isOutQuant)  {
-    //     auto in_qtype = Quant::getUniformQuantizedType(input());
-    //     auto out_qtype = Quant::getUniformQuantizedType(output());
+    //     auto in_qtype = module::getUniformQuantizedType(input());
+    //     auto out_qtype = module::getUniformQuantizedType(output());
     //     if (in_qtype.getScale() == out_qtype.getScale() &&
     //         in_type.isInteger(8) && out_type.isInteger(8)) {
     //       int zero_diff = in_qtype.getZeroPoint() - out_qtype.getZeroPoint();

@@ -9,45 +9,43 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::ConcatOp::init(InferenceParameter &p) { return success(); }
 void tpu::ConcatOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
   auto axis_ = axis();
-  bool is_cv18xx = Module::isCV18xx();
+  bool is_cv18xx = module::isCV18xx();
   auto nInputs = inputs().size();
   // allocate tmp input
   std::vector<float *> tmp_inputs(nInputs);
   for (int i = 0; i < nInputs; ++i) {
-    auto num_elem = Module::getNumElements(inputs()[i]);
+    auto num_elem = module::getNumElements(inputs()[i]);
     tmp_inputs[i] = new float[num_elem];
     memcpy(tmp_inputs[i], p.inputs[i], num_elem * sizeof(float));
   }
 
-  if (is_cv18xx && Quant::isUniformQuantized(output())) {
-    auto out_type = Module::getStorageType(output());
-    auto multiplier_v = Module::getI64Array(multipliers(), nInputs, 1);
-    auto rshift_v = Module::getI64Array(rshifts(), nInputs, 0);
+  if (is_cv18xx && module::isUniformQuantized(output())) {
+    auto out_type = module::getStorageType(output());
+    auto multiplier_v = module::getI64Array(multipliers(), nInputs, 1);
+    auto rshift_v = module::getI64Array(rshifts(), nInputs, 0);
     for (int idx = 0; idx < nInputs; ++idx) {
       if (multiplier_v->at(idx) == 1 && rshift_v->at(idx) == 0) {
         continue;
       }
-      auto num_elem = Module::getNumElements(inputs()[idx]);
+      auto num_elem = module::getNumElements(inputs()[idx]);
       auto &inp = tmp_inputs[idx];
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; ++i) {
         inp[i] = applyMultiplierAndRShift(inp[i], multiplier_v->at(idx),
                                           rshift_v->at(idx), CVI_QUANT);
-        inp[i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(inp[i])
-                                               : Quant::to_int8(inp[i]);
+        inp[i] = out_type.isUnsignedInteger(8) ? to_uint8(inp[i])
+                                               : to_int8(inp[i]);
       }
     }
   }
@@ -73,7 +71,7 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
 
   if (do_relu()) {
     auto limit = relu_limit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], Module::getNumElements(output()),
+    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(output()),
                   limit);
   }
 
@@ -85,7 +83,7 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::ConcatOp::LocalGenSupport() {
-  auto shape = Module::getShape(output());
+  auto shape = module::getShape(output());
   int num_dims = shape.size();
   auto ax = axis();
   if (ax == 1 && (num_dims == 3 || num_dims == 4)) {

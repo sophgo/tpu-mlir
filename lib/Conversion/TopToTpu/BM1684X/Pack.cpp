@@ -37,16 +37,16 @@ void PackLowering::LoweringF16(PatternRewriter &rewriter,
 
 void PackLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::PackOp op) const {
-  if (Quant::isUniformQuantized(op.inputs()[0], op.output()) == false) {
+  if (module::isUniformQuantized(op.inputs()[0], op.output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   const int nInputs = op->getNumOperands();
   assert(nInputs == op.values_count()); // TODO: nInput==1
   std::vector<Value> operands;
 
-  std::vector<int64_t>shape(Module::getShape(op.output()));
+  std::vector<int64_t>shape(module::getShape(op.output()));
   shape[op.axis()] = 1;
-  auto out_stype = Module::getStorageType(op.output());
+  auto out_stype = module::getStorageType(op.output());
   auto newType = RankedTensorType::get(shape, out_stype);
   for (int i = 0; i < nInputs; ++i) {
     auto input_reshape = do_reshape(op.inputs()[i], newType);

@@ -11,13 +11,12 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
+
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 // using namespace tpu_mlir::backend;
 
 // =========================================
@@ -34,19 +33,19 @@ void tpu::ConcatOp::codegen_global_cv18xx(int64_t layer_id) {
   unsigned nInputs = op->getNumOperands();
   std::vector<gaddr_t> ga_inputs(nInputs);
   for (unsigned i = 0; i < nInputs; i++) {
-    ga_inputs[i] = Module::getAddress(this->getOperand(i));
+    ga_inputs[i] = module::getAddress(this->getOperand(i));
   }
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_output = module::getAddress(output());
 
   // prepare shape info
   std::vector<int32_t> axis_dims;
   for (unsigned i = 0; i < nInputs; i++) {
-    auto shape = Module::getShape(op->getOperand(i));
+    auto shape = module::getShape(op->getOperand(i));
     axis_dims.push_back(shape[axis]);
   }
 
   std::vector<int32_t> output_dim;
-  auto shape = Module::getShape(this->getResult());
+  auto shape = module::getShape(this->getResult());
   int output_dim_size = shape.size();
   output_dim.assign(shape.begin(), shape.end());
 
@@ -56,13 +55,13 @@ void tpu::ConcatOp::codegen_global_cv18xx(int64_t layer_id) {
   const int32_t *p_rshift = nullptr;
   const int32_t *p_m_i8 = nullptr;
   cvk_fmt_t dtype = CVK_FMT_BF16;
-  if (Quant::isUniformQuantized(output())) {
+  if (module::isUniformQuantized(output())) {
     dtype = CVK_FMT_I8;
     if (this->rshifts().has_value() && this->multipliers().has_value()) {
-      auto multiplier_v = Module::getI64Array(this->multipliers().value());
+      auto multiplier_v = module::getI64Array(this->multipliers().value());
       m_i8_input.assign(multiplier_v->begin(), multiplier_v->end());
       assert(m_i8_input.size() == nInputs);
-      auto shift_v = Module::getI64Array(this->rshifts().value());
+      auto shift_v = module::getI64Array(this->rshifts().value());
       rshift.assign(shift_v->begin(), shift_v->end());
       assert(rshift.size() == nInputs);
       p_rshift = rshift.data();

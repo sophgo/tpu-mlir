@@ -11,12 +11,11 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -93,7 +92,7 @@ static void zrh2rzh(std::shared_ptr<std::vector<T>> &filter, int num_dir,
 template <>
 LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.filter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
@@ -102,8 +101,8 @@ LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
 
   auto recurrenceOp = op.recurrence().getDefiningOp<top::WeightOp>();
   auto recurrence_f32 = recurrenceOp.read<float>();
-  auto num_filter = Module::getNumElements(op.filter());
-  auto num_recur = Module::getNumElements(op.recurrence());
+  auto num_filter = module::getNumElements(op.filter());
+  auto num_recur = module::getNumElements(op.recurrence());
   auto filter_merged =
       std::make_shared<std::vector<float>>(num_filter + num_recur, 0);
   filter_merge(filter_merged, filter_f32, recurrence_f32, attr.num_direction,
@@ -112,13 +111,13 @@ LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> filter_reordered_shape = {
       attr.num_direction, 3 * attr.input_size + 3 * attr.hidden_size,
       attr.hidden_size};
-  auto filter_type = Module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.filter());
   auto new_filter_type =
       RankedTensorType::get(filter_reordered_shape, filter_type);
   auto newFilterOp = top::WeightOp::create(op, "reordered_filter",
                                            *filter_merged, new_filter_type);
   op->setOperand(1, newFilterOp);
-  op->setOperand(2, Module::getNoneOp(op));
+  op->setOperand(2, module::getNoneOp(op));
   if (attr.have_bias) {
     auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
@@ -132,7 +131,7 @@ LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> init_shape = {attr.num_direction, attr.batch_size,
                                      attr.hidden_size};
   if (!attr.have_h0) {
-    auto stype = Module::getStorageType(op.input());
+    auto stype = module::getStorageType(op.input());
     auto initial_h = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto new_type = RankedTensorType::get(init_shape, stype);
@@ -187,13 +186,13 @@ typedef struct {
 void tpu::GRUOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   gru_param_t p = {0};
-  p.xGlobalAddr = Module::getAddress(input());
-  p.wGlobalAddr = Module::getAddress(filter());
-  p.bGlobalAddr = Module::getAddress(bias());
-  p.h0GlobalAddr = Module::getAddress(initial_h());
-  p.yGlobalAddr = Module::getAddress(Y());
-  p.hnGlobalAddr = Module::getAddress(Y_h());
-  p.zGlobalAddr = Module::getAddress(buffer());
+  p.xGlobalAddr = module::getAddress(input());
+  p.wGlobalAddr = module::getAddress(filter());
+  p.bGlobalAddr = module::getAddress(bias());
+  p.h0GlobalAddr = module::getAddress(initial_h());
+  p.yGlobalAddr = module::getAddress(Y());
+  p.hnGlobalAddr = module::getAddress(Y_h());
+  p.zGlobalAddr = module::getAddress(buffer());
 
   p.bias = attr.have_bias;
   p.outputY = attr.output_y;

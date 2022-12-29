@@ -1,8 +1,8 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/CVAddressAssign.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "llvm/Support/Format.h"
@@ -17,7 +17,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
@@ -31,13 +31,13 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   auto addr = start_addr;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
-      Module::setAddress(op.output(), addr);
-      int64_t bytes = Module::getBytes(op.output());
+      module::setAddress(op.output(), addr);
+      int64_t bytes = module::getBytes(op.output());
       addr = align_up(addr + bytes, weight_alignment);
     });
   }
-  Module::setCoeffAddr(start_addr);
-  Module::setCoeffSize(addr - start_addr);
+  module::setCoeffAddr(start_addr);
+  module::setCoeffSize(addr - start_addr);
   // key: the operation pointer & output index
 
   std::map<Operation *, uint32_t> ops_loc;
@@ -64,7 +64,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  Module::getInputsOutputs(inputs, outputs);
+  module::getInputsOutputs(inputs, outputs);
   for (auto iter = ops.rbegin(); iter != ops.rend(); ++iter) {
     updateLiveRange(*iter, ops_loc, op_infos, inplace_ops, outputs,
                     neuron_alignment);
@@ -132,7 +132,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // 4. set addr according to gaddrMap
   for (auto &op_addr : gaddrMap) {
     Operation *op = static_cast<Operation *>(op_addr.first.op);
-    Module::setAddress(op->getResult(op_addr.first.index), op_addr.second);
+    module::setAddress(op->getResult(op_addr.first.index), op_addr.second);
   }
   for (auto &v_info : inplace_ops) {
     updateAddressOfInPlaceOp(v_info, op_infos, neuron_alignment);
@@ -141,10 +141,10 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // TODO markGmemReusedOp
   // TODO crop concat pattern
 
-  Module::setNeuronSize(sharedGmemSize);
-  Module::setGmemPrivateSize(privateGmemSize);
-  Module::updateModuleTypes();
-  Module::setState(Module::State::TPU_ADDRESSED);
+  module::setNeuronSize(sharedGmemSize);
+  module::setGmemPrivateSize(privateGmemSize);
+  module::updateModuleTypes();
+  module::setState(module::State::TPU_ADDRESSED);
 }
 
 void CVAddressAssign::updateLiveRangeofPreOp(
@@ -152,7 +152,7 @@ void CVAddressAssign::updateLiveRangeofPreOp(
     std::map<Operation *, uint32_t> &ops_loc, MemType mem_type,
     int64_t alignment) {
   for (int i = 0; i < op->getNumOperands(); ++i) {
-    auto operand = Module::getOperand(op, i);
+    auto operand = module::getOperand(op, i);
     if (operand.getType().isa<mlir::NoneType>()) {
       continue;
     }
@@ -188,7 +188,7 @@ void CVAddressAssign::updateLiveRangeOfInPlaceOp(
     uint32_t min_start = end;
     auto target_v = ValueInfo(0, 0);
     for (int i = 0; i < op->getNumOperands(); ++i) {
-      auto operand = Module::getOperand(op, i);
+      auto operand = module::getOperand(op, i);
       auto preOp = operand.getDefiningOp();
       ValueInfo v_info(preOp, operand.cast<OpResult>().getResultNumber());
       op_infos[v_info].live.start =
@@ -236,7 +236,7 @@ void CVAddressAssign::updateLiveRange(Operation *op,
     }
     updateLiveRangeofPreOp(op_infos, op, ops_loc[op] + 1, ops_loc, mem_type,
                            alignment);
-  } else if (Module::isOpInGroup(op)) {
+  } else if (module::isOpInGroup(op)) {
   } else if (isInPlaceOp(op)) {
     ValueInfo cur_info(op, 0);
     assert(op_infos.find(cur_info) != op_infos.end());
@@ -266,25 +266,25 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
     int64_t base_addr = -1;
     ValueInfo cur_v(op, 0);
     auto target_v = op_infos[cur_v].target_v;
-    base_addr = Module::getAddress(
+    base_addr = module::getAddress(
         static_cast<Operation *>(target_v.op)->getResult(target_v.index));
     int64_t offset = 0;
-    Module::setAddress(op->getResult(0), base_addr + offset);
+    module::setAddress(op->getResult(0), base_addr + offset);
     for (uint32_t i = 0; i < op->getNumOperands(); i++) {
-      auto operand = Module::getOperand(op, i);
+      auto operand = module::getOperand(op, i);
       auto opd = operand.getDefiningOp();
       if (opd == 0x0) {
         assert(0);
       }
       int this_index = operand.cast<OpResult>().getResultNumber();
       // uint32_t tensor_size = getTensorGmemSize(opd, this_index, alignment);
-      uint32_t tensor_size = Module::getBytes(opd->getResult(this_index));
-      Module::setAddress(opd->getResult(this_index), base_addr + offset);
+      uint32_t tensor_size = module::getBytes(opd->getResult(this_index));
+      module::setAddress(opd->getResult(this_index), base_addr + offset);
       offset += tensor_size;
     }
   } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
-    auto operand = Module::getOperand(op, 0);
-    Module::setAddress(reshapeOp.output(), Module::getAddress(operand));
+    auto operand = module::getOperand(op, 0);
+    module::setAddress(reshapeOp.output(), module::getAddress(operand));
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     std::vector<int64_t> i_s;
     std::vector<int64_t> o_s;
@@ -297,14 +297,14 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
       ;
     size_t offset_bytes = 0;
     if (axis != 4) {
-      offset_bytes = offset_4[axis] * Module::getDtypeSize(sliceOp.output());
+      offset_bytes = offset_4[axis] * module::getDtypeSize(sliceOp.output());
       for (int i = axis + 1; i < 4; ++i) {
         offset_bytes *= i_s[i];
       }
     }
-    auto operand = Module::getOperand(op, 0);
-    Module::setAddress(sliceOp.output(),
-                       Module::getAddress(operand) + offset_bytes);
+    auto operand = module::getOperand(op, 0);
+    module::setAddress(sliceOp.output(),
+                       module::getAddress(operand) + offset_bytes);
   } else {
     llvm_unreachable("set address of undefined inplace op!");
   }
@@ -373,7 +373,7 @@ void CVAddressAssign::updateConcatOpTargetV(
 
 uint32_t CVAddressAssign::getTensorGmemSize(Operation *op, int index,
                                             int64_t aligment_) {
-  uint32_t size = Module::getBytes(op->getResult(index));
+  uint32_t size = module::getBytes(op->getResult(index));
   // pad to aligment_
   if (size % aligment_) {
     size = size + aligment_ - (size % aligment_);

@@ -21,7 +21,7 @@ void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
     mask_op->dump();
     llvm_unreachable("not supported!");
   }
-  auto output_shape = Module::getShape(op.output());
+  auto output_shape = module::getShape(op.output());
   std::vector<int64_t> mask_shape;
   if (isa<top::MaxPoolWithMaskOp>(mask_op)) {
     // if MaxPoolWithMaskOp' input shape not equal to maxUnpool's output shape
@@ -30,13 +30,13 @@ void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
     mask_shape[2] = align_up(mask_shape[2], static_cast<int64_t>(op.scale_h()));
     mask_shape[3] = align_up(mask_shape[3], static_cast<int64_t>(op.scale_w()));
   } else {
-    Module::getShapeVec(op.mask(), mask_shape);
+    module::getShapeVec(op.mask(), mask_shape);
   }
   bool need_crop = false;
   if (mask_shape[3] != output_shape[3] || mask_shape[2] != output_shape[2]) {
     need_crop = true;
   }
-  std::string max_unpool_name = Module::getName(op.output()).str();
+  std::string max_unpool_name = module::getName(op.output()).str();
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   std::string name = max_unpool_name + "_nearst";

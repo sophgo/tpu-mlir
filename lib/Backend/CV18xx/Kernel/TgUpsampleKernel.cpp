@@ -14,8 +14,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 
 #define DEBUG_TYPE "cvi_backend_upsample_kernel"
-using namespace mlir;
-using namespace tpu_mlir;
+
 namespace tpu_mlir {
 namespace backend {
 static void upsample_split(uint32_t input_n, uint32_t input_c, uint32_t input_h,

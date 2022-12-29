@@ -10,18 +10,16 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 gru_attr_t tpu::GRUOp::parseParam() {
   gru_attr_t attr = {0};
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   assert(in_shape.size() == 3);
   if (batch_first()) {
     attr.batch_size = in_shape[0];
@@ -42,10 +40,7 @@ gru_attr_t tpu::GRUOp::parseParam() {
   return attr;
 }
 
-static inline float sigmoid_(float x) {
-  // return static_cast<float>(1.f / (1.f + std::exp(-x)));
-  return 0.5 * tanh(0.5 * x) + 0.5;
-}
+static inline float sigmoid_(float x) { return 0.5 * tanh(0.5 * x) + 0.5; }
 
 static inline float tanh_(float x) { return tanh(x); }
 
@@ -206,7 +201,7 @@ public:
   static void inference(InferenceParameter &p, tpu::GRUOp *op) {
     cv_gru_param_t gp;
     auto input_type = op->input().getType().dyn_cast<TensorType>();
-    auto in_shape = Module::getShape(op->input());
+    auto in_shape = module::getShape(op->input());
     Value output;
     for (uint32_t i = 0; i < op->getNumResults(); ++i) {
       if (!op->getResults()[i].getType().isa<mlir::NoneType>()) {
@@ -216,7 +211,7 @@ public:
       }
     }
     assert(output);
-    auto out_shape = Module::getShape(output);
+    auto out_shape = module::getShape(output);
     if (out_shape.size() == 4) {
       gp.seq_length = out_shape[0];
       gp.num_dir = out_shape[1];
@@ -238,14 +233,14 @@ public:
     assert(gp.linear_before_reset == true);
     gp.bidirectional = op->bidirectional();
 
-    auto out_type = Module::getStorageType(output);
+    auto out_type = module::getStorageType(output);
     bool is_bf16 = out_type.isBF16();
     compute(true, p, gp, is_bf16);
     if (gp.bidirectional) {
       compute(false, p, gp, is_bf16);
     }
     if (is_bf16) {
-      auto ele_num = Module::getNumElements(output);
+      auto ele_num = module::getNumElements(output);
       BF16(p.outputs[gp.out_idx], p.outputs[gp.out_idx], ele_num, false);
     }
   }
@@ -366,7 +361,7 @@ LogicalResult tpu::GRUOp::init(InferenceParameter &p) { return success(); }
 void tpu::GRUOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::GRUOp::inference(InferenceParameter &p) {
-  if (Module::isCV18xx()) {
+  if (module::isCV18xx()) {
     CvGruInference::inference(p, this);
   } else {
     BmGruInference::inference(p, this);

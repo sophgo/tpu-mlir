@@ -17,8 +17,6 @@
 #define ASSERT(x) assert(x)
 // #define ENABLE_DEBUG_MSG
 
-using namespace mlir;
-using namespace tpu_mlir;
 
 namespace tpu_mlir {
 namespace backend {

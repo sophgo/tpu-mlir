@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <valarray>
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::SliceOp::getFLOPs() { return 0; }
 
@@ -23,11 +21,11 @@ LogicalResult top::SliceOp::init(InferenceParameter &p) { return success(); }
 void top::SliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SliceOp::inference(InferenceParameter &p) {
-  auto out_num_elem = Module::getNumElements(output());
-  auto offset_v = Module::getI64Array(offset());
-  auto steps_v = Module::getI64Array(steps());
-  auto out_shape = Module::getShape(output());
-  auto in_shape = Module::getShape(input());
+  auto out_num_elem = module::getNumElements(output());
+  auto offset_v = module::getI64Array(offset());
+  auto steps_v = module::getI64Array(steps());
+  auto out_shape = module::getShape(output());
+  auto in_shape = module::getShape(input());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.

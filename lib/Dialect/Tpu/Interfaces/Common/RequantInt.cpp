@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::RequantIntOp::init(InferenceParameter &p) {
   return success();
@@ -23,17 +21,17 @@ LogicalResult tpu::RequantIntOp::init(InferenceParameter &p) {
 void tpu::RequantIntOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
-  auto o_sType = Module::getStorageType(output());
-  auto o_qtype = Quant::getUniformQuantizedType(output());
+  auto o_sType = module::getStorageType(output());
+  auto o_qtype = module::getUniformQuantizedType(output());
   auto mode = quant_mode();
-  auto shape = Module::getShape(output());
+  auto shape = module::getShape(output());
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
   }
   int64_t zp_x = 0;
-  if (Quant::isUniformQuantized(input())) {
-    auto i_qtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto i_qtype = module::getUniformQuantizedType(input());
     zp_x = i_qtype.getZeroPoint();
     assert(mode == tpu::RequantMode::Normal);
   }
@@ -89,13 +87,13 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
                                           TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = Module::getStorageType(input());
+    auto stype = module::getStorageType(input());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }
-    if (stype.isF32() && Quant::isUniformQuantized(output())) {
+    if (stype.isF32() && module::isUniformQuantized(output())) {
       mode = TypeCastMode::DO_QUANTIZE;
-      return Module::getStorageType(output());
+      return module::getStorageType(output());
     }
     mode = TypeCastMode::DO_CAST;
     auto bitwith = stype.getIntOrFloatBitWidth();

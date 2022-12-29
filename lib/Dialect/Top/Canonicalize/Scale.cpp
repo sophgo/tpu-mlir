@@ -11,12 +11,12 @@
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace mlir;
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-using namespace tpu_mlir::helper;
+
 
 struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -88,7 +88,7 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
     auto conv_bias_op = dyn_cast<WeightOp>(conv_op.bias().getDefiningOp());
 
     int64_t oc, ic, kh, kw;
-    Module::getNCHW(conv_weight_op.output(), oc, ic, kh, kw);
+    module::getNCHW(conv_weight_op.output(), oc, ic, kh, kw);
 
     // merge weight: weight = weight * cur_scale
     std::vector<float> conv_weight_v(oc * ic * kh * kw, 0);
@@ -214,7 +214,7 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     std::vector<int64_t> input_shape;
-    Module::getShapeVec(op.input(), input_shape);
+    module::getShapeVec(op.input(), input_shape);
 
     auto cur_scale = dyn_cast<WeightOp>(op.scale().getDefiningOp());
     auto cur_bias = dyn_cast<WeightOp>(op.bias().getDefiningOp());

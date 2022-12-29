@@ -87,7 +87,7 @@ class StripIOQuantPass : public StripIOQuantBase<StripIOQuantPass> {
 public:
   StripIOQuantPass() {}
   void runOnOperation() override {
-    auto func = Module::getMainFuncOp();
+    auto func = module::getMainFuncOp();
     auto ctx = func.getContext();
     RewritePatternSet patterns(ctx);
     if (quant_input) {
@@ -99,7 +99,7 @@ public:
       patterns.add<StripOutputQuantCpuCastPattern>(ctx);
     }
     applyPatternsAndFoldGreedily(func, std::move(patterns));
-    Module::updateModuleTypes();
+    module::updateModuleTypes();
   }
 };
 

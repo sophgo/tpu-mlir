@@ -29,10 +29,10 @@ void CompareConstLowering::LoweringINT8(PatternRewriter &rewriter,
   int64_t zp;
   double scale;
   bool sign;
-  Quant::getScaleAndZeroPoint(op.input(), scale, zp, sign, asymmetric);
+  module::getScaleAndZeroPoint(op.input(), scale, zp, sign, asymmetric);
   auto val = op.const_val().convertToDouble();
   double new_val = std::round(val / scale + zp);
-  new_val = sign ? Quant::to_int8(new_val) : Quant::to_uint8(new_val);
+  new_val = sign ? to_int8(new_val) : to_uint8(new_val);
   op_->setAttr("const_val", rewriter.getF64FloatAttr(new_val));
   auto newType = getQuantBoolType(op.output());
   lowering_common<tpu::CompareConstOp>(rewriter, op.getOperation(), newType);

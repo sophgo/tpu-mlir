@@ -14,9 +14,6 @@
 
 #define DEBUG_TYPE "cvi_backend_conv_kernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
-
 namespace tpu_mlir {
 namespace backend {
 std::string IntraCmdParallelAnalysis::getAccessEventStr(AccessEvent event) {

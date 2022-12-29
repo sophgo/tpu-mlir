@@ -10,13 +10,12 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -113,10 +112,10 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
   SpecAssign(attr, spec);
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (Quant::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(input())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
-          Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
       if (spec.avg_pooling_quant_mode == 0) {
         spec.multiplier = multiplier().value_or((int64_t)1);
         spec.rshiftbits = rshift().value_or((int64_t)0);
@@ -143,13 +142,13 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684x(
     return 0;
   case tpu::PoolMode::Avg:
     int64_t size = 0;
-    if (Module::isAsymmetric()) {
-      auto kernel = Module::getI64Array(kernel_shape());
+    if (module::isAsymmetric()) {
+      auto kernel = module::getI64Array(kernel_shape());
       int64_t dtype_bytes = kernel->at(0) ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
 
       int64_t N, C, H, W;
-      Module::getNCHW(input(), N, C, H, W);
+      module::getNCHW(input(), N, C, H, W);
       size = align_up(out_hslice * W, eu_num) *
              ceiling_func(C, BM168x::NPU_NUM) * dtype_bytes;
     }
@@ -206,10 +205,10 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     common.is_avg_pooling = true;
-    if (Quant::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(input())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       common.avg_pooling_quant_mode =
-          Module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
       if (common.avg_pooling_quant_mode == 0) {
         common.multiplier = multiplier().value_or(0l);
         common.rshiftbits = rshift().value_or(0l);

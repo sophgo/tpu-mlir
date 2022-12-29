@@ -9,10 +9,10 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "bitcasts.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include <math.h>
 
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 
 typedef union {
@@ -797,7 +797,7 @@ uint16_t f32_to_f16(float src) {
 }
 
 uint16_t f32_to_bf16(float src, bool is_tpu) {
-  if (Module::isCV18xx()) {
+  if (module::isCV18xx()) {
     return cvi_f32_to_bf16(src, is_tpu);
   }
   return bm_f32_to_bf16(src);

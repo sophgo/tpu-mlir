@@ -9,24 +9,22 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::MulOp::getFLOPs() {
-  return Module::getNumElements(output()) *
+  return module::getNumElements(output()) *
          (inputs().size() - 1 + do_relu() ? 1 : 0);
 }
 
 LogicalResult top::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], Module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], Module::getShape(inputs()[1]))
-      .dst(p.outputs[0], Module::getShape(output()))
+      .lhs(p.inputs[0], module::getShape(inputs()[0]))
+      .rhs(p.inputs[1], module::getShape(inputs()[1]))
+      .dst(p.outputs[0], module::getShape(output()))
       .do_relu(do_relu())
       .relu_limit(relu_limit().convertToDouble())
       .algorithem(algorithm::binary_mul)

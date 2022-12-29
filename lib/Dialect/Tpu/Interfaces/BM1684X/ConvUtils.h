@@ -9,11 +9,11 @@
 #pragma once
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 
 namespace tpu_mlir {
 namespace tpu {
@@ -25,7 +25,7 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
                                     std::vector<int64_t> &shape,
                                     bool align = false) {
   int64_t n, c, h, w, eu_num;
-  Module::getNCHW(shape, n, c, h, w);
+  module::getNCHW(shape, n, c, h, w);
   if (n != 1 || h != 1 || c <= BM168x::NPU_NUM) {
     return;
   }
@@ -60,7 +60,7 @@ template <typename T>
 static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
                            std::vector<int64_t> &shape) {
   int64_t oc, ic, kh, kw;
-  Module::getNCHW(shape, oc, ic, kh, kw);
+  module::getNCHW(shape, oc, ic, kh, kw);
   auto type_bytes = sizeof(T);
   int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
   auto kernel_hw = kh * kw;
@@ -94,7 +94,7 @@ static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
                                   std::vector<int64_t> &shape,
                                   int64_t use_3ic_optimize) {
   int64_t oc, ic, kh, kw;
-  Module::getNCHW(shape, oc, ic, kh, kw);
+  module::getNCHW(shape, oc, ic, kh, kw);
   use_3ic_optimize = use_3ic_optimize & 0x3;
 
   // if merge kw to ic, it need convert (oc, ic, kh, kw) to (oc, ic, kw, kh).

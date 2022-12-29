@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 static mlir::Type t;
 
@@ -46,8 +44,8 @@ static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 }
 
 LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
-  t = Module::getStorageType(output());
-  auto num_element = Module::getNumElements(input());
+  t = module::getStorageType(output());
+  auto num_element = module::getNumElements(input());
   switch (mode()) {
   case ActiveMode::ABSVAL:
     active_func(p, num_element, [](double val) { return std::abs(val); });
@@ -73,7 +71,7 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
                 [](double val) { return 1 / (1 + std::exp(-val)); });
     break;
   case ActiveMode::HSIGMOID: {
-    const auto coeffs_ = Module::getF64Array(coeffs(), 2, 0);
+    const auto coeffs_ = module::getF64Array(coeffs(), 2, 0);
     const double alpha = coeffs_->at(1);
     const double beta = coeffs_->at(0);
     active_func(p, num_element, [alpha, beta](double val) {

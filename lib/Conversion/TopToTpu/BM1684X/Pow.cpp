@@ -15,7 +15,7 @@ namespace bm1684x {
 // y = x ^ n = e ^ (n * log(x))
 // TODO: dangerous as need x > 0
 void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
-  auto name = Module::getName(op.output());
+  auto name = module::getName(op.output());
   auto type = op.output().getType();
   rewriter.setInsertionPointAfter(op);
   auto log_loc = NameLoc::get(rewriter.getStringAttr(name.str() + "_log"));
@@ -41,7 +41,7 @@ void PowLowering::LoweringF32(PatternRewriter &rewriter, top::PowOp op) const {
 static double g_ex = 0;
 void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
                                bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   g_ex = op.exponent().convertToDouble();
   auto table =
       create_lookup_table(op.input(), op.output(), asymmetric,

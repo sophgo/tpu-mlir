@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
@@ -18,7 +18,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace top {
 
@@ -27,7 +27,7 @@ public:
   InitPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    Module::init(module);
+    module::init(module);
   }
 };
 

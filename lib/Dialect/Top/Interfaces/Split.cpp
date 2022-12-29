@@ -8,12 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::SplitOp::getFLOPs() {
   return 0;
@@ -23,10 +21,10 @@ LogicalResult top::SplitOp::init(InferenceParameter &p) { return success(); }
 void top::SplitOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SplitOp::inference(InferenceParameter &p) {
-  // auto out_num_elem = Module::getNumElements(output());
+  // auto out_num_elem = module::getNumElements(output());
   int out_num = num();
   int split_axis = axis();
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   int64_t out_max_size = (in_shape[split_axis] + out_num - 1) / out_num;
   std::vector<int64_t>out_size(out_num);
   for (int i = 0; i < out_num - 1; ++i) {

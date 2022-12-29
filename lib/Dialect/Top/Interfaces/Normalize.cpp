@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 int64_t top::NormalizeOp::getFLOPs() {
-  return Module::getNumElements(output()) * 2;
+  return module::getNumElements(output()) * 2;
 }
 
 LogicalResult top::NormalizeOp::init(InferenceParameter &p) { return success(); }

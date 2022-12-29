@@ -71,15 +71,25 @@ run_all() {
   echo "" >result.log
   echo "run_onnx_op" >cmd.txt
   echo "run_script_test" >>cmd.txt
+  cat cmd.txt
+  parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
+  if [[ "$?" -ne 0 ]]; then
+    return 1
+  fi
   for chip in ${chip_support[@]}; do
+    echo "" >cmd.txt
     declare -n list="model_list_${chip}_${test_type}"
     for net in ${list[@]}; do
       echo "run_regression_net ${net} ${chip} ${test_type}" >>cmd.txt
     done
+    cat cmd.txt
+    parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
+    if [[ "$?" -ne 0 ]]; then
+      return 1
+    fi
   done
-  cat cmd.txt
-  parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
-  return $?
+
+  return 0
 }
 
 ERR=0

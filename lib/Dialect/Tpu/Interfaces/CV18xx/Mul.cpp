@@ -11,13 +11,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -29,19 +28,19 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t n, c, h, w;
   std::vector<gaddr_t> ga_inputs;
   for (int i = 0; i < input_num; i++) {
-    ga_inputs.emplace_back(Module::getAddress(inputs()[i]));
+    ga_inputs.emplace_back(module::getAddress(inputs()[i]));
   }
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_output = module::getAddress(output());
 
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
 
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
-  Module::getNCHW(inputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
-  Module::getNCHW(inputs()[1], shape1[0], shape1[1], shape1[2], shape1[3]);
+  module::getNCHW(inputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
+  module::getNCHW(inputs()[1], shape1[0], shape1[1], shape1[2], shape1[3]);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
@@ -53,7 +52,7 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
       std::reverse(ga_inputs.begin(), ga_inputs.end());
       std::swap(shape0, shape1);
     }
-    if (Quant::isUniformQuantized(output())) {
+    if (module::isUniformQuantized(output())) {
       int32_t multiplier_v = static_cast<int32_t>(this->multiplier());
       int32_t rshift_v = static_cast<int32_t>(this->rshift());
       cvi_backend_tg_int8_bcast_mul_kernel(
@@ -68,7 +67,7 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
           do_relu());
     }
   } else {
-    if (Quant::isUniformQuantized(output())) {
+    if (module::isUniformQuantized(output())) {
       int32_t multiplier_v = static_cast<int32_t>(this->multiplier());
       int32_t rshift_v = static_cast<int32_t>(this->rshift());
       std::vector<int32_t> coeffs(input_num, 1);

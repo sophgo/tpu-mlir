@@ -9,21 +9,19 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::LutBF16Op::init(InferenceParameter &p) { return success(); }
 void tpu::LutBF16Op::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LutBF16Op::inference(InferenceParameter &p) {
-  auto num_element = Module::getNumElements(input());
-  if (Module::isCV18xx()) {
+  auto num_element = module::getNumElements(input());
+  if (module::isCV18xx()) {
     auto _lut_mode = lut_mode();
     if (_lut_mode == LutBF16Mode::Slope) {
       bf16_lut_slope(p.inputs[0], p.outputs[0], num_element, p.inputs[1],

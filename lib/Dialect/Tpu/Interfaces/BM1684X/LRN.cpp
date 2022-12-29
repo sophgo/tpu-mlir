@@ -10,12 +10,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -44,10 +43,10 @@ typedef struct {
 // =========================================
 void tpu::LRNOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   lrn_global_param_t p = {0};
-  p.input_addr = Module::getAddress(input());
-  p.output_addr = Module::getAddress(output());
+  p.input_addr = module::getAddress(input());
+  p.output_addr = module::getAddress(output());
   p.size = size();
 
   p.input_n = n;

@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::PermuteOp::init(InferenceParameter &p) { return success(); }
 void tpu::PermuteOp::deinit(InferenceParameter &p) {}
@@ -41,8 +39,8 @@ static void refresh(std::vector<int> &order, int idx) {
 
 LogicalResult tpu::PermuteOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw;
-  std::vector<int64_t> in_shape = Module::getShape(input());
-  std::shared_ptr<std::vector<int64_t>> perm = Module::getI64Array(order());
+  std::vector<int64_t> in_shape = module::getShape(input());
+  i64_array_t perm = module::getI64Array(order());
   int num_dims = in_shape.size();
   std::vector<int> order;
   for (int i = 0; i < num_dims; i++) {

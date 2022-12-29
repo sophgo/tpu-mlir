@@ -9,12 +9,10 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::StridedSliceOp::getFLOPs() {
   return 0;
@@ -24,9 +22,9 @@ LogicalResult top::StridedSliceOp::init(InferenceParameter &p) { return success(
 void top::StridedSliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::StridedSliceOp::inference(InferenceParameter &p) {
-  auto out_num_elem = Module::getNumElements(output());
-  auto out_shape = Module::getShape(output());
-  auto in_shape = Module::getShape(input());
+  auto out_num_elem = module::getNumElements(output());
+  auto out_shape = module::getShape(output());
+  auto in_shape = module::getShape(input());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
 
@@ -35,7 +33,7 @@ LogicalResult top::StridedSliceOp::inference(InferenceParameter &p) {
   auto starts_ = p.inputs[1];
   auto ends_ = p.inputs[2];
   auto strides_ = p.inputs[3];
-  auto s_dims = Module::getShape(strides()).size();
+  auto s_dims = module::getShape(strides()).size();
   int32_t begin[8], end[8], step[8], input_shape[8];
   int32_t dims, b_mask, e_mask, shrink_mask;
 

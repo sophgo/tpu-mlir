@@ -19,7 +19,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
                                bool asymmetric) const {
   // for convert from DivOp
   auto div_v = op.inputs()[1];
-  if (!Quant::isCalibratedType(div_v) && !Quant::isUniformQuantized(div_v)) {
+  if (!module::isCalibratedType(div_v) && !module::isUniformQuantized(div_v)) {
     LoweringBF16(rewriter, op);
     return;
   }
@@ -29,7 +29,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   int64_t o_zp;
   double o_scale;
   bool sign = true;
-  Quant::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
+  module::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
   double scalef = 1.0;
   double scale_i;
   int64_t i_zp;
@@ -52,7 +52,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
         auto constI8 = std::make_shared<std::vector<int8_t>>(constF32->size());
         std::transform(
             constF32->begin(), constF32->end(), constI8->begin(),
-            [&](const float cf32) { return Quant::to_int8(cf32 / scale_i); });
+            [&](const float cf32) { return to_int8(cf32 / scale_i); });
         auto new_filter =
             top::WeightOp::create(constOp, "i8", *constI8, new_type);
         operands.push_back(new_filter);
@@ -60,13 +60,13 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
         auto constU8 = std::make_shared<std::vector<uint8_t>>(constF32->size());
         std::transform(
             constF32->begin(), constF32->end(), constU8->begin(),
-            [&](const float cf32) { return Quant::to_uint8(cf32 / scale_i); });
+            [&](const float cf32) { return to_uint8(cf32 / scale_i); });
         auto new_filter =
             top::WeightOp::create(constOp, "u8", *constU8, new_type);
         operands.push_back(new_filter);
       }
     } else {
-      Quant::getScaleAndZeroPoint(input, scale_i, i_zp, sign, false);
+      module::getScaleAndZeroPoint(input, scale_i, i_zp, sign, false);
       operands.push_back(input);
     }
     scalef *= scale_i;

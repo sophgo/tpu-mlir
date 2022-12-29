@@ -9,21 +9,19 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
 
-int64_t top::PReluOp::getFLOPs() { return Module::getNumElements(output()); }
+
+int64_t top::PReluOp::getFLOPs() { return module::getNumElements(output()); }
 
 LogicalResult top::PReluOp::init(InferenceParameter &p) {
   auto prelu = new PRelu();
   (*prelu)
-      .src(p.inputs[0], Module::getShape(input()))
-      .weights(p.inputs[1], Module::getShape(slope()))
-      .dst(p.outputs[0], Module::getShape(output()))
+      .src(p.inputs[0], module::getShape(input()))
+      .weights(p.inputs[1], module::getShape(slope()))
+      .dst(p.outputs[0], module::getShape(output()))
       .setup();
 
   p.handle = (void *)prelu;

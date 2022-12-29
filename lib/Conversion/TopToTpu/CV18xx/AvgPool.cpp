@@ -21,8 +21,8 @@ static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx
   Value output_val = poolOp.getResult();
   std::vector<int64_t> input_shape;
   std::vector<int64_t> output_shape;
-  Module::getShapeVec(input_val, input_shape);
-  Module::getShapeVec(output_val, output_shape);
+  module::getShapeVec(input_val, input_shape);
+  module::getShapeVec(output_val, output_shape);
 
   uint64_t lmem_size = 32 * 1024;
   int64_t output_size = std::accumulate(std::begin(output_shape), std::end(output_shape), 1,
@@ -31,7 +31,7 @@ static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx
   if ((uint64_t)(ih * iw) < ((lmem_size - output_size) / 2) || !(output_shape[2] == 1 && output_shape[3] == 1)) {
     return;
   }
-  std::string name = Module::getName(output_val).str();
+  std::string name = module::getName(output_val).str();
   auto elementType_ = output_val.getType().cast<TensorType>().getElementType();
   std::vector<int> h_slices;
   int h_slice_size = (int)(((lmem_size - output_size) / iw) / 2);
@@ -110,7 +110,7 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                    bool asymmetric) const {
   assert(!asymmetric);
   const size_t kernel_size = poolOp.kernel_shape().size();
-  auto kernel = Module::getI64Array(poolOp.kernel_shape());
+  auto kernel = module::getI64Array(poolOp.kernel_shape());
   int64_t kh = kernel_size == 3 ? kernel->at(1) : kernel->at(0);
   int64_t kw =
       kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);
@@ -123,8 +123,8 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto in_qtype = Quant::getCalibratedType(poolOp.input());
-  auto out_qtype = Quant::getCalibratedType(poolOp.output());
+  auto in_qtype = module::getCalibratedType(poolOp.input());
+  auto out_qtype = module::getCalibratedType(poolOp.output());
   auto in_thr = in_qtype.getMax();
   auto out_thr = out_qtype.getMax();
   if (kernel_size != 3) {
@@ -173,16 +173,16 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     std::vector<int64_t> _strides;
     std::vector<int64_t> _pad;
 
-    Module::getShapeVec(poolOp.input(), input_shape);
-    Module::getShapeVec(poolOp.output(), output_shape);
-    auto kernel = Module::getI64Array(poolOp.kernel_shape());
-    auto strides = Module::getI64Array(poolOp.strides());
-    auto pads = Module::getI64Array(poolOp.pads());
+    module::getShapeVec(poolOp.input(), input_shape);
+    module::getShapeVec(poolOp.output(), output_shape);
+    auto kernel = module::getI64Array(poolOp.kernel_shape());
+    auto strides = module::getI64Array(poolOp.strides());
+    auto pads = module::getI64Array(poolOp.pads());
     auto type = rewriter.getBF16Type();
-    auto op_name = Module::getName(poolOp.getOperation()).str();
+    auto op_name = module::getName(poolOp.getOperation()).str();
     // 0. reshape [n c f h w] -> [n*c h w f].
     // It should align_right, this may casuse layerGroup err (fix me)
-    Module::getNCHW(input_shape, tmp_shape0[0], tmp_shape0[1], tmp_shape0[2],
+    module::getNCHW(input_shape, tmp_shape0[0], tmp_shape0[1], tmp_shape0[2],
                     tmp_shape0[3], false);
     auto newType = RankedTensorType::get(tmp_shape0, type);
     auto name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape"));
@@ -221,7 +221,7 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(tmp_shape1, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
     auto newOp1 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp0.output(), Module::getNoneOp(op)},
+        name_loc, newType, ValueRange{newOp0.output(), module::getNoneOp(op)},
         attrs);
     // 3. do pool last dim
     tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
@@ -244,7 +244,7 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     auto newOp3 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp2.output(), Module::getNoneOp(op)},
+        name_loc, newType, ValueRange{newOp2.output(), module::getNoneOp(op)},
         attrs);
     // 5. reshape back
     newType = RankedTensorType::get(output_shape, type);

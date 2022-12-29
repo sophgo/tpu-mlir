@@ -10,13 +10,10 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-using namespace tpu_mlir;
-using namespace mlir;
 
 LogicalResult tpu::SoftmaxOp::init(InferenceParameter &p) { return success(); }
 
@@ -24,10 +21,10 @@ void tpu::SoftmaxOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   auto axis_ = axis();
-  auto input_shape = Module::getShape(input());
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
-  bool is_cv18xx = Module::isCV18xx();
+  auto input_shape = module::getShape(input());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
+  bool is_cv18xx = module::isCV18xx();
 
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {
@@ -43,8 +40,8 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   bool has_table = !table().getType().isa<mlir::NoneType>();
   if (out_type.isa<FloatType>()) {
     float scale = 1.0f;
-    if (Quant::isUniformQuantized(input())) {
-      auto qtype = Quant::getUniformQuantizedType(input());
+    if (module::isUniformQuantized(input())) {
+      auto qtype = module::getUniformQuantizedType(input());
       scale = qtype.getScale();
     }
     std::vector<float> max_arr(inner_dim);
@@ -132,11 +129,11 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (Quant::isUniformQuantized(input(),
+  } else if (module::isUniformQuantized(input(),
                                        output())) { // for quant softmax
     assert(has_table == true);
     auto exp_table = p.inputs[1];
-    auto o_qtype = Quant::getUniformQuantizedType(output());
+    auto o_qtype = module::getUniformQuantizedType(output());
     auto zp = o_qtype.getZeroPoint();
     float scale = o_qtype.getScale();
     for (int i = 0; i < outer_dim; ++i) {
@@ -151,23 +148,23 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         }
         float sum = 0.f;
         for (int c = 0; c < channel; ++c) {
-          auto offset = Quant::to_uint8(
+          auto offset = to_uint8(
               max_val - p.inputs[0][out_offset + c * inner_dim + j]);
           sum += exp_table[offset];
         }
         for (int c = 0; c < channel; ++c) {
-          auto offset = Quant::to_uint8(
+          auto offset = to_uint8(
               max_val - p.inputs[0][out_offset + c * inner_dim + j]);
           float prob_rescaled = exp_table[offset];
           prob_rescaled = prob_rescaled / (sum * scale);
           if (out_type.isInteger(8)) {
             int prob_rnd = static_cast<int32_t>(std::round(prob_rescaled));
             p.outputs[0][out_offset + c * inner_dim + j] =
-                Quant::to_int8(prob_rnd + zp);
+                to_int8(prob_rnd + zp);
           } else {
             int prob_rnd = static_cast<int32_t>(prob_rescaled + 0.5);
             p.outputs[0][out_offset + c * inner_dim + j] =
-                Quant::to_uint8(prob_rnd + zp);
+                to_uint8(prob_rnd + zp);
           }
         }
       }
@@ -181,11 +178,11 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
 
 mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
-  auto i_stype = Module::getStorageType(input());
-  auto o_stype = Module::getStorageType(output());
+  auto i_stype = module::getStorageType(input());
+  auto o_stype = module::getStorageType(output());
   if (opd_idx == 0) {
     if (o_stype.isF32() && (i_stype.isInteger(8) || i_stype.isF32())) {
-      if (Module::isAsymmetric() == false) {
+      if (module::isAsymmetric() == false) {
         return do_nothing(mode);
       }
     }

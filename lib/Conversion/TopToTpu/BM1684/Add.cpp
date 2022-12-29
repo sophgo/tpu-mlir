@@ -19,7 +19,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   std::vector<int64_t> rshift_v(nInputs);
   std::vector<int64_t> multiplier_v(nInputs, 1);
   std::vector<double> coeff_v(nInputs, 1.0);
-  auto th_output = Quant::getThreshold(op.output());
+  auto th_output = module::getThreshold(op.output());
 
   if (op.coeff().has_value()) {
     int idx = 0;
@@ -31,9 +31,9 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     operands.push_back(input);
-    auto th_input = Quant::getThreshold(input);
+    auto th_input = module::getThreshold(input);
     rshift_v[i] = calRightShiftNumUseCblas(coeff_v[i], th_input, th_output,
-                                           Quant::BITS_INT8);
+                                           BITS_INT8);
     float scale = 1.0 * (1 << rshift_v[i]) * th_input / th_output;
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];

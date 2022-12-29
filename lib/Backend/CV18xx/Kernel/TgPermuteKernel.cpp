@@ -13,8 +13,7 @@
 #include <numeric>
 
 #define DEBUG_TYPE "cvi_backend_permute_kernel"
-using namespace mlir;
-using namespace tpu_mlir;
+
 //
 // permute xxx3: (I8 & BF16)
 //   TDMA does not has the stride of width(ws).

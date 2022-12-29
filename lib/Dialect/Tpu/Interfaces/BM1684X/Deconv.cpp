@@ -11,13 +11,12 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -25,7 +24,7 @@ template <typename T>
 static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
                            std::vector<int64_t> &shape) {
   int64_t oc, ic, kh, kw;
-  Module::getNCHW(shape, oc, ic, kh, kw);
+  module::getNCHW(shape, oc, ic, kh, kw);
   auto type_bytes = sizeof(T);
   int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
   auto kernel_hw = kh * kw;
@@ -56,7 +55,7 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.filter()).isInteger(8))
     return failure();
   // assume that ic = input_channel / groups, oc = output_channel / groups
   // for original model, deconv kernel is {groups * ic, oc, kh, kw},
@@ -68,7 +67,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   // filter op
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
-  auto filter_type = Module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.filter());
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   if (attr.is_dw) {
@@ -86,7 +85,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   // bias op
   if (attr.with_bias) {
     auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-    auto bias_type = Module::getStorageType(op.bias());
+    auto bias_type = module::getStorageType(op.bias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
     op.bias().setType(new_bias_type);
@@ -101,7 +100,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
   // filter op
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   auto filter_u16 = filterOp.read<uint16_t>();
-  auto filter_type = Module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.filter());
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   if (attr.is_dw) {
@@ -119,7 +118,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
   // bias op
   if (attr.with_bias) {
     auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-    auto bias_type = Module::getStorageType(op.bias());
+    auto bias_type = module::getStorageType(op.bias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
     op.bias().setType(new_bias_type);
@@ -130,7 +129,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isBF16())
+  if (!module::getStorageType(op.filter()).isBF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -138,7 +137,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isF16())
+  if (!module::getStorageType(op.filter()).isF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -146,14 +145,14 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.filter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
 
   // filter op
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
-  auto filter_type = Module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.filter());
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.g,
                                        attr.kh * attr.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -162,7 +161,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
   // bias op
   if (attr.with_bias) {
     auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-    auto bias_type = Module::getStorageType(op.bias());
+    auto bias_type = module::getStorageType(op.bias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
     op.bias().setType(new_bias_type);
@@ -254,10 +253,10 @@ typedef struct {
 void tpu::DeconvOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   deconv_global_param_t param = {0};
-  param.input_global_addr = Module::getAddress(input());
-  param.weight_global_addr = Module::getAddress(filter());
-  param.bias_global_addr = Module::getAddress(bias());
-  param.output_global_addr = Module::getAddress(output());
+  param.input_global_addr = module::getAddress(input());
+  param.weight_global_addr = module::getAddress(filter());
+  param.bias_global_addr = module::getAddress(bias());
+  param.output_global_addr = module::getAddress(output());
   param.input_shape[0] = attr.n;
   param.input_shape[1] = attr.ic;
   param.input_shape[2] = attr.ih;
@@ -285,8 +284,8 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
   param.output_dtype = BM168x::getDataType(output());
   param.if_relu = attr.do_relu;
   param.upper_limit = attr.relu_limit;
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto in_qtype = module::getUniformQuantizedType(input());
     param.is_asym = true;
     param.rshift = 0;
     param.kzp_global_addr = 0;
@@ -400,8 +399,8 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.output_dtype = BM168x::getDataType(output());
   param.if_relu = attr.do_relu;
   param.upper_limit = attr.relu_limit;
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto in_qtype = module::getUniformQuantizedType(input());
     param.is_asym = true;
     param.rshift = 0;
     param.kzp_local_addr = 0;

@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::MaxUnpoolOp::init(InferenceParameter &p) {
   return success();
@@ -24,12 +22,12 @@ void tpu::MaxUnpoolOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MaxUnpoolOp::inference(InferenceParameter &p) {
   int64_t N, C, H, W;
-  Module::getNCHW(input(), N, C, H, W);
+  module::getNCHW(input(), N, C, H, W);
   auto scale_h_ = scale_h();
   auto scale_w_ = scale_w();
   int64_t OH = H * scale_h_;
   int64_t OW = W * scale_w_;
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
 
   int64_t NC = N * C;
   std::fill_n(p.outputs[0], num_elem, 0.0f);

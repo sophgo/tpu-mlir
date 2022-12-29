@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+#include "tpu_mlir/Support/Module.h"
+
+
+
 using namespace tpu_mlir::backend;
 
 void tpu::RequantFpOp::codegen_global_bm1684() {

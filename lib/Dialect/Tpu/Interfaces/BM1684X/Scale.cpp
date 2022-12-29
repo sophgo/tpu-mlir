@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -90,9 +89,9 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
   p.relu_upper_limit = relu_limit().convertToDouble();
   p.merge_weight_bias = 0;
   p.round_mode = ROUND_UP;
-  if (Quant::isUniformQuantized(input())) {
-    p.scale_sign = Module::getStorageType(scale()).isSignedInteger();
-    p.bias_sign = Module::getStorageType(bias()).isSignedInteger();
+  if (module::isUniformQuantized(input())) {
+    p.scale_sign = module::getStorageType(scale()).isSignedInteger();
+    p.bias_sign = module::getStorageType(bias()).isSignedInteger();
     p.version = 10;
     BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
                              input_spec->data(), output_spec->data());
@@ -109,7 +108,7 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
 int64_t tpu::ScaleOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto out_type = Module::getStorageType(output());
+  auto out_type = module::getStorageType(output());
   if (out_type.isInteger(8)) {
     // INT16 as middle result
     return 2 * out_lmem_bytes * sizeof(int16_t);
@@ -125,7 +124,7 @@ void tpu::ScaleOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -144,7 +143,7 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *s
   // out_zp is should be passed to backend
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto scale_gi = LocalGenInterface::getGroupInfo(scale(), n_step, h_step);
@@ -153,7 +152,7 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *s
   llvm::SmallVector<int32_t, 4> input_shape = {
       (int)sec_info->out_n_slice, (int)c, (int)sec_info->out_h_slice, (int)w};
   llvm::SmallVector<int32_t, 4> scale_shape = {1, (int)c, 1, 1};
-  if (Quant::isUniformQuantized(input())) {
+  if (module::isUniformQuantized(input())) {
     auto lshift_gi = LocalGenInterface::getGroupInfo(lshift(), n_step, h_step);
     scale_fixed_local_param_t p = {0};
     p.input_local_addr = in_gi.out_addr;

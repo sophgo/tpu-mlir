@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::LeakyReluOp::init(InferenceParameter &p) {
   return success();
@@ -24,11 +22,11 @@ LogicalResult tpu::LeakyReluOp::init(InferenceParameter &p) {
 void tpu::LeakyReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
-  int64_t num_elements = Module::getNumElements(input());
+  int64_t num_elements = module::getNumElements(input());
   memset(p.outputs[0], 0, sizeof(float) * num_elements);
-  auto out_type = Module::getStorageType(output());
-  auto asym = Module::isAsymmetric();
-  bool is_cv18xx = Module::isCV18xx();
+  auto out_type = module::getStorageType(output());
+  auto asym = module::isAsymmetric();
+  bool is_cv18xx = module::isCV18xx();
 
   if (out_type.isa<FloatType>()) {
     float *src = p.inputs[0];
@@ -69,8 +67,8 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       } else {
         dst = src >= 0 ? src : applyMultiplierAndRShift(src, scalei, shifti);
       }
-      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(dst)
-                                                      : Quant::to_int8(dst);
+      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? to_uint8(dst)
+                                                      : to_int8(dst);
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
@@ -78,16 +76,16 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       int64_t src = static_cast<int64_t>(p.inputs[0][i]);
       int64_t dst = 0;
 
-      auto i_qtype = Quant::getUniformQuantizedType(input());
-      auto o_qtype = Quant::getUniformQuantizedType(output());
+      auto i_qtype = module::getUniformQuantizedType(input());
+      auto o_qtype = module::getUniformQuantizedType(output());
       double scale = i_qtype.getScale() / o_qtype.getScale();
       dst = src >= i_qtype.getZeroPoint()
                 ? src
                 : ((src - i_qtype.getZeroPoint()) * (float)(1.0 / scale) +
                    o_qtype.getZeroPoint());
 
-      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(dst)
-                                                      : Quant::to_int8(dst);
+      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? to_uint8(dst)
+                                                      : to_int8(dst);
     }
   }
   return success();

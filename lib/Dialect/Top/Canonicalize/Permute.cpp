@@ -9,26 +9,26 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
 using namespace tpu_mlir::top;
-using namespace tpu_mlir::helper;
+
 
 struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(PermuteOp op,
                                 PatternRewriter &rewriter) const override {
-    auto input_shape = Module::getShape(op.input());
+    auto input_shape = module::getShape(op.input());
     if (input_shape.size() != 6) {
       return failure();
     }
 
     std::vector<int64_t> ps = {0, 1, 4, 2, 5, 3};
-    auto order = Module::getI64Array(op.order());
+    auto order = module::getI64Array(op.order());
     if (*order != ps) {
       return failure();
     }
@@ -41,7 +41,7 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
     if (!reshape_after) {
       return failure();
     }
-    auto output_shape = Module::getShape(reshape_after.output());
+    auto output_shape = module::getShape(reshape_after.output());
     int64_t upscale_factor = input_shape[2];
     int64_t on = input_shape[0];
     int64_t oc = input_shape[1];

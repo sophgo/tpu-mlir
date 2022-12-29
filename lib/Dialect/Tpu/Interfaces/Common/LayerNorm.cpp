@@ -9,14 +9,12 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::LayerNormOp::init(InferenceParameter &p) { return success(); }
 void tpu::LayerNormOp::deinit(InferenceParameter &p) {}
@@ -24,7 +22,7 @@ void tpu::LayerNormOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
   const int axis_ = axis();
   const float eps_ = eps().convertToDouble();
-  const auto input_shape = Module::getShape(input());
+  const auto input_shape = module::getShape(input());
 
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {

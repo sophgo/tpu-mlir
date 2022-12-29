@@ -10,25 +10,23 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
-  auto in0_shape = Module::getShape(inputs()[0]);
-  auto in1_shape = Module::getShape(inputs()[1]);
+  auto in0_shape = module::getShape(inputs()[0]);
+  auto in1_shape = module::getShape(inputs()[1]);
   int dims = std::max(in0_shape.size(), in1_shape.size());
   auto input0_shape = shape_expand_dim(in0_shape, dims);
   auto input1_shape = shape_expand_dim(in1_shape, dims);
   (*binary)
       .lhs(p.inputs[0], input0_shape)
       .rhs(p.inputs[1], input1_shape)
-      .dst(p.outputs[0], Module::getShape(output()))
+      .dst(p.outputs[0], module::getShape(output()))
       .do_relu(do_relu())
       .relu_limit(relu_limit().convertToDouble())
       .algorithem(algorithm::binary_mul)
@@ -46,12 +44,12 @@ void tpu::MulOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
-  auto num_elem = Module::getNumElements(output());
-  auto out_type = Module::getStorageType(output());
-  auto asym = Module::isAsymmetric();
+  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto asym = module::isAsymmetric();
   auto binary = (Binary *)p.handle;
   binary->run();
-  bool is_cv18xx = Module::isCV18xx();
+  bool is_cv18xx = module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
@@ -71,8 +69,8 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];
       sum = applyMultiplierAndRShift(sum, multiplier(), rshift(), m_type);
-      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? Quant::to_uint8(sum)
-                                                      : Quant::to_int8(sum);
+      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? to_uint8(sum)
+                                                      : to_int8(sum);
     }
   } else {
     llvm_unreachable("MulOp asymmetric use FP32");
@@ -85,9 +83,9 @@ LogicalResult tpu::MulOp::LocalGenSupport() {
   // The same n_slice and h_slice value will propagate to each inputs.
   // Thus, the local layer is only safe when we do not need to slice n and h
   // dimensions.
-  auto out_shape = Module::getShape(output());
-  auto lhs_shape = Module::getShape(inputs()[0]);
-  auto rhs_shape = Module::getShape(inputs()[1]);
+  auto out_shape = module::getShape(output());
+  auto lhs_shape = module::getShape(inputs()[0]);
+  auto rhs_shape = module::getShape(inputs()[1]);
   if (getOperand(1).getDefiningOp() &&
       isa<top::WeightOp>(getOperand(1).getDefiningOp()))
     return failure();

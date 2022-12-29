@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::ReciprocalOp::init(InferenceParameter &p) {
   return success();
@@ -25,8 +23,8 @@ LogicalResult tpu::ReciprocalOp::init(InferenceParameter &p) {
 void tpu::ReciprocalOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReciprocalOp::inference(InferenceParameter &p) {
-  auto num_elem = Module::getNumElements(output());
-  auto out_type = Module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
   float const_s = const_val().convertToDouble();
   if (out_type.isa<FloatType>()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))

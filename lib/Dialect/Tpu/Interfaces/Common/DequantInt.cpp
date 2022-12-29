@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) {
   return success();
@@ -23,9 +21,9 @@ LogicalResult tpu::DequantIntOp::init(InferenceParameter &p) {
 void tpu::DequantIntOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
-  auto o_sType = Module::getStorageType(output());
-  auto qtype = Quant::getUniformQuantizedType(input());
-  int64_t num_elem = Module::getNumElements(input());
+  auto o_sType = module::getStorageType(output());
+  auto qtype = module::getUniformQuantizedType(input());
+  int64_t num_elem = module::getNumElements(input());
   int64_t shift_val = shift();
   int64_t mul_val = multiplier();
   int64_t offset = (int64_t)qtype.getZeroPoint();
@@ -61,7 +59,7 @@ mlir::Type tpu::DequantIntOp::type_verify(uint64_t opd_idx,
                                           TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = Module::getStorageType(input());
+    auto stype = module::getStorageType(input());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }

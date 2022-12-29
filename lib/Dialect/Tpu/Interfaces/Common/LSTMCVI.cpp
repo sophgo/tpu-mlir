@@ -11,14 +11,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 static float sigmoid_(float data, InferenceParameter &p) {
   float var = BF16(data);
@@ -34,8 +32,8 @@ static float tanh_(float data, InferenceParameter &p) {
 
 lstm_attr_t tpu::LSTMCVIOp::parseParam() {
   lstm_attr_t attr = {0};
-  auto r_shape = Module::getShape(recurrence());
-  auto in_shape = Module::getShape(input());
+  auto r_shape = module::getShape(recurrence());
+  auto in_shape = module::getShape(input());
   assert(in_shape.size() == 3);
   attr.batch_size = in_shape[1];
   attr.seq_len = in_shape[0];

@@ -22,13 +22,13 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   std::vector<Value> operands;
   operands.push_back(op.input());
   double in_thr, out_thr;
-  in_thr = Quant::getThreshold(op.input());
-  out_thr = Quant::getThreshold(op.output());
+  in_thr = module::getThreshold(op.input());
+  out_thr = module::getThreshold(op.output());
   // filter
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   // bias
-  std::shared_ptr<std::vector<int32_t>> bias_int32;
+  i32_array_t bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   if (attr.with_bias) {

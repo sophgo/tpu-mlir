@@ -9,19 +9,17 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::ReverseOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReverseOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReverseOp::inference(InferenceParameter &p) {
-  auto output_shape = Module::getShape(output());
+  auto output_shape = module::getShape(output());
   int64_t _axis = axis();
   int on = output_shape[0];
   int oc = output_shape[1];

@@ -13,14 +13,13 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
-using namespace tpu_mlir;
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 
 int64_t Arch::NPU_NUM = 0;
 int64_t Arch::EU_BYTES = 0;
@@ -36,14 +35,14 @@ void Arch::init() {
   if (inst != nullptr) {
     return;
   }
-  auto chip = Module::getChip();
-  if (chip == Module::Chip::BM1684) {
+  auto chip = module::getChip();
+  if (chip == module::Chip::BM1684) {
     inst = &BM1684::instance();
-  } else if (chip == Module::Chip::BM1684X) {
+  } else if (chip == module::Chip::BM1684X) {
     inst = &BM1684X::instance();
-  } else if (chip == Module::Chip::BM1686) {
+  } else if (chip == module::Chip::BM1686) {
     inst = &BM1686::instance();
-  } else if (Module::isCV18xx()) {
+  } else if (module::isCV18xx()) {
     inst = &CV18xx::instance(chip);
   } else {
     llvm_unreachable("unsupport chip");
@@ -67,15 +66,15 @@ int64_t Arch::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
 int64_t Arch::get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n,
                                     int64_t slice_h, bool eu_align) {
   int64_t n, c, h, w;
-  Module::getNCHW(v, n, c, h, w);
-  auto type = Module::getStorageType(v);
+  module::getNCHW(v, n, c, h, w);
+  auto type = module::getStorageType(v);
   return get_lmem_bytes(slice_n, c, slice_h, w, type, eu_align);
 }
 
 int64_t Arch::get_weight_lmem_bytes(mlir::Value v, bool eu_align) {
   int64_t n, c, h, w;
-  Module::getNCHW(v, n, c, h, w);
-  auto type = Module::getStorageType(v);
+  module::getNCHW(v, n, c, h, w);
+  auto type = module::getStorageType(v);
   return get_lmem_bytes(n, c, h, w, type, eu_align);
 }
 

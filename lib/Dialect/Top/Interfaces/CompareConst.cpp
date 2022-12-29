@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::CompareConstOp::getFLOPs() {
-  return Module::getNumElements(output());
+  return module::getNumElements(output());
 }
 
 LogicalResult top::CompareConstOp::init(InferenceParameter &p) {
@@ -26,7 +24,7 @@ LogicalResult top::CompareConstOp::init(InferenceParameter &p) {
 void top::CompareConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CompareConstOp::inference(InferenceParameter &p) {
-  const auto num_element = Module::getNumElements(output());
+  const auto num_element = module::getNumElements(output());
   const float const_val_ = const_val().convertToDouble();
   if (!inversed()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))

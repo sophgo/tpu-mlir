@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::Depth2SpaceOp::init(InferenceParameter &p) {
   return success();
@@ -24,8 +22,8 @@ void tpu::Depth2SpaceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::Depth2SpaceOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
-  Module::getNCHW(input(), in, ic, ih, iw);
-  Module::getNCHW(output(), on, oc, oh, ow);
+  module::getNCHW(input(), in, ic, ih, iw);
+  module::getNCHW(output(), on, oc, oh, ow);
   assert(in == on);
   bool crd = is_CRD();
   bool inversed = is_inversed();

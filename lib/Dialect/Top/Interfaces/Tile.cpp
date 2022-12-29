@@ -9,12 +9,10 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::TileOp::getFLOPs() { return 0; }
 
@@ -22,8 +20,8 @@ LogicalResult top::TileOp::init(InferenceParameter &p) { return success(); }
 void top::TileOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::TileOp::inference(InferenceParameter &p) {
-  auto out_shape = Module::getShape(output());
-  auto in_shape = Module::getShape(input());
+  auto out_shape = module::getShape(output());
+  auto in_shape = module::getShape(input());
   auto signed_axis = axisAttr().getValue().getSExtValue();
   auto axis_ = signed_axis > 0 ? signed_axis : 0;
   int tile_ = tile();

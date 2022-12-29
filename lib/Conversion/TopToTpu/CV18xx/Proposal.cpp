@@ -16,7 +16,7 @@ namespace tpu_mlir {
 namespace cv18xx {
 void loweringProposal(PatternRewriter &rewriter,
                              top::ProposalOp op) {
-  auto o_shape = Module::getShape(op.output());
+  auto o_shape = module::getShape(op.output());
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;

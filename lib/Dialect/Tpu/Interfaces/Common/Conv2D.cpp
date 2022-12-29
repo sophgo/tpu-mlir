@@ -10,14 +10,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 conv_attr_t tpu::Conv2DOp::parseParam() {
   conv_attr_t p = {0};
@@ -34,25 +32,25 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   p.oc = o_s[1];
   p.oh = o_s.size() > 2 ? o_s[2] : 1;
   p.ow = o_s.size() > 3 ? o_s[3] : 1;
-  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(kernel_shape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
-  auto pads_v = Module::getI64Array(pads());
+  auto pads_v = module::getI64Array(pads());
   p.pht = pads_v->at(0);
   p.pwl = pads_v->at(1);
   p.phb = pads_v->at(2);
   p.pwr = pads_v->at(3);
-  if (Quant::isUniformQuantized(input())) {
-    p.pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
+  if (module::isUniformQuantized(input())) {
+    p.pad_value = module::getUniformQuantizedType(input()).getZeroPoint();
   }
   p.kernel_zp = kernel_zp();
-  auto strides_v = Module::getI64Array(strides());
+  auto strides_v = module::getI64Array(strides());
   p.sh = strides_v->at(0);
   p.sw = strides_v->at(1);
-  auto dhdw = Module::getI64Array(dilations(), 2, 1);
+  auto dhdw = module::getI64Array(dilations(), 2, 1);
   p.dh = dhdw->at(0);
   p.dw = dhdw->at(1);
-  auto ins = Module::getI64Array(inserts(), 2, 0);
+  auto ins = module::getI64Array(inserts(), 2, 0);
   p.ins_h = ins->at(0);
   p.ins_w = ins->at(1);
   assert(p.ins_h == 0 && p.ins_w == 0);
@@ -84,23 +82,23 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-  bool is_cv18xx = Module::isCV18xx();
+  bool is_cv18xx = module::isCV18xx();
   // requant
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (Quant::isUniformQuantized(output())) {
+  } else if (module::isUniformQuantized(output())) {
     int64_t n, c, h, w;
-    auto sType = Module::getStorageType(output());
-    Module::getNCHW(output(), n, c, h, w);
-    auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto rshift_v = Module::getI64Array(rshift().value());
-    auto multiplier_v = Module::getI64Array(multiplier(), rshift_v->size(), 1);
+    auto sType = module::getStorageType(output());
+    module::getNCHW(output(), n, c, h, w);
+    auto o_qtype = module::getUniformQuantizedType(output());
+    auto rshift_v = module::getI64Array(rshift().value());
+    auto multiplier_v = module::getI64Array(multiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
     auto mode = quant_mode();
     MultiplierType m_type;
@@ -126,14 +124,13 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
                                        m_type) +
               o_qtype.getZeroPoint();
-          if (sType.isInteger(8))
-            p.outputs[0][offset] = sType.isUnsignedInteger(8)
-                                       ? Quant::to_uint8(v)
-                                       : Quant::to_int8(v);
-          else
-            p.outputs[0][offset] = sType.isUnsignedInteger(4)
-                                       ? Quant::to_uint4(v)
-                                       : Quant::to_int4(v);
+          if (sType.isInteger(8)) {
+            p.outputs[0][offset] =
+                sType.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
+          } else {
+            p.outputs[0][offset] =
+                sType.isUnsignedInteger(4) ? to_uint4(v) : to_int4(v);
+          }
         }
       }
     }

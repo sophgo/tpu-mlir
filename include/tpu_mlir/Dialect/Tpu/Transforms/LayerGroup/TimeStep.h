@@ -13,7 +13,7 @@
 #include "mlir/Support/LLVM.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include <list>
 #include <map>
 #include <set>
@@ -22,7 +22,7 @@ namespace tpu {
 
 struct value_compare {
   bool operator()(Value v0, Value v1) const {
-    if (Module::getName(v0).str() < Module::getName(v1).str()) {
+    if (module::getName(v0).str() < module::getName(v1).str()) {
       return true;
     }
     return false;

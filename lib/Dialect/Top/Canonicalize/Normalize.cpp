@@ -9,13 +9,12 @@
 
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-using namespace tpu_mlir::helper;
+
 
 struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -24,14 +23,14 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
   LogicalResult matchAndRewrite(NormalizeOp op,
                                 PatternRewriter &rewriter) const override {
     Value input_var = op->getOperand(0);
-    std::string name = Module::getName(op->getResult(0)).str();
+    std::string name = module::getName(op->getResult(0)).str();
     std::vector<int64_t> shape;
-    Module::getShapeVec(op.getOperand(0), shape);
+    module::getShapeVec(op.getOperand(0), shape);
     int64_t c = shape[1];
     auto weight_op = dyn_cast<top::WeightOp>(op.scale().getDefiningOp());
     auto scale_data = weight_op.read<float>();
     auto result_type = op.output().getType().cast<RankedTensorType>();
-    auto none = Module::getNoneOp(op);
+    auto none = module::getNoneOp(op);
 
     // separate Normalize op to below 6 ops.
     // Eltwise OP(power(x,2))-> Reduction(use conv now)-> Sqrt-> Div->Eltwise OP(prod) ->Scale(by channel scale)

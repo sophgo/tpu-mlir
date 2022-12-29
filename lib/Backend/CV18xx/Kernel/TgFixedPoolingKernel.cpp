@@ -12,9 +12,6 @@
 
 #define DEBUG_TYPE "TgFixedPoolingKernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
-
 namespace tpu_mlir {
 namespace backend {
 void TgInt8PoolingKernel::adjustPadding() {

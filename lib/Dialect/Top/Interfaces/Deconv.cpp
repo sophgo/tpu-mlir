@@ -9,22 +9,20 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 deconv_attr_t top::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
   bool is_deconv3d = kernel_shape().size() == 3;
   auto ishape = input().getType().cast<RankedTensorType>().getShape();
   auto oshape = output().getType().cast<RankedTensorType>().getShape();
-  auto kernel = Module::getI64Array(kernel_shape());
-  auto stride = Module::getI64Array(strides());
-  auto dilation = Module::getI64Array(dilations(), kernel_shape().size(), 1);
-  auto pad = Module::getI64Array(pads());
-  auto ins = Module::getI64Array(inserts(), kernel_shape().size(), 0);
+  auto kernel = module::getI64Array(kernel_shape());
+  auto stride = module::getI64Array(strides());
+  auto dilation = module::getI64Array(dilations(), kernel_shape().size(), 1);
+  auto pad = module::getI64Array(pads());
+  auto ins = module::getI64Array(inserts(), kernel_shape().size(), 0);
   p.do_relu = do_relu();
   p.relu_limit = relu_limit().convertToDouble();
   p.with_bias = !bias().getType().isa<NoneType>();
@@ -91,7 +89,7 @@ deconv_attr_t top::DeconvOp::parseParam() {
 int64_t top::DeconvOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.with_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
-  return Module::getNumElements(input()) *
+  return module::getNumElements(input()) *
          (attr.kw * attr.kw * attr.oc / attr.g * 2 + extra);
 }
 

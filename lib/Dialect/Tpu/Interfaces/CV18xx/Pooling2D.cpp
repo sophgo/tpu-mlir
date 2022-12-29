@@ -12,14 +12,13 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 
 // =========================================
 // GlobalGenInterface
@@ -27,10 +26,10 @@ using namespace tpu_mlir::helper;
 void tpu::Pool2DOp::codegen_global_cv18xx(int64_t layer_id) {
   auto attr = parseParam();
   assert(!attr.do_relu);
-  gaddr_t ga_input = Module::getAddress(input());
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(input());
+  gaddr_t ga_output = module::getAddress(output());
   if (pool_mode() == tpu::PoolMode::Avg) {
-    if (Quant::isUniformQuantized(output())) {
+    if (module::isUniformQuantized(output())) {
       cvi_backend_tg_fixed_avg_pooling_kernel(
           layer_id,  // layer_id,
           ga_input,  // input_data_gaddr,
@@ -59,7 +58,7 @@ void tpu::Pool2DOp::codegen_global_cv18xx(int64_t layer_id) {
           true);
     }
   } else if (pool_mode() == tpu::PoolMode::Max) {
-    if (Quant::isUniformQuantized(output())) {
+    if (module::isUniformQuantized(output())) {
       cvi_backend_tg_fixed_max_pooling_kernel(
 
           layer_id,  // layer_id,

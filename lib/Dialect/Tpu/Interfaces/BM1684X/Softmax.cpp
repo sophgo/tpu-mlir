@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -26,17 +25,17 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   bool has_table = !table().getType().isa<NoneType>();
   float in_scale = 1.0;
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto in_qtype = module::getUniformQuantizedType(input());
     in_scale = in_qtype.getScale();
   }
-  if (Quant::isUniformQuantized(input(), output())) {
+  if (module::isUniformQuantized(input(), output())) {
     if (log()) {
       llvm_unreachable("Not Implemented");
       return;
     }
     assert(has_table);
-    auto out_qtype = Quant::getUniformQuantizedType(output());
+    auto out_qtype = module::getUniformQuantizedType(output());
     softmax_tflite_fix8b_param_t param = {0};
     auto &common = param.common;
     common.begin_axis = axis();
