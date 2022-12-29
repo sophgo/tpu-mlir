@@ -21,12 +21,7 @@ using namespace mlir;
 // case 3: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7] => batch = 12, M = 5, K = 6, N = 7
 // case 4: [4, 5, 6] * [6,7] = [4, 5, 7] => batch =1, M = 20, K = 6, N = 7
 // clang-format on
-const matmul_attr_t &top::MatMulOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::matmul_attrs.find(op);
-  if (iter != Module::matmul_attrs.end()) {
-    return iter->second;
-  }
+matmul_attr_t top::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
   auto a_s = Module::getShape(input());
   auto b_s = Module::getShape(right());
@@ -51,19 +46,18 @@ const matmul_attr_t &top::MatMulOp::parseParam() {
     p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                           std::multiplies<int64_t>());
   }
-  Module::matmul_attrs[op] = p;
-  return Module::matmul_attrs[op];
+  return p;
 }
 
 int64_t top::MatMulOp::getFLOPs() {
-  auto &p = parseParam();
+  auto p = parseParam();
   auto extra = p.with_bias ? 1 : 0 + p.do_relu ? 1 : 0;
   return p.batch * (2 * p.K + extra) * p.N * p.M;
 }
 
 LogicalResult top::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
-  auto &a = parseParam();
+  auto a = parseParam();
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
                 a.M, a.K, a.N, a.do_relu, a.relu_limit, 0, a.right_transpose,
                 0);

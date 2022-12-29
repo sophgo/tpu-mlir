@@ -15,12 +15,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const deconv_attr_t &top::DeconvOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::deconv_attrs.find(op);
-  if (iter != Module::deconv_attrs.end()) {
-    return iter->second;
-  }
+deconv_attr_t top::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
   bool is_deconv3d = kernel_shape().size() == 3;
   auto ishape = input().getType().cast<RankedTensorType>().getShape();
@@ -90,12 +85,11 @@ const deconv_attr_t &top::DeconvOp::parseParam() {
     p.ins_d = 0;
   }
   p.is_dw = (p.oc == p.ic && p.oc == p.g && p.g > 1);
-  Module::deconv_attrs[op] = p;
-  return Module::deconv_attrs[op];
+  return p;
 }
 
 int64_t top::DeconvOp::getFLOPs() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto extra = attr.with_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
   return Module::getNumElements(input()) *
          (attr.kw * attr.kw * attr.oc / attr.g * 2 + extra);
@@ -103,7 +97,7 @@ int64_t top::DeconvOp::getFLOPs() {
 
 LogicalResult top::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
-  auto &attr = parseParam();
+  auto attr = parseParam();
   deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)deconv;
   return success();

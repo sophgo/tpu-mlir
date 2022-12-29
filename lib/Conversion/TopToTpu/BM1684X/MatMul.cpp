@@ -22,7 +22,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   // refer quantize_convlike_layer_int8
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  auto &p = op.parseParam();
+  auto p = op.parseParam();
   int scale = 1, shift = 0;
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = Module::getNumElements(op.bias());
@@ -145,7 +145,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
                << Module::getName(op.getOperation()).str() << "\n";
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  auto &p = op.parseParam();
+  auto p = op.parseParam();
   int scale = 1, shift = 0;
   if (p.batch > 1 && p.with_bias != 0) {
     auto bias_size = Module::getNumElements(op.bias());
@@ -185,12 +185,12 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
       //  RankedTensorType::get(op.input().getType().cast<RankedTensorType>().getShape(),
       //  qtype);
       auto output_type = getQuantIntType(op.input(), in_scale, in_zp, 4);
-      double scale = in_int8_scale / in_scale; //将int8转为int4的rq参数
+      double scale = in_int8_scale / in_scale; // 将int8转为int4的rq参数
       double offset = in_zp - in_int8_zp * scale;
       auto to_name = "to_b4_for_" + Module::getName(op.getOperation()).str();
       value = do_requantFp(op.input(), scale, offset, output_type, to_name);
       operands.push_back(value);
-    } else { //输入tensor也是int4
+    } else { // 输入tensor也是int4
       operands.push_back(op.input());
       Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric,
                                   bitwidth);
@@ -386,7 +386,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (!Quant::isUniformQuantized(op.input(), op.right(), op.output())) {
     llvm_unreachable("input output should be quantized");
   }
-  auto &p = op.parseParam();
+  auto p = op.parseParam();
   // assert(batch == 1);
   auto input_qtype = Quant::getUniformQuantizedType(op.input());
   auto right_qtype = Quant::getUniformQuantizedType(op.right());

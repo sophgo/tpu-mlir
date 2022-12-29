@@ -59,7 +59,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -251,7 +251,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
                << Module::getName(op.getOperation()).str() << "\n";
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
@@ -548,7 +548,7 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (Quant::isUniformQuantized(op.input(), op.output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   auto input_qtype = Quant::getUniformQuantizedType(op.input());
   auto output_qtype = Quant::getUniformQuantizedType(op.output());
   auto filter_type = op.filter().getType().cast<RankedTensorType>();

@@ -199,7 +199,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   if (ConvertPading(rewriter, op, attr)) {
     return;
   }
@@ -314,7 +314,7 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   if (ConvertPading(rewriter, op, attr)) {
     return;
   }

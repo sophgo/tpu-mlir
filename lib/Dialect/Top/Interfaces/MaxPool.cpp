@@ -16,12 +16,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const pool_attr_t &top::MaxPoolOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::pool_attrs.find(op);
-  if (iter != Module::pool_attrs.end()) {
-    return iter->second;
-  }
+pool_attr_t top::MaxPoolOp::parseParam() {
   pool_attr_t p = {0};
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
@@ -84,12 +79,11 @@ const pool_attr_t &top::MaxPoolOp::parseParam() {
   p.is_global = p.id == p.kd && p.ih == p.kh && p.iw == p.kw && p.od == 1 &&
                 p.oh == 1 && p.ow == 1;
   p.count_include_pad = count_include_pad();
-  Module::pool_attrs[op] = p;
-  return Module::pool_attrs[op];
+  return p;
 }
 
 int64_t top::MaxPoolOp::getFLOPs() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto extra = attr.do_relu ? 1 : 0;
   return Module::getNumElements(output()) *
          (attr.kd * attr.kh * attr.kw + extra);
@@ -97,7 +91,7 @@ int64_t top::MaxPoolOp::getFLOPs() {
 
 LogicalResult top::MaxPoolOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
-  auto &attr = parseParam();
+  auto attr = parseParam();
   pooling->setup(p.inputs[0], p.outputs[0], attr, false);
   p.handle = (void *)pooling;
   return success();

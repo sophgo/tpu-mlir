@@ -41,7 +41,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     LoweringF32(rewriter, op);
     return;
   }
-  auto &param = op.parseParam();
+  auto param = op.parseParam();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.input());
