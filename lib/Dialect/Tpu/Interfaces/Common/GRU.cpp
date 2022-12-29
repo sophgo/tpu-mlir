@@ -252,7 +252,7 @@ public:
     }
     if (is_bf16) {
       auto ele_num = Module::getNumElements(output);
-      Quant::BF16(p.outputs[gp.out_idx], p.outputs[gp.out_idx], ele_num, false);
+      BF16(p.outputs[gp.out_idx], p.outputs[gp.out_idx], ele_num, false);
     }
   }
 
@@ -322,9 +322,9 @@ private:
       dnnl_mm(gp.prev_hidden_state, gp.r_h, gp.r_bh, hidden_gate.data(),
               gp.batch_size, gp.hidden_size, gp.hidden_size, false);
       if (is_bf16) {
-        Quant::BF16(update_gate.data(), update_gate.data(), update_gate.size());
-        Quant::BF16(reset_gate.data(), reset_gate.data(), reset_gate.size());
-        Quant::BF16(hidden_gate.data(), hidden_gate.data(), hidden_gate.size());
+        BF16(update_gate.data(), update_gate.data(), update_gate.size());
+        BF16(reset_gate.data(), reset_gate.data(), reset_gate.size());
+        BF16(hidden_gate.data(), hidden_gate.data(), hidden_gate.size());
       }
       for (int batch = 0; batch < gp.batch_size; batch++) {
         float *xz = xt + batch * gp.input_size;
@@ -345,13 +345,11 @@ private:
 #pragma omp parallel for schedule(static, omp_schedule(gp.hidden_size))
         for (int i = 0; i < gp.hidden_size; ++i) {
           if (is_bf16) {
-            ug[i] = cv_sigmoid(Quant::BF16(ug[i] + xz[i]), is_bf16, gp);
-            rg[i] = cv_sigmoid(Quant::BF16(rg[i] + xr[i]), is_bf16, gp);
-            hg[i] = cv_tanh(Quant::BF16(Quant::BF16(rg[i] * hg[i]) + xh[i]),
-                            is_bf16, gp);
-            hidden_state[i] = Quant::BF16(
-                Quant::BF16(Quant::BF16(ug[i] * pre_state[i]) + hg[i]) -
-                Quant::BF16(ug[i] * hg[i]));
+            ug[i] = cv_sigmoid(BF16(ug[i] + xz[i]), is_bf16, gp);
+            rg[i] = cv_sigmoid(BF16(rg[i] + xr[i]), is_bf16, gp);
+            hg[i] = cv_tanh(BF16(BF16(rg[i] * hg[i]) + xh[i]), is_bf16, gp);
+            hidden_state[i] = BF16(BF16(BF16(ug[i] * pre_state[i]) + hg[i]) -
+                                   BF16(ug[i] * hg[i]));
           } else {
             ug[i] = cv_sigmoid(ug[i] + xz[i], is_bf16, gp);
             rg[i] = cv_sigmoid(rg[i] + xr[i], is_bf16, gp);

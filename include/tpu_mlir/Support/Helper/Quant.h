@@ -155,12 +155,6 @@ struct Quant {
     return v > 15 ? 15 : v < 0 ? 0 : v;
   }
 
-  static uint16_t to_bf16(float src, bool rounding);
-  static void to_bf16(float *src, uint16_t *dst, size_t size,
-                      bool rounding = true);
-  static float BF16(float src, bool rounding = true);
-  static void BF16(float *src, float *dst, size_t size, bool rounding = true);
-
 };
 } // namespace helper
 } // namespace tpu_mlir
