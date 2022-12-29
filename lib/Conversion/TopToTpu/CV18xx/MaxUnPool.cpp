@@ -15,8 +15,23 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
-  auto mask_shape = Module::getShape(op.mask());
+  auto mask_op = op.mask().getDefiningOp();
+  if (!isa<top::MaxPoolWithMaskOp>(mask_op) && !isa<top::PoolMaskOp>(mask_op) &&
+      !isa<tpu::PoolMaskOp>(mask_op)) {
+    mask_op->dump();
+    llvm_unreachable("not supported!");
+  }
   auto output_shape = Module::getShape(op.output());
+  std::vector<int64_t> mask_shape;
+  if (isa<top::MaxPoolWithMaskOp>(mask_op)) {
+    // if MaxPoolWithMaskOp' input shape not equal to maxUnpool's output shape
+    // may cause error
+    mask_shape = output_shape.vec();
+    mask_shape[2] = align_up(mask_shape[2], static_cast<int64_t>(op.scale_h()));
+    mask_shape[3] = align_up(mask_shape[3], static_cast<int64_t>(op.scale_w()));
+  } else {
+    Module::getShapeVec(op.mask(), mask_shape);
+  }
   bool need_crop = false;
   if (mask_shape[3] != output_shape[3] || mask_shape[2] != output_shape[2]) {
     need_crop = true;
@@ -31,8 +46,9 @@ void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
   operands.emplace_back(op.input());
   attrs.emplace_back(rewriter.getNamedAttr("scale_h", op.scale_hAttr()));
   attrs.emplace_back(rewriter.getNamedAttr("scale_w", op.scale_wAttr()));
-  auto upsample_op = rewriter.create<top::UpsampleOp>(
-      loc, op.output().getType().cast<RankedTensorType>(), operands, attrs);
+  auto new_type = RankedTensorType::get(mask_shape, op.output().getType().getElementType());
+  auto upsample_op =
+      rewriter.create<top::UpsampleOp>(loc, new_type, operands, attrs);
 
   // create mul op
   attrs.clear();
@@ -47,7 +63,7 @@ void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
   operands.emplace_back(upsample_op);
   operands.emplace_back(op.mask());
   auto mul_op = rewriter.create<top::MulOp>(
-      loc, op.output().getType().cast<RankedTensorType>(), operands, attrs);
+      loc, new_type, operands, attrs);
 
   if (need_crop) {
     // create crop op
