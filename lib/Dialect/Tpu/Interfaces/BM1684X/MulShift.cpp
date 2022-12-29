@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -42,16 +41,16 @@ typedef struct {
 
 void tpu::MulShiftOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
-    auto out_qtype = Quant::getUniformQuantizedType(output());
+  module::getNCHW(input(), n, c, h, w);
+  if (module::isUniformQuantized(input())) {
+    auto in_qtype = module::getUniformQuantizedType(input());
+    auto out_qtype = module::getUniformQuantizedType(output());
     auto in_zp = in_qtype.getZeroPoint();
     auto out_zp = out_qtype.getZeroPoint();
     if (in_zp != 0 || out_zp != 0) {
       requant_int_param_t param = {0};
-      param.input_addr = Module::getAddress(input());
-      param.output_addr = Module::getAddress(output());
+      param.input_addr = module::getAddress(input());
+      param.output_addr = module::getAddress(output());
       param.n = (int)n;
       param.c = (int)c;
       param.h = (int)h;
@@ -69,8 +68,8 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
     }
   }
   mulshift_param_t param = {0};
-  param.input_addr = Module::getAddress(input());
-  param.output_addr = Module::getAddress(output());
+  param.input_addr = module::getAddress(input());
+  param.output_addr = module::getAddress(output());
   param.input_n = n;
   param.input_c = c;
   param.input_h = h;
@@ -88,11 +87,11 @@ void tpu::MulShiftOp::codegen_global_bm1684x() {
 int64_t tpu::MulShiftOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto in_sType = Module::getStorageType(input());
-  auto out_sType = Module::getStorageType(output());
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qType = Quant::getUniformQuantizedType(input());
-    auto out_qType = Quant::getUniformQuantizedType(output());
+  auto in_sType = module::getStorageType(input());
+  auto out_sType = module::getStorageType(output());
+  if (module::isUniformQuantized(input())) {
+    auto in_qType = module::getUniformQuantizedType(input());
+    auto out_qType = module::getUniformQuantizedType(output());
     if (in_qType.getZeroPoint() != 0 || out_qType.getZeroPoint() != 0) {
       return 2 * in_lmem_bytes;
     }
@@ -110,7 +109,7 @@ void tpu::MulShiftOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -129,13 +128,13 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                             void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
-  if (Quant::isUniformQuantized(input())) {
-    auto in_qtype = Quant::getUniformQuantizedType(input());
-    auto out_qtype = Quant::getUniformQuantizedType(output());
+  if (module::isUniformQuantized(input())) {
+    auto in_qtype = module::getUniformQuantizedType(input());
+    auto out_qtype = module::getUniformQuantizedType(output());
     auto in_zp = in_qtype.getZeroPoint();
     auto out_zp = out_qtype.getZeroPoint();
     if (in_zp != 0 || out_zp != 0) {

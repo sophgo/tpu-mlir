@@ -8,16 +8,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 
 int64_t top::HardSigmoidOp::getFLOPs() {
-  return Module::getNumElements(output()) * 4;
+  return module::getNumElements(output()) * 4;
 }
 
 LogicalResult top::HardSigmoidOp::init(InferenceParameter &p) { return success(); }
@@ -28,7 +26,7 @@ static inline double hsigmoid(double x, double alpha, double beta) {
 }
 
 LogicalResult top::HardSigmoidOp::inference(InferenceParameter &p) {
-  const auto num_element = Module::getNumElements(output());
+  const auto num_element = module::getNumElements(output());
   const double alpha_ = alpha().convertToDouble();
   const double beta_ = beta().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_element))

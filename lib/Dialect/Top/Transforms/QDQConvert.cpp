@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -24,7 +24,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace top {
 
@@ -52,9 +52,9 @@ public:
       return failure(); // This op is calibrated.
     }
     auto y_scale =
-        *Module::getF64Array(op->getAttr("y_scale").dyn_cast<ArrayAttr>());
+        *module::getF64Array(op->getAttr("y_scale").dyn_cast<ArrayAttr>());
     auto y_zero_point =
-        *Module::getI32Array(op->getAttr("y_zero_point").dyn_cast<ArrayAttr>());
+        *module::getI32Array(op->getAttr("y_zero_point").dyn_cast<ArrayAttr>());
     assert(y_scale.size() == y_zero_point.size() &&
            "y_scale.size() & y_zero_point.size() must be the same.");
     assert(y_scale.size() == 1 &&
@@ -120,7 +120,7 @@ public:
     auto formerOp = op->getOperand(0).getDefiningOp();
     if (auto weightOp = dyn_cast<WeightOp>(formerOp)) {
       auto scale =
-          *Module::getF64Array(dyn_cast<DequantizeLinearOp>(op).x_scale());
+          *module::getF64Array(dyn_cast<DequantizeLinearOp>(op).x_scale());
       weightOp->setAttr("scale",
                         rewriter.getF64ArrayAttr(ArrayRef<double>(scale)));
       auto element_type = rewriter.getIntegerType(8, true);
@@ -216,8 +216,8 @@ public:
     (void)applyPatternsAndFoldGreedily(func, std::move(patterns));
     b_patterns.add<CalibratedTypeTransparentPattern>(context);
     (void)applyPatternsAndFoldGreedily(func, std::move(b_patterns));
-    Module::updateModuleTypes();
-    Module::setState(Module::State::TOP_CALIBRATED);
+    module::updateModuleTypes();
+    module::setState(module::State::TOP_CALIBRATED);
   }
 };
 

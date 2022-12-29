@@ -12,21 +12,20 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 void tpu::ShuffleChannelOp::codegen_global_cv18xx( int64_t layer_id) {
-  gaddr_t ga_input = Module::getAddress(input());
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(input());
+  gaddr_t ga_output = module::getAddress(output());
   std::vector<int64_t> input_shape;
-  Module::getShapeVec(input(), input_shape);
+  module::getShapeVec(input(), input_shape);
   int64_t group = this->group();
-  if (Quant::isUniformQuantized(output())) {
+  if (module::isUniformQuantized(output())) {
     cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
           input_shape[0], group, input_shape[1] / group, input_shape[2] * input_shape[3],
           0, 2, 1, 3, CVK_FMT_I8);

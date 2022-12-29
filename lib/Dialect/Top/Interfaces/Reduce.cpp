@@ -1,13 +1,11 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <float.h>
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
 
-int64_t top::ReduceOp::getFLOPs() { return Module::getNumElements(output()); }
+
+int64_t top::ReduceOp::getFLOPs() { return module::getNumElements(output()); }
 
 LogicalResult top::ReduceOp::init(InferenceParameter &p) { return success(); }
 void top::ReduceOp::deinit(InferenceParameter &p) {}
@@ -16,9 +14,9 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   float *input_v = p.inputs[0];
   float *output_v = p.outputs[0];
   auto type_val = mode().str();
-  auto axes_val = Module::getI64Array(axes());
-  auto out_shape = Module::getShape(output());
-  auto input_shape = Module::getShape(input());
+  auto axes_val = module::getI64Array(axes());
+  auto out_shape = module::getShape(output());
+  auto input_shape = module::getShape(input());
   // calc dims
   int num_dims = input_shape.size();
   int num_axes = axes_val->size();

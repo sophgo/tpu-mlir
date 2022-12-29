@@ -54,8 +54,8 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   }
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
-  Quant::getScaleAndZeroPoint(poolOp.input(), in_scale, in_zp, asymmetric);
-  Quant::getScaleAndZeroPoint(poolOp.output(), out_scale, out_zp, asymmetric);
+  module::getScaleAndZeroPoint(poolOp.input(), in_scale, in_zp, asymmetric);
+  module::getScaleAndZeroPoint(poolOp.output(), out_scale, out_zp, asymmetric);
   if (asymmetric == false && kernel_size != 3) {
     assert(in_zp == 0 && out_zp == 0);
     double scale = in_scale / (out_scale * kh * kw);
@@ -122,14 +122,14 @@ void AvgPoolLowering::LoweringF16(PatternRewriter &rewriter,
 
 void AvgPoolLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::AvgPoolOp poolOp) const {
-  if (false == Quant::isUniformQuantized(poolOp.input(), poolOp.output())) {
+  if (false == module::isUniformQuantized(poolOp.input(), poolOp.output())) {
     llvm_unreachable("input output should be quantized");
   }
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
-  Quant::getScaleAndZeroPoint(poolOp.input(), in_scale, in_zp, true);
-  Quant::getScaleAndZeroPoint(poolOp.output(), out_scale, out_zp, true);
-  auto kernel = Module::getI64Array(poolOp.kernel_shape());
+  module::getScaleAndZeroPoint(poolOp.input(), in_scale, in_zp, true);
+  module::getScaleAndZeroPoint(poolOp.output(), out_scale, out_zp, true);
+  auto kernel = module::getI64Array(poolOp.kernel_shape());
   auto kernel_size = kernel->size();
   auto kernel_sum = std::accumulate(kernel->begin(), kernel->end(), 1,
                                     std::multiplies<int64_t>());

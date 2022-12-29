@@ -13,6 +13,13 @@
 #include "mlir/IR/BuiltinOps.h"
 
 namespace tpu_mlir {
+
+// =======================
+// constant
+// =======================
+static constexpr double QMAX_INT8 = 127.0;
+static constexpr int BITS_INT8 = 8;
+
 // =======================
 // round mode
 // =======================
@@ -139,7 +146,6 @@ int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
 int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
                             uint32_t rshift);
 
-
 static inline int32_t saturate(int32_t input, mlir::Type stype) {
   int32_t output;
   if (stype.isUnsignedInteger(8))
@@ -180,5 +186,69 @@ bool compare(float lhs, float rhs, llvm::StringRef mode);
 
 // to compilable with gemmlowp
 int32_t exp_on_negative_values(int input, int int_bits);
+
+template <typename T> static int64_t to_int(T v, RoundingMode round_mode) {
+  // round_mode:
+  // HALF_DOWN for bm168x
+  // ROUNDING_HALF_TO_EVEN for cv18xx
+  // ROUNDING_DOWN  for cv18xx
+  // ROUNDING_HALF_UP for cv18xx
+  int64_t i64_val;
+  if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
+    i64_val = std::round(v);
+  } else if (round_mode == ROUNDING_DOWN) {
+    i64_val = (int64_t)v;
+  } else if (round_mode == ROUNDING_HALF_TO_EVEN) {
+    float fraction, integer;
+    float abs_v = std::abs(v);
+    fraction = std::modf(abs_v, &integer);
+    i64_val = (int64_t)integer;
+    if (fraction > 0.5) {
+      i64_val = i64_val + 1;
+    } else if (fraction == 0.5) {
+      if (i64_val & 0x01) {
+        i64_val = i64_val + 1;
+      }
+    }
+    if (v < 0) {
+      i64_val = -i64_val;
+    }
+  } else if (round_mode == ROUNDING_HALF_UP) {
+    i64_val = std::floor(v + 0.5);
+  } else if (round_mode == ROUNDING_HALF_DOWN) {
+    i64_val = std::ceil(v - 0.5);
+  } else {
+    llvm_unreachable("not support round_mode.");
+  }
+  return i64_val;
+}
+
+template <typename T>
+int8_t to_int8(T value,
+               RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto v = to_int(value, round_mode);
+  return v > 127 ? 127 : v < -128 ? -128 : v;
+};
+
+template <typename T>
+uint8_t to_uint8(T value,
+                 RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto v = to_int(value, round_mode);
+  return v > 255 ? 255 : v < 0 ? 0 : v;
+}
+
+template <typename T>
+int8_t to_int4(T value,
+               RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto v = to_int(value, round_mode);
+  return v > 7 ? 7 : v < -8 ? -8 : v;
+};
+
+template <typename T>
+uint8_t to_uint4(T value,
+                 RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto v = to_int(value, round_mode);
+  return v > 15 ? 15 : v < 0 ? 0 : v;
+}
 
 } // namespace tpu_mlir

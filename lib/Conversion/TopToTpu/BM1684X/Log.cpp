@@ -24,7 +24,7 @@ void LogLowering::LoweringINT4(PatternRewriter &rewriter, top::LogOp op,
 }
 void LogLowering::LoweringINT8(PatternRewriter &rewriter, top::LogOp op,
                                bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   Value table = create_lookup_table(op.input(), op.output(), asymmetric,
                                     [](double val) { return std::log(val); });
   auto newType = getQuantInt8Type(op.output(), asymmetric);

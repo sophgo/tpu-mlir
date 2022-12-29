@@ -72,7 +72,7 @@ bool GroupOps::is_eu_align(Value opd, Operation *op) {
         (opd == op->getOperand(1) || opd == op->getOperand(2))) {
       return false;
     }
-    if (Module::isBM1686()) {
+    if (module::isBM1686()) {
       if (isa<tpu::RequantIntAxisOp>(op) && (opd == op->getOperand(1))) {
         return false;
       }
@@ -446,7 +446,7 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   std::vector<NamedAttribute> attrs;
   std::string name = "load_";
   if (inputOp != nullptr) {
-    name = name + Module::getName(inputOp).str();
+    name = name + module::getName(inputOp).str();
   } else {
     name = name + std::to_string(input.cast<BlockArgument>().getArgNumber());
   }
@@ -485,7 +485,7 @@ StoreOp GroupOps::CreateStoreOp(lmem_info_t &linfo, int64_t id) {
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   operands.push_back(output);
-  std::string name = Module::getName(output).str();
+  std::string name = module::getName(output).str();
   attrs.push_back(builder.getNamedAttr(LocalGenInterface::kLayerGroupAttrName,
                                        getLgParam(linfo, id, linfo.stage)));
   builder.setInsertionPointAfter(current_op);
@@ -539,8 +539,8 @@ group_lmem_t GroupOps::CreateGroup(int64_t start_idx, int64_t end_idx,
   auto end_op = all_ops[end_idx];
   auto out = end_op->getResult(0);
   int64_t n, c, h, w;
-  Module::getNCHW(out, n, c, h, w);
-  auto type = Module::getStorageType(out);
+  module::getNCHW(out, n, c, h, w);
+  auto type = module::getStorageType(out);
   auto n_align = Arch::get_n_align(type.getIntOrFloatBitWidth() / 8);
   int64_t max_nsecs = ceiling_func(n, n_align);
   int64_t max_hsecs = h;
@@ -575,13 +575,13 @@ bool GroupOps::slice_all_outputs(group_lmem_t &group_lmem, int64_t nsecs,
       continue;
     }
     int64_t n, c, h, w;
-    Module::getNCHW(linfo.value, n, c, h, w);
+    module::getNCHW(linfo.value, n, c, h, w);
     slice_pair_t slice_pair;
     auto &si = linfo.slice_info;
     if (nsecs == 1) {
       si.n.emplace_back(slice_pair_t(0, n));
     } else {
-      auto type = Module::getStorageType(linfo.value);
+      auto type = module::getStorageType(linfo.value);
       auto n_align = Arch::get_n_align(type.getIntOrFloatBitWidth() / 8);
       auto max_slice = align_up(ceiling_func(n, nsecs), n_align);
       auto offset = 0l;
@@ -1128,7 +1128,7 @@ bool GroupOps::check_hsecs(lmem_info_t &lmem_info) {
   auto &si_h = lmem_info.slice_info.h;
   assert(lmem_info.slice_info.h.size() > 0);
   int64_t n, c, h, w;
-  Module::getNCHW(lmem_info.value, n, c, h, w);
+  module::getNCHW(lmem_info.value, n, c, h, w);
   int64_t total_h = 0;
   for (auto &it : si_h) {
     total_h += it.second;

@@ -526,7 +526,7 @@ typedef void (*sg_set_profile_dump)(bool enable);
 typedef void (*sg_stas_dump)(void *pid_node);
 typedef void (*sg_flops_dump)(long long flops, void *pid_node);
 
-using namespace tpu_mlir::helper;
+
 
 namespace tpu_mlir {
 namespace backend {

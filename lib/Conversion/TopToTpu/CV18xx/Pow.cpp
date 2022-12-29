@@ -15,8 +15,8 @@ namespace cv18xx {
 static double g_ex, g_max;
 void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
                                bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
-  auto qtype = Quant::getCalibratedType(op.output());
+  auto stype = module::getStorageType(op.output());
+  auto qtype = module::getCalibratedType(op.output());
   g_ex = op.exponent().convertToDouble();
   g_max = qtype.getMax();
   auto fn = [](double val) {

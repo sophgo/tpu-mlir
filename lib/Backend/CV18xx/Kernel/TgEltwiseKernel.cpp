@@ -14,9 +14,6 @@
 
 #define DEBUG_TYPE "cvi_backend_conv_kernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
-
 namespace tpu_mlir {
 namespace backend {
 void TgEltwiseKernel::init(uint32_t layer_id, gaddr_t ga_inputs[],

@@ -10,16 +10,14 @@
 #include "tpu_mlir/Support/Dnnl/LRN.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::LRNOp::getFLOPs() {
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
-  return Module::getNumElements(input()) *
+  module::getNCHW(input(), n, c, h, w);
+  return module::getNumElements(input()) *
          (5 /*eltwise gops*/ +
           (c - size()) /*fully reduce sum*/ * (size() - 1) /*sum gops*/ -
           size() /*fix edge split*/);
@@ -28,8 +26,8 @@ int64_t top::LRNOp::getFLOPs() {
 LogicalResult top::LRNOp::init(InferenceParameter &p) {
   auto lrn = new LRN();
   (*lrn)
-      .src(p.inputs[0], Module::getShape(input()))
-      .dst(p.outputs[0], Module::getShape(output()))
+      .src(p.inputs[0], module::getShape(input()))
+      .dst(p.outputs[0], module::getShape(output()))
       .size(size())
       .param(alpha().convertToDouble(), beta().convertToDouble(),
              bias().convertToDouble())

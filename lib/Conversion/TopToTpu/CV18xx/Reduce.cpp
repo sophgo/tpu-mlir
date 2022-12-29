@@ -18,8 +18,8 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   std::vector<int64_t> multiplier_v(1, 1);
   auto mode = op.mode();
   double in_thr, out_thr;
-  in_thr = Quant::getThreshold(op.input());
-  out_thr = Quant::getThreshold(op.output());
+  in_thr = module::getThreshold(op.input());
+  out_thr = module::getThreshold(op.output());
   double qscale = in_thr / out_thr;
   if (mode == "ReduceL2") {
     LoweringBF16(rewriter, op);
@@ -27,8 +27,8 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   }
   if (mode == "ReduceMean") {
     // reduce op
-    auto axes_val = Module::getI64Array(op.axes());
-    auto input_shape = Module::getShape(op.input());
+    auto axes_val = module::getI64Array(op.axes());
+    auto input_shape = module::getShape(op.input());
     int64_t size = 1;
     for (int32_t i = 0; i < axes_val->size(); i++) {
       auto dim = axes_val->at(i);
@@ -45,7 +45,7 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   multiplier_v.at(0) = multiplier;
   operands.push_back(op.input());
   if (mode != "ReduceL2") {
-    auto none = Module::getNoneOp(op);
+    auto none = module::getNoneOp(op);
     operands.push_back(none);
     operands.push_back(none);
   }
@@ -67,7 +67,7 @@ void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,
   auto mode = op.mode();
   operands.push_back(op.input());
   if (mode != "ReduceL2") {
-    auto none = Module::getNoneOp(op);
+    auto none = module::getNoneOp(op);
     operands.push_back(none);
     operands.push_back(none);
   } else {

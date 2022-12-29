@@ -17,7 +17,7 @@ namespace cv18xx {
 
 void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
                             top::MaxPoolWithMaskOp &op) {
-  auto kernel_shape = Module::getI64Array(op.kernel_shape());
+  auto kernel_shape = module::getI64Array(op.kernel_shape());
   assert(kernel_shape->size() == 2 &&
          kernel_shape->at(0) == kernel_shape->at(1));
   std::vector<NamedAttribute> attrs;
@@ -35,9 +35,9 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
   attrs.clear();
   attrs.emplace_back(rewriter.getNamedAttr(
       "scale", rewriter.getI64IntegerAttr(kernel_shape->at(0))));
-  std::string name = Module::getName(op.mask()).str() + "convert";
+  std::string name = module::getName(op.mask()).str() + "convert";
   auto loc = NameLoc::get(rewriter.getStringAttr(name));
-  auto input_shape = Module::getShape(op.input());
+  auto input_shape = module::getShape(op.input());
   std::vector<int64_t> mask_shape = input_shape.vec();
   mask_shape[2] = align_up(mask_shape[2], kernel_shape->at(0));
   mask_shape[3] = align_up(mask_shape[3], kernel_shape->at(0));

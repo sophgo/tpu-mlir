@@ -11,17 +11,15 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 lstm_attr_t tpu::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   assert(in_shape.size() == 3);
   if (batch_first()) {
     attr.batch_size = in_shape[0];
@@ -47,10 +45,7 @@ lstm_attr_t tpu::LSTMOp::parseParam() {
 LogicalResult tpu::LSTMOp::init(InferenceParameter &p) { return success(); }
 void tpu::LSTMOp::deinit(InferenceParameter &p) {}
 
-static inline float sigmoid_(float x) {
-  // return static_cast<float>(1.f / (1.f + std::exp(-x)));
-  return 0.5 * tanh(0.5 * x) + 0.5;
-}
+static inline float sigmoid_(float x) { return 0.5 * tanh(0.5 * x) + 0.5; }
 
 static inline float tanh_(float x) { return tanh(x); }
 

@@ -10,14 +10,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::GenericCpuOp::init(InferenceParameter &p) {
   return success();
@@ -351,8 +349,8 @@ static void interp_asymmetric(float *input, float *output, int n, int c, int ih,
 class InterpolationOpKernel {
 public:
   InterpolationOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
-    Module::getShapeVec(op.inputs()[0], this->input_shape);
-    Module::getShapeVec(op.output(), this->output_shape);
+    module::getShapeVec(op.inputs()[0], this->input_shape);
+    module::getShapeVec(op.output(), this->output_shape);
     assert(input_shape.size() == 4);
     assert(output_shape.size() == 4);
     mlir::DictionaryAttr param = op.param().value();
@@ -443,9 +441,9 @@ private:
 class EmbeddingOpKernel {
 public:
   EmbeddingOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
-    Module::getShapeVec(op.inputs()[0], this->input_shape);
-    Module::getShapeVec(op.inputs()[1], this->table_shape);
-    Module::getShapeVec(op.output(), this->output_shape);
+    module::getShapeVec(op.inputs()[0], this->input_shape);
+    module::getShapeVec(op.inputs()[1], this->table_shape);
+    module::getShapeVec(op.output(), this->output_shape);
     input_data = p.inputs[0];
     table_data = p.inputs[1];
     output_data = p.outputs[0];
@@ -493,11 +491,11 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   std::string func_name = operation_name().str();
   if (func_name == "quant") {
     assert(inputs().size() == 1);
-    auto num_elem = Module::getNumElements(output());
-    auto in_type = Module::getStorageType(inputs()[0]);
-    auto out_type = Module::getStorageType(output());
+    auto num_elem = module::getNumElements(output());
+    auto in_type = module::getStorageType(inputs()[0]);
+    auto out_type = module::getStorageType(output());
     if (in_type.isF32() && out_type.isSignedInteger()) {
-      auto qtype = Quant::getUniformQuantizedType(output());
+      auto qtype = module::getUniformQuantizedType(output());
       quantizeToInt8(p.inputs[0], p.outputs[0], num_elem,
                      1. / qtype.getScale());
     } else {
@@ -511,9 +509,9 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     embed_kernel.invoke();
   } else if (func_name == "detectionoutput") {
     DetParam det_param;
-    Module::getShapeVec(inputs()[0], det_param.loc_shape);
-    Module::getShapeVec(inputs()[1], det_param.conf_shape);
-    Module::getShapeVec(inputs()[2], det_param.prior_shape);
+    module::getShapeVec(inputs()[0], det_param.loc_shape);
+    module::getShapeVec(inputs()[1], det_param.conf_shape);
+    module::getShapeVec(inputs()[2], det_param.prior_shape);
     det_param.loc_data = p.inputs[0];
     det_param.conf_data = p.inputs[1];
     det_param.prior_data = p.inputs[2];
@@ -566,13 +564,13 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     for (size_t i = 0; i < inputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = Module::getNumElements(inputs()[i]);
-      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(inputs()[i]);
+      module::getShapeVec(inputs()[i], tensor_list.shape);
       yolo_param.inputs.emplace_back(std::move(tensor_list));
     }
     yolo_param.output.ptr = p.outputs[0];
-    yolo_param.output.size = Module::getNumElements(output());
-    Module::getShapeVec(output(), yolo_param.output.shape);
+    yolo_param.output.size = module::getNumElements(output());
+    module::getShapeVec(output(), yolo_param.output.shape);
     YoloDetectionFunc yolo_func(yolo_param);
     yolo_func.invoke();
   } else if (func_name == "proposal") {
@@ -588,13 +586,13 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     for (size_t i = 0; i < inputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = Module::getNumElements(inputs()[i]);
-      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(inputs()[i]);
+      module::getShapeVec(inputs()[i], tensor_list.shape);
       proposal_param.inputs.emplace_back(std::move(tensor_list));
     }
     proposal_param.output.ptr = p.outputs[0];
-    proposal_param.output.size = Module::getNumElements(output());
-    Module::getShapeVec(output(), proposal_param.output.shape);
+    proposal_param.output.size = module::getNumElements(output());
+    module::getShapeVec(output(), proposal_param.output.shape);
     ProposalFunc proposal_func(proposal_param);
     proposal_func.invoke();
   } else if (func_name == "roi_pooling") {
@@ -606,13 +604,13 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     for (size_t i = 0; i < inputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = Module::getNumElements(inputs()[i]);
-      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(inputs()[i]);
+      module::getShapeVec(inputs()[i], tensor_list.shape);
       roip_param.inputs.emplace_back(std::move(tensor_list));
     }
     roip_param.output.ptr = p.outputs[0];
-    roip_param.output.size = Module::getNumElements(output());
-    Module::getShapeVec(output(), roip_param.output.shape);
+    roip_param.output.size = module::getNumElements(output());
+    module::getShapeVec(output(), roip_param.output.shape);
     ROIPoolingFunc roip_func(roip_param);
     roip_func.invoke();
   } else if (func_name == "frcn_detection") {
@@ -625,13 +623,13 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     for (size_t i = 0; i < inputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = Module::getNumElements(inputs()[i]);
-      Module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(inputs()[i]);
+      module::getShapeVec(inputs()[i], tensor_list.shape);
       frcn_param.inputs.emplace_back(std::move(tensor_list));
     }
     frcn_param.output.ptr = p.outputs[0];
-    frcn_param.output.size = Module::getNumElements(output());
-    Module::getShapeVec(output(), frcn_param.output.shape);
+    frcn_param.output.size = module::getNumElements(output());
+    module::getShapeVec(output(), frcn_param.output.shape);
     FrcnDetctionFunc frcn_func(frcn_param);
     frcn_func.invoke();
   } else {

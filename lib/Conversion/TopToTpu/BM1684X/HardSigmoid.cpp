@@ -43,7 +43,7 @@ void HardSigmoidLowering::LoweringINT8(PatternRewriter &rewriter,
                                        bool asymmetric) const {
   const double beta_ = op.beta().convertToDouble();
   const double alpha_ = op.alpha().convertToDouble();
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   Value table = create_lookup_table(
       op.input(), op.output(), asymmetric,
       [alpha_, beta_](double val) { return hsigmoid(val, alpha_, beta_); });

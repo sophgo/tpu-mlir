@@ -18,11 +18,11 @@
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Support/raw_ostream.h>
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 #define DEBUG_TYPE "CviBackendContext"
 
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace backend {
 CV18xx * CV18xx ::cv18xx = nullptr;
@@ -628,7 +628,7 @@ void CV18xx::tiu_zeros(uint16_t layer_id, cvk_tl_t *tl_mem) {
 }
 
 cvk_fmt_t CV18xx::getDataType(Value v) {
-  auto type = Module::getStorageType(v);
+  auto type = module::getStorageType(v);
   return getDataType(type);
 }
 

@@ -10,13 +10,12 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -73,8 +72,8 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
   auto attr = parseParam();
 
   pooling3d_spec_t spec = {0};
-  spec.input_addr = Module::getAddress(input());
-  spec.output_addr = Module::getAddress(output());
+  spec.input_addr = module::getAddress(input());
+  spec.output_addr = module::getAddress(output());
   spec.buffer_addr = -1;
   spec.input_shape[0] = attr.n;
   spec.input_shape[1] = attr.c;
@@ -107,7 +106,7 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (Quant::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(input())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
       // if (spec.avg_pooling_quant_mode == 0) {
@@ -171,7 +170,7 @@ void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -230,7 +229,7 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   if (pool_mode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (Quant::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(input())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
 

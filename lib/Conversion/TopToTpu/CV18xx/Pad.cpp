@@ -13,11 +13,11 @@ namespace tpu_mlir {
 namespace cv18xx {
 void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
                                bool asymmetric) const {
-  auto in_thr = Quant::getThreshold(op.input());
-  auto in_scale = Quant::getScale(in_thr, true);
+  auto in_thr = module::getThreshold(op.input());
+  auto in_scale = module::getScale(in_thr, true);
   std::vector<NamedAttribute> attrs;
   auto val = op.val().convertToDouble();
-  val = Quant::to_int8(val / in_scale, ROUNDING_HALF_UP);
+  val = to_int8(val / in_scale, ROUNDING_HALF_UP);
   attrs.push_back(rewriter.getNamedAttr("paddings", op.paddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
   attrs.push_back(rewriter.getNamedAttr("mode", op.modeAttr()));
@@ -25,8 +25,8 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   operands.push_back(op.input());
   if (op.mode() == 1) {
     // pad reflect
-   auto nofDims = Module::getShape(op.input()).size();
-    auto pads = Module::getI64Array(op.paddings());
+   auto nofDims = module::getShape(op.input()).size();
+    auto pads = module::getI64Array(op.paddings());
     int32_t count = 0;
     for (int i = 0; i < pads->size(); i++) {
       if (pads->at(i) != 0) {
@@ -51,8 +51,8 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
       operands.push_back(selectOp);
     }
   } else {
-    operands.push_back(Module::getNoneOp(op));
-    operands.push_back(Module::getNoneOp(op));
+    operands.push_back(module::getNoneOp(op));
+    operands.push_back(module::getNoneOp(op));
   }
   auto newType = getQuantInt8Type(op.output(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);
@@ -63,8 +63,8 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
   operands.push_back(op.input());
   if (op.mode() == 1) {
     // pad reflect
-    auto nofDims = Module::getShape(op.input()).size();
-    auto pads = Module::getI64Array(op.paddings());
+    auto nofDims = module::getShape(op.input()).size();
+    auto pads = module::getI64Array(op.paddings());
     int32_t count = 0;
     for (int i = 0; i < pads->size(); i++) {
       if (pads->at(i) != 0) {
@@ -91,8 +91,8 @@ void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
       operands.push_back(selectOp.clone_bf16(op));
     }
   } else {
-    operands.push_back(Module::getNoneOp(op));
-    operands.push_back(Module::getNoneOp(op));
+    operands.push_back(module::getNoneOp(op));
+    operands.push_back(module::getNoneOp(op));
   }
   auto newType = getQuantBF16Type(op->getResult(0));
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands,

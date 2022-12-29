@@ -9,21 +9,19 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
 
-int64_t top::PriorBoxOp::getFLOPs() { return Module::getNumElements(output()); }
+
+int64_t top::PriorBoxOp::getFLOPs() { return module::getNumElements(output()); }
 
 LogicalResult top::PriorBoxOp::init(InferenceParameter &p) { return success(); }
 void top::PriorBoxOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
   #if 0
-  auto input_image_shape = Module::getShape(this->inputs()[1]);
+  auto input_image_shape = module::getShape(this->inputs()[1]);
   assert(input_image_shape.size() == 4 && input_shape.size() == 4);
 
   int layer_height = input_shape[2];

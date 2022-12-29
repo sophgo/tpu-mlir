@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 conv_attr_t tpu::Conv3DOp::parseParam() {
   conv_attr_t p = {0};
@@ -34,32 +32,32 @@ conv_attr_t tpu::Conv3DOp::parseParam() {
   p.od = o_s[2];
   p.oh = o_s[3];
   p.ow = o_s[4];
-  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(kernel_shape());
   p.kd = kernel->at(0);
   p.kh = kernel->at(1);
   p.kw = kernel->at(2);
-  auto pads_v = Module::getI64Array(pads());
+  auto pads_v = module::getI64Array(pads());
   p.pdf = pads_v->at(0);
   p.pht = pads_v->at(1);
   p.pwl = pads_v->at(2);
   p.pdb = pads_v->at(3);
   p.phb = pads_v->at(4);
   p.pwr = pads_v->at(5);
-  if (Quant::isUniformQuantized(input())) {
-    p.pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
+  if (module::isUniformQuantized(input())) {
+    p.pad_value = module::getUniformQuantizedType(input()).getZeroPoint();
   }
-  if (Quant::isUniformQuantized(filter())) {
-    p.kernel_zp = Quant::getUniformQuantizedType(filter()).getZeroPoint();
+  if (module::isUniformQuantized(filter())) {
+    p.kernel_zp = module::getUniformQuantizedType(filter()).getZeroPoint();
   }
-  auto strides_v = Module::getI64Array(strides());
+  auto strides_v = module::getI64Array(strides());
   p.sd = strides_v->at(0);
   p.sh = strides_v->at(1);
   p.sw = strides_v->at(2);
-  auto dilation = Module::getI64Array(dilations(), 3, 1);
+  auto dilation = module::getI64Array(dilations(), 3, 1);
   p.dd = dilation->at(0);
   p.dh = dilation->at(1);
   p.dw = dilation->at(2);
-  auto ins = Module::getI64Array(inserts(), 3, 0);
+  auto ins = module::getI64Array(inserts(), 3, 0);
   p.ins_d = ins->at(0);
   p.ins_h = ins->at(1);
   p.ins_w = ins->at(2);
@@ -93,8 +91,8 @@ LogicalResult tpu::Conv3DOp::inference(InferenceParameter &p) {
   auto conv = (Conv *)p.handle;
   conv->run();
   // requant
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);

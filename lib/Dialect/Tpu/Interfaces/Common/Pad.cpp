@@ -9,17 +9,15 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::PadOp::init(InferenceParameter &p) {
   float *dst = p.outputs[0];
-  auto total_num = Module::getNumElements(output());
+  auto total_num = module::getNumElements(output());
   if (mode() == 0) {
     float val_ = val().convertToDouble();
     for (int i = 0; i < total_num; i++) {
@@ -32,14 +30,14 @@ LogicalResult tpu::PadOp::init(InferenceParameter &p) {
 void tpu::PadOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   auto pad_mode = mode();
   int num_dims = in_shape.size();
   int64_t in = in_shape[0];
   int64_t ic = in_shape[1];
   int64_t ih = in_shape[2];
   int64_t iw = num_dims <= 3 ? 1 : in_shape[3];
-  std::shared_ptr<std::vector<int64_t>> pads_ = Module::getI64Array(paddings());
+  i64_array_t pads_ = module::getI64Array(paddings());
 
   std::vector<int> pads(8, 0);
   for (int i = 0; i < num_dims; i++) {

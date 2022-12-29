@@ -8,14 +8,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir::helper;
+
 using namespace dnnl;
 
 namespace tpu_mlir {
 memory::data_type getDnnlType(mlir::Value v) {
-  auto type = Module::getStorageType(v);
+  auto type = module::getStorageType(v);
   if (type.isF32()) {
     return memory::data_type::f32;
   }

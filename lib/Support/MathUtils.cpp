@@ -12,7 +12,7 @@
 #include "mlir/IR/PatternMatch.h"
 #include "omp.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+
 #include "llvm/Support/Debug.h"
 #include <map>
 #include <numeric>
@@ -24,8 +24,8 @@ void get_scale_and_shift(float scale_f, int &scale, int &shift, int bitwidth) {
   float min_err = FLT_MAX;
   int m_limit = (bitwidth == 32) ? INT_MAX : CHAR_MAX;
   for (int n = -32; n < 31; n++) {
-    //若scale_f大于等于1，这里循环上限要设为31(而不是32)，且越大则需减少越多，暂只考虑scale_f小于等于1的情形
-    // wxc 20220119
+    // 若scale_f大于等于1，这里循环上限要设为31(而不是32)，且越大则需减少越多，暂只考虑scale_f小于等于1的情形
+    //  wxc 20220119
     int m = (int)std::round(scale_f * std::pow(2, n));
     float err = std::abs(m / std::pow(2, n) - scale_f);
     if (err < min_err && abs(m) < m_limit) {
@@ -171,8 +171,7 @@ void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, double scale) {
   int32_t qmin = INT_MIN;
   int tmp = 0;
   for (int i = 0; i < len; i++) {
-    tmp = helper::Quant::to_int(pSrc[i] * scale, ROUNDING_HALF_TO_EVEN);
-    ;
+    tmp = to_int(pSrc[i] * scale, ROUNDING_HALF_TO_EVEN);
     pDst[i] = (int32_t)((tmp > qmax) ? qmax : ((tmp < qmin) ? qmin : tmp));
   }
 }
@@ -223,7 +222,7 @@ template <typename T>
 void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
                     RoundingMode round_mode) {
   for (int i = 0; i < len; i++) {
-    pDst[i] = helper::Quant::to_int8(pSrc[i] * scale, round_mode);
+    pDst[i] = to_int8(pSrc[i] * scale, round_mode);
   }
 }
 
@@ -386,12 +385,11 @@ int8_t getMultiplierI8FromQScaleAndRShift(double qscale, int8_t rshift) {
   return (uint32_t)(qscale * (1 << rshift));
 }
 
-
 int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
                             uint32_t rshift) {
   double factor = (threshold_x / threshold_y) * (1 << rshift);
   float q_f = (float)(w * factor);
-  return helper::Quant::to_int8(q_f, ROUNDING_HALF_UP);
+  return to_int8(q_f, ROUNDING_HALF_UP);
 }
 
 void quantizeFilterRShiftAndMultiplier(const float *pSrc, int8_t *pDst, int len,
@@ -502,8 +500,8 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
                                          (int32_t)rshift);
   } else if (m_type == CVI_QUANT) {
-    return helper::Quant::to_int(((((float)v * multiplier)) / (1 << rshift)),
-                                 ROUNDING_HALF_UP);
+    return to_int(((((float)v * multiplier)) / (1 << rshift)),
+                  ROUNDING_HALF_UP);
   } else {
     llvm_unreachable("unsupport quant multiplier type.");
   }
@@ -663,9 +661,9 @@ void function_relu(float *src, float *dst, int64_t size, float relu_limit,
     }
     if (elem_type) {
       if (elem_type.isUnsignedInteger(8)) {
-        dst[i] = helper::Quant::to_uint8(dst[i]);
+        dst[i] = to_uint8(dst[i]);
       } else if (elem_type.isInteger(8)) {
-        dst[i] = helper::Quant::to_int8(dst[i]);
+        dst[i] = to_int8(dst[i]);
       }
     }
   }
@@ -902,7 +900,7 @@ std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
   return shape_v;
 }
 
-bool compare(float a, float b, StringRef mode) {
+bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "Equal") {
     return a == b;
   }

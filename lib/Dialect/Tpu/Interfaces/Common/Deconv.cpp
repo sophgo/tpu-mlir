@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 deconv_attr_t tpu::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
@@ -27,24 +25,24 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   p.dd = 1;
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  Module::getNCHW(ishape, p.n, p.ic, p.ih, p.iw);
-  Module::getNCHW(oshape, p.n, p.oc, p.oh, p.ow);
+  module::getNCHW(ishape, p.n, p.ic, p.ih, p.iw);
+  module::getNCHW(oshape, p.n, p.oc, p.oh, p.ow);
 
-  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(kernel_shape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
-  auto stride = Module::getI64Array(strides());
+  auto stride = module::getI64Array(strides());
   p.sh = stride->at(0);
   p.sw = stride->at(1);
-  auto pad = Module::getI64Array(pads());
+  auto pad = module::getI64Array(pads());
   p.pad_h = pad->at(0);
   p.pad_w = pad->at(1);
   p.pad_h_after = pad->at(2);
   p.pad_w_after = pad->at(3);
-  auto dilation = Module::getI64Array(dilations(), 2, 1);
+  auto dilation = module::getI64Array(dilations(), 2, 1);
   p.dh = dilation->at(0);
   p.dw = dilation->at(1);
-  auto ins = Module::getI64Array(inserts(), 2, 0);
+  auto ins = module::getI64Array(inserts(), 2, 0);
   p.ins_h = ins->at(0);
   p.ins_w = ins->at(1);
   p.g = group();
@@ -59,8 +57,8 @@ LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
   auto attr = parseParam();
   int izp = 0;
-  if (Quant::isUniformQuantized(input())) {
-    izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
+  if (module::isUniformQuantized(input())) {
+    izp = module::getUniformQuantizedType(input()).getZeroPoint();
   }
   deconv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr, izp);
   p.handle = (void *)deconv;
@@ -81,22 +79,22 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
   }
   auto deconv = (Deconv *)p.handle;
   deconv->run();
-  bool is_cv18xx = Module::isCV18xx();
+  bool is_cv18xx = module::isCV18xx();
   // requant
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (is_cv18xx && Quant::isUniformQuantized(output())) {
+  } else if (is_cv18xx && module::isUniformQuantized(output())) {
     // apply multiplier && rshift inplace
     int64_t n, c, h, w;
-    Module::getNCHW(output(), n, c, h, w);
-    auto rshift_v = Module::getI64Array(rshift().value());
-    auto multiplier_v = Module::getI64Array(multiplier().value());
+    module::getNCHW(output(), n, c, h, w);
+    auto rshift_v = module::getI64Array(rshift().value());
+    auto multiplier_v = module::getI64Array(multiplier().value());
     assert(rshift_v->size() == c && "CV18xx must be per_axis.");
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int oc = 0; oc < c; oc++) {
@@ -108,7 +106,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
                                        CVI_QDM_QUANT);
-          p.outputs[0][offset] = Quant::to_int8(v);
+          p.outputs[0][offset] = to_int8(v);
         }
       }
     }

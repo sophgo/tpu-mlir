@@ -11,7 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/IR/BlockAndValueMapping.h"
@@ -26,7 +26,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
@@ -39,13 +39,13 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   auto addr = start_addr;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
-      Module::setAddress(op.output(), addr);
-      int64_t bytes = Module::getBytes(op.output());
+      module::setAddress(op.output(), addr);
+      int64_t bytes = module::getBytes(op.output());
       addr = align_up(addr + bytes, alignment);
     });
   }
-  Module::setCoeffAddr(start_addr);
-  Module::setCoeffSize(addr - start_addr);
+  module::setCoeffAddr(start_addr);
+  module::setCoeffSize(addr - start_addr);
   // assign activation
   start_addr = addr;
   uint32_t loc = 0;
@@ -93,7 +93,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   std::vector<ValueInfo> group_ops;
   for (auto &op_value : gaddrMap) {
     auto op = static_cast<Operation *>(op_value.first.op);
-    Module::setAddress(op->getResult(op_value.first.index), op_value.second);
+    module::setAddress(op->getResult(op_value.first.index), op_value.second);
     if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
       group_ops.emplace_back(op_value.first);
     }
@@ -105,8 +105,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
       int idx = 0;
       gOp.body().walk([&](tpu::StoreOp sOp) {
-        auto addr = Module::getAddress(gOp.getResult(idx));
-        Module::setAddress(sOp.output(), addr);
+        auto addr = module::getAddress(gOp.getResult(idx));
+        module::setAddress(sOp.output(), addr);
         idx++;
       });
     }
@@ -114,14 +114,14 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // 3.set inplace_ops address
   for (auto op : inplace_ops) {
     if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op.op)) {
-      auto addr = Module::getAddress(reshapeOp.input());
-      Module::setAddress(reshapeOp.output(), addr);
+      auto addr = module::getAddress(reshapeOp.input());
+      module::setAddress(reshapeOp.output(), addr);
     }
   }
-  Module::setNeuronAddr(start_addr);
-  Module::setNeuronSize(addr - start_addr);
-  Module::updateModuleTypes();
-  Module::setState(Module::State::TPU_ADDRESSED);
+  module::setNeuronAddr(start_addr);
+  module::setNeuronSize(addr - start_addr);
+  module::updateModuleTypes();
+  module::setState(module::State::TPU_ADDRESSED);
 }
 
 void BMAddressAssign::updateLiveRangeofBMOps(
@@ -160,7 +160,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     common_ops.emplace_back(v);
   } else if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
                  func::CallOp, tpu::YieldOp>(op) ||
-             Module::isOpInGroup(op)) {
+             module::isOpInGroup(op)) {
     updateOperandsLiveRange(op, endPosition);
   } else if (isInPlaceOp(op)) {
     uint32_t maxPosition = endPosition;
@@ -213,7 +213,7 @@ int BMAddressAssign::getOutIndex(Operation *op, Value &out) {
 
 uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
                                             int64_t aligment_) {
-  uint32_t size = Module::getBytes(op->getResult(index));
+  uint32_t size = module::getBytes(op->getResult(index));
   // pad to aligment_
   if (size % aligment_) {
     size = size + aligment_ - (size % aligment_);

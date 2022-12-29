@@ -9,7 +9,7 @@
 
 #pragma once
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace backend {

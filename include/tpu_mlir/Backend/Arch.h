@@ -15,7 +15,7 @@
 #include <cmath>
 #include "mlir/IR/Builders.h"
 #include "llvm/Support/DynamicLibrary.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace backend {

@@ -9,11 +9,9 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 // clang-format off
 // case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7
@@ -23,9 +21,9 @@ using namespace mlir;
 // clang-format on
 matmul_attr_t top::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
-  auto a_s = Module::getShape(input());
-  auto b_s = Module::getShape(right());
-  auto o_s = Module::getShape(output());
+  auto a_s = module::getShape(input());
+  auto b_s = module::getShape(right());
+  auto o_s = module::getShape(output());
   p.with_bias = !bias().getType().isa<mlir::NoneType>();
   p.do_relu = do_relu();
   p.relu_limit = this->relu_limit().convertToDouble();

@@ -9,27 +9,25 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "float.h"
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
   assert(kernel_shape().size() == 2); // only support 2d now
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  auto kernel = Module::getI64Array(kernel_shape());
-  auto stride = Module::getI64Array(strides());
-  auto pad = Module::getI64Array(pads());
+  auto kernel = module::getI64Array(kernel_shape());
+  auto stride = module::getI64Array(strides());
+  auto pad = module::getI64Array(pads());
   p.id = 1;
   p.od = 1;
   p.kd = 1;
   p.sd = 1;
-  Module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
-  Module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
+  module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
+  module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
   p.sh = stride->at(0);
@@ -50,7 +48,7 @@ pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
 int64_t top::MaxPoolWithMaskOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.do_relu ? 1 : 0;
-  return Module::getNumElements(output()) *
+  return module::getNumElements(output()) *
          (attr.kd * attr.kh * attr.kw + extra);
 }
 
@@ -63,7 +61,7 @@ void top::MaxPoolWithMaskOp::deinit(InferenceParameter &p) { return; }
 LogicalResult top::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
   auto attr = parseParam();
   int64_t nc = attr.n * attr.c;
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
   std::fill_n(p.outputs[0], num_elem, (float)(-FLT_MAX));
 #pragma omp parallel for schedule(static, omp_schedule(nc))
   for (int64_t idx = 0; idx < nc; ++idx) {

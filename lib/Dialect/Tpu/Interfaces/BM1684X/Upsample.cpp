@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -37,7 +36,7 @@ void tpu::UpsampleOp::codegen_global_bm1684x() {
   assert(scale_h() == scale_w());
   auto op = getOperation();
   // int64_t n, c, h, w;
-  // Module::getNCHW(input(), n, c, h, w);
+  // module::getNCHW(input(), n, c, h, w);
 
   upsample_spec_t spec = {0};
   spec.size = scale_h();
@@ -64,8 +63,8 @@ void tpu::UpsampleOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w, oh, ow;
-  Module::getNCHW(input(), n, c, h, w);
-  Module::getNCHW(output(), n, c, oh, ow);
+  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(output(), n, c, oh, ow);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;

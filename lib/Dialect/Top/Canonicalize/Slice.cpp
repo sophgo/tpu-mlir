@@ -8,12 +8,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
@@ -27,13 +27,13 @@ struct MergeSliceOp : public OpRewritePattern<SliceOp> {
     if (!isa<SliceOp>(in_op) || in_op->hasOneUse() == false) {
       return failure();
     }
-    auto output_shape = Module::getShape(op.output());
+    auto output_shape = module::getShape(op.output());
     auto num_dims = output_shape.size();
     auto in_slice = cast<SliceOp>(in_op);
-    auto cur_offset = Module::getI64Array(op.offset());
-    auto cur_steps = Module::getI64Array(op.steps());
-    auto in_offset = Module::getI64Array(in_slice.offset());
-    auto in_steps = Module::getI64Array(in_slice.steps());
+    auto cur_offset = module::getI64Array(op.offset());
+    auto cur_steps = module::getI64Array(op.steps());
+    auto in_offset = module::getI64Array(in_slice.offset());
+    auto in_steps = module::getI64Array(in_slice.steps());
 
     std::vector<int64_t> new_offset(num_dims, 0);
     std::vector<int64_t> new_steps(num_dims, 1);

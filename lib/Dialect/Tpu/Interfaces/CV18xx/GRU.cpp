@@ -13,13 +13,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::cv18xx;
 
@@ -40,12 +39,12 @@ template <typename T> static void transpose_row_col(T *data, int row, int col) {
 Value lowerWeight(Operation *op, Value w_value) {
   std::vector<int64_t> w_shape;
   int64_t elem_num = 0;
-  Module::getShapeVec(w_value, w_shape);
-  elem_num = Module::getNumElements(w_value);
+  module::getShapeVec(w_value, w_shape);
+  elem_num = module::getNumElements(w_value);
 
   auto w_op = dyn_cast<top::WeightOp>(w_value.getDefiningOp());
   auto w_data_bf16 = w_op.read<uint16_t>();
-  auto w_name = Module::getName(w_value).str();
+  auto w_name = module::getName(w_value).str();
   // transpose weight
   assert(w_shape.size() == 3);
   int64_t num_dir = w_shape[0];
@@ -92,12 +91,12 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
 Value lowerBias(Operation *op, Value b_value) {
   std::vector<int64_t> b_shape;
   int64_t elem_num = 0;
-  Module::getShapeVec(b_value, b_shape);
-  elem_num = Module::getNumElements(b_value);
+  module::getShapeVec(b_value, b_shape);
+  elem_num = module::getNumElements(b_value);
 
   auto b_op = dyn_cast<top::WeightOp>(b_value.getDefiningOp());
   auto b_data_f32 = b_op.read<float>();
-  auto b_name = Module::getName(b_value).str();
+  auto b_name = module::getName(b_value).str();
   std::vector<uint32_t> b_data_uint32(elem_num);
   transposeBiasFp32(b_data_f32, b_data_uint32);
 
@@ -113,7 +112,7 @@ Value lowerBias(Operation *op, Value b_value) {
 template <>
 LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewrite(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.input()).isBF16())
+  if (!module::getStorageType(op.input()).isBF16())
     return failure();
   auto lower_recurrence = lowerWeight(op.getOperation(), op.recurrence());
   auto lower_bias = lowerBias(op.getOperation(), op.bias());
@@ -125,7 +124,7 @@ LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::GRUOp, int8_t>::matchAndRewrite(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.input()).isBF16())
+  if (!module::getStorageType(op.input()).isBF16())
     return failure();
   auto lower_recurrence = lowerWeight(op.getOperation(), op.recurrence());
   auto lower_bias = lowerBias(op.getOperation(), op.bias());
@@ -141,20 +140,20 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   bool only_last = false;
   int64_t seq_len, batch_size, input_size, garbage;
   int64_t seq_len2, num_dir, batch_size2, hidden_size;
-  auto in_shape = Module::getShape(input());
-  Module::getNCHW(in_shape, seq_len, batch_size, input_size, garbage);
+  auto in_shape = module::getShape(input());
+  module::getNCHW(in_shape, seq_len, batch_size, input_size, garbage);
   Value output;
   if (!getResults()[0].getType().isa<mlir::NoneType>()) {
     output = getResults()[0];
   } else {
     output = getResults()[1];
   }
-  auto out_shape = Module::getShape(output);
+  auto out_shape = module::getShape(output);
   if (out_shape.size() == 4) {
-    Module::getNCHW(out_shape, seq_len2, num_dir, batch_size2, hidden_size);
+    module::getNCHW(out_shape, seq_len2, num_dir, batch_size2, hidden_size);
     assert(seq_len == seq_len2);
   } else {
-    Module::getNCHW(out_shape, num_dir, batch_size2, hidden_size, garbage);
+    module::getNCHW(out_shape, num_dir, batch_size2, hidden_size, garbage);
     only_last = true;
   }
 
@@ -163,20 +162,20 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
 
   bool with_bias = !bias().getType().isa<mlir::NoneType>();
   bool with_h0 = !initial_h().getType().isa<mlir::NoneType>();
-  gaddr_t ga_input = Module::getAddress(input());
-  gaddr_t ga_output = Module::getAddress(output);
-  gaddr_t ga_bias = with_bias ? Module::getAddress(bias()) : 0;
-  gaddr_t ga_initial_h = with_h0 ? Module::getAddress(initial_h()) : 0;
-  gaddr_t ga_recurrence = Module::getAddress(recurrence());
-  gaddr_t ga_sigmoid_table = Module::getAddress(sigmoid_table());
-  gaddr_t ga_sigmoid_slope = Module::getAddress(sigmoid_slope_table());
-  gaddr_t ga_tanh_table = Module::getAddress(tanh_table());
-  gaddr_t ga_tanh_slope = Module::getAddress(tanh_slope_table());
+  gaddr_t ga_input = module::getAddress(input());
+  gaddr_t ga_output = module::getAddress(output);
+  gaddr_t ga_bias = with_bias ? module::getAddress(bias()) : 0;
+  gaddr_t ga_initial_h = with_h0 ? module::getAddress(initial_h()) : 0;
+  gaddr_t ga_recurrence = module::getAddress(recurrence());
+  gaddr_t ga_sigmoid_table = module::getAddress(sigmoid_table());
+  gaddr_t ga_sigmoid_slope = module::getAddress(sigmoid_slope_table());
+  gaddr_t ga_tanh_table = module::getAddress(tanh_table());
+  gaddr_t ga_tanh_slope = module::getAddress(tanh_slope_table());
 
   bool is_linear_before_reset = linear_before_reset();
   bool is_bidirectional = bidirectional();
 
-  if (Quant::isUniformQuantized(output)) {
+  if (module::isUniformQuantized(output)) {
     llvm_unreachable("Not supported now");
   } else {
     cvi_backend_tg_bf16_gru_kernel(

@@ -24,8 +24,8 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
   double scale_i, scale_o;
   int64_t zp_i, zp_o;
-  Quant::getScaleAndZeroPoint(op.input(), scale_i, zp_i, asymmetric);
-  Quant::getScaleAndZeroPoint(op.output(), scale_o, zp_o, asymmetric);
+  module::getScaleAndZeroPoint(op.input(), scale_i, zp_i, asymmetric);
+  module::getScaleAndZeroPoint(op.output(), scale_o, zp_o, asymmetric);
   auto scale = scale_i / scale_o * op.const_val().convertToDouble();
   int multiplier, rshift;
   get_scale_and_shift(scale, multiplier, rshift, 8);

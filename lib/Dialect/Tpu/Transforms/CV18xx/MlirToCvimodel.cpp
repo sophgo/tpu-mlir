@@ -11,7 +11,7 @@
 #include "mlir/Support/FileUtilities.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ToolOutputFile.h"
@@ -35,9 +35,8 @@ static llvm::cl::opt<std::string>
 
 #define VERSION(V0, V1, V2) (uint32_t)((V0) << 24 | (V1) << 16 | (V2) << 8)
 
-using namespace tpu_mlir;
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 // v1.4.0
 // 1) add scale/mean/pixel_format/align in Tensor
 // 2) add data_format in PreProcessHints
@@ -74,13 +73,13 @@ static void buildInputsOutputs(flatbuffers::FlatBufferBuilder &fbb,
 
   std::vector<flatbuffers::Offset<flatbuffers::String>> fbStrVec;
   for (auto &v : inputs) {
-    auto name = Module::getName(v).str();
+    auto name = module::getName(v).str();
     fbStrVec.push_back(fbb.CreateString(name));
   }
   fbInputs = fbb.CreateVector(fbStrVec);
   fbStrVec.clear();
   for (auto &v : outputs) {
-    auto name = Module::getName(v).str();
+    auto name = module::getName(v).str();
     fbStrVec.push_back(fbb.CreateString(name));
   }
   fbOutputs = fbb.CreateVector(fbStrVec);
@@ -104,7 +103,7 @@ static std::string getStrOfCurrentTime() {
 CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
                              func::CallOp &call, std::string chip)
     : CviRoutine(fbb, false, chip) {
-  auto func = Module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(call.getCallee());
   func.walk([&](Operation *op) {
     if (isa<GlobalGenInterface>(op)) {
       ops.emplace_back(op);
@@ -114,7 +113,7 @@ CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
       }
     }
   });
-  Module::getInputsOutputs(call, inputs, outputs);
+  module::getInputsOutputs(call, inputs, outputs);
 }
 
 void CviCpuRoutine::serializeFuncArgs(std::vector<uint8_t> &args) {
@@ -215,14 +214,14 @@ CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
                              std::string chip)
     : CviRoutine(fbb, true, chip) {
   this->layer_id = layer_id;
-  auto func = Module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(call.getCallee());
   name = func.getName().str();
   func.walk([&](Operation *op) {
-    if (isa<GlobalGenInterface>(op) && !Module::isOpInGroup(op)) {
+    if (isa<GlobalGenInterface>(op) && !module::isOpInGroup(op)) {
       ops.push_back(op);
     }
   });
-  Module::getInputsOutputs(call, inputs, outputs);
+  module::getInputsOutputs(call, inputs, outputs);
   codeGen();
 }
 
@@ -231,7 +230,7 @@ void CviTpuRoutine::codeGen() {
     if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
       // codegen_for_group(castOp)
       llvm_unreachable("layer group not support now");
-    } else if (Module::isOpInGroup(op)) {
+    } else if (module::isOpInGroup(op)) {
       // continue
     } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
       CV18xx::set_layer_id(*layer_id);
@@ -255,25 +254,25 @@ flatbuffers::Offset<Routine> CviTpuRoutine::build() {
 
 CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
   int layer_id = 0;
-  this->chip = std::string(Module::getChip().lower());
-  privateGmemSize_ = Module::getGmemPrivateSize();
-  sharedGmemSize_ = Module::getNeuronSize();
+  this->chip = std::string(module::getChip().lower());
+  privateGmemSize_ = module::getGmemPrivateSize();
+  sharedGmemSize_ = module::getNeuronSize();
   version_ = get_version(majorVersion_, minorVersion_, subMinorVersion_);
-  modelName_ = Module::getModuleName().str();
-  coeff_size = Module::getCoeffSize(); // set in assignAddr
-  auto main_func = Module::getMainFuncOp();
+  modelName_ = module::getModuleName().str();
+  coeff_size = module::getCoeffSize(); // set in assignAddr
+  auto main_func = module::getMainFuncOp();
   main_func.walk([&](func::CallOp call) { addRoutine(call, &layer_id); });
-  Module::removeUnusedOp();
+  module::removeUnusedOp();
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) { weights.push_back(op); });
   }
-  Module::getInputsOutputs(inputs, outputs);
+  module::getInputsOutputs(inputs, outputs);
 }
 
 void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
   // todo support cpu sub_fun
-  auto func = Module::getFuncOp(call.getCallee());
-  bool tpu = Module::getFuncMode(func).str() == "TPU" ? true : false;
+  auto func = module::getFuncOp(call.getCallee());
+  bool tpu = module::getFuncMode(func).str() == "TPU" ? true : false;
   CviRoutine *rt = nullptr;
   if (tpu) {
     rt = new CviTpuRoutine(fbb_, call, layer_id, chip);
@@ -361,9 +360,9 @@ void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
                                   std::vector<int64_t> &shape, size_t &size,
                                   int64_t &offset, DType &dtype, uint32_t idx) {
   auto v = op->getResult(idx);
-  name = Module::getName(v).str();
-  auto tensorShape = Module::getShape(v);
-  auto type = Module::getStorageType(v);
+  name = module::getName(v).str();
+  auto tensorShape = module::getShape(v);
+  auto type = module::getStorageType(v);
   auto bits = type.getIntOrFloatBitWidth();
   int dsize = -1;
   if (type.isUnsignedInteger()) {
@@ -421,7 +420,7 @@ void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
     size *= shape[i];
   }
   // TODO if is group op get yeild addr
-  offset = Module::getAddress(v);
+  offset = module::getAddress(v);
 }
 
 flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(op_info_t &op_info) {
@@ -429,8 +428,8 @@ flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(op_info_t &op_info) {
   // quant info
   float qscale = 0.0f; // fix me sophone set 1.0
   QuantType quant_type = QuantType_NONE;
-  if (Quant::isUniformQuantized(op_info.op->getResult(op_info.idx))) {
-    auto qtype = Quant::getUniformQuantizedType(op_info.op->getResult(0));
+  if (module::isUniformQuantized(op_info.op->getResult(op_info.idx))) {
+    auto qtype = module::getUniformQuantizedType(op_info.op->getResult(0));
     qscale = qtype.getScale();
     if (isa<top::InputOp>(op_info.op->getResult(0).getDefiningOp())) {
       qscale = 1. / qscale;

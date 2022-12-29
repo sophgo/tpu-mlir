@@ -10,8 +10,8 @@
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -26,7 +26,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
@@ -93,11 +93,11 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   std::vector<Location> argLoc;
   for (auto input : fnInputs) {
     argType.push_back(input.getType());
-    auto ori_input = Module::getOriValue(input);
+    auto ori_input = module::getOriValue(input);
     if (auto op = ori_input.getDefiningOp()) {
       argLoc.push_back(op->getLoc());
     } else {
-      argLoc.push_back(Module::getLoc());
+      argLoc.push_back(module::getLoc());
     }
   }
   for (auto output : fnOutputs) {
@@ -105,19 +105,19 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   }
   int64_t id = SubFunction::count - 1;
   std::string func_name = "subfunc_" + std::to_string(id);
-  OpBuilder builder(Module::getCtx());
+  OpBuilder builder(module::getCtx());
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
   attrs.push_back(
       builder.getNamedAttr("mode", builder.getStringAttr(sf->mode)));
   auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
                                         llvm::ArrayRef<Type>{resType});
-  auto fnOp = FuncOp::create(Module::getLoc(), func_name, fnType,
+  auto fnOp = FuncOp::create(module::getLoc(), func_name, fnType,
                              ArrayRef<NamedAttribute>(attrs));
   auto block = fnOp.addEntryBlock();
   builder.setInsertionPointAfterValue(fnOutputs.back());
   func::CallOp callOp = builder.create<func::CallOp>(
-      Module::getLoc(), func_name, resType, fnInputs);
+      module::getLoc(), func_name, resType, fnInputs);
   for (auto it : llvm::enumerate(callOp.getResults())) {
     fnOutputs[it.index()].replaceUsesWithIf(
         it.value(), [&](OpOperand &operand) {
@@ -129,9 +129,9 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   top::NoneOp noneOp;
   if (sf->have_none) {
     noneOp =
-        builder.create<top::NoneOp>(Module::getLoc(), builder.getNoneType());
+        builder.create<top::NoneOp>(module::getLoc(), builder.getNoneType());
   }
-  auto retOp = builder.create<func::ReturnOp>(Module::getLoc(), fnOutputs);
+  auto retOp = builder.create<func::ReturnOp>(module::getLoc(), fnOutputs);
   for (auto op : sf->ops) {
     if (isa<top::NoneOp>(op)) {
       continue;
@@ -143,7 +143,7 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
     }
     op->moveBefore(retOp);
   }
-  Module::push_back(fnOp);
+  module::push_back(fnOp);
   for (auto it : llvm::enumerate(fnInputs)) {
     auto arg = block->getArgument(it.index());
     arg.setLoc(argLoc[it.index()]);
@@ -180,20 +180,20 @@ class SubnetDividePass : public SubnetDivideBase<SubnetDividePass> {
 public:
   SubnetDividePass() {}
   void runOnOperation() override {
-    if (!Module::isState(Module::State::TPU_REORDERED)) {
+    if (!module::isState(module::State::TPU_REORDERED)) {
       llvm_unreachable("module should be reordered");
     }
-    if (Module::isCV18xx()) {
+    if (module::isCV18xx()) {
       divide_func_cv();
     } else {
       divide_func_bm();
     }
-    Module::removeUnusedOp();
-    Module::setState(Module::State::TPU_DIVIDED);
+    module::removeUnusedOp();
+    module::setState(module::State::TPU_DIVIDED);
   }
 
   void divide_func_cv() {
-    auto mainFunc = Module::getMainFuncOp();
+    auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
@@ -230,7 +230,7 @@ public:
   }
 
   void divide_func_bm() {
-    auto mainFunc = Module::getMainFuncOp();
+    auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,

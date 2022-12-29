@@ -21,7 +21,7 @@ void MaxLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxOp op,
   int64_t o_zp;
   double o_scale;
   bool sign = true;
-  Quant::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
+  module::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
   std::vector<int> coeff_v(nInputs, 1);
   std::vector<float> qscale(nInputs);
   for (int i = 0; i < nInputs; i++) {
@@ -29,7 +29,7 @@ void MaxLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxOp op,
     int64_t i_zp;
     auto input = op->getOperand(i);
     operands.push_back(input);
-    Quant::getScaleAndZeroPoint(input, i_scale, i_zp, sign, false);
+    module::getScaleAndZeroPoint(input, i_scale, i_zp, sign, false);
     auto scale_f = i_scale / o_scale;
     qscale[i] = coeff_v[i] * scale_f;
   }

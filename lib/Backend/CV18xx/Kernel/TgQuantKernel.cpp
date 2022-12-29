@@ -14,8 +14,6 @@
 
 // convert fmt:
 //    support I8/BF16/F32 => I8/BF16/F32, && from != to
-using namespace mlir;
-using namespace tpu_mlir;
 
 namespace tpu_mlir {
 namespace backend {

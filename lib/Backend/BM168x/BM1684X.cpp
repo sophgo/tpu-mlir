@@ -8,12 +8,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 using namespace mlir;
 
 uint32_t BM1684X::get_bdc_len(int bdc_num, int group_id) {

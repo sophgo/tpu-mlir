@@ -11,12 +11,11 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -27,16 +26,16 @@ void tpu::SubOp::codegen_global_cv18xx(int64_t layer_id) {
   int input_num = inputs().size();
   assert(input_num == 2);
   int64_t n, c, h, w, bn, bc, bh, bw;
-  Module::getNCHW(inputs()[0], n, c, h, w, false);
-  Module::getNCHW(inputs()[1], bn, bc, bh, bw, false);
+  module::getNCHW(inputs()[0], n, c, h, w, false);
+  module::getNCHW(inputs()[1], bn, bc, bh, bw, false);
   std::vector<gaddr_t> ga_inputs;
-  gaddr_t ga_a = Module::getAddress(inputs()[0]);
-  gaddr_t ga_b = Module::getAddress(inputs()[1]);
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_a = module::getAddress(inputs()[0]);
+  gaddr_t ga_b = module::getAddress(inputs()[1]);
+  gaddr_t ga_output = module::getAddress(output());
 
-  if (Quant::isUniformQuantized(output())) {
-    auto multiplier_v = Module::getI64Array(multipliers(), input_num, 1);
-    auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+  if (module::isUniformQuantized(output())) {
+    auto multiplier_v = module::getI64Array(multipliers(), input_num, 1);
+    auto rshift_v = module::getI64Array(rshifts(), 1, 0);
     std::vector<int32_t> multiplier;
     multiplier.assign(multiplier_v->begin(), multiplier_v->end());
 

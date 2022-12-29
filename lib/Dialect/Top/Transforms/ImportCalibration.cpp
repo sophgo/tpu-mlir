@@ -9,8 +9,8 @@
 
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -22,7 +22,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace top {
 
@@ -40,14 +40,14 @@ public:
     // llvm::errs() << "import calibration table:" << this->tableFile
     //              << ", is asymmetric " << this->isAsymmetric << "\n";
     auto module = getOperation();
-    if (!Module::isState(Module::State::TOP_F32)) {
+    if (!module::isState(module::State::TOP_F32)) {
       module.dump();
       llvm_unreachable("wrong mlir state");
     }
     OpBuilder builder(module);
     std::map<std::string, cali_info> calibration_map;
     std::map<std::string, cali_info> calibration_map_int4;
-    std::map<std::string, std::shared_ptr<std::vector<double>>>
+    std::map<std::string, f64_array_t>
         per_chan_scales_map;
     std::ifstream infile(this->tableFile);
     if (!infile) {
@@ -118,7 +118,7 @@ public:
               continue;
             }
 
-            auto name = Module::getName(value).str();
+            auto name = module::getName(value).str();
             cali_info info;
             if (calibration_map.find(name) != calibration_map.end()) {
               info = calibration_map[name];
@@ -170,7 +170,7 @@ public:
           }
         } else if (isa<WeightOp>(op)) {
           auto user = op->getUsers().begin();
-          std::string str = Module::getName(*user).str() + "_weight";
+          std::string str = module::getName(*user).str() + "_weight";
           if (per_chan_scales_map.count(str)) {
             op->setAttr("scale", builder.getF64ArrayAttr(ArrayRef<double>{
                                      *per_chan_scales_map[str]}));
@@ -181,12 +181,12 @@ public:
           OpBuilder builder(op);
           double scale;
           int64_t zeropoint;
-          auto name = Module::getName(op->getResults()[0]).str();
+          auto name = module::getName(op->getResults()[0]).str();
           for (auto user:op->getUsers()) {
             if (!isa<top::ConvOp, top::MatMulOp>(user)) {
               if (calibration_map.find(name) != calibration_map.end()) {
                 auto &info = calibration_map[name];
-                Quant::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint);
+                module::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint);
                 op->setAttr("out_int8_scale", builder.getF64FloatAttr(scale));
                 op->setAttr("out_int8_zp", builder.getF64FloatAttr((double)zeropoint));
               }
@@ -196,10 +196,10 @@ public:
 
           auto preOp = op->getOperands()[0].getDefiningOp();
           if (!isa<top::ConvOp, top::MatMulOp>(preOp) && !isa<InputOp>(preOp)) {
-            name = Module::getName(op->getOperands()[0]).str();
+            name = module::getName(op->getOperands()[0]).str();
             if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
               auto &info = calibration_map_int4[name];
-              Quant::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint, 4);
+              module::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint, 4);
               op->setAttr("in_int4_scale", builder.getF64FloatAttr(scale));
               op->setAttr("in_int4_zp", builder.getF64FloatAttr((double)zeropoint));
             }
@@ -207,8 +207,8 @@ public:
         }
       });
     }
-    Module::updateModuleTypes();
-    Module::setState(Module::State::TOP_CALIBRATED);
+    module::updateModuleTypes();
+    module::setState(module::State::TOP_CALIBRATED);
   }
   void getMinMax(Operation *op, const cali_info &info, double &min,
                  double &max) {

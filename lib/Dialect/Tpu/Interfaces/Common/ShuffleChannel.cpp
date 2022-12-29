@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 LogicalResult tpu::ShuffleChannelOp::init(InferenceParameter &p) { return success(); }
 void tpu::ShuffleChannelOp::deinit(InferenceParameter &p) {}
 
@@ -25,7 +23,7 @@ LogicalResult tpu::ShuffleChannelOp::inference(InferenceParameter &p) {
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
   std::vector<int64_t> input_shape;
-  Module::getShapeVec(this->input(), input_shape);
+  module::getShapeVec(this->input(), input_shape);
   int64_t n = input_shape[0];
   int64_t c = input_shape[1];
   int64_t frame_size = input_shape[2] * input_shape[3];

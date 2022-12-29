@@ -17,8 +17,8 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool in_sign, out_sign;
-  Quant::getScaleAndZeroPoint(in, in_scale, in_zp, in_sign, asymmetric);
-  Quant::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, asymmetric);
+  module::getScaleAndZeroPoint(in, in_scale, in_zp, in_sign, asymmetric);
+  module::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, asymmetric);
   int64_t min = in_sign ? -128 : 0;
   int64_t max = in_sign ? 127 : 255;
   auto op = out.getDefiningOp();
@@ -31,7 +31,7 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
       double data = (i - in_zp) * in_scale;
       data = func(data) / out_scale + out_zp;
       int index = i < 0 ? 256 + i : i;
-      table[index] = Quant::to_int8(data);
+      table[index] = to_int8(data);
     }
     return top::WeightOp::create(out.getDefiningOp(), "table", table,
                                  table_type);
@@ -41,7 +41,7 @@ Value create_lookup_table(Value in, Value out, bool asymmetric,
       double data = (i - in_zp) * in_scale;
       data = func(data) / out_scale + out_zp;
       int index = i < 0 ? 256 + i : i;
-      table[index] = Quant::to_uint8(data);
+      table[index] = to_uint8(data);
     }
     return top::WeightOp::create(out.getDefiningOp(), "table", table,
                                  table_type);
@@ -139,7 +139,7 @@ void bf16_lut_slope(float *input, float *output, int size, float *base_table,
     float rescale_bf16_input =
         BF16(BF16(input[i] - offset, (offset != 0)) * scale);
     // get interger part
-    int rescale_input_i8 = Quant::to_int8(rescale_bf16_input, ROUNDING_DOWN);
+    int rescale_input_i8 = to_int8(rescale_bf16_input, ROUNDING_DOWN);
     // get delta x (x - x0)
     float delta_x = BF16(rescale_bf16_input - rescale_input_i8);
     // get slope

@@ -11,13 +11,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -61,7 +60,7 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
   auto attr = op.parseParam();
@@ -74,7 +73,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   filter_reorder(filter_i8, filter_shape);
 
   OpBuilder builder(getContext());
-  auto elem_type = Module::getStorageType(op.filter());
+  auto elem_type = module::getStorageType(op.filter());
   auto filter_type = RankedTensorType::get(filter_shape, elem_type);
   auto new_filter =
       top::WeightOp::create(op, "reordered", *filter_i8, filter_type);
@@ -84,7 +83,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   if (attr.has_bias) {
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto new_type =
-        RankedTensorType::get(bias_shape, Module::getStorageType(op.bias()));
+        RankedTensorType::get(bias_shape, module::getStorageType(op.bias()));
     op.bias().setType(new_type);
   }
   return success();
@@ -102,7 +101,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
                                        attr.kw};
   filter_reorder(filter_u16, filter_shape);
 
-  auto filter_type = Module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.filter());
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
   auto newFilterOp =
       top::WeightOp::create(op, "reordered", *filter_u16, new_filter_type);
@@ -113,7 +112,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
     auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto new_type =
-        RankedTensorType::get(bias_shape, Module::getStorageType(op.bias()));
+        RankedTensorType::get(bias_shape, module::getStorageType(op.bias()));
     op.bias().setType(new_type);
   }
   return success();
@@ -122,7 +121,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, BFloat16Type>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isBF16())
+  if (!module::getStorageType(op.filter()).isBF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -130,7 +129,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, BFloat16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, Float16Type>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isF16())
+  if (!module::getStorageType(op.filter()).isF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -138,11 +137,11 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.filter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
-  auto out_type = Module::getStorageType(op.output());
+  auto out_type = module::getStorageType(op.output());
   // filter reorder
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   int64_t filter_shape[5];
@@ -237,15 +236,15 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   conv3d_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.input_global_addr = Module::getAddress(input());
-  spec.weight_global_addr = Module::getAddress(filter());
-  spec.output_global_addr = Module::getAddress(output());
+  spec.input_global_addr = module::getAddress(input());
+  spec.weight_global_addr = module::getAddress(filter());
+  spec.output_global_addr = module::getAddress(output());
   if (attr.has_bias) {
     spec.has_bias = 1;
-    spec.bias_global_addr = Module::getAddress(bias());
+    spec.bias_global_addr = module::getAddress(bias());
     spec.bias_dtype = BM168x::getDataType(bias());
   }
-  auto shape = Module::getShape(input());
+  auto shape = module::getShape(input());
   for (size_t i = 0; i < shape.size(); ++i) {
     spec.input_shape[i] = shape[i];
   }
@@ -271,10 +270,10 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   spec.output_dtype = BM168x::getDataType(output());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
-  if (Quant::isUniformQuantized(input())) {
-    auto out_etype = Module::getStorageType(output());
+  if (module::isUniformQuantized(input())) {
+    auto out_etype = module::getStorageType(output());
     spec.do_relu = out_etype.isUnsignedInteger(8);
-    auto in_qtype = Quant::getUniformQuantizedType(input());
+    auto in_qtype = module::getUniformQuantizedType(input());
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;
@@ -394,10 +393,10 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.output_dtype = BM168x::getDataType(output());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
-  if (Quant::isUniformQuantized(input())) {
-    auto out_etype = Module::getStorageType(output());
+  if (module::isUniformQuantized(input())) {
+    auto out_etype = module::getStorageType(output());
     spec.do_relu = out_etype.isUnsignedInteger(8);
-    auto in_qtype = Quant::getUniformQuantizedType(input());
+    auto in_qtype = module::getUniformQuantizedType(input());
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;

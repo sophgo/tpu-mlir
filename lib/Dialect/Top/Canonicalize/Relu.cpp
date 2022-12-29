@@ -11,12 +11,12 @@
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace mlir;
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-using namespace tpu_mlir::helper;
+
 
 struct TopFuseRelu : public OpRewritePattern<ReluOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -68,7 +68,7 @@ struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
       if (false == inOp->hasTrait<SupportFuseRelu>()) {
         return failure();
       }
-      auto inOp_name = Module::getName(inOp).str();
+      auto inOp_name = module::getName(inOp).str();
       std::string new_name = inOp_name + "_move_ahead_relu";
       auto nameAttr = rewriter.getStringAttr(new_name);
       auto newOp = rewriter.create<ReluOp>(
@@ -79,7 +79,7 @@ struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
 
     // change the concat Op's name to avoid comparison between concat before and after relu
     concatOp->setLoc(NameLoc::get(
-        rewriter.getStringAttr(Module::getName(formerOp).str() + "_relu")));
+        rewriter.getStringAttr(module::getName(formerOp).str() + "_relu")));
 
     rewriter.replaceOp(op, {concatOp});
     return success();

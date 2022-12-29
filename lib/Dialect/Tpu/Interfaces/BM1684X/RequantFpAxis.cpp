@@ -9,13 +9,12 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 typedef struct {
@@ -43,10 +42,10 @@ typedef struct {
 void tpu::RequantFpAxisOp::codegen_global_bm1684x() {
   requant_fp_param_t param = {0};
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
-  param.input_addr = Module::getAddress(input());
-  param.requant_addr = Module::getAddress(quant());
-  param.output_addr = Module::getAddress(output());
+  module::getNCHW(input(), n, c, h, w);
+  param.input_addr = module::getAddress(input());
+  param.requant_addr = module::getAddress(quant());
+  param.output_addr = module::getAddress(output());
   param.n = (int)n;
   param.c = (int)c;
   param.h = (int)h;
@@ -81,7 +80,7 @@ void tpu::RequantFpAxisOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -100,7 +99,7 @@ void tpu::RequantFpAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                                  void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto quant_gi = LocalGenInterface::getGroupInfo(quant(), n_step, h_step);

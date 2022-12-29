@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -33,14 +32,14 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
   const bool have_bias = !bias().getType().isa<NoneType>();
   const bool need_mean = !mean().getType().isa<NoneType>();
   const bool need_rstd = !rstd().getType().isa<NoneType>();
-  const auto input_shape = Module::getShape(input());
+  const auto input_shape = module::getShape(input());
   layer_norm_global_param_t param = {0};
-  param.input_addr = Module::getAddress(input());
-  param.weight_addr = Module::getAddress(weight());
-  param.bias_addr = have_bias ? Module::getAddress(bias()) : UINT64_MAX;
-  param.output_addr = Module::getAddress(output());
-  param.mean_addr = Module::getAddress(mean());
-  param.rstd_addr = Module::getAddress(rstd());
+  param.input_addr = module::getAddress(input());
+  param.weight_addr = module::getAddress(weight());
+  param.bias_addr = have_bias ? module::getAddress(bias()) : UINT64_MAX;
+  param.output_addr = module::getAddress(output());
+  param.mean_addr = module::getAddress(mean());
+  param.rstd_addr = module::getAddress(rstd());
   param.dims = input_shape.size();
   for (int i = 0; i < param.dims; ++i) {
     param.shape[i] = (int)input_shape[i];
@@ -65,7 +64,7 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //                                                 int64_t out_hslice) {
 //   // TODO: supports group-3d case
 //   int64_t n, c, h, w;
-//   Module::getNCHW(input(), n, c, h, w);
+//   module::getNCHW(input(), n, c, h, w);
 //   int num = in_nslice; // num = depth * nslice
 //   int in_wslice = 1;
 //   int c_per_npu = ceiling_func(c, BM1684X::NPU_NUM);
@@ -88,13 +87,13 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //   // TODO: support group-3d case
 //   assert(!need_mean && !need_rstd);
 //   int64_t n, c, h, w;
-//   Module::getNCHW(input(), n, c, h, w);
+//   module::getNCHW(input(), n, c, h, w);
 //   auto gi = getGroupInfo(n_step, h_step);
 //   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 //   layer_norm_local_param_t param = {0};
 //   param.input_addr = (uint32_t)in_gi.out_addr;
-//   param.weight_addr = Module::getAddress(weight());
-//   param.bias_addr = have_bias ? Module::getAddress(bias()): UINT64_MAX;
+//   param.weight_addr = module::getAddress(weight());
+//   param.bias_addr = have_bias ? module::getAddress(bias()): UINT64_MAX;
 //   param.output_addr = (uint32_t)gi.out_addr;
 //   param.buffer_addr = (uint32_t)gi.buffer_addr;
 //   // NOTE: split mean and rstd if needed

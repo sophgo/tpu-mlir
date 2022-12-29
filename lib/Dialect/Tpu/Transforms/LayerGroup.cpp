@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BlockAndValueMapping.h"
@@ -24,7 +24,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 namespace tpu_mlir {
 namespace tpu {
 
@@ -78,7 +78,7 @@ public:
   LayerGroupPass() {}
   void runOnOperation() override {
     auto func = getOperation();
-    if (func.getName() == "main" || Module::getFuncMode(func) != "TPU") {
+    if (func.getName() == "main" || module::getFuncMode(func) != "TPU") {
       return;
     }
     auto ctx = func.getContext();

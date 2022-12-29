@@ -9,21 +9,19 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::LutOp::init(InferenceParameter &p) { return success(); }
 void tpu::LutOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
-  auto num_element = Module::getNumElements(input());
-  auto stype = Module::getStorageType(input());
+  auto num_element = module::getNumElements(input());
+  auto stype = module::getStorageType(input());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     int offset = p.inputs[0][i];

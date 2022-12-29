@@ -25,9 +25,9 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
   double in_scale;
   std::vector<Value> operands;
   operands.push_back(op.input());
-  operands.push_back(Module::getNoneOp(op));
-  operands.push_back(Module::getNoneOp(op));
-  Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
+  operands.push_back(module::getNoneOp(op));
+  operands.push_back(module::getNoneOp(op));
+  module::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
 
   std::vector<NamedAttribute> attrs;
   auto val = op.val().convertToDouble();

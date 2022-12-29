@@ -12,9 +12,6 @@
 
 #define DEBUG_TYPE "TgPoolMaskKernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
-
 namespace tpu_mlir {
 namespace backend {
 void TgPoolMaskKernel::init(uint32_t layer_id, gaddr_t input_gaddr,

@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -24,11 +23,11 @@ using namespace tpu_mlir::backend;
 // int8
 void tpu::MulConstOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  auto input_type = Module::getStorageType(input());
+  auto input_type = module::getStorageType(input());
 
   constbinary_global_spec_t param = {0};
   param.common.binary_type = BINARY_MUL;
@@ -37,7 +36,7 @@ void tpu::MulConstOp::codegen_global_bm1684x() {
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
-  if (Quant::isUniformQuantized(input())) {
+  if (module::isUniformQuantized(input())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.common.B_dtype = DTYPE_INT8;
     param.common.scale_A = multiplier();
@@ -78,7 +77,7 @@ void tpu::MulConstOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -98,7 +97,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  auto input_type = Module::getStorageType(input());
+  auto input_type = module::getStorageType(input());
   auto gi = getGroupInfo(n_step, h_step);
 
   constbinary_local_spec_t param = {0};
@@ -108,7 +107,7 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
-  if (Quant::isUniformQuantized(input())) {
+  if (module::isUniformQuantized(input())) {
     param.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
     param.common.B_dtype = DTYPE_INT8;
     param.common.scale_A = multiplier();

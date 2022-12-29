@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+#include "tpu_mlir/Support/Module.h"
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -47,12 +46,12 @@ typedef struct {
 #endif
 
 void tpu::SplitOp::codegen_global_bm1684x() {
-  std::vector<int64_t> input_shape = Module::getShape(input());
+  std::vector<int64_t> input_shape = module::getShape(input());
   split_global_param_t param = {0};
-  param.input_addr = Module::getAddress(input());
+  param.input_addr = module::getAddress(input());
   std::vector<unsigned long long> output_addr;
   for (int i = 0; i < num(); ++i) {
-    output_addr.push_back(Module::getAddress(outputs()[i]));
+    output_addr.push_back(module::getAddress(outputs()[i]));
   }
   param.output_addr = output_addr.data();
   param.shape_dim = input_shape.size();

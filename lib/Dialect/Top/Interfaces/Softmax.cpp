@@ -10,23 +10,21 @@
 #include "tpu_mlir/Support/Dnnl/Softmax.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::SoftmaxOp::getFLOPs() {
   //   2*n          -- compute shifted logits
   //   n            -- exp of shifted logits
   //   2*n          -- compute softmax from exp of shifted logits
-  return Module::getNumElements(input()) * (5 + log() ? 1 : 0);
+  return module::getNumElements(input()) * (5 + log() ? 1 : 0);
 }
 
 LogicalResult top::SoftmaxOp::init(InferenceParameter &p) {
   auto softmax = new Softmax();
   auto axis_ = axis();
-  auto input_shape = Module::getShape(input());
+  auto input_shape = module::getShape(input());
   softmax_attr_t attr;
   int channel = input_shape[axis_];
 

@@ -25,17 +25,17 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<NamedAttribute> attrs;
   auto p = op.parseParam();
   assert(p.batch == 1); // only for fullyconnected now
-  auto th_output = Quant::getThreshold(op.output());
-  auto th_input = Quant::getThreshold(op.input());
+  auto th_output = module::getThreshold(op.output());
+  auto th_input = module::getThreshold(op.input());
   auto filterOp = cast<top::WeightOp>(op.right().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   double filter_max = findMaxabs(filter_f32->data(), filter_f32->size());
   int rshift =
-      calRightShiftNum(filter_max, th_input, th_output, Quant::BITS_INT8);
+      calRightShiftNum(filter_max, th_input, th_output, BITS_INT8);
   rshift = rshift >= 0 ? rshift : 0;
   std::shared_ptr<std::vector<int16_t>> bias_int16;
   if (p.with_bias) {
-    float bias_scale = 1.0 * (1 << rshift) * Quant::QMAX_INT8 / th_output;
+    float bias_scale = 1.0 * (1 << rshift) * QMAX_INT8 / th_output;
     auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
     auto bias_f32 = biasOp.read<float>();
     bias_int16 = std::make_shared<std::vector<int16_t>>(bias_f32->size());
@@ -44,7 +44,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 
     while (overflow_ratio > 0.03 && rshift > 0) {
       rshift--;
-      bias_scale = 1.0 * (1 << rshift) * Quant::QMAX_INT8 / th_output;
+      bias_scale = 1.0 * (1 << rshift) * QMAX_INT8 / th_output;
       overflow_ratio = quantizeToInt16(bias_f32->data(), bias_int16->data(),
                                        bias_f32->size(), bias_scale);
     }

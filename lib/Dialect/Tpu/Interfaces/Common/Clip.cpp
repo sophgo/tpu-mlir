@@ -9,12 +9,8 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::ClipOp::init(InferenceParameter &p) { return success(); }
 void tpu::ClipOp::deinit(InferenceParameter &p) {}
@@ -22,8 +18,8 @@ void tpu::ClipOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::ClipOp::inference(InferenceParameter &p) {
   auto min_v = static_cast<float>(minAttr().getValueAsDouble());
   auto max_v = static_cast<float>(maxAttr().getValueAsDouble());
-  auto num_element = Module::getNumElements(output());
-  assert(!Quant::isUniformQuantized(output()) && "Not Implemented");
+  auto num_element = module::getNumElements(output());
+  assert(!module::isUniformQuantized(output()) && "Not Implemented");
 
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {

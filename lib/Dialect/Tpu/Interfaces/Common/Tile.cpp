@@ -9,20 +9,18 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::TileOp::init(InferenceParameter &p) { return success(); }
 void tpu::TileOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
-  auto out_shape = Module::getShape(output());
-  auto in_shape = Module::getShape(input());
+  auto out_shape = module::getShape(output());
+  auto in_shape = module::getShape(input());
   auto signed_axis = axisAttr().getValue().getSExtValue();
   auto axis_ = signed_axis > 0 ? signed_axis : 0;
   int tile_ = tile();

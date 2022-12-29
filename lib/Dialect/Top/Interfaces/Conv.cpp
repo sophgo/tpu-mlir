@@ -9,11 +9,10 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
+
 
 conv_attr_t top::ConvOp::parseParam() {
   conv_attr_t p = {0};
@@ -22,11 +21,11 @@ conv_attr_t top::ConvOp::parseParam() {
   p.do_relu = do_relu();
   p.relu_limit = relu_limit().convertToDouble();
   p.has_bias = !bias().getType().isa<NoneType>();
-  auto kernel = Module::getI64Array(kernel_shape());
-  auto pads_v = Module::getI64Array(pads());
-  auto strides_v = Module::getI64Array(strides());
-  auto dilation = Module::getI64Array(dilations(), kernel->size(), 1);
-  auto ins = Module::getI64Array(inserts(), kernel->size(), 0);
+  auto kernel = module::getI64Array(kernel_shape());
+  auto pads_v = module::getI64Array(pads());
+  auto strides_v = module::getI64Array(strides());
+  auto dilation = module::getI64Array(dilations(), kernel->size(), 1);
+  auto ins = module::getI64Array(inserts(), kernel->size(), 0);
   p.n = i_s[0];
   p.ic = i_s[1];
   p.oc = o_s[1];
@@ -94,7 +93,7 @@ conv_attr_t top::ConvOp::parseParam() {
 int64_t top::ConvOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.has_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
-  return Module::getNumElements(output()) *
+  return module::getNumElements(output()) *
          (attr.kd * attr.kh * attr.kw * attr.ic / attr.groups * 2 + extra);
 }
 

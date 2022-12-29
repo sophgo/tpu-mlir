@@ -10,18 +10,16 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <llvm/Support/Debug.h>
 
 #define DEBUG_TYPE "detection-output"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::DetectionOutputOp::getFLOPs() {
-  return Module::getNumElements(output());
+  return module::getNumElements(output());
 }
 
 LogicalResult top::DetectionOutputOp::init(InferenceParameter &p) {
@@ -41,9 +39,9 @@ LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
   std::vector<int64_t> loc_shape;
   std::vector<int64_t> conf_shape;
   std::vector<int64_t> prior_shape;
-  Module::getShapeVec(this->inputs()[0], param.loc_shape);
-  Module::getShapeVec(this->inputs()[1], param.conf_shape);
-  Module::getShapeVec(this->inputs()[2], param.prior_shape);
+  module::getShapeVec(this->inputs()[0], param.loc_shape);
+  module::getShapeVec(this->inputs()[1], param.conf_shape);
+  module::getShapeVec(this->inputs()[2], param.prior_shape);
 
   std::string str_code_type = this->code_type().str();
   if (str_code_type == "CORNER") {

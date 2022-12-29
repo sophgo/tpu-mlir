@@ -9,13 +9,12 @@
 
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-using namespace tpu_mlir::helper;
+
 
 struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -30,7 +29,7 @@ struct TopBatchNormToScale : public OpRewritePattern<BatchNormOp> {
     auto mean_f32 = mean.read<float>();
     auto variance_f32 = variance.read<float>();
 
-    auto shape = Module::getShape(op.input());
+    auto shape = module::getShape(op.input());
     auto channel = shape.size() > 1 ? shape[1] : shape[0];
 
     std::shared_ptr<std::vector<float>> gamma_f32;

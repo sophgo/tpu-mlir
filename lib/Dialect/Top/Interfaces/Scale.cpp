@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::ScaleOp::getFLOPs() {
-  return Module::getNumElements(output()) *
+  return module::getNumElements(output()) *
          (2 + do_relu() ? 1 : 0);
 }
 
@@ -26,7 +24,7 @@ void top::ScaleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ScaleOp::inference(InferenceParameter &p) {
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   const float *src = p.inputs[0];
   const float *scale = p.inputs[1];
   const float *bias = p.inputs[2];
@@ -43,7 +41,7 @@ LogicalResult top::ScaleOp::inference(InferenceParameter &p) {
     }
   }
 
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
   if (do_relu()) {
     function_relu(p.outputs[0], p.outputs[0], num_elem);
   }

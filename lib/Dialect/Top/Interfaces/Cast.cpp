@@ -9,14 +9,12 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
 
-int64_t top::CastOp::getFLOPs() { return Module::getNumElements(output()); }
+
+int64_t top::CastOp::getFLOPs() { return module::getNumElements(output()); }
 
 LogicalResult top::CastOp::init(InferenceParameter &p) { return success(); }
 void top::CastOp::deinit(InferenceParameter &p) {}

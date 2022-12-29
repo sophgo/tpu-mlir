@@ -16,12 +16,12 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::ScaleOp op) const {
   auto ctx = op->getContext();
   auto output = op->getResult(0);
-  auto sType = Module::getStorageType(output);
-  auto shape = Module::getShape(output);
+  auto sType = module::getStorageType(output);
+  auto shape = module::getShape(output);
   Type newType = output.getType();
   if (sType.isa<FloatType>() == false) {
-    if (Quant::isCalibratedType(output)) {
-      auto caliType = Quant::getCalibratedType(output);
+    if (module::isCalibratedType(output)) {
+      auto caliType = module::getCalibratedType(output);
       auto newCaliType = quant::CalibratedQuantizedType::get(
           Float32Type::get(ctx), caliType.getMin(), caliType.getMax());
       newType = RankedTensorType::get(shape, newCaliType);
@@ -37,7 +37,7 @@ void ScaleLowering::LoweringF32(PatternRewriter &rewriter,
     operands.push_back(op->getOperand(i));
   }
   // lshift
-  auto none = Module::getNoneOp(op);
+  auto none = module::getNoneOp(op);
   operands.push_back(none);
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands,
                                             op->getAttrs());
@@ -49,13 +49,13 @@ void ScaleLowering::LoweringINT4(PatternRewriter &rewriter, top::ScaleOp op,
 void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
                                  bool asymmetric) const {
   int64_t n, c, h, w;
-  Module::getNCHW(op.output(), n, c, h, w);
+  module::getNCHW(op.output(), n, c, h, w);
 
   std::vector<Value> operands;
   int64_t in_zp, out_zp;
   double in_scale, out_scale;
-  Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
-  Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
 
   auto scaleOp = cast<top::WeightOp>(op.scale().getDefiningOp());
   auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
@@ -162,13 +162,13 @@ void ScaleLowering::LoweringBF16(PatternRewriter &rewriter,
     }
   }
   // lshift
-  auto none = Module::getNoneOp(op);
+  auto none = module::getNoneOp(op);
   operands.push_back(none);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto op_name = Module::getName(op.getOperation()).str();
+  auto op_name = module::getName(op.getOperation()).str();
   auto newType = getQuantBF16Type(op->getResult(0));
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
@@ -189,13 +189,13 @@ void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
     }
   }
   // lshift
-  auto none = Module::getNoneOp(op);
+  auto none = module::getNoneOp(op);
   operands.push_back(none);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto op_name = Module::getName(op.getOperation()).str();
+  auto op_name = module::getName(op.getOperation()).str();
   auto newType = getQuantF16Type(op->getResult(0));
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }

@@ -15,18 +15,18 @@ namespace cv18xx {
 void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                  bool asymmetric) const {
   int64_t N, C, H, W;
-  Module::getNCHW(op.output(), N, C, H, W);
-  auto src_shape = Module::getShape(op.input());
-  auto slope_shape = Module::getShape(op.slope());
-  auto num_slope = Module::getNumElements(op.slope());
+  module::getNCHW(op.output(), N, C, H, W);
+  auto src_shape = module::getShape(op.input());
+  auto slope_shape = module::getShape(op.slope());
+  auto num_slope = module::getNumElements(op.slope());
   assert(num_slope == C);
 
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
 
   //quantize positive
-  auto threshold_x = Quant::getThreshold(op.input());
-  auto threshold_y = Quant::getThreshold(op.output());
+  auto threshold_x = module::getThreshold(op.input());
+  auto threshold_y = module::getThreshold(op.output());
   double qscale_pos = threshold_x / threshold_y;
   int64_t multiplier_pos, rshift_pos;
   if (std::fabs(threshold_x - threshold_y) <

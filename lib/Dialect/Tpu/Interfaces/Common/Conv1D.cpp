@@ -10,13 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 conv_attr_t tpu::Conv1DOp::parseParam() {
   conv_attr_t p = {0};
@@ -32,22 +30,22 @@ conv_attr_t tpu::Conv1DOp::parseParam() {
   p.ih = i_s[2];
   p.oc = o_s[1];
   p.oh = o_s[2];
-  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(kernel_shape());
   p.kh = kernel->at(0);
-  auto pads_v = Module::getI64Array(pads());
+  auto pads_v = module::getI64Array(pads());
   p.pht = pads_v->at(0);
   p.phb = pads_v->at(1);
-  if (Quant::isUniformQuantized(input())) {
-    p.pad_value = Quant::getUniformQuantizedType(input()).getZeroPoint();
+  if (module::isUniformQuantized(input())) {
+    p.pad_value = module::getUniformQuantizedType(input()).getZeroPoint();
   }
-  if (Quant::isUniformQuantized(filter())) {
-    p.kernel_zp = Quant::getUniformQuantizedType(filter()).getZeroPoint();
+  if (module::isUniformQuantized(filter())) {
+    p.kernel_zp = module::getUniformQuantizedType(filter()).getZeroPoint();
   }
-  auto strides_v = Module::getI64Array(strides());
+  auto strides_v = module::getI64Array(strides());
   p.sh = strides_v->at(0);
-  auto dilation = Module::getI64Array(dilations(), 1, 1);
+  auto dilation = module::getI64Array(dilations(), 1, 1);
   p.dh = dilation->at(0);
-  auto ins = Module::getI64Array(inserts(), 1, 0);
+  auto ins = module::getI64Array(inserts(), 1, 0);
   p.ins_h = ins->at(0);
   assert(p.ins_h == 0 && p.ins_w == 0);
   p.groups = group();
@@ -79,21 +77,21 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
   auto conv = (Conv *)p.handle;
   conv->run();
   // requant
-  auto out_type = Module::getStorageType(output());
-  auto num_elem = Module::getNumElements(output());
+  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (Quant::isUniformQuantized(output())) {
+  } else if (module::isUniformQuantized(output())) {
     int64_t n, c, h, w;
-    auto sType = Module::getStorageType(output());
-    Module::getNCHW(output(), n, c, h, w);
-    auto o_qtype = Quant::getUniformQuantizedType(output());
-    auto rshift_v = Module::getI64Array(rshift().value());
-    auto multiplier_v = Module::getI64Array(multiplier(), rshift_v->size(), 1);
+    auto sType = module::getStorageType(output());
+    module::getNCHW(output(), n, c, h, w);
+    auto o_qtype = module::getUniformQuantizedType(output());
+    auto rshift_v = module::getI64Array(rshift().value());
+    auto multiplier_v = module::getI64Array(multiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
     auto mode = quant_mode();
 #pragma omp parallel for schedule(static, omp_schedule(c))
@@ -113,8 +111,8 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
             v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift) +
                 o_qtype.getZeroPoint();
           }
-          p.outputs[0][offset] = sType.isUnsignedInteger(8) ? Quant::to_uint8(v)
-                                                            : Quant::to_int8(v);
+          p.outputs[0][offset] =
+              sType.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
         }
       }
     }

@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -26,9 +25,9 @@ void tpu::AddOp::codegen_global_bm1684x() {
   std::vector<int64_t> multi_v(2, 1);
   std::vector<int64_t> rshift_v(2, 0);
 
-  if (Quant::isUniformQuantized(inputs()[0], output())) {
-    auto m_v = Module::getI64Array(multipliers(), 2, 1);
-    auto r_v = Module::getI64Array(rshifts(), 2, 0);
+  if (module::isUniformQuantized(inputs()[0], output())) {
+    auto m_v = module::getI64Array(multipliers(), 2, 1);
+    auto r_v = module::getI64Array(rshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
   }
@@ -57,7 +56,7 @@ int64_t tpu::AddOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                           int64_t in_nslice, int64_t in_hslice,
                                           int64_t out_nslice,
                                           int64_t out_hslice) {
-  auto out_type = Module::getStorageType(output());
+  auto out_type = module::getStorageType(output());
   if (out_type.isInteger(8)) {
     // INT16 as middle result
     return 2 * out_lmem_bytes * sizeof(int16_t);
@@ -73,7 +72,7 @@ void tpu::AddOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
   auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
@@ -99,9 +98,9 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   std::vector<int64_t> multi_v(2, 1);
   std::vector<int64_t> rshift_v(2, 0);
-  if (Quant::isUniformQuantized(inputs()[0], output())) {
-    auto m_v = Module::getI64Array(multipliers(), 2, 1);
-    auto r_v = Module::getI64Array(rshifts(), 2, 0);
+  if (module::isUniformQuantized(inputs()[0], output())) {
+    auto m_v = module::getI64Array(multipliers(), 2, 1);
+    auto r_v = module::getI64Array(rshifts(), 2, 0);
     multi_v = *m_v.get();
     rshift_v = *r_v.get();
   }

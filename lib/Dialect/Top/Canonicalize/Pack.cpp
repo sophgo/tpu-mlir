@@ -8,14 +8,14 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
 using namespace mlir;
 using namespace tpu_mlir::top;
-using namespace tpu_mlir::helper;
+
 
 // for bert model, concat matmuls to batch matmul
 struct PackMatmulPattern : public OpRewritePattern<PackOp> {
@@ -66,7 +66,7 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
     auto l_split = cast<SplitOp>(l_split_op);
     auto r_split = cast<SplitOp>(r_split_op);
     rewriter.setInsertionPointAfter(op);
-    auto none = Module::getNoneOp(op);
+    auto none = module::getNoneOp(op);
     std::vector<NamedAttribute> attrs;
     if (op.do_relu()) {
       attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));

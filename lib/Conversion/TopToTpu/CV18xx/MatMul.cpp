@@ -74,16 +74,16 @@ static void quantizeWeightInt8ForFC(float *filter, float *bias, int64_t batch,
 void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                                   bool asymmetric) const {
   // for convert from Gru/LSTM
-  if (!Quant::isCalibratedType(op.output()) &&
-      !Quant::isUniformQuantized(op.output())) {
+  if (!module::isCalibratedType(op.output()) &&
+      !module::isUniformQuantized(op.output())) {
     LoweringBF16(rewriter, op);
     return;
   }
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   auto p = op.parseParam();
-  auto th_output = Quant::getThreshold(op.output());
-  auto th_input = Quant::getThreshold(op.input());
+  auto th_output = module::getThreshold(op.output());
+  auto th_input = module::getThreshold(op.input());
   std::vector<int64_t> multipliers;
   std::vector<int64_t> rshifts;
   mlir::Value right_operand = op.right();
@@ -129,7 +129,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     }
   } else {
     // matmul
-    auto th_right = Quant::getThreshold(op.right());
+    auto th_right = module::getThreshold(op.right());
     auto th_prod = th_right * th_input;
     auto qscale = th_prod / th_output / 127.0;
     multipliers.resize(1);

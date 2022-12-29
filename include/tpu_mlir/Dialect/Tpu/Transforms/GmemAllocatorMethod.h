@@ -14,7 +14,7 @@
 
 #include "mlir/Support/LLVM.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 namespace tpu_mlir {
 namespace tpu {

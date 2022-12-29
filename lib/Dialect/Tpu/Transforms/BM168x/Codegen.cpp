@@ -10,8 +10,8 @@
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
@@ -28,7 +28,7 @@
 using namespace llvm;
 using namespace mlir;
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 using namespace flatbuffers;
 namespace tpu_mlir {
 namespace tpu {
@@ -38,8 +38,8 @@ public:
   CodegenPass() {}
   void runOnOperation() override {
     module = getOperation();
-    assert(Module::isState(Module::State::TPU_ADDRESSED));
-    chip = Module::getChip();
+    assert(module::isState(module::State::TPU_ADDRESSED));
+    chip = module::getChip();
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
@@ -57,12 +57,12 @@ public:
     }
     std::vector<Value> inputs;
     std::vector<Value> outputs;
-    Module::getInputsOutputs(inputs, outputs);
+    module::getInputsOutputs(inputs, outputs);
 
-    auto coeff_addr = Module::getCoeffAddr();
-    auto coeff_size = Module::getCoeffSize();
-    auto neuron_addr = Module::getNeuronAddr();
-    auto neuron_size = Module::getNeuronSize();
+    auto coeff_addr = module::getCoeffAddr();
+    auto coeff_size = module::getCoeffSize();
+    auto neuron_addr = module::getNeuronAddr();
+    auto neuron_size = module::getNeuronSize();
     model_gen = std::make_shared<bmodel::ModelGen>();
     // add chip name
     model_gen->AddChip(chip.str());
@@ -74,7 +74,7 @@ public:
     auto neuron_sizes_fb = builder.CreateVector(neuron_sizes);
     // codegen all subnet
     cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
-    auto main_func = Module::getMainFuncOp();
+    auto main_func = module::getMainFuncOp();
     std::vector<Offset<bmodel::SubNet>> subnet_v;
     main_func.walk([&](func::CallOp call) {
       auto subnet = CreateSubNet(call);
@@ -95,7 +95,7 @@ public:
     npb.add_cmd_group(cmd_group);
     // create subnet
     npb.add_sub_net(subnets);
-    model_gen->AddNet(Module::getModuleName().str(), npb.Finish());
+    model_gen->AddNet(module::getModuleName().str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
     bm168x->end_env();
@@ -146,13 +146,13 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
   for (auto v : values) {
-    auto v_name = Module::getName(v).str();
-    auto type = Module::getStorageType(v);
-    auto shape = Module::getShape(v);
+    auto v_name = module::getName(v).str();
+    auto type = module::getStorageType(v);
+    auto shape = module::getShape(v);
     auto typeBytes = type.getIntOrFloatBitWidth() / 8;
     auto data_type = BM168x::getDataType(type);
     auto gmem_stmode = STORE_MODE_1N;
-    if (chip == Module::Chip::BM1684) {
+    if (chip == module::Chip::BM1684) {
       if (typeBytes == 1) {
         gmem_stmode = STORE_MODE_4N;
       } else if (typeBytes == 2) {
@@ -170,8 +170,8 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_mem_type(MEM_TYPE_TPU);
     float scale = 1.0f;
     int zero_point = 0;
-    if (Quant::isUniformQuantized(v)) {
-      auto qtype = Quant::getUniformQuantizedType(v);
+    if (module::isUniformQuantized(v)) {
+      auto qtype = module::getUniformQuantizedType(v);
       scale = qtype.getScale();
       if (isa<top::InputOp>(v.getDefiningOp())) {
         scale = 1.0 / qtype.getScale();
@@ -180,8 +180,8 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
       tb.add_scale(scale);
       tb.add_zero_point(zero_point);
     }
-    tb.add_device_addr(Module::getAddress(v));
-    tb.add_size(Module::getBytes(v));
+    tb.add_device_addr(module::getAddress(v));
+    tb.add_size(module::getBytes(v));
     tensor_v.push_back(tb.Finish());
   }
   return builder.CreateVector(tensor_v);
@@ -257,7 +257,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
   auto hsecs = gOp.hsecs();
   auto swpipl_stage_num = gOp.swpipl_stage_num();
   auto &body = gOp.body().front();
-  auto flow = Module::getI64Array(gOp.flow());
+  auto flow = module::getI64Array(gOp.flow());
   // 1. restore timestep_table from flow
   std::vector<std::vector<int64_t>> timestep_table;
   std::vector<int64_t> ts_row;
@@ -312,11 +312,11 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
 
         // add prefix to each cmd in profile.txt
-        std::string prefix = Module::getName(group_ops[id]).str();
+        std::string prefix = module::getName(group_ops[id]).str();
         if (ginfo.overstepped == false) {
-          if (Module::isBM1684Family()) {
+          if (module::isBM1684Family()) {
             lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
-          } else if (Module::isBM1684XFamily()) {
+          } else if (module::isBM1684XFamily()) {
             auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
             if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
               pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
@@ -356,12 +356,12 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
 void CodegenPass::codegen(Operation *op) {
   if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
     codegen_for_group(castOp);
-  } else if (Module::isOpInGroup(op)) {
+  } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (Module::isBM1684Family()) {
+    if (module::isBM1684Family()) {
       castOp.codegen_global_bm1684();
-    } else if (Module::isBM1684XFamily()) {
+    } else if (module::isBM1684XFamily()) {
       castOp.codegen_global_bm1684x();
     } else {
       llvm_unreachable("chip not support");
@@ -371,13 +371,13 @@ void CodegenPass::codegen(Operation *op) {
 
 Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
-  auto func = Module::getFuncOp(call.getCallee());
+  auto func = module::getFuncOp(call.getCallee());
   func.walk([&](Operation *op) { codegen(op); });
-  bm168x->after_codegen(Module::getFLOPs());
+  bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   std::vector<Value> inputs;
   std::vector<Value> outputs;
-  Module::getInputsOutputs(call, inputs, outputs);
+  module::getInputsOutputs(call, inputs, outputs);
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
   std::vector<int> next_id_v = {};
@@ -386,7 +386,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
       if (isa<func::ReturnOp>(user)) {
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
-        auto func = Module::getFuncOp(call.getCallee());
+        auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
         next_id_v.push_back(id);
       } else {

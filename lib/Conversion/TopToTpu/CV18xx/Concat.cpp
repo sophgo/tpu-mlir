@@ -43,7 +43,7 @@ static bool fusible(top::ConcatOp concatOp) {
   bool only_merge = !concatOp.do_relu();
   // check concatOp's outer_dim
   if (only_merge) {
-    auto shape = Module::getShape(concatOp.output());
+    auto shape = module::getShape(concatOp.output());
     int outer_dim =
         std::accumulate(shape.begin(), shape.begin() + concatOp.axis(), 1,
                         std::multiplies<int64_t>());
@@ -78,7 +78,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp,
                                   bool asymmetric) const {
   std::vector<Value> operands;
-  double out_thr = Quant::getThreshold(concatOp.output());
+  double out_thr = module::getThreshold(concatOp.output());
   uint32_t nInputs = concatOp->getNumOperands();
   bool only_merge = fusible(concatOp);
   auto rshift_v = std::make_unique<std::vector<int64_t>>(nInputs, 0);
@@ -91,7 +91,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
       LoweringBF16(rewriter, concatOp);
       return;
     }
-    double in_thr = Quant::getThreshold(in);
+    double in_thr = module::getThreshold(in);
     double qscale = in_thr / out_thr;
     if (fabs(in_thr - out_thr) <= 1e-5) {
       qscale = 1.0;

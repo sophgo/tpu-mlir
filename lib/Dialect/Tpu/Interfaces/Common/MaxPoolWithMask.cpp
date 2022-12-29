@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "float.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 pool_attr_t tpu::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
@@ -27,16 +25,16 @@ pool_attr_t tpu::MaxPoolWithMaskOp::parseParam() {
   p.sd = 1;
   auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
   auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  Module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
-  Module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
+  module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
+  module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
 
-  auto kernel = Module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(kernel_shape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
-  auto stride = Module::getI64Array(strides());
+  auto stride = module::getI64Array(strides());
   p.sh = stride->at(0);
   p.sw = stride->at(1);
-  auto pad = Module::getI64Array(pads());
+  auto pad = module::getI64Array(pads());
   p.pad_h = pad->at(0);
   p.pad_w = pad->at(1);
   p.pad_h_after = pad->at(2);
@@ -58,7 +56,7 @@ void tpu::MaxPoolWithMaskOp::deinit(InferenceParameter &p) { return; }
 LogicalResult tpu::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
   auto attr = parseParam();
   int64_t nc = attr.n * attr.c;
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
   std::fill_n(p.outputs[0], num_elem, (float)(-FLT_MAX));
 #pragma omp parallel for schedule(static, omp_schedule(nc))
   for (int64_t idx = 0; idx < nc; ++idx) {
@@ -95,7 +93,7 @@ LogicalResult tpu::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MaxPoolWithMaskOp::LocalGenSupport() {
-  // auto stride = Module::getI64Array(strides());
+  // auto stride = module::getI64Array(strides());
   // if ((stride->at(0) > 15 || stride->at(1) > 15)) {
   //   return failure();
   // }

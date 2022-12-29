@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMAddressAssign.h"
 
 #include "mlir/IR/PatternMatch.h"
@@ -16,9 +16,8 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace llvm;
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 
 namespace tpu_mlir {
 
@@ -34,7 +33,7 @@ public:
       return failure();
     }
     auto attr = GRUOp.parseParam();
-    auto type = Module::getStorageType(GRUOp.input());
+    auto type = module::getStorageType(GRUOp.input());
     // add buffer
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
@@ -56,7 +55,7 @@ public:
       return failure();
     }
     auto attr = lstmOp.parseParam();
-    auto type = Module::getStorageType(lstmOp.input());
+    auto type = module::getStorageType(lstmOp.input());
     // add buffer
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
@@ -82,7 +81,7 @@ public:
       llvm_unreachable("Not Implemented");
     }
 
-    auto type = Module::getStorageType(reduceOp.input());
+    auto type = module::getStorageType(reduceOp.input());
     // add buffer
     /* if reduce n or c, need imm buffer. if reduce h/w, don't need imm buffer
        if reduce c/h, c/w, n/w, will split it to 2 step at fronted, it will not
@@ -161,7 +160,7 @@ public:
     param.if_getting_buffer_size = 0;
     param.spec.buffer_global_addr = 0;
 
-    auto order = Module::getI64Array(permuteOp.order());
+    auto order = module::getI64Array(permuteOp.order());
     for (int i = 0, n = order->size(); i < n; ++i) {
       param.spec.order[i] = order->at(i);
     }
@@ -172,7 +171,7 @@ public:
       tensor_spec_t spec;
       memset(&spec, 0, sizeof(spec));
       spec.dtype = backend::BM168x::getDataType(v);
-      auto shape = Module::getShape(v);
+      auto shape = module::getShape(v);
       spec.dims = shape.size();
       for (int i = 0; i < spec.dims; i++) {
         spec.shape[i] = shape[i];
@@ -185,7 +184,7 @@ public:
     auto output_sepc = value_to_spec(permuteOp.output());
     backend::BM168x::call_global_func("backend_api_transpose_global", &param,
                                       sizeof(param), &input_sepc, &output_sepc);
-    auto type = Module::getStorageType(permuteOp.input());
+    auto type = module::getStorageType(permuteOp.input());
     // add buffer
     if (buffer_size > 0) {
       auto buffer_type = RankedTensorType::get({buffer_size}, type);

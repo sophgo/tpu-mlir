@@ -31,7 +31,7 @@ static void LoweringGRU(PatternRewriter &rewriter, top::GRUOp op, Type type) {
       operands.push_back(opd);
     }
   }
-  auto noneOp = Module::getNoneOp(op);
+  auto noneOp = module::getNoneOp(op);
   operands.push_back(noneOp);
   operands.push_back(noneOp);
   operands.push_back(noneOp);

@@ -19,8 +19,8 @@ static int is_bcast(top::SubOp op) {
   std::vector<int64_t> shape0;
   std::vector<int64_t> shape1;
   int bcast = 0;
-  Module::getShapeVec(op.inputs()[0], shape0);
-  Module::getShapeVec(op.inputs()[1], shape1);
+  module::getShapeVec(op.inputs()[0], shape0);
+  module::getShapeVec(op.inputs()[1], shape1);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
@@ -64,16 +64,16 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   float max_qscale = 0.0;
   assert(nInputs == 2);
   auto bcast = is_bcast(op);
-  auto coeff_v = Module::getF64Array(op.coeff(), 2, 1.0);
+  auto coeff_v = module::getF64Array(op.coeff(), 2, 1.0);
   assert(coeff_v->at(0) == 1 && coeff_v->at(1) == 1);
   if (!bcast) {
     coeff_v->at(1) = -1;
   }
-  double o_scale = Quant::getThreshold(op.output());
+  double o_scale = module::getThreshold(op.output());
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     operands.push_back(input);
-    double i_scale = Quant::getThreshold(input);
+    double i_scale = module::getThreshold(input);
     auto scale_f = i_scale / o_scale;
     qscale[i] = coeff_v->at(i) * scale_f;
   }

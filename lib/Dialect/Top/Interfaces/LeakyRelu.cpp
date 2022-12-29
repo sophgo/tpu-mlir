@@ -9,15 +9,13 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 int64_t top::LeakyReluOp::getFLOPs() {
-  return Module::getNumElements(output());
+  return module::getNumElements(output());
 }
 
 LogicalResult top::LeakyReluOp::init(InferenceParameter &p) {
@@ -28,7 +26,7 @@ void top::LeakyReluOp::deinit(InferenceParameter &p) {}
 LogicalResult top::LeakyReluOp::inference(InferenceParameter &p) {
   const float *src = p.inputs[0];
   float *dst = p.outputs[0];
-  int64_t num_elements = Module::getNumElements(input());
+  int64_t num_elements = module::getNumElements(input());
   float alpha = static_cast<float>(alphaAttr().getValueAsDouble()) ;
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
   for (int64_t i = 0; i < num_elements; ++i) {

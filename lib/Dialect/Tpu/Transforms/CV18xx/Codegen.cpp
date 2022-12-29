@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/MlirToCvimodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include <fstream>
@@ -20,7 +20,7 @@
 using namespace llvm;
 using namespace mlir;
 using namespace tpu_mlir::backend;
-using namespace tpu_mlir::helper;
+
 using namespace flatbuffers;
 namespace tpu_mlir {
 namespace tpu {
@@ -30,8 +30,8 @@ public:
   CVCodegenPass() {}
   void runOnOperation() override {
     module = getOperation();
-    assert(Module::isState(Module::State::TPU_ADDRESSED));
-    assert(Module::isCV18xx());
+    assert(module::isState(module::State::TPU_ADDRESSED));
+    assert(module::isCV18xx());
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");

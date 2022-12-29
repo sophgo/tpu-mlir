@@ -28,7 +28,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   std::vector<int64_t> inpShape;
-  Module::getShapeVec(op.input(), inpShape);
+  module::getShapeVec(op.input(), inpShape);
   assert(inpShape.size() == 3 && op.batch_first() == false &&
          "Now just support [seq_len, batch_size, embed_size] as input.");
   operands.push_back(op.input());
@@ -38,7 +38,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp()); // spilt later
 
   std::vector<int64_t> filterShape;
-  Module::getShapeVec(op.filter(), filterShape);
+  module::getShapeVec(op.filter(), filterShape);
   assert(filterShape.size() == 3 && "please check filter shape.");
   auto filterF32 = filterOp.read<float>();
   auto N = filterShape[0] * filterShape[1];
@@ -53,7 +53,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   // split bias to filterBias and recurrenceBias
   std::vector<int64_t> biasShape;
-  Module::getShapeVec(op.bias(), biasShape);
+  module::getShapeVec(op.bias(), biasShape);
   assert(biasShape.size() == 2 && biasShape[0] * biasShape[1] == 2 * N &&
          biasShape[1] % 2 == 0 && "please check bias shape.");
   auto biasF32 = biasOp.read<float>();
@@ -90,7 +90,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   operands.push_back(newBiasOp);
   std::vector<int64_t> fcShape = {inpShape[0], inpShape[1], N};
   new_type = RankedTensorType::get(fcShape, rewriter.getF32Type());
-  auto op_name = Module::getName(op.getOperation()).str();
+  auto op_name = module::getName(op.getOperation()).str();
   auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_fc"));
   auto fcOp = rewriter.create<top::MatMulOp>(loc, new_type, operands, attrs);
 
@@ -100,7 +100,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   // trans weight and bias in codegen
   operands.push_back(recurrenceOp.clone_bf16(op));
   std::vector<int64_t> recurrenceShape;
-  Module::getShapeVec(op.recurrence(), recurrenceShape);
+  module::getShapeVec(op.recurrence(), recurrenceShape);
   auto numDir = recurrenceShape[0];
   auto hiddenSize = recurrenceShape[2];
   if (has_rBias) {
@@ -111,7 +111,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
     operands.push_back(newBiasOp);
   } else {
     // for caffe
-    operands.push_back(Module::getNoneOp(op));
+    operands.push_back(module::getNoneOp(op));
   }
 
   // convert intit_h intit_c

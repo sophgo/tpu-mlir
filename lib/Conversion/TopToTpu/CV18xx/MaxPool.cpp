@@ -27,20 +27,20 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
     auto cali_type = type.cast<RankedTensorType>()
                          .getElementType()
                          .cast<quant::CalibratedQuantizedType>();
-    auto scale = Quant::getScale(cali_type.getMax(), true);
+    auto scale = module::getScale(cali_type.getMax(), true);
     type = quant::UniformQuantizedType::get(1, IntegerType::get(ctx, 8),
                                             cali_type.getExpressedType(), scale,
                                             0, -128, 127);
   }
-  Module::getShapeVec(op.input(), input_shape);
-  Module::getShapeVec(op.output(), output_shape);
-  auto kernel = Module::getI64Array(op.kernel_shape());
-  auto strides = Module::getI64Array(op.strides());
-  auto pads = Module::getI64Array(op.pads());
-  auto op_name = Module::getName(op.getOperation()).str();
+  module::getShapeVec(op.input(), input_shape);
+  module::getShapeVec(op.output(), output_shape);
+  auto kernel = module::getI64Array(op.kernel_shape());
+  auto strides = module::getI64Array(op.strides());
+  auto pads = module::getI64Array(op.pads());
+  auto op_name = module::getName(op.getOperation()).str();
   // 0. reshape [n c f h w] -> [n*c h w f].
   // PoolOp should align_right, this may casuse layerGroup err (FIX ME)
-  Module::getNCHW(input_shape, tmp_shape0[0], tmp_shape0[1], tmp_shape0[2],
+  module::getNCHW(input_shape, tmp_shape0[0], tmp_shape0[1], tmp_shape0[2],
                   tmp_shape0[3], false);
   auto newType = RankedTensorType::get(tmp_shape0, type);
   auto name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape"));
@@ -79,7 +79,7 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
   newType = RankedTensorType::get(tmp_shape1, type);
   name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
   auto newOp1 = rewriter.create<tpu::PermuteOp>(
-      name_loc, newType, ValueRange{newOp0.output(), Module::getNoneOp(op)},
+      name_loc, newType, ValueRange{newOp0.output(), module::getNoneOp(op)},
       attrs);
   // 3. do pool last dim
   tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
@@ -101,7 +101,7 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
   attrs.push_back(
       rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
   auto newOp3 = rewriter.create<tpu::PermuteOp>(
-      name_loc, newType, ValueRange{newOp2.output(), Module::getNoneOp(op)},
+      name_loc, newType, ValueRange{newOp2.output(), module::getNoneOp(op)},
       attrs);
   // 5. reshape back
   newType = RankedTensorType::get(output_shape, type);

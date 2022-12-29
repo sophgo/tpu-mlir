@@ -37,12 +37,12 @@ void SoftmaxLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SoftmaxOp op) const {
-  if (Quant::isUniformQuantized(op.input(), op.output()) == false) {
+  if (module::isUniformQuantized(op.input(), op.output()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   int64_t zeropoint;
   double i_scale;
-  Quant::getScaleAndZeroPoint(op.input(), i_scale, zeropoint, true);
+  module::getScaleAndZeroPoint(op.input(), i_scale, zeropoint, true);
   std::vector<float> table(256, 0.0f);
   auto beta_v = op.beta().convertToDouble();
   auto scale = -i_scale * beta_v;
@@ -79,29 +79,29 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (op.axis() == 1) {
     rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
         op, op.output().getType(),
-        ValueRange{op.input(), table_opd, Module::getNoneOp(op.getOperation()),
-                   Module::getNoneOp(op.getOperation()),
-                   Module::getNoneOp(op.getOperation())},
+        ValueRange{op.input(), table_opd, module::getNoneOp(op.getOperation()),
+                   module::getNoneOp(op.getOperation()),
+                   module::getNoneOp(op.getOperation())},
         attrs);
   } else {
     // transpose
-    std::string new_name = Module::getName(op.input()).str() + "__transpose";
+    std::string new_name = module::getName(op.input()).str() + "__transpose";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     int64_t odr[] = {0, 3, 1, 2};
     std::vector<int64_t> order(odr, odr + 4);
-    auto to_type = Module::getElementType(op.input());
+    auto to_type = module::getElementType(op.input());
     auto TransOp = do_transpose(name_loc, op.input(), order);
     // softmax
     rewriter.setInsertionPointAfter(op);
-    new_name = (Module::getName(op.output()).str()) + "__softmax";
+    new_name = (module::getName(op.output()).str()) + "__softmax";
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
-    auto newType = RankedTensorType::get(Module::getShape(TransOp),
-                                         Module::getElementType(op.output()));
+    auto newType = RankedTensorType::get(module::getShape(TransOp),
+                                         module::getElementType(op.output()));
     auto newOp = rewriter.create<tpu::SoftmaxOp>(
         name_loc, newType,
-        ValueRange{TransOp, table_opd, Module::getNoneOp(op.getOperation()),
-                   Module::getNoneOp(op.getOperation()),
-                   Module::getNoneOp(op.getOperation())},
+        ValueRange{TransOp, table_opd, module::getNoneOp(op.getOperation()),
+                   module::getNoneOp(op.getOperation()),
+                   module::getNoneOp(op.getOperation())},
         attrs);
     // transpose
     int64_t odr1[] = {0, 2, 3, 1};

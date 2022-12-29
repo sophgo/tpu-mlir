@@ -11,7 +11,7 @@
 #define TPU_COMPRESS_UTIL_H_
 
 #include "mlir/Support/LLVM.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 // // TPU DMA engine supports compression and decompression during data transfer
 // // between global memory and local memory.

@@ -16,7 +16,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
@@ -25,13 +25,13 @@ public:
   AddressAssignPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    if (!Module::isState(Module::State::TPU_DIVIDED)) {
+    if (!module::isState(module::State::TPU_DIVIDED)) {
       llvm_unreachable("module should be divided");
     }
-    Module::removeUnusedOp();
+    module::removeUnusedOp();
     Arch::init();
 
-    if (Module::isCV18xx()) {
+    if (module::isCV18xx()) {
       CVAddressAssign addr_assign;
       addr_assign.assign(module, reuse_addr);
     } else {

@@ -10,13 +10,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -39,18 +38,18 @@ void tpu::MaxOp::codegen_global_cv18xx( int64_t layer_id) {
   int64_t n, c, h, w;
   std::vector<gaddr_t> ga_inputs;
   for (int i = 0; i < input_num; ++i) {
-    ga_inputs.emplace_back(Module::getAddress(inputs()[i]));
+    ga_inputs.emplace_back(module::getAddress(inputs()[i]));
   }
-  gaddr_t ga_output = Module::getAddress(output());
+  gaddr_t ga_output = module::getAddress(output());
 
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
 
-  Module::getNCHW(output(), n, c, h, w);
-  if (Quant::isUniformQuantized(output())) {
-    auto multiplier_v = Module::getI64Array(multipliers(), input_num, 1);
-    auto rshift_v = Module::getI64Array(rshifts(), 1, 0);
+  module::getNCHW(output(), n, c, h, w);
+  if (module::isUniformQuantized(output())) {
+    auto multiplier_v = module::getI64Array(multipliers(), input_num, 1);
+    auto rshift_v = module::getI64Array(rshifts(), 1, 0);
     int32_t rshift_int = static_cast<int32_t>(rshift_v->at(0));
     std::vector<int32_t> multiplier_int;
     for (int i = 0; i < input_num; ++i) {

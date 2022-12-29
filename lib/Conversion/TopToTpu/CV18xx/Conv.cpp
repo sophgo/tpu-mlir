@@ -26,7 +26,7 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   std::vector<int64_t> filterShape;
-  Module::getShapeVec(op.filter(), filterShape);
+  module::getShapeVec(op.filter(), filterShape);
   int64_t oc = 0;
   int64_t ic = 0;
   int64_t kh = 0;
@@ -92,8 +92,8 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   op->setOperand(1, new_filter_op);
   // update convOp attr
   std::vector<int64_t> new_kernel_shape, new_dilations;
-  auto kernel_shape = Module::getI64Array(op.kernel_shape());
-  auto dilations = Module::getI64Array(op.dilations(), kernel_shape->size(), 1);
+  auto kernel_shape = module::getI64Array(op.kernel_shape());
+  auto dilations = module::getI64Array(op.dilations(), kernel_shape->size(), 1);
   new_kernel_shape.assign(kernel_shape->begin(), kernel_shape->end());
   new_dilations.assign(dilations->begin(), dilations->end());
   auto kernel_size = new_kernel_shape.size();
@@ -115,10 +115,10 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
                           const conv_attr_t &attr) {
   // deal with pad > 16
   bool insert_pad = false;
-  auto kernel_size = Module::getI64Array(op.kernel_shape())->size();
+  auto kernel_size = module::getI64Array(op.kernel_shape())->size();
   std::vector<int64_t> input_shape;
-  Module::getShapeVec(op.input(), input_shape);
-  auto _pads = Module::getI64Array(op.pads());
+  module::getShapeVec(op.input(), input_shape);
+  auto _pads = module::getI64Array(op.pads());
   std::vector<int64_t> pad_v;
   std::vector<int64_t> new_pad_v(2 * input_shape.size(), 0);
   pad_v.assign(_pads->begin(), _pads->end());
@@ -176,7 +176,7 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
         "paddings", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{new_pad_v})));
-    auto op_name = Module::getName(op.getOperation()).str();
+    auto op_name = module::getName(op.getOperation()).str();
     auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_pad"));
     auto type = op.input().getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(input_shape, type.getElementType());
@@ -207,13 +207,13 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     return;
   }
   double in_thr, out_thr;
-  in_thr = Quant::getThreshold(op.input());
-  out_thr = Quant::getThreshold(op.output());
+  in_thr = module::getThreshold(op.input());
+  out_thr = module::getThreshold(op.output());
   // filter
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
 
-  std::shared_ptr<std::vector<int32_t>> bias_int32;
+  i32_array_t bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   if (attr.has_bias) {

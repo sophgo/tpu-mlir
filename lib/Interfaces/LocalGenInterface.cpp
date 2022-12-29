@@ -56,7 +56,7 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   if (n_idx_v.empty() && h_idx_v.empty()) {
     int64_t n, c, h, w;
     ginfo.overstepped = !(n_step == 0 && h_step == 0);
-    Module::getNCHW(op->getResult(0), n, c, h, w);
+    module::getNCHW(op->getResult(0), n, c, h, w);
     ginfo.n_slice = n;
     ginfo.h_slice = h;
   } else {

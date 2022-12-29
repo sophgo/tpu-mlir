@@ -9,13 +9,12 @@
 
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
-using namespace tpu_mlir::helper;
+
 
 struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
   using OpRewritePattern::OpRewritePattern;
@@ -31,8 +30,8 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
     else
       return failure();
 
-    auto inds_shape = Module::getShape(op.indices());
-    auto inds_elems = Module::getNumElements(op.indices());
+    auto inds_shape = module::getShape(op.indices());
+    auto inds_elems = module::getNumElements(op.indices());
     auto ax = op.axis();
     // if indices are regular, try to convert to SliceOp
     if (inds_elems == 1) {
@@ -44,8 +43,8 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       }
 
       auto reshape_op = cast<ReshapeOp>(*nextOp);
-      auto out_shape = Module::getShape(op.output());
-      auto reshape_out_shape = Module::getShape(reshape_op.output());
+      auto out_shape = module::getShape(op.output());
+      auto reshape_out_shape = module::getShape(reshape_op.output());
       std::vector<int64_t> unsqueeze_out_shape{};
       for (int64_t i = 0; i < out_shape.size(); ++i) {
         if (i == ax) {
@@ -63,7 +62,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       }
 
       NamedAttrList attrs;
-      auto input_shape = Module::getShape(op.input());
+      auto input_shape = module::getShape(op.input());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
@@ -86,7 +85,7 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       }
 
       NamedAttrList attrs;
-      auto input_shape = Module::getShape(op.input());
+      auto input_shape = module::getShape(op.input());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);

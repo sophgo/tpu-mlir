@@ -19,10 +19,10 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                  bool asymmetric) const {
   if (asymmetric == false) {
     int64_t N, C, H, W;
-    Module::getNCHW(op.output(), N, C, H, W);
-    auto src_shape = Module::getShape(op.input());
-    auto slope_shape = Module::getShape(op.slope());
-    auto num_slope = Module::getNumElements(op.slope());
+    module::getNCHW(op.output(), N, C, H, W);
+    auto src_shape = module::getShape(op.input());
+    auto slope_shape = module::getShape(op.slope());
+    auto num_slope = module::getNumElements(op.slope());
     assert(num_slope == C);
 
     std::vector<Value> operands;
@@ -73,8 +73,8 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
     operands.push_back(op->getOperand(i));
   }
 
-  auto src_shape = Module::getShape(op.input());
-  auto slope_shape = Module::getShape(op.slope());
+  auto src_shape = module::getShape(op.input());
+  auto slope_shape = module::getShape(op.slope());
   int src_dims = src_shape.size();
   int slope_dims = slope_shape.size();
   assert(src_dims == slope_dims);

@@ -16,7 +16,7 @@ static double active_sigmoid(double val) { return 1 / (1 + std::exp(-val)); }
 
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   Value table =
       create_lookup_table(op.input(), op.output(), asymmetric,
                           [](double val) { return 1 / (1 + std::exp(-val)); });

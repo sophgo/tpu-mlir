@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+#include "tpu_mlir/Support/Module.h"
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -99,8 +98,8 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   int64_t n, c, ih, iw, oh, ow;
-  Module::getNCHW(input(), n, c, ih, iw);
-  Module::getNCHW(output(), n, c, oh, ow);
+  module::getNCHW(input(), n, c, ih, iw);
+  module::getNCHW(output(), n, c, oh, ow);
   interp_local_param_t param = {0};
   param.input_addr = in_gi.out_addr;
   param.output_addr = gi.out_addr;

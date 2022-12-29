@@ -15,8 +15,7 @@
 
 #define DEBUG_TYPE "kernel_reflectionpad"
 
-using namespace mlir;
-using namespace tpu_mlir;
+
 
 namespace tpu_mlir {
 namespace backend {

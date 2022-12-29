@@ -57,14 +57,14 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   int64_t mode = 0;
 
   std::vector<int64_t> shape_after_pad;
-  auto input_shape = Module::getShape(op.input());
+  auto input_shape = module::getShape(op.input());
   for (int i = 0; i < input_shape.size(); ++i) {
     shape_after_pad.emplace_back(pads[i] + input_shape[i] + pads[i + 4]);
   }
 
   // insert pad op
   rewriter.setInsertionPointAfterValue(op.input());
-  std::string name = Module::getName(op.input()).str() + "_pad_edge";
+  std::string name = module::getName(op.input()).str() + "_pad_edge";
   auto loc = NameLoc::get(rewriter.getStringAttr(name));
   std::vector<NamedAttribute> pad_attrs;
   pad_attrs.emplace_back(
@@ -108,14 +108,14 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<int64_t> weight_shape = {ic, 1, 1, conv_kernel_shape[0],
                                        conv_kernel_shape[1]};
   auto weight_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
-  std::string weight_name = Module::getName(op.input()).str() + "_add_weight";
+  std::string weight_name = module::getName(op.input()).str() + "_add_weight";
   auto weight_operand =
       top::WeightOp::create(op, weight_name, weight, weight_type);
 
   // create conv op
   operands.emplace_back(pad_op.output());
   operands.emplace_back(weight_operand);
-  operands.emplace_back(Module::getNoneOp(op));
+  operands.emplace_back(module::getNoneOp(op));
   std::vector<NamedAttribute> conv_attrs;
   conv_attrs.emplace_back(rewriter.getNamedAttr(
       "kernel_shape", rewriter.getI64ArrayAttr(conv_kernel_shape)));
@@ -136,7 +136,7 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
 static void resize_to_conv2(PatternRewriter &rewriter, top::InterpOp &op,
                             double scale_h, double scale_w) {
   std::vector<Value> operands;
-  auto input_shape = Module::getShape(op.input());
+  auto input_shape = module::getShape(op.input());
   int64_t ic = input_shape[1];
   std::vector<int64_t> conv_strides = {2, 2};
   std::vector<int64_t> conv_pads = {0, 0, 0, 0};
@@ -154,14 +154,14 @@ static void resize_to_conv2(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<int64_t> weight_shape = {ic, 1, 1, conv_kernel_shape[0],
                                        conv_kernel_shape[1]};
   auto weight_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
-  std::string weight_name = Module::getName(op.input()).str() + "_conv_filter";
+  std::string weight_name = module::getName(op.input()).str() + "_conv_filter";
   auto weight_operand =
       top::WeightOp::create(op, weight_name, weight, weight_type);
 
   // create conv op
   operands.emplace_back(op.input());
   operands.emplace_back(weight_operand);
-  operands.emplace_back(Module::getNoneOp(op));
+  operands.emplace_back(module::getNoneOp(op));
   std::vector<NamedAttribute> conv_attrs;
   conv_attrs.emplace_back(rewriter.getNamedAttr(
       "kernel_shape", rewriter.getI64ArrayAttr(conv_kernel_shape)));
@@ -349,7 +349,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
   auto input_shape = input_type.getShape();
   int g = input_shape[1]; // g == ic for depthwise
 
-  auto NoneOp = Module::getNoneOp(op);
+  auto NoneOp = module::getNoneOp(op);
 
   int _ic = ic;
   int _oc = oc;
@@ -548,7 +548,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
     // prepare filter
     auto filter_type =
         RankedTensorType::get(filter_shape, rewriter.getF32Type());
-    std::string filter_name = Module::getName(op.input()).str() + "_filter";
+    std::string filter_name = module::getName(op.input()).str() + "_filter";
     auto weight_operand =
         top::WeightOp::create(op, filter_name, filter, filter_type);
 
@@ -566,7 +566,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
       std::vector<Value> operands;
       operands.push_back(input);
       operands.push_back(weight_operand);
-      operands.push_back(Module::getNoneOp(op)); // bias
+      operands.push_back(module::getNoneOp(op)); // bias
       kernel[0] = kh;
       kernel[1] = kw;
       std::vector<NamedAttribute> attrs = createConvAttr(
@@ -709,7 +709,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
 
     int hardwareHWMax = 4095 - 32;
 
-    auto curr_output_shape = Module::getShape(operands[0]);
+    auto curr_output_shape = module::getShape(operands[0]);
     if (curr_output_shape[2] > hardwareHWMax ||
         curr_output_shape[3] > hardwareHWMax) {
       LLVM_DEBUG(llvm::errs()
@@ -722,8 +722,8 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
 
   // interp's output SHOULD BE EQ with conv's
   int64_t conv_on, conv_oc, conv_oh, conv_ow;
-  auto conv_output_shape = Module::getShape(input);
-  Module::getNCHW(conv_output_shape, conv_on, conv_oc, conv_oh, conv_ow);
+  auto conv_output_shape = module::getShape(input);
+  module::getNCHW(conv_output_shape, conv_on, conv_oc, conv_oh, conv_ow);
   assert((conv_on == in && conv_oc == oc && conv_oh == oh && conv_ow == ow) &&
          "Transformsed conv shape SHOULD be equal with interp");
 
@@ -742,8 +742,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   auto coord_mode = tpu::symbolizeResizeCoordMode(op.coord_mode());
   assert(mode && coord_mode);
   std::string coordinate_transformation_mode;
-  auto o_shape = Module::getShape(op.output());
-  auto i_shape = Module::getShape(op.input());
+  auto o_shape = module::getShape(op.output());
+  auto i_shape = module::getShape(op.input());
   assert(o_shape.size() >= 2);
   switch (coord_mode.value()) {
   case tpu::ResizeCoordMode::half_pixel:
@@ -794,8 +794,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   }
   int64_t on, oc, oh, ow;
   int64_t in, ic, ih, iw;
-  Module::getNCHW(o_shape, on, oc, oh, ow);
-  Module::getNCHW(i_shape, in, ic, ih, iw);
+  module::getNCHW(o_shape, on, oc, oh, ow);
+  module::getNCHW(i_shape, in, ic, ih, iw);
   bool is_shrink = true;
   if (oh > ih && ow > iw) {
     is_shrink = false;

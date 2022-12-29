@@ -9,14 +9,12 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include <iostream>
 
 using namespace std;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 #define MIN(x, y) (((x)) < ((y)) ? (x) : (y))
 #define MAX(x, y) (((x)) > ((y)) ? (x) : (y))
@@ -216,7 +214,7 @@ void interp_core(
 }
 
 int64_t top::InterpOp::getFLOPs() {
-  return Module::getNumElements(output()) * 1;
+  return module::getNumElements(output()) * 1;
 }
 
 LogicalResult top::InterpOp::init(InferenceParameter &p) { return success(); }
@@ -224,8 +222,8 @@ void top::InterpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     int64_t n, c, ih, iw, oh, ow;
-    Module::getNCHW(input(), n, c, ih, iw);
-    Module::getNCHW(output(), n, c, oh, ow);
+    module::getNCHW(input(), n, c, ih, iw);
+    module::getNCHW(output(), n, c, oh, ow);
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
     bool align_corners = (coord_mode() == "align_corners");

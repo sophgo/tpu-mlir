@@ -8,12 +8,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::GatherOp::init(InferenceParameter &p) { return success(); }
 void tpu::GatherOp::deinit(InferenceParameter &p) {}
@@ -22,11 +20,11 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
   const float *src = p.inputs[0];
   const float *inds = p.inputs[1];
   float *dst = p.outputs[0];
-  auto num_indices = Module::getNumElements(indices());
+  auto num_indices = module::getNumElements(indices());
   auto ax = axis();
   int64_t outer_dims = 1;
   int64_t inner_dims = 1;
-  auto input_shape = Module::getShape(input());
+  auto input_shape = module::getShape(input());
   for (int i = 0; i < ax; ++i) {
     outer_dims *= input_shape[i];
   }
@@ -34,7 +32,7 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
     inner_dims *= input_shape[i];
   }
 
-  auto num_elems = Module::getNumElements(output());
+  auto num_elems = module::getNumElements(output());
 #pragma omp parallel for schedule(static, omp_schedule(num_elems))
   for (int64_t i = 0; i < outer_dims; ++i) {
     for (int64_t j = 0; j < num_indices; ++j) {
@@ -58,7 +56,7 @@ mlir::Type tpu::GatherOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
       return do_nothing(mode);
     }
-    auto stype = Module::getStorageType(opd);
+    auto stype = module::getStorageType(opd);
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }

@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 void tpu::StoreOp::codegen_global_bm1684x() {
@@ -33,7 +32,7 @@ void tpu::StoreOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->d_slice = 1;
@@ -55,11 +54,11 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
-  Module::getNCHW(output(), N, C, H, W);
+  module::getNCHW(output(), N, C, H, W);
   auto g_stride = BM168x::getGlobalStride(N, C, H, W);
   auto s_stride = BM168x::getLocalStride(gi.n_slice, C, gi.h_slice, W,
                                          fmt_bytes, gi.eu_align);
-  auto g_addr = Module::getAddress(output());
+  auto g_addr = module::getAddress(output());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;
   BM168x::instance()->dl_tensor_stride_move_gen_cmd(

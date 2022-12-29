@@ -11,14 +11,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 #include <float.h>
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 typedef enum reduce_type {
   REDUCE_MEAN = 0,
@@ -49,8 +47,8 @@ static void size_to_2dim(int64_t size, int64_t &h, int64_t &w) {
 
 reduce_attr_t tpu::ReduceOp::parseParam() {
   reduce_attr_t attr = {0};
-  auto axes_ = Module::getI64Array(axes());
-  auto input_shape = Module::getShape(input());
+  auto axes_ = module::getI64Array(axes());
+  auto input_shape = module::getShape(input());
   int num_dims = input_shape.size();
   int num_axes = axes_->size();
   for (uint i = 1; i < num_axes; i++) {
@@ -87,8 +85,8 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
   float *output_v = p.outputs[0];
   auto type_val = mode();
 
-  bool is_cv18xx = Module::isCV18xx();
-  auto out_type = Module::getStorageType(output());
+  bool is_cv18xx = module::isCV18xx();
+  auto out_type = module::getStorageType(output());
   auto attr = parseParam();
   int64_t outer_dims = attr.outer_n * attr.outer_c;
   // calc dims
@@ -109,7 +107,7 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
         if (type_val == "ReduceSum") {
           output_v[o * attr.inner_dims + i] = sum;
         } else {
-          if (Quant::isUniformQuantized(output()) && is_cv18xx) {
+          if (module::isUniformQuantized(output()) && is_cv18xx) {
             // divisor in multiplier
             output_v[o * attr.inner_dims + i] = sum;
           } else {
@@ -154,21 +152,21 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
       }
     }
   }
-  auto num_elem = Module::getNumElements(output());
+  auto num_elem = module::getNumElements(output());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (Quant::isUniformQuantized(output())) {
-    int64_t shift = Module::getI64Array(rshift().value())->at(0);
-    int64_t multi = Module::getI64Array(multiplier().value())->at(0);
+  } else if (module::isUniformQuantized(output())) {
+    int64_t shift = module::getI64Array(rshift().value())->at(0);
+    int64_t multi = module::getI64Array(multiplier().value())->at(0);
     if (shift != 0 || multi != 1) {
       for (size_t i = 0; i < num_elem; ++i) {
         int64_t v =
             applyMultiplierAndRShift(output_v[i], multi, shift, CVI_QUANT);
-        output_v[i] = Quant::to_int8(v);
+        output_v[i] = to_int8(v);
       }
     }
   }

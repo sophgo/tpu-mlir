@@ -9,13 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 #define MIN(x, y) (((x)) < ((y)) ? (x) : (y))
 #define MAX(x, y) (((x)) > ((y)) ? (x) : (y))
 typedef enum {
@@ -208,8 +206,8 @@ void tpu::InterpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
       int64_t n, c, ih, iw, oh, ow;
-    Module::getNCHW(input(), n, c, ih, iw);
-    Module::getNCHW(output(), n, c, oh, ow);
+    module::getNCHW(input(), n, c, ih, iw);
+    module::getNCHW(output(), n, c, oh, ow);
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
     bool align_corners = (coord_mode() == tpu::ResizeCoordMode::align_corners);

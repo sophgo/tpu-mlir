@@ -9,13 +9,12 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -25,20 +24,20 @@ using namespace tpu_mlir::backend;
 void tpu::RequantIntOp::codegen_global_bm1684x() {
   requant_int_param_t param = {0};
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
-  param.input_addr = Module::getAddress(input());
-  param.output_addr = Module::getAddress(output());
+  module::getNCHW(input(), n, c, h, w);
+  param.input_addr = module::getAddress(input());
+  param.output_addr = module::getAddress(output());
   param.n = (int)n;
   param.c = (int)c;
   param.h = (int)h;
   param.w = (int)w;
 
-  auto oqtype = Quant::getUniformQuantizedType(output());
+  auto oqtype = module::getUniformQuantizedType(output());
   param.mul_value = multiplier();
   param.shift_value = -rshift();
   param.offset_value = oqtype.getZeroPoint();
-  if (Quant::isUniformQuantized(input())) {
-    auto iqtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto iqtype = module::getUniformQuantizedType(input());
     param.zx_value = iqtype.getZeroPoint();
   }
   param.mode = static_cast<int>(quant_mode());
@@ -76,7 +75,7 @@ void tpu::RequantIntOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -95,10 +94,10 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                               void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto oqtype = Quant::getUniformQuantizedType(output());
+  auto oqtype = module::getUniformQuantizedType(output());
 
   requant_int_param_t param = {0};
   param.input_addr = (uint32_t)in_gi.out_addr;
@@ -112,8 +111,8 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.shift_value = -rshift();
   param.offset_value = oqtype.getZeroPoint();
 
-  if (Quant::isUniformQuantized(input())) {
-    auto iqtype = Quant::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(input())) {
+    auto iqtype = module::getUniformQuantizedType(input());
     param.zx_value = iqtype.getZeroPoint();
   }
   param.input_dtype = BM168x::getDataType(input());

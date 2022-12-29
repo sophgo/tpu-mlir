@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+#include "tpu_mlir/Support/Module.h"
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -40,10 +39,10 @@ typedef struct {
 
 void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
   depth2space_param_t param = {0};
-  param.input_global_mem_addr = Module::getAddress(input());
-  param.output_global_mem_addr = Module::getAddress(output());
+  param.input_global_mem_addr = module::getAddress(input());
+  param.output_global_mem_addr = module::getAddress(output());
   param.dtype = BM168x::getDataType(output());
-  auto in_shape = Module::getShape(input());
+  auto in_shape = module::getShape(input());
   param.dims = in_shape.size();
   for (int i = 0; i < param.dims; i++) {
     param.input_shape[i] = in_shape[i];

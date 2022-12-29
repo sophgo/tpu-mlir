@@ -11,20 +11,19 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
+
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684;
 
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!Module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
   auto attr = op.parseParam();
@@ -58,9 +57,9 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
   auto attr = parseParam();
   if (attr.is_dw) {
     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
-        Module::getAddress(input()), Module::getAddress(output()),
-        Module::getAddress(filter()),
-        attr.has_bias ? Module::getAddress(bias()) : 0, attr.n, attr.ic,
+        module::getAddress(input()), module::getAddress(output()),
+        module::getAddress(filter()),
+        attr.has_bias ? module::getAddress(bias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
         attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w,
         rshift().value()[0].cast<IntegerAttr>().getInt(), attr.has_bias ? 1 : 0,
@@ -68,9 +67,9 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
-        Module::getAddress(input()), Module::getAddress(output()),
-        Module::getAddress(filter()),
-        attr.has_bias ? Module::getAddress(bias()) : 0, attr.n, attr.ic,
+        module::getAddress(input()), module::getAddress(output()),
+        module::getAddress(filter()),
+        attr.has_bias ? module::getAddress(bias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
         attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
         attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0,

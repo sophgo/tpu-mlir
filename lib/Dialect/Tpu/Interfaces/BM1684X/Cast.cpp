@@ -9,12 +9,11 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
+#include "tpu_mlir/Support/Module.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -81,10 +80,10 @@ typedef struct cast_local_param {
 
 // int8
 void tpu::CastOp::codegen_global_bm1684x() {
-  bool qInput = Quant::isUniformQuantized(input());
-  bool qOutput = Quant::isUniformQuantized(output());
+  bool qInput = module::isUniformQuantized(input());
+  bool qOutput = module::isUniformQuantized(output());
   int64_t n, c, h, w;
-  Module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(input(), n, c, h, w);
   auto op = getOperation();
   if (!qInput && !qOutput) {
     cast_global_spec_t spec = {0};
@@ -99,10 +98,10 @@ void tpu::CastOp::codegen_global_bm1684x() {
 
   } else {
     if (!qInput && qOutput) {
-      auto qtype = Quant::getUniformQuantizedType(output());
+      auto qtype = module::getUniformQuantizedType(output());
       requant_fp_param_t param = {0};
-      param.input_addr = Module::getAddress(input());
-      param.output_addr = Module::getAddress(output());
+      param.input_addr = module::getAddress(input());
+      param.output_addr = module::getAddress(output());
       param.n = (int)n;
       param.c = (int)c;
       param.h = (int)h;
@@ -116,10 +115,10 @@ void tpu::CastOp::codegen_global_bm1684x() {
       BM168x::call_global_func("backend_api_requant_float_global", &param,
                                sizeof(param));
     } else if (qInput && !qOutput) {
-      auto qtype = Quant::getUniformQuantizedType(input());
+      auto qtype = module::getUniformQuantizedType(input());
       dequant_fp_param_t param = {0};
-      param.input_addr = Module::getAddress(input());
-      param.output_addr = Module::getAddress(output());
+      param.input_addr = module::getAddress(input());
+      param.output_addr = module::getAddress(output());
       param.n = (int)n;
       param.c = (int)c;
       param.h = (int)h;
@@ -147,7 +146,7 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   if (input().hasOneUse()) {
     return 0;
   }
-  if (Quant::isUniformQuantized(input())) {
+  if (module::isUniformQuantized(input())) {
     return 0;
   }
   return in_lmem_bytes;
@@ -159,7 +158,7 @@ void tpu::CastOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -178,10 +177,10 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                         void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
-  Module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(output(), n, c, h, w);
   auto op = getOperation();
-  bool qInput = Quant::isUniformQuantized(input());
-  bool qOutput = Quant::isUniformQuantized(output());
+  bool qInput = module::isUniformQuantized(input());
+  bool qOutput = module::isUniformQuantized(output());
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
@@ -197,7 +196,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                             sec_info_, input_spec->data(), output_spec->data());
   } else {
     if (!qInput && qOutput) {
-      auto qtype = Quant::getUniformQuantizedType(output());
+      auto qtype = module::getUniformQuantizedType(output());
       uint32_t buffer_addr =
           input().hasOneUse() ? in_gi.out_addr : gi.buffer_addr;
       requant_fp_param_t param = {0};
@@ -218,7 +217,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       BM168x::call_local_func("backend_api_requant_float_local", &param,
                               sizeof(param));
     } else {
-      auto qtype = Quant::getUniformQuantizedType(input());
+      auto qtype = module::getUniformQuantizedType(input());
       dequant_fp_param_t param = {0};
       param.input_addr = in_gi.out_addr;
       param.output_addr = gi.out_addr;

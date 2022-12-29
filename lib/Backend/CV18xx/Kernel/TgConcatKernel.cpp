@@ -16,9 +16,6 @@
 
 #define DEBUG_TYPE "cvi_backend_concat_kernel"
 
-using namespace mlir;
-using namespace tpu_mlir;
-
 namespace tpu_mlir {
 namespace backend {
 uint32_t &TgConcatKernel::axis_dim(cvk_tg_shape_t &shape) {

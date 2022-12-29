@@ -24,8 +24,8 @@ void DivLowering::LoweringINT8(PatternRewriter &rewriter, top::DivOp divOp,
 void DivLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::DivOp divOp) const {
   std::vector<Value> operands;
-  auto input_shape1 = Module::getShape(divOp.inputs()[0]);
-  auto input_shape2 = Module::getShape(divOp.inputs()[1]);
+  auto input_shape1 = module::getShape(divOp.inputs()[0]);
+  auto input_shape2 = module::getShape(divOp.inputs()[1]);
 
   auto weight_op = dyn_cast<top::WeightOp>(divOp.inputs()[1].getDefiningOp());
   std::vector<NamedAttribute> attrs;
@@ -49,7 +49,7 @@ void DivLowering::LoweringBF16(PatternRewriter &rewriter,
     return;
   } else {
     rewriter.setInsertionPointAfterValue(divOp.inputs()[1]);
-    std::string name = Module::getName(divOp.inputs()[1]).str() + "_reciprocal";
+    std::string name = module::getName(divOp.inputs()[1]).str() + "_reciprocal";
     auto loc = NameLoc::get(rewriter.getStringAttr(name));
     std::vector<NamedAttribute> reci_attrs;
     reci_attrs.emplace_back(

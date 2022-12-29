@@ -12,7 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BlockAndValueMapping.h"
@@ -27,7 +27,7 @@
 
 using namespace llvm;
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
@@ -37,23 +37,23 @@ public:
   WeightReorderPass() {}
   void runOnOperation() override {
     auto module = getOperation();
-    if (!Module::isState(Module::State::TPU_LOWERED)) {
+    if (!module::isState(module::State::TPU_LOWERED)) {
       llvm_unreachable("module should be tpu quantized");
     }
     Arch::init();
     RewritePatternSet patterns(module.getContext());
-    if (Module::isBM1684Family()) {
+    if (module::isBM1684Family()) {
       bm1684::populateWeightReorderPatterns(&patterns);
-    } else if (Module::isBM1684XFamily()) {
+    } else if (module::isBM1684XFamily()) {
       bm1684x::populateWeightReorderPatterns(&patterns);
-    } else if (Module::isCV18xx()) {
+    } else if (module::isCV18xx()) {
       cv18xx::populateWeightReorderPatterns(&patterns);
     }
     auto config = GreedyRewriteConfig();
     config.maxIterations = 0; // apply each pattern only once.
     applyPatternsAndFoldGreedily(module, std::move(patterns), config);
-    Module::updateModuleTypes();
-    Module::setState(Module::State::TPU_REORDERED);
+    module::updateModuleTypes();
+    module::setState(module::State::TPU_REORDERED);
   }
 };
 

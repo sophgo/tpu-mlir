@@ -9,13 +9,12 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace mlir;
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
+
+
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -49,10 +48,10 @@ void tpu::PermuteOp::codegen_global_bm1684x() {
   transpose_param_t param = {0};
   param.if_getting_buffer_size = 0;
 
-  auto perm = Module::getI64Array(order());
-  auto in_shape = Module::getShape(input());
+  auto perm = module::getI64Array(order());
+  auto in_shape = module::getShape(input());
   int dims = in_shape.size();
-  param.spec.buffer_global_addr = Module::getAddress(buffer());
+  param.spec.buffer_global_addr = module::getAddress(buffer());
   for (int i = 0; i < dims; i++) {
     param.spec.order[i] = perm->at(i);
   }

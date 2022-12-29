@@ -10,10 +10,10 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace mlir;
-using namespace tpu_mlir::helper;
+
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
@@ -27,7 +27,7 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
     if (concat_op.axis() != 1) {
       return failure();
     }
-    auto shape = Module::getShape(concat_op.output());
+    auto shape = module::getShape(concat_op.output());
     if (shape.size() != 4) {
       return failure();
     }
@@ -50,17 +50,17 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
       if (!slice_op) {
         return failure();
       }
-      auto offset = Module::getI64Array(slice_op.offset());
+      auto offset = module::getI64Array(slice_op.offset());
       if (offset->at(0) != 0 || offset->at(1) != 0) {
         return failure();
       }
-      auto steps = Module::getI64Array(slice_op.steps());
+      auto steps = module::getI64Array(slice_op.steps());
       if (steps->at(0) != 1 || steps->at(1) != 1) {
         return failure();
       }
       if (i == 0) {
         bh = steps->at(2);
-        bw = steps->at(3); 
+        bw = steps->at(3);
         if (bh * bw != num_inputs) {
           return failure();
         }
@@ -100,7 +100,7 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
       auto filter_new =
           std::make_shared<std::vector<float>>(filter_old->size(), 0.0);
       int64_t oc, ic, kh, kw;
-      Module::getNCHW(conv_op.filter(), oc, ic, kh, kw);
+      module::getNCHW(conv_op.filter(), oc, ic, kh, kw);
       int64_t block = bh * bw;
       int64_t inner_dim = (ic / block) * kh * kw;
       int64_t outer_dim = oc;
@@ -128,7 +128,7 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
     // change name of new op to avoid wrong comparison
     concat_op->setLoc(NameLoc::get(
-        rewriter.getStringAttr(Module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
+        rewriter.getStringAttr(module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
     rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
         concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
     return success();
@@ -151,7 +151,7 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
     uint32_t h, w;
     int tmp_w = 0;
 
-    auto o_shape = Module::getShape(concat_op.output());
+    auto o_shape = module::getShape(concat_op.output());
     std::vector<float> resultT;
 
     std::vector<std::shared_ptr<std::vector<float>>> input_load_weight(
@@ -163,7 +163,7 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
     }
 
     for (uint32_t i = 0; i < input_num; ++i) {
-      auto w_shape = Module::getShape(concat_op.getOperand(i));
+      auto w_shape = module::getShape(concat_op.getOperand(i));
       assert(3 == w_shape.size());
       h = w_shape[1];
       w = w_shape[2];
@@ -178,7 +178,7 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
       }
       tmp_w += w;
     }
-    auto tensor_name = Module::getName(concat_op, 0).str() + "loadweight";
+    auto tensor_name = module::getName(concat_op, 0).str() + "loadweight";
     auto weight_type = RankedTensorType::get(o_shape, rewriter.getF32Type());
     auto weight_operand =
         WeightOp::create(concat_op, tensor_name, resultT, weight_type);

@@ -183,7 +183,7 @@ GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
                    << (blk.op ? blk.op->getName().getStringRef()
                               : llvm::StringRef("null"))
                    << ":"
-                   << (blk.op ? Module::getName(blk.op) : llvm::StringRef("null"))
+                   << (blk.op ? module::getName(blk.op) : llvm::StringRef("null"))
                    << ", start:" << blk.start << ", size:" << blk.size
                    << ", free:" << (blk.op ? false : true) << "\n";
     }
@@ -203,7 +203,7 @@ GmemAllocFitFirst::assignGaddr(std::vector<ValueInfo> &ops,
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
     llvm::errs() << "op:" << real_op->getName()
-                 << ", name:" << Module::getName(real_op->getResult(out_index))
+                 << ", name:" << module::getName(real_op->getResult(out_index))
                  << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
                  << ", size:" << tensor_size
                  << ", end:" << gaddrMap_[op] + tensor_size
@@ -300,7 +300,7 @@ GmemAllocOpSizeOrder::assignGaddr(std::vector<ValueInfo> &ops,
     auto tensor_size = liveRange[op].tensor_size;
     auto real_op = (Operation *)(op.op);
     llvm::errs() << "op:" << real_op->getName()
-                 << ", name:" << Module::getName(real_op->getResult(out_index))
+                 << ", name:" << module::getName(real_op->getResult(out_index))
                  << ", addr:" << gaddrMap_[op] << ", baseGaddr:" << baseGaddr
                  << ", size:" << tensor_size
                  << ", end:" << gaddrMap_[op] + tensor_size

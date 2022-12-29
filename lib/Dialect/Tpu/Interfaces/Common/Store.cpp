@@ -9,12 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+#include "tpu_mlir/Support/Module.h"
+
+
 
 LogicalResult tpu::StoreOp::init(InferenceParameter &p) { return success(); }
 void tpu::StoreOp::deinit(InferenceParameter &p) {}

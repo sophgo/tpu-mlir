@@ -9,20 +9,18 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Quant.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 LogicalResult tpu::MaskedFillOp::init(InferenceParameter &p) { return success(); }
 void tpu::MaskedFillOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MaskedFillOp::inference(InferenceParameter &p) {
-  const auto num_element = Module::getNumElements(output());
+  const auto num_element = module::getNumElements(output());
   const float const_val_ = const_val().convertToDouble();
   const float* in = p.inputs[0];
   const float* brn = p.inputs[1];

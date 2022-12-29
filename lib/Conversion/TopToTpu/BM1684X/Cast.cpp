@@ -41,15 +41,15 @@ void CastLowering::LoweringF16(PatternRewriter &rewriter,
 
 void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::CastOp op) const {
-  if (Quant::isUniformQuantized(op.input(), op.output()) == false) {
+  if (module::isUniformQuantized(op.input(), op.output()) == false) {
     lowering_common<tpu::CastOp>(rewriter, op.getOperation(),
                                  op.output().getType());
     return;
   }
   int64_t i_zeropoint, o_zeropoint;
   double i_scale, o_scale;
-  Quant::getScaleAndZeroPoint(op.input(), i_scale, i_zeropoint, true);
-  Quant::getScaleAndZeroPoint(op.output(), o_scale, o_zeropoint, true);
+  module::getScaleAndZeroPoint(op.input(), i_scale, i_zeropoint, true);
+  module::getScaleAndZeroPoint(op.output(), o_scale, o_zeropoint, true);
   std::vector<NamedAttribute> attrs;
   if (i_scale == o_scale) {
     int zero_diff = i_zeropoint - o_zeropoint;

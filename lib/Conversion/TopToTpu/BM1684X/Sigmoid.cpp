@@ -25,7 +25,7 @@ void SigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::SigmoidOp op,
 }
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   Value table =
       create_lookup_table(op.input(), op.output(), asymmetric,
                           [](double val) { return 1 / (1 + std::exp(-val)); });
@@ -46,7 +46,7 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
-  auto stype = Module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.output());
   Value table =
       create_lookup_table(op.input(), op.output(), true,
                           [](double val) { return 1 / (1 + std::exp(-val)); });

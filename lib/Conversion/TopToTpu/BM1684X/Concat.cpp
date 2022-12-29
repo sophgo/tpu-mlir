@@ -55,7 +55,7 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::ConcatOp concatOp) const {
   auto op = concatOp.getOperation();
   std::vector<Value> operands;
-  auto out_stype = Module::getStorageType(concatOp.output());
+  auto out_stype = module::getStorageType(concatOp.output());
   if (out_stype.isUnsignedInteger(8)) {
     for (auto in : concatOp.inputs()) {
       auto new_in = do_transfer_fp(in, concatOp.output(), true);

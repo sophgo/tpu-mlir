@@ -48,8 +48,8 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
-  Quant::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
-  Quant::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
@@ -57,12 +57,12 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   findMinMax(filter_f32->data(), filter_f32->size(), &fmin, &fmax);
   bool fsign = (fmin < 0 || param.with_bias == true);
   float fqmax = fsign ? 127 : 255;
-  std::shared_ptr<std::vector<double>> weight_scale_v;
+  f64_array_t weight_scale_v;
   if (filterOp.scale().has_value() && weight_scale_v->size()) {
-    weight_scale_v = Module::getF64Array(filterOp.scale().value());
+    weight_scale_v = module::getF64Array(filterOp.scale().value());
   }
 
-  std::shared_ptr<std::vector<int32_t>> bias_int32;
+  i32_array_t bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   auto filter_u8 = std::make_shared<std::vector<uint8_t>>(filter_f32->size());
@@ -87,12 +87,12 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
     if (fsign) {
       for (int t = 0; t < inner_dim; t++) {
         filter_i8->data()[c * inner_dim + t] =
-            Quant::to_int8(p_filter[t] / scale_w);
+            to_int8(p_filter[t] / scale_w);
       }
     } else {
       for (int t = 0; t < inner_dim; t++) {
         filter_u8->data()[c * inner_dim + t] =
-            Quant::to_uint8(p_filter[t] / scale_w);
+            to_uint8(p_filter[t] / scale_w);
       }
     }
 
@@ -138,7 +138,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  std::string deconv_name = Module::getName(op.getOperation()).str() + "_i32";
+  std::string deconv_name = module::getName(op.getOperation()).str() + "_i32";
   auto name = rewriter.getStringAttr(deconv_name);
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));

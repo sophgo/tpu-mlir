@@ -9,17 +9,15 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Helper/Module.h"
+#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-using namespace tpu_mlir;
-using namespace tpu_mlir::helper;
-using namespace mlir;
+
 
 
 int64_t top::LayerNormOp::getFLOPs() {
   const bool have_bias = bias().getType().isa<NoneType>();
-  const int64_t num_elem = Module::getNumElements(output());
+  const int64_t num_elem = module::getNumElements(output());
   return num_elem * (10 + !!have_bias);
 }
 
@@ -29,7 +27,7 @@ void top::LayerNormOp::deinit(InferenceParameter &p) {}
 LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
   const int axis_ = axis();
   const float eps_ = eps().convertToDouble();
-  const auto input_shape = Module::getShape(input());
+  const auto input_shape = module::getShape(input());
 
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {
