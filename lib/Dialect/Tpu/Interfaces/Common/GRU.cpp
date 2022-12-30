@@ -19,12 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const gru_attr_t &tpu::GRUOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::gru_attrs.find(op);
-  if (iter != Module::gru_attrs.end()) {
-    return iter->second;
-  }
+gru_attr_t tpu::GRUOp::parseParam() {
   gru_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
   assert(in_shape.size() == 3);
@@ -44,8 +39,7 @@ const gru_attr_t &tpu::GRUOp::parseParam() {
   attr.have_h0 = !initial_h().getType().isa<mlir::NoneType>();
   attr.output_y = !Y().getType().isa<mlir::NoneType>();
   attr.output_yh = !Y_h().getType().isa<mlir::NoneType>();
-  Module::gru_attrs[op] = attr;
-  return Module::gru_attrs[op];
+  return attr;
 }
 
 static inline float sigmoid_(float x) {
@@ -58,7 +52,7 @@ static inline float tanh_(float x) { return tanh(x); }
 class BmGruInference {
 public:
   static void inference(InferenceParameter &p, tpu::GRUOp *op) {
-    auto &attr = op->parseParam();
+    auto attr = op->parseParam();
     auto h0_buffer = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto initial_h = h0_buffer->data();

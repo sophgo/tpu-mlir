@@ -69,7 +69,7 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {
   // if (!Module::getStorageType(op.bias()).isInteger(32))
   //   return failure();
-  auto &p = op.parseParam();
+  auto p = op.parseParam();
 
   // bias merge input zp
   if (p.input_zp == 0)
@@ -97,7 +97,7 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
 }
 
 void tpu::MatMulOp::codegen_global_bm1684x() {
-  auto &p = parseParam();
+  auto p = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

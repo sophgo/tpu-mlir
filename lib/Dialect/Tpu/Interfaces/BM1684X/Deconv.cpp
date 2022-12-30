@@ -63,7 +63,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   // but kernel is arranged to {groups * oc, ic, kh, kw} when adding_layer
   // here we arrange kernel to {groups * oc, ceil(ic, IC_PARALLEL), kh * kw *
   // IC_PARALLEL}
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
 
   // filter op
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
@@ -96,7 +96,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
 
 LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
                                           PatternRewriter &rewriter) {
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
 
   // filter op
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
@@ -149,7 +149,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isF32())
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
 
   // filter op
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
@@ -252,7 +252,7 @@ typedef struct {
 #endif
 
 void tpu::DeconvOp::codegen_global_bm1684x() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   deconv_global_param_t param = {0};
   param.input_global_addr = Module::getAddress(input());
   param.weight_global_addr = Module::getAddress(filter());
@@ -309,7 +309,7 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t sz = out_lmem_bytes * sizeof(int32_t);
-  auto &attr = parseParam();
+  auto &attr = getDeconvParam(*this);
 
   auto idtype = BM168x::getDataType(input());
   int type_len = BM168x::getFmtBytes(idtype);
@@ -337,7 +337,7 @@ void tpu::DeconvOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
@@ -355,7 +355,7 @@ void tpu::DeconvOp::assign_sec_info(int64_t n_step, int64_t h_step,
 void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                           void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   auto filter_gi = LocalGenInterface::getGroupInfo(filter(), n_step, h_step);

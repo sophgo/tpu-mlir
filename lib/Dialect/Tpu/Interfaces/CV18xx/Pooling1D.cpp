@@ -25,7 +25,7 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   assert(!attr.do_relu);
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());

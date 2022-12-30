@@ -34,7 +34,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8) || op.coeff_merged())
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
 
   bool merge = true;
   auto out_stype = Module::getStorageType(op.output());
@@ -173,7 +173,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 
 LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
                                           PatternRewriter &rewriter) {
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
 
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
@@ -277,7 +277,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isF32())
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
 
   auto out_type = Module::getStorageType(op.output());
   // filter reorder
@@ -310,7 +310,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
 // ======================================
 
 void tpu::Conv2DOp::codegen_global_bm1684x() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -362,7 +362,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto &p = parseParam();
+  auto &p = getConv2DParam(*this);
   int64_t sz = 0;
   auto in_type = BM168x::getDataType(input());
   auto out_type = BM168x::getDataType(output());
@@ -412,7 +412,7 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(sec_info));
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
@@ -438,7 +438,7 @@ void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
 void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                           void *sec_info_) {
   // local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);

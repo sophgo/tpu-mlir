@@ -18,12 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const conv_attr_t &tpu::Conv3DOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::conv_attrs.find(op);
-  if (iter != Module::conv_attrs.end()) {
-    return iter->second;
-  }
+conv_attr_t tpu::Conv3DOp::parseParam() {
   conv_attr_t p = {0};
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
   auto o_s = output().getType().cast<RankedTensorType>().getShape();
@@ -71,13 +66,12 @@ const conv_attr_t &tpu::Conv3DOp::parseParam() {
   assert(p.ins_d == 0 && p.ins_h == 0 && p.ins_w == 0);
   p.groups = group();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
-  Module::conv_attrs[op] = p;
-  return Module::conv_attrs[op];
+  return p;
 }
 
 LogicalResult tpu::Conv3DOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
@@ -114,7 +108,7 @@ LogicalResult tpu::Conv3DOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::Conv3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
   in_slice = (out_slice - 1) * attr.sh +
              (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);

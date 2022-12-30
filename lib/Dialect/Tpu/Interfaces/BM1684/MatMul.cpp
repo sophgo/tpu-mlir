@@ -32,7 +32,7 @@ typedef struct {
 } FcQParams;
 
 void tpu::MatMulOp::codegen_global_bm1684() {
-  auto &p = parseParam();
+  auto p = parseParam();
   int using_bias = p.with_bias ? 1 : 0;
   int if_relu = p.do_relu ? 1 : 0;
   int if_right_active = isa<top::WeightOp>(right().getDefiningOp()) ? 0 : 1;

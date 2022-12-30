@@ -47,12 +47,7 @@ static void size_to_2dim(int64_t size, int64_t &h, int64_t &w) {
   }
 }
 
-const reduce_attr_t &tpu::ReduceOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::reduce_attrs.find(op);
-  if (iter != Module::reduce_attrs.end()) {
-    return iter->second;
-  }
+reduce_attr_t tpu::ReduceOp::parseParam() {
   reduce_attr_t attr = {0};
   auto axes_ = Module::getI64Array(axes());
   auto input_shape = Module::getShape(input());
@@ -81,8 +76,7 @@ const reduce_attr_t &tpu::ReduceOp::parseParam() {
       std::accumulate(input_shape.begin() + end_axis, input_shape.end(), 1,
                       std::multiplies<int64_t>());
   attr.simplified = true;
-  Module::reduce_attrs[op] = attr;
-  return Module::reduce_attrs[op];
+  return attr;
 }
 
 LogicalResult tpu::ReduceOp::init(InferenceParameter &p) { return success(); }

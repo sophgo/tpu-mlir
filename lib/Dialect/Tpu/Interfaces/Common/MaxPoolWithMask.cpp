@@ -19,12 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const pool_attr_t &tpu::MaxPoolWithMaskOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::pool_attrs.find(op);
-  if (iter != Module::pool_attrs.end()) {
-    return iter->second;
-  }
+pool_attr_t tpu::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
   p.id = 1;
   p.od = 1;
@@ -51,8 +46,7 @@ const pool_attr_t &tpu::MaxPoolWithMaskOp::parseParam() {
   p.relu_limit = relu_limit().convertToDouble();
   p.is_global = p.ih == p.kh && p.iw == p.kw && p.oh == 1 && p.ow == 1;
   p.count_include_pad = 0;
-  Module::pool_attrs[op] = p;
-  return Module::pool_attrs[op];
+  return p;
 }
 
 LogicalResult tpu::MaxPoolWithMaskOp::init(InferenceParameter &p) {
@@ -62,7 +56,7 @@ LogicalResult tpu::MaxPoolWithMaskOp::init(InferenceParameter &p) {
 void tpu::MaxPoolWithMaskOp::deinit(InferenceParameter &p) { return; }
 
 LogicalResult tpu::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   int64_t nc = attr.n * attr.c;
   auto num_elem = Module::getNumElements(output());
   std::fill_n(p.outputs[0], num_elem, (float)(-FLT_MAX));
@@ -113,7 +107,7 @@ LogicalResult tpu::MaxPoolWithMaskOp::BackwardH(int64_t &in_idx,
                                                 int64_t &in_slice,
                                                 int64_t out_idx,
                                                 int64_t out_slice) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   in_slice = (out_slice - 1) * attr.sh + attr.kh;
   in_idx = out_idx * attr.sh - attr.pad_h;
   bool is_last = (out_idx + out_slice == attr.oh);

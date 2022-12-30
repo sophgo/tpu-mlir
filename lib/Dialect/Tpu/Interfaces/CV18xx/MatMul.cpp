@@ -62,7 +62,7 @@ static void transposeBiasInt32(std::vector<int32_t> &bias_int32,
 void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
 
   OpBuilder builder(getContext());
-  auto &p = parseParam();
+  auto p = parseParam();
   // TODO get batch_high and batch_low, group_fc bias transpose
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_filter = Module::getAddress(right());

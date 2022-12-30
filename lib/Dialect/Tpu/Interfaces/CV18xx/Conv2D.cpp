@@ -176,7 +176,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   // first, merge conv rshift/multiplier/bias into one packed tensor
   std::shared_ptr<std::vector<int32_t>> bias_new;
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
@@ -225,7 +225,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isBF16())
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   // first lower weight
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
@@ -264,7 +264,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
 // ======================================
 
 void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   gaddr_t ga_filter = Module::getAddress(filter());

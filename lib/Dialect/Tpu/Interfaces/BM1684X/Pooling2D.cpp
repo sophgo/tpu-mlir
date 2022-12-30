@@ -104,7 +104,7 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  auto &attr = parseParam();
+  auto attr = parseParam();
   pooling_common_spec_t spec = {0};
   SpecAssign(attr, spec);
   if (pool_mode() == tpu::PoolMode::Avg) {
@@ -143,15 +143,12 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
   case tpu::PoolMode::Avg:
     int64_t size = 0;
     if (Module::isAsymmetric()) {
+      auto &p = getPool2DParam(*this);
       auto kernel = Module::getI64Array(kernel_shape());
-      int64_t dtype_bytes =
-          kernel->at(0) * kernel->at(1) > 256 ? sizeof(int) : sizeof(short);
+      int64_t dtype_bytes = p.kh * p.kw > 256 ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       int64_t npu_num = BM168x::NPU_NUM;
-
-      int64_t N, C, H, W;
-      Module::getNCHW(input(), N, C, H, W);
-      size = align_up(out_hslice * W, eu_num) * ceiling_func(C, npu_num) *
+      size = align_up(out_hslice * p.iw, eu_num) * ceiling_func(p.c, npu_num) *
              dtype_bytes;
     }
     return size;
@@ -164,7 +161,7 @@ void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t pad_h_b =
@@ -196,7 +193,7 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   pooling_local_spec_t spec = {0};
   auto &common = spec.common;
   SpecAssign(attr, common);
