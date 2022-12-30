@@ -72,6 +72,11 @@ bool GroupOps::is_eu_align(Value opd, Operation *op) {
         (opd == op->getOperand(1) || opd == op->getOperand(2))) {
       return false;
     }
+    if (Module::isBM1686()) {
+      if (isa<tpu::RequantIntAxisOp>(op) && (opd == op->getOperand(1))) {
+        return false;
+      }
+    }
   }
   return true;
 }

@@ -70,7 +70,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     // broadcast input using BDC to a buffer
     use_3ic_optimize |= 0x30;
   }
-
+  if (Module::isBM1686()) {
+    use_3ic_optimize = 0;
+  }
   if (attr.is_dw == false) {
     tpu::reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize);
   } else {
