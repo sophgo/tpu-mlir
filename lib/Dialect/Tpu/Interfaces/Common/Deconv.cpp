@@ -18,12 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const deconv_attr_t &tpu::DeconvOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::deconv_attrs.find(op);
-  if (iter != Module::deconv_attrs.end()) {
-    return iter->second;
-  }
+deconv_attr_t tpu::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
   p.id = 1;
   p.od = 1;
@@ -57,13 +52,12 @@ const deconv_attr_t &tpu::DeconvOp::parseParam() {
   p.relu_limit = relu_limit().convertToDouble();
   p.with_bias = with_bias();
   p.is_dw = (p.oc == p.ic && p.oc == p.g && p.g > 1);
-  Module::deconv_attrs[op] = p;
-  return Module::deconv_attrs[op];
+  return p;
 }
 
 LogicalResult tpu::DeconvOp::init(InferenceParameter &p) {
   auto deconv = new Deconv();
-  auto &attr = parseParam();
+  auto attr = parseParam();
   int izp = 0;
   if (Quant::isUniformQuantized(input())) {
     izp = Quant::getUniformQuantizedType(input()).getZeroPoint();
@@ -166,7 +160,7 @@ tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
 
 LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
-  auto &attr = parseParam();
+  auto &attr = getDeconvParam(*this);
   int kh_ext = (attr.kh - 1) * attr.dh + 1;
   if (auto ret = DeconvSlice(out_idx, out_slice, attr.sh, kh_ext, attr.pad_h)) {
     in_idx = ret.value()[2];

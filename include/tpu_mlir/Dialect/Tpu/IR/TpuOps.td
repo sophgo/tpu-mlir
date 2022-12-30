@@ -264,7 +264,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const conv_attr_t& parseParam();
+    conv_attr_t parseParam();
   }];
 }
 
@@ -325,7 +325,7 @@ class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const pool_attr_t& parseParam();
+    pool_attr_t parseParam();
   }];
 }
 
@@ -356,7 +356,7 @@ def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
 
   let results = (outs AnyTensor:$output, AnyTensor:$mask);
   let extraClassDeclaration = [{
-    const pool_attr_t& parseParam();
+    pool_attr_t parseParam();
   }];
 }
 
@@ -706,7 +706,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const matmul_attr_t& parseParam();
+    matmul_attr_t parseParam();
   }];
 }
 
@@ -1217,7 +1217,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
   let results = (outs AnyTensor:$output);
 
   let extraClassDeclaration = [{
-    const deconv_attr_t& parseParam();
+    deconv_attr_t parseParam();
   }];
 }
 
@@ -1309,7 +1309,7 @@ def Tpu_GRUOp: Tpu_Op<"GRU"> {
     AnyTensorOrNone:$Y_h);
 
   let extraClassDeclaration = [{
-    const gru_attr_t& parseParam();
+    gru_attr_t parseParam();
   }];
 }
 
@@ -1338,7 +1338,7 @@ def Tpu_LSTMOp: Tpu_Op<"LSTM"> {
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
-    const lstm_attr_t& parseParam();
+    lstm_attr_t parseParam();
   }];
 }
 
@@ -1368,7 +1368,7 @@ def Tpu_LSTMCVIOp: Tpu_Op<"LSTMCVI"> {
     AnyTensorOrNone:$Y_h,
     AnyTensorOrNone:$Y_c);
   let extraClassDeclaration = [{
-    const lstm_attr_t& parseParam();
+    lstm_attr_t parseParam();
   }];
 }
 
@@ -1475,7 +1475,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
 
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    const reduce_attr_t& parseParam();
+    reduce_attr_t parseParam();
   }];
 }
 

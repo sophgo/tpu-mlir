@@ -13,17 +13,13 @@
 #include "tpu_mlir/Support/Helper/Module.h"
 #include "tpu_mlir/Support/Helper/Quant.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Interfaces/LocalGenInterface.h"
 
 using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const conv_attr_t &tpu::Conv2DOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::conv_attrs.find(op);
-  if (iter != Module::conv_attrs.end()) {
-    return iter->second;
-  }
+conv_attr_t tpu::Conv2DOp::parseParam() {
   conv_attr_t p = {0};
   p.id = p.od = p.kd = p.sd = p.dd = 1;
   auto i_s = input().getType().cast<RankedTensorType>().getShape();
@@ -62,13 +58,12 @@ const conv_attr_t &tpu::Conv2DOp::parseParam() {
   assert(p.ins_h == 0 && p.ins_w == 0);
   p.groups = group();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
-  Module::conv_attrs[op] = p;
-  return Module::conv_attrs[op];
+  return p;
 }
 
 LogicalResult tpu::Conv2DOp::init(InferenceParameter &p) {
   auto conv = new Conv();
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
@@ -149,7 +144,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::Conv2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
-  auto &attr = parseParam();
+  auto &attr = getConv2DParam(*this);
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
   in_slice = (out_slice - 1) * attr.sh +
              (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);

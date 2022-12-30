@@ -13,7 +13,6 @@
 using namespace mlir;
 
 namespace tpu_mlir {
-
 constexpr llvm::StringRef LocalGenInterface::kLayerGroupAttrName;
 void LocalGenInterface::fixSlice(int64_t &in_idx, int64_t &in_slice,
                                  int64_t in_length, bool last) {

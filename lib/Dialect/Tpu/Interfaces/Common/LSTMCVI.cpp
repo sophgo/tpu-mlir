@@ -32,12 +32,7 @@ static float tanh_(float data, InferenceParameter &p) {
   return var;
 }
 
-const lstm_attr_t &tpu::LSTMCVIOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::lstm_attrs.find(op);
-  if (iter != Module::lstm_attrs.end()) {
-    return iter->second;
-  }
+lstm_attr_t tpu::LSTMCVIOp::parseParam() {
   lstm_attr_t attr = {0};
   auto r_shape = Module::getShape(recurrence());
   auto in_shape = Module::getShape(input());
@@ -54,8 +49,7 @@ const lstm_attr_t &tpu::LSTMCVIOp::parseParam() {
   attr.output_y = !Y().getType().isa<mlir::NoneType>();
   attr.output_yh = !Y_h().getType().isa<mlir::NoneType>();
   attr.output_yc = !Y_c().getType().isa<mlir::NoneType>();
-  Module::lstm_attrs[op] = attr;
-  return Module::lstm_attrs[op];
+  return attr;
 }
 
 LogicalResult tpu::LSTMCVIOp::init(InferenceParameter &p) { return success(); }
@@ -153,7 +147,7 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
 }
 
 LogicalResult tpu::LSTMCVIOp::inference(InferenceParameter &p) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   auto bias_buffer = std::make_shared<std::vector<float>>(
       attr.num_direction * 4 * attr.hidden_size, 0.0f);

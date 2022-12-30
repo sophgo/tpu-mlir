@@ -24,12 +24,7 @@ using namespace mlir;
 // case 3: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7] => batch = 12, M = 5, K = 6, N = 7
 // case 4: [4, 5, 6] * [6,7] = [4, 5, 7] => batch =1, M = 20, K = 6, N = 7
 // clang-format on
-const matmul_attr_t &tpu::MatMulOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::matmul_attrs.find(op);
-  if (iter != Module::matmul_attrs.end()) {
-    return iter->second;
-  }
+matmul_attr_t tpu::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
   auto a_s = Module::getShape(input());
   auto b_s = Module::getShape(right());
@@ -56,13 +51,12 @@ const matmul_attr_t &tpu::MatMulOp::parseParam() {
     p.M = std::accumulate(o_s.begin(), o_s.begin() + o_dims - 1, 1,
                           std::multiplies<int64_t>());
   }
-  Module::matmul_attrs[op] = p;
-  return Module::matmul_attrs[op];
+  return p;
 }
 
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
-  auto &a = parseParam();
+  auto a = parseParam();
 
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
                 a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
@@ -98,7 +92,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     }
   } else if (Quant::isUniformQuantized(output())) {
     if (is_cv18xx) {
-      auto &a = parseParam();
+      auto a = parseParam();
       bool is_fc = isa<top::WeightOp>(right().getDefiningOp());
       std::shared_ptr<std::vector<int64_t>> rshift_v;
       std::shared_ptr<std::vector<int64_t>> multiplier_v;

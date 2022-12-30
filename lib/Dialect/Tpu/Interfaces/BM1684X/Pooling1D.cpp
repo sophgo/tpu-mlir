@@ -108,7 +108,7 @@ void tpu::Pool1DOp::codegen_global_bm1684x() {
   (*input_spec)[0].shape[3] = 1;
   (*output_spec)[0].dims = 4;
   (*output_spec)[0].shape[3] = 1;
-  auto &attr = parseParam();
+  auto attr = parseParam();
   pooling_common_spec_t spec = {0};
   SpecAssign(attr, spec);
   if (pool_mode() == tpu::PoolMode::Avg) {
@@ -163,7 +163,7 @@ void tpu::Pool1DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
   int64_t pad_h_b =
@@ -195,7 +195,7 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   pooling_local_spec_t spec = {0};
   auto &common = spec.common;
   SpecAssign(attr, common);

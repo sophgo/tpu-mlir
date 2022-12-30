@@ -175,7 +175,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   // lower weight  for groups weight's shape is (oc, ic/g, kh, kw)
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
@@ -219,7 +219,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isBF16())
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   // first lower weight
   auto shape = Module::getShape(op.filter());
   auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
@@ -260,7 +260,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
 
 void tpu::DeconvOp::codegen_global_cv18xx(int64_t layer_id) {
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   gaddr_t ga_input = Module::getAddress(input());
   gaddr_t ga_output = Module::getAddress(output());
   gaddr_t ga_filter = Module::getAddress(filter());

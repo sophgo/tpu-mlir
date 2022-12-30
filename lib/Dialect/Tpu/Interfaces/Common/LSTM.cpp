@@ -19,12 +19,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const lstm_attr_t &tpu::LSTMOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::lstm_attrs.find(op);
-  if (iter != Module::lstm_attrs.end()) {
-    return iter->second;
-  }
+lstm_attr_t tpu::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
   auto in_shape = Module::getShape(input());
   assert(in_shape.size() == 3);
@@ -46,8 +41,7 @@ const lstm_attr_t &tpu::LSTMOp::parseParam() {
   attr.output_y = !Y().getType().isa<NoneType>();
   attr.output_yh = !Y_h().getType().isa<NoneType>();
   attr.output_yc = !Y_c().getType().isa<NoneType>();
-  Module::lstm_attrs[op] = attr;
-  return Module::lstm_attrs[op];
+  return attr;
 }
 
 LogicalResult tpu::LSTMOp::init(InferenceParameter &p) { return success(); }
@@ -176,7 +170,7 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
 }
 
 LogicalResult tpu::LSTMOp::inference(InferenceParameter &p) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   auto h0_buffer = std::make_shared<std::vector<float>>(
       attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);

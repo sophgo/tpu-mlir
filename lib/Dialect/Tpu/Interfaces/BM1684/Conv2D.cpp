@@ -27,7 +27,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (!Module::getStorageType(op.filter()).isInteger(8))
     return failure();
 
-  auto &attr = op.parseParam();
+  auto attr = op.parseParam();
   auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
@@ -55,7 +55,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 }
 
 void tpu::Conv2DOp::codegen_global_bm1684() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   if (attr.is_dw) {
     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
         Module::getAddress(input()), Module::getAddress(output()),

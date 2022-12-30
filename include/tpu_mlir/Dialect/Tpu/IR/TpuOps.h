@@ -32,3 +32,9 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuAttr.h.inc"
 #define GET_OP_CLASSES
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h.inc"
+
+namespace tpu_mlir {
+const conv_attr_t &getConv2DParam(tpu::Conv2DOp &op);
+const deconv_attr_t &getDeconvParam(tpu::DeconvOp &op);
+const pool_attr_t &getPool2DParam(tpu::Pool2DOp &op);
+} // namespace tpu_mlir

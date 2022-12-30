@@ -70,7 +70,7 @@ static bool has_pad(const pool_attr_t &attr) {
 // =========================================
 
 void tpu::Pool3DOp::codegen_global_bm1684x() {
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   pooling3d_spec_t spec = {0};
   spec.input_addr = Module::getAddress(input());
@@ -137,7 +137,7 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t buffer_size = 0;
   auto out_dtype = output().getType();
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   int c_per_npu = ceiling_func(attr.c, BM168x::NPU_NUM);
 
@@ -193,7 +193,7 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
 
-  auto &attr = parseParam();
+  auto attr = parseParam();
   pooling3d_spec_t spec = {0};
   spec.input_addr = in_gi.out_addr;
   spec.output_addr = gi.out_addr;

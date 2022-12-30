@@ -18,12 +18,7 @@ using namespace tpu_mlir;
 using namespace tpu_mlir::helper;
 using namespace mlir;
 
-const pool_attr_t &tpu::Pool1DOp::parseParam() {
-  auto op = getOperation();
-  auto iter = Module::pool_attrs.find(op);
-  if (iter != Module::pool_attrs.end()) {
-    return iter->second;
-  }
+pool_attr_t tpu::Pool1DOp::parseParam() {
   pool_attr_t p = {0};
   p.id = 1;
   p.od = 1;
@@ -49,13 +44,12 @@ const pool_attr_t &tpu::Pool1DOp::parseParam() {
   p.relu_limit = relu_limit().convertToDouble();
   p.is_global = p.ih == p.kh && p.iw == p.kw && p.oh == 1 && p.ow == 1;
   p.count_include_pad = count_include_pad();
-  Module::pool_attrs[op] = p;
-  return Module::pool_attrs[op];
+  return p;
 }
 
 LogicalResult tpu::Pool1DOp::init(InferenceParameter &p) {
   auto pooling = new Pooling();
-  auto &attr = parseParam();
+  auto attr = parseParam();
 
   int izp = 0;
   auto dtype = input().getType().cast<RankedTensorType>().getElementType();
@@ -147,7 +141,7 @@ LogicalResult tpu::Pool1DOp::LocalGenSupport() {
 
 LogicalResult tpu::Pool1DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
-  auto &attr = parseParam();
+  auto attr = parseParam();
   in_slice = (out_slice - 1) * attr.sh + attr.kh;
   in_idx = out_idx * attr.sh - attr.pad_h;
   bool is_last = (out_idx + out_slice == attr.oh);
