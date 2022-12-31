@@ -57,14 +57,8 @@ public:
       real_mode = iter->second;
     }
     if (real_mode == Quant::Type::INT8) {
-      if (op->hasTrait<trait::SupportFuseRelu>() || isa<top::ReluOp>(op)) {
-        op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
-      }
       LoweringINT8(rewriter, opTy, Module::isAsymmetric());
     } else if (real_mode == Quant::Type::INT4) {
-      if (op->hasTrait<trait::SupportFuseRelu>() || isa<top::ReluOp>(op)) {
-        op->setAttr("relu_limit", rewriter.getF64FloatAttr(-1.0));
-      }
       if (isa<top::ConvOp, top::MatMulOp>(op)) {
         LoweringINT4(rewriter, opTy, Module::isAsymmetric());
       } else {

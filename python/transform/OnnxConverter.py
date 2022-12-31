@@ -392,7 +392,7 @@ class OnnxConverter(BaseConverter):
             # for some paddle paddle model dynamic dim is constant value
             _odims = o.type.tensor_type.shape.dim
             for _odim in _odims:
-                if  _odim.dim_value <= 0:
+                if _odim.dim_value <= 0:
                     _odim.dim_param = '?'
         self.model = onnx.shape_inference.infer_shapes(self.model)
 
@@ -1786,7 +1786,12 @@ class OnnxConverter(BaseConverter):
             axis += num_dims
         eps = onnx_node.attrs.get("epsilon", 1e-05)
         # stash_type is not important
-        p = {"name": [onnx_node.name]*3, "axis": axis, "eps": eps}
+        p = {
+            "name":
+            [onnx_node.name + '_LayerNorm', onnx_node.name + '_Mean', onnx_node.name + '_Rstd'],
+            "axis": axis,
+            "eps": eps
+        }
         input_opd = self.getOperand(onnx_node.inputs[0])
         scale_opd = self.getWeightOp(onnx_node.inputs[1])
         if len(onnx_node.inputs) > 2:
