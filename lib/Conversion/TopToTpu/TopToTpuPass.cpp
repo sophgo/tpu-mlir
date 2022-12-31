@@ -302,6 +302,7 @@ public:
     patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     cast_process();
+    relu_process();
     Module::updateModuleTypes();
     Module::setState(Module::State::TPU_LOWERED);
   }
@@ -384,6 +385,20 @@ protected:
             auto new_type =
                 RankedTensorType::get(Module::getShape(value), quant_type);
             value.setType(new_type);
+          }
+        }
+      }
+    });
+  }
+
+  void relu_process() {
+    Builder builder(ctx_);
+    mainFunc_.walk([&](Operation *op) {
+      if (Module::isTpuOp(op)) {
+        if (op->hasTrait<trait::SupportFuseRelu>() || isa<tpu::ReluOp>(op)) {
+          if (Quant::isUniformQuantized(op->getResult(0)) ||
+              Quant::isUniformQuantized(op->getOperand(0))) {
+            op->setAttr("relu_limit", builder.getF64FloatAttr(-1.0));
           }
         }
       }

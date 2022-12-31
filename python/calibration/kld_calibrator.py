@@ -659,7 +659,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     if output == op_name:
                         continue
                     count = self.parser.get_user_count_by_op_name(output)
-                    self.ref_activations[i][output] = [self.module.get_tensor(output), count]
+                    if count > 0:
+                        self.ref_activations[i][output] = [self.module.get_tensor(output), count]
 
     def find_threshold(self, histogram_data_map, histogram_width_map):
         thresholds = {}
