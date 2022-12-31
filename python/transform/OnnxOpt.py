@@ -65,6 +65,8 @@ class OuterNode(object):
         if is_tensor == False:
             if tensor_value is not None:
                 self.tensor_value = np.array(tensor_value)
+                if self.tensor_value.shape == ():
+                    self.tensor_value = np.expand_dims(self.tensor_value, 0)
                 self.is_tensor = True
         if attr_name:
             # for some case tensor is a part of new onnx_node's attr
@@ -142,7 +144,8 @@ class ReformInfo(object):
 
 class ReForm(object):
     # current just support form/deform single output op
-    def __init__(self, model):
+    def __init__(self, model, rigorous):
+        self.rigorous = rigorous
         self.reform_info_list = []
         self.nodes = model.graph.node
         self.weight = model.graph.initializer
@@ -206,27 +209,80 @@ class ReForm(object):
         args = tuple(attrs[key] for key in attrcheck.attrs)
         return attrcheck.func(*args)
 
-    def match_input(self, ninp, pninp):
-        if len(pninp) != len(ninp):
-            return False
+    def attr_to_tensor(self, node, pindices, op_type):
+        '''
+           high opset node's input is low opset node's attr
+           here map pattern node input's idx to attr key
+        '''
+        tensor_value = []
+        attrs = get_node_attrs(node)
+        for i in pindices:
+            key = "None"
+            if op_type == "Clip":
+                if i == 1:
+                    key =  "min"
+                elif i == 2:
+                    key = "max"
+            # add other op here
+            try:
+                tensor_value.append(np.array(attrs[key]))
+            except KeyError:
+                pass
+        return tensor_value
+
+    def process_low_opset(self, node, pninp, nofdiff):
+        tensor_value = []
+        if nofdiff == 0:
+            return tensor_value
+        flag = True # this mean maybe tensor in pinp is onnx node's attr
+        start_idx = len(pninp) - nofdiff
+        for pnode in pninp[start_idx:]:
+            if not pnode.is_tensor:
+                flag = False
+                break
+        if flag:
+            tensor_value = self.attr_to_tensor(node, range(start_idx, len(pninp)), node.op_type)
+        if not flag or not len(tensor_value) == nofdiff:
+            if self.rigorous:
+                raise RuntimeError("Unsupport opset for {}".format(node.op_type))
+            else:
+                print("Warning unsupport opset for {} skipped.".format(node.op_type))
+        return tensor_value
+
+    def match_input(self, node, ninp, pninp):
+        nofdiff = len(pninp) - len(ninp)
+        if nofdiff >= 0:
+            ex_tensor_value = self.process_low_opset(node, pninp, nofdiff)
+            ninp = ninp[:] + ex_tensor_value
+        else:
+            if self.rigorous:
+                raise RuntimeError("Unsupport opset for {}".format(node.op_type))
+            else:
+                print("Warning unsupport opset for {} skipped.".format(node.op_type))
+                return False
+
         for pnode, node_name in zip(pninp, ninp):
             if isinstance(pnode, OuterNode):
                 if pnode.is_tensor:
-                    # check if tensor exist
-                    if not self.find_tensor(node_name):
-                        return False
+                    tensor_value = node_name
+                    if not type(node_name) == np.ndarray:
+                        # check if tensor exist
+                        if not self.find_tensor(node_name):
+                            return False
+                        if pnode.attr_name or pnode.tensor_value is not None:
+                            tensor_value = self.get_tensor_value(node_name)
+
                     if pnode.tensor_value is not None:
                         # check tensor value
-                        tensor_value = self.get_tensor_value(node_name)
-                        if tensor_value.shape == ():
-                            tensor_value = np.expand_dims(tensor_value, 0)
-                        if pnode.tensor_value.shape == ():
-                            pnode.tensor_value = np.expand_dims(pnode.tensor_value, 0)
-                        if pnode.tensor_value.shape != tensor_value.shape \
-                           or (pnode.tensor_value != tensor_value).any():
+                        # tensor_value = self.get_tensor_value(node_name)
+                        _tensor_value = copy.deepcopy(tensor_value)
+                        if _tensor_value.shape == ():
+                            _tensor_value = np.expand_dims(_tensor_value, 0)
+                        if pnode.tensor_value.shape != _tensor_value.shape \
+                           or (pnode.tensor_value != _tensor_value).any():
                             return False
                     if pnode.attr_name:
-                        tensor_value = self.get_tensor_value(node_name)
+                        # tensor_value = self.get_tensor_value(node_name)
                         pnode.attr_value = tensor_value
                 if not pnode.output or pnode.is_tensor:
                     pnode.output.clear()
@@ -236,10 +292,10 @@ class ReForm(object):
         return True
 
     def match_node(self, node, pnode):
-        matched = self.match_input(node.input, pnode.input)
+        matched = self.match_input(node, node.input, pnode.input)
         if not matched and (node.op_type == 'Mul' or node.op_type == 'Add'):
            # naive method, need to be discussed
-           matched = self.match_input(node.input[::-1], pnode.input)
+           matched = self.match_input(node, node.input[::-1], pnode.input)
         if matched:
             # process constraint and check attrs
             if pnode.constraint:
@@ -550,7 +606,7 @@ def TorchHardSwishPattern2():
     return patterns
 
 
-def onnx_opt(model, dump=False):
+def onnx_opt(model, dump=False, rigorous=True):
     # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,
@@ -564,7 +620,7 @@ def onnx_opt(model, dump=False):
         some_patterns = pf()
         patterns.extend(some_patterns)
 
-    reform = ReForm(model)
+    reform = ReForm(model, rigorous)
     node_name_mapping, _, _ = reform(patterns)
     if dump:
         dump_model(model, "final_opt.onnx")
