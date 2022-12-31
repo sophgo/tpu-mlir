@@ -7,12 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/OpDefinition.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -93,7 +90,8 @@ void tpu::ConcatOp::assign_sec_info(int64_t n_step, int64_t h_step,
   sec_info->out_w_slice = w;
 }
 
-void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *sec_info_) {
+void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          void *sec_info_) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

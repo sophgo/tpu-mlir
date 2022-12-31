@@ -11,10 +11,7 @@
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
@@ -322,8 +319,10 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
               pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
             }
             BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
-            lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep, &sec_info);
-            lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep, &sec_info);
+            lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
+                                 &sec_info);
+            lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep,
+                                       &sec_info);
           } else {
             llvm_unreachable("chip not support");
           }
@@ -383,7 +382,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   std::vector<int> next_id_v = {};
   for (auto v : call.getResults()) {
     for (auto user : v.getUsers()) {
-      if (isa<func::ReturnOp>(user)) {
+      if (isa<ReturnOp>(user)) {
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());

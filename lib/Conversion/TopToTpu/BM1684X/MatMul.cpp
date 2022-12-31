@@ -247,7 +247,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
         all_next_layer_is_int4 = false;
       }
 
-      if (isa<func::ReturnOp>(user)) {
+      if (isa<ReturnOp>(user)) {
         all_next_layer_is_int4 = true;
         all_next_layer_is_int8 = false;
         break;

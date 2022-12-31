@@ -109,7 +109,7 @@ std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
     memcpy(data_u8->data(), data_i32->data(), bytes);
     return std::move(data_u8);
-  } else if (dtype.isa<::mlir::Float16Type, ::mlir::BFloat16Type>()) {
+  } else if (dtype.isa<Float16Type, BFloat16Type>()) {
     auto data_u16 = read<uint16_t>();
     auto bytes = data_u16->size() * sizeof(uint16_t);
     auto data_u8 = std::make_shared<std::vector<uint8_t>>(bytes);
@@ -185,7 +185,7 @@ template Value WeightOp::create(Operation *OwnerOp, llvm::StringRef name,
                                 const std::vector<uint32_t> &data,
                                 RankedTensorType &type);
 
-mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
+Value WeightOp::clone_bf16(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
   assert(dtype.isF32());
@@ -216,7 +216,7 @@ mlir::Value WeightOp::clone_bf16(Operation *OwnerOp) {
   return newOp.getResult();
 };
 
-mlir::Value WeightOp::clone_f16(Operation *OwnerOp) {
+Value WeightOp::clone_f16(Operation *OwnerOp) {
   auto type = getType().cast<RankedTensorType>();
   auto dtype = type.getElementType();
   assert(dtype.isF32());

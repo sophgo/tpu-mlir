@@ -10,6 +10,7 @@
 #pragma once
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/OpDefinition.h"
+#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/AttrStruct.h"
 
@@ -108,10 +109,10 @@ bool isState(llvm::StringRef state);
 //-----------------------------------------------------------------
 
 ModuleOp getModuleOp();
-mlir::Location getLoc();
-mlir::MLIRContext *getCtx();
+Location getLoc();
+MLIRContext *getCtx();
 
-void push_back(mlir::func::FuncOp funcOp);
+void push_back(FuncOp funcOp);
 
 top::NoneOp getNoneOp(Operation *op);
 Value getOriValue(Value &v);
@@ -162,9 +163,9 @@ bool isBM1686();
 //-----------------------------------------------------------------
 // Helper Functions for quantization
 //-----------------------------------------------------------------
-bool isCalibratedType(mlir::Type type);
+bool isCalibratedType(Type type);
 bool isCalibratedType(Value v);
-bool isUniformQuantized(mlir::Type type);
+bool isUniformQuantized(Type type);
 bool isUniformQuantized(Value v);
 template <typename... Args> bool isCalibratedType(Value v, Args... args) {
   return isCalibratedType(v) && isCalibratedType(args...);
@@ -174,9 +175,9 @@ template <typename... Args> bool isUniformQuantized(Value v, Args... args) {
 }
 
 quant::CalibratedQuantizedType getCalibratedType(Value v);
-quant::CalibratedQuantizedType getCalibratedType(mlir::Type t);
+quant::CalibratedQuantizedType getCalibratedType(Type t);
 quant::UniformQuantizedType getUniformQuantizedType(Value v);
-quant::UniformQuantizedType getUniformQuantizedType(mlir::Type t);
+quant::UniformQuantizedType getUniformQuantizedType(Type t);
 double getThreshold(Value v);
 
 // for symmetric

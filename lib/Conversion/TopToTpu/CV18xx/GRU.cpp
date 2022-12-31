@@ -96,12 +96,14 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
 
   // create lut
   std::string gru_name = module::getName(op.input()).str() + "_gru";
-  mlir::Value s_table, s_mantissa;
-  mlir::Value t_table, t_mantissa;
+  Value s_table, s_mantissa;
+  Value t_table, t_mantissa;
   auto sigmoid_f = [](double x) { return 1.0 / (1 + expf(-x)); };
   auto tanh_f = [](double x) { return tanh(x); };
-  createBf16LutOp(op, "sigmoid", TableMode::Slope, 1.0, 0.0, -12, 12, sigmoid_f, s_table, s_mantissa);
-  createBf16LutOp(op, "tanh", TableMode::Slope, 1.0, 0.0, -15, 15, tanh_f, t_table, t_mantissa);
+  createBf16LutOp(op, "sigmoid", TableMode::Slope, 1.0, 0.0, -12, 12, sigmoid_f,
+                  s_table, s_mantissa);
+  createBf16LutOp(op, "tanh", TableMode::Slope, 1.0, 0.0, -15, 15, tanh_f,
+                  t_table, t_mantissa);
   gru_operands.emplace_back(s_table);
   gru_operands.emplace_back(s_mantissa);
   gru_operands.emplace_back(t_table);

@@ -10,8 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
@@ -21,7 +19,6 @@
 #include <sstream>
 
 using namespace llvm;
-using namespace mlir;
 
 namespace tpu_mlir {
 namespace tpu {
@@ -33,7 +30,7 @@ struct ConvertReluLimitPattern : public RewritePattern {
                                 PatternRewriter &rewriter) const override {
     rewriter.setInsertionPointAfter(op);
     bool is_cv18xx = module::isCV18xx();
-    if (isa<func::ReturnOp>(op)) {
+    if (isa<ReturnOp>(op)) {
       return failure();
     }
     if (is_cv18xx && op->hasTrait<trait::SupportFuseRelu>() &&

@@ -1012,8 +1012,8 @@ public:
     cv18xx = &inst;
     return inst;
   }
-  static cvk_fmt_t getDataType(mlir::Type type);
-  static cvk_fmt_t getDataType(mlir::Value v);
+  static cvk_fmt_t getDataType(Type type);
+  static cvk_fmt_t getDataType(Value v);
   static const int64_t START_ADDR = (uint64_t)1 << 40;
   static const int64_t WEIGHT_ALIGNMENT = 16;
   static const int64_t NEURON_ALIGNMENT = 64;

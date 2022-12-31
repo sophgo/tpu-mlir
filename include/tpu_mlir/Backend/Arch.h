@@ -36,10 +36,10 @@ public:
     return ALIGN_4N ? (4 / dtype_bytes) : 1;
   }
   static int64_t get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
-                                mlir::Type type, bool eu_align = true);
-  static int64_t get_tensor_lmem_bytes(mlir::Value v, int64_t slice_n,
+                                Type type, bool eu_align = true);
+  static int64_t get_tensor_lmem_bytes(Value v, int64_t slice_n,
                                        int64_t slice_h, bool eu_align = true);
-  static int64_t get_weight_lmem_bytes(mlir::Value v, bool eu_align = true);
+  static int64_t get_weight_lmem_bytes(Value v, bool eu_align = true);
 
   template <typename FPtrTy> FPtrTy CastToFPtr(const char *symbolName) {
     assert(DL.isValid());

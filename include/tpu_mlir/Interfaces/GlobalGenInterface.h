@@ -9,10 +9,6 @@
 
 #pragma once
 
-#include "mlir/IR/OpDefinition.h"
-
 #include "tpu_mlir/Support/Module.h"
-
-
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/GlobalGenInterface.h.inc"

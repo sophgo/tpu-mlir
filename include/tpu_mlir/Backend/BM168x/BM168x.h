@@ -269,7 +269,7 @@ typedef struct bcbinary_common_spec {
   int32_t scale_B;
   int32_t rshift_A;
   int32_t rshift_B;
-} bcbinary_common_spec_t ;
+} bcbinary_common_spec_t;
 
 typedef struct bcbinary_local_spec {
   bcbinary_common_spec_t common;
@@ -437,40 +437,40 @@ typedef struct {
 } softmax_tflite_fix8b_param_t;
 
 typedef struct {
-    unsigned long long input_addr;
-    unsigned long long weight_addr;
-    unsigned long long bias_addr;
-    unsigned long long output_addr;
-    unsigned long long mean_addr;
-    unsigned long long rstd_addr;
-    int                shape[MAX_SHAPE_DIMS];
-    int                dims;
-    int                axis;
-    float              eps;
-    int                affine; // 0: no weight and bias, 1: weight, 2: bias, 3: both
-    int                need_mean;
-    int                need_rstd;
-    int                dtype;
+  unsigned long long input_addr;
+  unsigned long long weight_addr;
+  unsigned long long bias_addr;
+  unsigned long long output_addr;
+  unsigned long long mean_addr;
+  unsigned long long rstd_addr;
+  int shape[MAX_SHAPE_DIMS];
+  int dims;
+  int axis;
+  float eps;
+  int affine; // 0: no weight and bias, 1: weight, 2: bias, 3: both
+  int need_mean;
+  int need_rstd;
+  int dtype;
 } layer_norm_global_param_t;
 
 typedef struct {
-    unsigned int       input_addr;
-    unsigned int       weight_addr;
-    unsigned int       bias_addr;
-    unsigned int       output_addr;
-    unsigned int       mean_addr;
-    unsigned int       rstd_addr;
-    unsigned int       buffer_addr;
-    int                input_n;
-    int                input_c;
-    int                input_h;
-    int                input_w;
-    int                depth;
-    float              eps;
-    int                affine;
-    int                need_mean;
-    int                need_rstd;
-    int                dtype;
+  unsigned int input_addr;
+  unsigned int weight_addr;
+  unsigned int bias_addr;
+  unsigned int output_addr;
+  unsigned int mean_addr;
+  unsigned int rstd_addr;
+  unsigned int buffer_addr;
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int depth;
+  float eps;
+  int affine;
+  int need_mean;
+  int need_rstd;
+  int dtype;
 } layer_norm_local_param_t;
 
 #ifdef __cplusplus
@@ -526,13 +526,13 @@ typedef void (*sg_set_profile_dump)(bool enable);
 typedef void (*sg_stas_dump)(void *pid_node);
 typedef void (*sg_flops_dump)(long long flops, void *pid_node);
 
-
-
 namespace tpu_mlir {
 namespace backend {
 
-#define CAST_FUNCTION(name) dl_##name = BM168x::instance()->CastToFPtr<name>(#name)
-#define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = BM168x::instance()->CastToFPtr<name>(#sym)
+#define CAST_FUNCTION(name)                                                    \
+  dl_##name = BM168x::instance()->CastToFPtr<name>(#name)
+#define CAST_FUNCTION_WITH_SYM(name, sym)                                      \
+  dl_##name = BM168x::instance()->CastToFPtr<name>(#sym)
 
 class BM168x : public Arch {
 
@@ -550,17 +550,17 @@ public:
   static void call_local_func(const char *symbolName, void *params,
                               int param_size, void *info, void *input,
                               void *output);
-  static DATA_TYPE_T getDataType(mlir::Type type);
-  static DATA_TYPE_T getDataType(mlir::Value v);
+  static DATA_TYPE_T getDataType(Type type);
+  static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
   static int getFmtBytes(DATA_TYPE_T data_type);
-  static tensor_spec_t value_to_spec(mlir::Value v);
+  static tensor_spec_t value_to_spec(Value v);
   static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_input_spec(mlir::Operation *op);
+  get_input_spec(Operation *op);
   static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_output_spec(mlir::Operation *op);
+  get_output_spec(Operation *op);
   static std::shared_ptr<std::vector<tensor_spec_t>>
-  get_spec(mlir::ValueRange values);
+  get_spec(ValueRange values);
   static void fix_shape(tensor_spec_t &spec,
                         const std::vector<int32_t> &new_shape);
   static int compare_mode(StringRef mode);
@@ -617,8 +617,8 @@ public:
   void *get_gmem_addr(const bm_device_mem_t &mem);
   void bm_memcpy_s2d(const bm_device_mem_t &dst, void *src);
   void bm_memcpy_d2s(void *dst, const bm_device_mem_t &src);
-  void value_s2d(mlir::Value v, void *src);
-  void value_d2s(mlir::Value v, void *dst);
+  void value_s2d(Value v, void *src);
+  void value_d2s(Value v, void *dst);
   void divide_sync_id();
   void merge_sync_id();
 

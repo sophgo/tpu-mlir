@@ -13,7 +13,6 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 
-using namespace mlir;
 using namespace tpu_mlir::top;
 
 

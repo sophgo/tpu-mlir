@@ -192,28 +192,26 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   return newOp.output();
 }
 
-Value do_requantFp(Value input, double scale, double offset, Type to_type, std::string& to_name) {
+Value do_requantFp(Value input, double scale, double offset, Type to_type,
+                   std::string &to_name) {
   auto from_stype = module::getStorageType(input);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
   builder.setInsertionPointAfterValue(input);
-  auto in_name = module::getName(input).str()+"_"+ to_name;
+  auto in_name = module::getName(input).str() + "_" + to_name;
   std::vector<NamedAttribute> attrs;
   auto name_loc = NameLoc::get(builder.getStringAttr(in_name));
-  attrs.push_back(builder.getNamedAttr(
-      "scale", builder.getF64FloatAttr(scale)));
+  attrs.push_back(
+      builder.getNamedAttr("scale", builder.getF64FloatAttr(scale)));
   attrs.push_back(
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(builder.getNamedAttr(
-      "quant_mode",
-      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 
-
   return rqOp.output();
 }
-
 
 Value do_reshape(Value input, RankedTensorType to_type) {
   auto ctx = input.getContext();
@@ -254,8 +252,8 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
   int64_t input_offset = qtype.getZeroPoint();
   if (input_stype.isUnsignedInteger(8)) {
     for (int64_t idx = 0; idx < num_elem; idx++) {
-      int64_t tmp =
-          ((uint8_t)(input_quant->at(idx)) - input_offset) * (int64_t)multiplier;
+      int64_t tmp = ((uint8_t)(input_quant->at(idx)) - input_offset) *
+                    (int64_t)multiplier;
       auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
       v = RightShiftRound(v, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
       input_dequant->data()[idx] = v;
@@ -272,7 +270,7 @@ Value do_weight_dequant(Value input, Type to_type, int64_t multiplier,
   return top::WeightOp::create(op, "_dequant", *input_dequant, new_type);
 }
 
-mlir::Type getQuantInt8Type(Value v, bool asymmetric) {
+Type getQuantInt8Type(Value v, bool asymmetric) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);
@@ -293,7 +291,7 @@ mlir::Type getQuantInt8Type(Value v, bool asymmetric) {
   return RankedTensorType::get(type.getShape(), qtype);
 }
 
-mlir::Type getQuantIntType(Value v, double scale, double offset, int bits) {
+Type getQuantIntType(Value v, double scale, double offset, int bits) {
   assert(bits == 8 || bits == 4);
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
@@ -312,13 +310,13 @@ mlir::Type getQuantIntType(Value v, double scale, double offset, int bits) {
       qmax = 15;
     flag = 0;
   }
-  auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, bits),
-                                                cali_type.getExpressedType(),
-                                                scale, offset, qmin, qmax);
+  auto qtype = quant::UniformQuantizedType::get(
+      flag, IntegerType::get(ctx, bits), cali_type.getExpressedType(), scale,
+      offset, qmin, qmax);
   return RankedTensorType::get(type.getShape(), qtype);
 }
 
-mlir::Type getQuantInt4Type(Value v, bool asymmetric) {
+Type getQuantInt4Type(Value v, bool asymmetric) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);
@@ -340,7 +338,7 @@ mlir::Type getQuantInt4Type(Value v, bool asymmetric) {
   return RankedTensorType::get(type.getShape(), qtype);
 }
 
-mlir::Type getQuantBoolType(Value v) {
+Type getQuantBoolType(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   auto ctx = v.getContext();
   auto cali_type = module::getCalibratedType(v);

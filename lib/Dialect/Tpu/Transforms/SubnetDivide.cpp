@@ -11,10 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
@@ -131,7 +128,7 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
     noneOp =
         builder.create<top::NoneOp>(module::getLoc(), builder.getNoneType());
   }
-  auto retOp = builder.create<func::ReturnOp>(module::getLoc(), fnOutputs);
+  auto retOp = builder.create<ReturnOp>(module::getLoc(), fnOutputs);
   for (auto op : sf->ops) {
     if (isa<top::NoneOp>(op)) {
       continue;
@@ -196,7 +193,7 @@ public:
     auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
-      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
+      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
               func::CallOp>(op)) {
         // do nothing
       } else {
@@ -233,7 +230,7 @@ public:
     auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
     mainFunc.walk([&](Operation *op) {
-      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, func::ReturnOp,
+      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
               func::CallOp>(op)) {
         // do nothing
       } else {

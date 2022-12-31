@@ -10,8 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/Module.h"
-
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOps.h"

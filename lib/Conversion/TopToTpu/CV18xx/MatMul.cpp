@@ -86,8 +86,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   auto th_input = module::getThreshold(op.input());
   std::vector<int64_t> multipliers;
   std::vector<int64_t> rshifts;
-  mlir::Value right_operand = op.right();
-  mlir::Value bias_operand = op.bias();
+  Value right_operand = op.right();
+  Value bias_operand = op.bias();
   bool is_fc = isa<top::WeightOp>(op.right().getDefiningOp());
   if (is_fc) {
     // fc

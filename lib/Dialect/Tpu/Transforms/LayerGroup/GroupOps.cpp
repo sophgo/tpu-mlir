@@ -165,7 +165,7 @@ group_lmem_t GroupOps::list_lmems(int64_t start_idx, int64_t end_idx) {
   return std::move(lmems);
 }
 
-GroupOps::GroupOps(::mlir::func::FuncOp func_) {
+GroupOps::GroupOps(FuncOp func_) {
   MAX_ID = llvm::maxIntN(64);
   func = func_;
   ctx = func.getContext();

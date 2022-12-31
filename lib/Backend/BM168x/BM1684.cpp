@@ -14,7 +14,6 @@
 
 using namespace tpu_mlir::backend;
 
-using namespace mlir;
 
 uint32_t BM1684::get_bdc_len(int bdc_num, int group_id) {
   return bdc_num * BDC_CMD_ALIGNED_NUM * sizeof(uint32_t);

@@ -14,7 +14,7 @@
 #include <cstdint>
 
 using namespace llvm;
-using namespace mlir;
+
 namespace tpu_mlir {
 
 namespace bm1684 {
