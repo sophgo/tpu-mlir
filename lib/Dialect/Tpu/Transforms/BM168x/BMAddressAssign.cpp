@@ -64,7 +64,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
-      if (isa<func::ReturnOp>(op)) {
+      if (isa<ReturnOp>(op)) {
         updateLiveRangeofBMOps(op, 0, ops_loc, liveRange, common_ops,
                                inplace_ops, alignment);
       }
@@ -158,7 +158,7 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     liveRange[v] = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
     updateOperandsLiveRange(op, endPosition);
     common_ops.emplace_back(v);
-  } else if (isa<FuncOp, top::NoneOp, func::ReturnOp, top::WeightOp,
+  } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp,
                  func::CallOp, tpu::YieldOp>(op) ||
              module::isOpInGroup(op)) {
     updateOperandsLiveRange(op, endPosition);

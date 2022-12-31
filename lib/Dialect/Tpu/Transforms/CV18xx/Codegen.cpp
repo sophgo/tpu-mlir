@@ -18,7 +18,6 @@
 #include <sstream>
 
 using namespace llvm;
-using namespace mlir;
 using namespace tpu_mlir::backend;
 
 using namespace flatbuffers;

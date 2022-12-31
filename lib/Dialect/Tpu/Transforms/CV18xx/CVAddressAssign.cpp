@@ -1,10 +1,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/CVAddressAssign.h"
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
-
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -16,7 +13,6 @@
 #include <vector>
 
 using namespace llvm;
-using namespace mlir;
 
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
@@ -227,7 +223,7 @@ void CVAddressAssign::updateLiveRange(Operation *op,
   if (isa<top::InputOp>(op)) {
     ValueInfo v_info(op, 0);
     op_infos[v_info].mem_type = MEM_IOMEM;
-  } else if (isa<func::ReturnOp>(op)) {
+  } else if (isa<ReturnOp>(op)) {
     MemType mem_type = MEM_PRIVATE;
     auto func_op = dyn_cast<FuncOp>(op->getParentOp());
     assert(func_op);
@@ -338,7 +334,7 @@ bool CVAddressAssign::isInPlaceOp(Operation *op) {
 bool CVAddressAssign::isOutput(Operation *op, int index) {
   for (auto &use : op->getResult(index).getUses()) {
     Operation *next = use.getOwner();
-    if (isa<func::ReturnOp>(next)) {
+    if (isa<ReturnOp>(next)) {
       return true;
     }
   }

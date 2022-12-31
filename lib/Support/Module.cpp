@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Support/Module.h"
 #include "float.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/PatternMatch.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
@@ -19,36 +18,36 @@
 
 namespace tpu_mlir {
 namespace module {
-constexpr llvm::StringRef module::Attr::NAME;
-constexpr llvm::StringRef module::Attr::STATE;
-constexpr llvm::StringRef module::Attr::CHIP;
-constexpr llvm::StringRef module::Attr::FLOPS;
-constexpr llvm::StringRef module::Attr::WEIGHT_FILE;
-constexpr llvm::StringRef module::Attr::COEFF_ADDR;
-constexpr llvm::StringRef module::Attr::COEFF_SIZE;
-constexpr llvm::StringRef module::Attr::NEURON_ADDR;
-constexpr llvm::StringRef module::Attr::NEURON_SIZE;
-constexpr llvm::StringRef module::Attr::GMEM_PRIVATE_SIZE;
-constexpr llvm::StringRef module::Attr::ASYMMETRIC;
-constexpr llvm::StringRef module::Attr::MODE;
+constexpr llvm::StringRef Attr::NAME;
+constexpr llvm::StringRef Attr::STATE;
+constexpr llvm::StringRef Attr::CHIP;
+constexpr llvm::StringRef Attr::FLOPS;
+constexpr llvm::StringRef Attr::WEIGHT_FILE;
+constexpr llvm::StringRef Attr::COEFF_ADDR;
+constexpr llvm::StringRef Attr::COEFF_SIZE;
+constexpr llvm::StringRef Attr::NEURON_ADDR;
+constexpr llvm::StringRef Attr::NEURON_SIZE;
+constexpr llvm::StringRef Attr::GMEM_PRIVATE_SIZE;
+constexpr llvm::StringRef Attr::ASYMMETRIC;
+constexpr llvm::StringRef Attr::MODE;
 
-constexpr llvm::StringRef module::State::TOP_F32;
-constexpr llvm::StringRef module::State::TOP_CALIBRATED;
-constexpr llvm::StringRef module::State::TOP_QUANTIZED;
-constexpr llvm::StringRef module::State::TPU_LOWERED;
-constexpr llvm::StringRef module::State::TPU_REORDERED;
-constexpr llvm::StringRef module::State::TPU_DIVIDED;
-constexpr llvm::StringRef module::State::TPU_ADDRESSED;
+constexpr llvm::StringRef State::TOP_F32;
+constexpr llvm::StringRef State::TOP_CALIBRATED;
+constexpr llvm::StringRef State::TOP_QUANTIZED;
+constexpr llvm::StringRef State::TPU_LOWERED;
+constexpr llvm::StringRef State::TPU_REORDERED;
+constexpr llvm::StringRef State::TPU_DIVIDED;
+constexpr llvm::StringRef State::TPU_ADDRESSED;
 
-constexpr llvm::StringRef module::Chip::ALL;
-constexpr llvm::StringRef module::Chip::BM1684;
-constexpr llvm::StringRef module::Chip::BM1684X;
-constexpr llvm::StringRef module::Chip::CV182x;
-constexpr llvm::StringRef module::Chip::CV183x;
-constexpr llvm::StringRef module::Chip::BM1686;
+constexpr llvm::StringRef Chip::ALL;
+constexpr llvm::StringRef Chip::BM1684;
+constexpr llvm::StringRef Chip::BM1684X;
+constexpr llvm::StringRef Chip::CV182x;
+constexpr llvm::StringRef Chip::CV183x;
+constexpr llvm::StringRef Chip::BM1686;
 
 static ModuleOp m = nullptr;
-static mlir::MLIRContext *ctx = nullptr;
+static MLIRContext *ctx = nullptr;
 static llvm::StringRef chip = "";
 
 void init(ModuleOp module) {
@@ -82,7 +81,7 @@ top::NoneOp getNoneOp(Operation *op) {
 }
 
 Value getOriValue(Value &v) {
-  if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
+  if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
     auto parent_op = v.getParentBlock()->getParentOp();
     if (auto func_op = dyn_cast_or_null<FuncOp>(parent_op)) {
@@ -97,7 +96,7 @@ Value getOriValue(Value &v) {
       }
       auto pre_call_op = dyn_cast<func::CallOp>(opd);
       auto pre_func_op = getFuncOp(pre_call_op.getCallee());
-      auto return_op = dyn_cast<func::ReturnOp>(pre_func_op.front().back());
+      auto return_op = dyn_cast<ReturnOp>(pre_func_op.front().back());
       return return_op.getOperand(result.getResultNumber());
     }
   } else if (auto pre_op = v.getDefiningOp()) {
@@ -108,7 +107,7 @@ Value getOriValue(Value &v) {
         if (call_op.getCallee() == func.getName()) {
           Block &entryBlock = func.front();
           auto returnOp =
-              dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+              dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
           return returnOp->getOperand(index);
         }
       }
@@ -133,7 +132,7 @@ void updateModuleTypes() {
     }
     std::vector<Type> returns;
     Block &entryBlock = func.front();
-    auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+    auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
     for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
       returns.push_back(returnOp->getOperand(i).getType());
     }
@@ -169,7 +168,7 @@ void updateModuleTypes() {
   // update main op return types
   auto mainFunc = getMainFuncOp();
   Block &entryBlock = mainFunc.front();
-  auto returnOp = dyn_cast<func::ReturnOp>(entryBlock.back()).getOperation();
+  auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
   std::vector<Type> returns;
   for (uint32_t i = 0; i < returnOp->getNumOperands(); ++i) {
     returns.push_back(returnOp->getOperand(i).getType());
@@ -182,7 +181,7 @@ void updateModuleTypes() {
 void removeUnusedOp() {
   for (auto func : m.getOps<FuncOp>()) {
     func.walk([&](Operation *op) {
-      if (isa<func::ReturnOp, FuncOp, tpu::YieldOp>(op)) {
+      if (isa<ReturnOp, FuncOp, tpu::YieldOp>(op)) {
       } else {
         if (op->getUsers().empty()) {
           op->erase();
@@ -216,17 +215,17 @@ std::string genWeightFileName(bool &same_name) {
 }
 
 int64_t getAddress(Value v) {
-  if (v.getType().isa<mlir::NoneType>()) {
+  if (v.getType().isa<NoneType>()) {
     return 0;
   }
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
   if (!attr) {
-    if (auto block_arg = v.dyn_cast_or_null<mlir::BlockArgument>()) {
+    if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
       int index = block_arg.getArgNumber();
       auto parent_op = v.getParentBlock()->getParentOp();
       auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
       if (funcOp) {
-        mlir::func::CallOp callee = getCallOp(funcOp);
+        func::CallOp callee = getCallOp(funcOp);
         return getAddress(callee.getOperand(index));
       }
     }
@@ -248,7 +247,7 @@ void setAddress(Value v, int64_t addr) {
 }
 
 size_t getBytes(Value v) {
-  if (v.getType().isa<mlir::NoneType>()) {
+  if (v.getType().isa<NoneType>()) {
     return 0;
   }
   auto type = v.getType().cast<RankedTensorType>();
@@ -271,7 +270,7 @@ int64_t getNumElements(Value v) {
 }
 
 llvm::ArrayRef<int64_t> getShape(Value v) {
-  if (v.getType().isa<mlir::NoneType>()) {
+  if (v.getType().isa<NoneType>()) {
     v.dump();
     llvm_unreachable("v is none type");
   }
@@ -477,13 +476,13 @@ StringRef getName(Operation *op, int index) {
   if (auto module = dyn_cast<ModuleOp>(op)) {
     return getName(module);
   }
-  if (auto loc = op->getLoc().dyn_cast<mlir::NameLoc>()) {
+  if (auto loc = op->getLoc().dyn_cast<NameLoc>()) {
     return loc.getName();
   }
-  if (auto loc = op->getLoc().dyn_cast<mlir::FusedLoc>()) {
+  if (auto loc = op->getLoc().dyn_cast<FusedLoc>()) {
     auto locs = loc.getLocations();
     assert(index < locs.size());
-    if (auto name_loc = locs[index].dyn_cast<mlir::NameLoc>()) {
+    if (auto name_loc = locs[index].dyn_cast<NameLoc>()) {
       return name_loc.getName();
     }
   }
@@ -581,22 +580,20 @@ bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
 }
 
-bool isCV18xx() {
-  return (chip == module::Chip::CV183x || chip == module::Chip::CV182x);
-}
-bool isBM1684Family() { return (chip == module::Chip::BM1684); }
+bool isCV18xx() { return (chip == Chip::CV183x || chip == Chip::CV182x); }
+bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
-  return (chip == module::Chip::BM1684X || chip == module::Chip::BM1686);
+  return (chip == Chip::BM1684X || chip == Chip::BM1686);
 }
-bool isBM1686() { return (chip == module::Chip::BM1686); }
+bool isBM1686() { return (chip == Chip::BM1686); }
 
 ModuleOp getModuleOp() { return m; }
 
-mlir::Location getLoc() { return m.getLoc(); }
+Location getLoc() { return m.getLoc(); }
 
-mlir::MLIRContext *getCtx() { return ctx; }
+MLIRContext *getCtx() { return ctx; }
 
-void push_back(mlir::func::FuncOp funcOp) { m.push_back(funcOp); }
+void push_back(FuncOp funcOp) { m.push_back(funcOp); }
 
 double getThreshold(Value v) {
   auto type = getCalibratedType(v);
@@ -605,7 +602,7 @@ double getThreshold(Value v) {
 }
 
 StringRef getName(Value v) {
-  if (auto loc = v.getLoc().dyn_cast<mlir::NameLoc>()) {
+  if (auto loc = v.getLoc().dyn_cast<NameLoc>()) {
     return loc.getName();
   } else if (auto op = v.getDefiningOp()) {
     if (op->getNumResults() == 1) {
@@ -623,12 +620,12 @@ StringRef getName(Value v) {
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
   auto main_func = getMainFuncOp();
   main_func.walk([&](top::InputOp op) { inputs.push_back(op.output()); });
-  main_func.walk([&](func::ReturnOp op) {
+  main_func.walk([&](ReturnOp op) {
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();
       auto call_op = result.getDefiningOp<func::CallOp>();
       auto func_op = getFuncOp(call_op.getCallee());
-      auto return_op = dyn_cast<func::ReturnOp>(func_op.front().back());
+      auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
       assert(return_op);
       outputs.push_back(return_op.getOperand(result.getResultNumber()));
     }
@@ -644,7 +641,7 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
       inputs.push_back(opd);
     } else if (auto call_ = dyn_cast<func::CallOp>(op)) {
       auto func_op = getFuncOp(call_.getCallee());
-      auto return_op = dyn_cast<func::ReturnOp>(func_op.front().back());
+      auto return_op = dyn_cast<ReturnOp>(func_op.front().back());
       assert(return_op);
       inputs.push_back(return_op.getOperand(result.getResultNumber()));
     } else {
@@ -652,7 +649,7 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
     }
   }
   auto func = getFuncOp(call.getCallee());
-  func.walk([&](func::ReturnOp op) {
+  func.walk([&](ReturnOp op) {
     for (auto output : op.getOperands()) {
       outputs.push_back(output);
     }
@@ -736,7 +733,7 @@ void getScaleAndZeroPoint(Value v, double &scale, int64_t &zeropoint,
   }
 }
 
-bool isCalibratedType(mlir::Type type) {
+bool isCalibratedType(Type type) {
   return type.cast<RankedTensorType>()
       .getElementType()
       .isa<quant::CalibratedQuantizedType>();
@@ -744,7 +741,7 @@ bool isCalibratedType(mlir::Type type) {
 
 bool isCalibratedType(Value v) { return isCalibratedType(v.getType()); }
 
-bool isUniformQuantized(mlir::Type type) {
+bool isUniformQuantized(Type type) {
   return type.cast<RankedTensorType>()
       .getElementType()
       .isa<quant::UniformQuantizedType>();
@@ -759,7 +756,7 @@ quant::CalibratedQuantizedType getCalibratedType(Value v) {
       .cast<quant::CalibratedQuantizedType>();
 }
 
-quant::CalibratedQuantizedType getCalibratedType(mlir::Type t) {
+quant::CalibratedQuantizedType getCalibratedType(Type t) {
   return t.cast<RankedTensorType>()
       .getElementType()
       .cast<quant::CalibratedQuantizedType>();
@@ -772,7 +769,7 @@ quant::UniformQuantizedType getUniformQuantizedType(Value v) {
       .cast<quant::UniformQuantizedType>();
 }
 
-quant::UniformQuantizedType getUniformQuantizedType(mlir::Type t) {
+quant::UniformQuantizedType getUniformQuantizedType(Type t) {
   return t.cast<RankedTensorType>()
       .getElementType()
       .cast<quant::UniformQuantizedType>();

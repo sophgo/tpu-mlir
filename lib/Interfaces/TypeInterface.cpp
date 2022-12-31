@@ -9,9 +9,6 @@
 
 #include "mlir/IR/BuiltinTypes.h"
 #include "tpu_mlir/Interfaces/TypeInterface.h"
-
-using namespace mlir;
-
 #include "tpu_mlir/Interfaces/TypeInterface.cpp.inc"
 #include "tpu_mlir/Support/Module.h"
 

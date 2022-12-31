@@ -14,7 +14,6 @@
 #include <cstdint>
 
 using namespace llvm;
-using namespace mlir;
 namespace tpu_mlir {
 
 namespace cv18xx {

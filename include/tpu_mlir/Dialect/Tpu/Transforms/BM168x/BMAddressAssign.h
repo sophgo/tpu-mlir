@@ -12,14 +12,14 @@
 #include "tpu_mlir/Support/Module.h"
 
 using namespace llvm;
-using namespace mlir;
+
 namespace tpu_mlir {
 namespace tpu {
 
 class BMAddressAssign {
 public:
   BMAddressAssign() {}
-  void assign(mlir::ModuleOp &module, bool reuse_addr);
+  void assign(ModuleOp &module, bool reuse_addr);
 
 protected:
   void updateLiveRangeofBMOps(Operation *op, int index,

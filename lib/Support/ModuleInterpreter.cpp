@@ -11,18 +11,12 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <algorithm>
 #include <functional>
 #include <memory>
 #include <numeric>
-
-using namespace mlir;
-using namespace mlir::func;
-
 
 namespace tpu_mlir {
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
@@ -56,7 +50,7 @@ void ModuleInterpreter::allocate_resources() {
     func.walk([&](Operation *op) {
       if (op == func.getOperation() || isa<top::NoneOp>(op)) {
         // self
-      } else if (isa<func::ReturnOp>(op)) {
+      } else if (isa<ReturnOp>(op)) {
         for (auto v : op->getOperands()) {
           auto name = module::getName(v).str();
           output_names.push_back(name);

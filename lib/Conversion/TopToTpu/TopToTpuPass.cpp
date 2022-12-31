@@ -20,9 +20,6 @@ namespace mlir {
 #include "tpu_mlir/Conversion/Passes.h.inc"
 } // namespace mlir
 
-using namespace mlir;
-
-
 namespace tpu_mlir {
 
 static void BackwardReshape(top::ReshapeOp op) {
@@ -410,14 +407,14 @@ protected:
     auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
       bool is_tpu = module::isTpuOp(op);
-      if (is_tpu || isa<func::ReturnOp>(op)) {
+      if (is_tpu || isa<ReturnOp>(op)) {
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
           mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
             target_type = typeIf.type_verify(idx, mode);
-          } else if (isa<func::ReturnOp>(op)) {
+          } else if (isa<ReturnOp>(op)) {
             // return op
             target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
           } else {

@@ -7,14 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/OpDefinition.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include <strings.h>
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -47,6 +44,7 @@ void tpu::GatherOp::codegen_global_bm1684x() {
   // assert(module::getStorageType(indices()).isInteger(32));
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  BM168x::call_global_func("backend_api_index_select_global", &param, sizeof(param),
-                           input_spec->data(), output_spec->data());
+  BM168x::call_global_func("backend_api_index_select_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }

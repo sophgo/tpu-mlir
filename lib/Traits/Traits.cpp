@@ -9,8 +9,6 @@
 
 #include "tpu_mlir/Traits/Traits.h"
 #include "tpu_mlir/Support/Module.h"
-#include "mlir/Dialect/Quant/QuantTypes.h"
-
 
 namespace tpu_mlir {
 

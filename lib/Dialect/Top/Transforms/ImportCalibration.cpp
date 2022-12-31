@@ -11,9 +11,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
-
 #include "mlir/IR/PatternMatch.h"
-#include "mlir/Dialect/Quant/QuantTypes.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
 #include <sstream>
@@ -21,7 +19,6 @@
 #include <regex>
 
 using namespace llvm;
-using namespace mlir;
 
 namespace tpu_mlir {
 namespace top {
@@ -47,8 +44,7 @@ public:
     OpBuilder builder(module);
     std::map<std::string, cali_info> calibration_map;
     std::map<std::string, cali_info> calibration_map_int4;
-    std::map<std::string, f64_array_t>
-        per_chan_scales_map;
+    std::map<std::string, f64_array_t> per_chan_scales_map;
     std::ifstream infile(this->tableFile);
     if (!infile) {
       llvm_unreachable("can't open calibration table file!");
@@ -79,11 +75,11 @@ public:
         }
         per_chan_scales_map[name] = vScales;
       } else if (int4_th_meeted) {
-          cali_info info = {0, 0, 0};
-          if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
-            break;
-          }
-          calibration_map_int4[name] = info;
+        cali_info info = {0, 0, 0};
+        if (!(iss >> name >> info.threshold >> info.min >> info.max)) {
+          break;
+        }
+        calibration_map_int4[name] = info;
       } else {
         if (std::regex_match(line, cali_pattern)) {
           cali_info info = {0, 0, 0};
@@ -124,17 +120,19 @@ public:
               info = calibration_map[name];
             } else {
               if (isa<top::ConvOp, top::MatMulOp>(op)) {
-                if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
+                if (calibration_map_int4.find(name) !=
+                    calibration_map_int4.end()) {
                   info = calibration_map_int4[name];
                 } else {
-                  llvm::errs() <<"not find "<< name<<"\n";
+                  llvm::errs() << "not find " << name << "\n";
                   llvm_unreachable("ConvOp and MatMulOp cali_info not exist\n");
                 }
               } else {
                 if (calibration_map.find(name) != calibration_map.end()) {
                   info = calibration_map[name];
                 } else {
-                  if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
+                  if (calibration_map_int4.find(name) !=
+                      calibration_map_int4.end()) {
                     info = calibration_map_int4[name];
                   }
                 }
@@ -182,13 +180,15 @@ public:
           double scale;
           int64_t zeropoint;
           auto name = module::getName(op->getResults()[0]).str();
-          for (auto user:op->getUsers()) {
+          for (auto user : op->getUsers()) {
             if (!isa<top::ConvOp, top::MatMulOp>(user)) {
               if (calibration_map.find(name) != calibration_map.end()) {
                 auto &info = calibration_map[name];
-                module::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint);
+                module::getScaleAndZeroPoint(info.min, info.max, scale,
+                                             zeropoint);
                 op->setAttr("out_int8_scale", builder.getF64FloatAttr(scale));
-                op->setAttr("out_int8_zp", builder.getF64FloatAttr((double)zeropoint));
+                op->setAttr("out_int8_zp",
+                            builder.getF64FloatAttr((double)zeropoint));
               }
               break;
             }
@@ -199,9 +199,11 @@ public:
             name = module::getName(op->getOperands()[0]).str();
             if (calibration_map_int4.find(name) != calibration_map_int4.end()) {
               auto &info = calibration_map_int4[name];
-              module::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint, 4);
+              module::getScaleAndZeroPoint(info.min, info.max, scale, zeropoint,
+                                           4);
               op->setAttr("in_int4_scale", builder.getF64FloatAttr(scale));
-              op->setAttr("in_int4_zp", builder.getF64FloatAttr((double)zeropoint));
+              op->setAttr("in_int4_zp",
+                          builder.getF64FloatAttr((double)zeropoint));
             }
           }
         }

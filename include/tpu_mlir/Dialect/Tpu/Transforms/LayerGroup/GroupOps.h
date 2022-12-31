@@ -66,9 +66,9 @@ typedef std::shared_ptr<std::vector<lmem_info_t>> group_lmem_t;
 
 class GroupOps {
 public:
-  GroupOps(::mlir::func::FuncOp func);
+  GroupOps(FuncOp func);
   void process();
-  ::mlir::func::FuncOp func;
+  FuncOp func;
 
 protected:
   group_lmem_t list_lmems(int64_t start_idx, int64_t end_idx);
@@ -76,7 +76,7 @@ protected:
                            int64_t &new_start_idx);
   group_lmem_t CreateGroupBySecs(int64_t start_idx, int64_t end_idx,
                                  int64_t nsecs, int64_t hsecs);
-  bool isWeightValue(mlir::Value v);
+  bool isWeightValue(Value v);
   void buildGroups();
   void buildMlir();
   bool isLgSupport(int64_t op_idx);
@@ -98,18 +98,18 @@ protected:
   void adjust_lmem_id(group_lmem_t &group_lmem, int64_t nsecs, int64_t hsecs);
   bool assign_lmem_addr(group_lmem_t &group_lmem, int64_t nsecs, int64_t hsecs);
   int64_t alloc_lmem(int64_t size);
-  bool is_eu_align(mlir::Value opd, Operation *op);
-  bool need_bcast(mlir::Value opd);
-  int64_t use_3ic(mlir::Value opd);
+  bool is_eu_align(Value opd, Operation *op);
+  bool need_bcast(Value opd);
+  int64_t use_3ic(Value opd);
   inline bool is_same_slice(const slice_pair_t &a, const slice_pair_t &b) {
     return a.first == b.first && a.second == b.second;
   }
   bool is_same_slice(const std::vector<slice_pair_t> &a,
                      const std::vector<slice_pair_t> &b);
-  lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, mlir::Value v);
-  lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, mlir::Operation *op);
-  void CreateLoadOp(lmem_info_t &linfo,
-                    const std::vector<mlir::Operation *> &ops, int64_t id);
+  lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, Value v);
+  lmem_info_t *find_lmem_info(group_lmem_t &group_lmem, Operation *op);
+  void CreateLoadOp(lmem_info_t &linfo, const std::vector<Operation *> &ops,
+                    int64_t id);
   tpu::StoreOp CreateStoreOp(lmem_info_t &linfo, int64_t id);
   void UpdateOpLgParam(group_lmem_t &group_lmem, lmem_info_t &linfo,
                        int64_t id);
@@ -125,15 +125,15 @@ protected:
 protected:
   std::shared_ptr<BasicTimeStep> time_step;
   std::vector<std::shared_ptr<BasicTimeStep>> time_steps;
-  std::shared_ptr<std::vector<mlir::Operation *>> group_ops;
-  std::vector<std::shared_ptr<std::vector<mlir::Operation *>>> groups_ops;
+  std::shared_ptr<std::vector<Operation *>> group_ops;
+  std::vector<std::shared_ptr<std::vector<Operation *>>> groups_ops;
   std::vector<group_lmem_t> all_lmems;
-  std::vector<mlir::Operation *> all_ops;
-  std::vector<mlir::Value> all_tensors;
+  std::vector<Operation *> all_ops;
+  std::vector<Value> all_tensors;
   std::vector<group_pair_t> groups;
   std::list<addr_pair_t> allocated_lmems;
   bool no_more_try_secs;
-  mlir::MLIRContext *ctx;
+  MLIRContext *ctx;
   Operation *current_op;
   Block *body;
   int64_t MAX_ID;
