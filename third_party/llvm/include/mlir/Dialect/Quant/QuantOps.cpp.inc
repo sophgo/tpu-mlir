@@ -59,10 +59,6 @@ DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(::mlir::ValueRange values, ::ml
 
 DequantizeCastOpAdaptor::DequantizeCastOpAdaptor(DequantizeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
-::mlir::ValueRange DequantizeCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
 std::pair<unsigned, unsigned> DequantizeCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   return {index, 1};
 }
@@ -75,6 +71,10 @@ std::pair<unsigned, unsigned> DequantizeCastOpAdaptor::getODSOperandIndexAndLeng
 
 ::mlir::Value DequantizeCastOpAdaptor::getArg() {
   return *getODSOperands(0).begin();
+}
+
+::mlir::ValueRange DequantizeCastOpAdaptor::getOperands() {
+  return odsOperands;
 }
 
 ::mlir::DictionaryAttr DequantizeCastOpAdaptor::getAttributes() {
@@ -180,10 +180,6 @@ QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(::mlir::ValueRange values, ::mlir::
 
 QuantizeCastOpAdaptor::QuantizeCastOpAdaptor(QuantizeCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
-::mlir::ValueRange QuantizeCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
 std::pair<unsigned, unsigned> QuantizeCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   return {index, 1};
 }
@@ -196,6 +192,10 @@ std::pair<unsigned, unsigned> QuantizeCastOpAdaptor::getODSOperandIndexAndLength
 
 ::mlir::Value QuantizeCastOpAdaptor::getArg() {
   return *getODSOperands(0).begin();
+}
+
+::mlir::ValueRange QuantizeCastOpAdaptor::getOperands() {
+  return odsOperands;
 }
 
 ::mlir::DictionaryAttr QuantizeCastOpAdaptor::getAttributes() {
@@ -301,10 +301,6 @@ StorageCastOpAdaptor::StorageCastOpAdaptor(::mlir::ValueRange values, ::mlir::Di
 
 StorageCastOpAdaptor::StorageCastOpAdaptor(StorageCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
-::mlir::ValueRange StorageCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
 std::pair<unsigned, unsigned> StorageCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   return {index, 1};
 }
@@ -317,6 +313,10 @@ std::pair<unsigned, unsigned> StorageCastOpAdaptor::getODSOperandIndexAndLength(
 
 ::mlir::Value StorageCastOpAdaptor::getArg() {
   return *getODSOperands(0).begin();
+}
+
+::mlir::ValueRange StorageCastOpAdaptor::getOperands() {
+  return odsOperands;
 }
 
 ::mlir::DictionaryAttr StorageCastOpAdaptor::getAttributes() {

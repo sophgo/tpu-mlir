@@ -15,8 +15,8 @@
 
 
 int64_t top::ScaleOp::getFLOPs() {
-  return module::getNumElements(output()) *
-         (2 + do_relu() ? 1 : 0);
+  return module::getNumElements(getOutput()) *
+         (2 + getDoRelu() ? 1 : 0);
 }
 
 LogicalResult top::ScaleOp::init(InferenceParameter &p) { return success(); }
@@ -24,7 +24,7 @@ void top::ScaleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ScaleOp::inference(InferenceParameter &p) {
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   const float *src = p.inputs[0];
   const float *scale = p.inputs[1];
   const float *bias = p.inputs[2];
@@ -41,8 +41,8 @@ LogicalResult top::ScaleOp::inference(InferenceParameter &p) {
     }
   }
 
-  auto num_elem = module::getNumElements(output());
-  if (do_relu()) {
+  auto num_elem = module::getNumElements(getOutput());
+  if (getDoRelu()) {
     function_relu(p.outputs[0], p.outputs[0], num_elem);
   }
   return success();

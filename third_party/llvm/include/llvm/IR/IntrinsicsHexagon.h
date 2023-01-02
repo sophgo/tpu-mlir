@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum HEXAGONIntrinsics : unsigned {
 // Enum values for intrinsics
-    hexagon_A2_abs = 2631,                            // llvm.hexagon.A2.abs
+    hexagon_A2_abs = 2645,                            // llvm.hexagon.A2.abs
     hexagon_A2_absp,                           // llvm.hexagon.A2.absp
     hexagon_A2_abssat,                         // llvm.hexagon.A2.abssat
     hexagon_A2_add,                            // llvm.hexagon.A2.add
@@ -1086,6 +1086,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vadd_qf32_mix_128B,             // llvm.hexagon.V6.vadd.qf32.mix.128B
     hexagon_V6_vadd_sf,                        // llvm.hexagon.V6.vadd.sf
     hexagon_V6_vadd_sf_128B,                   // llvm.hexagon.V6.vadd.sf.128B
+    hexagon_V6_vadd_sf_bf,                     // llvm.hexagon.V6.vadd.sf.bf
+    hexagon_V6_vadd_sf_bf_128B,                // llvm.hexagon.V6.vadd.sf.bf.128B
     hexagon_V6_vadd_sf_hf,                     // llvm.hexagon.V6.vadd.sf.hf
     hexagon_V6_vadd_sf_hf_128B,                // llvm.hexagon.V6.vadd.sf.hf.128B
     hexagon_V6_vadd_sf_sf,                     // llvm.hexagon.V6.vadd.sf.sf
@@ -1104,6 +1106,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vaddbsat_dv_128B,               // llvm.hexagon.V6.vaddbsat.dv.128B
     hexagon_V6_vaddcarry,                      // llvm.hexagon.V6.vaddcarry
     hexagon_V6_vaddcarry_128B,                 // llvm.hexagon.V6.vaddcarry.128B
+    hexagon_V6_vaddcarryo,                     // llvm.hexagon.V6.vaddcarryo
+    hexagon_V6_vaddcarryo_128B,                // llvm.hexagon.V6.vaddcarryo.128B
     hexagon_V6_vaddcarrysat,                   // llvm.hexagon.V6.vaddcarrysat
     hexagon_V6_vaddcarrysat_128B,              // llvm.hexagon.V6.vaddcarrysat.128B
     hexagon_V6_vaddclbh,                       // llvm.hexagon.V6.vaddclbh
@@ -1278,14 +1282,24 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vcl0w_128B,                     // llvm.hexagon.V6.vcl0w.128B
     hexagon_V6_vcombine,                       // llvm.hexagon.V6.vcombine
     hexagon_V6_vcombine_128B,                  // llvm.hexagon.V6.vcombine.128B
+    hexagon_V6_vconv_h_hf,                     // llvm.hexagon.V6.vconv.h.hf
+    hexagon_V6_vconv_h_hf_128B,                // llvm.hexagon.V6.vconv.h.hf.128B
+    hexagon_V6_vconv_hf_h,                     // llvm.hexagon.V6.vconv.hf.h
+    hexagon_V6_vconv_hf_h_128B,                // llvm.hexagon.V6.vconv.hf.h.128B
     hexagon_V6_vconv_hf_qf16,                  // llvm.hexagon.V6.vconv.hf.qf16
     hexagon_V6_vconv_hf_qf16_128B,             // llvm.hexagon.V6.vconv.hf.qf16.128B
     hexagon_V6_vconv_hf_qf32,                  // llvm.hexagon.V6.vconv.hf.qf32
     hexagon_V6_vconv_hf_qf32_128B,             // llvm.hexagon.V6.vconv.hf.qf32.128B
     hexagon_V6_vconv_sf_qf32,                  // llvm.hexagon.V6.vconv.sf.qf32
     hexagon_V6_vconv_sf_qf32_128B,             // llvm.hexagon.V6.vconv.sf.qf32.128B
+    hexagon_V6_vconv_sf_w,                     // llvm.hexagon.V6.vconv.sf.w
+    hexagon_V6_vconv_sf_w_128B,                // llvm.hexagon.V6.vconv.sf.w.128B
+    hexagon_V6_vconv_w_sf,                     // llvm.hexagon.V6.vconv.w.sf
+    hexagon_V6_vconv_w_sf_128B,                // llvm.hexagon.V6.vconv.w.sf.128B
     hexagon_V6_vcvt_b_hf,                      // llvm.hexagon.V6.vcvt.b.hf
     hexagon_V6_vcvt_b_hf_128B,                 // llvm.hexagon.V6.vcvt.b.hf.128B
+    hexagon_V6_vcvt_bf_sf,                     // llvm.hexagon.V6.vcvt.bf.sf
+    hexagon_V6_vcvt_bf_sf_128B,                // llvm.hexagon.V6.vcvt.bf.sf.128B
     hexagon_V6_vcvt_h_hf,                      // llvm.hexagon.V6.vcvt.h.hf
     hexagon_V6_vcvt_h_hf_128B,                 // llvm.hexagon.V6.vcvt.h.hf.128B
     hexagon_V6_vcvt_hf_b,                      // llvm.hexagon.V6.vcvt.hf.b
@@ -1418,6 +1432,14 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vgtb_or_128B,                   // llvm.hexagon.V6.vgtb.or.128B
     hexagon_V6_vgtb_xor,                       // llvm.hexagon.V6.vgtb.xor
     hexagon_V6_vgtb_xor_128B,                  // llvm.hexagon.V6.vgtb.xor.128B
+    hexagon_V6_vgtbf,                          // llvm.hexagon.V6.vgtbf
+    hexagon_V6_vgtbf_128B,                     // llvm.hexagon.V6.vgtbf.128B
+    hexagon_V6_vgtbf_and,                      // llvm.hexagon.V6.vgtbf.and
+    hexagon_V6_vgtbf_and_128B,                 // llvm.hexagon.V6.vgtbf.and.128B
+    hexagon_V6_vgtbf_or,                       // llvm.hexagon.V6.vgtbf.or
+    hexagon_V6_vgtbf_or_128B,                  // llvm.hexagon.V6.vgtbf.or.128B
+    hexagon_V6_vgtbf_xor,                      // llvm.hexagon.V6.vgtbf.xor
+    hexagon_V6_vgtbf_xor_128B,                 // llvm.hexagon.V6.vgtbf.xor.128B
     hexagon_V6_vgth,                           // llvm.hexagon.V6.vgth
     hexagon_V6_vgth_128B,                      // llvm.hexagon.V6.vgth.128B
     hexagon_V6_vgth_and,                       // llvm.hexagon.V6.vgth.and
@@ -1520,6 +1542,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vmaskedstorentq_128B,           // llvm.hexagon.V6.vmaskedstorentq.128B
     hexagon_V6_vmaskedstoreq,                  // llvm.hexagon.V6.vmaskedstoreq
     hexagon_V6_vmaskedstoreq_128B,             // llvm.hexagon.V6.vmaskedstoreq.128B
+    hexagon_V6_vmax_bf,                        // llvm.hexagon.V6.vmax.bf
+    hexagon_V6_vmax_bf_128B,                   // llvm.hexagon.V6.vmax.bf.128B
     hexagon_V6_vmax_hf,                        // llvm.hexagon.V6.vmax.hf
     hexagon_V6_vmax_hf_128B,                   // llvm.hexagon.V6.vmax.hf.128B
     hexagon_V6_vmax_sf,                        // llvm.hexagon.V6.vmax.sf
@@ -1534,6 +1558,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vmaxuh_128B,                    // llvm.hexagon.V6.vmaxuh.128B
     hexagon_V6_vmaxw,                          // llvm.hexagon.V6.vmaxw
     hexagon_V6_vmaxw_128B,                     // llvm.hexagon.V6.vmaxw.128B
+    hexagon_V6_vmin_bf,                        // llvm.hexagon.V6.vmin.bf
+    hexagon_V6_vmin_bf_128B,                   // llvm.hexagon.V6.vmin.bf.128B
     hexagon_V6_vmin_hf,                        // llvm.hexagon.V6.vmin.hf
     hexagon_V6_vmin_hf_128B,                   // llvm.hexagon.V6.vmin.hf.128B
     hexagon_V6_vmin_sf,                        // llvm.hexagon.V6.vmin.sf
@@ -1594,6 +1620,10 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vmpy_qf32_qf16_128B,            // llvm.hexagon.V6.vmpy.qf32.qf16.128B
     hexagon_V6_vmpy_qf32_sf,                   // llvm.hexagon.V6.vmpy.qf32.sf
     hexagon_V6_vmpy_qf32_sf_128B,              // llvm.hexagon.V6.vmpy.qf32.sf.128B
+    hexagon_V6_vmpy_sf_bf,                     // llvm.hexagon.V6.vmpy.sf.bf
+    hexagon_V6_vmpy_sf_bf_128B,                // llvm.hexagon.V6.vmpy.sf.bf.128B
+    hexagon_V6_vmpy_sf_bf_acc,                 // llvm.hexagon.V6.vmpy.sf.bf.acc
+    hexagon_V6_vmpy_sf_bf_acc_128B,            // llvm.hexagon.V6.vmpy.sf.bf.acc.128B
     hexagon_V6_vmpy_sf_hf,                     // llvm.hexagon.V6.vmpy.sf.hf
     hexagon_V6_vmpy_sf_hf_128B,                // llvm.hexagon.V6.vmpy.sf.hf.128B
     hexagon_V6_vmpy_sf_hf_acc,                 // llvm.hexagon.V6.vmpy.sf.hf.acc
@@ -1676,6 +1706,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vmpyowh_rnd_sacc_128B,          // llvm.hexagon.V6.vmpyowh.rnd.sacc.128B
     hexagon_V6_vmpyowh_sacc,                   // llvm.hexagon.V6.vmpyowh.sacc
     hexagon_V6_vmpyowh_sacc_128B,              // llvm.hexagon.V6.vmpyowh.sacc.128B
+    hexagon_V6_vmpyss_parts,                   // llvm.hexagon.V6.vmpyss.parts
+    hexagon_V6_vmpyss_parts_128B,              // llvm.hexagon.V6.vmpyss.parts.128B
     hexagon_V6_vmpyub,                         // llvm.hexagon.V6.vmpyub
     hexagon_V6_vmpyub_128B,                    // llvm.hexagon.V6.vmpyub.128B
     hexagon_V6_vmpyub_acc,                     // llvm.hexagon.V6.vmpyub.acc
@@ -1698,6 +1730,10 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vmpyuhv_acc_128B,               // llvm.hexagon.V6.vmpyuhv.acc.128B
     hexagon_V6_vmpyuhvs,                       // llvm.hexagon.V6.vmpyuhvs
     hexagon_V6_vmpyuhvs_128B,                  // llvm.hexagon.V6.vmpyuhvs.128B
+    hexagon_V6_vmpyus_parts,                   // llvm.hexagon.V6.vmpyus.parts
+    hexagon_V6_vmpyus_parts_128B,              // llvm.hexagon.V6.vmpyus.parts.128B
+    hexagon_V6_vmpyuu_parts,                   // llvm.hexagon.V6.vmpyuu.parts
+    hexagon_V6_vmpyuu_parts_128B,              // llvm.hexagon.V6.vmpyuu.parts.128B
     hexagon_V6_vmux,                           // llvm.hexagon.V6.vmux
     hexagon_V6_vmux_128B,                      // llvm.hexagon.V6.vmux.128B
     hexagon_V6_vnavgb,                         // llvm.hexagon.V6.vnavgb
@@ -1860,6 +1896,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vsub_qf32_mix_128B,             // llvm.hexagon.V6.vsub.qf32.mix.128B
     hexagon_V6_vsub_sf,                        // llvm.hexagon.V6.vsub.sf
     hexagon_V6_vsub_sf_128B,                   // llvm.hexagon.V6.vsub.sf.128B
+    hexagon_V6_vsub_sf_bf,                     // llvm.hexagon.V6.vsub.sf.bf
+    hexagon_V6_vsub_sf_bf_128B,                // llvm.hexagon.V6.vsub.sf.bf.128B
     hexagon_V6_vsub_sf_hf,                     // llvm.hexagon.V6.vsub.sf.hf
     hexagon_V6_vsub_sf_hf_128B,                // llvm.hexagon.V6.vsub.sf.hf.128B
     hexagon_V6_vsub_sf_sf,                     // llvm.hexagon.V6.vsub.sf.sf
@@ -1878,6 +1916,8 @@ enum HEXAGONIntrinsics : unsigned {
     hexagon_V6_vsubbsat_dv_128B,               // llvm.hexagon.V6.vsubbsat.dv.128B
     hexagon_V6_vsubcarry,                      // llvm.hexagon.V6.vsubcarry
     hexagon_V6_vsubcarry_128B,                 // llvm.hexagon.V6.vsubcarry.128B
+    hexagon_V6_vsubcarryo,                     // llvm.hexagon.V6.vsubcarryo
+    hexagon_V6_vsubcarryo_128B,                // llvm.hexagon.V6.vsubcarryo.128B
     hexagon_V6_vsubh,                          // llvm.hexagon.V6.vsubh
     hexagon_V6_vsubh_128B,                     // llvm.hexagon.V6.vsubh.128B
     hexagon_V6_vsubh_dv,                       // llvm.hexagon.V6.vsubh.dv

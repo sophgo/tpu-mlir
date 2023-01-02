@@ -21,22 +21,22 @@ LogicalResult tpu::RequantIntOp::init(InferenceParameter &p) {
 void tpu::RequantIntOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantIntOp::inference(InferenceParameter &p) {
-  auto o_sType = module::getStorageType(output());
-  auto o_qtype = module::getUniformQuantizedType(output());
-  auto mode = quant_mode();
-  auto shape = module::getShape(output());
+  auto o_sType = module::getStorageType(getOutput());
+  auto o_qtype = module::getUniformQuantizedType(getOutput());
+  auto mode = getQuantMode();
+  auto shape = module::getShape(getOutput());
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
   }
   int64_t zp_x = 0;
-  if (module::isUniformQuantized(input())) {
-    auto i_qtype = module::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(getInput())) {
+    auto i_qtype = module::getUniformQuantizedType(getInput());
     zp_x = i_qtype.getZeroPoint();
     assert(mode == tpu::RequantMode::Normal);
   }
-  int64_t shift_val = -rshift();
-  int64_t multi = multiplier();
+  int64_t shift_val = -getRshift();
+  int64_t multi = getMultiplier();
   int64_t zero_point = o_qtype.getZeroPoint();
 
   if (mode == tpu::RequantMode::TFlite_Lshift) {
@@ -87,13 +87,13 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
                                           TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = module::getStorageType(input());
+    auto stype = module::getStorageType(getInput());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }
-    if (stype.isF32() && module::isUniformQuantized(output())) {
+    if (stype.isF32() && module::isUniformQuantized(getOutput())) {
       mode = TypeCastMode::DO_QUANTIZE;
-      return module::getStorageType(output());
+      return module::getStorageType(getOutput());
     }
     mode = TypeCastMode::DO_CAST;
     auto bitwith = stype.getIntOrFloatBitWidth();

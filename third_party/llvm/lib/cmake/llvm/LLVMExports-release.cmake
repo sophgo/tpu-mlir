@@ -104,6 +104,16 @@ set_target_properties(LLVMInterfaceStub PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS LLVMInterfaceStub )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMInterfaceStub "${_IMPORT_PREFIX}/lib/libLLVMInterfaceStub.a" )
 
+# Import target "LLVMIRPrinter" for configuration "Release"
+set_property(TARGET LLVMIRPrinter APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMIRPrinter PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMIRPrinter.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMIRPrinter )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMIRPrinter "${_IMPORT_PREFIX}/lib/libLLVMIRPrinter.a" )
+
 # Import target "LLVMIRReader" for configuration "Release"
 set_property(TARGET LLVMIRReader APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(LLVMIRReader PROPERTIES
@@ -223,6 +233,16 @@ set_target_properties(LLVMExtensions PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS LLVMExtensions )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMExtensions "${_IMPORT_PREFIX}/lib/libLLVMExtensions.a" )
+
+# Import target "LLVMFrontendHLSL" for configuration "Release"
+set_property(TARGET LLVMFrontendHLSL APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMFrontendHLSL PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMFrontendHLSL.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMFrontendHLSL )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMFrontendHLSL "${_IMPORT_PREFIX}/lib/libLLVMFrontendHLSL.a" )
 
 # Import target "LLVMFrontendOpenACC" for configuration "Release"
 set_property(TARGET LLVMFrontendOpenACC APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -494,6 +514,16 @@ set_target_properties(LLVMDebugInfoGSYM PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS LLVMDebugInfoGSYM )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMDebugInfoGSYM "${_IMPORT_PREFIX}/lib/libLLVMDebugInfoGSYM.a" )
 
+# Import target "LLVMDebugInfoLogicalView" for configuration "Release"
+set_property(TARGET LLVMDebugInfoLogicalView APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMDebugInfoLogicalView PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMDebugInfoLogicalView.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMDebugInfoLogicalView )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMDebugInfoLogicalView "${_IMPORT_PREFIX}/lib/libLLVMDebugInfoLogicalView.a" )
+
 # Import target "LLVMDebugInfoMSF" for configuration "Release"
 set_property(TARGET LLVMDebugInfoMSF APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(LLVMDebugInfoMSF PROPERTIES
@@ -743,6 +773,16 @@ set_target_properties(LLVMPasses PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS LLVMPasses )
 list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMPasses "${_IMPORT_PREFIX}/lib/libLLVMPasses.a" )
+
+# Import target "LLVMTargetParser" for configuration "Release"
+set_property(TARGET LLVMTargetParser APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(LLVMTargetParser PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libLLVMTargetParser.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS LLVMTargetParser )
+list(APPEND _IMPORT_CHECK_FILES_FOR_LLVMTargetParser "${_IMPORT_PREFIX}/lib/libLLVMTargetParser.a" )
 
 # Import target "LLVMTextAPI" for configuration "Release"
 set_property(TARGET LLVMTextAPI APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -1004,6 +1044,15 @@ set_target_properties(llvm-cxxmap PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS llvm-cxxmap )
 list(APPEND _IMPORT_CHECK_FILES_FOR_llvm-cxxmap "${_IMPORT_PREFIX}/bin/llvm-cxxmap" )
+
+# Import target "llvm-debuginfo-analyzer" for configuration "Release"
+set_property(TARGET llvm-debuginfo-analyzer APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(llvm-debuginfo-analyzer PROPERTIES
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/bin/llvm-debuginfo-analyzer"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS llvm-debuginfo-analyzer )
+list(APPEND _IMPORT_CHECK_FILES_FOR_llvm-debuginfo-analyzer "${_IMPORT_PREFIX}/bin/llvm-debuginfo-analyzer" )
 
 # Import target "llvm-debuginfod" for configuration "Release"
 set_property(TARGET llvm-debuginfod APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

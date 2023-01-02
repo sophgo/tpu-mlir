@@ -19,9 +19,9 @@
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
   auto prelu = new PRelu();
   (*prelu)
-      .src(p.inputs[0], module::getShape(input()))
-      .weights(p.inputs[1], module::getShape(slope()))
-      .dst(p.outputs[0], module::getShape(output()))
+      .src(p.inputs[0], module::getShape(getInput()))
+      .weights(p.inputs[1], module::getShape(getSlope()))
+      .dst(p.outputs[0], module::getShape(getOutput()))
       .setup();
   p.handle = (void *)prelu;
   return success();
@@ -39,8 +39,8 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
     return failure();
   }
 
-  auto num_elem = module::getNumElements(output());
-  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto out_type = module::getStorageType(getOutput());
   bool asym = module::isAsymmetric();
   bool is_cv18xx = module::isCV18xx();
   if (out_type.isa<FloatType>()) {
@@ -52,14 +52,14 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (asym == false) {
-    auto shift = rshift();
+    auto shift = getRshift();
     int64_t shift_pos, multiplier_pos;
     if (is_cv18xx) {
-      shift_pos = rshift_pos().value();
-      multiplier_pos = muliplier_pos().value();
+      shift_pos = getRshiftPos().value();
+      multiplier_pos = getMultiplierPos().value();
     }
-    auto num_slope = module::getNumElements(slope());
-    auto in_shape = module::getShape(input());
+    auto num_slope = module::getNumElements(getSlope());
+    auto in_shape = module::getShape(getInput());
     int64_t num_inner = 1;
     int64_t num_outer = 1;
     if (in_shape.size() > 1) {

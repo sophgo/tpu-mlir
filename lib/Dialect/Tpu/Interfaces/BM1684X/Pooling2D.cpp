@@ -106,22 +106,22 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   pooling_common_spec_t spec = {0};
   SpecAssign(attr, spec);
-  if (pool_mode() == tpu::PoolMode::Avg) {
+  if (getPoolMode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (module::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(getInput())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode =
           module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
 
       if (spec.avg_pooling_quant_mode == 0) {
-        spec.multiplier = multiplier().has_value() ? multiplier().value() : 1;
-        spec.rshiftbits = rshift().has_value() ? rshift().value() : 0;
+        spec.multiplier = getMultiplier().has_value() ? getMultiplier().value() : 1;
+        spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
       } else if (spec.avg_pooling_quant_mode == 2) {
         spec.merge_requant = true;
         spec.rq_scale =
-            scale().has_value() ? (scale().value().convertToDouble()) : 1.;
+            getScale().has_value() ? (getScale().value().convertToDouble()) : 1.;
         spec.rq_offset =
-            offset().has_value() ? (offset().value().convertToDouble()) : 0.;
+            getOffset().has_value() ? (getOffset().value().convertToDouble()) : 0.;
       }
     }
   }
@@ -136,14 +136,14 @@ void tpu::Pool2DOp::codegen_global_bm1684x() {
 int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  switch (pool_mode()) {
+  switch (getPoolMode()) {
   case tpu::PoolMode::Max:
     return 0;
   case tpu::PoolMode::Avg:
     int64_t size = 0;
     if (module::isAsymmetric()) {
       auto &p = getPool2DParam(*this);
-      auto kernel = module::getI64Array(kernel_shape());
+      auto kernel = module::getI64Array(getKernelShape());
       int64_t dtype_bytes = p.kh * p.kw > 256 ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       int64_t npu_num = BM168x::NPU_NUM;
@@ -162,7 +162,7 @@ void tpu::Pool2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   int64_t pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
   sec_info->n_slice = in_gi.n_slice;
@@ -190,7 +190,7 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 
   auto attr = parseParam();
   pooling_local_spec_t spec = {0};
@@ -201,21 +201,21 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   common.pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
 
-  if (pool_mode() == tpu::PoolMode::Avg) {
+  if (getPoolMode() == tpu::PoolMode::Avg) {
     bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
     common.is_avg_pooling = true;
     common.avg_pooling_quant_mode =
         module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
 
     if (common.avg_pooling_quant_mode == 0) {
-      common.multiplier = multiplier().has_value() ? multiplier().value() : -1;
-      common.rshiftbits = rshift().has_value() ? rshift().value() : -1;
+      common.multiplier = getMultiplier().has_value() ? getMultiplier().value() : -1;
+      common.rshiftbits = getRshift().has_value() ? getRshift().value() : -1;
     } else if (common.avg_pooling_quant_mode == 2) {
       common.merge_requant = true;
       common.rq_scale =
-          scale().has_value() ? (scale().value().convertToDouble()) : -1.;
+          getScale().has_value() ? (getScale().value().convertToDouble()) : -1.;
       common.rq_offset =
-          offset().has_value() ? (offset().value().convertToDouble()) : -1.;
+          getOffset().has_value() ? (getOffset().value().convertToDouble()) : -1.;
     }
   }
 

@@ -18,9 +18,9 @@ LogicalResult top::PackOp::init(InferenceParameter &p) { return success(); }
 void top::PackOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PackOp::inference(InferenceParameter &p) {
-  auto axis_ = axis();
-  auto values_count_ = values_count();
-  auto op0_shape = inputs()[0].getType().cast<RankedTensorType>().getShape();
+  auto axis_ = getAxis();
+  auto values_count_ = getValuesCount();
+  auto op0_shape = getInputs()[0].getType().cast<RankedTensorType>().getShape();
 
   int64_t high = 1;
   for (int64_t i = 0; i < axis_; ++i)
@@ -32,7 +32,7 @@ LogicalResult top::PackOp::inference(InferenceParameter &p) {
   // [a,b,c,d] -> [a*b, c*d] /                                ^
   //     ^
   SmallVector<int64_t> tailNum(values_count_);
-  for (auto idt : llvm::enumerate(inputs())) {
+  for (auto idt : llvm::enumerate(getInputs())) {
     tailNum[idt.index()] =
         idt.value().getType().cast<RankedTensorType>().getNumElements() / high;
   }

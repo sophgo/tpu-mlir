@@ -119,7 +119,7 @@ public:
     auto formerOp = op->getOperand(0).getDefiningOp();
     if (auto weightOp = dyn_cast<WeightOp>(formerOp)) {
       auto scale =
-          *module::getF64Array(dyn_cast<DequantizeLinearOp>(op).x_scale());
+          *module::getF64Array(dyn_cast<DequantizeLinearOp>(op).getXScale());
       weightOp->setAttr("scale",
                         rewriter.getF64ArrayAttr(ArrayRef<double>(scale)));
       auto element_type = rewriter.getIntegerType(8, true);

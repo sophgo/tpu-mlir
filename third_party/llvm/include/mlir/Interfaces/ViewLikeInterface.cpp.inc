@@ -29,15 +29,15 @@ std::array<unsigned, 3> mlir::OffsetSizeAndStrideOpInterface::getArrayAttrMaxRan
       return getImpl()->strides(getImpl(), getOperation());
   }
 /// Return the static offset attributes.
-::mlir::ArrayAttr mlir::OffsetSizeAndStrideOpInterface::static_offsets() {
+::llvm::ArrayRef<int64_t> mlir::OffsetSizeAndStrideOpInterface::static_offsets() {
       return getImpl()->static_offsets(getImpl(), getOperation());
   }
 /// Return the static size attributes.
-::mlir::ArrayAttr mlir::OffsetSizeAndStrideOpInterface::static_sizes() {
+::llvm::ArrayRef<int64_t> mlir::OffsetSizeAndStrideOpInterface::static_sizes() {
       return getImpl()->static_sizes(getImpl(), getOperation());
   }
 /// Return the dynamic stride attributes.
-::mlir::ArrayAttr mlir::OffsetSizeAndStrideOpInterface::static_strides() {
+::llvm::ArrayRef<int64_t> mlir::OffsetSizeAndStrideOpInterface::static_strides() {
       return getImpl()->static_strides(getImpl(), getOperation());
   }
 /// Return a vector of all the static or dynamic sizes of the op.
@@ -91,10 +91,10 @@ unsigned mlir::OffsetSizeAndStrideOpInterface::getIndexOfDynamicSize(unsigned id
 unsigned mlir::OffsetSizeAndStrideOpInterface::getIndexOfDynamicStride(unsigned idx) {
       return getImpl()->getIndexOfDynamicStride(getImpl(), getOperation(), idx);
   }
-/// Helper method to compute the number of dynamic entries of `attr`, up to
+/// Helper method to compute the number of dynamic entries of `staticVals`, up to
 /// `idx` using `isDynamic` to determine whether an entry is dynamic.
-unsigned mlir::OffsetSizeAndStrideOpInterface::getNumDynamicEntriesUpToIdx(::mlir::ArrayAttr attr, ::llvm::function_ref<bool(int64_t)> isDynamic, unsigned idx) {
-      return getImpl()->getNumDynamicEntriesUpToIdx(getImpl(), getOperation(), attr, isDynamic, idx);
+unsigned mlir::OffsetSizeAndStrideOpInterface::getNumDynamicEntriesUpToIdx(::llvm::ArrayRef<int64_t> staticVals, ::llvm::function_ref<bool(int64_t)> isDynamic, unsigned idx) {
+      return getImpl()->getNumDynamicEntriesUpToIdx(getImpl(), getOperation(), staticVals, isDynamic, idx);
   }
 /// Assert the offset `idx` is dynamic and return its value.
 ::mlir::Value mlir::OffsetSizeAndStrideOpInterface::getDynamicOffset(unsigned idx) {

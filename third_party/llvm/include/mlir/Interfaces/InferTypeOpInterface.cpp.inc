@@ -16,7 +16,7 @@
 ///       Unknown (e.g., unranked) shape and nullptrs for element type and attribute
 ///       may be returned by this function while returning success. E.g., partial
 ///       population of components is not error condition.
-::mlir::LogicalResult mlir::InferShapedTypeOpInterface::inferReturnTypeComponents(::mlir::MLIRContext* context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
+::mlir::LogicalResult mlir::InferShapedTypeOpInterface::inferReturnTypeComponents(::mlir::MLIRContext* context, ::std::optional<::mlir::Location> location, ::mlir::ValueShapeRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::ShapedTypeComponents>& inferredReturnShapes) {
       return getImpl()->inferReturnTypeComponents(context, location, operands, attributes, regions, inferredReturnShapes);
   }
 /// Reify the shape computation for the operation.
@@ -45,7 +45,7 @@
 ///       and the regions of the op. Be aware that this method is supposed to be
 ///       called with valid arguments, e.g., operands are verified, or it may result
 ///       in an undefined behavior.
-::mlir::LogicalResult mlir::InferTypeOpInterface::inferReturnTypes(::mlir::MLIRContext * context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
+::mlir::LogicalResult mlir::InferTypeOpInterface::inferReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& inferredReturnTypes) {
       return getImpl()->inferReturnTypes(context, location, operands, attributes, regions, inferredReturnTypes);
   }
 /// Refine the return types that an op would generate.
@@ -68,7 +68,7 @@
 /// 
 ///       Be aware that this method is supposed to be called with valid arguments,
 ///       e.g., operands are verified, or it may result in an undefined behavior.
-::mlir::LogicalResult mlir::InferTypeOpInterface::refineReturnTypes(::mlir::MLIRContext * context, ::llvm::Optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
+::mlir::LogicalResult mlir::InferTypeOpInterface::refineReturnTypes(::mlir::MLIRContext * context, ::std::optional<::mlir::Location> location, ::mlir::ValueRange operands, ::mlir::DictionaryAttr attributes, ::mlir::RegionRange regions, ::llvm::SmallVectorImpl<::mlir::Type>& returnTypes) {
       return getImpl()->refineReturnTypes(context, location, operands, attributes, regions, returnTypes);
   }
 /// Returns whether two array of types are compatible result types for an op.

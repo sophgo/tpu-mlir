@@ -29,17 +29,17 @@ public:
 
   LogicalResult matchAndRewrite(tpu::GRUOp GRUOp,
                                 PatternRewriter &rewriter) const override {
-    if (!GRUOp.buffer().getType().isa<mlir::NoneType>()) {
+    if (!GRUOp.getBuffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
     auto attr = GRUOp.parseParam();
-    auto type = module::getStorageType(GRUOp.input());
+    auto type = module::getStorageType(GRUOp.getInput());
     // add buffer
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(GRUOp, buffer_type);
-    GRUOp.buffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == GRUOp.buffer();
+    GRUOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == GRUOp.getBuffer();
     });
     return success();
   }
@@ -51,17 +51,17 @@ public:
 
   LogicalResult matchAndRewrite(tpu::LSTMOp lstmOp,
                                 PatternRewriter &rewriter) const override {
-    if (!lstmOp.buffer().getType().isa<mlir::NoneType>()) {
+    if (!lstmOp.getBuffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
     auto attr = lstmOp.parseParam();
-    auto type = module::getStorageType(lstmOp.input());
+    auto type = module::getStorageType(lstmOp.getInput());
     // add buffer
     std::vector<int64_t> buffer_shape = {5, attr.batch_size, attr.hidden_size};
     auto buffer_type = RankedTensorType::get(buffer_shape, type);
     auto buffer = tpu::BufferOp::create(lstmOp, buffer_type);
-    lstmOp.buffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-      return operand.get() == lstmOp.buffer();
+    lstmOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == lstmOp.getBuffer();
     });
     return success();
   }
@@ -73,7 +73,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::ReduceOp reduceOp,
                                 PatternRewriter &rewriter) const override {
-    if (!reduceOp.buffer().getType().isa<mlir::NoneType>()) {
+    if (!reduceOp.getBuffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
     auto attr = reduceOp.parseParam();
@@ -81,7 +81,7 @@ public:
       llvm_unreachable("Not Implemented");
     }
 
-    auto type = module::getStorageType(reduceOp.input());
+    auto type = module::getStorageType(reduceOp.getInput());
     // add buffer
     /* if reduce n or c, need imm buffer. if reduce h/w, don't need imm buffer
        if reduce c/h, c/w, n/w, will split it to 2 step at fronted, it will not
@@ -125,8 +125,8 @@ public:
       std::vector<int64_t> buffer_shape = {1, imm_buffer_size};
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
-      reduceOp.buffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
-        return operand.get() == reduceOp.buffer();
+      reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+        return operand.get() == reduceOp.getBuffer();
       });
     }
 
@@ -153,14 +153,14 @@ public:
 
   LogicalResult matchAndRewrite(tpu::PermuteOp permuteOp,
                                 PatternRewriter &rewriter) const override {
-    if (!permuteOp.buffer().getType().isa<mlir::NoneType>()) {
+    if (!permuteOp.getBuffer().getType().isa<mlir::NoneType>()) {
       return failure();
     }
     transpose_param_t param = {0};
     param.if_getting_buffer_size = 0;
     param.spec.buffer_global_addr = 0;
 
-    auto order = module::getI64Array(permuteOp.order());
+    auto order = module::getI64Array(permuteOp.getOrder());
     for (int i = 0, n = order->size(); i < n; ++i) {
       param.spec.order[i] = order->at(i);
     }
@@ -180,11 +180,11 @@ public:
       return spec;
     };
 
-    auto input_sepc = value_to_spec(permuteOp.input());
-    auto output_sepc = value_to_spec(permuteOp.output());
+    auto input_sepc = value_to_spec(permuteOp.getInput());
+    auto output_sepc = value_to_spec(permuteOp.getOutput());
     backend::BM168x::call_global_func("backend_api_transpose_global", &param,
                                       sizeof(param), &input_sepc, &output_sepc);
-    auto type = module::getStorageType(permuteOp.input());
+    auto type = module::getStorageType(permuteOp.getInput());
     // add buffer
     if (buffer_size > 0) {
       auto buffer_type = RankedTensorType::get({buffer_size}, type);

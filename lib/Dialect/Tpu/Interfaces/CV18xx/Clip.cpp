@@ -25,14 +25,14 @@ using namespace tpu_mlir::backend;
 // int8
 void tpu::ClipOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
-  assert(!module::isUniformQuantized(output()) && "Not support int8 Clip.");
+  module::getNCHW(getInput(), n, c, h, w);
+  assert(!module::isUniformQuantized(getOutput()) && "Not support int8 Clip.");
   float coeffs[2];
-  coeffs[0] = this->max().convertToDouble();
-  coeffs[1] = this->min().convertToDouble();
+  coeffs[0] = this->getMax().convertToDouble();
+  coeffs[1] = this->getMin().convertToDouble();
 
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
   gaddr_t ga_inputs[1];
   ga_inputs[0] = ga_input;
 

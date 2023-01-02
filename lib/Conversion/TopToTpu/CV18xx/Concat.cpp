@@ -25,7 +25,7 @@ static bool slice_fusible(T op) {
 
 static bool is_fusible_op(Operation *op) {
   if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
-    return !concatOp.only_merge();
+    return !concatOp.getOnlyMerge();
   }
   if (isa<tpu::ReshapeOp>(op) || isa<top::ReshapeOp>(op)) {
     return false;
@@ -40,12 +40,12 @@ static bool is_fusible_op(Operation *op) {
 }
 
 static bool fusible(top::ConcatOp concatOp) {
-  bool only_merge = !concatOp.do_relu();
+  bool only_merge = !concatOp.getDoRelu();
   // check concatOp's outer_dim
   if (only_merge) {
-    auto shape = module::getShape(concatOp.output());
+    auto shape = module::getShape(concatOp.getOutput());
     int outer_dim =
-        std::accumulate(shape.begin(), shape.begin() + concatOp.axis(), 1,
+        std::accumulate(shape.begin(), shape.begin() + concatOp.getAxis(), 1,
                         std::multiplies<int64_t>());
     if (outer_dim != 1) {
       return false;
@@ -78,7 +78,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp,
                                   bool asymmetric) const {
   std::vector<Value> operands;
-  double out_thr = module::getThreshold(concatOp.output());
+  double out_thr = module::getThreshold(concatOp.getOutput());
   uint32_t nInputs = concatOp->getNumOperands();
   bool only_merge = fusible(concatOp);
   auto rshift_v = std::make_unique<std::vector<int64_t>>(nInputs, 0);
@@ -115,7 +115,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(*rshift_v)));
   attrs.push_back(
       rewriter.getNamedAttr("only_merge", rewriter.getBoolAttr(only_merge)));
-  auto newType = getQuantInt8Type(concatOp.output(), asymmetric);
+  auto newType = getQuantInt8Type(concatOp.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(concatOp, newType, operands,
                                              attrs);
 }

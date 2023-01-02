@@ -16,12 +16,12 @@ static double active_exp(double val) { return std::exp(val); }
 
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
-  Value table = create_lookup_table(op.input(), op.output(), asymmetric,
+  auto stype = module::getStorageType(op.getOutput());
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     activate_f(active_exp));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {
@@ -40,9 +40,9 @@ void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.input(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
   return;
 }
 } // namespace cv18xx

@@ -34,12 +34,12 @@ void HardSwishLowering::LoweringINT4(PatternRewriter &rewriter, top::HardSwishOp
 void HardSwishLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::HardSwishOp op,
                                      bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
-  Value table = create_lookup_table(op.input(), op.output(), asymmetric,
+  auto stype = module::getStorageType(op.getOutput());
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return hswish(val); });
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void HardSwishLowering::LoweringBF16(PatternRewriter &rewriter,

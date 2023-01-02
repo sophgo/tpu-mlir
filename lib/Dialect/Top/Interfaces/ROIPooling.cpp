@@ -16,7 +16,7 @@
 
 
 int64_t top::ROIPoolingOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::ROIPoolingOp::init(InferenceParameter &p) {
@@ -26,19 +26,19 @@ void top::ROIPoolingOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ROIPoolingOp::inference(InferenceParameter &p) {
   ROIPoolingParam param;
-  param.pooled_h = pooled_h();
-  param.pooled_w = pooled_w();
-  param.spatial_scale = spatial_scale().convertToDouble();
-  for (size_t i = 0; i < inputs().size(); ++i) {
+  param.pooled_h = getPooledH();
+  param.pooled_w = getPooledW();
+  param.spatial_scale = getSpatialScale().convertToDouble();
+  for (size_t i = 0; i < getInputs().size(); ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
-    tensor_list.size = module::getNumElements(inputs()[i]);
-    module::getShapeVec(inputs()[i], tensor_list.shape);
+    tensor_list.size = module::getNumElements(getInputs()[i]);
+    module::getShapeVec(getInputs()[i], tensor_list.shape);
     param.inputs.emplace_back(std::move(tensor_list));
   }
   param.output.ptr = p.outputs[0];
-  param.output.size = module::getNumElements(output());
-  module::getShapeVec(output(), param.output.shape);
+  param.output.size = module::getNumElements(getOutput());
+  module::getShapeVec(getOutput(), param.output.shape);
   ROIPoolingFunc func(param);
   func.invoke();
   return success();

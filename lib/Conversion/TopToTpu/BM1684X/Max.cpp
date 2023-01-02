@@ -34,7 +34,7 @@ void MaxLowering::LoweringF16(PatternRewriter &rewriter, top::MaxOp op) const {
 
 void MaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MaxOp op) const {
-  lowering_common<tpu::MaxOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::MaxOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

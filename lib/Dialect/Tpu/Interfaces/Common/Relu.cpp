@@ -19,8 +19,8 @@ LogicalResult tpu::ReluOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReluOp::inference(InferenceParameter &p) {
-  auto limit = relu_limit().convertToDouble();
-  function_relu(p.inputs[0], p.outputs[0], module::getNumElements(output()),
-                limit, module::getStorageType(output()));
+  auto limit = getReluLimit().convertToDouble();
+  function_relu(p.inputs[0], p.outputs[0], module::getNumElements(getOutput()),
+                limit, module::getStorageType(getOutput()));
   return success();
 }

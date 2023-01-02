@@ -53,6 +53,8 @@ namespace detail {
   struct VerifiableTensorEncodingTrait : public ::mlir::AttributeInterface<VerifiableTensorEncoding, detail::VerifiableTensorEncodingInterfaceTraits>::Trait<ConcreteAttr> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteAttr>
 ::mlir::LogicalResult detail::VerifiableTensorEncodingInterfaceTraits::Model<ConcreteAttr>::verifyEncoding(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ArrayRef<int64_t> shape, Type elementType, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {
   return (tablegen_opaque_val.cast<ConcreteAttr>()).verifyEncoding(shape, elementType, emitError);

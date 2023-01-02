@@ -36,22 +36,22 @@ public:
 
   ModuleOpAdaptor(ModuleOp op);
 
-  ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
+  ::mlir::ValueRange getOperands();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::StringAttr getSymNameAttr();
-  ::llvm::Optional< ::llvm::StringRef > getSymName();
+  ::std::optional< ::llvm::StringRef > getSymName();
   ::mlir::StringAttr getSymVisibilityAttr();
-  ::llvm::Optional< ::llvm::StringRef > getSymVisibility();
-  ::mlir::RegionRange getRegions();
+  ::std::optional< ::llvm::StringRef > getSymVisibility();
   ::mlir::Region &getBodyRegion();
+  ::mlir::RegionRange getRegions();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
-  ::llvm::Optional<::mlir::OperationName> odsOpName;
+  ::std::optional<::mlir::OperationName> odsOpName;
 };
 class ModuleOp : public ::mlir::Op<ModuleOp, ::mlir::OpTrait::OneRegion, ::mlir::OpTrait::ZeroResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::ZeroOperands, ::mlir::OpTrait::NoRegionArguments, ::mlir::OpTrait::NoTerminator, ::mlir::OpTrait::SingleBlock, ::mlir::OpTrait::OpInvariants, ::mlir::OpTrait::AffineScope, ::mlir::OpTrait::IsIsolatedFromAbove, ::mlir::OpTrait::SymbolTable, ::mlir::SymbolOpInterface::Trait, ::mlir::OpAsmOpInterface::Trait, ::mlir::RegionKindInterface::Trait, ::mlir::OpTrait::HasOnlyGraphRegion> {
 public:
@@ -90,14 +90,16 @@ public:
   ::mlir::Operation::result_range getODSResults(unsigned index);
   ::mlir::Region &getBodyRegion();
   ::mlir::StringAttr getSymNameAttr();
-  ::llvm::Optional< ::llvm::StringRef > getSymName();
+  ::std::optional< ::llvm::StringRef > getSymName();
   ::mlir::StringAttr getSymVisibilityAttr();
-  ::llvm::Optional< ::llvm::StringRef > getSymVisibility();
+  ::std::optional< ::llvm::StringRef > getSymVisibility();
   void setSymNameAttr(::mlir::StringAttr attr);
+  void setSymName(::std::optional<::llvm::StringRef> attrValue);
   void setSymVisibilityAttr(::mlir::StringAttr attr);
-  ::mlir::Attribute removeSym_nameAttr();
-  ::mlir::Attribute removeSym_visibilityAttr();
-  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, Optional<StringRef> name = {});
+  void setSymVisibility(::std::optional<::llvm::StringRef> attrValue);
+  ::mlir::Attribute removeSymNameAttr();
+  ::mlir::Attribute removeSymVisibilityAttr();
+  static void build(::mlir::OpBuilder &odsBuilder, ::mlir::OperationState &odsState, std::optional<StringRef> name = {});
   ::mlir::LogicalResult verifyInvariantsImpl();
   ::mlir::LogicalResult verifyInvariants();
   ::mlir::LogicalResult verify();
@@ -110,15 +112,16 @@ private:
 
   static ::mlir::StringAttr getAttributeNameForIndex(::mlir::OperationName name, unsigned index) {
     assert(index < 2 && "invalid attribute index");
+    assert(name.getStringRef() == getOperationName() && "invalid operation name");
     return name.getRegisteredInfo()->getAttributeNames()[index];
   }
 
 public:
   /// Construct a module from the given location with an optional name.
-  static ModuleOp create(Location loc, Optional<StringRef> name = llvm::None);
+  static ModuleOp create(Location loc, std::optional<StringRef> name = std::nullopt);
 
   /// Return the name of this module if present.
-  Optional<StringRef> getName() { return getSymName(); }
+  std::optional<StringRef> getName() { return getSymName(); }
 
   //===------------------------------------------------------------------===//
   // SymbolOpInterface Methods
@@ -156,19 +159,19 @@ public:
 
   UnrealizedConversionCastOpAdaptor(UnrealizedConversionCastOp op);
 
-  ::mlir::ValueRange getOperands();
   std::pair<unsigned, unsigned> getODSOperandIndexAndLength(unsigned index);
   ::mlir::ValueRange getODSOperands(unsigned index);
   ::mlir::ValueRange getInputs();
+  ::mlir::ValueRange getOperands();
   ::mlir::DictionaryAttr getAttributes();
   ::mlir::LogicalResult verify(::mlir::Location loc);
 private:
   ::mlir::ValueRange odsOperands;
   ::mlir::DictionaryAttr odsAttrs;
   ::mlir::RegionRange odsRegions;
-  ::llvm::Optional<::mlir::OperationName> odsOpName;
+  ::std::optional<::mlir::OperationName> odsOpName;
 };
-class UnrealizedConversionCastOp : public ::mlir::Op<UnrealizedConversionCastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::CastOpInterface::Trait, ::mlir::MemoryEffectOpInterface::Trait> {
+class UnrealizedConversionCastOp : public ::mlir::Op<UnrealizedConversionCastOp, ::mlir::OpTrait::ZeroRegions, ::mlir::OpTrait::VariadicResults, ::mlir::OpTrait::ZeroSuccessors, ::mlir::OpTrait::VariadicOperands, ::mlir::OpTrait::OpInvariants, ::mlir::CastOpInterface::Trait, ::mlir::ConditionallySpeculatable::Trait, ::mlir::OpTrait::AlwaysSpeculatableImplTrait, ::mlir::MemoryEffectOpInterface::Trait> {
 public:
   using Op::Op;
   using Op::print;

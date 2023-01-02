@@ -14,9 +14,9 @@ enum class IteratorType : uint32_t {
   reduction = 1,
 };
 
-::llvm::Optional<IteratorType> symbolizeIteratorType(uint32_t);
+::std::optional<IteratorType> symbolizeIteratorType(uint32_t);
 ::llvm::StringRef stringifyIteratorType(IteratorType);
-::llvm::Optional<IteratorType> symbolizeIteratorType(::llvm::StringRef);
+::std::optional<IteratorType> symbolizeIteratorType(::llvm::StringRef);
 inline constexpr unsigned getMaxEnumValForIteratorType() {
   return 1;
 }
@@ -27,14 +27,43 @@ inline ::llvm::StringRef stringifyEnum(IteratorType enumValue) {
 }
 
 template <typename EnumType>
-::llvm::Optional<EnumType> symbolizeEnum(::llvm::StringRef);
+::std::optional<EnumType> symbolizeEnum(::llvm::StringRef);
 
 template <>
-inline ::llvm::Optional<IteratorType> symbolizeEnum<IteratorType>(::llvm::StringRef str) {
+inline ::std::optional<IteratorType> symbolizeEnum<IteratorType>(::llvm::StringRef str) {
   return symbolizeIteratorType(str);
 }
 } // namespace utils
 } // namespace mlir
+
+namespace mlir {
+template <typename T, typename>
+struct FieldParser;
+
+template<>
+struct FieldParser<::mlir::utils::IteratorType, ::mlir::utils::IteratorType> {
+  template <typename ParserT>
+  static FailureOr<::mlir::utils::IteratorType> parse(ParserT &parser) {
+    // Parse the keyword/string containing the enum.
+    std::string enumKeyword;
+    auto loc = parser.getCurrentLocation();
+    if (failed(parser.parseOptionalKeywordOrString(&enumKeyword)))
+      return parser.emitError(loc, "expected keyword for Iterator type");
+
+    // Symbolize the keyword.
+    if (::std::optional<::mlir::utils::IteratorType> attr = ::mlir::utils::symbolizeEnum<::mlir::utils::IteratorType>(enumKeyword))
+      return *attr;
+    return parser.emitError(loc, "invalid Iterator type specification: ") << enumKeyword;
+  }
+};
+} // namespace mlir
+
+namespace llvm {
+inline ::llvm::raw_ostream &operator<<(::llvm::raw_ostream &p, ::mlir::utils::IteratorType value) {
+  auto valueStr = stringifyEnum(value);
+  return p << valueStr;
+}
+} // namespace llvm
 
 namespace llvm {
 template<> struct DenseMapInfo<::mlir::utils::IteratorType> {

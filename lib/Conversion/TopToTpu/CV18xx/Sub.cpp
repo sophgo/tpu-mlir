@@ -19,8 +19,8 @@ static int is_bcast(top::SubOp op) {
   std::vector<int64_t> shape0;
   std::vector<int64_t> shape1;
   int bcast = 0;
-  module::getShapeVec(op.inputs()[0], shape0);
-  module::getShapeVec(op.inputs()[1], shape1);
+  module::getShapeVec(op.getInputs()[0], shape0);
+  module::getShapeVec(op.getInputs()[1], shape1);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
@@ -64,12 +64,12 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   float max_qscale = 0.0;
   assert(nInputs == 2);
   auto bcast = is_bcast(op);
-  auto coeff_v = module::getF64Array(op.coeff(), 2, 1.0);
+  auto coeff_v = module::getF64Array(op.getCoeff(), 2, 1.0);
   assert(coeff_v->at(0) == 1 && coeff_v->at(1) == 1);
   if (!bcast) {
     coeff_v->at(1) = -1;
   }
-  double o_scale = module::getThreshold(op.output());
+  double o_scale = module::getThreshold(op.getOutput());
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     operands.push_back(input);
@@ -93,20 +93,21 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
   }
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.relu_limitAttr()));
-  attrs.push_back(rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1, 1})));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
+  attrs.push_back(
+      rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1, 1})));
   attrs.push_back(rewriter.getNamedAttr(
       "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = getQuantInt8Type(op.output());
+  auto newType = getQuantInt8Type(op.getOutput());
   if (!bcast) {
     rewriter.replaceOpWithNewOp<tpu::AddOp>(op.getOperation(), newType,
                                             operands, attrs);
   } else {
     // todo  if prod(shape0) < prod(shape1) result mul -1 here
-    attrs.push_back(rewriter.getNamedAttr("is_reverse", op.is_reverseAttr()));
+    attrs.push_back(rewriter.getNamedAttr("is_reverse", op.getIsReverseAttr()));
     rewriter.replaceOpWithNewOp<tpu::SubOp>(op.getOperation(), newType,
                                             operands, attrs);
   }
@@ -116,11 +117,11 @@ void SubLowering::LoweringINT8(PatternRewriter &rewriter, top::SubOp op,
 void SubLowering::LoweringBF16(PatternRewriter &rewriter, top::SubOp op) const {
   if (!is_bcast(op)) {
     std::vector<NamedAttribute> attrs;
-    attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-    attrs.push_back(rewriter.getNamedAttr("relu_limit", op.relu_limitAttr()));
+    attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+    attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
     attrs.push_back(
         rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1., -1.})));
-    auto newType = getQuantBF16Type(op.output());
+    auto newType = getQuantBF16Type(op.getOutput());
     rewriter.replaceOpWithNewOp<tpu::AddOp>(op, newType, op->getOperands(),
                                             attrs);
   } else {

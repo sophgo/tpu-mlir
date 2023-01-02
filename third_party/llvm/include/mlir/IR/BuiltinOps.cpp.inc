@@ -65,10 +65,6 @@ ModuleOpAdaptor::ModuleOpAdaptor(::mlir::ValueRange values, ::mlir::DictionaryAt
 
 ModuleOpAdaptor::ModuleOpAdaptor(ModuleOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
 
-::mlir::ValueRange ModuleOpAdaptor::getOperands() {
-  return odsOperands;
-}
-
 std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   return {index, 1};
 }
@@ -77,6 +73,10 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
   auto valueRange = getODSOperandIndexAndLength(index);
   return {std::next(odsOperands.begin(), valueRange.first),
            std::next(odsOperands.begin(), valueRange.first + valueRange.second)};
+}
+
+::mlir::ValueRange ModuleOpAdaptor::getOperands() {
+  return odsOperands;
 }
 
 ::mlir::DictionaryAttr ModuleOpAdaptor::getAttributes() {
@@ -89,9 +89,9 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
   return attr;
 }
 
-::llvm::Optional< ::llvm::StringRef > ModuleOpAdaptor::getSymName() {
+::std::optional< ::llvm::StringRef > ModuleOpAdaptor::getSymName() {
   auto attr = getSymNameAttr();
-  return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
+  return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
 ::mlir::StringAttr ModuleOpAdaptor::getSymVisibilityAttr() {
@@ -100,17 +100,17 @@ std::pair<unsigned, unsigned> ModuleOpAdaptor::getODSOperandIndexAndLength(unsig
   return attr;
 }
 
-::llvm::Optional< ::llvm::StringRef > ModuleOpAdaptor::getSymVisibility() {
+::std::optional< ::llvm::StringRef > ModuleOpAdaptor::getSymVisibility() {
   auto attr = getSymVisibilityAttr();
-  return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
-}
-
-::mlir::RegionRange ModuleOpAdaptor::getRegions() {
-  return odsRegions;
+  return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
 ::mlir::Region &ModuleOpAdaptor::getBodyRegion() {
   return *odsRegions[0];
+}
+
+::mlir::RegionRange ModuleOpAdaptor::getRegions() {
+  return odsRegions;
 }
 
 ::mlir::LogicalResult ModuleOpAdaptor::verify(::mlir::Location loc) {
@@ -167,33 +167,45 @@ std::pair<unsigned, unsigned> ModuleOp::getODSResultIndexAndLength(unsigned inde
   return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getSymNameAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
 }
 
-::llvm::Optional< ::llvm::StringRef > ModuleOp::getSymName() {
+::std::optional< ::llvm::StringRef > ModuleOp::getSymName() {
   auto attr = getSymNameAttr();
-  return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
+  return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
 ::mlir::StringAttr ModuleOp::getSymVisibilityAttr() {
   return ::mlir::impl::getAttrFromSortedRange((*this)->getAttrs().begin() + 0, (*this)->getAttrs().end() - 0, getSymVisibilityAttrName()).dyn_cast_or_null<::mlir::StringAttr>();
 }
 
-::llvm::Optional< ::llvm::StringRef > ModuleOp::getSymVisibility() {
+::std::optional< ::llvm::StringRef > ModuleOp::getSymVisibility() {
   auto attr = getSymVisibilityAttr();
-  return attr ? ::llvm::Optional< ::llvm::StringRef >(attr.getValue()) : (::llvm::None);
+  return attr ? ::std::optional< ::llvm::StringRef >(attr.getValue()) : (::std::nullopt);
 }
 
 void ModuleOp::setSymNameAttr(::mlir::StringAttr attr) {
   (*this)->setAttr(getSymNameAttrName(), attr);
 }
 
+void ModuleOp::setSymName(::std::optional<::llvm::StringRef> attrValue) {
+    if (attrValue)
+      return (*this)->setAttr(getSymNameAttrName(), ::mlir::Builder((*this)->getContext()).getStringAttr(*attrValue));
+    (*this)->removeAttr(getSymNameAttrName());
+}
+
 void ModuleOp::setSymVisibilityAttr(::mlir::StringAttr attr) {
   (*this)->setAttr(getSymVisibilityAttrName(), attr);
 }
 
-::mlir::Attribute ModuleOp::removeSym_nameAttr() {
+void ModuleOp::setSymVisibility(::std::optional<::llvm::StringRef> attrValue) {
+    if (attrValue)
+      return (*this)->setAttr(getSymVisibilityAttrName(), ::mlir::Builder((*this)->getContext()).getStringAttr(*attrValue));
+    (*this)->removeAttr(getSymVisibilityAttrName());
+}
+
+::mlir::Attribute ModuleOp::removeSymNameAttr() {
   return (*this)->removeAttr(getSymNameAttrName());
 }
 
-::mlir::Attribute ModuleOp::removeSym_visibilityAttr() {
+::mlir::Attribute ModuleOp::removeSymVisibilityAttr() {
   return (*this)->removeAttr(getSymVisibilityAttrName());
 }
 
@@ -261,7 +273,9 @@ void ModuleOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
     _odsPrinter << ' ';
     _odsPrinter.printSymbolName(getSymNameAttr().getValue());
   }
-  _odsPrinter.printOptionalAttrDictWithKeyword((*this)->getAttrs(), /*elidedAttrs=*/{"sym_name"});
+  ::llvm::SmallVector<::llvm::StringRef, 2> elidedAttrs;
+  elidedAttrs.push_back("sym_name");
+  _odsPrinter.printOptionalAttrDictWithKeyword((*this)->getAttrs(), elidedAttrs);
   _odsPrinter << ' ';
   _odsPrinter.printRegion(getBodyRegion());
 }
@@ -280,10 +294,6 @@ UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(::mlir::Val
 }
 
 UnrealizedConversionCastOpAdaptor::UnrealizedConversionCastOpAdaptor(UnrealizedConversionCastOp op) : odsOperands(op->getOperands()), odsAttrs(op->getAttrDictionary()), odsRegions(op->getRegions()), odsOpName(op->getName()) {}
-
-::mlir::ValueRange UnrealizedConversionCastOpAdaptor::getOperands() {
-  return odsOperands;
-}
 
 std::pair<unsigned, unsigned> UnrealizedConversionCastOpAdaptor::getODSOperandIndexAndLength(unsigned index) {
   bool isVariadic[] = {true};
@@ -311,6 +321,10 @@ std::pair<unsigned, unsigned> UnrealizedConversionCastOpAdaptor::getODSOperandIn
 
 ::mlir::ValueRange UnrealizedConversionCastOpAdaptor::getInputs() {
   return getODSOperands(0);
+}
+
+::mlir::ValueRange UnrealizedConversionCastOpAdaptor::getOperands() {
+  return odsOperands;
 }
 
 ::mlir::DictionaryAttr UnrealizedConversionCastOpAdaptor::getAttributes() {
@@ -456,7 +470,8 @@ void UnrealizedConversionCastOp::print(::mlir::OpAsmPrinter &_odsPrinter) {
   _odsPrinter << ' ' << "to";
   _odsPrinter << ' ';
   _odsPrinter << getOutputs().getTypes();
-  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), /*elidedAttrs=*/{});
+  ::llvm::SmallVector<::llvm::StringRef, 2> elidedAttrs;
+  _odsPrinter.printOptionalAttrDict((*this)->getAttrs(), elidedAttrs);
 }
 
 void UnrealizedConversionCastOp::getEffects(::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> &effects) {

@@ -97,6 +97,8 @@ namespace detail {
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 ::mlir::DataLayoutSpecInterface detail::DataLayoutOpInterfaceInterfaceTraits::Model<ConcreteOp>::getDataLayoutSpec(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getDataLayoutSpec();

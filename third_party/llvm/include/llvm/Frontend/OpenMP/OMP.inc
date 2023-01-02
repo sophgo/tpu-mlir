@@ -611,6 +611,23 @@ namespace omp {
   static OmpClauseSet requiredClauses_OMPD_end_workshare {
   };
 
+  // Sets for error
+
+  static OmpClauseSet allowedClauses_OMPD_error {
+    llvm::omp::Clause::OMPC_at,
+    llvm::omp::Clause::OMPC_severity,
+    llvm::omp::Clause::OMPC_message,
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_error {
+  };
+
+  static OmpClauseSet allowedExclusiveClauses_OMPD_error {
+  };
+
+  static OmpClauseSet requiredClauses_OMPD_error {
+  };
+
   // Sets for flush
 
   static OmpClauseSet allowedClauses_OMPD_flush {
@@ -1280,14 +1297,14 @@ namespace omp {
   // Sets for requires
 
   static OmpClauseSet allowedClauses_OMPD_requires {
+  };
+
+  static OmpClauseSet allowedOnceClauses_OMPD_requires {
     llvm::omp::Clause::OMPC_unified_address,
     llvm::omp::Clause::OMPC_unified_shared_memory,
     llvm::omp::Clause::OMPC_reverse_offload,
     llvm::omp::Clause::OMPC_dynamic_allocators,
     llvm::omp::Clause::OMPC_atomic_default_mem_order,
-  };
-
-  static OmpClauseSet allowedOnceClauses_OMPD_requires {
   };
 
   static OmpClauseSet allowedExclusiveClauses_OMPD_requires {
@@ -2110,6 +2127,7 @@ namespace omp {
 
   static OmpClauseSet allowedClauses_OMPD_taskwait {
     llvm::omp::Clause::OMPC_depend,
+    llvm::omp::Clause::OMPC_nowait,
   };
 
   static OmpClauseSet allowedOnceClauses_OMPD_taskwait {
@@ -2886,6 +2904,14 @@ namespace omp {
       llvm::omp::requiredClauses_OMPD_end_workshare,
     }
   },
+  {llvm::omp::Directive::OMPD_error,
+    {
+      llvm::omp::allowedClauses_OMPD_error,
+      llvm::omp::allowedOnceClauses_OMPD_error,
+      llvm::omp::allowedExclusiveClauses_OMPD_error,
+      llvm::omp::requiredClauses_OMPD_error,
+    }
+  },
   {llvm::omp::Directive::OMPD_flush,
     {
       llvm::omp::allowedClauses_OMPD_flush,
@@ -3494,7 +3520,8 @@ WRAPPER_CLASS(Aligned, OmpAlignedClause);
 WRAPPER_CLASS(Allocate, OmpAllocateClause);
 WRAPPER_CLASS(Allocator, ScalarIntExpr);
 EMPTY_CLASS(AppendArgs);
-EMPTY_CLASS(AtomicDefaultMemOrder);
+EMPTY_CLASS(At);
+WRAPPER_CLASS(AtomicDefaultMemOrder, OmpAtomicDefaultMemOrderClause);
 EMPTY_CLASS(Bind);
 EMPTY_CLASS(CancellationConstructType);
 EMPTY_CLASS(Capture);
@@ -3536,6 +3563,7 @@ WRAPPER_CLASS(Map, OmpMapClause);
 EMPTY_CLASS(Match);
 EMPTY_CLASS(MemoryOrder);
 EMPTY_CLASS(Mergeable);
+EMPTY_CLASS(Message);
 EMPTY_CLASS(Nogroup);
 EMPTY_CLASS(Nowait);
 WRAPPER_CLASS(Nocontext, ScalarLogicalExpr);
@@ -3559,6 +3587,7 @@ EMPTY_CLASS(ReverseOffload);
 WRAPPER_CLASS(Safelen, ScalarIntConstantExpr);
 WRAPPER_CLASS(Schedule, OmpScheduleClause);
 EMPTY_CLASS(SeqCst);
+EMPTY_CLASS(Severity);
 WRAPPER_CLASS(Shared, OmpObjectList);
 EMPTY_CLASS(Simd);
 WRAPPER_CLASS(Simdlen, ScalarIntConstantExpr);
@@ -3595,6 +3624,7 @@ AcqRel
 , Allocate
 , Allocator
 , AppendArgs
+, At
 , AtomicDefaultMemOrder
 , Bind
 , CancellationConstructType
@@ -3637,6 +3667,7 @@ AcqRel
 , Match
 , MemoryOrder
 , Mergeable
+, Message
 , Nogroup
 , Nowait
 , Nocontext
@@ -3660,6 +3691,7 @@ AcqRel
 , Safelen
 , Schedule
 , SeqCst
+, Severity
 , Shared
 , Simd
 , Simdlen
@@ -3696,6 +3728,7 @@ NODE(OmpClause, Aligned)
 NODE(OmpClause, Allocate)
 NODE(OmpClause, Allocator)
 NODE(OmpClause, AppendArgs)
+NODE(OmpClause, At)
 NODE(OmpClause, AtomicDefaultMemOrder)
 NODE(OmpClause, Bind)
 NODE(OmpClause, CancellationConstructType)
@@ -3738,6 +3771,7 @@ NODE(OmpClause, Map)
 NODE(OmpClause, Match)
 NODE(OmpClause, MemoryOrder)
 NODE(OmpClause, Mergeable)
+NODE(OmpClause, Message)
 NODE(OmpClause, Nogroup)
 NODE(OmpClause, Nowait)
 NODE(OmpClause, Nocontext)
@@ -3761,6 +3795,7 @@ NODE(OmpClause, ReverseOffload)
 NODE(OmpClause, Safelen)
 NODE(OmpClause, Schedule)
 NODE(OmpClause, SeqCst)
+NODE(OmpClause, Severity)
 NODE(OmpClause, Shared)
 NODE(OmpClause, Simd)
 NODE(OmpClause, Simdlen)
@@ -3812,7 +3847,13 @@ void Unparse(const OmpClause::Allocator &x) {
   Put(")");
 }
 void Before(const OmpClause::AppendArgs &) { Word("APPEND_ARGS"); }
-void Before(const OmpClause::AtomicDefaultMemOrder &) { Word("ATOMIC_DEFAULT_MEM_ORDER"); }
+void Before(const OmpClause::At &) { Word("AT"); }
+void Unparse(const OmpClause::AtomicDefaultMemOrder &x) {
+  Word("ATOMIC_DEFAULT_MEM_ORDER");
+  Put("(");
+  Walk(x.v);
+  Put(")");
+}
 void Before(const OmpClause::Bind &) { Word("BIND"); }
 void Before(const OmpClause::CancellationConstructType &) { Word("CANCELLATION_CONSTRUCT_TYPE"); }
 void Before(const OmpClause::Capture &) { Word("CAPTURE"); }
@@ -3962,6 +4003,7 @@ void Unparse(const OmpClause::Map &x) {
 void Before(const OmpClause::Match &) { Word("MATCH"); }
 void Before(const OmpClause::MemoryOrder &) { Word("MEMORY_ORDER"); }
 void Before(const OmpClause::Mergeable &) { Word("MERGEABLE"); }
+void Before(const OmpClause::Message &) { Word("MESSAGE"); }
 void Before(const OmpClause::Nogroup &) { Word("NOGROUP"); }
 void Before(const OmpClause::Nowait &) { Word("NOWAIT"); }
 void Unparse(const OmpClause::Nocontext &x) {
@@ -4048,6 +4090,7 @@ void Unparse(const OmpClause::Schedule &x) {
   Put(")");
 }
 void Before(const OmpClause::SeqCst &) { Word("SEQ_CST"); }
+void Before(const OmpClause::Severity &) { Word("SEVERITY"); }
 void Unparse(const OmpClause::Shared &x) {
   Word("SHARED");
   Put("(");
@@ -4119,6 +4162,7 @@ void Enter(const parser::OmpClause::Aligned &);
 void Enter(const parser::OmpClause::Allocate &);
 void Enter(const parser::OmpClause::Allocator &);
 void Enter(const parser::OmpClause::AppendArgs &);
+void Enter(const parser::OmpClause::At &);
 void Enter(const parser::OmpClause::AtomicDefaultMemOrder &);
 void Enter(const parser::OmpClause::Bind &);
 void Enter(const parser::OmpClause::CancellationConstructType &);
@@ -4161,6 +4205,7 @@ void Enter(const parser::OmpClause::Map &);
 void Enter(const parser::OmpClause::Match &);
 void Enter(const parser::OmpClause::MemoryOrder &);
 void Enter(const parser::OmpClause::Mergeable &);
+void Enter(const parser::OmpClause::Message &);
 void Enter(const parser::OmpClause::Nogroup &);
 void Enter(const parser::OmpClause::Nowait &);
 void Enter(const parser::OmpClause::Nocontext &);
@@ -4184,6 +4229,7 @@ void Enter(const parser::OmpClause::ReverseOffload &);
 void Enter(const parser::OmpClause::Safelen &);
 void Enter(const parser::OmpClause::Schedule &);
 void Enter(const parser::OmpClause::SeqCst &);
+void Enter(const parser::OmpClause::Severity &);
 void Enter(const parser::OmpClause::Shared &);
 void Enter(const parser::OmpClause::Simd &);
 void Enter(const parser::OmpClause::Simdlen &);
@@ -4229,6 +4275,8 @@ if constexpr (std::is_same_v<A, parser::OmpClause::Allocator>)
   return llvm::omp::Clause::OMPC_allocator;
 if constexpr (std::is_same_v<A, parser::OmpClause::AppendArgs>)
   return llvm::omp::Clause::OMPC_append_args;
+if constexpr (std::is_same_v<A, parser::OmpClause::At>)
+  return llvm::omp::Clause::OMPC_at;
 if constexpr (std::is_same_v<A, parser::OmpClause::AtomicDefaultMemOrder>)
   return llvm::omp::Clause::OMPC_atomic_default_mem_order;
 if constexpr (std::is_same_v<A, parser::OmpClause::Bind>)
@@ -4313,6 +4361,8 @@ if constexpr (std::is_same_v<A, parser::OmpClause::MemoryOrder>)
   return llvm::omp::Clause::OMPC_memory_order;
 if constexpr (std::is_same_v<A, parser::OmpClause::Mergeable>)
   return llvm::omp::Clause::OMPC_mergeable;
+if constexpr (std::is_same_v<A, parser::OmpClause::Message>)
+  return llvm::omp::Clause::OMPC_message;
 if constexpr (std::is_same_v<A, parser::OmpClause::Nogroup>)
   return llvm::omp::Clause::OMPC_nogroup;
 if constexpr (std::is_same_v<A, parser::OmpClause::Nowait>)
@@ -4359,6 +4409,8 @@ if constexpr (std::is_same_v<A, parser::OmpClause::Schedule>)
   return llvm::omp::Clause::OMPC_schedule;
 if constexpr (std::is_same_v<A, parser::OmpClause::SeqCst>)
   return llvm::omp::Clause::OMPC_seq_cst;
+if constexpr (std::is_same_v<A, parser::OmpClause::Severity>)
+  return llvm::omp::Clause::OMPC_severity;
 if constexpr (std::is_same_v<A, parser::OmpClause::Shared>)
   return llvm::omp::Clause::OMPC_shared;
 if constexpr (std::is_same_v<A, parser::OmpClause::Simd>)
@@ -4430,6 +4482,7 @@ TYPE_PARSER(
   "simdlen" >> construct<OmpClause>(construct<OmpClause::Simdlen>(parenthesized(scalarIntConstantExpr))) ||
   "simd" >> construct<OmpClause>(construct<OmpClause::Simd>()) ||
   "shared" >> construct<OmpClause>(construct<OmpClause::Shared>(parenthesized(Parser<OmpObjectList>{}))) ||
+  "severity" >> construct<OmpClause>(construct<OmpClause::Severity>()) ||
   "seq_cst" >> construct<OmpClause>(construct<OmpClause::SeqCst>()) ||
   "schedule" >> construct<OmpClause>(construct<OmpClause::Schedule>(parenthesized(Parser<OmpScheduleClause>{}))) ||
   "safelen" >> construct<OmpClause>(construct<OmpClause::Safelen>(parenthesized(scalarIntConstantExpr))) ||
@@ -4453,6 +4506,7 @@ TYPE_PARSER(
   "nontemporal" >> construct<OmpClause>(construct<OmpClause::Nontemporal>(parenthesized(name))) ||
   "nogroup" >> construct<OmpClause>(construct<OmpClause::Nogroup>()) ||
   "nocontext" >> construct<OmpClause>(construct<OmpClause::Nocontext>(parenthesized(scalarLogicalExpr))) ||
+  "message" >> construct<OmpClause>(construct<OmpClause::Message>()) ||
   "mergeable" >> construct<OmpClause>(construct<OmpClause::Mergeable>()) ||
   "memory_order" >> construct<OmpClause>(construct<OmpClause::MemoryOrder>()) ||
   "match" >> construct<OmpClause>(construct<OmpClause::Match>()) ||
@@ -4494,7 +4548,8 @@ TYPE_PARSER(
   "capture" >> construct<OmpClause>(construct<OmpClause::Capture>()) ||
   "cancellation_construct_type" >> construct<OmpClause>(construct<OmpClause::CancellationConstructType>()) ||
   "bind" >> construct<OmpClause>(construct<OmpClause::Bind>()) ||
-  "atomic_default_mem_order" >> construct<OmpClause>(construct<OmpClause::AtomicDefaultMemOrder>()) ||
+  "atomic_default_mem_order" >> construct<OmpClause>(construct<OmpClause::AtomicDefaultMemOrder>(parenthesized(Parser<OmpAtomicDefaultMemOrderClause>{}))) ||
+  "at" >> construct<OmpClause>(construct<OmpClause::At>()) ||
   "append_args" >> construct<OmpClause>(construct<OmpClause::AppendArgs>()) ||
   "allocator" >> construct<OmpClause>(construct<OmpClause::Allocator>(parenthesized(scalarIntExpr))) ||
   "allocate" >> construct<OmpClause>(construct<OmpClause::Allocate>(parenthesized(Parser<OmpAllocateClause>{}))) ||
@@ -4543,6 +4598,7 @@ __CLAUSE(aligned, OMPAlignedClause)
 __CLAUSE(allocate, OMPAllocateClause)
 __CLAUSE(allocator, OMPAllocatorClause)
 __CLAUSE_NO_CLASS(append_args)
+__CLAUSE(at, OMPAtClause)
 __CLAUSE(atomic_default_mem_order, OMPAtomicDefaultMemOrderClause)
 __CLAUSE(bind, OMPBindClause)
 __CLAUSE_NO_CLASS(cancellation_construct_type)
@@ -4585,6 +4641,7 @@ __CLAUSE(map, OMPMapClause)
 __CLAUSE_NO_CLASS(match)
 __CLAUSE_NO_CLASS(memory_order)
 __CLAUSE(mergeable, OMPMergeableClause)
+__CLAUSE(message, OMPMessageClause)
 __CLAUSE(nogroup, OMPNogroupClause)
 __CLAUSE(nowait, OMPNowaitClause)
 __CLAUSE(nocontext, OMPNocontextClause)
@@ -4608,6 +4665,7 @@ __CLAUSE(reverse_offload, OMPReverseOffloadClause)
 __CLAUSE(safelen, OMPSafelenClause)
 __CLAUSE(schedule, OMPScheduleClause)
 __CLAUSE(seq_cst, OMPSeqCstClause)
+__CLAUSE(severity, OMPSeverityClause)
 __CLAUSE(shared, OMPSharedClause)
 __CLAUSE(simd, OMPSIMDClause)
 __CLAUSE(simdlen, OMPSimdlenClause)
@@ -4676,6 +4734,7 @@ Directive llvm::omp::getOpenMPDirectiveKind(llvm::StringRef Str) {
     .Case("end sections",OMPD_end_sections)
     .Case("end single",OMPD_end_single)
     .Case("end workshare",OMPD_end_workshare)
+    .Case("error",OMPD_error)
     .Case("flush",OMPD_flush)
     .Case("for",OMPD_for)
     .Case("for simd",OMPD_for_simd)
@@ -4819,6 +4878,8 @@ llvm::StringRef llvm::omp::getOpenMPDirectiveName(Directive Kind) {
       return "end single";
     case OMPD_end_workshare:
       return "end workshare";
+    case OMPD_error:
+      return "error";
     case OMPD_flush:
       return "flush";
     case OMPD_for:
@@ -4982,6 +5043,7 @@ Clause llvm::omp::getOpenMPClauseKind(llvm::StringRef Str) {
     .Case("allocate",OMPC_allocate)
     .Case("allocator",OMPC_allocator)
     .Case("append_args",OMPC_append_args)
+    .Case("at",OMPC_at)
     .Case("atomic_default_mem_order",OMPC_atomic_default_mem_order)
     .Case("bind",OMPC_bind)
     .Case("cancellation_construct_type",OMPC_cancellation_construct_type)
@@ -5024,6 +5086,7 @@ Clause llvm::omp::getOpenMPClauseKind(llvm::StringRef Str) {
     .Case("match",OMPC_match)
     .Case("memory_order",OMPC_memory_order)
     .Case("mergeable",OMPC_mergeable)
+    .Case("message",OMPC_message)
     .Case("nogroup",OMPC_nogroup)
     .Case("nowait",OMPC_nowait)
     .Case("nocontext",OMPC_nocontext)
@@ -5047,6 +5110,7 @@ Clause llvm::omp::getOpenMPClauseKind(llvm::StringRef Str) {
     .Case("safelen",OMPC_safelen)
     .Case("schedule",OMPC_schedule)
     .Case("seq_cst",OMPC_seq_cst)
+    .Case("severity",OMPC_severity)
     .Case("shared",OMPC_shared)
     .Case("simd",OMPC_simd)
     .Case("simdlen",OMPC_simdlen)
@@ -5091,6 +5155,8 @@ llvm::StringRef llvm::omp::getOpenMPClauseName(Clause Kind) {
       return "allocator";
     case OMPC_append_args:
       return "append_args";
+    case OMPC_at:
+      return "at";
     case OMPC_atomic_default_mem_order:
       return "atomic_default_mem_order";
     case OMPC_bind:
@@ -5175,6 +5241,8 @@ llvm::StringRef llvm::omp::getOpenMPClauseName(Clause Kind) {
       return "memory_order";
     case OMPC_mergeable:
       return "mergeable";
+    case OMPC_message:
+      return "message";
     case OMPC_nogroup:
       return "nogroup";
     case OMPC_nowait:
@@ -5221,6 +5289,8 @@ llvm::StringRef llvm::omp::getOpenMPClauseName(Clause Kind) {
       return "schedule";
     case OMPC_seq_cst:
       return "seq_cst";
+    case OMPC_severity:
+      return "severity";
     case OMPC_shared:
       return "shared";
     case OMPC_simd:
@@ -5293,6 +5363,23 @@ llvm::StringRef llvm::omp::getOpenMPCancellationConstructTypeName(llvm::omp::Can
   llvm_unreachable("Invalid OpenMP CancellationConstructType kind");
 }
 
+GrainsizeType llvm::omp::getGrainsizeType(llvm::StringRef Str) {
+  return llvm::StringSwitch<GrainsizeType>(Str)
+    .Case("strict",OMP_GRAINSIZE_Strict)
+    .Case("unkonwn",OMP_GRAINSIZE_Unknown)
+    .Default(OMP_GRAINSIZE_Unknown);
+}
+
+llvm::StringRef llvm::omp::getOpenMPGrainsizeTypeName(llvm::omp::GrainsizeType x) {
+  switch (x) {
+    case OMP_GRAINSIZE_Strict:
+      return "strict";
+    case OMP_GRAINSIZE_Unknown:
+      return "unkonwn";
+  }
+  llvm_unreachable("Invalid OpenMP GrainsizeType kind");
+}
+
 MemoryOrderKind llvm::omp::getMemoryOrderKind(llvm::StringRef Str) {
   return llvm::StringSwitch<MemoryOrderKind>(Str)
     .Case("seq_cst",OMP_MEMORY_ORDER_SeqCst)
@@ -5320,6 +5407,23 @@ llvm::StringRef llvm::omp::getOpenMPMemoryOrderKindName(llvm::omp::MemoryOrderKi
       return "default";
   }
   llvm_unreachable("Invalid OpenMP MemoryOrderKind kind");
+}
+
+NumTasksType llvm::omp::getNumTasksType(llvm::StringRef Str) {
+  return llvm::StringSwitch<NumTasksType>(Str)
+    .Case("strict",OMP_NUMTASKS_Strict)
+    .Case("unkonwn",OMP_NUMTASKS_Unknown)
+    .Default(OMP_NUMTASKS_Unknown);
+}
+
+llvm::StringRef llvm::omp::getOpenMPNumTasksTypeName(llvm::omp::NumTasksType x) {
+  switch (x) {
+    case OMP_NUMTASKS_Strict:
+      return "strict";
+    case OMP_NUMTASKS_Unknown:
+      return "unkonwn";
+  }
+  llvm_unreachable("Invalid OpenMP NumTasksType kind");
 }
 
 OrderKind llvm::omp::getOrderKind(llvm::StringRef Str) {
@@ -5874,6 +5978,18 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
       switch (C) {
         case OMPC_nowait:
           return 1 <= Version && 2147483647 >= Version;
+        default:
+          return false;
+      }
+      break;
+    case OMPD_error:
+      switch (C) {
+        case OMPC_at:
+          return 51 <= Version && 2147483647 >= Version;
+        case OMPC_severity:
+          return 51 <= Version && 2147483647 >= Version;
+        case OMPC_message:
+          return 51 <= Version && 2147483647 >= Version;
         default:
           return false;
       }
@@ -7719,6 +7835,8 @@ bool llvm::omp::isAllowedClauseForDirective(Directive D, Clause C, unsigned Vers
       switch (C) {
         case OMPC_depend:
           return 50 <= Version && 2147483647 >= Version;
+        case OMPC_nowait:
+          return 51 <= Version && 2147483647 >= Version;
         default:
           return false;
       }

@@ -68,22 +68,6 @@ namespace detail {
   struct CallOpInterfaceTrait : public ::mlir::OpInterface<CallOpInterface, detail::CallOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
-template<typename ConcreteOp>
-::mlir::CallInterfaceCallable detail::CallOpInterfaceInterfaceTraits::Model<ConcreteOp>::getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getCallableForCallee();
-}
-template<typename ConcreteOp>
-::mlir::Operation::operand_range detail::CallOpInterfaceInterfaceTraits::Model<ConcreteOp>::getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgOperands();
-}
-template<typename ConcreteOp>
-::mlir::CallInterfaceCallable detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getCallableForCallee(tablegen_opaque_val);
-}
-template<typename ConcreteOp>
-::mlir::Operation::operand_range detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
-  return static_cast<const ConcreteOp *>(impl)->getArgOperands(tablegen_opaque_val);
-}
 } // namespace mlir
 namespace mlir {
 class CallableOpInterface;
@@ -138,6 +122,26 @@ namespace detail {
   struct CallableOpInterfaceTrait : public ::mlir::OpInterface<CallableOpInterface, detail::CallableOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+template<typename ConcreteOp>
+::mlir::CallInterfaceCallable detail::CallOpInterfaceInterfaceTraits::Model<ConcreteOp>::getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getCallableForCallee();
+}
+template<typename ConcreteOp>
+::mlir::Operation::operand_range detail::CallOpInterfaceInterfaceTraits::Model<ConcreteOp>::getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgOperands();
+}
+template<typename ConcreteOp>
+::mlir::CallInterfaceCallable detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getCallableForCallee(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getCallableForCallee(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+::mlir::Operation::operand_range detail::CallOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getArgOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getArgOperands(tablegen_opaque_val);
+}
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 ::mlir::Region *detail::CallableOpInterfaceInterfaceTraits::Model<ConcreteOp>::getCallableRegion(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getCallableRegion();

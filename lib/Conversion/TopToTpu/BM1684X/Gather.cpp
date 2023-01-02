@@ -37,7 +37,7 @@ void GatherLowering::LoweringF16(PatternRewriter &rewriter,
 
 void GatherLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::GatherOp op) const {
-  lowering_common<tpu::GatherOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::GatherOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

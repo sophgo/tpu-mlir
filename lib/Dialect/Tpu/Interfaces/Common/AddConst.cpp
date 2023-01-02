@@ -21,20 +21,20 @@ LogicalResult tpu::AddConstOp::init(InferenceParameter &p) { return success(); }
 void tpu::AddConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = p.inputs[0][i] + const_val().convertToDouble();
+    p.outputs[0][i] = p.inputs[0][i] + getConstVal().convertToDouble();
   }
-  if (do_relu()) {
-    auto limit = relu_limit().convertToDouble();
+  if (getDoRelu()) {
+    auto limit = getReluLimit().convertToDouble();
     function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
   }
   if (out_type.isa<FloatType>()) {
-    if (do_relu()) {
-      auto limit = relu_limit().convertToDouble();
+    if (getDoRelu()) {
+      auto limit = getReluLimit().convertToDouble();
       function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
     }
     if (out_type.isBF16()) {
@@ -42,14 +42,14 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (module::isUniformQuantized(output())) {
+  } else if (module::isUniformQuantized(getOutput())) {
     if (asym == false) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // coeff has been merge in multiplier&&rshift
         double sum =
-            applyMultiplierAndRShift(p.outputs[0][i], multiplier(), rshift());
-        if (do_relu() && sum < 0)
+            applyMultiplierAndRShift(p.outputs[0][i], getMultiplier(), getRshift());
+        if (getDoRelu() && sum < 0)
           sum = 0;
         p.outputs[0][i] =
             out_type.isUnsignedInteger(8) ? to_uint8(sum) : to_int8(sum);
@@ -59,7 +59,7 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
       for (int i = 0; i < num_elem; i++) {
         // inputs has been requant
         double sum = p.outputs[0][i];
-        if (do_relu() && sum < 0)
+        if (getDoRelu() && sum < 0)
           sum = 0;
         p.outputs[0][i] =
             out_type.isUnsignedInteger(8) ? to_uint8(sum) : to_int8(sum);

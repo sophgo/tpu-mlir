@@ -44,9 +44,9 @@ static void active_func(InferenceParameter &p, int64_t num, activate_f func) {
 }
 
 LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
-  t = module::getStorageType(output());
-  auto num_element = module::getNumElements(input());
-  switch (mode()) {
+  t = module::getStorageType(getOutput());
+  auto num_element = module::getNumElements(getInput());
+  switch (getMode()) {
   case ActiveMode::ABSVAL:
     active_func(p, num_element, [](double val) { return std::abs(val); });
     break;
@@ -71,7 +71,7 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
                 [](double val) { return 1 / (1 + std::exp(-val)); });
     break;
   case ActiveMode::HSIGMOID: {
-    const auto coeffs_ = module::getF64Array(coeffs(), 2, 0);
+    const auto coeffs_ = module::getF64Array(getCoeffs(), 2, 0);
     const double alpha = coeffs_->at(1);
     const double beta = coeffs_->at(0);
     active_func(p, num_element, [alpha, beta](double val) {

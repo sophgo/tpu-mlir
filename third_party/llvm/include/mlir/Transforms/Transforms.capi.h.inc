@@ -8,72 +8,77 @@ extern "C" {
 #endif
 
 // Registration for the entire group
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsPasses();
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsPasses(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsCSE();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsCSE();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsCSE(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsCSE(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsCanonicalizer();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsCanonicalizer();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsCanonicalizer(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsCanonicalizer(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsControlFlowSink();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsControlFlowSink();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsControlFlowSink(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsControlFlowSink(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsInliner();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsInliner();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsGenerateRuntimeVerification(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsGenerateRuntimeVerification(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsLocationSnapshot();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsLocationSnapshot();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsInliner(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsInliner(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsLoopInvariantCodeMotion();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsLoopInvariantCodeMotion();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsLocationSnapshot(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsLocationSnapshot(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsPrintOpStats();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsPrintOpStats();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsLoopInvariantCodeMotion(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsLoopInvariantCodeMotion(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsSCCP();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsSCCP();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsPrintOpStats(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsPrintOpStats(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsStripDebugInfo();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsStripDebugInfo();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsSCCP(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsSCCP(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsSymbolDCE();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsSymbolDCE();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsStripDebugInfo(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsStripDebugInfo(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsSymbolPrivatize();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsSymbolPrivatize();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsSymbolDCE(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsSymbolDCE(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsTopologicalSort();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsTopologicalSort();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsSymbolPrivatize(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsSymbolPrivatize(void);
 
 
 /* Create Transforms Pass. */
-MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsViewOpGraph();
-MLIR_CAPI_EXPORTED void mlirRegisterTransformsViewOpGraph();
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsTopologicalSort(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsTopologicalSort(void);
+
+
+/* Create Transforms Pass. */
+MLIR_CAPI_EXPORTED MlirPass mlirCreateTransformsViewOpGraph(void);
+MLIR_CAPI_EXPORTED void mlirRegisterTransformsViewOpGraph(void);
 
 
 

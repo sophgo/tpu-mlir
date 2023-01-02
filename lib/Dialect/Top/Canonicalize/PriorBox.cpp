@@ -15,7 +15,6 @@
 
 using namespace tpu_mlir::top;
 
-
 struct ConvertPriorBoxPattern : public OpRewritePattern<PriorBoxOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -27,19 +26,19 @@ struct ConvertPriorBoxPattern : public OpRewritePattern<PriorBoxOp> {
     auto size =
         std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<>());
     auto resultT = std::vector<float>(size);
-    auto min_size = module::getF64Array(op.min_size());
-    auto max_size = module::getF64Array(op.max_size());
-    auto aspect_ratios = module::getF64Array(op.aspect_ratios());
-    auto variance = module::getF64Array(op.variance());
+    auto min_size = module::getF64Array(op.getMinSize());
+    auto max_size = module::getF64Array(op.getMaxSize());
+    auto aspect_ratios = module::getF64Array(op.getAspectRatios());
+    auto variance = module::getF64Array(op.getVariance());
 
-    bool clip = op.clip();
-    bool use_default_aspect_ratio = op.use_default_aspect_ratio();
-    double offset = op.offset().convertToDouble();
-    double step_w = op.step_w().convertToDouble();
-    double step_h = op.step_h().convertToDouble();
-    int64_t num_priors = op.num_priors();
-    int64_t img_height = op.img_h();
-    int64_t img_width = op.img_w();
+    bool clip = op.getClip();
+    bool use_default_aspect_ratio = op.getUseDefaultAspectRatio();
+    double offset = op.getOffset().convertToDouble();
+    double step_w = op.getStepW().convertToDouble();
+    double step_h = op.getStepH().convertToDouble();
+    int64_t num_priors = op.getNumPriors();
+    int64_t img_height = op.getImgH();
+    int64_t img_width = op.getImgW();
 
     if (max_size->size() > 0) {
       assert(max_size->size() == min_size->size() &&
@@ -49,8 +48,8 @@ struct ConvertPriorBoxPattern : public OpRewritePattern<PriorBoxOp> {
     // Must and only provide 4 variance.
     assert(variance->size() == 4 && "variance size must be 4");
 
-    auto shape0 = module::getShape(op.inputs()[0]);
-    auto shape1 = module::getShape(op.inputs()[1]);
+    auto shape0 = module::getShape(op.getInputs()[0]);
+    auto shape1 = module::getShape(op.getInputs()[1]);
 
     assert(shape1.size() == 4 && shape0.size() == 4);
     const int64_t layer_width = shape0[3];
@@ -130,7 +129,7 @@ struct ConvertPriorBoxPattern : public OpRewritePattern<PriorBoxOp> {
       }
     }
 
-    auto o_s = module::getShape(op.output());
+    auto o_s = module::getShape(op.getOutput());
 
     // set the variance.
     // top_data += (o_s[2]);
@@ -146,12 +145,11 @@ struct ConvertPriorBoxPattern : public OpRewritePattern<PriorBoxOp> {
         }
       }
     }
-    auto op_name = module::getName(op.output());
+    auto op_name = module::getName(op.getOutput());
     auto weight_name = op_name.str() + "loadweight";
-    auto weight_type =
-        RankedTensorType::get(shape, rewriter.getF32Type());
-    auto weight_operand = WeightOp::create(
-        op, weight_name, top_data, weight_type);
+    auto weight_type = RankedTensorType::get(shape, rewriter.getF32Type());
+    auto weight_operand =
+        WeightOp::create(op, weight_name, top_data, weight_type);
     rewriter.replaceOp(op, weight_operand);
     return success();
   }

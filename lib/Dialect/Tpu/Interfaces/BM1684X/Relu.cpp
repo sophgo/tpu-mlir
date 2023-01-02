@@ -41,7 +41,7 @@ void tpu::ReluOp::codegen_global_bm1684x() {
   spec.is_channel_shared = true;
   spec.slope_val = 0.f;
   spec.rshift_bit = 0;
-  spec.upper_limit = relu_limit().convertToDouble();
+  spec.upper_limit = getReluLimit().convertToDouble();
   spec.round_mode = ROUND_UP;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
@@ -68,9 +68,9 @@ void tpu::ReluOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -94,7 +94,7 @@ void tpu::ReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.is_channel_shared = true;
   spec.slope_val = 0.f;
   spec.rshift_bit = 0;
-  spec.upper_limit = relu_limit().convertToDouble();
+  spec.upper_limit = getReluLimit().convertToDouble();
   spec.round_mode = ROUND_UP;
 
   BM168x::call_local_func("backend_api_prelu_local", &spec, sizeof(spec),

@@ -93,7 +93,7 @@ void InterpLowering::LoweringQuantized(PatternRewriter &rewriter,
     op_->setAttr("coord_mode",
                 tpu::ResizeCoordModeAttr::get(op_->getContext(), a.value()));
   }
-  lowering_common<tpu::InterpOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::InterpOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

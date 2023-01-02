@@ -16,6 +16,8 @@
 ::mlir::Float32Type,
 ::mlir::Float64Type,
 ::mlir::Float80Type,
+::mlir::Float8E4M3FNType,
+::mlir::Float8E5M2Type,
 ::mlir::FunctionType,
 ::mlir::IndexType,
 ::mlir::IntegerType,
@@ -41,6 +43,10 @@ namespace detail {
 struct ComplexTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<Type>;
   ComplexTypeStorage(Type elementType) : elementType(elementType) {}
+
+  KeyTy getAsKey() const {
+    return KeyTy(elementType);
+  }
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (elementType == std::get<0>(tblgenKey));
@@ -88,6 +94,12 @@ namespace mlir {
 } // namespace mlir
 MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float80Type)
 namespace mlir {
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNType)
+namespace mlir {
+} // namespace mlir
+MLIR_DEFINE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2Type)
+namespace mlir {
 FunctionType FunctionType::get(::mlir::MLIRContext *context, TypeRange inputs, TypeRange results) {
   return Base::get(context, inputs, results);
 }
@@ -105,6 +117,10 @@ namespace detail {
 struct MemRefTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<int64_t>, Type, MemRefLayoutAttrInterface, Attribute>;
   MemRefTypeStorage(::llvm::ArrayRef<int64_t> shape, Type elementType, MemRefLayoutAttrInterface layout, Attribute memorySpace) : shape(shape), elementType(elementType), layout(layout), memorySpace(memorySpace) {}
+
+  KeyTy getAsKey() const {
+    return KeyTy(shape, elementType, layout, memorySpace);
+  }
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (shape == std::get<0>(tblgenKey)) && (elementType == std::get<1>(tblgenKey)) && (layout == std::get<2>(tblgenKey)) && (memorySpace == std::get<3>(tblgenKey));
@@ -156,6 +172,10 @@ struct OpaqueTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<StringAttr, ::llvm::StringRef>;
   OpaqueTypeStorage(StringAttr dialectNamespace, ::llvm::StringRef typeData) : dialectNamespace(dialectNamespace), typeData(typeData) {}
 
+  KeyTy getAsKey() const {
+    return KeyTy(dialectNamespace, typeData);
+  }
+
   bool operator==(const KeyTy &tblgenKey) const {
     return (dialectNamespace == std::get<0>(tblgenKey)) && (typeData == std::get<1>(tblgenKey));
   }
@@ -198,6 +218,10 @@ namespace detail {
 struct RankedTensorTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<int64_t>, Type, Attribute>;
   RankedTensorTypeStorage(::llvm::ArrayRef<int64_t> shape, Type elementType, Attribute encoding) : shape(shape), elementType(elementType), encoding(encoding) {}
+
+  KeyTy getAsKey() const {
+    return KeyTy(shape, elementType, encoding);
+  }
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (shape == std::get<0>(tblgenKey)) && (elementType == std::get<1>(tblgenKey)) && (encoding == std::get<2>(tblgenKey));
@@ -259,6 +283,10 @@ struct UnrankedMemRefTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<Type, Attribute>;
   UnrankedMemRefTypeStorage(Type elementType, Attribute memorySpace) : elementType(elementType), memorySpace(memorySpace) {}
 
+  KeyTy getAsKey() const {
+    return KeyTy(elementType, memorySpace);
+  }
+
   bool operator==(const KeyTy &tblgenKey) const {
     return (elementType == std::get<0>(tblgenKey)) && (memorySpace == std::get<1>(tblgenKey));
   }
@@ -319,6 +347,10 @@ struct UnrankedTensorTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<Type>;
   UnrankedTensorTypeStorage(Type elementType) : elementType(elementType) {}
 
+  KeyTy getAsKey() const {
+    return KeyTy(elementType);
+  }
+
   bool operator==(const KeyTy &tblgenKey) const {
     return (elementType == std::get<0>(tblgenKey));
   }
@@ -354,6 +386,10 @@ namespace detail {
 struct VectorTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<::llvm::ArrayRef<int64_t>, Type, unsigned>;
   VectorTypeStorage(::llvm::ArrayRef<int64_t> shape, Type elementType, unsigned numScalableDims) : shape(shape), elementType(elementType), numScalableDims(numScalableDims) {}
+
+  KeyTy getAsKey() const {
+    return KeyTy(shape, elementType, numScalableDims);
+  }
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (shape == std::get<0>(tblgenKey)) && (elementType == std::get<1>(tblgenKey)) && (numScalableDims == std::get<2>(tblgenKey));

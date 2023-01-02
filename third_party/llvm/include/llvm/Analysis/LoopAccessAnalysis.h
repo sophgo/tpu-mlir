@@ -19,6 +19,7 @@
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/Pass.h"
+#include <optional>
 
 namespace llvm {
 
@@ -451,10 +452,10 @@ public:
   // pairs that can be used to prove that there are no vectorization-preventing
   // dependencies at runtime. There are is a vectorization-preventing dependency
   // if any pointer-difference is <u VF * InterleaveCount * access size. Returns
-  // None if pointer-difference checks cannot be used.
-  Optional<ArrayRef<PointerDiffInfo>> getDiffChecks() const {
+  // std::nullopt if pointer-difference checks cannot be used.
+  std::optional<ArrayRef<PointerDiffInfo>> getDiffChecks() const {
     if (!CanUseDiffCheck)
-      return None;
+      return std::nullopt;
     return {DiffChecks};
   }
 
@@ -720,7 +721,7 @@ const SCEV *replaceSymbolicStrideSCEV(PredicatedScalarEvolution &PSE,
                                       Value *Ptr);
 
 /// If the pointer has a constant stride return it in units of the access type
-/// size.  Otherwise return None.
+/// size.  Otherwise return std::nullopt.
 ///
 /// Ensure that it does not wrap in the address space, assuming the predicate
 /// associated with \p PSE is true.
@@ -729,7 +730,7 @@ const SCEV *replaceSymbolicStrideSCEV(PredicatedScalarEvolution &PSE,
 /// to \p PtrToStride and therefore add further predicates to \p PSE.
 /// The \p Assume parameter indicates if we are allowed to make additional
 /// run-time assumptions.
-Optional<int64_t>
+std::optional<int64_t>
 getPtrStride(PredicatedScalarEvolution &PSE, Type *AccessTy, Value *Ptr,
              const Loop *Lp,
              const ValueToValueMap &StridesMap = ValueToValueMap(),
@@ -740,10 +741,11 @@ getPtrStride(PredicatedScalarEvolution &PSE, Type *AccessTy, Value *Ptr,
 /// is a simple API that does not depend on the analysis pass.
 /// \param StrictCheck Ensure that the calculated distance matches the
 /// type-based one after all the bitcasts removal in the provided pointers.
-Optional<int> getPointersDiff(Type *ElemTyA, Value *PtrA, Type *ElemTyB,
-                              Value *PtrB, const DataLayout &DL,
-                              ScalarEvolution &SE, bool StrictCheck = false,
-                              bool CheckType = true);
+std::optional<int> getPointersDiff(Type *ElemTyA, Value *PtrA, Type *ElemTyB,
+                                   Value *PtrB, const DataLayout &DL,
+                                   ScalarEvolution &SE,
+                                   bool StrictCheck = false,
+                                   bool CheckType = true);
 
 /// Attempt to sort the pointers in \p VL and return the sorted indices
 /// in \p SortedIndices, if reordering is required.
@@ -781,6 +783,8 @@ public:
       : SE(SE), AA(AA), DT(DT), LI(LI), TLI(TLI) {}
 
   const LoopAccessInfo &getInfo(Loop &L);
+
+  void clear() { LoopAccessInfoMap.clear(); }
 };
 
 /// This analysis provides dependence information for the memory accesses
@@ -800,29 +804,19 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 
-  /// Query the result of the loop access information for the loop \p L.
+  /// Return the proxy object for retrieving LoopAccessInfo for individual
+  /// loops.
   ///
   /// If there is no cached result available run the analysis.
-  const LoopAccessInfo &getInfo(Loop *L);
+  LoopAccessInfoManager &getLAIs() { return *LAIs; }
 
   void releaseMemory() override {
     // Invalidate the cache when the pass is freed.
-    LoopAccessInfoMap.clear();
+    LAIs->clear();
   }
 
-  /// Print the result of the analysis when invoked with -analyze.
-  void print(raw_ostream &OS, const Module *M = nullptr) const override;
-
 private:
-  /// The cache.
-  DenseMap<Loop *, std::unique_ptr<LoopAccessInfo>> LoopAccessInfoMap;
-
-  // The used analysis passes.
-  ScalarEvolution *SE = nullptr;
-  const TargetLibraryInfo *TLI = nullptr;
-  AAResults *AA = nullptr;
-  DominatorTree *DT = nullptr;
-  LoopInfo *LI = nullptr;
+  std::unique_ptr<LoopAccessInfoManager> LAIs;
 };
 
 /// This analysis provides dependence information for the memory

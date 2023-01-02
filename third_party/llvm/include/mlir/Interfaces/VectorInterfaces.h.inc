@@ -20,9 +20,10 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     ::mlir::AffineMap (*permutation_map)(const Concept *impl, ::mlir::Operation *);
     bool (*isBroadcastDim)(const Concept *impl, ::mlir::Operation *, unsigned);
     bool (*hasBroadcastDim)(const Concept *impl, ::mlir::Operation *);
-    ::llvm::Optional<::mlir::ArrayAttr> (*in_bounds)(const Concept *impl, ::mlir::Operation *);
+    ::std::optional<::mlir::ArrayAttr> (*in_bounds)(const Concept *impl, ::mlir::Operation *);
     ::mlir::ShapedType (*getShapedType)(const Concept *impl, ::mlir::Operation *);
     ::mlir::VectorType (*getVectorType)(const Concept *impl, ::mlir::Operation *);
+    Value (*getMask)(const Concept *impl, ::mlir::Operation *);
     ::mlir::VectorType (*getMaskType)(const Concept *impl, ::mlir::Operation *);
     unsigned (*getTransferRank)(const Concept *impl, ::mlir::Operation *);
     unsigned (*getLeadingShapedRank)(const Concept *impl, ::mlir::Operation *);
@@ -34,7 +35,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::VectorTransferOpInterface;
-    Model() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing, getTransferChunkAccessed} {}
+    Model() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMask, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing, getTransferChunkAccessed} {}
 
     static inline ::mlir::StringRef getInBoundsAttrStrName();
     static inline ::mlir::StringRef getPermutationMapAttrStrName();
@@ -45,9 +46,10 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     static inline ::mlir::AffineMap permutation_map(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool hasBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ShapedType getShapedType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getVectorType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Value getMask(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getMaskType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline unsigned getTransferRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline unsigned getLeadingShapedRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -59,7 +61,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::VectorTransferOpInterface;
-    FallbackModel() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing, getTransferChunkAccessed} {}
+    FallbackModel() : Concept{getInBoundsAttrStrName, getPermutationMapAttrStrName, isDimInBounds, source, vector, indices, permutation_map, isBroadcastDim, hasBroadcastDim, in_bounds, getShapedType, getVectorType, getMask, getMaskType, getTransferRank, getLeadingShapedRank, hasOutOfBoundsDim, zipResultAndIndexing, getTransferChunkAccessed} {}
 
     static inline ::mlir::StringRef getInBoundsAttrStrName();
     static inline ::mlir::StringRef getPermutationMapAttrStrName();
@@ -70,9 +72,10 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     static inline ::mlir::AffineMap permutation_map(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline bool isBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, unsigned idx);
     static inline bool hasBroadcastDim(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::ArrayAttr> in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::ShapedType getShapedType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getVectorType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline Value getMask(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::VectorType getMaskType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline unsigned getTransferRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline unsigned getLeadingShapedRank(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
@@ -91,6 +94,7 @@ struct VectorTransferOpInterfaceInterfaceTraits {
     bool hasBroadcastDim(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::ShapedType getShapedType(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::VectorType getVectorType(::mlir::Operation *tablegen_opaque_val) const;
+    Value getMask(::mlir::Operation *tablegen_opaque_val) const;
     ::mlir::VectorType getMaskType(::mlir::Operation *tablegen_opaque_val) const;
     unsigned getTransferRank(::mlir::Operation *tablegen_opaque_val) const;
     unsigned getLeadingShapedRank(::mlir::Operation *tablegen_opaque_val) const;
@@ -128,12 +132,14 @@ public:
   ///                  permutation map is a broadcast.
   bool hasBroadcastDim();
   /// Return the `in_bounds` boolean ArrayAttr.
-  ::llvm::Optional<::mlir::ArrayAttr> in_bounds();
+  ::std::optional<::mlir::ArrayAttr> in_bounds();
   /// Return the ShapedType.
   ::mlir::ShapedType getShapedType();
   /// Return the VectorType.
   ::mlir::VectorType getVectorType();
-  /// Return the mask type if the op has a mask.
+  /// Return the mask operand if the op has a mask. Otherwise, return a empty value.
+  Value getMask();
+  /// Return the mask type if the op has a mask. Otherwise, return an empty VectorType.
   ::mlir::VectorType getMaskType();
   /// Return the number of dimensions that participate in the
   ///                  permutation map.
@@ -210,12 +216,13 @@ namespace detail {
     ::mlir::VectorType getVectorType() {
       return (*static_cast<ConcreteOp *>(this)).getVector().getType().template dyn_cast<::mlir::VectorType>();
     }
-    /// Return the mask type if the op has a mask.
+    /// Return the mask operand if the op has a mask. Otherwise, return a empty value.
+    Value getMask() {
+      return (*static_cast<ConcreteOp *>(this)).getMask();
+    }
+    /// Return the mask type if the op has a mask. Otherwise, return an empty VectorType.
     ::mlir::VectorType getMaskType() {
-      return (*static_cast<ConcreteOp *>(this)).getMask()
-            ? ::mlir::vector::detail::transferMaskType(
-                (*static_cast<ConcreteOp *>(this)).getVectorType(), (*static_cast<ConcreteOp *>(this)).getPermutationMap())
-            : ::mlir::VectorType();
+      return (*static_cast<ConcreteOp *>(this)).getMask() ? (*static_cast<ConcreteOp *>(this)).getMask().getType() : ::mlir::VectorType();
     }
     /// Return the number of dimensions that participate in the
     ///                  permutation map.
@@ -279,6 +286,69 @@ namespace detail {
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+class VectorUnrollOpInterface;
+namespace detail {
+struct VectorUnrollOpInterfaceInterfaceTraits {
+  struct Concept {
+    ::std::optional<::llvm::SmallVector<int64_t, 4>> (*getShapeForUnroll)(const Concept *impl, ::mlir::Operation *);
+  };
+  template<typename ConcreteOp>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::VectorUnrollOpInterface;
+    Model() : Concept{getShapeForUnroll} {}
+
+    static inline ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteOp>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::VectorUnrollOpInterface;
+    FallbackModel() : Concept{getShapeForUnroll} {}
+
+    static inline ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteModel, typename ConcreteOp>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    using ConcreteEntity = ConcreteOp;
+    ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const;
+  };
+};template <typename ConcreteOp>
+struct VectorUnrollOpInterfaceTrait;
+
+} // namespace detail
+class VectorUnrollOpInterface : public ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits> {
+public:
+  using ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::OpInterface;
+  template <typename ConcreteOp>
+  struct Trait : public detail::VectorUnrollOpInterfaceTrait<ConcreteOp> {};
+  /// Return the shape ratio of unrolling to the target vector shape
+  /// `targetShape`. Return `None` if the op cannot be unrolled to the target
+  /// vector shape.
+  ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll();
+};
+namespace detail {
+  template <typename ConcreteOp>
+  struct VectorUnrollOpInterfaceTrait : public ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Return the shape ratio of unrolling to the target vector shape
+    /// `targetShape`. Return `None` if the op cannot be unrolled to the target
+    /// vector shape.
+    ::std::optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll() {
+      assert((*static_cast<ConcreteOp *>(this))->getNumResults() == 1);
+        auto vt = (*static_cast<ConcreteOp *>(this)).getResult().getType().
+          template dyn_cast<::mlir::VectorType>();
+        if (!vt)
+          return ::std::nullopt;
+        ::llvm::SmallVector<int64_t, 4> res(vt.getShape().begin(), vt.getShape().end());
+        return res;
+    }
+  };
+}// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 ::mlir::StringRef detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::getInBoundsAttrStrName() {
   return ConcreteOp::getInBoundsAttrStrName();
@@ -316,7 +386,7 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::hasBro
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).hasBroadcastDim();
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getInBounds();
 }
 template<typename ConcreteOp>
@@ -326,6 +396,10 @@ template<typename ConcreteOp>
 template<typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::getVectorType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVectorType();
+}
+template<typename ConcreteOp>
+Value detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMask(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMask();
 }
 template<typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::Model<ConcreteOp>::getMaskType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -388,7 +462,7 @@ bool detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>
   return static_cast<const ConcreteOp *>(impl)->hasBroadcastDim(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::ArrayAttr> detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::in_bounds(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->in_bounds(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
@@ -398,6 +472,10 @@ template<typename ConcreteOp>
 template<typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getVectorType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getVectorType(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+Value detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMask(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getMask(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getMaskType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
@@ -461,11 +539,12 @@ template<typename ConcreteModel, typename ConcreteOp>
 return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVector().getType().template dyn_cast<::mlir::VectorType>();
 }
 template<typename ConcreteModel, typename ConcreteOp>
+Value detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMask(::mlir::Operation *tablegen_opaque_val) const {
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMask();
+}
+template<typename ConcreteModel, typename ConcreteOp>
 ::mlir::VectorType detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getMaskType(::mlir::Operation *tablegen_opaque_val) const {
-return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMask()
-            ? ::mlir::vector::detail::transferMaskType(
-                (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getVectorType(), (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getPermutationMap())
-            : ::mlir::VectorType();
+return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMask() ? (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getMask().getType() : ::mlir::VectorType();
 }
 template<typename ConcreteModel, typename ConcreteOp>
 unsigned detail::VectorTransferOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getTransferRank(::mlir::Operation *tablegen_opaque_val) const {
@@ -507,80 +586,21 @@ SmallVector<int64_t> dimSizes((llvm::cast<ConcreteOp>(tablegen_opaque_val)).getP
 }
 } // namespace mlir
 namespace mlir {
-class VectorUnrollOpInterface;
-namespace detail {
-struct VectorUnrollOpInterfaceInterfaceTraits {
-  struct Concept {
-    ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> (*getShapeForUnroll)(const Concept *impl, ::mlir::Operation *);
-  };
-  template<typename ConcreteOp>
-  class Model : public Concept {
-  public:
-    using Interface = ::mlir::VectorUnrollOpInterface;
-    Model() : Concept{getShapeForUnroll} {}
-
-    static inline ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-  };
-  template<typename ConcreteOp>
-  class FallbackModel : public Concept {
-  public:
-    using Interface = ::mlir::VectorUnrollOpInterface;
-    FallbackModel() : Concept{getShapeForUnroll} {}
-
-    static inline ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-  };
-  template<typename ConcreteModel, typename ConcreteOp>
-  class ExternalModel : public FallbackModel<ConcreteModel> {
-  public:
-    using ConcreteEntity = ConcreteOp;
-    ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const;
-  };
-};template <typename ConcreteOp>
-struct VectorUnrollOpInterfaceTrait;
-
-} // namespace detail
-class VectorUnrollOpInterface : public ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits> {
-public:
-  using ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::OpInterface;
-  template <typename ConcreteOp>
-  struct Trait : public detail::VectorUnrollOpInterfaceTrait<ConcreteOp> {};
-  /// Return the shape ratio of unrolling to the target vector shape
-  /// `targetShape`. Return `None` if the op cannot be unrolled to the target
-  /// vector shape.
-  ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll();
-};
-namespace detail {
-  template <typename ConcreteOp>
-  struct VectorUnrollOpInterfaceTrait : public ::mlir::OpInterface<VectorUnrollOpInterface, detail::VectorUnrollOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
-    /// Return the shape ratio of unrolling to the target vector shape
-    /// `targetShape`. Return `None` if the op cannot be unrolled to the target
-    /// vector shape.
-    ::llvm::Optional<::llvm::SmallVector<int64_t, 4>> getShapeForUnroll() {
-      assert((*static_cast<ConcreteOp *>(this))->getNumResults() == 1);
-        auto vt = (*static_cast<ConcreteOp *>(this)).getResult().getType().
-          template dyn_cast<::mlir::VectorType>();
-        if (!vt)
-          return ::mlir::None;
-        ::llvm::SmallVector<int64_t, 4> res(vt.getShape().begin(), vt.getShape().end());
-        return res;
-    }
-  };
-}// namespace detail
 template<typename ConcreteOp>
-::llvm::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::Model<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::Model<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getShapeForUnroll();
 }
 template<typename ConcreteOp>
-::llvm::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getShapeForUnroll(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getShapeForUnroll(tablegen_opaque_val);
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::llvm::Optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const {
+::std::optional<::llvm::SmallVector<int64_t, 4>> detail::VectorUnrollOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getShapeForUnroll(::mlir::Operation *tablegen_opaque_val) const {
 assert((llvm::cast<ConcreteOp>(tablegen_opaque_val))->getNumResults() == 1);
         auto vt = (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResult().getType().
           template dyn_cast<::mlir::VectorType>();
         if (!vt)
-          return ::mlir::None;
+          return ::std::nullopt;
         ::llvm::SmallVector<int64_t, 4> res(vt.getShape().begin(), vt.getShape().end());
         return res;
 }

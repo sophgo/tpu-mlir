@@ -92,6 +92,8 @@ namespace detail {
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteType>
 unsigned detail::DataLayoutTypeInterfaceInterfaceTraits::Model<ConcreteType>::getTypeSize(const Concept *impl, ::mlir::Type tablegen_opaque_val, const ::mlir::DataLayout & dataLayout, ::mlir::DataLayoutEntryListRef params) {
   return (tablegen_opaque_val.cast<ConcreteType>()).getTypeSize(dataLayout, params);

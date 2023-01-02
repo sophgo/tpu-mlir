@@ -6,6 +6,50 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
+/// Returns the type of the function.
+::mlir::Type mlir::FunctionOpInterface::getFunctionType() {
+      return getImpl()->getFunctionType(getImpl(), getOperation());
+  }
+/// Set the type of the function. This method should perform an unsafe
+/// modification to the function type; it should not update argument or
+/// result attributes.
+void mlir::FunctionOpInterface::setFunctionTypeAttr(::mlir::TypeAttr type) {
+      return getImpl()->setFunctionTypeAttr(getImpl(), getOperation(), type);
+  }
+/// Get the array of argument attribute dictionaries. The method should return
+/// an array attribute containing only dictionary attributes equal in number
+/// to the number of function arguments. Alternatively, the method can return
+/// null to indicate that the function has no argument attributes.
+::mlir::ArrayAttr mlir::FunctionOpInterface::getArgAttrsAttr() {
+      return getImpl()->getArgAttrsAttr(getImpl(), getOperation());
+  }
+/// Get the array of result attribute dictionaries. The method should return
+/// an array attribute containing only dictionary attributes equal in number
+/// to the number of function results. Alternatively, the method can return
+/// null to indicate that the function has no result attributes.
+::mlir::ArrayAttr mlir::FunctionOpInterface::getResAttrsAttr() {
+      return getImpl()->getResAttrsAttr(getImpl(), getOperation());
+  }
+/// Set the array of argument attribute dictionaries.
+void mlir::FunctionOpInterface::setArgAttrsAttr(::mlir::ArrayAttr attrs) {
+      return getImpl()->setArgAttrsAttr(getImpl(), getOperation(), attrs);
+  }
+/// Set the array of result attribute dictionaries.
+void mlir::FunctionOpInterface::setResAttrsAttr(::mlir::ArrayAttr attrs) {
+      return getImpl()->setResAttrsAttr(getImpl(), getOperation(), attrs);
+  }
+/// Remove the array of argument attribute dictionaries. This is the same as
+/// setting all argument attributes to an empty dictionary. The method should
+/// return the removed attribute.
+::mlir::Attribute mlir::FunctionOpInterface::removeArgAttrsAttr() {
+      return getImpl()->removeArgAttrsAttr(getImpl(), getOperation());
+  }
+/// Remove the array of result attribute dictionaries. This is the same as
+/// setting all result attributes to an empty dictionary. The method should
+/// return the removed attribute.
+::mlir::Attribute mlir::FunctionOpInterface::removeResAttrsAttr() {
+      return getImpl()->removeResAttrsAttr(getImpl(), getOperation());
+  }
 /// Returns the function argument types based exclusively on
 /// the type (to allow for this method may be called on function
 /// declarations).

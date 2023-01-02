@@ -41,16 +41,16 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 void tpu::MaxUnpoolOp::codegen_global_bm1684x() {
-  assert(scale_h() == scale_w());
+  assert(getScaleH() == getScaleW());
   int64_t in, ic, ih, iw;
-  module::getNCHW(input(), in, ic, ih, iw);
+  module::getNCHW(getInput(), in, ic, ih, iw);
   int64_t on, oc, oh, ow;
-  module::getNCHW(output(), on, oc, oh, ow);
+  module::getNCHW(getOutput(), on, oc, oh, ow);
 
   upsamplemask_param_t spec = {0};
-  spec.bottom_global_offset = module::getAddress(input());
-  spec.bottom_mask_global_offset = module::getAddress(mask());
-  spec.top_global_offset = module::getAddress(output());
+  spec.bottom_global_offset = module::getAddress(getInput());
+  spec.bottom_mask_global_offset = module::getAddress(getMask());
+  spec.top_global_offset = module::getAddress(getOutput());
   spec.bottom_global_N = in;
   spec.bottom_c = ic;
   spec.bottom_h = ih;

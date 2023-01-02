@@ -20,7 +20,7 @@ LogicalResult top::SqueezeOp::init(InferenceParameter &p) { return success(); }
 void top::SqueezeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SqueezeOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(output());
+  auto num_element = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int64_t i = 0; i < num_element; i++) {
     p.outputs[0][i] = p.inputs[0][i];

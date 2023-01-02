@@ -14,7 +14,7 @@ namespace cv18xx {
 
 static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx) {
   auto poolOp = dyn_cast<tpu::Pool2DOp>(op);
-  if (poolOp.pool_mode() == tpu::PoolMode::Max) {
+  if (poolOp.getPoolMode() == tpu::PoolMode::Max) {
     return;
   }
   Value input_val = poolOp.getOperand();
@@ -69,8 +69,8 @@ static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx
     small_pool_attrs.emplace_back(rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
     small_pool_attrs.emplace_back(rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
     small_pool_attrs.emplace_back(rewriter.getNamedAttr("pool_mode", tpu::PoolModeAttr::get(ctx, tpu::PoolMode::Avg)));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(poolOp.multiplier().value())));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(poolOp.rshift().value())));
+    small_pool_attrs.emplace_back(rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(poolOp.getMultiplier().value())));
+    small_pool_attrs.emplace_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(poolOp.getRshift().value())));
     std::string small_pool_name = "pool_" + name + std::to_string(offset);
     auto small_pool_loc = NameLoc::get(rewriter.getStringAttr(small_pool_name));
     auto small_pool_type = RankedTensorType::get({n, c, 1, 1}, elementType_);
@@ -109,8 +109,8 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
                                    top::AvgPoolOp poolOp,
                                    bool asymmetric) const {
   assert(!asymmetric);
-  const size_t kernel_size = poolOp.kernel_shape().size();
-  auto kernel = module::getI64Array(poolOp.kernel_shape());
+  const size_t kernel_size = poolOp.getKernelShape().size();
+  auto kernel = module::getI64Array(poolOp.getKernelShape());
   int64_t kh = kernel_size == 3 ? kernel->at(1) : kernel->at(0);
   int64_t kw =
       kernel_size == 3 ? kernel->at(2) : (kernel_size == 2 ? kernel->at(1) : 1);
@@ -123,8 +123,8 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto in_qtype = module::getCalibratedType(poolOp.input());
-  auto out_qtype = module::getCalibratedType(poolOp.output());
+  auto in_qtype = module::getCalibratedType(poolOp.getInput());
+  auto out_qtype = module::getCalibratedType(poolOp.getOutput());
   auto in_thr = in_qtype.getMax();
   auto out_thr = out_qtype.getMax();
   if (kernel_size != 3) {
@@ -142,14 +142,14 @@ void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "pool_mode", tpu::PoolModeAttr::get(getContext(), tpu::PoolMode::Avg)));
 
-  auto newType = getQuantInt8Type(poolOp.output(), asymmetric);
+  auto newType = getQuantInt8Type(poolOp.getOutput(), asymmetric);
   if (kernel_size == 1) {
     rewriter.replaceOpWithNewOp<tpu::Pool1DOp>(
-        op, newType, ValueRange{poolOp.input()}, attrs);
+        op, newType, ValueRange{poolOp.getInput()}, attrs);
 
   } else if (kernel_size == 2) {
     auto final_op = rewriter.replaceOpWithNewOp<tpu::Pool2DOp>(
-        op, newType, ValueRange{poolOp.input()}, attrs);
+        op, newType, ValueRange{poolOp.getInput()}, attrs);
     auto ctx = getContext();
     splitPool(rewriter, final_op.getOperation(), ctx);
 
@@ -163,7 +163,7 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
   auto op = poolOp.getOperation();
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
-  if (poolOp.kernel_shape().size() == 3) {
+  if (poolOp.getKernelShape().size() == 3) {
     std::vector<Value> operands;
     std::vector<int64_t> input_shape;
     std::vector<int64_t> output_shape;
@@ -173,11 +173,11 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     std::vector<int64_t> _strides;
     std::vector<int64_t> _pad;
 
-    module::getShapeVec(poolOp.input(), input_shape);
-    module::getShapeVec(poolOp.output(), output_shape);
-    auto kernel = module::getI64Array(poolOp.kernel_shape());
-    auto strides = module::getI64Array(poolOp.strides());
-    auto pads = module::getI64Array(poolOp.pads());
+    module::getShapeVec(poolOp.getInput(), input_shape);
+    module::getShapeVec(poolOp.getOutput(), output_shape);
+    auto kernel = module::getI64Array(poolOp.getKernelShape());
+    auto strides = module::getI64Array(poolOp.getStrides());
+    auto pads = module::getI64Array(poolOp.getPads());
     auto type = rewriter.getBF16Type();
     auto op_name = module::getName(poolOp.getOperation()).str();
     // 0. reshape [n c f h w] -> [n*c h w f].
@@ -203,7 +203,7 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(tmp_shape0, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_0"));
     auto newOp0 = rewriter.create<tpu::Pool2DOp>(
-        name_loc, newType, ValueRange{reshapeOp.output()} , op->getAttrs());
+        name_loc, newType, ValueRange{reshapeOp.getOutput()} , op->getAttrs());
     newOp0->setAttr("kernel_shape", rewriter.getI64ArrayAttr(_kernel));
     newOp0->setAttr("strides", rewriter.getI64ArrayAttr(_strides));
     newOp0->setAttr("pads", rewriter.getI64ArrayAttr(_pad));
@@ -221,14 +221,14 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(tmp_shape1, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
     auto newOp1 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp0.output(), module::getNoneOp(op)},
+        name_loc, newType, ValueRange{newOp0.getOutput(), module::getNoneOp(op)},
         attrs);
     // 3. do pool last dim
     tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
     newType = RankedTensorType::get(tmp_shape1, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_1"));
     auto newOp2 = rewriter.create<tpu::Pool2DOp>(
-        name_loc, newType, ValueRange{newOp1.output()}, op->getAttrs());
+        name_loc, newType, ValueRange{newOp1.getOutput()}, op->getAttrs());
     newOp2->setAttr("kernel_shape", rewriter.getI64ArrayAttr({1, kernel->at(0)}));
     newOp2->setAttr("strides", rewriter.getI64ArrayAttr({1, strides->at(0)}));
     newOp2->setAttr("pads",
@@ -244,15 +244,15 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     auto newOp3 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp2.output(), module::getNoneOp(op)},
+        name_loc, newType, ValueRange{newOp2.getOutput(), module::getNoneOp(op)},
         attrs);
     // 5. reshape back
     newType = RankedTensorType::get(output_shape, type);
     auto reshape_backOp =
-        rewriter.create<tpu::ReshapeOp>(poolOp->getLoc(), newType, ValueRange{newOp3.output()});
+        rewriter.create<tpu::ReshapeOp>(poolOp->getLoc(), newType, ValueRange{newOp3.getOutput()});
 
-    rewriter.replaceOp(op, {reshape_backOp.output()});
-  } else if (poolOp.kernel_shape().size() == 2) {
+    rewriter.replaceOp(op, {reshape_backOp.getOutput()});
+  } else if (poolOp.getKernelShape().size() == 2) {
     lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
   } else {
     lowering_common_bf16<tpu::Pool1DOp>(rewriter, op);

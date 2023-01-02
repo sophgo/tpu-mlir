@@ -74,22 +74,22 @@ static void transposeBiasFp32(std::vector<float> &bias_f32,
 template <>
 LogicalResult WeightReorder<tpu::LSTMCVIOp, BFloat16Type>::matchAndRewrite(
     tpu::LSTMCVIOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.input()).isBF16())
+  if (!module::getStorageType(op.getInput()).isBF16())
     return failure();
   std::vector<int64_t> recc_shape;
-  module::getShapeVec(op.recurrence(), recc_shape);
-  auto reccOp = op.recurrence().getDefiningOp<top::WeightOp>();
+  module::getShapeVec(op.getRecurrence(), recc_shape);
+  auto reccOp = op.getRecurrence().getDefiningOp<top::WeightOp>();
   auto recc_u16 = reccOp.read<uint16_t>();
   transposeRecurrence(*recc_u16, recc_shape);
   reccOp.update(*recc_u16, recc_u16->size());
-  if (auto biasOp = op.bias().getDefiningOp<top::WeightOp>()) {
+  if (auto biasOp = op.getBias().getDefiningOp<top::WeightOp>()) {
     auto bias_data = biasOp.read<float_t>();
     std::vector<uint32_t> bias_u32(bias_data->size());
     transposeBiasFp32(*bias_data, bias_u32);
     biasOp.update(bias_u32, bias_u32.size());
-    auto new_bias_type = RankedTensorType::get(module::getShape(op.bias()),
+    auto new_bias_type = RankedTensorType::get(module::getShape(op.getBias()),
                                               rewriter.getIntegerType(32));
-    op.bias().setType(new_bias_type);
+    op.getBias().setType(new_bias_type);
   }
   return success();
 }
@@ -105,22 +105,22 @@ void tpu::LSTMCVIOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_cont = GA_INVALID;
   gaddr_t ga_last_h = GA_INVALID;
   gaddr_t ga_last_c = GA_INVALID;
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_recurrence = module::getAddress(recurrence());
-  gaddr_t ga_sigmoid_table = module::getAddress(sigmoid_table());
-  gaddr_t ga_sigmoid_slope = module::getAddress(sigmoid_slope_table());
-  gaddr_t ga_tanh_table = module::getAddress(tanh_table());
-  gaddr_t ga_tanh_slope = module::getAddress(tanh_slope_table());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_recurrence = module::getAddress(getRecurrence());
+  gaddr_t ga_sigmoid_table = module::getAddress(getSigmoidTable());
+  gaddr_t ga_sigmoid_slope = module::getAddress(getSigmoidSlopeTable());
+  gaddr_t ga_tanh_table = module::getAddress(getTanhTable());
+  gaddr_t ga_tanh_slope = module::getAddress(getTanhSlopeTable());
   gaddr_t ga_output = module::getAddress(getResults()[0]);
 
   if (attr.have_bias) {
-    ga_bias = module::getAddress(bias());
+    ga_bias = module::getAddress(getBias());
   }
   if (attr.have_h0) {
-    ga_initial_h = module::getAddress(initial_h());
+    ga_initial_h = module::getAddress(getInitialH());
   }
   if (attr.have_c0) {
-    ga_initial_c = module::getAddress(initial_c());
+    ga_initial_c = module::getAddress(getInitialC());
   }
   if (attr.output_yh) {
     ga_last_h = module::getAddress(getResults()[1]);
@@ -133,5 +133,5 @@ void tpu::LSTMCVIOp::codegen_global_cv18xx(int64_t layer_id) {
       ga_cont, ga_sigmoid_table, ga_sigmoid_slope, ga_tanh_table, ga_tanh_slope,
       ga_output, ga_last_h, ga_last_c, attr.seq_len, attr.num_direction,
       attr.batch_size, attr.hidden_size, attr.have_bias, attr.have_h0,
-      attr.have_c0, false, bidirectional(), attr.output_yh, attr.output_yc);
+      attr.have_c0, false, getBidirectional(), attr.output_yh, attr.output_yc);
 }

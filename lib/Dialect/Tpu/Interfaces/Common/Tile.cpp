@@ -19,11 +19,11 @@ LogicalResult tpu::TileOp::init(InferenceParameter &p) { return success(); }
 void tpu::TileOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::TileOp::inference(InferenceParameter &p) {
-  auto out_shape = module::getShape(output());
-  auto in_shape = module::getShape(input());
-  auto signed_axis = axisAttr().getValue().getSExtValue();
+  auto out_shape = module::getShape(getOutput());
+  auto in_shape = module::getShape(getInput());
+  auto signed_axis = getAxisAttr().getValue().getSExtValue();
   auto axis_ = signed_axis > 0 ? signed_axis : 0;
-  int tile_ = tile();
+  int tile_ = getTile();
   auto outer_count = std::accumulate(in_shape.begin(), in_shape.begin() + axis_,
                                      1, std::multiplies<int64_t>());
   auto inner_count = std::accumulate(in_shape.begin() + axis_, in_shape.end(),

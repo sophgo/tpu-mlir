@@ -18,35 +18,35 @@ namespace cv18xx {
 
 void loweringDetectionOutput(PatternRewriter &rewriter,
                              top::DetectionOutputOp op) {
-  auto o_shape = module::getShape(op.output());
+  auto o_shape = module::getShape(op.getOutput());
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;
   attrs.emplace_back(rewriter.getNamedAttr(
-      "operation_name", rewriter.getStringAttr("detectionoutput")));
+      "cpu_op_name", rewriter.getStringAttr("detectionoutput")));
   param.emplace_back(rewriter.getNamedAttr(
-      "num_classes", rewriter.getI32IntegerAttr(op.num_classes())));
+      "num_classes", rewriter.getI32IntegerAttr(op.getNumClasses())));
   param.emplace_back(rewriter.getNamedAttr(
       "background_label_id",
-      rewriter.getI32IntegerAttr(op.background_label_id())));
+      rewriter.getI32IntegerAttr(op.getBackgroundLabelId())));
   param.emplace_back(rewriter.getNamedAttr(
       "nms_threshold",
-      rewriter.getF32FloatAttr(op.nms_threshold().convertToDouble())));
+      rewriter.getF32FloatAttr(op.getNmsThreshold().convertToDouble())));
   param.emplace_back(
-      rewriter.getNamedAttr("top_k", rewriter.getI32IntegerAttr(op.top_k())));
+      rewriter.getNamedAttr("top_k", rewriter.getI32IntegerAttr(op.getTopK())));
   param.emplace_back(rewriter.getNamedAttr(
-      "keep_top_k", rewriter.getI32IntegerAttr(op.keep_top_k())));
+      "keep_top_k", rewriter.getI32IntegerAttr(op.getKeepTopK())));
   param.emplace_back(rewriter.getNamedAttr(
       "confidence_threshold",
-      rewriter.getF32FloatAttr(op.confidence_threshold().convertToDouble())));
+      rewriter.getF32FloatAttr(op.getConfidenceThreshold().convertToDouble())));
   param.emplace_back(rewriter.getNamedAttr(
-      "code_type", rewriter.getStringAttr(op.code_type())));
+      "code_type", rewriter.getStringAttr(op.getCodeType())));
   param.emplace_back(rewriter.getNamedAttr(
-      "share_location", rewriter.getBoolAttr(op.share_location())));
+      "share_location", rewriter.getBoolAttr(op.getShareLocation())));
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(param)));
   std::vector<Value> operands(op.getOperands().begin(), op.getOperands().end());
-  mlir::Type new_type = getQuantFloatType(op.output());
+  mlir::Type new_type = getQuantFloatType(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_type, operands, attrs);
 }
 

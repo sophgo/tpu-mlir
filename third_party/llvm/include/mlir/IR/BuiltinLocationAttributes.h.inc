@@ -24,7 +24,7 @@ class UnknownLoc;
 namespace detail {
 struct CallSiteLocAttrStorage;
 } // namespace detail
-class CallSiteLoc : public ::mlir::Attribute::AttrBase<CallSiteLoc, ::mlir::LocationAttr, detail::CallSiteLocAttrStorage> {
+class CallSiteLoc : public ::mlir::Attribute::AttrBase<CallSiteLoc, ::mlir::LocationAttr, detail::CallSiteLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
 public:
   using Base::Base;
 public:
@@ -49,7 +49,7 @@ public:
 namespace detail {
 struct FusedLocAttrStorage;
 } // namespace detail
-class FusedLoc : public ::mlir::Attribute::AttrBase<FusedLoc, ::mlir::LocationAttr, detail::FusedLocAttrStorage> {
+class FusedLoc : public ::mlir::Attribute::AttrBase<FusedLoc, ::mlir::LocationAttr, detail::FusedLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
 public:
   using Base::Base;
   static Location get(ArrayRef<Location> locs, Attribute metadata,
@@ -65,7 +65,7 @@ public:
 namespace detail {
 struct NameLocAttrStorage;
 } // namespace detail
-class NameLoc : public ::mlir::Attribute::AttrBase<NameLoc, ::mlir::LocationAttr, detail::NameLocAttrStorage> {
+class NameLoc : public ::mlir::Attribute::AttrBase<NameLoc, ::mlir::LocationAttr, detail::NameLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
 public:
   using Base::Base;
 public:
@@ -77,7 +77,7 @@ public:
 namespace detail {
 struct OpaqueLocAttrStorage;
 } // namespace detail
-class OpaqueLoc : public ::mlir::Attribute::AttrBase<OpaqueLoc, ::mlir::LocationAttr, detail::OpaqueLocAttrStorage> {
+class OpaqueLoc : public ::mlir::Attribute::AttrBase<OpaqueLoc, ::mlir::LocationAttr, detail::OpaqueLocAttrStorage, ::mlir::SubElementAttrInterface::Trait> {
 public:
   using Base::Base;
   /// Returns an instance of opaque location which contains a given pointer to

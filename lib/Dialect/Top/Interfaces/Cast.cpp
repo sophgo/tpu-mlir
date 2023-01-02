@@ -14,7 +14,7 @@
 
 
 
-int64_t top::CastOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::CastOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::CastOp::init(InferenceParameter &p) { return success(); }
 void top::CastOp::deinit(InferenceParameter &p) {}

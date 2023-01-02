@@ -170,7 +170,7 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
 
   auto attr = op.parseParam();
@@ -178,11 +178,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   i32_array_t bias_new;
   std::vector<int64_t> bias_shape = {1, attr.oc, 1, 1};
   if (attr.has_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
   }
-  auto m_data = module::getI64Array(op.multiplier(), attr.oc, 1);
-  auto r_data = module::getI64Array(op.rshift(), attr.oc, 0);
+  auto m_data = module::getI64Array(op.getMultiplier(), attr.oc, 1);
+  auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
   std::vector<int64_t> packedShape;
   auto packed = packWeight(bias_new, r_data, m_data, attr.oc, packedShape);
   auto packed_type =
@@ -192,7 +192,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   op->removeAttr("multiplier");
   op->setOperand(2, pack_op);
   // second lower weight  for groups onnx weight's shape (oc, ic/g, kh, kw)
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
@@ -208,7 +208,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     op->setAttr("use_3ic_optimize", rewriter.getI64IntegerAttr(4));
   }
   // rewrite weightOp
-  auto elem_type = module::getStorageType(op.filter());
+  auto elem_type = module::getStorageType(op.getFilter());
   auto filter_type = RankedTensorType::get(filter_shape, elem_type);
   auto weight_op =
       top::WeightOp::create(op, "filter_reordered", *filter_i8, filter_type);
@@ -219,12 +219,12 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isBF16())
+  if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
 
   auto attr = op.parseParam();
   // first lower weight
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   auto filter_u16 = filterOp.read<uint16_t>();
@@ -241,14 +241,14 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
   op->setOperand(1, weight_op);
   // second lower bias if exist
   if (attr.has_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
     std::vector<uint32_t> bias_new(bias_f32->size());
     transposeBiasFp32(bias_f32, bias_new);
     // rewrite biasOp
-    auto new_bias_type = RankedTensorType::get(module::getShape(op.bias()),
+    auto new_bias_type = RankedTensorType::get(module::getShape(op.getBias()),
                                                rewriter.getIntegerType(32));
-    // bias().setType(new_bias_type);
+    // getBias().setType(new_bias_type);
     auto lbias_op =
         top::WeightOp::create(op, "bias_reordered", bias_new, new_bias_type);
     op->setOperand(2, lbias_op);
@@ -262,18 +262,18 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
 
 void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
   auto attr = parseParam();
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
-  gaddr_t ga_filter = module::getAddress(filter());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
+  gaddr_t ga_filter = module::getAddress(getFilter());
   gaddr_t ga_pc_info = GA_INVALID;
-  if (module::isUniformQuantized(output()) || attr.has_bias) {
-    ga_pc_info = module::getAddress(bias());
+  if (module::isUniformQuantized(getOutput()) || attr.has_bias) {
+    ga_pc_info = module::getAddress(getBias());
   }
 
   bool do_compress = attr.groups > 1 ? false : true;
   WeightCompresser weight_opt(this->getOperation(), do_compress);
-  if (module::isUniformQuantized(output())) {
-    bool do_ic_alignment = use_3ic_optimize() ? true : false;
+  if (module::isUniformQuantized(getOutput())) {
+    bool do_ic_alignment = getUse_3icOptimize() ? true : false;
     gaddr_t ga_scale_lut = GA_INVALID;
     // todo leakyrelu
     int fused_leakyrelu_pos_rshift = 0;

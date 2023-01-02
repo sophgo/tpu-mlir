@@ -23,24 +23,24 @@ using namespace tpu_mlir::backend;
 // GlobalGenInterface
 // =========================================
 void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
-  int input_num = inputs().size();
+  int input_num = getInputs().size();
   assert(input_num == 2);
   int64_t n, c, h, w;
   std::vector<gaddr_t> ga_inputs;
   for (int i = 0; i < input_num; i++) {
-    ga_inputs.emplace_back(module::getAddress(inputs()[i]));
+    ga_inputs.emplace_back(module::getAddress(getInputs()[i]));
   }
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_output = module::getAddress(getOutput());
 
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
 
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
-  module::getNCHW(inputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
-  module::getNCHW(inputs()[1], shape1[0], shape1[1], shape1[2], shape1[3]);
+  module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
+  module::getNCHW(getInputs()[1], shape1[0], shape1[1], shape1[2], shape1[3]);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
@@ -52,28 +52,28 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
       std::reverse(ga_inputs.begin(), ga_inputs.end());
       std::swap(shape0, shape1);
     }
-    if (module::isUniformQuantized(output())) {
-      int32_t multiplier_v = static_cast<int32_t>(this->multiplier());
-      int32_t rshift_v = static_cast<int32_t>(this->rshift());
+    if (module::isUniformQuantized(getOutput())) {
+      int32_t multiplier_v = static_cast<int32_t>(this->getMultiplier());
+      int32_t rshift_v = static_cast<int32_t>(this->getRshift());
       cvi_backend_tg_int8_bcast_mul_kernel(
         layer_id, ga_inputs[0], ga_inputs[1], ga_output,
         shape0[0], shape0[1], shape0[2], shape0[3],
         shape1[0], shape1[1], shape1[2], shape1[3],
-        do_relu(), rshift_v, &multiplier_v);
+        getDoRelu(), rshift_v, &multiplier_v);
     } else {
       cvi_backend_tg_bf16_bcast_mul_kernel(
           layer_id, ga_inputs[0], ga_inputs[1], ga_output, shape0[0], shape0[1],
           shape0[2], shape0[3], shape1[0], shape1[1], shape1[2], shape1[3],
-          do_relu());
+          getDoRelu());
     }
   } else {
-    if (module::isUniformQuantized(output())) {
-      int32_t multiplier_v = static_cast<int32_t>(this->multiplier());
-      int32_t rshift_v = static_cast<int32_t>(this->rshift());
+    if (module::isUniformQuantized(getOutput())) {
+      int32_t multiplier_v = static_cast<int32_t>(this->getMultiplier());
+      int32_t rshift_v = static_cast<int32_t>(this->getRshift());
       std::vector<int32_t> coeffs(input_num, 1);
       cvi_backend_tg_fixed_eltwise_mul_kernel(
           layer_id, ga_inputs.data(), ga_output, input_num, n, c, h,
-          w, do_relu(), do_early_stride, early_stride_h, early_stride_w,
+          w, getDoRelu(), do_early_stride, early_stride_h, early_stride_w,
           rshift_v, &multiplier_v, coeffs.data());
       } else {
       std::vector<float> coeffs(input_num, 1.0);
@@ -83,7 +83,7 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
           ga_output,        // gaddr_t ga_output
           input_num,        // int input_size
           n, c, h, w,
-          do_relu(),        // bool do_relu
+          getDoRelu(),        // bool do_relu
           do_early_stride, early_stride_h, early_stride_w, coeffs.data());
       }
   }

@@ -48,7 +48,7 @@ public:
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
         // TODO: store all weight to gmem for compare
-        // bm168x->value_s2d(op.output(), op.read_as_byte()->data());
+        // bm168x->value_s2d(op.getOutput(), op.read_as_byte()->data());
         weights.push_back(op);
       });
     }
@@ -250,11 +250,11 @@ CodegenPass::CreateCmdGroupVector() {
 }
 
 void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
-  auto nsecs = gOp.nsecs();
-  auto hsecs = gOp.hsecs();
-  auto swpipl_stage_num = gOp.swpipl_stage_num();
-  auto &body = gOp.body().front();
-  auto flow = module::getI64Array(gOp.flow());
+  auto nsecs = gOp.getNsecs();
+  auto hsecs = gOp.getHsecs();
+  auto swpipl_stage_num = gOp.getSwpiplStageNum();
+  auto &body = gOp.getBody().front();
+  auto flow = module::getI64Array(gOp.getFlow());
   // 1. restore timestep_table from flow
   std::vector<std::vector<int64_t>> timestep_table;
   std::vector<int64_t> ts_row;

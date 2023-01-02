@@ -20,19 +20,19 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   auto attr = op.parseParam();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  operands.push_back(op.input());
+  operands.push_back(op.getInput());
   double in_thr, out_thr;
-  in_thr = module::getThreshold(op.input());
-  out_thr = module::getThreshold(op.output());
+  in_thr = module::getThreshold(op.getInput());
+  out_thr = module::getThreshold(op.getOutput());
   // filter
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   // bias
   i32_array_t bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   if (attr.with_bias) {
-    auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
+    auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
   }
@@ -73,7 +73,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
         }
       }
     }
-    // decompose qscale into rshift and muliplier
+    // decompose qscale into rshift and multiplier
     getRShiftAndMultiplierFromQScale(qscale, &multiplier, &rshift, true);
     multiplier_v.push_back(multiplier);
     rshift_v.push_back(rshift);
@@ -87,7 +87,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                       rshift, multiplier, true);
     }
   }
-  auto filter_type = op.filter().getType().cast<RankedTensorType>();
+  auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
                                         rewriter.getIntegerType(8, true));
   auto new_filter =
@@ -101,7 +101,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
         top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
-    operands.push_back(op.bias()); // none
+    operands.push_back(op.getBias()); // none
   }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -116,29 +116,29 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
       "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.with_bias)));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   auto newOp = rewriter.create<tpu::DeconvOp>(op->getLoc(), newType,
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});
-  Value newValue = newOp.output();
+  Value newValue = newOp.getOutput();
   rewriter.replaceOp(op, {newValue});
 }
 
 void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::DeconvOp op) const {
   std::vector<Value> operands;
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
-  operands.push_back(op.input());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+  operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_bf16(op));
-  operands.push_back(op.bias());
+  operands.push_back(op.getBias());
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
+  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::DeconvOp>(op, newType, operands, attrs);
 }
 

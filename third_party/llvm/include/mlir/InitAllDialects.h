@@ -16,6 +16,7 @@
 
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
+#include "mlir/Dialect/Tosa/IR/TosaOps.h"
 #include "mlir/IR/Dialect.h"
 
 namespace mlir {
@@ -23,6 +24,7 @@ namespace mlir {
 /// Add all the MLIR dialects to the provided registry.
 inline void registerAllDialects(DialectRegistry &registry) {
   registry.insert<func::FuncDialect,
+                  tosa::TosaDialect,
                   quant::QuantizationDialect>();
 }
 

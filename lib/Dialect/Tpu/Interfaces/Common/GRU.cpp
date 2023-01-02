@@ -19,9 +19,9 @@
 
 gru_attr_t tpu::GRUOp::parseParam() {
   gru_attr_t attr = {0};
-  auto in_shape = module::getShape(input());
+  auto in_shape = module::getShape(getInput());
   assert(in_shape.size() == 3);
-  if (batch_first()) {
+  if (getBatchFirst()) {
     attr.batch_size = in_shape[0];
     attr.seq_len = in_shape[1];
     attr.batch_first = true;
@@ -30,13 +30,13 @@ gru_attr_t tpu::GRUOp::parseParam() {
     attr.seq_len = in_shape[0];
     attr.batch_first = false;
   }
-  attr.num_direction = bidirectional() ? 2 : 1;
-  attr.hidden_size = hidden_size();
+  attr.num_direction = getBidirectional() ? 2 : 1;
+  attr.hidden_size = getHiddenSize();
   attr.input_size = in_shape[2];
-  attr.have_bias = !bias().getType().isa<mlir::NoneType>();
-  attr.have_h0 = !initial_h().getType().isa<mlir::NoneType>();
-  attr.output_y = !Y().getType().isa<mlir::NoneType>();
-  attr.output_yh = !Y_h().getType().isa<mlir::NoneType>();
+  attr.have_bias = !getBias().getType().isa<mlir::NoneType>();
+  attr.have_h0 = !getInitialH().getType().isa<mlir::NoneType>();
+  attr.output_y = !getY().getType().isa<mlir::NoneType>();
+  attr.output_yh = !getYH().getType().isa<mlir::NoneType>();
   return attr;
 }
 
@@ -200,8 +200,8 @@ public:
 
   static void inference(InferenceParameter &p, tpu::GRUOp *op) {
     cv_gru_param_t gp;
-    auto input_type = op->input().getType().dyn_cast<TensorType>();
-    auto in_shape = module::getShape(op->input());
+    auto input_type = op->getInput().getType().dyn_cast<TensorType>();
+    auto in_shape = module::getShape(op->getInput());
     Value output;
     for (uint32_t i = 0; i < op->getNumResults(); ++i) {
       if (!op->getResults()[i].getType().isa<mlir::NoneType>()) {
@@ -229,9 +229,9 @@ public:
     assert(in_shape.size() == 3);
     assert(in_shape[1] == gp.batch_size);
     gp.input_size = in_shape[2];
-    gp.linear_before_reset = op->linear_before_reset();
+    gp.linear_before_reset = op->getLinearBeforeReset();
     assert(gp.linear_before_reset == true);
-    gp.bidirectional = op->bidirectional();
+    gp.bidirectional = op->getBidirectional();
 
     auto out_type = module::getStorageType(output);
     bool is_bf16 = out_type.isBF16();

@@ -214,7 +214,7 @@ void interp_core(
 }
 
 int64_t top::InterpOp::getFLOPs() {
-  return module::getNumElements(output()) * 1;
+  return module::getNumElements(getOutput()) * 1;
 }
 
 LogicalResult top::InterpOp::init(InferenceParameter &p) { return success(); }
@@ -222,25 +222,25 @@ void top::InterpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     int64_t n, c, ih, iw, oh, ow;
-    module::getNCHW(input(), n, c, ih, iw);
-    module::getNCHW(output(), n, c, oh, ow);
+    module::getNCHW(getInput(), n, c, ih, iw);
+    module::getNCHW(getOutput(), n, c, oh, ow);
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
-    bool align_corners = (coord_mode() == "align_corners");
-    bool half_pixel = (coord_mode() == "half_pixel");
-    if (coord_mode() == "half_pixel")
+    bool align_corners = (getCoordMode() == "align_corners");
+    bool half_pixel = (getCoordMode() == "half_pixel");
+    if (getCoordMode() == "half_pixel")
         coord = 0;
-    else if (coord_mode() == "pytorch_half_pixel")
+    else if (getCoordMode() == "pytorch_half_pixel")
         coord = 1;
-    else if (coord_mode() == "align_corners")
+    else if (getCoordMode() == "align_corners")
         coord = 2;
     const int in_hw = ih * iw;
     const int out_hw = oh * ow;
-    if (mode() == "nearest") {
+    if (getMode() == "nearest") {
         platform_sp = ONNX_NEAREST;
         align_corners = true;
         half_pixel = false;
-    } else if (mode() == "linear") {
+    } else if (getMode() == "linear") {
         platform_sp = PYTORCH_SUPPORT;
         align_corners = (coord == 2) ? 1: 0;
         half_pixel = (coord == 0 || coord == 1) ? 1 : 0;

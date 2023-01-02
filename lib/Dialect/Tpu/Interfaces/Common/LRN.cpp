@@ -11,16 +11,13 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::LRNOp::init(InferenceParameter &p) {
-  auto alpha_ = alpha().convertToDouble();
-  auto beta_ = beta().convertToDouble();
-  auto bias_ = bias().convertToDouble();
-  auto out_type = module::getStorageType(output());
+  auto alpha_ = getAlpha().convertToDouble();
+  auto beta_ = getBeta().convertToDouble();
+  auto bias_ = getBias().convertToDouble();
+  auto out_type = module::getStorageType(getOutput());
   if (out_type.isBF16()) {
     alpha_ = BF16(alpha_);
     beta_ = BF16(beta_);
@@ -33,9 +30,9 @@ LogicalResult tpu::LRNOp::init(InferenceParameter &p) {
 
   auto lrn = new LRN();
   (*lrn)
-      .src(p.inputs[0], module::getShape(input()))
-      .dst(p.outputs[0], module::getShape(output()))
-      .size(size())
+      .src(p.inputs[0], module::getShape(getInput()))
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .size(getSize())
       .param(alpha_, beta_, bias_)
       .algorithem(algorithm::lrn_across_channels)
       .setup();
@@ -53,8 +50,8 @@ void tpu::LRNOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LRNOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto out_type = module::getStorageType(getOutput());
 
   if (out_type.isa<FloatType>()) {
     auto lrn = (LRN *)p.handle;

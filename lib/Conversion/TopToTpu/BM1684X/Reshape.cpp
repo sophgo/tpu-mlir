@@ -37,7 +37,7 @@ void ReshapeLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ReshapeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::ReshapeOp op) const {
-  lowering_common<tpu::ReshapeOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::ReshapeOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

@@ -106,8 +106,7 @@ Value getOriValue(Value &v) {
       for (auto func : m.getOps<FuncOp>()) {
         if (call_op.getCallee() == func.getName()) {
           Block &entryBlock = func.front();
-          auto returnOp =
-              dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
+          auto returnOp = dyn_cast<ReturnOp>(entryBlock.back()).getOperation();
           return returnOp->getOperand(index);
         }
       }
@@ -183,7 +182,7 @@ void removeUnusedOp() {
     func.walk([&](Operation *op) {
       if (isa<ReturnOp, FuncOp, tpu::YieldOp>(op)) {
       } else {
-        if (op->getUsers().empty()) {
+        if (op->use_empty()) {
           op->erase();
         }
       }
@@ -619,7 +618,7 @@ StringRef getName(Value v) {
 
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
   auto main_func = getMainFuncOp();
-  main_func.walk([&](top::InputOp op) { inputs.push_back(op.output()); });
+  main_func.walk([&](top::InputOp op) { inputs.push_back(op.getOutput()); });
   main_func.walk([&](ReturnOp op) {
     for (auto out : op.getOperands()) {
       auto result = out.cast<OpResult>();

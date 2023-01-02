@@ -24,23 +24,23 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
+  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
 
   Value newValue;
-  if (op.kernel_shape().size() == 1) {
+  if (op.getKernelShape().size() == 1) {
     auto newOp = rewriter.create<tpu::Conv1DOp>(
-        op->getLoc(), op.output().getType(), operands, attrs);
-    newValue = newOp.output();
-  } else if (op.kernel_shape().size() == 2) {
+        op->getLoc(), op.getOutput().getType(), operands, attrs);
+    newValue = newOp.getOutput();
+  } else if (op.getKernelShape().size() == 2) {
     auto newOp = rewriter.create<tpu::Conv2DOp>(
-        op->getLoc(), op.output().getType(), operands, attrs);
-    newValue = newOp.output();
+        op->getLoc(), op.getOutput().getType(), operands, attrs);
+    newValue = newOp.getOutput();
   } else {
     auto newOp = rewriter.create<tpu::Conv3DOp>(
-        op->getLoc(), op.output().getType(), operands, attrs);
-    newValue = newOp.output();
+        op->getLoc(), op.getOutput().getType(), operands, attrs);
+    newValue = newOp.getOutput();
   }
   rewriter.replaceOp(op, {newValue});
 }
@@ -48,19 +48,19 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   std::vector<Value> operands;
-  operands.push_back(op.input());
+  operands.push_back(op.getInput());
   std::vector<NamedAttribute> attrs;
   auto attr = op.parseParam();
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
-  auto th_input = module::getThreshold(op.input());
-  auto th_output = module::getThreshold(op.output());
+  auto th_input = module::getThreshold(op.getInput());
+  auto th_output = module::getThreshold(op.getOutput());
   auto filter_max = findMaxabs(filter_f32->data(), filter_f32->size());
   int rshift = calRightShiftNum(filter_max, th_input, th_output, BITS_INT8);
   rshift = std::max(rshift, 0);
   std::shared_ptr<std::vector<int16_t>> bias_int16;
   if (attr.has_bias) {
-    auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
+    auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
     auto bias_fp32 = biasOp.read<float>();
     float bias_scale = 1.0 * (1 << rshift) * QMAX_INT8 / th_output;
     int bias_len = bias_fp32->size();
@@ -85,15 +85,15 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   quantizeToInt8(filter_f32->data(), filter_int8->data(), filter_f32->size(),
                  scale);
-  auto filter_type = op.filter().getType().cast<RankedTensorType>();
+  auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto new_type =
       RankedTensorType::get(filter_type.getShape(), rewriter.getI8Type());
   auto new_filter =
       top::WeightOp::create(op, "filter_int8", *filter_int8, new_type);
   operands.push_back(new_filter);
-  Value new_bias = op.bias();
+  Value new_bias = op.getBias();
   if (attr.has_bias) {
-    auto bias_type = op.bias().getType().cast<RankedTensorType>();
+    auto bias_type = op.getBias().getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(bias_type.getShape(),
                                           rewriter.getIntegerType(16));
     new_bias = top::WeightOp::create(op, "bias_int16", *bias_int16, new_type);
@@ -106,7 +106,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
-  auto newType = getQuantInt8Type(op.output());
+  auto newType = getQuantInt8Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(op, newType, operands, attrs);
 }
 

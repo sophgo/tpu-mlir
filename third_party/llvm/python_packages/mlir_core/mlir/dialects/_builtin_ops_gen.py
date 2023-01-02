@@ -77,6 +77,7 @@ class UnrealizedConversionCastOp(_ods_ir.OpView):
     attributes = {}
     regions = None
     operands.extend(_get_op_results_or_values(inputs))
+    _ods_context = _ods_get_default_loc_context(loc)
     results.extend(outputs)
     _ods_successors = None
     super().__init__(self.build_generic(

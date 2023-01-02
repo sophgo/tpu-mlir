@@ -14,10 +14,10 @@ struct LoopLikeOpInterfaceInterfaceTraits {
     bool (*isDefinedOutsideOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::Value );
     ::mlir::Region &(*getLoopBody)(const Concept *impl, ::mlir::Operation *);
     void (*moveOutOfLoop)(const Concept *impl, ::mlir::Operation *, ::mlir::Operation *);
-    ::llvm::Optional<::mlir::Value> (*getSingleInductionVar)(const Concept *impl, ::mlir::Operation *);
-    ::llvm::Optional<::mlir::OpFoldResult> (*getSingleLowerBound)(const Concept *impl, ::mlir::Operation *);
-    ::llvm::Optional<::mlir::OpFoldResult> (*getSingleStep)(const Concept *impl, ::mlir::Operation *);
-    ::llvm::Optional<::mlir::OpFoldResult> (*getSingleUpperBound)(const Concept *impl, ::mlir::Operation *);
+    ::std::optional<::mlir::Value> (*getSingleInductionVar)(const Concept *impl, ::mlir::Operation *);
+    ::std::optional<::mlir::OpFoldResult> (*getSingleLowerBound)(const Concept *impl, ::mlir::Operation *);
+    ::std::optional<::mlir::OpFoldResult> (*getSingleStep)(const Concept *impl, ::mlir::Operation *);
+    ::std::optional<::mlir::OpFoldResult> (*getSingleUpperBound)(const Concept *impl, ::mlir::Operation *);
   };
   template<typename ConcreteOp>
   class Model : public Concept {
@@ -28,10 +28,10 @@ struct LoopLikeOpInterfaceInterfaceTraits {
     static inline bool isDefinedOutsideOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Value  value);
     static inline ::mlir::Region &getLoopBody(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * op);
-    static inline ::llvm::Optional<::mlir::Value> getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::OpFoldResult> getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::OpFoldResult> getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::OpFoldResult> getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::Value> getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::OpFoldResult> getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::OpFoldResult> getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::OpFoldResult> getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteOp>
   class FallbackModel : public Concept {
@@ -42,10 +42,10 @@ struct LoopLikeOpInterfaceInterfaceTraits {
     static inline bool isDefinedOutsideOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Value  value);
     static inline ::mlir::Region &getLoopBody(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline void moveOutOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Operation * op);
-    static inline ::llvm::Optional<::mlir::Value> getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::OpFoldResult> getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::OpFoldResult> getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
-    static inline ::llvm::Optional<::mlir::OpFoldResult> getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::Value> getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::OpFoldResult> getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::OpFoldResult> getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::std::optional<::mlir::OpFoldResult> getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
   };
   template<typename ConcreteModel, typename ConcreteOp>
   class ExternalModel : public FallbackModel<ConcreteModel> {
@@ -53,10 +53,10 @@ struct LoopLikeOpInterfaceInterfaceTraits {
     using ConcreteEntity = ConcreteOp;
     bool isDefinedOutsideOfLoop(::mlir::Operation *tablegen_opaque_val, ::mlir::Value value) const;
     void moveOutOfLoop(::mlir::Operation *tablegen_opaque_val, ::mlir::Operation *op) const;
-    ::llvm::Optional<::mlir::Value> getSingleInductionVar(::mlir::Operation *tablegen_opaque_val) const;
-    ::llvm::Optional<::mlir::OpFoldResult> getSingleLowerBound(::mlir::Operation *tablegen_opaque_val) const;
-    ::llvm::Optional<::mlir::OpFoldResult> getSingleStep(::mlir::Operation *tablegen_opaque_val) const;
-    ::llvm::Optional<::mlir::OpFoldResult> getSingleUpperBound(::mlir::Operation *tablegen_opaque_val) const;
+    ::std::optional<::mlir::Value> getSingleInductionVar(::mlir::Operation *tablegen_opaque_val) const;
+    ::std::optional<::mlir::OpFoldResult> getSingleLowerBound(::mlir::Operation *tablegen_opaque_val) const;
+    ::std::optional<::mlir::OpFoldResult> getSingleStep(::mlir::Operation *tablegen_opaque_val) const;
+    ::std::optional<::mlir::OpFoldResult> getSingleUpperBound(::mlir::Operation *tablegen_opaque_val) const;
   };
 };template <typename ConcreteOp>
 struct LoopLikeOpInterfaceTrait;
@@ -79,17 +79,17 @@ public:
   /// Moves the given loop-invariant operation out of the loop.
   void moveOutOfLoop(::mlir::Operation * op);
   /// If there is a single induction variable return it, otherwise return
-  /// llvm::None.
-  ::llvm::Optional<::mlir::Value> getSingleInductionVar();
+  /// std::nullopt.
+  ::std::optional<::mlir::Value> getSingleInductionVar();
   /// Return the single lower bound value or attribute if it exists, otherwise
-  /// return llvm::None.
-  ::llvm::Optional<::mlir::OpFoldResult> getSingleLowerBound();
+  /// return std::nullopt.
+  ::std::optional<::mlir::OpFoldResult> getSingleLowerBound();
   /// Return the single step value or attribute if it exists, otherwise
-  /// return llvm::None.
-  ::llvm::Optional<::mlir::OpFoldResult> getSingleStep();
+  /// return std::nullopt.
+  ::std::optional<::mlir::OpFoldResult> getSingleStep();
   /// Return the single upper bound value or attribute if it exists, otherwise
-  /// return llvm::None.
-  ::llvm::Optional<::mlir::OpFoldResult> getSingleUpperBound();
+  /// return std::nullopt.
+  ::std::optional<::mlir::OpFoldResult> getSingleUpperBound();
 };
 namespace detail {
   template <typename ConcreteOp>
@@ -107,27 +107,29 @@ namespace detail {
       op->moveBefore((*static_cast<ConcreteOp *>(this)));
     }
     /// If there is a single induction variable return it, otherwise return
-    /// llvm::None.
-    ::llvm::Optional<::mlir::Value> getSingleInductionVar() {
-      return llvm::None;
+    /// std::nullopt.
+    ::std::optional<::mlir::Value> getSingleInductionVar() {
+      return std::nullopt;
     }
     /// Return the single lower bound value or attribute if it exists, otherwise
-    /// return llvm::None.
-    ::llvm::Optional<::mlir::OpFoldResult> getSingleLowerBound() {
-      return llvm::None;
+    /// return std::nullopt.
+    ::std::optional<::mlir::OpFoldResult> getSingleLowerBound() {
+      return std::nullopt;
     }
     /// Return the single step value or attribute if it exists, otherwise
-    /// return llvm::None.
-    ::llvm::Optional<::mlir::OpFoldResult> getSingleStep() {
-      return llvm::None;
+    /// return std::nullopt.
+    ::std::optional<::mlir::OpFoldResult> getSingleStep() {
+      return std::nullopt;
     }
     /// Return the single upper bound value or attribute if it exists, otherwise
-    /// return llvm::None.
-    ::llvm::Optional<::mlir::OpFoldResult> getSingleUpperBound() {
-      return llvm::None;
+    /// return std::nullopt.
+    ::std::optional<::mlir::OpFoldResult> getSingleUpperBound() {
+      return std::nullopt;
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 bool detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::isDefinedOutsideOfLoop(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::Value  value) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).isDefinedOutsideOfLoop(value);
@@ -141,19 +143,19 @@ void detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::moveOutOfLoo
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).moveOutOfLoop(op);
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSingleInductionVar();
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSingleLowerBound();
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSingleStep();
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSingleUpperBound();
 }
 template<typename ConcreteOp>
@@ -169,19 +171,19 @@ void detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::move
   return static_cast<const ConcreteOp *>(impl)->moveOutOfLoop(tablegen_opaque_val, op);
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleInductionVar(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getSingleInductionVar(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleLowerBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getSingleLowerBound(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleStep(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getSingleStep(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getSingleUpperBound(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getSingleUpperBound(tablegen_opaque_val);
 }
 template<typename ConcreteModel, typename ConcreteOp>
@@ -193,19 +195,19 @@ void detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, Co
 op->moveBefore((llvm::cast<ConcreteOp>(tablegen_opaque_val)));
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::llvm::Optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleInductionVar(::mlir::Operation *tablegen_opaque_val) const {
-return llvm::None;
+::std::optional<::mlir::Value> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleInductionVar(::mlir::Operation *tablegen_opaque_val) const {
+return std::nullopt;
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleLowerBound(::mlir::Operation *tablegen_opaque_val) const {
-return llvm::None;
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleLowerBound(::mlir::Operation *tablegen_opaque_val) const {
+return std::nullopt;
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleStep(::mlir::Operation *tablegen_opaque_val) const {
-return llvm::None;
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleStep(::mlir::Operation *tablegen_opaque_val) const {
+return std::nullopt;
 }
 template<typename ConcreteModel, typename ConcreteOp>
-::llvm::Optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleUpperBound(::mlir::Operation *tablegen_opaque_val) const {
-return llvm::None;
+::std::optional<::mlir::OpFoldResult> detail::LoopLikeOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getSingleUpperBound(::mlir::Operation *tablegen_opaque_val) const {
+return std::nullopt;
 }
 } // namespace mlir

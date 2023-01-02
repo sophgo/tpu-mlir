@@ -19,9 +19,9 @@ using namespace tpu_mlir::backend;
 
 void tpu::Pool2DOp::codegen_global_bm1684() {
   auto attr = parseParam();
-  bool is_avg_pooling = pool_mode() == tpu::PoolMode::Avg;
+  bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
-      module::getAddress(input()), module::getAddress(output()), attr.n, attr.c,
+      module::getAddress(getInput()), module::getAddress(getOutput()), attr.n, attr.c,
       attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h, attr.pad_h_after,
       attr.pad_w, attr.pad_w_after, attr.sh, attr.sw, 0, 0, is_avg_pooling, 0,
       0, 0, 0, 1, 0, 0, 1, attr.do_relu ? 1 : 0,

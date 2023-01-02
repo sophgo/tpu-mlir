@@ -44,7 +44,7 @@ static ::mlir::OptionalParseResult generatedTypeParser(::mlir::AsmParser &parser
     })
     .Default([&](llvm::StringRef keyword, llvm::SMLoc) {
       *mnemonic = keyword;
-      return llvm::None;
+      return std::nullopt;
     });
 }
 
@@ -89,6 +89,10 @@ namespace detail {
 struct RangeTypeStorage : public ::mlir::TypeStorage {
   using KeyTy = std::tuple<Type>;
   RangeTypeStorage(Type elementType) : elementType(elementType) {}
+
+  KeyTy getAsKey() const {
+    return KeyTy(elementType);
+  }
 
   bool operator==(const KeyTy &tblgenKey) const {
     return (elementType == std::get<0>(tblgenKey));

@@ -20,11 +20,11 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
   const float *src = p.inputs[0];
   const float *inds = p.inputs[1];
   float *dst = p.outputs[0];
-  auto num_indices = module::getNumElements(indices());
-  auto ax = axis();
+  auto num_indices = module::getNumElements(getIndices());
+  auto ax = getAxis();
   int64_t outer_dims = 1;
   int64_t inner_dims = 1;
-  auto input_shape = module::getShape(input());
+  auto input_shape = module::getShape(getInput());
   for (int i = 0; i < ax; ++i) {
     outer_dims *= input_shape[i];
   }
@@ -32,7 +32,7 @@ LogicalResult tpu::GatherOp::inference(InferenceParameter &p) {
     inner_dims *= input_shape[i];
   }
 
-  auto num_elems = module::getNumElements(output());
+  auto num_elems = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_elems))
   for (int64_t i = 0; i < outer_dims; ++i) {
     for (int64_t j = 0; j < num_indices; ++j) {

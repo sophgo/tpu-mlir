@@ -11,6 +11,14 @@ class FunctionOpInterface;
 namespace detail {
 struct FunctionOpInterfaceInterfaceTraits {
   struct Concept {
+    ::mlir::Type (*getFunctionType)(const Concept *impl, ::mlir::Operation *);
+    void (*setFunctionTypeAttr)(const Concept *impl, ::mlir::Operation *, ::mlir::TypeAttr);
+    ::mlir::ArrayAttr (*getArgAttrsAttr)(const Concept *impl, ::mlir::Operation *);
+    ::mlir::ArrayAttr (*getResAttrsAttr)(const Concept *impl, ::mlir::Operation *);
+    void (*setArgAttrsAttr)(const Concept *impl, ::mlir::Operation *, ::mlir::ArrayAttr);
+    void (*setResAttrsAttr)(const Concept *impl, ::mlir::Operation *, ::mlir::ArrayAttr);
+    ::mlir::Attribute (*removeArgAttrsAttr)(const Concept *impl, ::mlir::Operation *);
+    ::mlir::Attribute (*removeResAttrsAttr)(const Concept *impl, ::mlir::Operation *);
     ::llvm::ArrayRef<::mlir::Type> (*getArgumentTypes)(const Concept *impl, ::mlir::Operation *);
     ::llvm::ArrayRef<::mlir::Type> (*getResultTypes)(const Concept *impl, ::mlir::Operation *);
     ::mlir::Type (*cloneTypeWith)(const Concept *impl, ::mlir::Operation *, ::mlir::TypeRange, ::mlir::TypeRange);
@@ -21,8 +29,16 @@ struct FunctionOpInterfaceInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::FunctionOpInterface;
-    Model() : Concept{getArgumentTypes, getResultTypes, cloneTypeWith, verifyBody, verifyType} {}
+    Model() : Concept{getFunctionType, setFunctionTypeAttr, getArgAttrsAttr, getResAttrsAttr, setArgAttrsAttr, setResAttrsAttr, removeArgAttrsAttr, removeResAttrsAttr, getArgumentTypes, getResultTypes, cloneTypeWith, verifyBody, verifyType} {}
 
+    static inline ::mlir::Type getFunctionType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline void setFunctionTypeAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::TypeAttr type);
+    static inline ::mlir::ArrayAttr getArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::mlir::ArrayAttr getResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline void setArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs);
+    static inline void setResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs);
+    static inline ::mlir::Attribute removeArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::mlir::Attribute removeResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::llvm::ArrayRef<::mlir::Type> getArgumentTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::llvm::ArrayRef<::mlir::Type> getResultTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::Type cloneTypeWith(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::TypeRange inputs, ::mlir::TypeRange results);
@@ -33,8 +49,16 @@ struct FunctionOpInterfaceInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::FunctionOpInterface;
-    FallbackModel() : Concept{getArgumentTypes, getResultTypes, cloneTypeWith, verifyBody, verifyType} {}
+    FallbackModel() : Concept{getFunctionType, setFunctionTypeAttr, getArgAttrsAttr, getResAttrsAttr, setArgAttrsAttr, setResAttrsAttr, removeArgAttrsAttr, removeResAttrsAttr, getArgumentTypes, getResultTypes, cloneTypeWith, verifyBody, verifyType} {}
 
+    static inline ::mlir::Type getFunctionType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline void setFunctionTypeAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::TypeAttr type);
+    static inline ::mlir::ArrayAttr getArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::mlir::ArrayAttr getResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline void setArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs);
+    static inline void setResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs);
+    static inline ::mlir::Attribute removeArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+    static inline ::mlir::Attribute removeResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::llvm::ArrayRef<::mlir::Type> getArgumentTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::llvm::ArrayRef<::mlir::Type> getResultTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline ::mlir::Type cloneTypeWith(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::TypeRange inputs, ::mlir::TypeRange results);
@@ -58,6 +82,34 @@ public:
   using ::mlir::OpInterface<FunctionOpInterface, detail::FunctionOpInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::FunctionOpInterfaceTrait<ConcreteOp> {};
+  /// Returns the type of the function.
+  ::mlir::Type getFunctionType();
+  /// Set the type of the function. This method should perform an unsafe
+  /// modification to the function type; it should not update argument or
+  /// result attributes.
+  void setFunctionTypeAttr(::mlir::TypeAttr type);
+  /// Get the array of argument attribute dictionaries. The method should return
+  /// an array attribute containing only dictionary attributes equal in number
+  /// to the number of function arguments. Alternatively, the method can return
+  /// null to indicate that the function has no argument attributes.
+  ::mlir::ArrayAttr getArgAttrsAttr();
+  /// Get the array of result attribute dictionaries. The method should return
+  /// an array attribute containing only dictionary attributes equal in number
+  /// to the number of function results. Alternatively, the method can return
+  /// null to indicate that the function has no result attributes.
+  ::mlir::ArrayAttr getResAttrsAttr();
+  /// Set the array of argument attribute dictionaries.
+  void setArgAttrsAttr(::mlir::ArrayAttr attrs);
+  /// Set the array of result attribute dictionaries.
+  void setResAttrsAttr(::mlir::ArrayAttr attrs);
+  /// Remove the array of argument attribute dictionaries. This is the same as
+  /// setting all argument attributes to an empty dictionary. The method should
+  /// return the removed attribute.
+  ::mlir::Attribute removeArgAttrsAttr();
+  /// Remove the array of result attribute dictionaries. This is the same as
+  /// setting all result attributes to an empty dictionary. The method should
+  /// return the removed attribute.
+  ::mlir::Attribute removeResAttrsAttr();
   /// Returns the function argument types based exclusively on
   /// the type (to allow for this method may be called on function
   /// declarations).
@@ -107,36 +159,36 @@ public:
     bool isExternal() { return empty(); }
 
     /// Return the region containing the body of this function.
-    Region &getBody() { return (*this)->getRegion(0); }
+    Region &getFunctionBody() { return (*this)->getRegion(0); }
 
     /// Delete all blocks from this function.
     void eraseBody() {
-      getBody().dropAllReferences();
-      getBody().getBlocks().clear();
+      getFunctionBody().dropAllReferences();
+      getFunctionBody().getBlocks().clear();
     }
 
     /// Return the list of blocks within the function body.
-    BlockListType &getBlocks() { return getBody().getBlocks(); }
+    BlockListType &getBlocks() { return getFunctionBody().getBlocks(); }
 
-    iterator begin() { return getBody().begin(); }
-    iterator end() { return getBody().end(); }
-    reverse_iterator rbegin() { return getBody().rbegin(); }
-    reverse_iterator rend() { return getBody().rend(); }
+    iterator begin() { return getFunctionBody().begin(); }
+    iterator end() { return getFunctionBody().end(); }
+    reverse_iterator rbegin() { return getFunctionBody().rbegin(); }
+    reverse_iterator rend() { return getFunctionBody().rend(); }
 
     /// Returns true if this function has no blocks within the body.
-    bool empty() { return getBody().empty(); }
+    bool empty() { return getFunctionBody().empty(); }
 
     /// Push a new block to the back of the body region.
-    void push_back(Block *block) { getBody().push_back(block); }
+    void push_back(Block *block) { getFunctionBody().push_back(block); }
 
     /// Push a new block to the front of the body region.
-    void push_front(Block *block) { getBody().push_front(block); }
+    void push_front(Block *block) { getFunctionBody().push_front(block); }
 
     /// Return the last block in the body region.
-    Block &back() { return getBody().back(); }
+    Block &back() { return getFunctionBody().back(); }
 
     /// Return the first block in the body region.
-    Block &front() { return getBody().front(); }
+    Block &front() { return getFunctionBody().front(); }
 
     /// Add an entry block to an empty function, and set up the block arguments
     /// to match the signature of the function. The newly inserted entry block
@@ -178,34 +230,6 @@ public:
       function_interface_impl::setFunctionType(this->getOperation(), newType);
     }
 
-    // FIXME: These functions should be removed in favor of just forwarding to
-    // the derived operation, which should already have these defined
-    // (via ODS).
-
-    /// Returns the name of the attribute used for function types.
-    static StringRef getTypeAttrName() {
-      return function_interface_impl::getTypeAttrName();
-    }
-
-    /// Returns the name of the attribute used for function argument attributes.
-    static StringRef getArgDictAttrName() {
-      return function_interface_impl::getArgDictAttrName();
-    }
-
-    /// Returns the name of the attribute used for function argument attributes.
-    static StringRef getResultDictAttrName() {
-      return function_interface_impl::getResultDictAttrName();
-    }
-
-    /// Return the attribute containing the type of this function.
-    TypeAttr getFunctionTypeAttr() {
-      return this->getOperation()->template getAttrOfType<TypeAttr>(
-          getTypeAttrName());
-    }
-
-    /// Return the type of this function.
-    Type getFunctionType() { return getFunctionTypeAttr().getValue(); }
-
     //===------------------------------------------------------------------===//
     // Argument and Result Handling
     //===------------------------------------------------------------------===//
@@ -218,13 +242,13 @@ public:
 
     /// Returns the entry block function argument at the given index.
     BlockArgument getArgument(unsigned idx) {
-      return getBody().getArgument(idx);
+      return getFunctionBody().getArgument(idx);
     }
 
     /// Support argument iteration.
-    args_iterator args_begin() { return getBody().args_begin(); }
-    args_iterator args_end() { return getBody().args_end(); }
-    BlockArgListType getArguments() { return getBody().getArguments(); }
+    args_iterator args_begin() { return getFunctionBody().args_begin(); }
+    args_iterator args_end() { return getFunctionBody().args_end(); }
+    BlockArgListType getArguments() { return getFunctionBody().getArguments(); }
 
     /// Insert a single argument of type `argType` with attributes `argAttrs` and
     /// location `argLoc` at `argIndex`.
@@ -347,10 +371,8 @@ public:
 
     /// Return an ArrayAttr containing all argument attribute dictionaries of
     /// this function, or nullptr if no arguments have attributes.
-    ArrayAttr getAllArgAttrs() {
-      return this->getOperation()->template getAttrOfType<ArrayAttr>(
-          getArgDictAttrName());
-    }
+    ArrayAttr getAllArgAttrs() { return (*this).getArgAttrsAttr(); }
+
     /// Return all argument attributes of this function.
     void getAllArgAttrs(SmallVectorImpl<DictionaryAttr> &result) {
       if (ArrayAttr argAttrs = getAllArgAttrs()) {
@@ -402,7 +424,7 @@ public:
     }
     void setAllArgAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*this).getNumArguments());
-      this->getOperation()->setAttr(getArgDictAttrName(), attributes);
+      (*this).setArgAttrsAttr(attributes);
     }
 
     /// If the an attribute exists with the specified name, change it to the new
@@ -438,10 +460,8 @@ public:
 
     /// Return an ArrayAttr containing all result attribute dictionaries of this
     /// function, or nullptr if no result have attributes.
-    ArrayAttr getAllResultAttrs() {
-      return this->getOperation()->template getAttrOfType<ArrayAttr>(
-          getResultDictAttrName());
-    }
+    ArrayAttr getAllResultAttrs() { return (*this).getResAttrsAttr(); }
+
     /// Return all result attributes of this function.
     void getAllResultAttrs(SmallVectorImpl<DictionaryAttr> &result) {
       if (ArrayAttr argAttrs = getAllResultAttrs()) {
@@ -495,7 +515,7 @@ public:
     }
     void setAllResultAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*this).getNumResults());
-      this->getOperation()->setAttr(getResultDictAttrName(), attributes);
+      (*this).setResAttrsAttr(attributes);
     }
 
     /// If the an attribute exists with the specified name, change it to the new
@@ -592,10 +612,10 @@ namespace detail {
     /// given argument types.
     static void buildWithEntryBlock(
         OpBuilder &builder, OperationState &state, StringRef name, Type type,
-        ArrayRef<NamedAttribute> attrs, ArrayRef<Type> inputTypes) {
+        ArrayRef<NamedAttribute> attrs, TypeRange inputTypes) {
       state.addAttribute(SymbolTable::getSymbolAttrName(),
                         builder.getStringAttr(name));
-      state.addAttribute(function_interface_impl::getTypeAttrName(),
+      state.addAttribute(ConcreteOp::getFunctionTypeAttrName(state.name),
                         TypeAttr::get(type));
       state.attributes.append(attrs.begin(), attrs.end());
 
@@ -625,36 +645,36 @@ namespace detail {
     bool isExternal() { return empty(); }
 
     /// Return the region containing the body of this function.
-    Region &getBody() { return (*static_cast<ConcreteOp *>(this))->getRegion(0); }
+    Region &getFunctionBody() { return (*static_cast<ConcreteOp *>(this))->getRegion(0); }
 
     /// Delete all blocks from this function.
     void eraseBody() {
-      getBody().dropAllReferences();
-      getBody().getBlocks().clear();
+      getFunctionBody().dropAllReferences();
+      getFunctionBody().getBlocks().clear();
     }
 
     /// Return the list of blocks within the function body.
-    BlockListType &getBlocks() { return getBody().getBlocks(); }
+    BlockListType &getBlocks() { return getFunctionBody().getBlocks(); }
 
-    iterator begin() { return getBody().begin(); }
-    iterator end() { return getBody().end(); }
-    reverse_iterator rbegin() { return getBody().rbegin(); }
-    reverse_iterator rend() { return getBody().rend(); }
+    iterator begin() { return getFunctionBody().begin(); }
+    iterator end() { return getFunctionBody().end(); }
+    reverse_iterator rbegin() { return getFunctionBody().rbegin(); }
+    reverse_iterator rend() { return getFunctionBody().rend(); }
 
     /// Returns true if this function has no blocks within the body.
-    bool empty() { return getBody().empty(); }
+    bool empty() { return getFunctionBody().empty(); }
 
     /// Push a new block to the back of the body region.
-    void push_back(Block *block) { getBody().push_back(block); }
+    void push_back(Block *block) { getFunctionBody().push_back(block); }
 
     /// Push a new block to the front of the body region.
-    void push_front(Block *block) { getBody().push_front(block); }
+    void push_front(Block *block) { getFunctionBody().push_front(block); }
 
     /// Return the last block in the body region.
-    Block &back() { return getBody().back(); }
+    Block &back() { return getFunctionBody().back(); }
 
     /// Return the first block in the body region.
-    Block &front() { return getBody().front(); }
+    Block &front() { return getFunctionBody().front(); }
 
     /// Add an entry block to an empty function, and set up the block arguments
     /// to match the signature of the function. The newly inserted entry block
@@ -696,34 +716,6 @@ namespace detail {
       function_interface_impl::setFunctionType(this->getOperation(), newType);
     }
 
-    // FIXME: These functions should be removed in favor of just forwarding to
-    // the derived operation, which should already have these defined
-    // (via ODS).
-
-    /// Returns the name of the attribute used for function types.
-    static StringRef getTypeAttrName() {
-      return function_interface_impl::getTypeAttrName();
-    }
-
-    /// Returns the name of the attribute used for function argument attributes.
-    static StringRef getArgDictAttrName() {
-      return function_interface_impl::getArgDictAttrName();
-    }
-
-    /// Returns the name of the attribute used for function argument attributes.
-    static StringRef getResultDictAttrName() {
-      return function_interface_impl::getResultDictAttrName();
-    }
-
-    /// Return the attribute containing the type of this function.
-    TypeAttr getFunctionTypeAttr() {
-      return this->getOperation()->template getAttrOfType<TypeAttr>(
-          getTypeAttrName());
-    }
-
-    /// Return the type of this function.
-    Type getFunctionType() { return getFunctionTypeAttr().getValue(); }
-
     //===------------------------------------------------------------------===//
     // Argument and Result Handling
     //===------------------------------------------------------------------===//
@@ -736,13 +728,13 @@ namespace detail {
 
     /// Returns the entry block function argument at the given index.
     BlockArgument getArgument(unsigned idx) {
-      return getBody().getArgument(idx);
+      return getFunctionBody().getArgument(idx);
     }
 
     /// Support argument iteration.
-    args_iterator args_begin() { return getBody().args_begin(); }
-    args_iterator args_end() { return getBody().args_end(); }
-    BlockArgListType getArguments() { return getBody().getArguments(); }
+    args_iterator args_begin() { return getFunctionBody().args_begin(); }
+    args_iterator args_end() { return getFunctionBody().args_end(); }
+    BlockArgListType getArguments() { return getFunctionBody().getArguments(); }
 
     /// Insert a single argument of type `argType` with attributes `argAttrs` and
     /// location `argLoc` at `argIndex`.
@@ -865,10 +857,8 @@ namespace detail {
 
     /// Return an ArrayAttr containing all argument attribute dictionaries of
     /// this function, or nullptr if no arguments have attributes.
-    ArrayAttr getAllArgAttrs() {
-      return this->getOperation()->template getAttrOfType<ArrayAttr>(
-          getArgDictAttrName());
-    }
+    ArrayAttr getAllArgAttrs() { return (*static_cast<ConcreteOp *>(this)).getArgAttrsAttr(); }
+
     /// Return all argument attributes of this function.
     void getAllArgAttrs(SmallVectorImpl<DictionaryAttr> &result) {
       if (ArrayAttr argAttrs = getAllArgAttrs()) {
@@ -920,7 +910,7 @@ namespace detail {
     }
     void setAllArgAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumArguments());
-      this->getOperation()->setAttr(getArgDictAttrName(), attributes);
+      (*static_cast<ConcreteOp *>(this)).setArgAttrsAttr(attributes);
     }
 
     /// If the an attribute exists with the specified name, change it to the new
@@ -956,10 +946,8 @@ namespace detail {
 
     /// Return an ArrayAttr containing all result attribute dictionaries of this
     /// function, or nullptr if no result have attributes.
-    ArrayAttr getAllResultAttrs() {
-      return this->getOperation()->template getAttrOfType<ArrayAttr>(
-          getResultDictAttrName());
-    }
+    ArrayAttr getAllResultAttrs() { return (*static_cast<ConcreteOp *>(this)).getResAttrsAttr(); }
+
     /// Return all result attributes of this function.
     void getAllResultAttrs(SmallVectorImpl<DictionaryAttr> &result) {
       if (ArrayAttr argAttrs = getAllResultAttrs()) {
@@ -1013,7 +1001,7 @@ namespace detail {
     }
     void setAllResultAttrs(ArrayAttr attributes) {
       assert(attributes.size() == (*static_cast<ConcreteOp *>(this)).getNumResults());
-      this->getOperation()->setAttr(getResultDictAttrName(), attributes);
+      (*static_cast<ConcreteOp *>(this)).setResAttrsAttr(attributes);
     }
 
     /// If the an attribute exists with the specified name, change it to the new
@@ -1052,6 +1040,40 @@ namespace detail {
   
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+template<typename ConcreteOp>
+::mlir::Type detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::getFunctionType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getFunctionType();
+}
+template<typename ConcreteOp>
+void detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::setFunctionTypeAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::TypeAttr type) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setFunctionTypeAttr(type);
+}
+template<typename ConcreteOp>
+::mlir::ArrayAttr detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::getArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgAttrsAttr();
+}
+template<typename ConcreteOp>
+::mlir::ArrayAttr detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::getResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getResAttrsAttr();
+}
+template<typename ConcreteOp>
+void detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::setArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setArgAttrsAttr(attrs);
+}
+template<typename ConcreteOp>
+void detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::setResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).setResAttrsAttr(attrs);
+}
+template<typename ConcreteOp>
+::mlir::Attribute detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::removeArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).removeArgAttrsAttr();
+}
+template<typename ConcreteOp>
+::mlir::Attribute detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::removeResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).removeResAttrsAttr();
+}
 template<typename ConcreteOp>
 ::llvm::ArrayRef<::mlir::Type> detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::getArgumentTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getArgumentTypes();
@@ -1071,6 +1093,38 @@ template<typename ConcreteOp>
 template<typename ConcreteOp>
 ::mlir::LogicalResult detail::FunctionOpInterfaceInterfaceTraits::Model<ConcreteOp>::verifyType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).verifyType();
+}
+template<typename ConcreteOp>
+::mlir::Type detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getFunctionType(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getFunctionType(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+void detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setFunctionTypeAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::TypeAttr type) {
+  return static_cast<const ConcreteOp *>(impl)->setFunctionTypeAttr(tablegen_opaque_val, type);
+}
+template<typename ConcreteOp>
+::mlir::ArrayAttr detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getArgAttrsAttr(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+::mlir::ArrayAttr detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getResAttrsAttr(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+void detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs) {
+  return static_cast<const ConcreteOp *>(impl)->setArgAttrsAttr(tablegen_opaque_val, attrs);
+}
+template<typename ConcreteOp>
+void detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::setResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::mlir::ArrayAttr attrs) {
+  return static_cast<const ConcreteOp *>(impl)->setResAttrsAttr(tablegen_opaque_val, attrs);
+}
+template<typename ConcreteOp>
+::mlir::Attribute detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::removeArgAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->removeArgAttrsAttr(tablegen_opaque_val);
+}
+template<typename ConcreteOp>
+::mlir::Attribute detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::removeResAttrsAttr(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->removeResAttrsAttr(tablegen_opaque_val);
 }
 template<typename ConcreteOp>
 ::llvm::ArrayRef<::mlir::Type> detail::FunctionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getArgumentTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {

@@ -97,11 +97,11 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
   reduce_full_global_param_t param = {0};
   param.spec.common.axis_num = 1;
   param.spec.common.axis[0] = 2;
-  param.spec.common.method = get_reduce_type(mode());
+  param.spec.common.method = get_reduce_type(getMode());
   param.spec.common.input_scale = 1.0f;
   param.spec.common.output_scale = 1.0f;
   param.spec.common.keep_dims = 1;
-  param.spec.buffer_addr = module::getAddress(buffer());
+  param.spec.buffer_addr = module::getAddress(getBuffer());
   param.if_getting_buffer_size = false;
   BM168x::call_global_func("backend_api_reduce_full_global", &param,
                            sizeof(reduce_full_global_param_t),

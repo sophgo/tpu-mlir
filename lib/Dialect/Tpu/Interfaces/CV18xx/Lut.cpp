@@ -24,10 +24,10 @@ using namespace tpu_mlir::backend;
 void tpu::LutOp::codegen_global_cv18xx(int64_t layer_id) {
 
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
-  gaddr_t ga_table = module::getAddress(table());
+  module::getNCHW(getOutput(), n, c, h, w);
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
+  gaddr_t ga_table = module::getAddress(getTable());
   cvi_backend_tg_lut_kernel(layer_id, ga_input, ga_output, ga_table, n, c, h, w,
                             CVK_FMT_I8);
 }

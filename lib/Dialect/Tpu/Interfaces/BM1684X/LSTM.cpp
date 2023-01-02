@@ -92,17 +92,17 @@ static void iofg2ifog(std::shared_ptr<std::vector<T>> &filter, int num_dir,
 template <>
 LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
     tpu::LSTMOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
 
-  auto recurrenceOp = op.recurrence().getDefiningOp<top::WeightOp>();
+  auto recurrenceOp = op.getRecurrence().getDefiningOp<top::WeightOp>();
   auto recurrence_f32 = recurrenceOp.read<float>();
-  auto num_filter = module::getNumElements(op.filter());
-  auto num_recur = module::getNumElements(op.recurrence());
+  auto num_filter = module::getNumElements(op.getFilter());
+  auto num_recur = module::getNumElements(op.getRecurrence());
   auto filter_merged =
       std::make_shared<std::vector<float>>(num_filter + num_recur, 0);
   filter_merge(filter_merged, filter_f32, recurrence_f32, attr.num_direction,
@@ -111,7 +111,7 @@ LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> filter_reordered_shape = {
       attr.num_direction, 4 * attr.input_size + 4 * attr.hidden_size,
       attr.hidden_size};
-  auto filter_type = module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.getFilter());
   auto new_filter_type =
       RankedTensorType::get(filter_reordered_shape, filter_type);
   auto newFilterOp = top::WeightOp::create(op, "reordered_filter",
@@ -119,9 +119,9 @@ LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
   op->setOperand(1, newFilterOp);
   op->setOperand(2, module::getNoneOp(op));
   if (attr.have_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
-    auto type = op.bias().getType().cast<RankedTensorType>();
+    auto type = op.getBias().getType().cast<RankedTensorType>();
     iofg2ifog(bias_f32, attr.num_direction, attr.hidden_size);
     auto newBiasOp =
         top::WeightOp::create(op, "reordered_bias", *bias_f32, type);
@@ -131,7 +131,7 @@ LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> init_shape = {attr.num_direction, attr.batch_size,
                                      attr.hidden_size};
   if (!attr.have_h0) {
-    auto stype = module::getStorageType(op.input());
+    auto stype = module::getStorageType(op.getInput());
     auto initial_h = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto new_type = RankedTensorType::get(init_shape, stype);
@@ -140,7 +140,7 @@ LogicalResult WeightReorder<tpu::LSTMOp, Float32Type>::matchAndRewrite(
     op->setOperand(4, initial_h_Op);
   }
   if (!attr.have_c0) {
-    auto stype = module::getStorageType(op.input());
+    auto stype = module::getStorageType(op.getInput());
     auto initial_c = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto new_type = RankedTensorType::get(init_shape, stype);
@@ -199,19 +199,19 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   auto op = getOperation();
   auto input_spec =
-      BM168x::get_spec(ValueRange{input(), initial_h(), initial_c(), filter()});
+      BM168x::get_spec(ValueRange{getInput(), getInitialH(), getInitialC(), getFilter()});
   auto output_spec = BM168x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
   pytorch_lstm_param_t p = {0};
-  p.x_global_addr = module::getAddress(input());
-  p.w_global_addr = module::getAddress(filter());
-  p.b_global_addr = module::getAddress(bias());
-  p.h0_global_addr = module::getAddress(initial_h());
-  p.c0_global_addr = module::getAddress(initial_c());
-  p.y_global_addr = module::getAddress(Y());
-  p.hn_global_addr = module::getAddress(Y_h());
-  p.cn_global_addr = module::getAddress(Y_c());
-  p.z_global_addr = module::getAddress(buffer());
+  p.x_global_addr = module::getAddress(getInput());
+  p.w_global_addr = module::getAddress(getFilter());
+  p.b_global_addr = module::getAddress(getBias());
+  p.h0_global_addr = module::getAddress(getInitialH());
+  p.c0_global_addr = module::getAddress(getInitialC());
+  p.y_global_addr = module::getAddress(getY());
+  p.hn_global_addr = module::getAddress(getYH());
+  p.cn_global_addr = module::getAddress(getYC());
+  p.z_global_addr = module::getAddress(getBuffer());
 
   p.bias = attr.have_bias;
   p.output_y = attr.output_y;
@@ -224,7 +224,7 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
   p.batch_mode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
   p.bidirection = (attr.num_direction == 2);
   p.num_layers = 1;
-  p.dtype = BM168x::getDataType(input());
+  p.dtype = BM168x::getDataType(getInput());
   BM168x::call_global_func("backend_api_pytorch_lstm_global", &p,
                            sizeof(pytorch_lstm_param_t), input_spec->data(),
                            output_spec->data());

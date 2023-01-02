@@ -56,6 +56,8 @@ namespace detail {
   struct RegionKindInterfaceTrait : public ::mlir::OpInterface<RegionKindInterface, detail::RegionKindInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 ::mlir::RegionKind detail::RegionKindInterfaceInterfaceTraits::Model<ConcreteOp>::getRegionKind(unsigned index) {
   return ConcreteOp::getRegionKind(index);

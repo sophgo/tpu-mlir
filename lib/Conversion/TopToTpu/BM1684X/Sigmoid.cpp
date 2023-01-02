@@ -25,13 +25,13 @@ void SigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::SigmoidOp op,
 }
 void SigmoidLowering::LoweringINT8(PatternRewriter &rewriter, top::SigmoidOp op,
                                    bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.getOutput());
   Value table =
-      create_lookup_table(op.input(), op.output(), asymmetric,
+      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                           [](double val) { return 1 / (1 + std::exp(-val)); });
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void SigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -46,12 +46,12 @@ void SigmoidLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SigmoidLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SigmoidOp op) const {
-  auto stype = module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.getOutput());
   Value table =
-      create_lookup_table(op.input(), op.output(), true,
+      create_lookup_table(op.getInput(), op.getOutput(), true,
                           [](double val) { return 1 / (1 + std::exp(-val)); });
-  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.output().getType(),
-                                          ValueRange{op.input(), table});
+  rewriter.replaceOpWithNewOp<tpu::LutOp>(op, op.getOutput().getType(),
+                                          ValueRange{op.getInput(), table});
 }
 
 } // namespace bm1684x

@@ -104,13 +104,13 @@ public:
 
     template <typename T>
     using DerivedAttrValueCheckT =
-        typename std::enable_if_t<std::is_base_of<Attribute, T>::value &&
-                                  !std::is_same<Attribute, T>::value>;
+        std::enable_if_t<std::is_base_of<Attribute, T>::value &&
+                         !std::is_same<Attribute, T>::value>;
     template <typename T, typename ResultT>
     using DefaultValueCheckT =
-        typename std::enable_if_t<std::is_same<Attribute, T>::value ||
-                                  !std::is_base_of<Attribute, T>::value,
-                                  ResultT>;
+        std::enable_if_t<std::is_same<Attribute, T>::value ||
+                             !std::is_base_of<Attribute, T>::value,
+                         ResultT>;
 
     /// Return the splat value for this attribute. This asserts that the
     /// attribute corresponds to a splat.
@@ -159,23 +159,23 @@ public:
     // Failable Value Iteration
 
     /// If this attribute supports iterating over element values of type `T`,
-    /// return the iterable range. Otherwise, return llvm::None.
+    /// return the iterable range. Otherwise, return std::nullopt.
     template <typename T>
     DefaultValueCheckT<T, Optional<iterator_range<T>>> tryGetValues() const {
       if (Optional<iterator<T>> beginIt = try_value_begin<T>())
         return iterator_range<T>(getType(), *beginIt, value_end<T>());
-      return llvm::None;
+      return std::nullopt;
     }
     template <typename T>
     DefaultValueCheckT<T, Optional<iterator<T>>> try_value_begin() const;
 
     /// If this attribute supports iterating over element values of type `T`,
-    /// return the iterable range. Otherwise, return llvm::None.
+    /// return the iterable range. Otherwise, return std::nullopt.
     template <typename T, typename = DerivedAttrValueCheckT<T>>
     Optional<DerivedAttrValueIteratorRange<T>> tryGetValues() const {
       auto values = tryGetValues<Attribute>();
       if (!values)
-        return llvm::None;
+        return std::nullopt;
 
       auto castFn = [](Attribute attr) { return attr.template cast<T>(); };
       return DerivedAttrValueIteratorRange<T>(
@@ -187,7 +187,7 @@ public:
     Optional<DerivedAttrValueIterator<T>> try_value_begin() const {
       if (auto values = tryGetValues<T>())
         return values->begin();
-      return llvm::None;
+      return std::nullopt;
     }
   
     /// Return the number of elements held by this attribute.
@@ -350,47 +350,6 @@ namespace detail {
   
   };
 }// namespace detail
-template<typename ConcreteAttr>
-::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).getValuesImpl(elementID);
-}
-template<typename ConcreteAttr>
-bool detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).isSplat();
-}
-template<typename ConcreteAttr>
-::mlir::ShapedType detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).getType();
-}
-template<typename ConcreteAttr>
-::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) {
-  return static_cast<const ConcreteAttr *>(impl)->getValuesImpl(tablegen_opaque_val, elementID);
-}
-template<typename ConcreteAttr>
-bool detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return static_cast<const ConcreteAttr *>(impl)->isSplat(tablegen_opaque_val);
-}
-template<typename ConcreteAttr>
-::mlir::ShapedType detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return static_cast<const ConcreteAttr *>(impl)->getType(tablegen_opaque_val);
-}
-template<typename ConcreteModel, typename ConcreteAttr>
-::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::getValuesImpl(::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) const {
-auto result = getValueImpl(
-        (typename ConcreteAttr::ContiguousIterableTypesT *)nullptr, elementID,
-        /*isContiguous=*/std::true_type());
-      if (succeeded(result))
-        return std::move(result);
-
-      return getValueImpl(
-        (typename ConcreteAttr::NonContiguousIterableTypesT *)nullptr,
-        elementID, /*isContiguous=*/std::false_type());
-}
-template<typename ConcreteModel, typename ConcreteAttr>
-bool detail::ElementsAttrInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::isSplat(::mlir::Attribute tablegen_opaque_val) const {
-// By default, only check for a single element splat.
-        return (tablegen_opaque_val.cast<ConcreteAttr>()).getNumElements() == 1;
-}
 } // namespace mlir
 namespace mlir {
 class MemRefLayoutAttrInterface;
@@ -458,39 +417,6 @@ namespace detail {
     }
   };
 }// namespace detail
-template<typename ConcreteAttr>
-::mlir::AffineMap detail::MemRefLayoutAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::getAffineMap(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap();
-}
-template<typename ConcreteAttr>
-bool detail::MemRefLayoutAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::isIdentity(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).isIdentity();
-}
-template<typename ConcreteAttr>
-::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::verifyLayout(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).verifyLayout(shape, emitError);
-}
-template<typename ConcreteAttr>
-::mlir::AffineMap detail::MemRefLayoutAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getAffineMap(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return static_cast<const ConcreteAttr *>(impl)->getAffineMap(tablegen_opaque_val);
-}
-template<typename ConcreteAttr>
-bool detail::MemRefLayoutAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::isIdentity(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return static_cast<const ConcreteAttr *>(impl)->isIdentity(tablegen_opaque_val);
-}
-template<typename ConcreteAttr>
-::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::verifyLayout(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {
-  return static_cast<const ConcreteAttr *>(impl)->verifyLayout(tablegen_opaque_val, shape, emitError);
-}
-template<typename ConcreteModel, typename ConcreteAttr>
-bool detail::MemRefLayoutAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::isIdentity(::mlir::Attribute tablegen_opaque_val) const {
-return (tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap().isIdentity();
-}
-template<typename ConcreteModel, typename ConcreteAttr>
-::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::verifyLayout(::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const {
-return ::mlir::detail::verifyAffineMapAsLayout((tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap(),
-                                                       shape, emitError);
-}
 } // namespace mlir
 namespace mlir {
 class TypedAttr;
@@ -537,6 +463,86 @@ namespace detail {
   struct TypedAttrTrait : public ::mlir::AttributeInterface<TypedAttr, detail::TypedAttrInterfaceTraits>::Trait<ConcreteAttr> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+template<typename ConcreteAttr>
+::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getValuesImpl(elementID);
+}
+template<typename ConcreteAttr>
+bool detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).isSplat();
+}
+template<typename ConcreteAttr>
+::mlir::ShapedType detail::ElementsAttrInterfaceTraits::Model<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getType();
+}
+template<typename ConcreteAttr>
+::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getValuesImpl(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) {
+  return static_cast<const ConcreteAttr *>(impl)->getValuesImpl(tablegen_opaque_val, elementID);
+}
+template<typename ConcreteAttr>
+bool detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::isSplat(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->isSplat(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+::mlir::ShapedType detail::ElementsAttrInterfaceTraits::FallbackModel<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->getType(tablegen_opaque_val);
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+::mlir::FailureOr<::mlir::detail::ElementsAttrIndexer> detail::ElementsAttrInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::getValuesImpl(::mlir::Attribute tablegen_opaque_val, ::mlir::TypeID elementID) const {
+auto result = getValueImpl(
+        (typename ConcreteAttr::ContiguousIterableTypesT *)nullptr, elementID,
+        /*isContiguous=*/std::true_type());
+      if (succeeded(result))
+        return std::move(result);
+
+      return getValueImpl(
+        (typename ConcreteAttr::NonContiguousIterableTypesT *)nullptr,
+        elementID, /*isContiguous=*/std::false_type());
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+bool detail::ElementsAttrInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::isSplat(::mlir::Attribute tablegen_opaque_val) const {
+// By default, only check for a single element splat.
+        return (tablegen_opaque_val.cast<ConcreteAttr>()).getNumElements() == 1;
+}
+} // namespace mlir
+namespace mlir {
+template<typename ConcreteAttr>
+::mlir::AffineMap detail::MemRefLayoutAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::getAffineMap(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap();
+}
+template<typename ConcreteAttr>
+bool detail::MemRefLayoutAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::isIdentity(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).isIdentity();
+}
+template<typename ConcreteAttr>
+::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::verifyLayout(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).verifyLayout(shape, emitError);
+}
+template<typename ConcreteAttr>
+::mlir::AffineMap detail::MemRefLayoutAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getAffineMap(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->getAffineMap(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+bool detail::MemRefLayoutAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::isIdentity(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->isIdentity(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::verifyLayout(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) {
+  return static_cast<const ConcreteAttr *>(impl)->verifyLayout(tablegen_opaque_val, shape, emitError);
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+bool detail::MemRefLayoutAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::isIdentity(::mlir::Attribute tablegen_opaque_val) const {
+return (tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap().isIdentity();
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+::mlir::LogicalResult detail::MemRefLayoutAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::verifyLayout(::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<int64_t> shape, ::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError) const {
+return ::mlir::detail::verifyAffineMapAsLayout((tablegen_opaque_val.cast<ConcreteAttr>()).getAffineMap(),
+                                                       shape, emitError);
+}
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteAttr>
 ::mlir::Type detail::TypedAttrInterfaceTraits::Model<ConcreteAttr>::getType(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
   return (tablegen_opaque_val.cast<ConcreteAttr>()).getType();

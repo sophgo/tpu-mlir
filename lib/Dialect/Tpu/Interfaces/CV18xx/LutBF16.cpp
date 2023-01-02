@@ -24,17 +24,17 @@ using namespace tpu_mlir::backend;
 void tpu::LutBF16Op::codegen_global_cv18xx(int64_t layer_id) {
 
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
-  gaddr_t ga_table = module::getAddress(table());
+  module::getNCHW(getOutput(), n, c, h, w);
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
+  gaddr_t ga_table = module::getAddress(getTable());
 
-  gaddr_t ga_mantissa = module::getAddress(mantissa());
-  auto _lut_mode = lut_mode();
+  gaddr_t ga_mantissa = module::getAddress(getMantissa());
+  auto _lut_mode = getLutMode();
   if (_lut_mode == LutBF16Mode::Slope) {
     cvi_backend_tg_bf16_lut_slope_kernel(
         layer_id, ga_input, ga_output, ga_table, ga_mantissa, n, c, h, w,
-        min_range().convertToDouble(), max_range().convertToDouble());
+        getMinRange().convertToDouble(), getMaxRange().convertToDouble());
   } else if (_lut_mode == LutBF16Mode::Mantissa) {
     cvi_backend_tg_bf16_lut_mantissa_kernel(
         layer_id, ga_input, ga_output, ga_table, ga_mantissa, n, c, h, w, 0);

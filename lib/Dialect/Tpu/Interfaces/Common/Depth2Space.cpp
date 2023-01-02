@@ -22,13 +22,13 @@ void tpu::Depth2SpaceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::Depth2SpaceOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
-  module::getNCHW(input(), in, ic, ih, iw);
-  module::getNCHW(output(), on, oc, oh, ow);
+  module::getNCHW(getInput(), in, ic, ih, iw);
+  module::getNCHW(getOutput(), on, oc, oh, ow);
   assert(in == on);
-  bool crd = is_CRD();
-  bool inversed = is_inversed();
-  int64_t bh = block_h();
-  int64_t bw = block_w();
+  bool crd = getIs_CRD();
+  bool inversed = getIsInversed();
+  int64_t bh = getBlockH();
+  int64_t bw = getBlockW();
   if (inversed) {
     std::swap(in, on);
     std::swap(ic, oc);

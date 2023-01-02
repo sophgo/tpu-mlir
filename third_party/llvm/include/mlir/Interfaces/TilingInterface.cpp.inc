@@ -6,14 +6,24 @@
 |*                                                                            *|
 \*===----------------------------------------------------------------------===*/
 
-/// Returns a list of operands into which the result of the
-/// tiled implementation is written into. With `tensor`
-/// operands, this will be used as the initial tensor into which
-/// the tiled results are inserted into. With `memref` operands,
-/// this will be the operand into which the result of the tiled
-/// operation is written into.
-SmallVector<Value> mlir::TilingInterface::getDestinationOperands(OpBuilder & b) {
-      return getImpl()->getDestinationOperands(getImpl(), getOperation(), b);
+/// Method to generate a tensor initalized with the identity value of the
+/// operation reduction. The tensor shape is equal to operation result
+/// shape with new dimension for each non zero tile size.
+FailureOr<Operation*> mlir::PartialReductionOpInterface::generateInitialTensorForPartialReduction(OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim) {
+      return getImpl()->generateInitialTensorForPartialReduction(getImpl(), getOperation(), b, loc, sizes, reductionDim);
+  }
+/// Method to generate a tiled version of the operation where the tiled
+/// reduction dimension are converted to parallel dimensions with a size
+/// less or equal to the tile size. This is meant to be used with
+/// `mergeReductions` method which will combine the partial reductions.
+Operation*mlir::PartialReductionOpInterface::tileToPartialReduction(OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims) {
+      return getImpl()->tileToPartialReduction(getImpl(), getOperation(), b, loc, init, offsets, sizes, reductionDims);
+  }
+/// Method to merge partial reductions for an operation that has been
+/// tiled along the reduction dimensions. This will only apply the
+/// reduction the operation.
+Operation*mlir::PartialReductionOpInterface::mergeReductions(OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim) {
+      return getImpl()->mergeReductions(getImpl(), getOperation(), b, loc, partialReduce, reductionDim);
   }
 /// Returns a list of iterator types that describe the number of loops.
 SmallVector<utils::IteratorType> mlir::TilingInterface::getLoopIteratorTypes() {
@@ -62,7 +72,7 @@ LogicalResult mlir::TilingInterface::getResultTilePosition(OpBuilder & b, unsign
 /// result required. This method enables fusion by using tile
 /// and fuse. The method returns failure if the operation can't be
 /// tiled to generate the result tile. In practical terms this
-/// implies it cannot be tiled and fused with its consumers.        
+/// implies it cannot be tiled and fused with its consumers.
 /// 
 /// - `offsets` provides the offset of the tile in the coordinate system
 ///   of the original iteration space, i.e., if an iteration space
@@ -73,13 +83,13 @@ LogicalResult mlir::TilingInterface::getResultTilePosition(OpBuilder & b, unsign
 FailureOr<Value> mlir::TilingInterface::generateResultTileValue(OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes) {
       return getImpl()->generateResultTileValue(getImpl(), getOperation(), b, resultNumber, offsets, sizes);
   }
-/// Generates the scalar implementation of the operation. 
+/// Generates the scalar implementation of the operation.
 /// 
 /// Given the list `ivs` that represent points in the iteration space
 /// (as specified by `getIterationDomain()`) returns the scalar operations
 /// that represent the computation at that point in the iteration space.
 /// This method is typically used as the "exit path", i.e. once all
-/// transformations are done, this method can be used to lower to scalar 
+/// transformations are done, this method can be used to lower to scalar
 /// code that can then be lowered to LLVM or SPIR-V dialects.
 LogicalResult mlir::TilingInterface::generateScalarImplementation(OpBuilder & b, Location  loc, ValueRange  ivs) {
       return getImpl()->generateScalarImplementation(getImpl(), getOperation(), b, loc, ivs);

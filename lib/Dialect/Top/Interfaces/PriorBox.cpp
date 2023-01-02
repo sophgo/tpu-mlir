@@ -14,14 +14,14 @@
 
 
 
-int64_t top::PriorBoxOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::PriorBoxOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::PriorBoxOp::init(InferenceParameter &p) { return success(); }
 void top::PriorBoxOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
   #if 0
-  auto input_image_shape = module::getShape(this->inputs()[1]);
+  auto input_image_shape = module::getShape(this->getInputs()[1]);
   assert(input_image_shape.size() == 4 && input_shape.size() == 4);
 
   int layer_height = input_shape[2];

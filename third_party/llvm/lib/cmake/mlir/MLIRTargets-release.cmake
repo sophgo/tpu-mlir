@@ -114,6 +114,16 @@ set_target_properties(MLIRQuantUtils PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRQuantUtils )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRQuantUtils "${_IMPORT_PREFIX}/lib/libMLIRQuantUtils.a" )
 
+# Import target "MLIRTosaDialect" for configuration "Release"
+set_property(TARGET MLIRTosaDialect APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRTosaDialect PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRTosaDialect.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRTosaDialect )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRTosaDialect "${_IMPORT_PREFIX}/lib/libMLIRTosaDialect.a" )
+
 # Import target "MLIRDialect" for configuration "Release"
 set_property(TARGET MLIRDialect APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRDialect PROPERTIES
@@ -194,6 +204,16 @@ set_target_properties(MLIRDerivedAttributeOpInterface PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRDerivedAttributeOpInterface )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRDerivedAttributeOpInterface "${_IMPORT_PREFIX}/lib/libMLIRDerivedAttributeOpInterface.a" )
 
+# Import target "MLIRDestinationStyleOpInterface" for configuration "Release"
+set_property(TARGET MLIRDestinationStyleOpInterface APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRDestinationStyleOpInterface PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRDestinationStyleOpInterface.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRDestinationStyleOpInterface )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRDestinationStyleOpInterface "${_IMPORT_PREFIX}/lib/libMLIRDestinationStyleOpInterface.a" )
+
 # Import target "MLIRInferIntRangeInterface" for configuration "Release"
 set_property(TARGET MLIRInferIntRangeInterface APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRInferIntRangeInterface PROPERTIES
@@ -214,6 +234,16 @@ set_target_properties(MLIRInferTypeOpInterface PROPERTIES
 list(APPEND _IMPORT_CHECK_TARGETS MLIRInferTypeOpInterface )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRInferTypeOpInterface "${_IMPORT_PREFIX}/lib/libMLIRInferTypeOpInterface.a" )
 
+# Import target "MLIRLoopLikeInterface" for configuration "Release"
+set_property(TARGET MLIRLoopLikeInterface APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRLoopLikeInterface PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRLoopLikeInterface.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRLoopLikeInterface )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRLoopLikeInterface "${_IMPORT_PREFIX}/lib/libMLIRLoopLikeInterface.a" )
+
 # Import target "MLIRParallelCombiningOpInterface" for configuration "Release"
 set_property(TARGET MLIRParallelCombiningOpInterface APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
 set_target_properties(MLIRParallelCombiningOpInterface PROPERTIES
@@ -223,6 +253,26 @@ set_target_properties(MLIRParallelCombiningOpInterface PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS MLIRParallelCombiningOpInterface )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRParallelCombiningOpInterface "${_IMPORT_PREFIX}/lib/libMLIRParallelCombiningOpInterface.a" )
+
+# Import target "MLIRRuntimeVerifiableOpInterface" for configuration "Release"
+set_property(TARGET MLIRRuntimeVerifiableOpInterface APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRRuntimeVerifiableOpInterface PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRRuntimeVerifiableOpInterface.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRRuntimeVerifiableOpInterface )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRRuntimeVerifiableOpInterface "${_IMPORT_PREFIX}/lib/libMLIRRuntimeVerifiableOpInterface.a" )
+
+# Import target "MLIRShapedOpInterfaces" for configuration "Release"
+set_property(TARGET MLIRShapedOpInterfaces APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+set_target_properties(MLIRShapedOpInterfaces PROPERTIES
+  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
+  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRShapedOpInterfaces.a"
+  )
+
+list(APPEND _IMPORT_CHECK_TARGETS MLIRShapedOpInterfaces )
+list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRShapedOpInterfaces "${_IMPORT_PREFIX}/lib/libMLIRShapedOpInterfaces.a" )
 
 # Import target "MLIRSideEffectInterfaces" for configuration "Release"
 set_property(TARGET MLIRSideEffectInterfaces APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
@@ -263,16 +313,6 @@ set_target_properties(MLIRViewLikeInterface PROPERTIES
 
 list(APPEND _IMPORT_CHECK_TARGETS MLIRViewLikeInterface )
 list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRViewLikeInterface "${_IMPORT_PREFIX}/lib/libMLIRViewLikeInterface.a" )
-
-# Import target "MLIRLoopLikeInterface" for configuration "Release"
-set_property(TARGET MLIRLoopLikeInterface APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
-set_target_properties(MLIRLoopLikeInterface PROPERTIES
-  IMPORTED_LINK_INTERFACE_LANGUAGES_RELEASE "CXX"
-  IMPORTED_LOCATION_RELEASE "${_IMPORT_PREFIX}/lib/libMLIRLoopLikeInterface.a"
-  )
-
-list(APPEND _IMPORT_CHECK_TARGETS MLIRLoopLikeInterface )
-list(APPEND _IMPORT_CHECK_FILES_FOR_MLIRLoopLikeInterface "${_IMPORT_PREFIX}/lib/libMLIRLoopLikeInterface.a" )
 
 # Import target "MLIRParser" for configuration "Release"
 set_property(TARGET MLIRParser APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)

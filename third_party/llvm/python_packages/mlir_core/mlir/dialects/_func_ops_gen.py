@@ -33,6 +33,7 @@ class CallIndirectOp(_ods_ir.OpView):
     regions = None
     operands.append(_get_op_result_or_value(callee))
     operands.extend(_get_op_results_or_values(callee_operands))
+    _ods_context = _ods_get_default_loc_context(loc)
     results.extend(results_)
     _ods_successors = None
     super().__init__(self.build_generic(
@@ -66,7 +67,11 @@ class CallOp(_ods_ir.OpView):
     attributes = {}
     regions = None
     operands.extend(_get_op_results_or_values(operands_))
-    attributes["callee"] = callee
+    _ods_context = _ods_get_default_loc_context(loc)
+    attributes["callee"] = (callee if (
+    issubclass(type(callee), _ods_ir.Attribute) or
+    not _ods_ir.AttrBuilder.contains('FlatSymbolRefAttr')) else
+      _ods_ir.AttrBuilder.get('FlatSymbolRefAttr')(callee, context=_ods_context))
     results.extend(result)
     _ods_successors = None
     super().__init__(self.build_generic(
@@ -90,7 +95,11 @@ class ConstantOp(_ods_ir.OpView):
     results = []
     attributes = {}
     regions = None
-    attributes["value"] = value
+    _ods_context = _ods_get_default_loc_context(loc)
+    attributes["value"] = (value if (
+    issubclass(type(value), _ods_ir.Attribute) or
+    not _ods_ir.AttrBuilder.contains('FlatSymbolRefAttr')) else
+      _ods_ir.AttrBuilder.get('FlatSymbolRefAttr')(value, context=_ods_context))
     results.append(result)
     _ods_successors = None
     super().__init__(self.build_generic(
@@ -104,14 +113,32 @@ class FuncOp(_ods_ir.OpView):
 
   _ODS_REGIONS = (1, True)
 
-  def __init__(self, sym_name, function_type, *, sym_visibility=None, loc=None, ip=None):
+  def __init__(self, sym_name, function_type, *, sym_visibility=None, arg_attrs=None, res_attrs=None, loc=None, ip=None):
     operands = []
     results = []
     attributes = {}
     regions = None
-    attributes["sym_name"] = sym_name
-    attributes["function_type"] = function_type
-    if sym_visibility is not None: attributes["sym_visibility"] = sym_visibility
+    _ods_context = _ods_get_default_loc_context(loc)
+    attributes["sym_name"] = (sym_name if (
+    issubclass(type(sym_name), _ods_ir.Attribute) or
+    not _ods_ir.AttrBuilder.contains('SymbolNameAttr')) else
+      _ods_ir.AttrBuilder.get('SymbolNameAttr')(sym_name, context=_ods_context))
+    attributes["function_type"] = (function_type if (
+    issubclass(type(function_type), _ods_ir.Attribute) or
+    not _ods_ir.AttrBuilder.contains('anonymous_380')) else
+      _ods_ir.AttrBuilder.get('anonymous_380')(function_type, context=_ods_context))
+    if sym_visibility is not None: attributes["sym_visibility"] = (sym_visibility if (
+        issubclass(type(sym_visibility), _ods_ir.Attribute) or
+        not _ods_ir.AttrBuilder.contains('StrAttr')) else
+          _ods_ir.AttrBuilder.get('StrAttr')(sym_visibility, context=_ods_context))
+    if arg_attrs is not None: attributes["arg_attrs"] = (arg_attrs if (
+        issubclass(type(arg_attrs), _ods_ir.Attribute) or
+        not _ods_ir.AttrBuilder.contains('DictArrayAttr')) else
+          _ods_ir.AttrBuilder.get('DictArrayAttr')(arg_attrs, context=_ods_context))
+    if res_attrs is not None: attributes["res_attrs"] = (res_attrs if (
+        issubclass(type(res_attrs), _ods_ir.Attribute) or
+        not _ods_ir.AttrBuilder.contains('DictArrayAttr')) else
+          _ods_ir.AttrBuilder.get('DictArrayAttr')(res_attrs, context=_ods_context))
     _ods_successors = None
     super().__init__(self.build_generic(
       attributes=attributes, results=results, operands=operands,
@@ -161,6 +188,7 @@ class ReturnOp(_ods_ir.OpView):
     attributes = {}
     regions = None
     operands.extend(_get_op_results_or_values(operands_))
+    _ods_context = _ods_get_default_loc_context(loc)
     _ods_successors = None
     super().__init__(self.build_generic(
       attributes=attributes, results=results, operands=operands,

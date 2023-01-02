@@ -17,8 +17,8 @@
 
 
 LogicalResult tpu::SubOp::init(InferenceParameter &p) {
-  auto in0_shape = module::getShape(inputs()[0]);
-  auto in1_shape = module::getShape(inputs()[1]);
+  auto in0_shape = module::getShape(getInputs()[0]);
+  auto in1_shape = module::getShape(getInputs()[1]);
   int dims = std::max(in0_shape.size(), in1_shape.size());
   auto input0_shape = shape_expand_dim(in0_shape, dims);
   auto input1_shape = shape_expand_dim(in1_shape, dims);
@@ -26,9 +26,9 @@ LogicalResult tpu::SubOp::init(InferenceParameter &p) {
   (*binary)
       .lhs(p.inputs[0], in0_shape)
       .rhs(p.inputs[1], in1_shape)
-      .dst(p.outputs[0], module::getShape(output()))
-      .do_relu(do_relu())
-      .relu_limit(relu_limit().convertToDouble())
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
       .algorithem(algorithm::binary_sub)
       .setup();
   p.handle = (void *)binary;
@@ -44,8 +44,8 @@ void tpu::SubOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto out_type = module::getStorageType(getOutput());
   memset(p.outputs[0], 0, num_elem * sizeof(float));
   auto asym = module::isAsymmetric();
   bool is_cv18xx = module::isCV18xx();
@@ -63,10 +63,10 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
   } else if (asym == false) {
     if (is_cv18xx) {
       // cv18xx interpreter
-      auto multiplier_v = module::getI64Array(multipliers(), 2, 1);
-      auto rshift_v = module::getI64Array(rshifts(), 1, 0);
-      auto lhs_num_elem = module::getNumElements(inputs()[0]);
-      auto rhs_num_elem = module::getNumElements(inputs()[1]);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto lhs_num_elem = module::getNumElements(getInputs()[0]);
+      auto rhs_num_elem = module::getNumElements(getInputs()[1]);
       std::vector<float> lhs_tmp(lhs_num_elem);
       std::vector<float> rhs_tmp(rhs_num_elem);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
@@ -80,8 +80,8 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 
       auto binary = (Binary *)p.handle;
       (*binary)
-          .lhs(lhs_tmp.data(), module::getShape(inputs()[0]))
-          .rhs(rhs_tmp.data(), module::getShape(inputs()[1]))
+          .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+          .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
           .run();
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -92,10 +92,10 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
                                             : to_int8(out);
       }
     } else {
-      auto multiplier_v = module::getI64Array(multipliers(), 2, 1);
-      auto rshift_v = module::getI64Array(rshifts(), 2, 0);
-      auto lhs_num_elem = module::getNumElements(inputs()[0]);
-      auto rhs_num_elem = module::getNumElements(inputs()[1]);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
+      auto rshift_v = module::getI64Array(getRshifts(), 2, 0);
+      auto lhs_num_elem = module::getNumElements(getInputs()[0]);
+      auto rhs_num_elem = module::getNumElements(getInputs()[1]);
       std::vector<float> lhs_tmp(lhs_num_elem);
       std::vector<float> rhs_tmp(rhs_num_elem);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
@@ -111,8 +111,8 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 
       auto binary = (Binary *)p.handle;
       (*binary)
-          .lhs(lhs_tmp.data(), module::getShape(inputs()[0]))
-          .rhs(rhs_tmp.data(), module::getShape(inputs()[1]))
+          .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+          .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
           .run();
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -123,17 +123,17 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
       }
     }
   } else {
-    auto lhs_num_elem = module::getNumElements(inputs()[0]);
-    auto rhs_num_elem = module::getNumElements(inputs()[1]);
+    auto lhs_num_elem = module::getNumElements(getInputs()[0]);
+    auto rhs_num_elem = module::getNumElements(getInputs()[1]);
     std::vector<float> lhs_tmp(lhs_num_elem);
     std::vector<float> rhs_tmp(rhs_num_elem);
-    auto qtype = module::getUniformQuantizedType(inputs()[0]);
+    auto qtype = module::getUniformQuantizedType(getInputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
     for (int i = 0; i < lhs_num_elem; i++) {
       lhs_tmp[i] = (p.inputs[0][i] - (float)qtype.getZeroPoint()) *
                    (float)qtype.getScale();
     }
-    qtype = module::getUniformQuantizedType(inputs()[0]);
+    qtype = module::getUniformQuantizedType(getInputs()[0]);
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
     for (int i = 0; i < rhs_num_elem; i++) {
       rhs_tmp[i] = (p.inputs[1][i] - (float)qtype.getZeroPoint()) *
@@ -141,11 +141,11 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
     }
     auto binary = (Binary *)p.handle;
     (*binary)
-        .lhs(lhs_tmp.data(), module::getShape(inputs()[0]))
-        .rhs(rhs_tmp.data(), module::getShape(inputs()[1]))
+        .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+        .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
         .run();
 
-    auto o_qtype = module::getUniformQuantizedType(output());
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto zp = o_qtype.getZeroPoint();
     auto scale = o_qtype.getScale();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -166,9 +166,9 @@ LogicalResult tpu::SubOp::LocalGenSupport() {
   // The same n_slice and h_slice value will propagate to each inputs.
   // Thus, the local layer is only safe when we do not need to slice n and h
   // dimensions.
-  auto out_shape = module::getShape(output());
-  auto lhs_shape = module::getShape(inputs()[0]);
-  auto rhs_shape = module::getShape(inputs()[1]);
+  auto out_shape = module::getShape(getOutput());
+  auto lhs_shape = module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
   if (getOperand(1).getDefiningOp() &&
       isa<top::WeightOp>(getOperand(1).getDefiningOp()))
     return failure();

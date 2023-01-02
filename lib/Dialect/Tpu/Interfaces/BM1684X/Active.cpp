@@ -28,9 +28,9 @@ extern "C" {
 
 void tpu::ActiveOp::codegen_global_bm1684x() {
   active_global_spec_t spec = {0};
-  spec.common.active_type = (int)mode();
-  if (coeffs().has_value()) {
-    const auto coeffs_ = module::getF64Array(coeffs().value());
+  spec.common.active_type = (int)getMode();
+  if (getCoeffs().has_value()) {
+    const auto coeffs_ = module::getF64Array(getCoeffs().value());
     for (int i = 0; i < coeffs_->size(); ++i) {
       spec.common.coeffs[i] = (float)coeffs_->at(i);
     }
@@ -49,11 +49,11 @@ void tpu::ActiveOp::codegen_global_bm1684x() {
 int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto stype = module::getStorageType(input());
+  auto stype = module::getStorageType(getInput());
   int64_t dtype_len = stype.getIntOrFloatBitWidth() / 8;
   int64_t buffer_size = 0;
   int64_t tensor_size = in_lmem_bytes / in_nslice;
-  switch (mode()) {
+  switch (getMode()) {
   case ActiveMode::ERF:
     buffer_size = 3 * tensor_size;
     // 32 exp coeff, 192 exp table, 10 erf coeff, all memory need align to
@@ -104,9 +104,9 @@ void tpu::ActiveOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -128,10 +128,10 @@ void tpu::ActiveOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   active_local_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.common.active_type = (int)mode();
+  spec.common.active_type = (int)getMode();
   spec.buffer_addr = gi.buffer_addr;
-  if (coeffs().has_value()) {
-    const auto coeffs_ = module::getF64Array(coeffs().value());
+  if (getCoeffs().has_value()) {
+    const auto coeffs_ = module::getF64Array(getCoeffs().value());
     for (int i = 0; i < coeffs_->size(); ++i) {
       spec.common.coeffs[i] = (float)coeffs_->at(i);
     }

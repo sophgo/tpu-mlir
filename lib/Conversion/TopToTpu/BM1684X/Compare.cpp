@@ -22,14 +22,14 @@ void CompareLowering::LoweringINT8(PatternRewriter &rewriter, top::CompareOp op,
   auto op_ = op.getOperation();
   double l_scale, r_scale;
   int64_t l_zp, r_zp;
-  module::getScaleAndZeroPoint(op.lhs(), l_scale, l_zp, asymmetric);
-  module::getScaleAndZeroPoint(op.rhs(), r_scale, r_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.getLhs(), l_scale, l_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.getRhs(), r_scale, r_zp, asymmetric);
   if (l_scale != r_scale || l_zp != r_zp) {
     lowering_common_f32<tpu::CompareOp>(rewriter, op_);
     return;
   }
 
-  auto newType = getQuantBoolType(op.output());
+  auto newType = getQuantBoolType(op.getOutput());
   lowering_common<tpu::CompareOp>(rewriter, op_, newType);
 }
 

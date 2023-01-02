@@ -15,16 +15,16 @@
 
 
 int64_t top::PoolMaskOp::getFLOPs() {
-  return module::getNumElements(output()) * 4;
+  return module::getNumElements(getOutput()) * 4;
 }
 
 LogicalResult top::PoolMaskOp::init(InferenceParameter &p) { return success(); }
 void top::PoolMaskOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PoolMaskOp::inference(InferenceParameter &p) {
-  auto input_shape = module::getShape(input());
-  auto output_shape = module::getShape(output());
-  int64_t _scale = scale();
+  auto input_shape = module::getShape(getInput());
+  auto output_shape = module::getShape(getOutput());
+  int64_t _scale = getScale();
   int n = input_shape[0];
   int c = input_shape[1];
   int h = input_shape[2];

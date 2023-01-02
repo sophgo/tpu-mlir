@@ -21,17 +21,17 @@ LogicalResult tpu::RequantFpOp::init(InferenceParameter &p) {
 void tpu::RequantFpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
-  auto o_sType = module::getStorageType(output());
-  auto o_qtype = module::getUniformQuantizedType(output());
-  auto mode = quant_mode();
-  auto shape = module::getShape(output());
+  auto o_sType = module::getStorageType(getOutput());
+  auto o_qtype = module::getUniformQuantizedType(getOutput());
+  auto mode = getQuantMode();
+  auto shape = module::getShape(getOutput());
   int64_t length = 1;
   for (int i = 0; i < shape.size(); ++i) {
     length *= shape[i];
   }
 
-  float scale_v = scaleAttr().getValueAsDouble();
-  float offset_v = offsetAttr().getValueAsDouble();
+  float scale_v = getScale().convertToDouble();
+  float offset_v = getOffset().convertToDouble();
   int64_t zero_point = o_qtype.getZeroPoint();
 
   switch (mode) {
@@ -61,7 +61,7 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
 mlir::Type tpu::RequantFpOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = module::getStorageType(input());
+    auto stype = module::getStorageType(getInput());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }

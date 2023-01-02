@@ -1,10 +1,10 @@
 ## clone and build llvm
 
 ``` shell
-# 2022-10-04 19:00
+# 2023-01-02 15:00
 git clone https://github.com/llvm/llvm-project.git
 cd llvm-project
-git checkout 2e87333bfe7e226533fb66c84015c4523e352d3f
+git checkout cd16a3f04c07fbe9e49275319816b5a8cac60442
 mkdir -p llvm-project/build
 git am 0001-ajust-for-tpu-mlir.patch
 cd llvm-project/build

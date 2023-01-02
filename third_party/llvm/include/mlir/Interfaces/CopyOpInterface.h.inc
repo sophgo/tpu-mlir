@@ -56,6 +56,8 @@ namespace detail {
   struct CopyOpInterfaceTrait : public ::mlir::OpInterface<CopyOpInterface, detail::CopyOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 ::mlir::Value detail::CopyOpInterfaceInterfaceTraits::Model<ConcreteOp>::getSource(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSource();

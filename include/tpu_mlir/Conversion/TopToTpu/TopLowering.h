@@ -252,7 +252,7 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   auto newOp =
       builder.create<OpTy>(name_loc, newType, ValueRange{input}, attrs);
-  return newOp.output();
+  return newOp.getOutput();
 }
 
 Value do_reshape(Value input, RankedTensorType to_type);

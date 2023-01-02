@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum AARCH64Intrinsics : unsigned {
 // Enum values for intrinsics
-    aarch64_addg = 396,                              // llvm.aarch64.addg
+    aarch64_addg = 409,                              // llvm.aarch64.addg
     aarch64_break,                             // llvm.aarch64.break
     aarch64_clrex,                             // llvm.aarch64.clrex
     aarch64_cls,                               // llvm.aarch64.cls
@@ -261,6 +261,7 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_neon_vcvthf2fp,                    // llvm.aarch64.neon.vcvthf2fp
     aarch64_neon_vsli,                         // llvm.aarch64.neon.vsli
     aarch64_neon_vsri,                         // llvm.aarch64.neon.vsri
+    aarch64_prefetch,                          // llvm.aarch64.prefetch
     aarch64_rndr,                              // llvm.aarch64.rndr
     aarch64_rndrrs,                            // llvm.aarch64.rndrrs
     aarch64_sdiv,                              // llvm.aarch64.sdiv
@@ -275,7 +276,6 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sme_cntsd,                         // llvm.aarch64.sme.cntsd
     aarch64_sme_cntsh,                         // llvm.aarch64.sme.cntsh
     aarch64_sme_cntsw,                         // llvm.aarch64.sme.cntsw
-    aarch64_sme_get_pstatesm,                  // llvm.aarch64.sme.get.pstatesm
     aarch64_sme_get_tpidr2,                    // llvm.aarch64.sme.get.tpidr2
     aarch64_sme_ld1b_horiz,                    // llvm.aarch64.sme.ld1b.horiz
     aarch64_sme_ld1b_vert,                     // llvm.aarch64.sme.ld1b.vert
@@ -359,11 +359,11 @@ enum AARCH64Intrinsics : unsigned {
     aarch64_sve_bdep_x,                        // llvm.aarch64.sve.bdep.x
     aarch64_sve_bext_x,                        // llvm.aarch64.sve.bext.x
     aarch64_sve_bfdot,                         // llvm.aarch64.sve.bfdot
-    aarch64_sve_bfdot_lane,                    // llvm.aarch64.sve.bfdot.lane
+    aarch64_sve_bfdot_lane_v2,                 // llvm.aarch64.sve.bfdot.lane.v2
     aarch64_sve_bfmlalb,                       // llvm.aarch64.sve.bfmlalb
-    aarch64_sve_bfmlalb_lane,                  // llvm.aarch64.sve.bfmlalb.lane
+    aarch64_sve_bfmlalb_lane_v2,               // llvm.aarch64.sve.bfmlalb.lane.v2
     aarch64_sve_bfmlalt,                       // llvm.aarch64.sve.bfmlalt
-    aarch64_sve_bfmlalt_lane,                  // llvm.aarch64.sve.bfmlalt.lane
+    aarch64_sve_bfmlalt_lane_v2,               // llvm.aarch64.sve.bfmlalt.lane.v2
     aarch64_sve_bfmmla,                        // llvm.aarch64.sve.bfmmla
     aarch64_sve_bgrp_x,                        // llvm.aarch64.sve.bgrp.x
     aarch64_sve_bic,                           // llvm.aarch64.sve.bic

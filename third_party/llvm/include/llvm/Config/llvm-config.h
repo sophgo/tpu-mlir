@@ -98,9 +98,6 @@
 /* Define if zstd compression is available */
 #define LLVM_ENABLE_ZSTD 0
 
-/* Define if LLVM was built with a dependency to the libtensorflow dynamic library */
-/* #undef LLVM_HAVE_TF_API */
-
 /* Define if LLVM is using tflite instead of libtensorflow */
 /* #undef LLVM_HAVE_TFLITE */
 
@@ -125,5 +122,8 @@
 
 /* Define to 1 if you have the DIA SDK installed, and to 0 if you don't. */
 #define LLVM_ENABLE_DIA_SDK 0
+
+/* Define if plugins enabled */
+#define LLVM_ENABLE_PLUGINS
 
 #endif

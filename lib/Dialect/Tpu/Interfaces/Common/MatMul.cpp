@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 // clang-format off
 // case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7
 // case 2: [1, 512, 7, 7] * [25088, 4096] = [1, 4096] => batch = 1, M = 1, K = 25088, N = 4096
@@ -24,15 +22,15 @@
 // clang-format on
 matmul_attr_t tpu::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
-  auto a_s = module::getShape(input());
-  auto b_s = module::getShape(right());
-  auto o_s = module::getShape(output());
-  p.input_zp = input_zp();
-  p.with_bias = !bias().getType().isa<mlir::NoneType>();
-  p.do_relu = do_relu();
-  p.relu_limit = this->relu_limit().convertToDouble();
-  p.right_zp = right_zp();
-  p.right_transpose = right_transpose();
+  auto a_s = module::getShape(getInput());
+  auto b_s = module::getShape(getRight());
+  auto o_s = module::getShape(getOutput());
+  p.input_zp = getInputZp();
+  p.with_bias = !getBias().getType().isa<mlir::NoneType>();
+  p.do_relu = getDoRelu();
+  p.relu_limit = this->getReluLimit().convertToDouble();
+  p.right_zp = getRightZp();
+  p.right_transpose = getRightTranspose();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
   assert(b_dims >= 2);
@@ -79,8 +77,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   auto matmul = (MatMul *)p.handle;
 
   matmul->run();
-  auto out_type = module::getStorageType(output());
-  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(getOutput());
+  auto num_elem = module::getNumElements(getOutput());
   bool is_cv18xx = module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
@@ -88,18 +86,18 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (module::isUniformQuantized(output())) {
+  } else if (module::isUniformQuantized(getOutput())) {
     if (is_cv18xx) {
       auto a = parseParam();
-      bool is_fc = isa<top::WeightOp>(right().getDefiningOp());
+      bool is_fc = isa<top::WeightOp>(getRight().getDefiningOp());
       i64_array_t rshift_v;
       i64_array_t multiplier_v;
       if (is_fc) {
-        rshift_v = module::getI64Array(rshifts(), a.batch, 0);
-        multiplier_v = module::getI64Array(multipliers(), a.batch, 1);
+        rshift_v = module::getI64Array(getRshifts(), a.batch, 0);
+        multiplier_v = module::getI64Array(getMultipliers(), a.batch, 1);
       } else {
-        rshift_v = module::getI64Array(rshifts(), 1, 0);
-        multiplier_v = module::getI64Array(multipliers(), 1, 1);
+        rshift_v = module::getI64Array(getRshifts(), 1, 0);
+        multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
         rshift_v->resize(a.batch, rshift_v->at(0));
         multiplier_v->resize(a.batch, multiplier_v->at(0));
       }
@@ -117,14 +115,14 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
         }
       }
     } else {
-      auto o_qtype = module::getUniformQuantizedType(output());
-      auto rshift_v = module::getI64Array(rshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(multipliers(), 1, 1);
+      auto o_qtype = module::getUniformQuantizedType(getOutput());
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
       assert(rshift_v->size() == 1);
       assert(multiplier_v->size() == 1);
-      auto num_output = module::getNumElements(output());
-      if (quant_mode() == tpu::RequantMode::TFlite_Lshift ||
-          quant_mode() == tpu::RequantMode::TFlite) {
+      auto num_output = module::getNumElements(getOutput());
+      if (getQuantMode() == tpu::RequantMode::TFlite_Lshift ||
+          getQuantMode() == tpu::RequantMode::TFlite) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
         for (int64_t i = 0; i < num_output; i++) {
           // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>
@@ -138,7 +136,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
             p.outputs[0][i] = to_int8(v + o_qtype.getZeroPoint());
           }
         }
-      } else if (quant_mode() == tpu::RequantMode::Normal) {
+      } else if (getQuantMode() == tpu::RequantMode::Normal) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
         for (int i = 0; i < num_output; ++i) {
           auto v = applyMultiplierAndRShift(

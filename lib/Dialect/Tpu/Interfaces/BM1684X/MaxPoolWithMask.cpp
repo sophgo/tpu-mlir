@@ -114,7 +114,7 @@ void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t h_step,
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   int64_t pad_h_b =
       (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0);
   sec_info->n_slice = in_gi.n_slice;
@@ -143,7 +143,7 @@ void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step,
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 
   auto attr = parseParam();
   pooling_local_spec_t spec = {0};

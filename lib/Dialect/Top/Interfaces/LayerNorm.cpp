@@ -16,8 +16,8 @@
 
 
 int64_t top::LayerNormOp::getFLOPs() {
-  const bool have_bias = bias().getType().isa<NoneType>();
-  const int64_t num_elem = module::getNumElements(output());
+  const bool have_bias = getBias().getType().isa<NoneType>();
+  const int64_t num_elem = module::getNumElements(getOutput());
   return num_elem * (10 + !!have_bias);
 }
 
@@ -25,9 +25,9 @@ LogicalResult top::LayerNormOp::init(InferenceParameter &p) { return success(); 
 void top::LayerNormOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
-  const int axis_ = axis();
-  const float eps_ = eps().convertToDouble();
-  const auto input_shape = module::getShape(input());
+  const int axis_ = getAxis();
+  const float eps_ = getEps().convertToDouble();
+  const auto input_shape = module::getShape(getInput());
 
   int outer_dim = 1;
   for (int i = 0; i < axis_; i++) {
@@ -39,9 +39,9 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
     inner_dim *= input_shape[i];
   }
 
-  const bool have_bias = !bias().getType().isa<NoneType>();
-  const bool need_mean = !mean().getType().isa<NoneType>();
-  const bool need_rstd = !rstd().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
+  const bool need_mean = !getMean().getType().isa<NoneType>();
+  const bool need_rstd = !getRstd().getType().isa<NoneType>();
 
   const float* input_data = p.inputs[0];
   const float* weight_data = p.inputs[1];

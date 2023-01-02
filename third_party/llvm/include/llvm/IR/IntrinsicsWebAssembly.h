@@ -13,23 +13,18 @@ namespace llvm {
 namespace Intrinsic {
 enum WASMIntrinsics : unsigned {
 // Enum values for intrinsics
-    wasm_alltrue = 9590,                              // llvm.wasm.alltrue
+    wasm_alltrue = 9681,                              // llvm.wasm.alltrue
     wasm_anytrue,                              // llvm.wasm.anytrue
     wasm_avgr_unsigned,                        // llvm.wasm.avgr.unsigned
     wasm_bitmask,                              // llvm.wasm.bitmask
     wasm_bitselect,                            // llvm.wasm.bitselect
     wasm_catch,                                // llvm.wasm.catch
     wasm_dot,                                  // llvm.wasm.dot
-    wasm_dot_i8x16_i7x16_add_signed,           // llvm.wasm.dot.i8x16.i7x16.add.signed
-    wasm_dot_i8x16_i7x16_signed,               // llvm.wasm.dot.i8x16.i7x16.signed
     wasm_extadd_pairwise_signed,               // llvm.wasm.extadd.pairwise.signed
     wasm_extadd_pairwise_unsigned,             // llvm.wasm.extadd.pairwise.unsigned
-    wasm_fma,                                  // llvm.wasm.fma
-    wasm_fms,                                  // llvm.wasm.fms
     wasm_get_ehselector,                       // llvm.wasm.get.ehselector
     wasm_get_exception,                        // llvm.wasm.get.exception
     wasm_landingpad_index,                     // llvm.wasm.landingpad.index
-    wasm_laneselect,                           // llvm.wasm.laneselect
     wasm_lsda,                                 // llvm.wasm.lsda
     wasm_memory_atomic_notify,                 // llvm.wasm.memory.atomic.notify
     wasm_memory_atomic_wait32,                 // llvm.wasm.memory.atomic.wait32
@@ -46,8 +41,13 @@ enum WASMIntrinsics : unsigned {
     wasm_ref_null_extern,                      // llvm.wasm.ref.null.extern
     wasm_ref_null_func,                        // llvm.wasm.ref.null.func
     wasm_relaxed_dot_bf16x8_add_f32,           // llvm.wasm.relaxed.dot.bf16x8.add.f32
+    wasm_relaxed_dot_i8x16_i7x16_add_signed,   // llvm.wasm.relaxed.dot.i8x16.i7x16.add.signed
+    wasm_relaxed_dot_i8x16_i7x16_signed,       // llvm.wasm.relaxed.dot.i8x16.i7x16.signed
+    wasm_relaxed_laneselect,                   // llvm.wasm.relaxed.laneselect
+    wasm_relaxed_madd,                         // llvm.wasm.relaxed.madd
     wasm_relaxed_max,                          // llvm.wasm.relaxed.max
     wasm_relaxed_min,                          // llvm.wasm.relaxed.min
+    wasm_relaxed_nmadd,                        // llvm.wasm.relaxed.nmadd
     wasm_relaxed_q15mulr_signed,               // llvm.wasm.relaxed.q15mulr.signed
     wasm_relaxed_swizzle,                      // llvm.wasm.relaxed.swizzle
     wasm_relaxed_trunc_signed,                 // llvm.wasm.relaxed.trunc.signed

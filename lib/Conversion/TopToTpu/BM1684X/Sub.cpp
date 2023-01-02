@@ -37,7 +37,7 @@ void SubLowering::LoweringF16(PatternRewriter &rewriter, top::SubOp op) const {
 //                \ input1 -> dequant /
 void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::SubOp subOp) const {
-  if (module::isUniformQuantized(subOp.inputs()[0], subOp.output()) == false) {
+  if (module::isUniformQuantized(subOp.getInputs()[0], subOp.getOutput()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   auto op = subOp.getOperation();
@@ -50,7 +50,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<double> scale_v(nInputs);
   int64_t zeropoint;
   double o_scale;
-  module::getScaleAndZeroPoint(subOp.output(), o_scale, zeropoint, true);
+  module::getScaleAndZeroPoint(subOp.getOutput(), o_scale, zeropoint, true);
 
   // generate quant param from given scale
   double scale, scale_max;
@@ -107,7 +107,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   // std::string d0_name = module::getName(op).str() + "_dequant0";
   // auto name_loc_d0 = NameLoc::get(rewriter.getStringAttr(d0_name));
   // auto input0_dequant =
-  //     do_dequant(name_loc_d0, subOp.inputs()[0], rewriter.getI32Type(),
+  //     do_dequant(name_loc_d0, subOp.getInputs()[0], rewriter.getI32Type(),
   //                multiplier_v[0], shift_v[0], tpu::DequantMode::TFlite,
   //                lshift);
   // // op->setOperand(0, input0_dequant);
@@ -116,7 +116,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   // std::string d1_name = module::getName(op).str() + "_dequant1";
   // auto name_loc_d1 = NameLoc::get(rewriter.getStringAttr(d1_name));
   // auto input1_dequant =
-  //     do_dequant(name_loc_d1, subOp.inputs()[1], rewriter.getI32Type(),
+  //     do_dequant(name_loc_d1, subOp.getInputs()[1], rewriter.getI32Type(),
   //                multiplier_v[1], shift_v[1], tpu::DequantMode::TFlite,
   //                lshift);
   // // op->setOperand(1, input1_dequant);
@@ -125,7 +125,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::string suffix = "_sub";
   std::string new_name = module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
-  auto newType = RankedTensorType::get(module::getShape(subOp.output()),
+  auto newType = RankedTensorType::get(module::getShape(subOp.getOutput()),
                                        rewriter.getI32Type());
   // auto sub_quant = lowering_common<tpu::SubOp>(op, newType);
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
@@ -138,17 +138,17 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
                                           rewriter.getF64FloatAttr(const_val)));
     auto newOp =
         rewriter.create<tpu::SubConstOp>(name_loc, newType, operands, attrs);
-    subout = newOp.output();
+    subout = newOp.getOutput();
   } else {
     auto newOp =
         rewriter.create<tpu::SubOp>(name_loc, newType, operands, attrs);
-    subout = newOp.output();
+    subout = newOp.getOutput();
   }
   auto newOp = rewriter.create<tpu::SubOp>(name_loc, newType, operands, attrs);
   // requant to int8
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);
-  auto v = do_requant(op->getLoc(), subout, subOp.output().getType(), true,
+  auto v = do_requant(op->getLoc(), subout, subOp.getOutput().getType(), true,
                       scalei, shifti, tpu::RequantMode::TFlite);
   rewriter.replaceOp(op, {v});
 }

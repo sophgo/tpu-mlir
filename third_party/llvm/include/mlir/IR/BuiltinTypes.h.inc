@@ -22,6 +22,8 @@ class Float16Type;
 class Float32Type;
 class Float64Type;
 class Float80Type;
+class Float8E4M3FNType;
+class Float8E5M2Type;
 class FunctionType;
 class IndexType;
 class IntegerType;
@@ -76,6 +78,16 @@ public:
   using Base::Base;
   static Float80Type get(MLIRContext *context);
 };
+class Float8E4M3FNType : public ::mlir::Type::TypeBase<Float8E4M3FNType, ::mlir::FloatType, ::mlir::TypeStorage> {
+public:
+  using Base::Base;
+  static Float8E4M3FNType get(MLIRContext *context);
+};
+class Float8E5M2Type : public ::mlir::Type::TypeBase<Float8E5M2Type, ::mlir::FloatType, ::mlir::TypeStorage> {
+public:
+  using Base::Base;
+  static Float8E5M2Type get(MLIRContext *context);
+};
 namespace detail {
 struct FunctionTypeStorage;
 } // namespace detail
@@ -108,8 +120,6 @@ public:
   static FunctionType get(::mlir::MLIRContext *context, TypeRange inputs, TypeRange results);
   ArrayRef<Type> getInputs() const;
   ArrayRef<Type> getResults() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 class IndexType : public ::mlir::Type::TypeBase<IndexType, ::mlir::Type, ::mlir::TypeStorage> {
 public:
@@ -180,12 +190,6 @@ public:
   /// New `Attribute getMemorySpace()` method should be used instead.
   unsigned getMemorySpaceAsInt() const;
 
-  // TODO: merge these two special values in a single one used everywhere.
-  // Unfortunately, uses of `-1` have crept deep into the codebase now and are
-  // hard to track.
-  static int64_t getDynamicStrideOrOffset() {
-    return ShapedType::kDynamicStrideOrOffset;
-  }
   using Base::getChecked;
 public:
   static MemRefType get(ArrayRef<int64_t> shape, Type elementType, MemRefLayoutAttrInterface layout = {}, Attribute memorySpace = {});
@@ -199,8 +203,6 @@ public:
   Type getElementType() const;
   MemRefLayoutAttrInterface getLayout() const;
   Attribute getMemorySpace() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 class NoneType : public ::mlir::Type::TypeBase<NoneType, ::mlir::Type, ::mlir::TypeStorage> {
 public:
@@ -248,8 +250,6 @@ public:
   ::llvm::ArrayRef<int64_t> getShape() const;
   Type getElementType() const;
   Attribute getEncoding() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct TupleTypeStorage;
@@ -280,8 +280,6 @@ public:
   static TupleType get(::mlir::MLIRContext *context, TypeRange elementTypes);
   static TupleType get(::mlir::MLIRContext *context);
   ArrayRef<Type> getTypes() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct UnrankedMemRefTypeStorage;
@@ -299,7 +297,7 @@ public:
   using ShapedType::Trait<UnrankedMemRefType>::getDimSize;
   using ShapedType::Trait<UnrankedMemRefType>::getDynamicDimIndex;
 
-  ArrayRef<int64_t> getShape() const { return llvm::None; }
+  ArrayRef<int64_t> getShape() const { return std::nullopt; }
 
   /// [deprecated] Returns the memory space in old raw integer representation.
   /// New `Attribute getMemorySpace()` method should be used instead.
@@ -313,8 +311,6 @@ public:
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType, Attribute memorySpace);
   Type getElementType() const;
   Attribute getMemorySpace() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct UnrankedTensorTypeStorage;
@@ -332,15 +328,13 @@ public:
   using ShapedType::Trait<UnrankedTensorType>::getDimSize;
   using ShapedType::Trait<UnrankedTensorType>::getDynamicDimIndex;
 
-  ArrayRef<int64_t> getShape() const { return llvm::None; }
+  ArrayRef<int64_t> getShape() const { return std::nullopt; }
   using Base::getChecked;
 public:
   static UnrankedTensorType get(Type elementType);
   static UnrankedTensorType getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType);
   Type getElementType() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct VectorTypeStorage;
@@ -374,7 +368,7 @@ public:
 
   /// Clone this vector type with the given shape and element type. If the
   /// provided shape is `None`, the current shape of the type is used.
-  VectorType cloneWith(Optional<ArrayRef<int64_t>> shape,
+  VectorType cloneWith(std::optional<ArrayRef<int64_t>> shape,
                        Type elementType) const;
   using Base::getChecked;
 public:
@@ -384,8 +378,6 @@ public:
   ::llvm::ArrayRef<int64_t> getShape() const;
   Type getElementType() const;
   unsigned getNumScalableDims() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Type replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 } // namespace mlir
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::BFloat16Type)
@@ -395,6 +387,8 @@ MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float16Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float32Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float64Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float80Type)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E4M3FNType)
+MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::Float8E5M2Type)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::FunctionType)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IndexType)
 MLIR_DECLARE_EXPLICIT_TYPE_ID(::mlir::IntegerType)

@@ -12,17 +12,15 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::ClipOp::getFLOPs() { return 0; }
 
 LogicalResult top::ClipOp::init(InferenceParameter &p) { return success(); }
 void top::ClipOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ClipOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(output());
-  auto min_v = static_cast<float>(minAttr().getValueAsDouble());
-  auto max_v = static_cast<float>(maxAttr().getValueAsDouble());
+  auto num_element = module::getNumElements(getOutput());
+  auto min_v = static_cast<float>(getMin().convertToDouble());
+  auto max_v = static_cast<float>(getMax().convertToDouble());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     auto val = p.inputs[0][i];

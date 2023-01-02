@@ -7,11 +7,95 @@
 \*===----------------------------------------------------------------------===*/
 
 namespace mlir {
+class PartialReductionOpInterface;
+namespace detail {
+struct PartialReductionOpInterfaceInterfaceTraits {
+  struct Concept {
+    FailureOr<Operation*> (*generateInitialTensorForPartialReduction)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location , ArrayRef<OpFoldResult>, ArrayRef<int>);
+    Operation*(*tileToPartialReduction)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location , ValueRange, ArrayRef<OpFoldResult>, ArrayRef<OpFoldResult>, ArrayRef<int>);
+    Operation*(*mergeReductions)(const Concept *impl, ::mlir::Operation *, OpBuilder &, Location , ValueRange, ArrayRef<int>);
+  };
+  template<typename ConcreteOp>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::PartialReductionOpInterface;
+    Model() : Concept{generateInitialTensorForPartialReduction, tileToPartialReduction, mergeReductions} {}
+
+    static inline FailureOr<Operation*> generateInitialTensorForPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim);
+    static inline Operation*tileToPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims);
+    static inline Operation*mergeReductions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim);
+  };
+  template<typename ConcreteOp>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::PartialReductionOpInterface;
+    FallbackModel() : Concept{generateInitialTensorForPartialReduction, tileToPartialReduction, mergeReductions} {}
+
+    static inline FailureOr<Operation*> generateInitialTensorForPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim);
+    static inline Operation*tileToPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims);
+    static inline Operation*mergeReductions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim);
+  };
+  template<typename ConcreteModel, typename ConcreteOp>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    using ConcreteEntity = ConcreteOp;
+    FailureOr<Operation*> generateInitialTensorForPartialReduction(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, Location loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim) const;
+    Operation*tileToPartialReduction(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, Location loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims) const;
+    Operation*mergeReductions(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, Location loc, ValueRange partialReduce, ArrayRef<int> reductionDim) const;
+  };
+};template <typename ConcreteOp>
+struct PartialReductionOpInterfaceTrait;
+
+} // namespace detail
+class PartialReductionOpInterface : public ::mlir::OpInterface<PartialReductionOpInterface, detail::PartialReductionOpInterfaceInterfaceTraits> {
+public:
+  using ::mlir::OpInterface<PartialReductionOpInterface, detail::PartialReductionOpInterfaceInterfaceTraits>::OpInterface;
+  template <typename ConcreteOp>
+  struct Trait : public detail::PartialReductionOpInterfaceTrait<ConcreteOp> {};
+  /// Method to generate a tensor initalized with the identity value of the
+  /// operation reduction. The tensor shape is equal to operation result
+  /// shape with new dimension for each non zero tile size.
+  FailureOr<Operation*> generateInitialTensorForPartialReduction(OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim);
+  /// Method to generate a tiled version of the operation where the tiled
+  /// reduction dimension are converted to parallel dimensions with a size
+  /// less or equal to the tile size. This is meant to be used with
+  /// `mergeReductions` method which will combine the partial reductions.
+  Operation*tileToPartialReduction(OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims);
+  /// Method to merge partial reductions for an operation that has been
+  /// tiled along the reduction dimensions. This will only apply the
+  /// reduction the operation.
+  Operation*mergeReductions(OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim);
+};
+namespace detail {
+  template <typename ConcreteOp>
+  struct PartialReductionOpInterfaceTrait : public ::mlir::OpInterface<PartialReductionOpInterface, detail::PartialReductionOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
+    /// Method to generate a tensor initalized with the identity value of the
+    /// operation reduction. The tensor shape is equal to operation result
+    /// shape with new dimension for each non zero tile size.
+    FailureOr<Operation*> generateInitialTensorForPartialReduction(OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim) {
+      return failure();
+    }
+    /// Method to generate a tiled version of the operation where the tiled
+    /// reduction dimension are converted to parallel dimensions with a size
+    /// less or equal to the tile size. This is meant to be used with
+    /// `mergeReductions` method which will combine the partial reductions.
+    Operation*tileToPartialReduction(OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims) {
+      return nullptr;
+    }
+    /// Method to merge partial reductions for an operation that has been
+    /// tiled along the reduction dimensions. This will only apply the
+    /// reduction the operation.
+    Operation*mergeReductions(OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim) {
+      return nullptr;
+    }
+  };
+}// namespace detail
+} // namespace mlir
+namespace mlir {
 class TilingInterface;
 namespace detail {
 struct TilingInterfaceInterfaceTraits {
   struct Concept {
-    SmallVector<Value> (*getDestinationOperands)(const Concept *impl, ::mlir::Operation *, OpBuilder &);
     SmallVector<utils::IteratorType> (*getLoopIteratorTypes)(const Concept *impl, ::mlir::Operation *);
     SmallVector<Range> (*getIterationDomain)(const Concept *impl, ::mlir::Operation *, OpBuilder &);
     SmallVector<Operation *> (*getTiledImplementation)(const Concept *impl, ::mlir::Operation *, OpBuilder &, ArrayRef<OpFoldResult> , ArrayRef<OpFoldResult> );
@@ -23,9 +107,8 @@ struct TilingInterfaceInterfaceTraits {
   class Model : public Concept {
   public:
     using Interface = ::mlir::TilingInterface;
-    Model() : Concept{getDestinationOperands, getLoopIteratorTypes, getIterationDomain, getTiledImplementation, getResultTilePosition, generateResultTileValue, generateScalarImplementation} {}
+    Model() : Concept{getLoopIteratorTypes, getIterationDomain, getTiledImplementation, getResultTilePosition, generateResultTileValue, generateScalarImplementation} {}
 
-    static inline SmallVector<Value> getDestinationOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
     static inline SmallVector<utils::IteratorType> getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<Range> getIterationDomain(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
     static inline SmallVector<Operation *> getTiledImplementation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes);
@@ -37,9 +120,8 @@ struct TilingInterfaceInterfaceTraits {
   class FallbackModel : public Concept {
   public:
     using Interface = ::mlir::TilingInterface;
-    FallbackModel() : Concept{getDestinationOperands, getLoopIteratorTypes, getIterationDomain, getTiledImplementation, getResultTilePosition, generateResultTileValue, generateScalarImplementation} {}
+    FallbackModel() : Concept{getLoopIteratorTypes, getIterationDomain, getTiledImplementation, getResultTilePosition, generateResultTileValue, generateScalarImplementation} {}
 
-    static inline SmallVector<Value> getDestinationOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
     static inline SmallVector<utils::IteratorType> getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
     static inline SmallVector<Range> getIterationDomain(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b);
     static inline SmallVector<Operation *> getTiledImplementation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, ArrayRef<OpFoldResult>  offsets, ArrayRef<OpFoldResult>  sizes);
@@ -51,7 +133,6 @@ struct TilingInterfaceInterfaceTraits {
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
     using ConcreteEntity = ConcreteOp;
-    SmallVector<Value> getDestinationOperands(::mlir::Operation *tablegen_opaque_val, OpBuilder &b) const;
     SmallVector<utils::IteratorType> getLoopIteratorTypes(::mlir::Operation *tablegen_opaque_val) const;
     SmallVector<Range> getIterationDomain(::mlir::Operation *tablegen_opaque_val, OpBuilder &b) const;
     SmallVector<Operation *> getTiledImplementation(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes) const;
@@ -68,13 +149,6 @@ public:
   using ::mlir::OpInterface<TilingInterface, detail::TilingInterfaceInterfaceTraits>::OpInterface;
   template <typename ConcreteOp>
   struct Trait : public detail::TilingInterfaceTrait<ConcreteOp> {};
-  /// Returns a list of operands into which the result of the
-  /// tiled implementation is written into. With `tensor`
-  /// operands, this will be used as the initial tensor into which
-  /// the tiled results are inserted into. With `memref` operands,
-  /// this will be the operand into which the result of the tiled
-  /// operation is written into.
-  SmallVector<Value> getDestinationOperands(OpBuilder & b);
   /// Returns a list of iterator types that describe the number of loops.
   SmallVector<utils::IteratorType> getLoopIteratorTypes();
   /// Returns a list of ranges that describe the loop bounds and
@@ -114,7 +188,7 @@ public:
   /// result required. This method enables fusion by using tile
   /// and fuse. The method returns failure if the operation can't be
   /// tiled to generate the result tile. In practical terms this
-  /// implies it cannot be tiled and fused with its consumers.        
+  /// implies it cannot be tiled and fused with its consumers.
   /// 
   /// - `offsets` provides the offset of the tile in the coordinate system
   ///   of the original iteration space, i.e., if an iteration space
@@ -123,28 +197,19 @@ public:
   ///   iteration space).
   /// - `sizes` provides the size of the tile.
   FailureOr<Value> generateResultTileValue(OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes);
-  /// Generates the scalar implementation of the operation. 
+  /// Generates the scalar implementation of the operation.
   /// 
   /// Given the list `ivs` that represent points in the iteration space
   /// (as specified by `getIterationDomain()`) returns the scalar operations
   /// that represent the computation at that point in the iteration space.
   /// This method is typically used as the "exit path", i.e. once all
-  /// transformations are done, this method can be used to lower to scalar 
+  /// transformations are done, this method can be used to lower to scalar
   /// code that can then be lowered to LLVM or SPIR-V dialects.
   LogicalResult generateScalarImplementation(OpBuilder & b, Location  loc, ValueRange  ivs);
 };
 namespace detail {
   template <typename ConcreteOp>
   struct TilingInterfaceTrait : public ::mlir::OpInterface<TilingInterface, detail::TilingInterfaceInterfaceTraits>::Trait<ConcreteOp> {
-    /// Returns a list of operands into which the result of the
-    /// tiled implementation is written into. With `tensor`
-    /// operands, this will be used as the initial tensor into which
-    /// the tiled results are inserted into. With `memref` operands,
-    /// this will be the operand into which the result of the tiled
-    /// operation is written into.
-    SmallVector<Value> getDestinationOperands(OpBuilder & b) {
-      return ValueRange{};
-    }
     /// Returns a list of iterator types that describe the number of loops.
     SmallVector<utils::IteratorType> getLoopIteratorTypes() {
       return {};
@@ -192,7 +257,7 @@ namespace detail {
     /// result required. This method enables fusion by using tile
     /// and fuse. The method returns failure if the operation can't be
     /// tiled to generate the result tile. In practical terms this
-    /// implies it cannot be tiled and fused with its consumers.        
+    /// implies it cannot be tiled and fused with its consumers.
     /// 
     /// - `offsets` provides the offset of the tile in the coordinate system
     ///   of the original iteration space, i.e., if an iteration space
@@ -203,23 +268,59 @@ namespace detail {
     FailureOr<Value> generateResultTileValue(OpBuilder & b, unsigned resultNumber, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes) {
       return failure();
     }
-    /// Generates the scalar implementation of the operation. 
+    /// Generates the scalar implementation of the operation.
     /// 
     /// Given the list `ivs` that represent points in the iteration space
     /// (as specified by `getIterationDomain()`) returns the scalar operations
     /// that represent the computation at that point in the iteration space.
     /// This method is typically used as the "exit path", i.e. once all
-    /// transformations are done, this method can be used to lower to scalar 
+    /// transformations are done, this method can be used to lower to scalar
     /// code that can then be lowered to LLVM or SPIR-V dialects.
     LogicalResult generateScalarImplementation(OpBuilder & b, Location  loc, ValueRange  ivs) {
       return failure();
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
-SmallVector<Value> detail::TilingInterfaceInterfaceTraits::Model<ConcreteOp>::getDestinationOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b) {
-  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getDestinationOperands(b);
+FailureOr<Operation*> detail::PartialReductionOpInterfaceInterfaceTraits::Model<ConcreteOp>::generateInitialTensorForPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).generateInitialTensorForPartialReduction(b, loc, sizes, reductionDim);
 }
+template<typename ConcreteOp>
+Operation*detail::PartialReductionOpInterfaceInterfaceTraits::Model<ConcreteOp>::tileToPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).tileToPartialReduction(b, loc, init, offsets, sizes, reductionDims);
+}
+template<typename ConcreteOp>
+Operation*detail::PartialReductionOpInterfaceInterfaceTraits::Model<ConcreteOp>::mergeReductions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).mergeReductions(b, loc, partialReduce, reductionDim);
+}
+template<typename ConcreteOp>
+FailureOr<Operation*> detail::PartialReductionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::generateInitialTensorForPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim) {
+  return static_cast<const ConcreteOp *>(impl)->generateInitialTensorForPartialReduction(tablegen_opaque_val, b, loc, sizes, reductionDim);
+}
+template<typename ConcreteOp>
+Operation*detail::PartialReductionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::tileToPartialReduction(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims) {
+  return static_cast<const ConcreteOp *>(impl)->tileToPartialReduction(tablegen_opaque_val, b, loc, init, offsets, sizes, reductionDims);
+}
+template<typename ConcreteOp>
+Operation*detail::PartialReductionOpInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::mergeReductions(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange partialReduce, ArrayRef<int> reductionDim) {
+  return static_cast<const ConcreteOp *>(impl)->mergeReductions(tablegen_opaque_val, b, loc, partialReduce, reductionDim);
+}
+template<typename ConcreteModel, typename ConcreteOp>
+FailureOr<Operation*> detail::PartialReductionOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::generateInitialTensorForPartialReduction(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, Location loc, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDim) const {
+return failure();
+}
+template<typename ConcreteModel, typename ConcreteOp>
+Operation*detail::PartialReductionOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::tileToPartialReduction(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, Location loc, ValueRange init, ArrayRef<OpFoldResult> offsets, ArrayRef<OpFoldResult> sizes, ArrayRef<int> reductionDims) const {
+return nullptr;
+}
+template<typename ConcreteModel, typename ConcreteOp>
+Operation*detail::PartialReductionOpInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::mergeReductions(::mlir::Operation *tablegen_opaque_val, OpBuilder &b, Location loc, ValueRange partialReduce, ArrayRef<int> reductionDim) const {
+return nullptr;
+}
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 SmallVector<utils::IteratorType> detail::TilingInterfaceInterfaceTraits::Model<ConcreteOp>::getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getLoopIteratorTypes();
@@ -245,10 +346,6 @@ LogicalResult detail::TilingInterfaceInterfaceTraits::Model<ConcreteOp>::generat
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).generateScalarImplementation(b, loc, ivs);
 }
 template<typename ConcreteOp>
-SmallVector<Value> detail::TilingInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getDestinationOperands(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b) {
-  return static_cast<const ConcreteOp *>(impl)->getDestinationOperands(tablegen_opaque_val, b);
-}
-template<typename ConcreteOp>
 SmallVector<utils::IteratorType> detail::TilingInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::getLoopIteratorTypes(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
   return static_cast<const ConcreteOp *>(impl)->getLoopIteratorTypes(tablegen_opaque_val);
 }
@@ -271,10 +368,6 @@ FailureOr<Value> detail::TilingInterfaceInterfaceTraits::FallbackModel<ConcreteO
 template<typename ConcreteOp>
 LogicalResult detail::TilingInterfaceInterfaceTraits::FallbackModel<ConcreteOp>::generateScalarImplementation(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, OpBuilder & b, Location  loc, ValueRange  ivs) {
   return static_cast<const ConcreteOp *>(impl)->generateScalarImplementation(tablegen_opaque_val, b, loc, ivs);
-}
-template<typename ConcreteModel, typename ConcreteOp>
-SmallVector<Value> detail::TilingInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getDestinationOperands(::mlir::Operation *tablegen_opaque_val, OpBuilder &b) const {
-return ValueRange{};
 }
 template<typename ConcreteModel, typename ConcreteOp>
 SmallVector<utils::IteratorType> detail::TilingInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteOp>::getLoopIteratorTypes(::mlir::Operation *tablegen_opaque_val) const {

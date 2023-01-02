@@ -72,34 +72,6 @@ namespace detail {
     }
   };
 }// namespace detail
-template<typename ConcreteAttr>
-::mlir::DataLayoutEntryKey detail::DataLayoutEntryInterfaceInterfaceTraits::Model<ConcreteAttr>::getKey(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).getKey();
-}
-template<typename ConcreteAttr>
-::mlir::Attribute detail::DataLayoutEntryInterfaceInterfaceTraits::Model<ConcreteAttr>::getValue(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).getValue();
-}
-template<typename ConcreteAttr>
-::mlir::LogicalResult detail::DataLayoutEntryInterfaceInterfaceTraits::Model<ConcreteAttr>::verifyEntry(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) {
-  return (tablegen_opaque_val.cast<ConcreteAttr>()).verifyEntry(loc);
-}
-template<typename ConcreteAttr>
-::mlir::DataLayoutEntryKey detail::DataLayoutEntryInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getKey(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return static_cast<const ConcreteAttr *>(impl)->getKey(tablegen_opaque_val);
-}
-template<typename ConcreteAttr>
-::mlir::Attribute detail::DataLayoutEntryInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getValue(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
-  return static_cast<const ConcreteAttr *>(impl)->getValue(tablegen_opaque_val);
-}
-template<typename ConcreteAttr>
-::mlir::LogicalResult detail::DataLayoutEntryInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::verifyEntry(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) {
-  return static_cast<const ConcreteAttr *>(impl)->verifyEntry(tablegen_opaque_val, loc);
-}
-template<typename ConcreteModel, typename ConcreteAttr>
-::mlir::LogicalResult detail::DataLayoutEntryInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::verifyEntry(::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) const {
-return ::mlir::success();
-}
 } // namespace mlir
 namespace mlir {
 class DataLayoutSpecInterface;
@@ -198,6 +170,38 @@ namespace detail {
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+template<typename ConcreteAttr>
+::mlir::DataLayoutEntryKey detail::DataLayoutEntryInterfaceInterfaceTraits::Model<ConcreteAttr>::getKey(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getKey();
+}
+template<typename ConcreteAttr>
+::mlir::Attribute detail::DataLayoutEntryInterfaceInterfaceTraits::Model<ConcreteAttr>::getValue(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).getValue();
+}
+template<typename ConcreteAttr>
+::mlir::LogicalResult detail::DataLayoutEntryInterfaceInterfaceTraits::Model<ConcreteAttr>::verifyEntry(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) {
+  return (tablegen_opaque_val.cast<ConcreteAttr>()).verifyEntry(loc);
+}
+template<typename ConcreteAttr>
+::mlir::DataLayoutEntryKey detail::DataLayoutEntryInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getKey(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->getKey(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+::mlir::Attribute detail::DataLayoutEntryInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::getValue(const Concept *impl, ::mlir::Attribute tablegen_opaque_val) {
+  return static_cast<const ConcreteAttr *>(impl)->getValue(tablegen_opaque_val);
+}
+template<typename ConcreteAttr>
+::mlir::LogicalResult detail::DataLayoutEntryInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::verifyEntry(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) {
+  return static_cast<const ConcreteAttr *>(impl)->verifyEntry(tablegen_opaque_val, loc);
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+::mlir::LogicalResult detail::DataLayoutEntryInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::verifyEntry(::mlir::Attribute tablegen_opaque_val, ::mlir::Location loc) const {
+return ::mlir::success();
+}
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteAttr>
 ::mlir::DataLayoutSpecInterface detail::DataLayoutSpecInterfaceInterfaceTraits::Model<ConcreteAttr>::combineWith(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<::mlir::DataLayoutSpecInterface> specs) {
   return (tablegen_opaque_val.cast<ConcreteAttr>()).combineWith(specs);

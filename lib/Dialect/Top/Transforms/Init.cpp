@@ -26,8 +26,8 @@ class InitPass : public InitBase<InitPass> {
 public:
   InitPass() {}
   void runOnOperation() override {
-    auto module = getOperation();
-    module::init(module);
+    auto mOp = getOperation();
+    module::init(mOp);
   }
 };
 

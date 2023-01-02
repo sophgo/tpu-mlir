@@ -62,6 +62,8 @@ namespace detail {
   
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 bool detail::CastOpInterfaceInterfaceTraits::Model<ConcreteOp>::areCastCompatible(::mlir::TypeRange inputs, ::mlir::TypeRange outputs) {
   return ConcreteOp::areCastCompatible(inputs, outputs);

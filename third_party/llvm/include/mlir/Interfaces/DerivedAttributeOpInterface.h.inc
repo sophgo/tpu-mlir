@@ -57,6 +57,8 @@ namespace detail {
   struct DerivedAttributeOpInterfaceTrait : public ::mlir::OpInterface<DerivedAttributeOpInterface, detail::DerivedAttributeOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 bool detail::DerivedAttributeOpInterfaceInterfaceTraits::Model<ConcreteOp>::isDerivedAttribute(::mlir::StringRef name) {
   return ConcreteOp::isDerivedAttribute(name);

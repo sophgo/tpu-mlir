@@ -14,13 +14,13 @@
 
 
 
-int64_t top::TanhOp::getFLOPs() { return module::getNumElements(output()) * 4; }
+int64_t top::TanhOp::getFLOPs() { return module::getNumElements(getOutput()) * 4; }
 
 LogicalResult top::TanhOp::init(InferenceParameter &p) { return success(); }
 void top::TanhOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::TanhOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(input());
+  auto num_element = module::getNumElements(getInput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     auto val = p.inputs[0][i];

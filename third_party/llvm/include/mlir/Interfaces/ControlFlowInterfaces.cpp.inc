@@ -37,7 +37,7 @@
 /// Returns the `BlockArgument` corresponding to operand `operandIndex` in
 /// some successor, or None if `operandIndex` isn't a successor operand
 /// index.
-::llvm::Optional<::mlir::BlockArgument> mlir::BranchOpInterface::getSuccessorBlockArgument(unsigned operandIndex) {
+::std::optional<::mlir::BlockArgument> mlir::BranchOpInterface::getSuccessorBlockArgument(unsigned operandIndex) {
       return getImpl()->getSuccessorBlockArgument(getImpl(), getOperation(), operandIndex);
   }
 /// Returns the successor that would be chosen with the given constant
@@ -56,7 +56,7 @@ bool mlir::BranchOpInterface::areTypesCompatible(::mlir::Type lhs, ::mlir::Type 
 /// the operation's results when it branches back to itself. These operands
 /// should correspond 1-1 with the successor inputs specified in
 /// `getSuccessorRegions`.
-::mlir::OperandRange mlir::RegionBranchOpInterface::getSuccessorEntryOperands(::llvm::Optional<unsigned> index) {
+::mlir::OperandRange mlir::RegionBranchOpInterface::getSuccessorEntryOperands(::std::optional<unsigned> index) {
       return getImpl()->getSuccessorEntryOperands(getImpl(), getOperation(), index);
   }
 /// Returns the viable successors of a region at `index`, or the possible
@@ -71,7 +71,7 @@ bool mlir::BranchOpInterface::areTypesCompatible(::mlir::Type lhs, ::mlir::Type 
 /// regions may be executed when entering an operation, and which regions
 /// are executed after having executed another region of the parent op. The
 /// successor region must be non-empty.
-void mlir::RegionBranchOpInterface::getSuccessorRegions(::llvm::Optional<unsigned> index, ::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
+void mlir::RegionBranchOpInterface::getSuccessorRegions(::std::optional<unsigned> index, ::llvm::ArrayRef<::mlir::Attribute> operands, ::llvm::SmallVectorImpl<::mlir::RegionSuccessor> & regions) {
       return getImpl()->getSuccessorRegions(getImpl(), getOperation(), index, operands, regions);
   }
 /// Populates `invocationBounds` with the minimum and maximum number of
@@ -79,7 +79,7 @@ void mlir::RegionBranchOpInterface::getSuccessorRegions(::llvm::Optional<unsigne
 /// regions yield normally, i.e. do not abort or invoke an infinite loop).
 /// The minimum number of invocations is at least 0. If the maximum number
 /// of invocations cannot be statically determined, then it will not have a
-/// value (i.e., it is set to `llvm::None`).
+/// value (i.e., it is set to `std::nullopt`).
 /// 
 /// `operands` is a set of optional attributes that either correspond to
 /// constant values for each operand of this operation or null if that
@@ -101,13 +101,13 @@ bool mlir::RegionBranchOpInterface::areTypesCompatible(::mlir::Type lhs, ::mlir:
 /// passing them to the region successor given by `index`.  If `index` is
 /// None, this function returns the operands that are passed as a result to
 /// the parent operation.
-::mlir::MutableOperandRange mlir::RegionBranchTerminatorOpInterface::getMutableSuccessorOperands(::llvm::Optional<unsigned> index) {
+::mlir::MutableOperandRange mlir::RegionBranchTerminatorOpInterface::getMutableSuccessorOperands(::std::optional<unsigned> index) {
       return getImpl()->getMutableSuccessorOperands(getImpl(), getOperation(), index);
   }
 /// Returns a range of operands that are semantically "returned" by passing
 /// them to the region successor given by `index`.  If `index` is None, this
 /// function returns the operands that are passed as a result to the parent
 /// operation.
-::mlir::OperandRange mlir::RegionBranchTerminatorOpInterface::getSuccessorOperands(::llvm::Optional<unsigned> index) {
+::mlir::OperandRange mlir::RegionBranchTerminatorOpInterface::getSuccessorOperands(::std::optional<unsigned> index) {
       return getImpl()->getSuccessorOperands(getImpl(), getOperation(), index);
   }

@@ -25,14 +25,14 @@ void SiLULowering::LoweringINT4(PatternRewriter &rewriter, top::SiLUOp op,
 }
 void SiLULowering::LoweringINT8(PatternRewriter &rewriter, top::SiLUOp op,
                                 bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
+  auto stype = module::getStorageType(op.getOutput());
   auto table =
-      create_lookup_table(op.input(), op.output(), asymmetric, [](double val) {
+      create_lookup_table(op.getInput(), op.getOutput(), asymmetric, [](double val) {
         return val / (1 + std::exp(-val));
       });
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void SiLULowering::LoweringBF16(PatternRewriter &rewriter,

@@ -29,13 +29,13 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::ReciprocalOp op,
                                       bool asymmetric) const {
 
-  double const_s = op.const_val().convertToDouble();
+  double const_s = op.getConstVal().convertToDouble();
   Value table =
-      create_lookup_table(op.input(), op.output(), asymmetric,
+      create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                           [const_s](double val) { return const_s / val; });
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,

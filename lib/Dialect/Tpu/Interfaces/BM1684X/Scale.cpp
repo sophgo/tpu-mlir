@@ -85,13 +85,13 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
   p.axis = 1;
   p.axis_num = 1;
   p.has_bias = true;
-  p.if_relu = do_relu();
-  p.relu_upper_limit = relu_limit().convertToDouble();
+  p.if_relu = getDoRelu();
+  p.relu_upper_limit = getReluLimit().convertToDouble();
   p.merge_weight_bias = 0;
   p.round_mode = ROUND_UP;
-  if (module::isUniformQuantized(input())) {
-    p.scale_sign = module::getStorageType(scale()).isSignedInteger();
-    p.bias_sign = module::getStorageType(bias()).isSignedInteger();
+  if (module::isUniformQuantized(getInput())) {
+    p.scale_sign = module::getStorageType(getScale()).isSignedInteger();
+    p.bias_sign = module::getStorageType(getBias()).isSignedInteger();
     p.version = 10;
     BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
                              input_spec->data(), output_spec->data());
@@ -108,7 +108,7 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
 int64_t tpu::ScaleOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  auto out_type = module::getStorageType(output());
+  auto out_type = module::getStorageType(getOutput());
   if (out_type.isInteger(8)) {
     // INT16 as middle result
     return 2 * out_lmem_bytes * sizeof(int16_t);
@@ -124,9 +124,9 @@ void tpu::ScaleOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -143,17 +143,17 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *s
   // out_zp is should be passed to backend
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto scale_gi = LocalGenInterface::getGroupInfo(scale(), n_step, h_step);
-  auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto scale_gi = LocalGenInterface::getGroupInfo(getScale(), n_step, h_step);
+  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step);
 
   llvm::SmallVector<int32_t, 4> input_shape = {
       (int)sec_info->out_n_slice, (int)c, (int)sec_info->out_h_slice, (int)w};
   llvm::SmallVector<int32_t, 4> scale_shape = {1, (int)c, 1, 1};
-  if (module::isUniformQuantized(input())) {
-    auto lshift_gi = LocalGenInterface::getGroupInfo(lshift(), n_step, h_step);
+  if (module::isUniformQuantized(getInput())) {
+    auto lshift_gi = LocalGenInterface::getGroupInfo(getLshift(), n_step, h_step);
     scale_fixed_local_param_t p = {0};
     p.input_local_addr = in_gi.out_addr;
     p.scale_local_addr = scale_gi.out_addr;
@@ -162,14 +162,14 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *s
     p.output_local_addr = gi.out_addr;
     p.buffer_local_addr = gi.buffer_addr;
     p.input_shape = input_shape.data();
-    p.if_relu = do_relu();
-    p.relu_upper_limit = relu_limit().convertToDouble();
+    p.if_relu = getDoRelu();
+    p.relu_upper_limit = getReluLimit().convertToDouble();
     p.is_scale_coeff = 1;
     p.is_bias_coeff = 1;
     p.is_shift_coeff = 1;
-    p.idtype = BM168x::getDataType(input());
-    p.sdtype = BM168x::getDataType(scale());
-    p.bdtype = BM168x::getDataType(bias());
+    p.idtype = BM168x::getDataType(getInput());
+    p.sdtype = BM168x::getDataType(getScale());
+    p.bdtype = BM168x::getDataType(getBias());
     p.round_mode = ROUND_UP;
     p.version = 10;
     BM168x::call_local_func("backend_api_scale_fixed_local", &p,
@@ -182,12 +182,12 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *s
     p.output_local_addr = gi.out_addr;
     p.input_shape = input_shape.data();
     p.scale_shape = scale_shape.data();
-    p.if_relu = do_relu();
-    p.relu_upper_limit = relu_limit().convertToDouble();
+    p.if_relu = getDoRelu();
+    p.relu_upper_limit = getReluLimit().convertToDouble();
     p.has_bias = 1;
     p.is_scale_coeff = 1;
     p.is_bias_coeff = 1;
-    p.dtype = BM168x::getDataType(input());
+    p.dtype = BM168x::getDataType(getInput());
     BM168x::call_local_func("backend_api_scale_float_local", &p,
                             sizeof(scale_float_local_param_t));
   }

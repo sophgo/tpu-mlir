@@ -21,13 +21,13 @@ void tpu::ScaleOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   const float *src = p.inputs[0];
   const float *scale = p.inputs[1];
   const float *bias = p.inputs[2];
   float *dst = p.outputs[0];
 
-  auto out_type = module::getStorageType(output());
+  auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
   if (out_type.isa<FloatType>()) {
 #pragma omp parallel for schedule(static, omp_schedule(c))
@@ -53,7 +53,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
           res = RightShiftRound(res, rshift_val, ROUNDING_HALF_UP);
-          if (do_relu() && res < 0) {
+          if (getDoRelu() && res < 0) {
             res = 0;
           }
           dst[idx] = out_type.isUnsignedInteger(8) ? to_uint8(res)
@@ -63,7 +63,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
     }
   } else {
     const float *lshift = p.inputs[3];
-    auto o_qtype = module::getUniformQuantizedType(output());
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
     int64_t out_zp = o_qtype.getZeroPoint();
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int64_t i = 0; i < c; ++i) {
@@ -75,7 +75,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           int64_t idx = j * c * h * w + i * h * w + k;
           int64_t res = (int64_t)src[idx] * scale_val + bias_val;
           res = RightShiftRound(res, rshift_val, ROUNDING_HALF_UP) + out_zp;
-          if (do_relu() && res < 0) {
+          if (getDoRelu() && res < 0) {
             res = 0;
           }
           dst[idx] = out_type.isUnsignedInteger(8) ? to_uint8(res)
@@ -85,8 +85,8 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
     }
   }
 
-  auto num_elem = module::getNumElements(output());
-  if (do_relu()) {
+  auto num_elem = module::getNumElements(getOutput());
+  if (getDoRelu()) {
     function_relu(p.outputs[0], p.outputs[0], num_elem);
   }
 

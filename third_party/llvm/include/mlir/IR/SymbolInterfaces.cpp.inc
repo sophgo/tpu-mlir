@@ -49,7 +49,7 @@ void mlir::SymbolOpInterface::setPublic() {
 /// Get all of the uses of the current symbol that are nested within the
 /// given operation 'from'.
 /// Note: See mlir::SymbolTable::getSymbolUses for more details.
-::llvm::Optional<::mlir::SymbolTable::UseRange> mlir::SymbolOpInterface::getSymbolUses(::mlir::Operation * from) {
+::std::optional<::mlir::SymbolTable::UseRange> mlir::SymbolOpInterface::getSymbolUses(::mlir::Operation * from) {
       return getImpl()->getSymbolUses(getImpl(), getOperation(), from);
   }
 /// Return if the current symbol is known to have no uses that are nested

@@ -15,18 +15,18 @@
 
 deconv_attr_t top::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
-  bool is_deconv3d = kernel_shape().size() == 3;
-  auto ishape = input().getType().cast<RankedTensorType>().getShape();
-  auto oshape = output().getType().cast<RankedTensorType>().getShape();
-  auto kernel = module::getI64Array(kernel_shape());
-  auto stride = module::getI64Array(strides());
-  auto dilation = module::getI64Array(dilations(), kernel_shape().size(), 1);
-  auto pad = module::getI64Array(pads());
-  auto ins = module::getI64Array(inserts(), kernel_shape().size(), 0);
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
-  p.with_bias = !bias().getType().isa<NoneType>();
-  p.g = group();
+  bool is_deconv3d = getKernelShape().size() == 3;
+  auto ishape = getInput().getType().cast<RankedTensorType>().getShape();
+  auto oshape = getOutput().getType().cast<RankedTensorType>().getShape();
+  auto kernel = module::getI64Array(getKernelShape());
+  auto stride = module::getI64Array(getStrides());
+  auto dilation = module::getI64Array(getDilations(), getKernelShape().size(), 1);
+  auto pad = module::getI64Array(getPads());
+  auto ins = module::getI64Array(getInserts(), getKernelShape().size(), 0);
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
+  p.with_bias = !getBias().getType().isa<NoneType>();
+  p.g = getGroup();
   if (is_deconv3d) {
     p.n = ishape[0];
     p.ic = ishape[1];
@@ -89,7 +89,7 @@ deconv_attr_t top::DeconvOp::parseParam() {
 int64_t top::DeconvOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.with_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
-  return module::getNumElements(input()) *
+  return module::getNumElements(getInput()) *
          (attr.kw * attr.kw * attr.oc / attr.g * 2 + extra);
 }
 

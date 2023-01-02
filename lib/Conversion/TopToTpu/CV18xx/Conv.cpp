@@ -23,10 +23,10 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   if (attr.dh <= DILATION_H_MAX && attr.dw <= DILATION_W_MAX)
     return false;
   // filter
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   std::vector<int64_t> filterShape;
-  module::getShapeVec(op.filter(), filterShape);
+  module::getShapeVec(op.getFilter(), filterShape);
   int64_t oc = 0;
   int64_t ic = 0;
   int64_t kh = 0;
@@ -92,8 +92,8 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   op->setOperand(1, new_filter_op);
   // update convOp attr
   std::vector<int64_t> new_kernel_shape, new_dilations;
-  auto kernel_shape = module::getI64Array(op.kernel_shape());
-  auto dilations = module::getI64Array(op.dilations(), kernel_shape->size(), 1);
+  auto kernel_shape = module::getI64Array(op.getKernelShape());
+  auto dilations = module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
   new_kernel_shape.assign(kernel_shape->begin(), kernel_shape->end());
   new_dilations.assign(dilations->begin(), dilations->end());
   auto kernel_size = new_kernel_shape.size();
@@ -107,7 +107,7 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   op->setAttr("dilations", rewriter.getI64ArrayAttr(new_dilations));
   auto convOp = rewriter.create<top::ConvOp>(op->getLoc(), op->getResultTypes(),
                                              op->getOperands(), op->getAttrs());
-  rewriter.replaceOp(op, {convOp.output()});
+  rewriter.replaceOp(op, {convOp.getOutput()});
   return true;
 }
 
@@ -115,10 +115,10 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
                           const conv_attr_t &attr) {
   // deal with pad > 16
   bool insert_pad = false;
-  auto kernel_size = module::getI64Array(op.kernel_shape())->size();
+  auto kernel_size = module::getI64Array(op.getKernelShape())->size();
   std::vector<int64_t> input_shape;
-  module::getShapeVec(op.input(), input_shape);
-  auto _pads = module::getI64Array(op.pads());
+  module::getShapeVec(op.getInput(), input_shape);
+  auto _pads = module::getI64Array(op.getPads());
   std::vector<int64_t> pad_v;
   std::vector<int64_t> new_pad_v(2 * input_shape.size(), 0);
   pad_v.assign(_pads->begin(), _pads->end());
@@ -178,18 +178,18 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
         "paddings", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{new_pad_v})));
     auto op_name = module::getName(op.getOperation()).str();
     auto loc = NameLoc::get(rewriter.getStringAttr(op_name + "_pad"));
-    auto type = op.input().getType().cast<RankedTensorType>();
+    auto type = op.getInput().getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(input_shape, type.getElementType());
     auto padOp = rewriter.create<top::PadOp>(loc, new_type,
                                              ValueRange{
-                                                 op.input(),
+                                                 op.getInput(),
                                              },
                                              attrs);
     op->setAttr("pads", rewriter.getI64ArrayAttr(pad_v));
     op->setOperand(0, padOp);
     auto convOp = rewriter.create<top::ConvOp>(
         op->getLoc(), op->getResultTypes(), op->getOperands(), op->getAttrs());
-    rewriter.replaceOp(op, {convOp.output()});
+    rewriter.replaceOp(op, {convOp.getOutput()});
   }
   return insert_pad;
 }
@@ -198,7 +198,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  operands.push_back(op.input());
+  operands.push_back(op.getInput());
   auto attr = op.parseParam();
   if (ConvertPading(rewriter, op, attr)) {
     return;
@@ -207,17 +207,17 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     return;
   }
   double in_thr, out_thr;
-  in_thr = module::getThreshold(op.input());
-  out_thr = module::getThreshold(op.output());
+  in_thr = module::getThreshold(op.getInput());
+  out_thr = module::getThreshold(op.getOutput());
   // filter
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
 
   i32_array_t bias_int32;
   std::shared_ptr<std::vector<float>> bias_fp32;
   auto filter_i8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   if (attr.has_bias) {
-    auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
+    auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
     bias_fp32 = biasOp.read<float>();
     bias_int32 = std::make_shared<std::vector<int32_t>>(bias_fp32->size());
   }
@@ -258,7 +258,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
         }
       }
     }
-    // decompose qscale into rshift and muliplier
+    // decompose qscale into rshift and multiplier
     // QuantizeMultiplier(qscale, &multiplier, &rshift, false);
     getRShiftAndMultiplierFromQScale(qscale, &multiplier, &rshift, true);
     multiplier_v.push_back(multiplier);
@@ -273,7 +273,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                       rshift, multiplier, true);
     }
   }
-  auto filter_type = op.filter().getType().cast<RankedTensorType>();
+  auto filter_type = op.getFilter().getType().cast<RankedTensorType>();
   auto new_type = RankedTensorType::get(filter_type.getShape(),
                                         rewriter.getIntegerType(8, true));
   auto new_filter =
@@ -287,7 +287,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
         top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
     operands.push_back(new_bias);
   } else {
-    operands.push_back(op.bias()); // none
+    operands.push_back(op.getBias()); // none
   }
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -302,11 +302,11 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       "multiplier", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{multiplier_v})));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   auto newOp = rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType,
                                               ArrayRef<Value>{operands},
                                               ArrayRef<NamedAttribute>{attrs});
-  Value newValue = newOp.output();
+  Value newValue = newOp.getOutput();
   rewriter.replaceOp(op, {newValue});
 }
 
@@ -321,32 +321,32 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   if (ConvertDilation(rewriter, op, attr)) {
     return;
   }
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
-  operands.push_back(op.input());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+  operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_bf16(op));
-  operands.push_back(op.bias());
+  operands.push_back(op.getBias());
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.bias().getType().isa<mlir::NoneType>();
+  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   Value newValue;
-  if (op.kernel_shape().size() == 1) {
+  if (op.getKernelShape().size() == 1) {
     auto newOp =
         rewriter.create<tpu::Conv1DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
-  } else if (op.kernel_shape().size() == 2) {
+    newValue = newOp.getOutput();
+  } else if (op.getKernelShape().size() == 2) {
     auto newOp =
         rewriter.create<tpu::Conv2DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
+    newValue = newOp.getOutput();
   } else {
     auto newOp =
         rewriter.create<tpu::Conv3DOp>(op->getLoc(), newType, operands, attrs);
-    newValue = newOp.output();
+    newValue = newOp.getOutput();
   }
   rewriter.replaceOp(op, {newValue});
 }

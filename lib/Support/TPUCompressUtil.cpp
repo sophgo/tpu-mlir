@@ -469,7 +469,7 @@ WeightCompresser::WeightCompresser(Operation* op, bool do_compress) {
     old_data.resize(data->size());
     new_data.assign(data->size(), 0);
     memcpy(old_data.data(), data->data(), data->size());
-    rtype = w_cast_op.output().getType().cast<RankedTensorType>();
+    rtype = w_cast_op.getOutput().getType().cast<RankedTensorType>();
     done = true;
   } else {
     // fix me For other situation

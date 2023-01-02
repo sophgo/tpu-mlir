@@ -30,11 +30,11 @@ extern "C" {
 void tpu::MulOp::codegen_global_bm1684x() {
   bcbinary_common_spec_t param{0};
   param.binary_type = BINARY_MUL;
-  param.if_relu = do_relu();
-  param.relu_upper_limit = relu_limit().convertToDouble();
-  param.rshift_A = rshift();
+  param.if_relu = getDoRelu();
+  param.relu_upper_limit = getReluLimit().convertToDouble();
+  param.rshift_A = getRshift();
   param.rshift_B = 0;
-  param.scale_A = multiplier();
+  param.scale_A = getMultiplier();
   param.scale_B = 1;
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
@@ -58,11 +58,11 @@ int64_t tpu::MulOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                           int64_t out_nslice,
                                           int64_t out_hslice) {
   int64_t buffer_size = 0;
-  auto dtype_A = BM168x::getDataType(inputs()[0]);
-  auto dtype_B = BM168x::getDataType(inputs()[1]);
-  auto dtype_O = BM168x::getDataType(output());
+  auto dtype_A = BM168x::getDataType(getInputs()[0]);
+  auto dtype_B = BM168x::getDataType(getInputs()[1]);
+  auto dtype_O = BM168x::getDataType(getOutput());
   if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
-    if (multiplier() != 1 || rshift() != 0) {
+    if (getMultiplier() != 1 || getRshift() != 0) {
       buffer_size = in_lmem_bytes * 2;
     }
   } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
@@ -78,10 +78,10 @@ void tpu::MulOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
-  auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(getInputs()[1], n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->h_slice = in0_gi.h_slice;
   sec_info->w_slice = w;
@@ -103,11 +103,11 @@ void tpu::MulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   bcbinary_local_param_t param = {0};
   param.spec.common.binary_type = BINARY_MUL;
-  param.spec.common.if_relu = do_relu();
-  param.spec.common.relu_upper_limit = relu_limit().convertToDouble();
-  param.spec.common.rshift_A = rshift();
+  param.spec.common.if_relu = getDoRelu();
+  param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.spec.common.rshift_A = getRshift();
   param.spec.common.rshift_B = 0;
-  param.spec.common.scale_A = multiplier();
+  param.spec.common.scale_A = getMultiplier();
   param.spec.common.scale_B = 1;
   param.spec.buffer_addr = gi.buffer_addr;
   param.A_is_coeff = false;

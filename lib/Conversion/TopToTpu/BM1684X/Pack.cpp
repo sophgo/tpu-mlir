@@ -13,53 +13,53 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void PackLowering::LoweringINT8(PatternRewriter &rewriter, top::PackOp op,
-                               bool asymmetric) const {
+                                bool asymmetric) const {
   llvm_unreachable("Not Implemented");
 }
 void PackLowering::LoweringINT4(PatternRewriter &rewriter, top::PackOp op,
-                                   bool asymmetric) const {
+                                bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void PackLowering::LoweringF32(PatternRewriter &rewriter,
-                              top::PackOp op) const {
-  llvm_unreachable("Not Implemented");
-}
-
-void PackLowering::LoweringBF16(PatternRewriter &rewriter,
                                top::PackOp op) const {
   llvm_unreachable("Not Implemented");
 }
 
+void PackLowering::LoweringBF16(PatternRewriter &rewriter,
+                                top::PackOp op) const {
+  llvm_unreachable("Not Implemented");
+}
+
 void PackLowering::LoweringF16(PatternRewriter &rewriter,
-                              top::PackOp op) const {
+                               top::PackOp op) const {
   llvm_unreachable("Not Implemented");
 }
 
 void PackLowering::LoweringQuantized(PatternRewriter &rewriter,
-                                    top::PackOp op) const {
-  if (module::isUniformQuantized(op.inputs()[0], op.output()) == false) {
+                                     top::PackOp op) const {
+  if (module::isUniformQuantized(op.getInputs()[0], op.getOutput()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   const int nInputs = op->getNumOperands();
-  assert(nInputs == op.values_count()); // TODO: nInput==1
+  assert(nInputs == op.getValuesCount()); // TODO: nInput==1
   std::vector<Value> operands;
 
-  std::vector<int64_t>shape(module::getShape(op.output()));
-  shape[op.axis()] = 1;
-  auto out_stype = module::getStorageType(op.output());
+  std::vector<int64_t> shape(module::getShape(op.getOutput()));
+  shape[op.getAxis()] = 1;
+  auto out_stype = module::getStorageType(op.getOutput());
   auto newType = RankedTensorType::get(shape, out_stype);
   for (int i = 0; i < nInputs; ++i) {
-    auto input_reshape = do_reshape(op.inputs()[i], newType);
+    auto input_reshape = do_reshape(op.getInputs()[i], newType);
     operands.push_back(input_reshape);
   }
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("axis", op.axisAttr()));
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.relu_limitAttr()));
+  attrs.push_back(rewriter.getNamedAttr("axis", op.getAxisAttr()));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
 
-  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, op.output().getType(), operands,
-                                             attrs);
+  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, op.getOutput().getType(),
+                                             operands, attrs);
 }
 
 } // namespace bm1684x

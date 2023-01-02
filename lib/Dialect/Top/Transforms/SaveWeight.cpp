@@ -26,11 +26,11 @@ class SaveWeightPass : public SaveWeightBase<SaveWeightPass> {
 public:
   SaveWeightPass() {}
   void runOnOperation() override {
-    auto module = getOperation();
+    auto mOp = getOperation();
     module::removeUnusedOp();
     // check name conflict
     std::set<StringRef> all_names;
-    for (auto func : module.getOps<FuncOp>()) {
+    for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
           if (op->getUses().empty()) {
@@ -49,7 +49,7 @@ public:
     bool same_name;
     auto file_name = module::genWeightFileName(same_name);
     // weight remove unused in npz
-    auto dialect = module->getContext()->getLoadedDialect("top");
+    auto dialect = mOp->getContext()->getLoadedDialect("top");
     auto top_dialect = llvm::cast<top::TopDialect>(dialect);
     if (top_dialect->wFile == nullptr) {
       if (same_name) {
@@ -65,7 +65,7 @@ public:
       return;
     }
     std::set<StringRef> weight_names;
-    for (auto func : module.getOps<FuncOp>()) {
+    for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
         weight_names.insert(module::getName(op.getOperation()));
       });

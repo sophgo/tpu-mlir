@@ -39,9 +39,9 @@ typedef struct index_select_global_spec {
 void tpu::GatherOp::codegen_global_bm1684x() {
   auto op = getOperation();
   index_select_global_spec_t param{0};
-  param.common.axis = axis();
+  param.common.axis = getAxis();
   param.common.index_is_coeff = false;
-  // assert(module::getStorageType(indices()).isInteger(32));
+  // assert(module::getStorageType(getIndices()).isInteger(32));
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   BM168x::call_global_func("backend_api_index_select_global", &param,

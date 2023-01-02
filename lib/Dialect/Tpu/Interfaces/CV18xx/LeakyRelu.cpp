@@ -16,31 +16,31 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
 // GlobalGenInterface
 // =========================================
 
-void tpu::LeakyReluOp::codegen_global_cv18xx( int64_t layer_id) {
+void tpu::LeakyReluOp::codegen_global_cv18xx(int64_t layer_id) {
 
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
-  if (module::isUniformQuantized(output())) {
-    auto pos_rshift = this->rshift().value();
-    auto pos_m = this->multiplier().value();
-    auto neg_rshift = this->rshift_neg().value();
-    auto neg_m = this->multiplier_neg().value();
-    cvi_backend_tg_fixed_leakyrelu_kernel( layer_id, ga_input, ga_output,
-                                          n, c, h, w, pos_rshift, neg_rshift, pos_m, neg_m);
+  module::getNCHW(getInput(), n, c, h, w);
+  if (module::isUniformQuantized(getOutput())) {
+    auto pos_rshift = this->getRshift().value();
+    auto pos_m = this->getMultiplier().value();
+    auto neg_rshift = this->getRshiftNeg().value();
+    auto neg_m = this->getMultiplierNeg().value();
+    cvi_backend_tg_fixed_leakyrelu_kernel(layer_id, ga_input, ga_output, n, c,
+                                          h, w, pos_rshift, neg_rshift, pos_m,
+                                          neg_m);
   } else {
-    float negative_slope = static_cast<float>(alphaAttr().getValueAsDouble());
-    cvi_backend_tg_bf16_leakyrelu_kernel( layer_id, ga_input, ga_output,
-                                          negative_slope, n, c, h, w);
+    float negative_slope =
+        static_cast<float>(getAlpha().value().convertToDouble());
+    cvi_backend_tg_bf16_leakyrelu_kernel(layer_id, ga_input, ga_output,
+                                         negative_slope, n, c, h, w);
   }
 }
 

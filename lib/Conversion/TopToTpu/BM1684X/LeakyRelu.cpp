@@ -27,7 +27,7 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
     lowering_common_f32<tpu::LeakyReluOp>(rewriter, op);
   } else {
     int multiplier, rshift;
-    get_scale_and_shift(op.alpha().convertToDouble(), multiplier, rshift, 8);
+    get_scale_and_shift(op.getAlpha().convertToDouble(), multiplier, rshift, 8);
 
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr(
@@ -35,9 +35,9 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
     attrs.push_back(
         rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
 
-    auto newType = getQuantInt8Type(op.output(), asymmetric);
+    auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
     rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType,
-                                                  Value(op.input()), attrs);
+                                                  Value(op.getInput()), attrs);
   }
 }
 

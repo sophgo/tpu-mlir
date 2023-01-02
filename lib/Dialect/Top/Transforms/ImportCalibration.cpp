@@ -36,12 +36,12 @@ public:
   void runOnOperation() override {
     // llvm::errs() << "import calibration table:" << this->tableFile
     //              << ", is asymmetric " << this->isAsymmetric << "\n";
-    auto module = getOperation();
+    auto mOp = getOperation();
     if (!module::isState(module::State::TOP_F32)) {
-      module.dump();
+      mOp.dump();
       llvm_unreachable("wrong mlir state");
     }
-    OpBuilder builder(module);
+    OpBuilder builder(mOp);
     std::map<std::string, cali_info> calibration_map;
     std::map<std::string, cali_info> calibration_map_int4;
     std::map<std::string, f64_array_t> per_chan_scales_map;
@@ -102,7 +102,7 @@ public:
       }
     }
     double min, max;
-    for (auto func : module.getOps<FuncOp>()) {
+    for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (isa<tpu_mlir::InferenceInterface>(op) || isa<InputOp>(op)) {
           for (auto value : op->getResults()) {

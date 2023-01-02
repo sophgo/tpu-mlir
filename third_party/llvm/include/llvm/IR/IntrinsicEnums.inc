@@ -62,6 +62,7 @@
     ctpop,                                     // llvm.ctpop
     cttz,                                      // llvm.cttz
     dbg_addr,                                  // llvm.dbg.addr
+    dbg_assign,                                // llvm.dbg.assign
     dbg_declare,                               // llvm.dbg.declare
     dbg_label,                                 // llvm.dbg.label
     dbg_value,                                 // llvm.dbg.value
@@ -145,7 +146,6 @@
     experimental_widenable_condition,          // llvm.experimental.widenable.condition
     fabs,                                      // llvm.fabs
     floor,                                     // llvm.floor
-    flt_rounds,                                // llvm.flt.rounds
     fma,                                       // llvm.fma
     fmuladd,                                   // llvm.fmuladd
     fptosi_sat,                                // llvm.fptosi.sat
@@ -159,6 +159,7 @@
     gcwrite,                                   // llvm.gcwrite
     get_active_lane_mask,                      // llvm.get.active.lane.mask
     get_dynamic_area_offset,                   // llvm.get.dynamic.area.offset
+    get_rounding,                              // llvm.get.rounding
     hwasan_check_memaccess,                    // llvm.hwasan.check.memaccess
     hwasan_check_memaccess_shortgranules,      // llvm.hwasan.check.memaccess.shortgranules
     icall_branch_funnel,                       // llvm.icall.branch.funnel
@@ -339,8 +340,11 @@
     vp_add,                                    // llvm.vp.add
     vp_and,                                    // llvm.vp.and
     vp_ashr,                                   // llvm.vp.ashr
+    vp_bitreverse,                             // llvm.vp.bitreverse
+    vp_bswap,                                  // llvm.vp.bswap
     vp_ceil,                                   // llvm.vp.ceil
     vp_copysign,                               // llvm.vp.copysign
+    vp_ctpop,                                  // llvm.vp.ctpop
     vp_fabs,                                   // llvm.vp.fabs
     vp_fadd,                                   // llvm.vp.fadd
     vp_fcmp,                                   // llvm.vp.fcmp
@@ -355,6 +359,8 @@
     vp_fptoui,                                 // llvm.vp.fptoui
     vp_fptrunc,                                // llvm.vp.fptrunc
     vp_frem,                                   // llvm.vp.frem
+    vp_fshl,                                   // llvm.vp.fshl
+    vp_fshr,                                   // llvm.vp.fshr
     vp_fsub,                                   // llvm.vp.fsub
     vp_gather,                                 // llvm.vp.gather
     vp_icmp,                                   // llvm.vp.icmp
@@ -365,6 +371,7 @@
     vp_merge,                                  // llvm.vp.merge
     vp_minnum,                                 // llvm.vp.minnum
     vp_mul,                                    // llvm.vp.mul
+    vp_nearbyint,                              // llvm.vp.nearbyint
     vp_or,                                     // llvm.vp.or
     vp_ptrtoint,                               // llvm.vp.ptrtoint
     vp_reduce_add,                             // llvm.vp.reduce.add
@@ -380,14 +387,18 @@
     vp_reduce_umax,                            // llvm.vp.reduce.umax
     vp_reduce_umin,                            // llvm.vp.reduce.umin
     vp_reduce_xor,                             // llvm.vp.reduce.xor
+    vp_rint,                                   // llvm.vp.rint
     vp_round,                                  // llvm.vp.round
     vp_roundeven,                              // llvm.vp.roundeven
+    vp_roundtozero,                            // llvm.vp.roundtozero
     vp_scatter,                                // llvm.vp.scatter
     vp_sdiv,                                   // llvm.vp.sdiv
     vp_select,                                 // llvm.vp.select
     vp_sext,                                   // llvm.vp.sext
     vp_shl,                                    // llvm.vp.shl
     vp_sitofp,                                 // llvm.vp.sitofp
+    vp_smax,                                   // llvm.vp.smax
+    vp_smin,                                   // llvm.vp.smin
     vp_sqrt,                                   // llvm.vp.sqrt
     vp_srem,                                   // llvm.vp.srem
     vp_store,                                  // llvm.vp.store
@@ -395,6 +406,8 @@
     vp_trunc,                                  // llvm.vp.trunc
     vp_udiv,                                   // llvm.vp.udiv
     vp_uitofp,                                 // llvm.vp.uitofp
+    vp_umax,                                   // llvm.vp.umax
+    vp_umin,                                   // llvm.vp.umin
     vp_urem,                                   // llvm.vp.urem
     vp_xor,                                    // llvm.vp.xor
     vp_zext,                                   // llvm.vp.zext
@@ -402,4 +415,4 @@
     write_register,                            // llvm.write_register
     xray_customevent,                          // llvm.xray.customevent
     xray_typedevent,                           // llvm.xray.typedevent
-    num_intrinsics = 11079
+    num_intrinsics = 11213

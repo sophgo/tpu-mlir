@@ -14,19 +14,19 @@ namespace tpu_mlir {
 namespace cv18xx {
 void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
-  double const_val = op.const_val().convertToDouble();
+  auto stype = module::getStorageType(op.getOutput());
+  double const_val = op.getConstVal().convertToDouble();
   auto active_mulconst = [const_val](double val) { return val * const_val; };
   Value table =
-      create_lookup_table(op.input(), op.output(), asymmetric, active_mulconst);
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+      create_lookup_table(op.getInput(), op.getOutput(), asymmetric, active_mulconst);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
                                     top::MulConstOp op) const {
-  double const_val = op.const_val().convertToDouble();
+  double const_val = op.getConstVal().convertToDouble();
   auto active_mulconst = [const_val](double val) { return val * const_val; };
   Value table_weight, slope_weight;
   float range_start = -15, range_end = 15;
@@ -43,9 +43,9 @@ void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.input(), table_weight, slope_weight}, attrs);
+      op, newType, ValueRange{op.getInput(), table_weight, slope_weight}, attrs);
   return;
 }
 } // namespace cv18xx

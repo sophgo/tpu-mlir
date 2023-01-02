@@ -68,6 +68,8 @@ namespace detail {
   struct InferIntRangeInterfaceTrait : public ::mlir::OpInterface<InferIntRangeInterface, detail::InferIntRangeInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 void detail::InferIntRangeInterfaceInterfaceTraits::Model<ConcreteOp>::inferResultRanges(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::ArrayRef<::mlir::ConstantIntRanges> argRanges, ::mlir::SetIntRangeFn setResultRanges) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).inferResultRanges(argRanges, setResultRanges);

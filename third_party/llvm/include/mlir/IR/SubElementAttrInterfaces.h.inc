@@ -36,6 +36,8 @@ struct SubElementAttrInterfaceInterfaceTraits {
   class ExternalModel : public FallbackModel<ConcreteModel> {
   public:
     using ConcreteEntity = ConcreteAttr;
+    void walkImmediateSubElements(::mlir::Attribute tablegen_opaque_val, llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
+    ::mlir::Attribute replaceImmediateSubElements(::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
   };
 };template <typename ConcreteAttr>
 struct SubElementAttrInterfaceTrait;
@@ -55,6 +57,11 @@ public:
   /// would replace the very first attribute given by `walkImmediateSubElements`.
   /// On success, the new instance with the values replaced is returned. If replacement
   /// fails, nullptr is returned.
+  /// 
+  /// Note that replacing the sub-elements of mutable types or attributes is
+  /// not currently supported by the interface. If an implementing type or
+  /// attribute is mutable, it should return `nullptr` if it has no mechanism
+  /// for replacing sub elements.
   ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 
     /// Walk all of the held sub-attributes and sub-types.
@@ -62,25 +69,14 @@ public:
                          llvm::function_ref<void(mlir::Type)> walkTypesFn);
 
     /// Recursively replace all of the nested sub-attributes and sub-types using the
-    /// provided map functions. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementReplFn<mlir::Attribute> replaceAttrFn,
-      mlir::SubElementReplFn<mlir::Type> replaceTypeFn
-    ) {
-      return replaceSubElements(
-        [&](Attribute attr) { return std::make_pair(replaceAttrFn(attr), WalkResult::advance()); },
-        [&](Type type) { return std::make_pair(replaceTypeFn(type), WalkResult::advance()); }
-      );
+    /// provided map functions. Returns nullptr in the case of failure. See
+    /// `AttrTypeReplacer` for information on the support replacement function types.
+    template <typename... ReplacementFns>
+    ::mlir::Attribute replaceSubElements(ReplacementFns &&... replacementFns) {
+      AttrTypeReplacer replacer;
+      (replacer.addReplacement(std::forward<ReplacementFns>(replacementFns)), ...);
+      return replacer.replace(*this);
     }
-    /// Recursively replace all of the nested sub-attributes and sub-types using the
-    /// provided map functions. This variant allows for the map function to return an
-    /// additional walk result. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      llvm::function_ref<
-        std::pair<mlir::Attribute, mlir::WalkResult>(mlir::Attribute)> replaceAttrFn,
-      llvm::function_ref<
-        std::pair<mlir::Type, mlir::WalkResult>(mlir::Type)> replaceTypeFn
-    );
   
 
     /// Walk all of the held sub-attributes.
@@ -91,39 +87,31 @@ public:
     void walkSubTypes(llvm::function_ref<void(mlir::Type)> walkFn) {
       walkSubElements(/*walkAttrsFn=*/[](mlir::Attribute) {}, walkFn);
     }
-    
-    /// Recursively replace all of the nested sub-attributes using the provided
-    /// map function. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementReplFn<mlir::Attribute> replaceAttrFn) {
-      return replaceSubElements(
-        replaceAttrFn, [](mlir::Type type) { return type; });
-    }
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementResultReplFn<mlir::Attribute> replaceAttrFn) {
-      return replaceSubElements(
-        replaceAttrFn,
-        [](mlir::Type type) { return std::make_pair(type, WalkResult::advance()); }
-      );
-    }
-    /// Recursively replace all of the nested sub-types using the provided map
-    /// function. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementReplFn<mlir::Type> replaceTypeFn) {
-      return replaceSubElements(
-        [](mlir::Attribute attr) { return attr; }, replaceTypeFn);
-    }
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementResultReplFn<mlir::Type> replaceTypeFn) {
-      return replaceSubElements(
-        [](mlir::Attribute attr) { return std::make_pair(attr, WalkResult::advance()); },
-        replaceTypeFn
-      );
-    }
   };
 namespace detail {
   template <typename ConcreteAttr>
   struct SubElementAttrInterfaceTrait : public ::mlir::AttributeInterface<SubElementAttrInterface, detail::SubElementAttrInterfaceInterfaceTraits>::Trait<ConcreteAttr> {
+    /// Walk all of the immediately nested sub-attributes and sub-types. This
+    /// method does not recurse into sub elements.
+    void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const {
+      ::mlir::detail::walkImmediateSubElementsImpl(
+          (*static_cast<const ConcreteAttr *>(this)), walkAttrsFn, walkTypesFn);
+    }
+    /// Replace the immediately nested sub-attributes and sub-types with those provided.
+    /// The order of the provided elements is derived from the order of the elements
+    /// returned by the callbacks of `walkImmediateSubElements`. The element at index 0
+    /// would replace the very first attribute given by `walkImmediateSubElements`.
+    /// On success, the new instance with the values replaced is returned. If replacement
+    /// fails, nullptr is returned.
+    /// 
+    /// Note that replacing the sub-elements of mutable types or attributes is
+    /// not currently supported by the interface. If an implementing type or
+    /// attribute is mutable, it should return `nullptr` if it has no mechanism
+    /// for replacing sub elements.
+    ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const {
+      return ::mlir::detail::replaceImmediateSubElementsImpl(
+           (*static_cast<const ConcreteAttr *>(this)), replAttrs, replTypes);
+    }
 
     /// Walk all of the held sub-attributes and sub-types.
     void walkSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn,
@@ -133,18 +121,13 @@ namespace detail {
     }
 
     /// Recursively replace all of the nested sub-attributes and sub-types using the
-    /// provided map functions. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementReplFn<mlir::Attribute> replaceAttrFn,
-      mlir::SubElementReplFn<mlir::Type> replaceTypeFn) {
-      SubElementAttrInterface interface((*static_cast<const ConcreteAttr *>(this)));
-      return interface.replaceSubElements(replaceAttrFn, replaceTypeFn);
-    }
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementResultReplFn<mlir::Attribute> replaceAttrFn,
-      mlir::SubElementResultReplFn<mlir::Type> replaceTypeFn) {
-      SubElementAttrInterface interface((*static_cast<const ConcreteAttr *>(this)));
-      return interface.replaceSubElements(replaceAttrFn, replaceTypeFn);
+    /// provided map functions. Returns nullptr in the case of failure. See
+    /// `AttrTypeReplacer` for information on the support replacement function types.
+    template <typename... ReplacementFns>
+    ::mlir::Attribute replaceSubElements(ReplacementFns &&... replacementFns) {
+      AttrTypeReplacer replacer;
+      (replacer.addReplacement(std::forward<ReplacementFns>(replacementFns)), ...);
+      return replacer.replace((*static_cast<const ConcreteAttr *>(this)));
     }
   
 
@@ -156,38 +139,11 @@ namespace detail {
     void walkSubTypes(llvm::function_ref<void(mlir::Type)> walkFn) {
       walkSubElements(/*walkAttrsFn=*/[](mlir::Attribute) {}, walkFn);
     }
-    
-    /// Recursively replace all of the nested sub-attributes using the provided
-    /// map function. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementReplFn<mlir::Attribute> replaceAttrFn) {
-      return replaceSubElements(
-        replaceAttrFn, [](mlir::Type type) { return type; });
-    }
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementResultReplFn<mlir::Attribute> replaceAttrFn) {
-      return replaceSubElements(
-        replaceAttrFn,
-        [](mlir::Type type) { return std::make_pair(type, WalkResult::advance()); }
-      );
-    }
-    /// Recursively replace all of the nested sub-types using the provided map
-    /// function. Returns nullptr in the case of failure.
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementReplFn<mlir::Type> replaceTypeFn) {
-      return replaceSubElements(
-        [](mlir::Attribute attr) { return attr; }, replaceTypeFn);
-    }
-    ::mlir::Attribute replaceSubElements(
-      mlir::SubElementResultReplFn<mlir::Type> replaceTypeFn) {
-      return replaceSubElements(
-        [](mlir::Attribute attr) { return std::make_pair(attr, WalkResult::advance()); },
-        replaceTypeFn
-      );
-    }
   
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteAttr>
 void detail::SubElementAttrInterfaceInterfaceTraits::Model<ConcreteAttr>::walkImmediateSubElements(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) {
   return (tablegen_opaque_val.cast<ConcreteAttr>()).walkImmediateSubElements(walkAttrsFn, walkTypesFn);
@@ -203,5 +159,15 @@ void detail::SubElementAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>
 template<typename ConcreteAttr>
 ::mlir::Attribute detail::SubElementAttrInterfaceInterfaceTraits::FallbackModel<ConcreteAttr>::replaceImmediateSubElements(const Concept *impl, ::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) {
   return static_cast<const ConcreteAttr *>(impl)->replaceImmediateSubElements(tablegen_opaque_val, replAttrs, replTypes);
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+void detail::SubElementAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::walkImmediateSubElements(::mlir::Attribute tablegen_opaque_val, llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const {
+::mlir::detail::walkImmediateSubElementsImpl(
+          (tablegen_opaque_val.cast<ConcreteAttr>()), walkAttrsFn, walkTypesFn);
+}
+template<typename ConcreteModel, typename ConcreteAttr>
+::mlir::Attribute detail::SubElementAttrInterfaceInterfaceTraits::ExternalModel<ConcreteModel, ConcreteAttr>::replaceImmediateSubElements(::mlir::Attribute tablegen_opaque_val, ::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const {
+return ::mlir::detail::replaceImmediateSubElementsImpl(
+           (tablegen_opaque_val.cast<ConcreteAttr>()), replAttrs, replTypes);
 }
 } // namespace mlir

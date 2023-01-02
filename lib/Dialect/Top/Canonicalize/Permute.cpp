@@ -21,26 +21,26 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
 
   LogicalResult matchAndRewrite(PermuteOp op,
                                 PatternRewriter &rewriter) const override {
-    auto input_shape = module::getShape(op.input());
+    auto input_shape = module::getShape(op.getInput());
     if (input_shape.size() != 6) {
       return failure();
     }
 
     std::vector<int64_t> ps = {0, 1, 4, 2, 5, 3};
-    auto order = module::getI64Array(op.order());
+    auto order = module::getI64Array(op.getOrder());
     if (*order != ps) {
       return failure();
     }
-    auto reshape_before = dyn_cast_or_null<ReshapeOp>(op.input().getDefiningOp());
+    auto reshape_before = dyn_cast_or_null<ReshapeOp>(op.getInput().getDefiningOp());
     if (!reshape_before) {
       return failure();
     }
-    auto nextOp = *op.output().getUsers().begin();
+    auto nextOp = *op.getOutput().getUsers().begin();
     auto reshape_after = dyn_cast_or_null<ReshapeOp>(nextOp);
     if (!reshape_after) {
       return failure();
     }
-    auto output_shape = module::getShape(reshape_after.output());
+    auto output_shape = module::getShape(reshape_after.getOutput());
     int64_t upscale_factor = input_shape[2];
     int64_t on = input_shape[0];
     int64_t oc = input_shape[1];
@@ -59,7 +59,7 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
         "block_h", rewriter.getI64IntegerAttr(upscale_factor)));
     attrs.push_back(rewriter.getNamedAttr(
         "block_w", rewriter.getI64IntegerAttr(upscale_factor)));
-    rewriter.replaceOpWithNewOp<Depth2SpaceOp>(reshape_after, reshape_after.getResult().getType(), ValueRange{reshape_before.input()}, attrs);
+    rewriter.replaceOpWithNewOp<Depth2SpaceOp>(reshape_after, reshape_after.getResult().getType(), ValueRange{reshape_before.getInput()}, attrs);
     rewriter.eraseOp(op);
     rewriter.eraseOp(reshape_before);
     return success();

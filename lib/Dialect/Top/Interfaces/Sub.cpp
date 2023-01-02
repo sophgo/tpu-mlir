@@ -12,25 +12,23 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::SubOp::getFLOPs() {
-  return module::getNumElements(output()) *
-         (inputs().size() - 1 + do_relu() ? 1 : 0);
+  return module::getNumElements(getOutput()) *
+         (getInputs().size() - 1 + getDoRelu() ? 1 : 0);
 }
 
 LogicalResult top::SubOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   int index0 = 0, index1 = 1;
-  if (is_reverse()) {
+  if (getIsReverse()) {
     index0 = 1, index1 = 0;
   }
   (*binary)
-      .lhs(p.inputs[index0], module::getShape(inputs()[index0]))
-      .rhs(p.inputs[index1], module::getShape(inputs()[index1]))
-      .dst(p.outputs[0], module::getShape(output()))
-      .do_relu(do_relu())
-      .relu_limit(relu_limit().convertToDouble())
+      .lhs(p.inputs[index0], module::getShape(getInputs()[index0]))
+      .rhs(p.inputs[index1], module::getShape(getInputs()[index1]))
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
       .algorithem(algorithm::binary_sub)
       .setup();
 

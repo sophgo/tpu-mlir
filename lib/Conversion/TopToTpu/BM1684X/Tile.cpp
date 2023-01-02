@@ -37,7 +37,7 @@ void TileLowering::LoweringF16(PatternRewriter &rewriter,
 
 void TileLowering::LoweringQuantized(PatternRewriter &rewriter,
                                      top::TileOp op) const {
-  lowering_common<tpu::TileOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::TileOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

@@ -22,7 +22,7 @@ struct StripInputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
       : OpRewritePattern<tpu::CastOp>(context) {}
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
-    if (auto inputOp = op.input().getDefiningOp<top::InputOp>()) {
+    if (auto inputOp = op.getInput().getDefiningOp<top::InputOp>()) {
       if (!inputOp.getResult().hasOneUse())
         return failure();
       inputOp.getResult().setType(op.getResult().getType());
@@ -38,10 +38,10 @@ struct StripInputQuantCpuCastPattern
       : OpRewritePattern<tpu::GenericCpuOp>(context) {}
   LogicalResult matchAndRewrite(tpu::GenericCpuOp op,
                                 PatternRewriter &rewriter) const override {
-    if (op.operation_name() != "quant") {
+    if (op.getCpuOpName() != "quant") {
       return failure();
     }
-    if (auto inputOp = op.inputs()[0].getDefiningOp<top::InputOp>()) {
+    if (auto inputOp = op.getInputs()[0].getDefiningOp<top::InputOp>()) {
       if (!inputOp.getResult().hasOneUse())
         return failure();
       inputOp.getResult().setType(op.getResult().getType());
@@ -58,9 +58,9 @@ struct StripOutputQuantTpuCastPattern : public OpRewritePattern<tpu::CastOp> {
   LogicalResult matchAndRewrite(tpu::CastOp op,
                                 PatternRewriter &rewriter) const override {
 
-    if (op.output().hasOneUse() &&
-        isa<ReturnOp>(op.output().use_begin().getUser())) {
-      rewriter.replaceOp(op, op.input());
+    if (op.getOutput().hasOneUse() &&
+        isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
+      rewriter.replaceOp(op, op.getInput());
       return success();
     }
     return failure();
@@ -74,9 +74,9 @@ struct StripOutputQuantCpuCastPattern
   LogicalResult matchAndRewrite(tpu::GenericCpuOp op,
                                 PatternRewriter &rewriter) const override {
 
-    if (op.output().hasOneUse() &&
-        isa<ReturnOp>(op.output().use_begin().getUser())) {
-      rewriter.replaceOp(op, op.inputs()[0]);
+    if (op.getOutput().hasOneUse() &&
+        isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
+      rewriter.replaceOp(op, op.getInputs()[0]);
       return success();
     }
     return failure();

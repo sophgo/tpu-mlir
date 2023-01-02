@@ -24,22 +24,22 @@ void mlir::LoopLikeOpInterface::moveOutOfLoop(::mlir::Operation * op) {
       return getImpl()->moveOutOfLoop(getImpl(), getOperation(), op);
   }
 /// If there is a single induction variable return it, otherwise return
-/// llvm::None.
-::llvm::Optional<::mlir::Value> mlir::LoopLikeOpInterface::getSingleInductionVar() {
+/// std::nullopt.
+::std::optional<::mlir::Value> mlir::LoopLikeOpInterface::getSingleInductionVar() {
       return getImpl()->getSingleInductionVar(getImpl(), getOperation());
   }
 /// Return the single lower bound value or attribute if it exists, otherwise
-/// return llvm::None.
-::llvm::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleLowerBound() {
+/// return std::nullopt.
+::std::optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleLowerBound() {
       return getImpl()->getSingleLowerBound(getImpl(), getOperation());
   }
 /// Return the single step value or attribute if it exists, otherwise
-/// return llvm::None.
-::llvm::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleStep() {
+/// return std::nullopt.
+::std::optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleStep() {
       return getImpl()->getSingleStep(getImpl(), getOperation());
   }
 /// Return the single upper bound value or attribute if it exists, otherwise
-/// return llvm::None.
-::llvm::Optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleUpperBound() {
+/// return std::nullopt.
+::std::optional<::mlir::OpFoldResult> mlir::LoopLikeOpInterface::getSingleUpperBound() {
       return getImpl()->getSingleUpperBound(getImpl(), getOperation());
   }

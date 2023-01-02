@@ -24,24 +24,24 @@ using namespace tpu_mlir::backend;
 void tpu::DequantIntOp::codegen_global_bm1684x() {
   dequant_int_param_t param = {0};
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
-  param.input_addr = module::getAddress(input());
-  param.output_addr = module::getAddress(output());
+  module::getNCHW(getInput(), n, c, h, w);
+  param.input_addr = module::getAddress(getInput());
+  param.output_addr = module::getAddress(getOutput());
   param.n = (int)n;
   param.c = (int)c;
   param.h = (int)h;
   param.w = (int)w;
 
-  auto qtype = module::getUniformQuantizedType(input());
-  param.scale_val = multiplier();
-  param.shift_val = shift();
+  auto qtype = module::getUniformQuantizedType(getInput());
+  param.scale_val = getMultiplier();
+  param.shift_val = getShift();
   param.offset_val = qtype.getZeroPoint();
-  param.lshift = lshift();
-  param.mode = static_cast<int>(quant_mode());
+  param.lshift = getLshift();
+  param.mode = static_cast<int>(getQuantMode());
   param.is_perchannel = false;
-  param.input_dtype = BM168x::getDataType(input());
-  param.output_dtype = BM168x::getDataType(output());
-  param.round_mode = quant_mode() == tpu::DequantMode::Normal
+  param.input_dtype = BM168x::getDataType(getInput());
+  param.output_dtype = BM168x::getDataType(getOutput());
+  param.round_mode = getQuantMode() == tpu::DequantMode::Normal
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
   BM168x::call_global_func("backend_api_dequant_int_global", &param,
@@ -55,7 +55,7 @@ void tpu::DequantIntOp::codegen_global_bm1684x() {
 int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  if (quant_mode() == DequantMode::TFlite) {
+  if (getQuantMode() == DequantMode::TFlite) {
     return out_lmem_bytes;
   }
   return 0;
@@ -67,9 +67,9 @@ void tpu::DequantIntOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -87,8 +87,8 @@ void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   dequant_int_param_t param = {0};
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  module::getNCHW(getInput(), n, c, h, w);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
@@ -98,19 +98,19 @@ void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.h = sec_info->out_h_slice;
   param.w = w;
 
-  auto qtype = module::getUniformQuantizedType(input());
-  param.scale_val = multiplier();
-  param.shift_val = shift();
+  auto qtype = module::getUniformQuantizedType(getInput());
+  param.scale_val = getMultiplier();
+  param.shift_val = getShift();
   param.offset_val = qtype.getZeroPoint();
-  param.lshift = lshift();
-  param.mode = static_cast<int>(quant_mode());
+  param.lshift = getLshift();
+  param.mode = static_cast<int>(getQuantMode());
   param.is_perchannel = false;
-  param.round_mode = quant_mode() == tpu::DequantMode::Normal
+  param.round_mode = getQuantMode() == tpu::DequantMode::Normal
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
 
-  param.input_dtype = BM168x::getDataType(input());
-  param.output_dtype = BM168x::getDataType(output());
+  param.input_dtype = BM168x::getDataType(getInput());
+  param.output_dtype = BM168x::getDataType(getOutput());
   BM168x::call_local_func("backend_api_dequant_int_local", &param,
                           sizeof(param));
 }

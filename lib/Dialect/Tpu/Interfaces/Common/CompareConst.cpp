@@ -22,17 +22,17 @@ LogicalResult tpu::CompareConstOp::init(InferenceParameter &p) {
 void tpu::CompareConstOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CompareConstOp::inference(InferenceParameter &p) {
-  const auto num_element = module::getNumElements(output());
-  const float const_val_ = const_val().convertToDouble();
-  if (!inversed()) {
+  const auto num_element = module::getNumElements(getOutput());
+  const float const_val_ = getConstVal().convertToDouble();
+  if (!getInversed()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
     for (int i = 0; i < num_element; ++i) {
-      p.outputs[0][i] = compare(p.inputs[0][i], const_val_, mode());
+      p.outputs[0][i] = compare(p.inputs[0][i], const_val_, getMode());
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
     for (int i = 0; i < num_element; ++i) {
-      p.outputs[0][i] = compare(const_val_, p.inputs[0][i], mode());
+      p.outputs[0][i] = compare(const_val_, p.inputs[0][i], getMode());
     }
   }
   return success();

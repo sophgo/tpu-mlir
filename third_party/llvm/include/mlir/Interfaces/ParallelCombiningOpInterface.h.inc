@@ -60,6 +60,8 @@ namespace detail {
     }
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 ::mlir::OpResult detail::ParallelCombiningOpInterfaceInterfaceTraits::Model<ConcreteOp>::getParentResult(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, int64_t idx) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getParentResult(idx);

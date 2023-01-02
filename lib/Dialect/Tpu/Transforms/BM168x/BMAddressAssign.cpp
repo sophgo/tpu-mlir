@@ -39,8 +39,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   auto addr = start_addr;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
-      module::setAddress(op.output(), addr);
-      int64_t bytes = module::getBytes(op.output());
+      module::setAddress(op.getOutput(), addr);
+      int64_t bytes = module::getBytes(op.getOutput());
       addr = align_up(addr + bytes, alignment);
     });
   }
@@ -104,9 +104,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     auto op = static_cast<Operation *>(op_value.op);
     if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
       int idx = 0;
-      gOp.body().walk([&](tpu::StoreOp sOp) {
+      gOp.getBody().walk([&](tpu::StoreOp sOp) {
         auto addr = module::getAddress(gOp.getResult(idx));
-        module::setAddress(sOp.output(), addr);
+        module::setAddress(sOp.getOutput(), addr);
         idx++;
       });
     }
@@ -114,8 +114,8 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // 3.set inplace_ops address
   for (auto op : inplace_ops) {
     if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op.op)) {
-      auto addr = module::getAddress(reshapeOp.input());
-      module::setAddress(reshapeOp.output(), addr);
+      auto addr = module::getAddress(reshapeOp.getInput());
+      module::setAddress(reshapeOp.getOutput(), addr);
     }
   }
   module::setNeuronAddr(start_addr);
@@ -158,8 +158,8 @@ void BMAddressAssign::updateLiveRangeofBMOps(
     liveRange[v] = TensorLive(index, 0, 0xFFFFFFFF, tensor_size);
     updateOperandsLiveRange(op, endPosition);
     common_ops.emplace_back(v);
-  } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp,
-                 func::CallOp, tpu::YieldOp>(op) ||
+  } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
+                 tpu::YieldOp>(op) ||
              module::isOpInGroup(op)) {
     updateOperandsLiveRange(op, endPosition);
   } else if (isInPlaceOp(op)) {

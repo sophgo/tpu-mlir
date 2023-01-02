@@ -94,45 +94,26 @@ public:
 public:
   static ArrayAttr get(::mlir::MLIRContext *context, ::llvm::ArrayRef<Attribute> value);
   ::llvm::ArrayRef<Attribute> getValue() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct DenseArrayAttrStorage;
 } // namespace detail
-class DenseArrayAttr : public ::mlir::Attribute::AttrBase<DenseArrayAttr, ::mlir::Attribute, detail::DenseArrayAttrStorage, ::mlir::ElementsAttr::Trait, ::mlir::TypedAttr::Trait> {
+class DenseArrayAttr : public ::mlir::Attribute::AttrBase<DenseArrayAttr, ::mlir::Attribute, detail::DenseArrayAttrStorage> {
 public:
   using Base::Base;
-  /// Allow implicit conversion to ElementsAttr.
-  operator ElementsAttr() const {
-    return *this ? cast<ElementsAttr>() : nullptr;
-  }
-
-  /// ElementsAttr implementation.
-  using ContiguousIterableTypesT =
-      std::tuple<bool, int8_t, int16_t, int32_t, int64_t, float, double>;
-  FailureOr<const bool *>
-  try_value_begin_impl(OverloadToken<bool>) const;
-  FailureOr<const int8_t *>
-  try_value_begin_impl(OverloadToken<int8_t>) const;
-  FailureOr<const int16_t *>
-  try_value_begin_impl(OverloadToken<int16_t>) const;
-  FailureOr<const int32_t *>
-  try_value_begin_impl(OverloadToken<int32_t>) const;
-  FailureOr<const int64_t *>
-  try_value_begin_impl(OverloadToken<int64_t>) const;
-  FailureOr<const float *>
-  try_value_begin_impl(OverloadToken<float>) const;
-  FailureOr<const double *>
-  try_value_begin_impl(OverloadToken<double>) const;
+  /// Get the number of elements in the array.
+  int64_t size() const { return getSize(); }
+  /// Return true if there are no elements in the dense array.
+  bool empty() const { return !size(); }
   using Base::getChecked;
 public:
-  static DenseArrayAttr get(::mlir::MLIRContext *context, RankedTensorType type, ::llvm::ArrayRef<char> rawData);
-  static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, RankedTensorType type, ::llvm::ArrayRef<char> rawData);
-  static DenseArrayAttr get(RankedTensorType type, ArrayRef<char> rawData);
-  static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, RankedTensorType type, ArrayRef<char> rawData);
-  static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, RankedTensorType type, ::llvm::ArrayRef<char> rawData);
-  RankedTensorType getType() const;
+  static DenseArrayAttr get(::mlir::MLIRContext *context, Type elementType, int64_t size, ::llvm::ArrayRef<char> rawData);
+  static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, ::mlir::MLIRContext *context, Type elementType, int64_t size, ::llvm::ArrayRef<char> rawData);
+  static DenseArrayAttr get(Type elementType, unsigned size, ArrayRef<char> rawData);
+  static DenseArrayAttr getChecked(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType, unsigned size, ArrayRef<char> rawData);
+  static ::mlir::LogicalResult verify(::llvm::function_ref<::mlir::InFlightDiagnostic()> emitError, Type elementType, int64_t size, ::llvm::ArrayRef<char> rawData);
+  Type getElementType() const;
+  int64_t getSize() const;
   ::llvm::ArrayRef<char> getRawData() const;
 };
 namespace detail {
@@ -312,7 +293,7 @@ public:
     Attribute get(StringRef name) const;
     Attribute get(StringAttr name) const;
 
-    /// Return the specified named attribute if present, None otherwise.
+    /// Return the specified named attribute if present, std::nullopt otherwise.
     Optional<NamedAttribute> getNamed(StringRef name) const;
     Optional<NamedAttribute> getNamed(StringAttr name) const;
 
@@ -340,7 +321,7 @@ public:
     static bool sortInPlace(SmallVectorImpl<NamedAttribute> &array);
 
     /// Returns an entry with a duplicate name in `array`, if it exists, else
-    /// returns llvm::None. If `isSorted` is true, the array is assumed to be
+    /// returns std::nullopt. If `isSorted` is true, the array is assumed to be
     /// sorted else it will be sorted in place before finding the duplicate entry.
     static Optional<NamedAttribute>
     findDuplicate(SmallVectorImpl<NamedAttribute> &array, bool isSorted);
@@ -366,10 +347,8 @@ public:
 
   public:
 public:
-  static DictionaryAttr get(::mlir::MLIRContext *context, ArrayRef<NamedAttribute> value = llvm::None);
+  static DictionaryAttr get(::mlir::MLIRContext *context, ArrayRef<NamedAttribute> value = std::nullopt);
   ::llvm::ArrayRef<NamedAttribute> getValue() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct FloatAttrStorage;
@@ -650,8 +629,6 @@ public:
   static SymbolRefAttr get(StringAttr rootReference, ArrayRef<FlatSymbolRefAttr> nestedReferences);
   StringAttr getRootReference() const;
   ::llvm::ArrayRef<FlatSymbolRefAttr> getNestedReferences() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 namespace detail {
 struct TypeAttrStorage;
@@ -662,8 +639,6 @@ public:
   using ValueType = Type;public:
   static TypeAttr get(Type type);
   Type getValue() const;
-  void walkImmediateSubElements(llvm::function_ref<void(mlir::Attribute)> walkAttrsFn, llvm::function_ref<void(mlir::Type)> walkTypesFn) const;
-  ::mlir::Attribute replaceImmediateSubElements(::llvm::ArrayRef<::mlir::Attribute> replAttrs, ::llvm::ArrayRef<::mlir::Type> replTypes) const;
 };
 class UnitAttr : public ::mlir::Attribute::AttrBase<UnitAttr, ::mlir::Attribute, ::mlir::AttributeStorage> {
 public:

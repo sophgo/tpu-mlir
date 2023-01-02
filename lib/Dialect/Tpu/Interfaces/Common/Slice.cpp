@@ -32,11 +32,11 @@ void tpu::SliceOp::parseParam(std::vector<int64_t> &is_4,
                               std::vector<int64_t> &os_4,
                               std::vector<int> &offset_4,
                               std::vector<int> &step_4, bool &fusible) {
-  auto is = input().getType().cast<RankedTensorType>().getShape().vec();
-  auto os = output().getType().cast<RankedTensorType>().getShape().vec();
+  auto is = getInput().getType().cast<RankedTensorType>().getShape().vec();
+  auto os = getOutput().getType().cast<RankedTensorType>().getShape().vec();
   int num_dims = is.size();
-  auto crop_offset = module::getI64Array(offset());
-  auto crop_steps = module::getI64Array(steps());
+  auto crop_offset = module::getI64Array(getOffset());
+  auto crop_steps = module::getI64Array(getSteps());
 
   assert(crop_offset->size() == crop_steps->size());
   assert(is.size() == crop_steps->size());
@@ -111,11 +111,11 @@ LogicalResult tpu::SliceOp::init(InferenceParameter &p) { return success(); }
 void tpu::SliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
-  auto out_num_elem = module::getNumElements(output());
-  auto offset_v = module::getI64Array(offset());
-  auto steps_v = module::getI64Array(steps());
-  auto out_shape = module::getShape(output());
-  auto in_shape = module::getShape(input());
+  auto out_num_elem = module::getNumElements(getOutput());
+  auto offset_v = module::getI64Array(getOffset());
+  auto steps_v = module::getI64Array(getSteps());
+  auto out_shape = module::getShape(getOutput());
+  auto in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.

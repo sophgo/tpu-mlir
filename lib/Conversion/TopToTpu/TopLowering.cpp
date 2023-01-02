@@ -46,7 +46,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     builder.setInsertionPointAfterValue(in);
     auto mrOp = builder.create<tpu::MulShiftOp>(name_loc, new_type,
                                                 ValueRange{in}, attrs);
-    return mrOp.output();
+    return mrOp.getOutput();
   } else {
     std::vector<NamedAttribute> attrs;
     auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
@@ -60,7 +60,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                   ValueRange{in}, attrs);
-    return rqOp.output();
+    return rqOp.getOutput();
   }
 }
 
@@ -88,7 +88,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
     auto name_loc = NameLoc::get(builder.getStringAttr(add_name));
     auto addOp = builder.create<tpu::AddConstOp>(name_loc, add_type,
                                                  ValueRange{in}, attrs);
-    rq_in = addOp.output();
+    rq_in = addOp.getOutput();
   } else if (in_zp != 0 && out_zp == 0) {
     offset = in_scale / out_scale * (-in_zp);
   }
@@ -110,7 +110,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
                                                ValueRange{rq_in}, attrs);
   if (out_zp == 0) {
-    return rqOp.output();
+    return rqOp.getOutput();
   } else {
     llvm_unreachable("Not support now.\n");
   }
@@ -141,7 +141,7 @@ Value do_dequant(Location name_loc, Value input, Type to_type,
 
   auto newOp = builder.create<tpu::DequantIntOp>(name_loc, newType,
                                                  ValueRange{input}, attrs);
-  return newOp.output();
+  return newOp.getOutput();
 }
 
 Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
@@ -166,7 +166,7 @@ Value do_requant(Location name_loc, Value input, Type to_type, bool tensorType,
 
   auto newOp = builder.create<tpu::RequantIntOp>(name_loc, newType,
                                                  ValueRange{input}, attrs);
-  return newOp.output();
+  return newOp.getOutput();
 }
 
 Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
@@ -189,7 +189,7 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
 
   auto newOp =
       builder.create<tpu::RequantIntAxisOp>(name_loc, newType, operands, attrs);
-  return newOp.output();
+  return newOp.getOutput();
 }
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
@@ -210,7 +210,7 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 
-  return rqOp.output();
+  return rqOp.getOutput();
 }
 
 Value do_reshape(Value input, RankedTensorType to_type) {
@@ -223,7 +223,7 @@ Value do_reshape(Value input, RankedTensorType to_type) {
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   auto newOp = builder.create<tpu::ReshapeOp>(name_loc, to_type,
                                               ValueRange{input}, attrs);
-  return newOp.output();
+  return newOp.getOutput();
 }
 
 int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
@@ -377,7 +377,7 @@ Value do_transpose(Location name_loc, Value input,
   auto newOp = builder.create<tpu::PermuteOp>(
       name_loc, new_type,
       ValueRange{input, module::getNoneOp(input.getDefiningOp())}, attrs);
-  return newOp.output();
+  return newOp.getOutput();
 }
 
 } // namespace tpu_mlir

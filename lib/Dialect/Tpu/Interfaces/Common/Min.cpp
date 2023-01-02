@@ -19,9 +19,9 @@
 LogicalResult tpu::MinOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], module::getShape(inputs()[1]))
-      .dst(p.outputs[0], module::getShape(output()))
+      .lhs(p.inputs[0], module::getShape(getInputs()[0]))
+      .rhs(p.inputs[1], module::getShape(getInputs()[1]))
+      .dst(p.outputs[0], module::getShape(getOutput()))
       .algorithem(algorithm::binary_min)
       .setup();
   p.handle = (void *)binary;
@@ -50,9 +50,9 @@ LogicalResult tpu::MinOp::LocalGenSupport() {
   // The same n_slice and h_slice value will propagate to each inputs.
   // Thus, the local layer is only safe when we do not need to slice n and h
   // dimensions.
-  auto out_shape = module::getShape(output());
-  auto lhs_shape = module::getShape(inputs()[0]);
-  auto rhs_shape = module::getShape(inputs()[1]);
+  auto out_shape = module::getShape(getOutput());
+  auto lhs_shape = module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
   if (getOperand(1).getDefiningOp() &&
       isa<top::WeightOp>(getOperand(1).getDefiningOp()))
     return failure();

@@ -23,23 +23,23 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  bool has_table = !table().getType().isa<NoneType>();
+  bool has_table = !getTable().getType().isa<NoneType>();
   float in_scale = 1.0;
-  if (module::isUniformQuantized(input())) {
-    auto in_qtype = module::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
     in_scale = in_qtype.getScale();
   }
-  if (module::isUniformQuantized(input(), output())) {
-    if (log()) {
+  if (module::isUniformQuantized(getInput(), getOutput())) {
+    if (getLog()) {
       llvm_unreachable("Not Implemented");
       return;
     }
     assert(has_table);
-    auto out_qtype = module::getUniformQuantizedType(output());
+    auto out_qtype = module::getUniformQuantizedType(getOutput());
     softmax_tflite_fix8b_param_t param = {0};
     auto &common = param.common;
-    common.begin_axis = axis();
-    common.end_axis = axis();
+    common.begin_axis = getAxis();
+    common.end_axis = getAxis();
     common.zero_point = out_qtype.getZeroPoint();
     common.scale_val = out_qtype.getScale();
     BM168x::call_global_func("backend_api_softmax_tflite_fix8b_global", &param,
@@ -48,10 +48,10 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
   } else {
     softmax_global_param_t param = {0};
     auto &common = param.common;
-    common.begin_axis = axis();
-    common.end_axis = axis();
+    common.begin_axis = getAxis();
+    common.end_axis = getAxis();
     common.scale_val = in_scale;
-    common.log = log();
+    common.log = getLog();
     BM168x::call_global_func("backend_api_softmax_global", &param,
                              sizeof(param), input_spec->data(),
                              output_spec->data());

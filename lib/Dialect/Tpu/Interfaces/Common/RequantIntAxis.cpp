@@ -21,19 +21,19 @@ LogicalResult tpu::RequantIntAxisOp::init(InferenceParameter &p) {
 void tpu::RequantIntAxisOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
-  auto i_sType = module::getStorageType(input());
-  auto o_sType = module::getStorageType(output());
-  auto o_qtype = module::getUniformQuantizedType(output());
+  auto i_sType = module::getStorageType(getInput());
+  auto o_sType = module::getStorageType(getOutput());
+  auto o_qtype = module::getUniformQuantizedType(getOutput());
 
-  auto shape = module::getShape(output());
-  auto mode = quant_mode();
+  auto shape = module::getShape(getOutput());
+  auto mode = getQuantMode();
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
   }
   int64_t zp_x = 0;
-  if (module::isUniformQuantized(input())) {
-    auto i_qtype = module::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(getInput())) {
+    auto i_qtype = module::getUniformQuantizedType(getInput());
     zp_x = i_qtype.getZeroPoint();
     assert(mode == tpu::RequantMode::Normal);
   }
@@ -102,7 +102,7 @@ mlir::Type tpu::RequantIntAxisOp::type_verify(uint64_t opd_idx,
                                               TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = module::getStorageType(input());
+    auto stype = module::getStorageType(getInput());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }

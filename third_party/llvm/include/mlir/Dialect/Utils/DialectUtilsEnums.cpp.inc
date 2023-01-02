@@ -16,17 +16,17 @@ namespace utils {
   return "";
 }
 
-::llvm::Optional<IteratorType> symbolizeIteratorType(::llvm::StringRef str) {
-  return ::llvm::StringSwitch<::llvm::Optional<IteratorType>>(str)
+::std::optional<IteratorType> symbolizeIteratorType(::llvm::StringRef str) {
+  return ::llvm::StringSwitch<::std::optional<IteratorType>>(str)
       .Case("parallel", IteratorType::parallel)
       .Case("reduction", IteratorType::reduction)
-      .Default(::llvm::None);
+      .Default(::std::nullopt);
 }
-::llvm::Optional<IteratorType> symbolizeIteratorType(uint32_t value) {
+::std::optional<IteratorType> symbolizeIteratorType(uint32_t value) {
   switch (value) {
   case 0: return IteratorType::parallel;
   case 1: return IteratorType::reduction;
-  default: return ::llvm::None;
+  default: return ::std::nullopt;
   }
 }
 

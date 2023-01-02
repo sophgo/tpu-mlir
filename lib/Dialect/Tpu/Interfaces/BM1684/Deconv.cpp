@@ -24,11 +24,11 @@ using namespace tpu_mlir::bm1684;
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
 
   auto attr = op.parseParam();
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
@@ -48,7 +48,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
       1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
   auto new_type =
       RankedTensorType::get(new_shape, filter_type.getElementType());
-  auto new_filter = top::WeightOp::create(op.filter().getDefiningOp(),
+  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
                                           "reorderd", *filter_new, new_type);
   op->setOperand(1, new_filter);
   return success();

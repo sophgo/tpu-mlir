@@ -21,7 +21,7 @@ void MaxLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxOp op,
   int64_t o_zp;
   double o_scale;
   bool sign = true;
-  module::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
+  module::getScaleAndZeroPoint(op.getOutput(), o_scale, o_zp, sign, false);
   std::vector<int> coeff_v(nInputs, 1);
   std::vector<float> qscale(nInputs);
   for (int i = 0; i < nInputs; i++) {
@@ -56,7 +56,7 @@ void MaxLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxOp op,
       "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = getQuantInt8Type(op.output(), false);
+  auto newType = getQuantInt8Type(op.getOutput(), false);
   rewriter.replaceOpWithNewOp<tpu::MaxOp>(op.getOperation(), newType, operands, attrs);
   return;
 }

@@ -30,14 +30,14 @@ void tpu::SliceOp::codegen_global_cv18xx( int64_t layer_id) {
   bool fusible;
   parseParam(i_s, o_s, offset_4, step_4, fusible);
   CVIKERNEL_FMT_E fmt;
-  if (module::isUniformQuantized(output())) {
+  if (module::isUniformQuantized(getOutput())) {
     fmt = CVK_FMT_I8;
   } else {
     fmt = CVK_FMT_BF16;
   }
 
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
   if (fusible == false) {
     cvi_backend_tg_crop_kernel( layer_id, ga_input, ga_output, i_s, o_s, offset_4, step_4, fmt);
   }

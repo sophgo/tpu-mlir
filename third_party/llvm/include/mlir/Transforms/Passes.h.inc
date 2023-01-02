@@ -5,6 +5,7 @@
 #define GEN_PASS_DECL_CSE
 #define GEN_PASS_DECL_CANONICALIZER
 #define GEN_PASS_DECL_CONTROLFLOWSINK
+#define GEN_PASS_DECL_GENERATERUNTIMEVERIFICATION
 #define GEN_PASS_DECL_INLINER
 #define GEN_PASS_DECL_LOCATIONSNAPSHOT
 #define GEN_PASS_DECL_LOOPINVARIANTCODEMOTION
@@ -86,6 +87,7 @@ struct CanonicalizerOptions {
   bool topDownProcessingEnabled = true;
   bool enableRegionSimplification = true;
   int64_t maxIterations = 10;
+  int64_t maxNumRewrites = -1;
   ::llvm::ArrayRef<std::string> disabledPatterns;
   ::llvm::ArrayRef<std::string> enabledPatterns;
 };
@@ -140,13 +142,15 @@ public:
     topDownProcessingEnabled = options.topDownProcessingEnabled;
     enableRegionSimplification = options.enableRegionSimplification;
     maxIterations = options.maxIterations;
+    maxNumRewrites = options.maxNumRewrites;
     disabledPatterns = options.disabledPatterns;
     enabledPatterns = options.enabledPatterns;
   }
 protected:
   ::mlir::Pass::Option<bool> topDownProcessingEnabled{*this, "top-down", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(true)};
-  ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(true)};
-  ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(10)};
+  ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Perform control flow optimizations to the region tree"), ::llvm::cl::init(true)};
+  ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Max. iterations between applying patterns / simplifying regions"), ::llvm::cl::init(10)};
+  ::mlir::Pass::Option<int64_t> maxNumRewrites{*this, "max-num-rewrites", ::llvm::cl::desc("Max. number of pattern rewrites within an iteration"), ::llvm::cl::init(-1)};
   ::mlir::Pass::ListOption<std::string> disabledPatterns{*this, "disable-patterns", ::llvm::cl::desc("Labels of patterns that should be filtered out during application")};
   ::mlir::Pass::ListOption<std::string> enabledPatterns{*this, "enable-patterns", ::llvm::cl::desc("Labels of patterns that should be used during application, all other patterns are filtered out")};
 private:
@@ -213,6 +217,64 @@ private:
 } // namespace impl
 #undef GEN_PASS_DEF_CONTROLFLOWSINK
 #endif // GEN_PASS_DEF_CONTROLFLOWSINK
+
+//===----------------------------------------------------------------------===//
+// GenerateRuntimeVerification
+//===----------------------------------------------------------------------===//
+#ifdef GEN_PASS_DECL_GENERATERUNTIMEVERIFICATION
+#undef GEN_PASS_DECL_GENERATERUNTIMEVERIFICATION
+#endif // GEN_PASS_DECL_GENERATERUNTIMEVERIFICATION
+#ifdef GEN_PASS_DEF_GENERATERUNTIMEVERIFICATION
+namespace impl {
+
+template <typename DerivedT>
+class GenerateRuntimeVerificationBase : public ::mlir::OperationPass<> {
+public:
+  using Base = GenerateRuntimeVerificationBase;
+
+  GenerateRuntimeVerificationBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  GenerateRuntimeVerificationBase(const GenerateRuntimeVerificationBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("generate-runtime-verification");
+  }
+  ::llvm::StringRef getArgument() const override { return "generate-runtime-verification"; }
+
+  ::llvm::StringRef getDescription() const override { return "Generate additional runtime op verification checks"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("GenerateRuntimeVerification");
+  }
+  ::llvm::StringRef getName() const override { return "GenerateRuntimeVerification"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GenerateRuntimeVerificationBase<DerivedT>)
+
+protected:
+private:
+};
+} // namespace impl
+#undef GEN_PASS_DEF_GENERATERUNTIMEVERIFICATION
+#endif // GEN_PASS_DEF_GENERATERUNTIMEVERIFICATION
 
 //===----------------------------------------------------------------------===//
 // Inliner
@@ -904,6 +966,23 @@ inline void registerControlFlowSinkPass() {
 }
 
 //===----------------------------------------------------------------------===//
+// GenerateRuntimeVerification Registration
+//===----------------------------------------------------------------------===//
+
+inline void registerGenerateRuntimeVerification() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createGenerateRuntimeVerificationPass();
+  });
+}
+
+// Old registration code, kept for temporary backwards compatibility.
+inline void registerGenerateRuntimeVerificationPass() {
+  ::mlir::registerPass([]() -> std::unique_ptr<::mlir::Pass> {
+    return mlir::createGenerateRuntimeVerificationPass();
+  });
+}
+
+//===----------------------------------------------------------------------===//
 // Inliner Registration
 //===----------------------------------------------------------------------===//
 
@@ -1081,6 +1160,7 @@ inline void registerTransformsPasses() {
   registerCSE();
   registerCanonicalizer();
   registerControlFlowSink();
+  registerGenerateRuntimeVerification();
   registerInliner();
   registerLocationSnapshot();
   registerLoopInvariantCodeMotion();
@@ -1188,8 +1268,9 @@ public:
 
 protected:
   ::mlir::Pass::Option<bool> topDownProcessingEnabled{*this, "top-down", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(true)};
-  ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(true)};
-  ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Seed the worklist in general top-down order"), ::llvm::cl::init(10)};
+  ::mlir::Pass::Option<bool> enableRegionSimplification{*this, "region-simplify", ::llvm::cl::desc("Perform control flow optimizations to the region tree"), ::llvm::cl::init(true)};
+  ::mlir::Pass::Option<int64_t> maxIterations{*this, "max-iterations", ::llvm::cl::desc("Max. iterations between applying patterns / simplifying regions"), ::llvm::cl::init(10)};
+  ::mlir::Pass::Option<int64_t> maxNumRewrites{*this, "max-num-rewrites", ::llvm::cl::desc("Max. number of pattern rewrites within an iteration"), ::llvm::cl::init(-1)};
   ::mlir::Pass::ListOption<std::string> disabledPatterns{*this, "disable-patterns", ::llvm::cl::desc("Labels of patterns that should be filtered out during application")};
   ::mlir::Pass::ListOption<std::string> enabledPatterns{*this, "enable-patterns", ::llvm::cl::desc("Labels of patterns that should be used during application, all other patterns are filtered out")};
 };
@@ -1238,6 +1319,51 @@ public:
 
 protected:
   ::mlir::Pass::Statistic numSunk{this, "num-sunk", "Number of operations sunk"};
+};
+
+template <typename DerivedT>
+class GenerateRuntimeVerificationBase : public ::mlir::OperationPass<> {
+public:
+  using Base = GenerateRuntimeVerificationBase;
+
+  GenerateRuntimeVerificationBase() : ::mlir::OperationPass<>(::mlir::TypeID::get<DerivedT>()) {}
+  GenerateRuntimeVerificationBase(const GenerateRuntimeVerificationBase &other) : ::mlir::OperationPass<>(other) {}
+
+  /// Returns the command-line argument attached to this pass.
+  static constexpr ::llvm::StringLiteral getArgumentName() {
+    return ::llvm::StringLiteral("generate-runtime-verification");
+  }
+  ::llvm::StringRef getArgument() const override { return "generate-runtime-verification"; }
+
+  ::llvm::StringRef getDescription() const override { return "Generate additional runtime op verification checks"; }
+
+  /// Returns the derived pass name.
+  static constexpr ::llvm::StringLiteral getPassName() {
+    return ::llvm::StringLiteral("GenerateRuntimeVerification");
+  }
+  ::llvm::StringRef getName() const override { return "GenerateRuntimeVerification"; }
+
+  /// Support isa/dyn_cast functionality for the derived pass class.
+  static bool classof(const ::mlir::Pass *pass) {
+    return pass->getTypeID() == ::mlir::TypeID::get<DerivedT>();
+  }
+
+  /// A clone method to create a copy of this pass.
+  std::unique_ptr<::mlir::Pass> clonePass() const override {
+    return std::make_unique<DerivedT>(*static_cast<const DerivedT *>(this));
+  }
+
+  /// Return the dialect that must be loaded in the context before this pass.
+  void getDependentDialects(::mlir::DialectRegistry &registry) const override {
+    
+  }
+
+  /// Explicitly declare the TypeID for this class. We declare an explicit private
+  /// instantiation because Pass classes should only be visible by the current
+  /// library.
+  MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GenerateRuntimeVerificationBase<DerivedT>)
+
+protected:
 };
 
 template <typename DerivedT>

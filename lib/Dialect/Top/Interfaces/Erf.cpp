@@ -14,13 +14,13 @@
 
 
 
-int64_t top::ErfOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::ErfOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ErfOp::init(InferenceParameter &p) { return success(); }
 void top::ErfOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ErfOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(input());
+  auto num_element = module::getNumElements(getInput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     p.outputs[0][i] = std::erf(p.inputs[0][i]);

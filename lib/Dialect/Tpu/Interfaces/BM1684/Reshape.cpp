@@ -18,14 +18,14 @@
 using namespace tpu_mlir::backend;
 
 void tpu::ReshapeOp::codegen_global_bm1684() {
-  auto in_addr = module::getAddress(input());
-  auto out_addr = module::getAddress(output());
+  auto in_addr = module::getAddress(getInput());
+  auto out_addr = module::getAddress(getOutput());
   if (in_addr == out_addr) {
     return;
   }
   int64_t in, ic, ih, iw, on, oc, oh, ow;
-  module::getNCHW(input(), in, ic, ih, iw);
-  module::getNCHW(output(), on, oc, oh, ow);
+  module::getNCHW(getInput(), in, ic, ih, iw);
+  module::getNCHW(getOutput(), on, oc, oh, ow);
   if (on != in) {
     llvm_unreachable("Not Implemented");
   } else {

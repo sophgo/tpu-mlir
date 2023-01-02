@@ -42,7 +42,7 @@ void SplitLowering::LoweringQuantized(PatternRewriter &rewriter,
     new_types.push_back(out.getType());
   }
   rewriter.replaceOpWithNewOp<tpu::SplitOp>(
-      op, new_types, ValueRange{op.input()}, op->getAttrs());
+      op, new_types, ValueRange{op.getInput()}, op->getAttrs());
 }
 
 } // namespace bm1684x

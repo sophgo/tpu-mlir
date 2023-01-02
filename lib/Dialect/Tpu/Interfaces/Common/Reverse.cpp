@@ -19,8 +19,8 @@ LogicalResult tpu::ReverseOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReverseOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReverseOp::inference(InferenceParameter &p) {
-  auto output_shape = module::getShape(output());
-  int64_t _axis = axis();
+  auto output_shape = module::getShape(getOutput());
+  int64_t _axis = getAxis();
   int on = output_shape[0];
   int oc = output_shape[1];
   int oh = output_shape.size() > 2 ? output_shape[2] : 1;

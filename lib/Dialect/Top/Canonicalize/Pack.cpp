@@ -26,12 +26,12 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
     if (!op->hasOneUse()) {
       return failure();
     }
-    for (auto in : op.inputs()) {
+    for (auto in : op.getInputs()) {
       auto matmul = dyn_cast<MatMulOp>(in.getDefiningOp());
       if (!matmul || !matmul->hasOneUse()) {
         return failure();
       }
-      auto the_split_op = matmul.input().getDefiningOp();
+      auto the_split_op = matmul.getInput().getDefiningOp();
       auto split = dyn_cast<SplitOp>(the_split_op);
       if (!split) {
         return failure();
@@ -40,15 +40,15 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
       } else if (l_split_op != the_split_op) {
         return failure();
       }
-      auto permute = dyn_cast<PermuteOp>(matmul.right().getDefiningOp());
+      auto permute = dyn_cast<PermuteOp>(matmul.getRight().getDefiningOp());
       if (!permute || !permute->hasOneUse()) {
         return failure();
       }
-      auto reshape = dyn_cast<ReshapeOp>(permute.input().getDefiningOp());
+      auto reshape = dyn_cast<ReshapeOp>(permute.getInput().getDefiningOp());
       if (!reshape || !reshape->hasOneUse()) {
         return failure();
       }
-      the_split_op = reshape.input().getDefiningOp();
+      the_split_op = reshape.getInput().getDefiningOp();
       split = dyn_cast<SplitOp>(the_split_op);
       if (!split) {
         return failure();
@@ -66,14 +66,15 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
     rewriter.setInsertionPointAfter(op);
     auto none = module::getNoneOp(op);
     std::vector<NamedAttribute> attrs;
-    if (op.do_relu()) {
-      attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-      attrs.push_back(rewriter.getNamedAttr("relu_limit", op.relu_limitAttr()));
+    if (op.getDoRelu()) {
+      attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+      attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
     }
     auto batchMatMul = rewriter.create<MatMulOp>(
-        op.getLoc(), op.output().getType(),
-        ValueRange{l_split.input(), r_split.input(), none}, attrs);
+        op.getLoc(), op.getOutput().getType(),
+        ValueRange{l_split.getInput(), r_split.getInput(), none}, attrs);
     op.replaceAllUsesWith(batchMatMul.getOperation());
+    op.erase();
     return success();
   }
 };

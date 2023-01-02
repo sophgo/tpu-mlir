@@ -13,7 +13,7 @@ namespace llvm {
 namespace Intrinsic {
 enum SPVIntrinsics : unsigned {
 // Enum values for intrinsics
-    spv_alloca = 8309,                                // llvm.spv.alloca
+    spv_alloca = 8400,                                // llvm.spv.alloca
     spv_assign_name,                           // llvm.spv.assign.name
     spv_assign_type,                           // llvm.spv.assign.type
     spv_bitcast,                               // llvm.spv.bitcast

@@ -16,13 +16,13 @@ namespace tpu_mlir {
 namespace cv18xx {
 
 bool UpsampleToDeconv(PatternRewriter &rewriter, top::UpsampleOp &op) {
-  int64_t scale_h = op.scale_h();
-  int64_t scale_w = op.scale_w();
+  int64_t scale_h = op.getScaleH();
+  int64_t scale_w = op.getScaleW();
 
   if (scale_h >= 16 || scale_w >= 16) {
     return false;
   }
-  auto input_shape = module::getShape(op.input());
+  auto input_shape = module::getShape(op.getInput());
   int64_t g = input_shape[1];
   int64_t oc = input_shape[1] / g;
   int64_t ic = input_shape[1] / g;
@@ -40,7 +40,7 @@ bool UpsampleToDeconv(PatternRewriter &rewriter, top::UpsampleOp &op) {
   filter_shape.emplace_back(h);
   filter_shape.emplace_back(w);
 
-  std::string op_name = module::getName(op.output()).str();
+  std::string op_name = module::getName(op.getOutput()).str();
   auto filter_type = RankedTensorType::get(filter_shape, rewriter.getF32Type());
   auto filter_op =
       top::WeightOp::create(op, op_name + "filter", filter, filter_type);
@@ -60,11 +60,11 @@ bool UpsampleToDeconv(PatternRewriter &rewriter, top::UpsampleOp &op) {
       rewriter.getNamedAttr("group", rewriter.getI64IntegerAttr(g)));
 
   std::vector<Value> operands;
-  operands.emplace_back(op.input());
+  operands.emplace_back(op.getInput());
   operands.emplace_back(filter_op);
   operands.emplace_back(module::getNoneOp(op));
   rewriter.replaceOpWithNewOp<top::DeconvOp>(
-      op, op.output().getType().cast<RankedTensorType>(), operands, attrs);
+      op, op.getOutput().getType().cast<RankedTensorType>(), operands, attrs);
   return true;
 }
 

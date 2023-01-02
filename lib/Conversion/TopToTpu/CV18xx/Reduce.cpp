@@ -16,10 +16,10 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   std::vector<Value> operands;
   std::vector<int64_t> rshift_v(1, 0);
   std::vector<int64_t> multiplier_v(1, 1);
-  auto mode = op.mode();
+  auto mode = op.getMode();
   double in_thr, out_thr;
-  in_thr = module::getThreshold(op.input());
-  out_thr = module::getThreshold(op.output());
+  in_thr = module::getThreshold(op.getInput());
+  out_thr = module::getThreshold(op.getOutput());
   double qscale = in_thr / out_thr;
   if (mode == "ReduceL2") {
     LoweringBF16(rewriter, op);
@@ -27,8 +27,8 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   }
   if (mode == "ReduceMean") {
     // reduce op
-    auto axes_val = module::getI64Array(op.axes());
-    auto input_shape = module::getShape(op.input());
+    auto axes_val = module::getI64Array(op.getAxes());
+    auto input_shape = module::getShape(op.getInput());
     int64_t size = 1;
     for (int32_t i = 0; i < axes_val->size(); i++) {
       auto dim = axes_val->at(i);
@@ -43,7 +43,7 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
   getRShiftAndMultiplierFromQScale(qscale, &multiplier, &shift);
   rshift_v.at(0) = shift;
   multiplier_v.at(0) = multiplier;
-  operands.push_back(op.input());
+  operands.push_back(op.getInput());
   if (mode != "ReduceL2") {
     auto none = module::getNoneOp(op);
     operands.push_back(none);
@@ -57,15 +57,15 @@ void ReduceLowering::LoweringINT8(PatternRewriter &rewriter, top::ReduceOp op,
       "multiplier", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ReduceOp>(op, newType, operands, attrs);
 }
 
 void ReduceLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::ReduceOp op) const {
   std::vector<Value> operands;
-  auto mode = op.mode();
-  operands.push_back(op.input());
+  auto mode = op.getMode();
+  operands.push_back(op.getInput());
   if (mode != "ReduceL2") {
     auto none = module::getNoneOp(op);
     operands.push_back(none);

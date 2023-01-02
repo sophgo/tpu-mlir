@@ -19,23 +19,23 @@ LogicalResult tpu::MulShiftOp::init(InferenceParameter &p) { return success(); }
 void tpu::MulShiftOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto sType = module::getStorageType(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto sType = module::getStorageType(getOutput());
   bool isUnsignInt = sType.isUnsignedInteger(8);
   int64_t in_zp = 0, out_zp = 0;
-  if (module::isUniformQuantized(input())) {
-    auto qtype = module::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(getInput())) {
+    auto qtype = module::getUniformQuantizedType(getInput());
     in_zp = qtype.getZeroPoint();
   }
-  if (module::isUniformQuantized(output())) {
-    auto qtype = module::getUniformQuantizedType(output());
+  if (module::isUniformQuantized(getOutput())) {
+    auto qtype = module::getUniformQuantizedType(getOutput());
     out_zp = qtype.getZeroPoint();
   }
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     auto v = applyMultiplierAndRShift(p.inputs[0][i] - in_zp,
-                                      (int64_t)multiplier(), rshift());
+                                      (int64_t)getMultiplier(), getRshift());
     // should add zp to the outputs.
     v += out_zp;
     p.outputs[0][i] = isUnsignInt ? to_uint8(v) : to_int8(v);

@@ -45,7 +45,7 @@ bool mlir::VectorTransferOpInterface::hasBroadcastDim() {
       return getImpl()->hasBroadcastDim(getImpl(), getOperation());
   }
 /// Return the `in_bounds` boolean ArrayAttr.
-::llvm::Optional<::mlir::ArrayAttr> mlir::VectorTransferOpInterface::in_bounds() {
+::std::optional<::mlir::ArrayAttr> mlir::VectorTransferOpInterface::in_bounds() {
       return getImpl()->in_bounds(getImpl(), getOperation());
   }
 /// Return the ShapedType.
@@ -56,7 +56,11 @@ bool mlir::VectorTransferOpInterface::hasBroadcastDim() {
 ::mlir::VectorType mlir::VectorTransferOpInterface::getVectorType() {
       return getImpl()->getVectorType(getImpl(), getOperation());
   }
-/// Return the mask type if the op has a mask.
+/// Return the mask operand if the op has a mask. Otherwise, return a empty value.
+Value mlir::VectorTransferOpInterface::getMask() {
+      return getImpl()->getMask(getImpl(), getOperation());
+  }
+/// Return the mask type if the op has a mask. Otherwise, return an empty VectorType.
 ::mlir::VectorType mlir::VectorTransferOpInterface::getMaskType() {
       return getImpl()->getMaskType(getImpl(), getOperation());
   }
@@ -105,6 +109,6 @@ SmallVector<int64_t> mlir::VectorTransferOpInterface::getTransferChunkAccessed()
 /// Return the shape ratio of unrolling to the target vector shape
 /// `targetShape`. Return `None` if the op cannot be unrolled to the target
 /// vector shape.
-::llvm::Optional<::llvm::SmallVector<int64_t, 4>> mlir::VectorUnrollOpInterface::getShapeForUnroll() {
+::std::optional<::llvm::SmallVector<int64_t, 4>> mlir::VectorUnrollOpInterface::getShapeForUnroll() {
       return getImpl()->getShapeForUnroll(getImpl(), getOperation());
   }

@@ -33,14 +33,14 @@ typedef struct {
 // GlobalGenInterface
 // =========================================
 void tpu::UpsampleOp::codegen_global_bm1684x() {
-  assert(scale_h() == scale_w());
+  assert(getScaleH() == getScaleW());
   auto op = getOperation();
   // int64_t n, c, h, w;
-  // module::getNCHW(input(), n, c, h, w);
+  // module::getNCHW(getInput(), n, c, h, w);
 
   upsample_spec_t spec = {0};
-  spec.size = scale_h();
-  spec.if_relu = do_relu();
+  spec.size = getScaleH();
+  spec.if_relu = getDoRelu();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   BM168x::call_global_func("backend_api_upsample_global", &spec, sizeof(spec),
@@ -63,10 +63,10 @@ void tpu::UpsampleOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w, oh, ow;
-  module::getNCHW(input(), n, c, h, w);
-  module::getNCHW(output(), n, c, oh, ow);
+  module::getNCHW(getInput(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, oh, ow);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->h_slice = in_gi.h_slice;
   sec_info->h_idx = in_gi.h_idx;
@@ -80,14 +80,14 @@ void tpu::UpsampleOp::assign_sec_info(int64_t n_step, int64_t h_step,
 }
 
 void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *sec_info_) {
-  assert(scale_h() == scale_w());
+  assert(getScaleH() == getScaleW());
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
 
   upsample_spec_t spec = {0};
-  spec.size = scale_h();
-  spec.if_relu = do_relu();
+  spec.size = getScaleH();
+  spec.if_relu = getDoRelu();
 
   BM168x::call_local_func("backend_api_upsample_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());

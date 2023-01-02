@@ -16,10 +16,10 @@ LogicalResult tpu::ClipOp::init(InferenceParameter &p) { return success(); }
 void tpu::ClipOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ClipOp::inference(InferenceParameter &p) {
-  auto min_v = static_cast<float>(minAttr().getValueAsDouble());
-  auto max_v = static_cast<float>(maxAttr().getValueAsDouble());
-  auto num_element = module::getNumElements(output());
-  assert(!module::isUniformQuantized(output()) && "Not Implemented");
+  auto min_v = static_cast<float>(getMin().convertToDouble());
+  auto max_v = static_cast<float>(getMax().convertToDouble());
+  auto num_element = module::getNumElements(getOutput());
+  assert(!module::isUniformQuantized(getOutput()) && "Not Implemented");
 
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {

@@ -19,16 +19,16 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
                                  bool asymmetric) const {
   if (asymmetric == false) {
     int64_t N, C, H, W;
-    module::getNCHW(op.output(), N, C, H, W);
-    auto src_shape = module::getShape(op.input());
-    auto slope_shape = module::getShape(op.slope());
-    auto num_slope = module::getNumElements(op.slope());
+    module::getNCHW(op.getOutput(), N, C, H, W);
+    auto src_shape = module::getShape(op.getInput());
+    auto slope_shape = module::getShape(op.getSlope());
+    auto num_slope = module::getNumElements(op.getSlope());
     assert(num_slope == C);
 
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
 
-    auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
+    auto slopeOp = cast<top::WeightOp>(op.getSlope().getDefiningOp());
     auto slope_f32 = slopeOp.read<float>();
     std::vector<int8_t> slope_int8(num_slope);
     auto scale_max = std::abs(slope_f32->at(0));
@@ -46,7 +46,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
           getMultiplierI8FromQScaleAndRShift(slope_f32->at(idx), rshifti);
     }
 
-    operands.push_back(op.input());
+    operands.push_back(op.getInput());
     auto new_type = RankedTensorType::get(slope_shape, rewriter.getI8Type());
     auto new_slope =
         top::WeightOp::create(op, "slope_i8", slope_int8, new_type);
@@ -57,7 +57,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
     }
     attrs.push_back(
         rewriter.getNamedAttr("rshift", rewriter.getSI32IntegerAttr(rshifti)));
-    auto newType = getQuantInt8Type(op.output(), asymmetric);
+    auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
     rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
   } else {
     LoweringF32(rewriter, op);
@@ -73,8 +73,8 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
     operands.push_back(op->getOperand(i));
   }
 
-  auto src_shape = module::getShape(op.input());
-  auto slope_shape = module::getShape(op.slope());
+  auto src_shape = module::getShape(op.getInput());
+  auto slope_shape = module::getShape(op.getSlope());
   int src_dims = src_shape.size();
   int slope_dims = slope_shape.size();
   assert(src_dims == slope_dims);
@@ -90,7 +90,7 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
     }
   }
 
-  auto slopeOp = cast<top::WeightOp>(op.slope().getDefiningOp());
+  auto slopeOp = cast<top::WeightOp>(op.getSlope().getDefiningOp());
   auto slope_f32 = slopeOp.read<float>();
 
   std::vector<NamedAttribute> attrs;
@@ -107,8 +107,8 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
   }
   Value newValue;
   auto newOp = rewriter.create<tpu::PReluOp>(
-      op->getLoc(), op.output().getType(), operands, attrs);
-  newValue = newOp.output();
+      op->getLoc(), op.getOutput().getType(), operands, attrs);
+  newValue = newOp.getOutput();
   rewriter.replaceOp(op, {newValue});
 }
 

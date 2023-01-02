@@ -8,7 +8,7 @@
 
 /// Returns a clone of this type with the given shape and element
 /// type. If a shape is not provided, the current shape of the type is used.
-::mlir::ShapedType mlir::ShapedType::cloneWith(::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) const {
+::mlir::ShapedType mlir::ShapedType::cloneWith(::std::optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) const {
       return getImpl()->cloneWith(getImpl(), *this, shape, elementType);
   }
 /// Returns the element type of this shaped type.

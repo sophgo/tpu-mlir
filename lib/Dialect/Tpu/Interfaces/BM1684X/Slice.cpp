@@ -54,15 +54,15 @@ void tpu::SliceOp::codegen_global_bm1684x() {
   param.begin_mask = 0;
   param.end_mask = 0;
 
-  std::vector<int64_t> input_shape = module::getShape(input());
-  std::vector<int64_t> output_shape = module::getShape(output());
+  std::vector<int64_t> input_shape = module::getShape(getInput());
+  std::vector<int64_t> output_shape = module::getShape(getOutput());
 
   auto in_dims = input_shape.size();
   auto out_dims = output_shape.size();
   assert(in_dims == out_dims);
 
-  auto offset_v = module::getI64Array(offset());
-  auto steps_v = module::getI64Array(steps());
+  auto offset_v = module::getI64Array(getOffset());
+  auto steps_v = module::getI64Array(getSteps());
   for (int i = 0; i < in_dims; i++) {
     param.begin_index[i] = offset_v->at(i);
     param.end_index[i] = output_shape[i] * steps_v->at(i) + offset_v->at(i);

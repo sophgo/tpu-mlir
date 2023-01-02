@@ -32,21 +32,21 @@ static float tanh_(float data, InferenceParameter &p) {
 
 lstm_attr_t tpu::LSTMCVIOp::parseParam() {
   lstm_attr_t attr = {0};
-  auto r_shape = module::getShape(recurrence());
-  auto in_shape = module::getShape(input());
+  auto r_shape = module::getShape(getRecurrence());
+  auto in_shape = module::getShape(getInput());
   assert(in_shape.size() == 3);
   attr.batch_size = in_shape[1];
   attr.seq_len = in_shape[0];
   attr.input_size = in_shape[2];
   attr.batch_first = false;
-  attr.num_direction = bidirectional() ? 2 : 1;
+  attr.num_direction = getBidirectional() ? 2 : 1;
   attr.hidden_size = r_shape[2];
-  attr.have_bias = !bias().getType().isa<mlir::NoneType>();
-  attr.have_h0 = !initial_h().getType().isa<mlir::NoneType>();
-  attr.have_c0 = !initial_c().getType().isa<mlir::NoneType>();
-  attr.output_y = !Y().getType().isa<mlir::NoneType>();
-  attr.output_yh = !Y_h().getType().isa<mlir::NoneType>();
-  attr.output_yc = !Y_c().getType().isa<mlir::NoneType>();
+  attr.have_bias = !getBias().getType().isa<mlir::NoneType>();
+  attr.have_h0 = !getInitialH().getType().isa<mlir::NoneType>();
+  attr.have_c0 = !getInitialC().getType().isa<mlir::NoneType>();
+  attr.output_y = !getY().getType().isa<mlir::NoneType>();
+  attr.output_yh = !getYH().getType().isa<mlir::NoneType>();
+  attr.output_yc = !getYC().getType().isa<mlir::NoneType>();
   return attr;
 }
 

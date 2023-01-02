@@ -52,7 +52,7 @@ class ShapedType;
 namespace detail {
 struct ShapedTypeInterfaceTraits {
   struct Concept {
-    ::mlir::ShapedType (*cloneWith)(const Concept *impl, ::mlir::Type , ::llvm::Optional<::llvm::ArrayRef<int64_t>>, ::mlir::Type);
+    ::mlir::ShapedType (*cloneWith)(const Concept *impl, ::mlir::Type , ::std::optional<::llvm::ArrayRef<int64_t>>, ::mlir::Type);
     ::mlir::Type (*getElementType)(const Concept *impl, ::mlir::Type );
     bool (*hasRank)(const Concept *impl, ::mlir::Type );
     ::llvm::ArrayRef<int64_t> (*getShape)(const Concept *impl, ::mlir::Type );
@@ -63,7 +63,7 @@ struct ShapedTypeInterfaceTraits {
     using Interface = ::mlir::ShapedType;
     Model() : Concept{cloneWith, getElementType, hasRank, getShape} {}
 
-    static inline ::mlir::ShapedType cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType);
+    static inline ::mlir::ShapedType cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::std::optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType);
     static inline ::mlir::Type getElementType(const Concept *impl, ::mlir::Type tablegen_opaque_val);
     static inline bool hasRank(const Concept *impl, ::mlir::Type tablegen_opaque_val);
     static inline ::llvm::ArrayRef<int64_t> getShape(const Concept *impl, ::mlir::Type tablegen_opaque_val);
@@ -74,7 +74,7 @@ struct ShapedTypeInterfaceTraits {
     using Interface = ::mlir::ShapedType;
     FallbackModel() : Concept{cloneWith, getElementType, hasRank, getShape} {}
 
-    static inline ::mlir::ShapedType cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType);
+    static inline ::mlir::ShapedType cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::std::optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType);
     static inline ::mlir::Type getElementType(const Concept *impl, ::mlir::Type tablegen_opaque_val);
     static inline bool hasRank(const Concept *impl, ::mlir::Type tablegen_opaque_val);
     static inline ::llvm::ArrayRef<int64_t> getShape(const Concept *impl, ::mlir::Type tablegen_opaque_val);
@@ -95,7 +95,7 @@ public:
   struct Trait : public detail::ShapedTypeTrait<ConcreteType> {};
   /// Returns a clone of this type with the given shape and element
   /// type. If a shape is not provided, the current shape of the type is used.
-  ::mlir::ShapedType cloneWith(::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) const;
+  ::mlir::ShapedType cloneWith(::std::optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) const;
   /// Returns the element type of this shaped type.
   ::mlir::Type getElementType() const;
   /// Returns if this type is ranked, i.e. it has a known number of dimensions.
@@ -103,19 +103,17 @@ public:
   /// Returns the shape of this type if it is ranked, otherwise asserts.
   ::llvm::ArrayRef<int64_t> getShape() const;
 
-    // TODO: merge these two special values in a single one used everywhere.
-    // Unfortunately, uses of `-1` have crept deep into the codebase now and are
-    // hard to track.
-    static constexpr int64_t kDynamicSize = -1;
-    static constexpr int64_t kDynamicStrideOrOffset =
+    static constexpr int64_t kDynamic =
         std::numeric_limits<int64_t>::min();
 
     /// Whether the given dimension size indicates a dynamic dimension.
-    static constexpr bool isDynamic(int64_t dSize) {
-      return dSize == kDynamicSize;
+    static constexpr bool isDynamic(int64_t dValue) {
+	return dValue == kDynamic;
     }
-    static constexpr bool isDynamicStrideOrOffset(int64_t dStrideOrOffset) {
-      return dStrideOrOffset == kDynamicStrideOrOffset;
+
+    /// Whether the given shape has any size that indicates a dynamic dimension.
+    static bool isDynamicShape(ArrayRef<int64_t> dSizes) {
+      return any_of(dSizes, [](int64_t dSize) { return isDynamic(dSize); });
     }
 
     /// Return the number of elements present in the given shape.
@@ -141,7 +139,7 @@ public:
     }
     /// Return a clone of this type with the given new element type.
     auto clone(::mlir::Type elementType) {
-      return (*this).cloneWith(/*shape=*/llvm::None, elementType);
+      return (*this).cloneWith(/*shape=*/std::nullopt, elementType);
     }
 
     /// If an element type is an integer or a float, return its width. Otherwise,
@@ -173,7 +171,7 @@ public:
     /// all dimensions have known size (>= 0).
     bool hasStaticShape() const {
       return (*this).hasRank() &&
-             llvm::none_of((*this).getShape(), ::mlir::ShapedType::isDynamic);
+             !::mlir::ShapedType::isDynamicShape((*this).getShape());
     }
 
     /// Returns if this type has a static shape and the shape is equal to
@@ -218,7 +216,7 @@ namespace detail {
     }
     /// Return a clone of this type with the given new element type.
     auto clone(::mlir::Type elementType) {
-      return (*static_cast<const ConcreteType *>(this)).cloneWith(/*shape=*/llvm::None, elementType);
+      return (*static_cast<const ConcreteType *>(this)).cloneWith(/*shape=*/std::nullopt, elementType);
     }
 
     /// If an element type is an integer or a float, return its width. Otherwise,
@@ -250,7 +248,7 @@ namespace detail {
     /// all dimensions have known size (>= 0).
     bool hasStaticShape() const {
       return (*static_cast<const ConcreteType *>(this)).hasRank() &&
-             llvm::none_of((*static_cast<const ConcreteType *>(this)).getShape(), ::mlir::ShapedType::isDynamic);
+             !::mlir::ShapedType::isDynamicShape((*static_cast<const ConcreteType *>(this)).getShape());
     }
 
     /// Returns if this type has a static shape and the shape is equal to
@@ -283,8 +281,12 @@ namespace detail {
   
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteType>
-::mlir::ShapedType detail::ShapedTypeInterfaceTraits::Model<ConcreteType>::cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) {
+::mlir::ShapedType detail::ShapedTypeInterfaceTraits::Model<ConcreteType>::cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::std::optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) {
   return (tablegen_opaque_val.cast<ConcreteType>()).cloneWith(shape, elementType);
 }
 template<typename ConcreteType>
@@ -300,7 +302,7 @@ template<typename ConcreteType>
   return (tablegen_opaque_val.cast<ConcreteType>()).getShape();
 }
 template<typename ConcreteType>
-::mlir::ShapedType detail::ShapedTypeInterfaceTraits::FallbackModel<ConcreteType>::cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::llvm::Optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) {
+::mlir::ShapedType detail::ShapedTypeInterfaceTraits::FallbackModel<ConcreteType>::cloneWith(const Concept *impl, ::mlir::Type tablegen_opaque_val, ::std::optional<::llvm::ArrayRef<int64_t>> shape, ::mlir::Type elementType) {
   return static_cast<const ConcreteType *>(impl)->cloneWith(tablegen_opaque_val, shape, elementType);
 }
 template<typename ConcreteType>

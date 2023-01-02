@@ -30,7 +30,7 @@ extern "C" {
 
 void tpu::CompareOp::codegen_global_bm1684x() {
   bcbinary_common_spec_t spec = {0};
-  spec.binary_type = BM168x::compare_mode(mode());
+  spec.binary_type = BM168x::compare_mode(getMode());
   spec.if_relu = 0;
   spec.scale_A = 1;
   spec.scale_B = 1;
@@ -57,9 +57,9 @@ void tpu::CompareOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(output(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -79,7 +79,7 @@ void tpu::CompareOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto output_spec = BM168x::get_output_spec(op);
 
   bcbinary_local_spec_t spec = {0};
-  spec.common.binary_type = BM168x::compare_mode(mode());
+  spec.common.binary_type = BM168x::compare_mode(getMode());
   spec.common.if_relu = 0;
   spec.common.scale_A = 1;
   spec.common.scale_B = 1;

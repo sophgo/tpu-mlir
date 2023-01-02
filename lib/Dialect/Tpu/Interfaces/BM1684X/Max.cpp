@@ -62,9 +62,9 @@ void tpu::MaxOp::assign_sec_info(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
-  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
-  auto in1_gi = LocalGenInterface::getGroupInfo(inputs()[1], n_step, h_step);
+  module::getNCHW(getOutput(), n, c, h, w);
+  auto in0_gi = LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(getInputs()[1], n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->h_slice = in0_gi.h_slice;

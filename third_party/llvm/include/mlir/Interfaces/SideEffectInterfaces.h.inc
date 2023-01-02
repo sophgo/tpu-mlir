@@ -7,6 +7,54 @@
 \*===----------------------------------------------------------------------===*/
 
 namespace mlir {
+class ConditionallySpeculatable;
+namespace detail {
+struct ConditionallySpeculatableInterfaceTraits {
+  struct Concept {
+    ::mlir::Speculation::Speculatability (*getSpeculatability)(const Concept *impl, ::mlir::Operation *);
+  };
+  template<typename ConcreteOp>
+  class Model : public Concept {
+  public:
+    using Interface = ::mlir::ConditionallySpeculatable;
+    Model() : Concept{getSpeculatability} {}
+
+    static inline ::mlir::Speculation::Speculatability getSpeculatability(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteOp>
+  class FallbackModel : public Concept {
+  public:
+    using Interface = ::mlir::ConditionallySpeculatable;
+    FallbackModel() : Concept{getSpeculatability} {}
+
+    static inline ::mlir::Speculation::Speculatability getSpeculatability(const Concept *impl, ::mlir::Operation *tablegen_opaque_val);
+  };
+  template<typename ConcreteModel, typename ConcreteOp>
+  class ExternalModel : public FallbackModel<ConcreteModel> {
+  public:
+    using ConcreteEntity = ConcreteOp;
+  };
+};template <typename ConcreteOp>
+struct ConditionallySpeculatableTrait;
+
+} // namespace detail
+class ConditionallySpeculatable : public ::mlir::OpInterface<ConditionallySpeculatable, detail::ConditionallySpeculatableInterfaceTraits> {
+public:
+  using ::mlir::OpInterface<ConditionallySpeculatable, detail::ConditionallySpeculatableInterfaceTraits>::OpInterface;
+  template <typename ConcreteOp>
+  struct Trait : public detail::ConditionallySpeculatableTrait<ConcreteOp> {};
+  /// Returns value indicating whether the specific operation in question can
+  /// be speculatively executed.  Please see the documentation on the
+  /// Speculatability enum to know how to interpret the return value.
+  ::mlir::Speculation::Speculatability getSpeculatability();
+};
+namespace detail {
+  template <typename ConcreteOp>
+  struct ConditionallySpeculatableTrait : public ::mlir::OpInterface<ConditionallySpeculatable, detail::ConditionallySpeculatableInterfaceTraits>::Trait<ConcreteOp> {
+  };
+}// namespace detail
+} // namespace mlir
+namespace mlir {
 class MemoryEffectOpInterface;
 namespace detail {
 struct MemoryEffectOpInterfaceInterfaceTraits {
@@ -82,13 +130,6 @@ public:
       return effects.empty();
     }
 
-    /// Returns true if the given operation has no effects for this interface.
-    static bool hasNoEffect(Operation *op) {
-      if (auto interface = dyn_cast<MemoryEffectOpInterface>(op))
-        return interface.hasNoEffect();
-      return op->hasTrait<::mlir::OpTrait::HasRecursiveSideEffects>();
-    }
-
     /// Collect all of the effect instances that operate on the provided value
     /// and place them in 'effects'.
     void getEffectsOnValue(::mlir::Value value,
@@ -99,9 +140,9 @@ public:
     }
 
     /// Return the effect of the given type `Effect` that is applied to the
-    /// given value, or None if no effect exists.
+    /// given value, or std::nullopt if no effect exists.
     template <typename Effect>
-    ::llvm::Optional<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>>
+    ::std::optional<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>>
     getEffectOnValue(::mlir::Value value) {
       llvm::SmallVector<::mlir::SideEffects::EffectInstance<
               ::mlir::MemoryEffects::Effect>, 4> effects;
@@ -110,7 +151,7 @@ public:
         return isa<Effect>(it.getEffect()) && it.getValue() == value;
       });
       if (it == effects.end())
-        return llvm::None;
+        return std::nullopt;
       return *it;
     }
 
@@ -142,6 +183,18 @@ namespace detail {
   struct MemoryEffectOpInterfaceTrait : public ::mlir::OpInterface<MemoryEffectOpInterface, detail::MemoryEffectOpInterfaceInterfaceTraits>::Trait<ConcreteOp> {
   };
 }// namespace detail
+} // namespace mlir
+namespace mlir {
+template<typename ConcreteOp>
+::mlir::Speculation::Speculatability detail::ConditionallySpeculatableInterfaceTraits::Model<ConcreteOp>::getSpeculatability(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getSpeculatability();
+}
+template<typename ConcreteOp>
+::mlir::Speculation::Speculatability detail::ConditionallySpeculatableInterfaceTraits::FallbackModel<ConcreteOp>::getSpeculatability(const Concept *impl, ::mlir::Operation *tablegen_opaque_val) {
+  return static_cast<const ConcreteOp *>(impl)->getSpeculatability(tablegen_opaque_val);
+}
+} // namespace mlir
+namespace mlir {
 template<typename ConcreteOp>
 void detail::MemoryEffectOpInterfaceInterfaceTraits::Model<ConcreteOp>::getEffects(const Concept *impl, ::mlir::Operation *tablegen_opaque_val, ::llvm::SmallVectorImpl<::mlir::SideEffects::EffectInstance<::mlir::MemoryEffects::Effect>> & effects) {
   return (llvm::cast<ConcreteOp>(tablegen_opaque_val)).getEffects(effects);

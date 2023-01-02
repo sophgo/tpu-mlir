@@ -3,110 +3,118 @@
 // Transforms Group Registration
 //===----------------------------------------------------------------------===//
 
-void mlirRegisterTransformsPasses() {
+void mlirRegisterTransformsPasses(void) {
   registerTransformsPasses();
 }
 
-MlirPass mlirCreateTransformsCSE() {
+MlirPass mlirCreateTransformsCSE(void) {
   return wrap(mlir::createCSEPass().release());
 }
-void mlirRegisterTransformsCSE() {
+void mlirRegisterTransformsCSE(void) {
   registerCSE();
 }
 
 
-MlirPass mlirCreateTransformsCanonicalizer() {
+MlirPass mlirCreateTransformsCanonicalizer(void) {
   return wrap(mlir::createCanonicalizerPass().release());
 }
-void mlirRegisterTransformsCanonicalizer() {
+void mlirRegisterTransformsCanonicalizer(void) {
   registerCanonicalizer();
 }
 
 
-MlirPass mlirCreateTransformsControlFlowSink() {
+MlirPass mlirCreateTransformsControlFlowSink(void) {
   return wrap(::mlir::createControlFlowSinkPass().release());
 }
-void mlirRegisterTransformsControlFlowSink() {
+void mlirRegisterTransformsControlFlowSink(void) {
   registerControlFlowSink();
 }
 
 
-MlirPass mlirCreateTransformsInliner() {
+MlirPass mlirCreateTransformsGenerateRuntimeVerification(void) {
+  return wrap(mlir::createGenerateRuntimeVerificationPass().release());
+}
+void mlirRegisterTransformsGenerateRuntimeVerification(void) {
+  registerGenerateRuntimeVerification();
+}
+
+
+MlirPass mlirCreateTransformsInliner(void) {
   return wrap(mlir::createInlinerPass().release());
 }
-void mlirRegisterTransformsInliner() {
+void mlirRegisterTransformsInliner(void) {
   registerInliner();
 }
 
 
-MlirPass mlirCreateTransformsLocationSnapshot() {
+MlirPass mlirCreateTransformsLocationSnapshot(void) {
   return wrap(mlir::createLocationSnapshotPass().release());
 }
-void mlirRegisterTransformsLocationSnapshot() {
+void mlirRegisterTransformsLocationSnapshot(void) {
   registerLocationSnapshot();
 }
 
 
-MlirPass mlirCreateTransformsLoopInvariantCodeMotion() {
+MlirPass mlirCreateTransformsLoopInvariantCodeMotion(void) {
   return wrap(mlir::createLoopInvariantCodeMotionPass().release());
 }
-void mlirRegisterTransformsLoopInvariantCodeMotion() {
+void mlirRegisterTransformsLoopInvariantCodeMotion(void) {
   registerLoopInvariantCodeMotion();
 }
 
 
-MlirPass mlirCreateTransformsPrintOpStats() {
+MlirPass mlirCreateTransformsPrintOpStats(void) {
   return wrap(mlir::createPrintOpStatsPass().release());
 }
-void mlirRegisterTransformsPrintOpStats() {
+void mlirRegisterTransformsPrintOpStats(void) {
   registerPrintOpStats();
 }
 
 
-MlirPass mlirCreateTransformsSCCP() {
+MlirPass mlirCreateTransformsSCCP(void) {
   return wrap(mlir::createSCCPPass().release());
 }
-void mlirRegisterTransformsSCCP() {
+void mlirRegisterTransformsSCCP(void) {
   registerSCCP();
 }
 
 
-MlirPass mlirCreateTransformsStripDebugInfo() {
+MlirPass mlirCreateTransformsStripDebugInfo(void) {
   return wrap(mlir::createStripDebugInfoPass().release());
 }
-void mlirRegisterTransformsStripDebugInfo() {
+void mlirRegisterTransformsStripDebugInfo(void) {
   registerStripDebugInfo();
 }
 
 
-MlirPass mlirCreateTransformsSymbolDCE() {
+MlirPass mlirCreateTransformsSymbolDCE(void) {
   return wrap(mlir::createSymbolDCEPass().release());
 }
-void mlirRegisterTransformsSymbolDCE() {
+void mlirRegisterTransformsSymbolDCE(void) {
   registerSymbolDCE();
 }
 
 
-MlirPass mlirCreateTransformsSymbolPrivatize() {
+MlirPass mlirCreateTransformsSymbolPrivatize(void) {
   return wrap(mlir::createSymbolPrivatizePass().release());
 }
-void mlirRegisterTransformsSymbolPrivatize() {
+void mlirRegisterTransformsSymbolPrivatize(void) {
   registerSymbolPrivatize();
 }
 
 
-MlirPass mlirCreateTransformsTopologicalSort() {
+MlirPass mlirCreateTransformsTopologicalSort(void) {
   return wrap(mlir::createTopologicalSortPass().release());
 }
-void mlirRegisterTransformsTopologicalSort() {
+void mlirRegisterTransformsTopologicalSort(void) {
   registerTopologicalSort();
 }
 
 
-MlirPass mlirCreateTransformsViewOpGraph() {
+MlirPass mlirCreateTransformsViewOpGraph(void) {
   return wrap(mlir::createPrintOpGraphPass().release());
 }
-void mlirRegisterTransformsViewOpGraph() {
+void mlirRegisterTransformsViewOpGraph(void) {
   registerViewOpGraph();
 }
 

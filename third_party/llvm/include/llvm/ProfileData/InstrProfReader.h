@@ -17,12 +17,14 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/ProfileSummary.h"
+#include "llvm/Object/BuildID.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ProfileData/InstrProfCorrelator.h"
 #include "llvm/ProfileData/MemProf.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/LineIterator.h"
+#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/OnDiskHashTable.h"
 #include "llvm/Support/SwapByteOrder.h"
@@ -96,12 +98,20 @@ public:
   /// Read a single record.
   virtual Error readNextRecord(NamedInstrProfRecord &Record) = 0;
 
-  /// Print binary ids on stream OS.
+  /// Read a list of binary ids.
+  virtual Error readBinaryIds(std::vector<llvm::object::BuildID> &BinaryIds) {
+    return success();
+  }
+
+  /// Print binary ids.
   virtual Error printBinaryIds(raw_ostream &OS) { return success(); };
 
   /// Iterator over profile data.
   InstrProfIterator<> begin() { return InstrProfIterator<>(this); }
   InstrProfIterator<> end() { return InstrProfIterator<>(); }
+
+  /// Return the profile version.
+  virtual uint64_t getVersion() const = 0;
 
   virtual bool isIRLevelProfile() const = 0;
 
@@ -215,6 +225,9 @@ public:
   /// Return true if the given buffer is in text instrprof format.
   static bool hasFormat(const MemoryBuffer &Buffer);
 
+  // Text format does not have version, so return 0.
+  uint64_t getVersion() const override { return 0; }
+
   bool isIRLevelProfile() const override {
     return static_cast<bool>(ProfileKind & InstrProfKind::IRInstrumentation);
   }
@@ -250,8 +263,8 @@ public:
   Error readNextRecord(NamedInstrProfRecord &Record) override;
 
   InstrProfSymtab &getSymtab() override {
-    assert(Symtab.get());
-    return *Symtab.get();
+    assert(Symtab);
+    return *Symtab;
   }
 };
 
@@ -289,7 +302,9 @@ private:
   uint32_t ValueKindLast;
   uint32_t CurValueDataSize;
 
-  uint64_t BinaryIdsSize;
+  /// Total size of binary ids.
+  uint64_t BinaryIdsSize{0};
+  /// Start address of binary id length and data pairs.
   const uint8_t *BinaryIdsStart;
 
 public:
@@ -304,7 +319,10 @@ public:
   static bool hasFormat(const MemoryBuffer &DataBuffer);
   Error readHeader() override;
   Error readNextRecord(NamedInstrProfRecord &Record) override;
+  Error readBinaryIds(std::vector<llvm::object::BuildID> &BinaryIds) override;
   Error printBinaryIds(raw_ostream &OS) override;
+
+  uint64_t getVersion() const override { return Version; }
 
   bool isIRLevelProfile() const override {
     return (Version & VARIANT_MASK_IR_PROF) != 0;
@@ -588,6 +606,10 @@ private:
   std::unique_ptr<MemProfRecordHashTable> MemProfRecordTable;
   /// MemProf frame profile data on-disk indexed via frame id.
   std::unique_ptr<MemProfFrameHashTable> MemProfFrameTable;
+  /// Total size of binary ids.
+  uint64_t BinaryIdsSize{0};
+  /// Start address of binary id length and data pairs.
+  const uint8_t *BinaryIdsStart = nullptr;
 
   // Index to the current record in the record array.
   unsigned RecordIndex;
@@ -608,7 +630,7 @@ public:
   IndexedInstrProfReader &operator=(const IndexedInstrProfReader &) = delete;
 
   /// Return the profile version.
-  uint64_t getVersion() const { return Index->getVersion(); }
+  uint64_t getVersion() const override { return Index->getVersion(); }
   bool isIRLevelProfile() const override { return Index->isIRLevelProfile(); }
   bool hasCSIRLevelProfile() const override {
     return Index->hasCSIRLevelProfile();
@@ -692,12 +714,15 @@ public:
   ProfileSummary &getSummary(bool UseCS) {
     if (UseCS) {
       assert(CS_Summary && "No context sensitive summary");
-      return *(CS_Summary.get());
+      return *CS_Summary;
     } else {
       assert(Summary && "No profile summary");
-      return *(Summary.get());
+      return *Summary;
     }
   }
+
+  Error readBinaryIds(std::vector<llvm::object::BuildID> &BinaryIds) override;
+  Error printBinaryIds(raw_ostream &OS) override;
 };
 
 } // end namespace llvm

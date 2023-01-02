@@ -206,25 +206,25 @@ void tpu::InterpOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
       int64_t n, c, ih, iw, oh, ow;
-    module::getNCHW(input(), n, c, ih, iw);
-    module::getNCHW(output(), n, c, oh, ow);
+    module::getNCHW(getInput(), n, c, ih, iw);
+    module::getNCHW(getOutput(), n, c, oh, ow);
     PLATFORM_SUPPORT platform_sp;
     int coord = 0;
-    bool align_corners = (coord_mode() == tpu::ResizeCoordMode::align_corners);
-    bool half_pixel = (coord_mode() == tpu::ResizeCoordMode::half_pixel);
-    if (coord_mode() == tpu::ResizeCoordMode::half_pixel)
+    bool align_corners = (getCoordMode() == tpu::ResizeCoordMode::align_corners);
+    bool half_pixel = (getCoordMode() == tpu::ResizeCoordMode::half_pixel);
+    if (getCoordMode() == tpu::ResizeCoordMode::half_pixel)
         coord = 0;
-    else if (coord_mode() == tpu::ResizeCoordMode::pytorch_half_pixel)
+    else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel)
         coord = 1;
-    else if (coord_mode() == tpu::ResizeCoordMode::align_corners)
+    else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
         coord = 2;
     const int in_hw = ih * iw;
     const int out_hw = oh * ow;
-    if (mode() == tpu::ResizeMode::nearest) {
+    if (getMode() == tpu::ResizeMode::nearest) {
         platform_sp = ONNX_NEAREST;
         align_corners = true;
         half_pixel = false;
-    } else if (mode() == tpu::ResizeMode::linear) {
+    } else if (getMode() == tpu::ResizeMode::linear) {
         platform_sp = PYTORCH_SUPPORT;
         align_corners = (coord == 2) ? 1: 0;
         half_pixel = (coord == 0 || coord == 1) ? 1 : 0;
@@ -244,7 +244,7 @@ LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
 #if 0
 LogicalResult tpu::InterpOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                          int64_t out_idx, int64_t out_slice) {
-  auto unit = scale_h().convertToDouble();
+  auto unit = getScaleH().convertToDouble();
 
   in_idx = (int64_t)(out_idx / unit);
   in_slice = (int64_t)((double)out_slice / unit);

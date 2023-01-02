@@ -39,8 +39,8 @@ static void refresh(std::vector<int> &order, int idx) {
 
 LogicalResult tpu::PermuteOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw;
-  std::vector<int64_t> in_shape = module::getShape(input());
-  i64_array_t perm = module::getI64Array(order());
+  std::vector<int64_t> in_shape = module::getShape(getInput());
+  i64_array_t perm = module::getI64Array(getOrder());
   int num_dims = in_shape.size();
   std::vector<int> order;
   for (int i = 0; i < num_dims; i++) {

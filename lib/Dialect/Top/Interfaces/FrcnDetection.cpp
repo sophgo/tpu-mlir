@@ -16,7 +16,7 @@
 
 
 int64_t top::FrcnDetectionOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::FrcnDetectionOp::init(InferenceParameter &p) {
@@ -26,20 +26,20 @@ void top::FrcnDetectionOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::FrcnDetectionOp::inference(InferenceParameter &p) {
   FrcnDetParam param;
-  param.class_num = class_num();
-  param.keep_topk = keep_topk();
-  param.nms_threshold = nms_threshold().convertToDouble();
-  param.obj_threshold = obj_threshold().convertToDouble();
-  for (size_t i = 0; i < inputs().size(); ++i) {
+  param.class_num = getClassNum();
+  param.keep_topk = getKeepTopk();
+  param.nms_threshold = getNmsThreshold().convertToDouble();
+  param.obj_threshold = getObjThreshold().convertToDouble();
+  for (size_t i = 0; i < getInputs().size(); ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
-    tensor_list.size = module::getNumElements(inputs()[i]);
-    module::getShapeVec(inputs()[i], tensor_list.shape);
+    tensor_list.size = module::getNumElements(getInputs()[i]);
+    module::getShapeVec(getInputs()[i], tensor_list.shape);
     param.inputs.emplace_back(std::move(tensor_list));
   }
   param.output.ptr = p.outputs[0];
-  param.output.size = module::getNumElements(output());
-  module::getShapeVec(output(), param.output.shape);
+  param.output.size = module::getNumElements(getOutput());
+  module::getShapeVec(getOutput(), param.output.shape);
   FrcnDetctionFunc func(param);
   func.invoke();
   return success();

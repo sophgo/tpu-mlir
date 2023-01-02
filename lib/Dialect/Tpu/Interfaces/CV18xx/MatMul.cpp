@@ -63,30 +63,30 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
   OpBuilder builder(getContext());
   auto p = parseParam();
   // TODO get batch_high and batch_low, group_fc bias transpose
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_filter = module::getAddress(right());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_filter = module::getAddress(getRight());
+  gaddr_t ga_output = module::getAddress(getOutput());
   gaddr_t ga_bias = GA_INVALID;
   bool is_fc = true;
-  if (!right().getDefiningOp()) {
+  if (!getRight().getDefiningOp()) {
     is_fc = false;
   } else {
-    is_fc = isa<top::WeightOp>(right().getDefiningOp());
+    is_fc = isa<top::WeightOp>(getRight().getDefiningOp());
   }
   if (is_fc) {
     int batch_high = 1;      // fixme
     int batch_low = p.batch; // fixme
     WeightCompresser weight_opt(this->getOperation(), true);
-    if (module::isUniformQuantized(output())) {
-      auto multiplier_v = module::getI64Array(multipliers(), p.batch, 1);
-      auto rshift_v = module::getI64Array(rshifts(), p.batch, 0);
+    if (module::isUniformQuantized(getOutput())) {
+      auto multiplier_v = module::getI64Array(getMultipliers(), p.batch, 1);
+      auto rshift_v = module::getI64Array(getRshifts(), p.batch, 0);
       std::vector<int32_t> multiplier_int32;
       std::vector<int32_t> rshift_int32;
       multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());
       rshift_int32.assign(rshift_v->begin(), rshift_v->end());
       if (p.with_bias) {
-        ga_bias = module::getAddress(bias());
-        auto biasOp = bias().getDefiningOp<top::WeightOp>();
+        ga_bias = module::getAddress(getBias());
+        auto biasOp = getBias().getDefiningOp<top::WeightOp>();
         auto bias_data = biasOp.read<int32_t>();
         std::vector<int32_t> bias_i32(p.N);
         std::vector<uint32_t> tmp_bias_u32(p.N);
@@ -108,9 +108,9 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
     } else {
       // TODO batch_high, batch_low, lstride, ostride, do_quant_bf16
       if (p.with_bias) {
-        ga_bias = module::getAddress(bias());
+        ga_bias = module::getAddress(getBias());
         std::shared_ptr<std::vector<float_t>> bias_data;
-        auto biasOp = bias().getDefiningOp<top::WeightOp>();
+        auto biasOp = getBias().getDefiningOp<top::WeightOp>();
         bias_data = biasOp.read<float_t>();
         std::vector<uint32_t> bias_u32(bias_data->size());
         std::vector<float> tmp_bias(p.N);
@@ -123,9 +123,9 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
         }
         biasOp.update(bias_u32, bias_data->size());
         auto new_bias_type = RankedTensorType::get(
-            module::getShape(bias()), builder.getIntegerType(32),
-            builder.getI64IntegerAttr(module::getAddress(bias())));
-        bias().setType(new_bias_type);
+            module::getShape(getBias()), builder.getIntegerType(32),
+            builder.getI64IntegerAttr(module::getAddress(getBias())));
+        getBias().setType(new_bias_type);
       }
       gaddr_t ga_scale = GA_INVALID;
       gaddr_t ga_zeropoint = GA_INVALID;
@@ -139,9 +139,9 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
   } else {
     int batch_high = p.batch; // fixme
     int batch_low = 1;        // fixme
-    if (module::isUniformQuantized(output())) {
-      auto multiplier_v = module::getI64Array(multipliers(), 1, 1);
-      auto rshift_v = module::getI64Array(rshifts(), 1, 0);
+    if (module::isUniformQuantized(getOutput())) {
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
       std::vector<int32_t> multiplier_int32;
       std::vector<int32_t> rshift_int32;
       multiplier_int32.assign(multiplier_v->begin(), multiplier_v->end());

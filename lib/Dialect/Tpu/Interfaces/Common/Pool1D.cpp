@@ -24,24 +24,24 @@ pool_attr_t tpu::Pool1DOp::parseParam() {
   p.kw = 1;
   p.sd = 1;
   p.sw = 1;
-  auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
-  auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
+  auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
+  auto oshape = getOutput().getType().dyn_cast<RankedTensorType>().getShape();
   module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
   module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
   assert(p.iw == 1 && p.ow == 1);
 
-  auto kernel = module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(getKernelShape());
   p.kh = kernel->at(0);
-  auto stride = module::getI64Array(strides());
+  auto stride = module::getI64Array(getStrides());
   p.sh = stride->at(0);
-  auto pad = module::getI64Array(pads());
+  auto pad = module::getI64Array(getPads());
   p.pad_h = pad->at(0);
   p.pad_h_after = pad->at(1);
-  p.pad_value = pad_value();
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
+  p.pad_value = getPadValue();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
   p.is_global = p.ih == p.kh && p.iw == p.kw && p.oh == 1 && p.ow == 1;
-  p.count_include_pad = count_include_pad();
+  p.count_include_pad = getCountIncludePad();
   return p;
 }
 
@@ -50,8 +50,8 @@ LogicalResult tpu::Pool1DOp::init(InferenceParameter &p) {
   auto attr = parseParam();
 
   int izp = 0;
-  auto dtype = input().getType().cast<RankedTensorType>().getElementType();
-  bool is_avg_pooling = pool_mode() == tpu::PoolMode::Avg;
+  auto dtype = getInput().getType().cast<RankedTensorType>().getElementType();
+  bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;
   if (dtype.isa<quant::UniformQuantizedType>() && is_avg_pooling) {
     izp = dtype.cast<quant::UniformQuantizedType>().getZeroPoint();
   }
@@ -76,25 +76,25 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
   auto pooling = (Pooling *)p.handle;
   pooling->run();
 
-  if (pool_mode() == tpu::PoolMode::Max) {
-    if (do_relu()) {
-      auto limit = relu_limit().convertToDouble();
+  if (getPoolMode() == tpu::PoolMode::Max) {
+    if (getDoRelu()) {
+      auto limit = getReluLimit().convertToDouble();
       function_relu(p.outputs[0], p.outputs[0],
-                    module::getNumElements(output()), limit,
-                    module::getStorageType(output()));
+                    module::getNumElements(getOutput()), limit,
+                    module::getStorageType(getOutput()));
     }
     return success();
   }
   // average pooling
-  auto out_type = module::getStorageType(output());
-  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(getOutput());
+  auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
-    auto i_qtype = module::getUniformQuantizedType(input());
-    auto o_qtype = module::getUniformQuantizedType(output());
+    auto i_qtype = module::getUniformQuantizedType(getInput());
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
 
     if (module::isAsymmetric() == false) {
-      auto multi = multiplier().value();
-      auto rs = rshift().value();
+      auto multi = getMultiplier().value();
+      auto rs = getRshift().value();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] = applyMultiplierAndRShift(
@@ -107,16 +107,16 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] =
-            p.outputs[0][i] * pooling->kh * scale().value().convertToDouble() +
-            offset().value().convertToDouble();
+            p.outputs[0][i] * pooling->kh * getScale().value().convertToDouble() +
+            getOffset().value().convertToDouble();
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
                               ? to_uint8(p.outputs[0][i])
                               : to_int8(p.outputs[0][i]);
       }
     }
   } else if (out_type.isa<FloatType>()) {
-    if (do_relu()) {
-      auto limit = relu_limit().convertToDouble();
+    if (getDoRelu()) {
+      auto limit = getReluLimit().convertToDouble();
       function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
     }
     if (out_type.isBF16()) {
@@ -130,7 +130,7 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::Pool1DOp::LocalGenSupport() {
-  auto stride = module::getI64Array(strides());
+  auto stride = module::getI64Array(getStrides());
   if (stride->at(0) > 15) {
     return failure();
   }
