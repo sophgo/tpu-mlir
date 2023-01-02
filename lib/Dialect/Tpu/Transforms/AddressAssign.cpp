@@ -24,7 +24,7 @@ class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
   void runOnOperation() override {
-    auto module = getOperation();
+    auto mOp = getOperation();
     if (!module::isState(module::State::TPU_DIVIDED)) {
       llvm_unreachable("module should be divided");
     }
@@ -33,15 +33,15 @@ public:
 
     if (module::isCV18xx()) {
       CVAddressAssign addr_assign;
-      addr_assign.assign(module, reuse_addr);
+      addr_assign.assign(mOp, reuse_addr);
     } else {
       auto bm168x = backend::BM168x::instance();
       bm168x->start_env();
-      RewritePatternSet patterns(module.getContext());
+      RewritePatternSet patterns(mOp.getContext());
       bm168x::populateGlobalBufferPatterns(&patterns);
-      applyPatternsAndFoldGreedily(module, std::move(patterns));
+      applyPatternsAndFoldGreedily(mOp, std::move(patterns));
       BMAddressAssign addr_assign;
-      addr_assign.assign(module, reuse_addr);
+      addr_assign.assign(mOp, reuse_addr);
       bm168x->end_env();
     }
   }

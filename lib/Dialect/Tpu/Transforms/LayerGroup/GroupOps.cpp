@@ -87,7 +87,7 @@ bool GroupOps::need_bcast(Value opd) {
   }
   auto use_op = *opd.getUsers().begin();
   if (auto cast_op = dyn_cast<tpu::LutOp>(use_op)) {
-    return opd == cast_op.table();
+    return opd == cast_op.getTable();
   }
   return false;
 }
@@ -97,8 +97,8 @@ int64_t GroupOps::use_3ic(Value opd) {
     if (isa<tpu::GroupOp>(*use_op))
       continue;
     if (auto cast_op = dyn_cast<tpu::Conv2DOp>(*use_op)) {
-      if (opd == cast_op.input()) {
-        return cast_op.use_3ic_optimize();
+      if (opd == cast_op.getInput()) {
+        return cast_op.getUse_3icOptimize();
       }
     }
   }
@@ -348,7 +348,7 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
   auto groupOp =
       builder.create<tpu::GroupOp>(func.getLoc(), ret_types, operands, attrs);
   body = new Block();
-  groupOp.body().push_back(body);
+  groupOp.getBody().push_back(body);
   //  replace outputs
   for (auto it : llvm::enumerate(groupOp.getResults())) {
     outputs[it.index()].replaceUsesWithIf(it.value(), [&](OpOperand &operand) {
@@ -375,7 +375,7 @@ void GroupOps::buildGroupOp(group_lmem_t &group_lmem) {
       id++;
     } else if (linfo.is_output) {
       auto storeOp = CreateStoreOp(linfo, id);
-      stores.push_back(storeOp.output());
+      stores.push_back(storeOp.getOutput());
       locs.push_back(storeOp.getLoc());
       id++;
     }
@@ -470,7 +470,7 @@ void GroupOps::CreateLoadOp(lmem_info_t &linfo,
   auto loadOp =
       builder.create<tpu::LoadOp>(NameLoc::get(builder.getStringAttr(name)),
                                   input.getType(), operands, attrs);
-  input.replaceUsesWithIf(loadOp.output(), [&](OpOperand &operand) {
+  input.replaceUsesWithIf(loadOp.getOutput(), [&](OpOperand &operand) {
     Operation *user = operand.getOwner();
     return find(ops.begin(), ops.end(), user) != ops.end();
   });

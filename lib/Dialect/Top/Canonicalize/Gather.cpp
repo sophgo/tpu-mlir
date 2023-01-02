@@ -25,14 +25,14 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
                                 PatternRewriter &rewriter) const override {
     std::shared_ptr<std::vector<float>> inds_f32;
 
-    if (auto inds = dyn_cast<WeightOp>(op.indices().getDefiningOp()))
+    if (auto inds = dyn_cast<WeightOp>(op.getIndices().getDefiningOp()))
       inds_f32 = inds.read<float>();
     else
       return failure();
 
-    auto inds_shape = module::getShape(op.indices());
-    auto inds_elems = module::getNumElements(op.indices());
-    auto ax = op.axis();
+    auto inds_shape = module::getShape(op.getIndices());
+    auto inds_elems = module::getNumElements(op.getIndices());
+    auto ax = op.getAxis();
     // if indices are regular, try to convert to SliceOp
     if (inds_elems == 1) {
       // e.g. Gather(indices=[1],axis=ax) + Unsqueeze(axis=ax)
@@ -43,8 +43,8 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       }
 
       auto reshape_op = cast<ReshapeOp>(*nextOp);
-      auto out_shape = module::getShape(op.output());
-      auto reshape_out_shape = module::getShape(reshape_op.output());
+      auto out_shape = module::getShape(op.getOutput());
+      auto reshape_out_shape = module::getShape(reshape_op.getOutput());
       std::vector<int64_t> unsqueeze_out_shape{};
       for (int64_t i = 0; i < out_shape.size(); ++i) {
         if (i == ax) {
@@ -62,16 +62,16 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       }
 
       NamedAttrList attrs;
-      auto input_shape = module::getShape(op.input());
+      auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
       op.getOperation()->setLoc(reshape_op.getLoc());
-      rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.output().getType(),
-                                           ValueRange{op.input()}, attrs);
-      rewriter.replaceOp(reshape_op, {reshape_op.input()});
+      rewriter.replaceOpWithNewOp<SliceOp>(op, reshape_op.getOutput().getType(),
+                                           ValueRange{op.getInput()}, attrs);
+      rewriter.replaceOp(reshape_op, {reshape_op.getInput()});
       return success();
     } else if (inds_shape.size() == 1) {
       // e.g. Gather(indices=[1,3,5,7],axis=ax)
@@ -85,15 +85,15 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
       }
 
       NamedAttrList attrs;
-      auto input_shape = module::getShape(op.input());
+      auto input_shape = module::getShape(op.getInput());
       std::vector<int64_t> offsets(input_shape.size(), 0);
       std::vector<int64_t> steps(input_shape.size(), 1);
       offsets[ax] = (int64_t)inds_f32->at(0);
       steps[ax] = step;
       attrs.set("offset", rewriter.getI64ArrayAttr(offsets));
       attrs.set("steps", rewriter.getI64ArrayAttr(steps));
-      rewriter.replaceOpWithNewOp<SliceOp>(op, op.output().getType(),
-                                           ValueRange{op.input()}, attrs);
+      rewriter.replaceOpWithNewOp<SliceOp>(op, op.getOutput().getType(),
+                                           ValueRange{op.getInput()}, attrs);
       return success();
     }
 

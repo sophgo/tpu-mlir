@@ -5,7 +5,7 @@
 #include <float.h>
 
 
-int64_t top::ReduceOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::ReduceOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ReduceOp::init(InferenceParameter &p) { return success(); }
 void top::ReduceOp::deinit(InferenceParameter &p) {}
@@ -13,10 +13,10 @@ void top::ReduceOp::deinit(InferenceParameter &p) {}
 LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   float *input_v = p.inputs[0];
   float *output_v = p.outputs[0];
-  auto type_val = mode().str();
-  auto axes_val = module::getI64Array(axes());
-  auto out_shape = module::getShape(output());
-  auto input_shape = module::getShape(input());
+  auto type_val = getMode().str();
+  auto axes_val = module::getI64Array(getAxes());
+  auto out_shape = module::getShape(getOutput());
+  auto input_shape = module::getShape(getInput());
   // calc dims
   int num_dims = input_shape.size();
   int num_axes = axes_val->size();

@@ -22,14 +22,14 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
 
   LogicalResult matchAndRewrite(ReluOp op,
                                 PatternRewriter &rewriter) const override {
-    auto formerOp = op.input().getDefiningOp();
+    auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->getResult(0).hasOneUse())
       return failure();
 
     if (false == formerOp->hasTrait<SupportFuseRelu>()) {
       return failure();
     }
-    auto relu_limit = op.relu_limit().convertToDouble();
+    auto relu_limit = op.getReluLimit().convertToDouble();
     if (formerOp->hasAttr("relu_limit")) {
       auto old_limit =
           formerOp->getAttr("relu_limit").cast<FloatAttr>().getValueAsDouble();
@@ -41,7 +41,7 @@ struct TopFuseRelu : public OpRewritePattern<ReluOp> {
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
     formerOp->setLoc(op.getLoc());
     // remove the relu Op
-    rewriter.replaceOp(op, {op.input()});
+    rewriter.replaceOp(op, {op.getInput()});
     return success();
   }
 };
@@ -52,7 +52,7 @@ struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
   LogicalResult matchAndRewrite(ReluOp op,
                                 PatternRewriter &rewriter) const override {
     std::string op_name = op.getOperationName().str();
-    auto relu_limit = op.relu_limit();
+    auto relu_limit = op.getReluLimit();
     // match relu Op that is following concat Ops
     auto formerOp = op->getOperand(0).getDefiningOp();
     if (!formerOp->hasOneUse() || !isa<ConcatOp>(formerOp)) {
@@ -60,7 +60,7 @@ struct TopMoveReluAheadConcatPattern : public OpRewritePattern<ReluOp> {
     }
 
     auto concatOp = cast<ConcatOp>(formerOp);
-    int num_inputs = concatOp.inputs().size();
+    int num_inputs = concatOp.getInputs().size();
     rewriter.setInsertionPoint(formerOp);
     for (int i = 0; i < num_inputs; i++) {
       auto inOp = formerOp->getOperand(i).getDefiningOp();

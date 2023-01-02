@@ -19,20 +19,20 @@ void ReciprocalLowering::LoweringINT8(PatternRewriter &rewriter,
                                       top::ReciprocalOp op,
                                       bool asymmetric) const {
   // for convert from DivOp
-  if (!module::isCalibratedType(op.output()) &&
-      !module::isUniformQuantized(op.output())) {
+  if (!module::isCalibratedType(op.getOutput()) &&
+      !module::isUniformQuantized(op.getOutput())) {
     LoweringBF16(rewriter, op);
     return;
   }
-  auto qtype = module::getCalibratedType(op.output());
+  auto qtype = module::getCalibratedType(op.getOutput());
   g_max = qtype.getMax();
-  double const_s = op.const_val().convertToDouble();
+  double const_s = op.getConstVal().convertToDouble();
   Value table = create_lookup_table(
-      op.input(), op.output(), asymmetric,
+      op.getInput(), op.getOutput(), asymmetric,
       [const_s](double val) { return (val == 0 ? g_max : const_s / val);});
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -52,9 +52,9 @@ void ReciprocalLowering::LoweringBF16(PatternRewriter &rewriter,
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.input(), table_weight, mantissa_weight},
+      op, newType, ValueRange{op.getInput(), table_weight, mantissa_weight},
       attrs);
   return;
 }

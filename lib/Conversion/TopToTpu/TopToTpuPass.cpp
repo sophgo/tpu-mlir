@@ -23,8 +23,8 @@ namespace mlir {
 namespace tpu_mlir {
 
 static void BackwardReshape(top::ReshapeOp op) {
-  auto in = op.input();
-  auto out = op.output();
+  auto in = op.getInput();
+  auto out = op.getOutput();
   auto in_type = in.getType().cast<RankedTensorType>();
   auto out_qtype = module::getCalibratedType(out);
   auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
@@ -35,8 +35,8 @@ static void BackwardReshape(top::ReshapeOp op) {
 }
 
 static void ForwardReshape(top::ReshapeOp op) {
-  auto in = op.input();
-  auto out = op.output();
+  auto in = op.getInput();
+  auto out = op.getOutput();
   auto out_type = out.getType().cast<RankedTensorType>();
   auto in_qtype = module::getCalibratedType(in);
   auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
@@ -47,8 +47,8 @@ static void ForwardReshape(top::ReshapeOp op) {
 }
 
 static void BackwardPermute(top::PermuteOp op) {
-  auto in = op.input();
-  auto out = op.output();
+  auto in = op.getInput();
+  auto out = op.getOutput();
   auto in_type = in.getType().cast<RankedTensorType>();
   auto out_qtype = module::getCalibratedType(out);
   auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
@@ -59,8 +59,8 @@ static void BackwardPermute(top::PermuteOp op) {
 }
 
 static void ForwardPermute(top::PermuteOp op) {
-  auto in = op.input();
-  auto out = op.output();
+  auto in = op.getInput();
+  auto out = op.getOutput();
   auto out_type = out.getType().cast<RankedTensorType>();
   auto in_qtype = module::getCalibratedType(in);
   auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
@@ -76,8 +76,8 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
 
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
-    Value in = op.input();
-    Value out = op.output();
+    Value in = op.getInput();
+    Value out = op.getOutput();
     if (!module::isCalibratedType(in)) {
       return failure();
     }
@@ -108,7 +108,7 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
     Value in = op->getOperand(0);
-    Value out = op.output();
+    Value out = op.getOutput();
     if (!module::isCalibratedType(out)) {
       return failure();
     }
@@ -142,8 +142,8 @@ struct ForwardTypePattern : public OpRewritePattern<TyOp> {
 
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
-    Value in = op.input();
-    Value out = op.output();
+    Value in = op.getInput();
+    Value out = op.getOutput();
     auto in_type = in.getType().cast<RankedTensorType>();
     auto out_type = out.getType().cast<RankedTensorType>();
     auto in_etype = in_type.getElementType();
@@ -163,8 +163,8 @@ struct CompareCalibartion : public OpRewritePattern<top::CompareOp> {
 
   LogicalResult matchAndRewrite(top::CompareOp op,
                                 PatternRewriter &rewriter) const override {
-    Value l = op.lhs();
-    Value r = op.rhs();
+    Value l = op.getLhs();
+    Value r = op.getRhs();
     if (false == module::isCalibratedType(l) ||
         false == module::isCalibratedType(r)) {
       return failure();
@@ -194,7 +194,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
     // TODO: need to be more clever
-    for (auto in : op.inputs()) {
+    for (auto in : op.getInputs()) {
       if (!module::isCalibratedType(in)) {
         return failure();
       }
@@ -208,17 +208,17 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
       }
     }
 
-    Value out = op.output();
+    Value out = op.getOutput();
     if (!module::isCalibratedType(out)) {
       return failure();
     }
     auto out_qtype = module::getCalibratedType(out);
     // checkout all input cali is the same
-    auto in_0 = op.inputs()[0];
+    auto in_0 = op.getInputs()[0];
     auto in_0_qtype = module::getCalibratedType(in_0);
     bool same = true;
-    for (uint i = 1; i < op.inputs().size(); i++) {
-      auto qtype = module::getCalibratedType(op.inputs()[i]);
+    for (uint i = 1; i < op.getInputs().size(); i++) {
+      auto qtype = module::getCalibratedType(op.getInputs()[i]);
       if (qtype.getMin() != in_0_qtype.getMin() ||
           qtype.getMax() != in_0_qtype.getMax()) {
         same = false;
@@ -237,7 +237,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
       return success();
     }
 
-    for (Value in : op.inputs()) {
+    for (Value in : op.getInputs()) {
       auto in_type = in.getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
       in.setType(new_type);
@@ -436,7 +436,7 @@ protected:
     for (auto user : v.getUsers()) {
       if (false == isa<tpu::CastOp>(user) &&
           (false == isa<tpu::GenericCpuOp>(user) ||
-           dyn_cast<tpu::GenericCpuOp>(user).operation_name() != "quant")) {
+           dyn_cast<tpu::GenericCpuOp>(user).getCpuOpName() != "quant")) {
         continue;
       }
       if (type_need_cast(user->getResult(0).getType(), to) == false) {
@@ -465,7 +465,7 @@ protected:
       auto newType = RankedTensorType::get(module::getShape(v), to_stype);
       auto loc = NameLoc::get(builder.getStringAttr(name));
       auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
-      return castOp.output();
+      return castOp.getOutput();
     }
     case TypeCastMode::DO_QUANTIZE: {
       if (module::isCalibratedType(v) == false) {
@@ -485,7 +485,7 @@ protected:
         }
       }
       auto castOp = builder.create<tpu::CastOp>(loc, newType, ValueRange{v});
-      return castOp.output();
+      return castOp.getOutput();
     }
     default:
       break;
@@ -498,19 +498,20 @@ protected:
     std::vector<NamedAttribute> attrs;
     std::vector<NamedAttribute> param;
     attrs.emplace_back(
-        builder.getNamedAttr("operation_name", builder.getStringAttr("quant")));
+        builder.getNamedAttr("cpu_op_name", builder.getStringAttr("quant")));
     param.emplace_back(
         builder.getNamedAttr("from", builder.getStringAttr("FP32")));
     param.emplace_back(
         builder.getNamedAttr("to", builder.getStringAttr("INT8")));
     param.emplace_back(builder.getNamedAttr(
-        "scale", builder.getF64FloatAttr(
-                     1. / module::getUniformQuantizedType(newType).getScale())));
+        "scale",
+        builder.getF64FloatAttr(
+            1. / module::getUniformQuantizedType(newType).getScale())));
     attrs.emplace_back(
         builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
     auto castOp = builder.create<tpu::GenericCpuOp>(
         loc, newType, ValueRange{v}, ArrayRef<NamedAttribute>{attrs});
-    return castOp.output();
+    return castOp.getOutput();
   }
 
   static StringRef qmode(const std::string &mode) {

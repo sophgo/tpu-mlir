@@ -72,8 +72,8 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
   auto attr = parseParam();
 
   pooling3d_spec_t spec = {0};
-  spec.input_addr = module::getAddress(input());
-  spec.output_addr = module::getAddress(output());
+  spec.input_addr = module::getAddress(getInput());
+  spec.output_addr = module::getAddress(getOutput());
   spec.buffer_addr = -1;
   spec.input_shape[0] = attr.n;
   spec.input_shape[1] = attr.c;
@@ -85,8 +85,8 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
   spec.output_shape[2] = attr.od;
   spec.output_shape[3] = attr.oh;
   spec.output_shape[4] = attr.ow;
-  spec.in_dtype = BM168x::getDataType(input());
-  spec.out_dtype = BM168x::getDataType(output());
+  spec.in_dtype = BM168x::getDataType(getInput());
+  spec.out_dtype = BM168x::getDataType(getOutput());
 
   int32_t kernel[3] = {(int32_t)attr.kd, (int32_t)attr.kh, (int32_t)attr.kw};
   int32_t dilation[3] = {1, 1, 1};
@@ -104,21 +104,21 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
   spec.if_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
 
-  if (pool_mode() == tpu::PoolMode::Avg) {
+  if (getPoolMode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (module::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(getInput())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
       // if (spec.avg_pooling_quant_mode == 0) {
-      //   spec.multiplier = multiplier().has_value() ? multiplier().value() :
-      //   1; spec.rshiftbits = rshift().has_value() ? rshift().value() : 0;
+      //   spec.multiplier = getMultiplier().has_value() ? getMultiplier().value() :
+      //   1; spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
       // }
       if (spec.avg_pooling_quant_mode == 2) {
         spec.merge_requant = true;
         spec.rq_scale =
-            scale().has_value() ? (scale().value().convertToDouble()) : 1.;
+            getScale().has_value() ? (getScale().value().convertToDouble()) : 1.;
         spec.rq_offset =
-            offset().has_value() ? (offset().value().convertToDouble()) : 0.;
+            getOffset().has_value() ? (getOffset().value().convertToDouble()) : 0.;
       }
     }
   }
@@ -135,26 +135,26 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t buffer_size = 0;
-  auto out_dtype = output().getType();
+  auto out_dtype = getOutput().getType();
   auto attr = parseParam();
 
   int c_per_npu = ceiling_func(attr.c, BM168x::NPU_NUM);
 
   if (attr.kd > 1 || attr.sd > 1 || attr.pad_d > 0 || attr.pad_d_after > 0) {
     /// pooling include depth-dimention
-    if (out_dtype.isInteger(8) && pool_mode() == tpu::PoolMode::Avg) {
+    if (out_dtype.isInteger(8) && getPoolMode() == tpu::PoolMode::Avg) {
       int64_t dtype_bytes =
           attr.kd * attr.kh * attr.kw > 256 ? sizeof(int) : sizeof(short);
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       buffer_size = (1 + attr.od) * align_up(out_hslice * attr.ow, eu_num) *
                     c_per_npu * dtype_bytes;
     } else {
-      int64_t dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(output()));
+      int64_t dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       buffer_size =
           align_up(out_hslice * attr.ow, eu_num) * c_per_npu * dtype_bytes;
     }
-  } else if (out_dtype.isInteger(8) && pool_mode() == tpu::PoolMode::Avg) {
+  } else if (out_dtype.isInteger(8) && getPoolMode() == tpu::PoolMode::Avg) {
     int64_t dtype_bytes =
         attr.kd * attr.kh * attr.kw > 256 ? sizeof(int32_t) : sizeof(int16_t);
     int64_t eu_num = BM168x::eu_num(dtype_bytes);
@@ -170,9 +170,9 @@ void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -190,7 +190,7 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   // auto op = getOperation();
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 
   auto attr = parseParam();
   pooling3d_spec_t spec = {0};
@@ -207,8 +207,8 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.output_shape[2] = attr.od;
   spec.output_shape[3] = sec_info->out_h_slice;
   spec.output_shape[4] = attr.ow;
-  spec.in_dtype = BM168x::getDataType(input());
-  spec.out_dtype = BM168x::getDataType(output());
+  spec.in_dtype = BM168x::getDataType(getInput());
+  spec.out_dtype = BM168x::getDataType(getOutput());
 
   int32_t kernel[3] = {(int32_t)attr.kd, (int32_t)attr.kh, (int32_t)attr.kw};
   int32_t dilation[3] = {1, 1, 1};
@@ -227,22 +227,22 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.avg_rd_mode = ROUND_UP;
   spec.is_avg_pooling = false;
 
-  if (pool_mode() == tpu::PoolMode::Avg) {
+  if (getPoolMode() == tpu::PoolMode::Avg) {
     spec.is_avg_pooling = true;
-    if (module::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(getInput())) {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
 
       // if (spec.avg_pooling_quant_mode == 0) {
-      //   spec.multiplier = multiplier().has_value() ? multiplier().value() :
-      //   1; spec.rshiftbits = rshift().has_value() ? rshift().value() : 0;
+      //   spec.multiplier = getMultiplier().has_value() ? getMultiplier().value() :
+      //   1; spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
       // }
       if (spec.avg_pooling_quant_mode == 2) {
         spec.merge_requant = true;
         spec.rq_scale =
-            scale().has_value() ? (scale().value().convertToDouble()) : 1.;
+            getScale().has_value() ? (getScale().value().convertToDouble()) : 1.;
         spec.rq_offset =
-            offset().has_value() ? (offset().value().convertToDouble()) : 0.;
+            getOffset().has_value() ? (getOffset().value().convertToDouble()) : 0.;
       }
     }
   }

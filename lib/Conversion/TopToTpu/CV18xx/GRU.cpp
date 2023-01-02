@@ -24,15 +24,15 @@ void GRULowering::LoweringINT8(PatternRewriter &rewriter, top::GRUOp op,
 void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   std::vector<Value> fc_operands;
   std::vector<Value> gru_operands;
-  auto input_shape = module::getShape(op.input());
-  auto filter_shape = module::getShape(op.filter());
-  auto filter_op = dyn_cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto input_shape = module::getShape(op.getInput());
+  auto filter_shape = module::getShape(op.getFilter());
+  auto filter_op = dyn_cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_data = filter_op.read<float>();
-  auto filter_name = module::getName(op.filter()).str();
+  auto filter_name = module::getName(op.getFilter()).str();
   int64_t N = filter_shape[0] * filter_shape[1];
   int64_t K = filter_shape[2];
 
-  int64_t num_dir = op.bidirectional() ? 2 : 1;
+  int64_t num_dir = op.getBidirectional() ? 2 : 1;
   int64_t hidden_size = filter_shape[1] / 3;
   int64_t seq_length = input_shape[0];
   int64_t batch_size = input_shape[1];
@@ -50,10 +50,10 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
 
   // create fc bias
   std::vector<int64_t> bias_shape;
-  module::getShapeVec(op.bias(), bias_shape);
-  auto bias_op = dyn_cast<top::WeightOp>(op.bias().getDefiningOp());
+  module::getShapeVec(op.getBias(), bias_shape);
+  auto bias_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
   auto bias_data = bias_op.read<float>();
-  auto bias_name = module::getName(op.bias()).str();
+  auto bias_name = module::getName(op.getBias()).str();
 
   std::vector<std::vector<float>> bias_split_data;
   tensor_split(bias_data->data(), bias_split_data, bias_shape, 2, 1);
@@ -65,10 +65,10 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
 
   // create fc
   std::vector<int64_t> fc_shape = {seq_length, batch_size, N};
-  fc_operands.emplace_back(op.input());
+  fc_operands.emplace_back(op.getInput());
   fc_operands.emplace_back(fc_weight_operand);
   fc_operands.emplace_back(fc_bias_operand);
-  std::string fc_name = module::getName(op.input()).str() + "_FC";
+  std::string fc_name = module::getName(op.getInput()).str() + "_FC";
   auto loc = NameLoc::get(rewriter.getStringAttr(fc_name));
   auto fc_type = RankedTensorType::get(fc_shape, rewriter.getF32Type());
   auto fc_op = rewriter.create<top::MatMulOp>(loc, fc_type, fc_operands);
@@ -83,9 +83,9 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   // create tpu::gru
   auto none_op = module::getNoneOp(op);
   auto gru_r_weight_op =
-      dyn_cast<top::WeightOp>(op.recurrence().getDefiningOp());
+      dyn_cast<top::WeightOp>(op.getRecurrence().getDefiningOp());
   auto gru_h_weight_op =
-      dyn_cast<top::WeightOp>(op.initial_h().getDefiningOp());
+      dyn_cast<top::WeightOp>(op.getInitialH().getDefiningOp());
 
   gru_operands.emplace_back(fc_op);
   gru_operands.emplace_back(none_op);
@@ -95,7 +95,7 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   gru_operands.emplace_back(none_op);
 
   // create lut
-  std::string gru_name = module::getName(op.input()).str() + "_gru";
+  std::string gru_name = module::getName(op.getInput()).str() + "_gru";
   Value s_table, s_mantissa;
   Value t_table, t_mantissa;
   auto sigmoid_f = [](double x) { return 1.0 / (1 + expf(-x)); };

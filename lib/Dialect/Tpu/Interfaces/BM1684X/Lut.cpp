@@ -44,17 +44,17 @@ typedef struct {
 
 void tpu::LutOp::codegen_global_bm1684x() {
   lut_param_t p = {0};
-  p.input_addr = module::getAddress(input());
-  p.table_addr = module::getAddress(table());
-  p.output_addr = module::getAddress(output());
-  p.input_dtype = BM168x::getDataType(input());
-  p.table_dtype = BM168x::getDataType(table());
-  p.output_dtype = BM168x::getDataType(output());
+  p.input_addr = module::getAddress(getInput());
+  p.table_addr = module::getAddress(getTable());
+  p.output_addr = module::getAddress(getOutput());
+  p.input_dtype = BM168x::getDataType(getInput());
+  p.table_dtype = BM168x::getDataType(getTable());
+  p.output_dtype = BM168x::getDataType(getOutput());
   p.table_length = 256;
   p.is_local_layer = 0;
   p.shape_dim = 4;
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   p.shape[0] = n;
   p.shape[1] = c;
   p.shape[2] = h;
@@ -80,9 +80,9 @@ void tpu::LutOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -99,21 +99,21 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                        void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto table_gi = LocalGenInterface::getGroupInfo(table(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto table_gi = LocalGenInterface::getGroupInfo(getTable(), n_step, h_step);
 
   lut_param_t p = {0};
   p.input_addr = in_gi.out_addr;
   p.table_addr = table_gi.out_addr;
   p.output_addr = gi.out_addr;
-  p.input_dtype = BM168x::getDataType(input());
-  p.table_dtype = BM168x::getDataType(table());
-  p.output_dtype = BM168x::getDataType(output());
+  p.input_dtype = BM168x::getDataType(getInput());
+  p.table_dtype = BM168x::getDataType(getTable());
+  p.output_dtype = BM168x::getDataType(getOutput());
   p.table_length = 256;
   p.is_local_layer = 1;
   p.shape_dim = 4;
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   p.shape[0] = sec_info->out_n_slice;
   p.shape[1] = c;
   p.shape[2] = sec_info->out_h_slice;

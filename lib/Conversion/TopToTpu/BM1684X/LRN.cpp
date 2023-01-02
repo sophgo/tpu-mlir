@@ -17,10 +17,12 @@ namespace bm1684x {
 void LRNLowering::LoweringF32(PatternRewriter &rewriter, top::LRNOp op) const {
   lowering_common_f32<tpu::LRNOp>(rewriter, op, 3);
 }
+
 void LRNLowering::LoweringINT4(PatternRewriter &rewriter, top::LRNOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
+
 void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,
                                bool asymmetric) const {
   LoweringF32(rewriter, op);

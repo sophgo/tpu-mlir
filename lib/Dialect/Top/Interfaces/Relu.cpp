@@ -14,14 +14,14 @@
 
 
 
-int64_t top::ReluOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::ReluOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ReluOp::init(InferenceParameter &p) { return success(); }
 void top::ReluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReluOp::inference(InferenceParameter &p) {
-  auto limit = relu_limit().convertToDouble();
-  function_relu(p.inputs[0], p.outputs[0], module::getNumElements(input()),
+  auto limit = getReluLimit().convertToDouble();
+  function_relu(p.inputs[0], p.outputs[0], module::getNumElements(getInput()),
                 limit);
   return success();
 }

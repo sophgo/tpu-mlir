@@ -60,12 +60,12 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
 
   auto attr = op.parseParam();
   // filter
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kd,
                                        attr.kh, attr.kw};
@@ -73,7 +73,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   filter_reorder(filter_i8, filter_shape);
 
   OpBuilder builder(getContext());
-  auto elem_type = module::getStorageType(op.filter());
+  auto elem_type = module::getStorageType(op.getFilter());
   auto filter_type = RankedTensorType::get(filter_shape, elem_type);
   auto new_filter =
       top::WeightOp::create(op, "reordered", *filter_i8, filter_type);
@@ -83,8 +83,8 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   if (attr.has_bias) {
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto new_type =
-        RankedTensorType::get(bias_shape, module::getStorageType(op.bias()));
-    op.bias().setType(new_type);
+        RankedTensorType::get(bias_shape, module::getStorageType(op.getBias()));
+    op.getBias().setType(new_type);
   }
   return success();
 }
@@ -92,7 +92,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
 LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
                                           PatternRewriter &rewriter) {
   auto attr = op.parseParam();
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   if (attr.is_dw || attr.groups > 1) {
     llvm_unreachable("depthwise should support !!");
   }
@@ -101,7 +101,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
                                        attr.kw};
   filter_reorder(filter_u16, filter_shape);
 
-  auto filter_type = module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.getFilter());
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
   auto newFilterOp =
       top::WeightOp::create(op, "reordered", *filter_u16, new_filter_type);
@@ -109,11 +109,11 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
 
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto new_type =
-        RankedTensorType::get(bias_shape, module::getStorageType(op.bias()));
-    op.bias().setType(new_type);
+        RankedTensorType::get(bias_shape, module::getStorageType(op.getBias()));
+    op.getBias().setType(new_type);
   }
   return success();
 }
@@ -121,7 +121,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, BFloat16Type>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isBF16())
+  if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -129,7 +129,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, BFloat16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, Float16Type>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isF16())
+  if (!module::getStorageType(op.getFilter()).isF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -137,13 +137,13 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
     tpu::Conv3DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
-  auto out_type = module::getStorageType(op.output());
+  auto out_type = module::getStorageType(op.getOutput());
   // filter reorder
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   int64_t filter_shape[5];
   if (out_type.isF32()) {
     filter_shape[0] = 1;
@@ -152,7 +152,7 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
     filter_shape[3] = attr.kd * attr.kh * attr.kw;
     filter_shape[4] = 1;
     auto new_type = RankedTensorType::get(filter_shape, out_type);
-    op.filter().setType(new_type);
+    op.getFilter().setType(new_type);
   } else {
     op.dump();
     llvm_unreachable("op type not support");
@@ -160,10 +160,10 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
 
   // bias op
   if (attr.has_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
     auto new_type = RankedTensorType::get(bias_shape, out_type);
-    op.bias().setType(new_type);
+    op.getBias().setType(new_type);
   }
   return success();
 }
@@ -236,15 +236,15 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   conv3d_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.input_global_addr = module::getAddress(input());
-  spec.weight_global_addr = module::getAddress(filter());
-  spec.output_global_addr = module::getAddress(output());
+  spec.input_global_addr = module::getAddress(getInput());
+  spec.weight_global_addr = module::getAddress(getFilter());
+  spec.output_global_addr = module::getAddress(getOutput());
   if (attr.has_bias) {
     spec.has_bias = 1;
-    spec.bias_global_addr = module::getAddress(bias());
-    spec.bias_dtype = BM168x::getDataType(bias());
+    spec.bias_global_addr = module::getAddress(getBias());
+    spec.bias_dtype = BM168x::getDataType(getBias());
   }
-  auto shape = module::getShape(input());
+  auto shape = module::getShape(getInput());
   for (size_t i = 0; i < shape.size(); ++i) {
     spec.input_shape[i] = shape[i];
   }
@@ -265,15 +265,15 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   spec.pad[3] = attr.phb;
   spec.pad[4] = attr.pwl;
   spec.pad[5] = attr.pwr;
-  spec.input_dtype = BM168x::getDataType(input());
-  spec.weight_dtype = BM168x::getDataType(filter());
-  spec.output_dtype = BM168x::getDataType(output());
+  spec.input_dtype = BM168x::getDataType(getInput());
+  spec.weight_dtype = BM168x::getDataType(getFilter());
+  spec.output_dtype = BM168x::getDataType(getOutput());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
-  if (module::isUniformQuantized(input())) {
-    auto out_etype = module::getStorageType(output());
+  if (module::isUniformQuantized(getInput())) {
+    auto out_etype = module::getStorageType(getOutput());
     spec.do_relu = out_etype.isUnsignedInteger(8);
-    auto in_qtype = module::getUniformQuantizedType(input());
+    auto in_qtype = module::getUniformQuantizedType(getInput());
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;
@@ -301,8 +301,8 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
                  ceiling_func(i * attr.groups % npu_num + attr.oc / attr.groups,
                               npu_num));
   }
-  auto in_type = input().getType();
-  auto out_type = output().getType();
+  auto in_type = getInput().getType();
+  auto out_type = getOutput().getType();
   // output start npu id must be same with weight start npu id
   if ((in_type.isF16() || in_type.isBF16()) && !out_type.isF32() &&
       attr.kd > 1) {
@@ -332,7 +332,7 @@ void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -353,16 +353,16 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 
   conv3d_local_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.input_local_addr = in_gi.out_addr;
-  spec.weight_local_addr = LocalGenInterface::getGroupInfo(filter()).out_addr;
+  spec.weight_local_addr = LocalGenInterface::getGroupInfo(getFilter()).out_addr;
   if (attr.has_bias) {
     spec.has_bias = true;
-    spec.bias_local_addr = LocalGenInterface::getGroupInfo(bias()).out_addr;
-    spec.bias_dtype = BM168x::getDataType(bias());
+    spec.bias_local_addr = LocalGenInterface::getGroupInfo(getBias()).out_addr;
+    spec.bias_dtype = BM168x::getDataType(getBias());
   }
   spec.buffer_local_addr = gi.buffer_addr;
   spec.output_local_addr = gi.out_addr;
@@ -388,15 +388,15 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.pad[3] = sec_info->h_idx + sec_info->h_slice >= attr.ih ? attr.phb : 0;
   spec.pad[4] = attr.pwl;
   spec.pad[5] = attr.pwr;
-  spec.input_dtype = BM168x::getDataType(input());
-  spec.weight_dtype = BM168x::getDataType(filter());
-  spec.output_dtype = BM168x::getDataType(output());
+  spec.input_dtype = BM168x::getDataType(getInput());
+  spec.weight_dtype = BM168x::getDataType(getFilter());
+  spec.output_dtype = BM168x::getDataType(getOutput());
   spec.do_relu = attr.do_relu;
   spec.relu_limit = attr.relu_limit;
-  if (module::isUniformQuantized(input())) {
-    auto out_etype = module::getStorageType(output());
+  if (module::isUniformQuantized(getInput())) {
+    auto out_etype = module::getStorageType(getOutput());
     spec.do_relu = out_etype.isUnsignedInteger(8);
-    auto in_qtype = module::getUniformQuantizedType(input());
+    auto in_qtype = module::getUniformQuantizedType(getInput());
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
     spec.kzp_dtype = spec.weight_dtype;

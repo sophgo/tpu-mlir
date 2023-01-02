@@ -27,9 +27,9 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
     std::vector<int64_t> shape;
     module::getShapeVec(op.getOperand(0), shape);
     int64_t c = shape[1];
-    auto weight_op = dyn_cast<top::WeightOp>(op.scale().getDefiningOp());
+    auto weight_op = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
     auto scale_data = weight_op.read<float>();
-    auto result_type = op.output().getType().cast<RankedTensorType>();
+    auto result_type = op.getOutput().getType().cast<RankedTensorType>();
     auto none = module::getNoneOp(op);
 
     // separate Normalize op to below 6 ops.

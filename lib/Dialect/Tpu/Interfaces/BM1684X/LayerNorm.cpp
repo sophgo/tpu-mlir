@@ -29,23 +29,23 @@ extern "C" {
 // =========================================
 
 void tpu::LayerNormOp::codegen_global_bm1684x() {
-  const bool have_bias = !bias().getType().isa<NoneType>();
-  const bool need_mean = !mean().getType().isa<NoneType>();
-  const bool need_rstd = !rstd().getType().isa<NoneType>();
-  const auto input_shape = module::getShape(input());
+  const bool have_bias = !getBias().getType().isa<NoneType>();
+  const bool need_mean = !getMean().getType().isa<NoneType>();
+  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+  const auto input_shape = module::getShape(getInput());
   layer_norm_global_param_t param = {0};
-  param.input_addr = module::getAddress(input());
-  param.weight_addr = module::getAddress(weight());
-  param.bias_addr = have_bias ? module::getAddress(bias()) : UINT64_MAX;
-  param.output_addr = module::getAddress(output());
-  param.mean_addr = module::getAddress(mean());
-  param.rstd_addr = module::getAddress(rstd());
+  param.input_addr = module::getAddress(getInput());
+  param.weight_addr = module::getAddress(getWeight());
+  param.bias_addr = have_bias ? module::getAddress(getBias()) : UINT64_MAX;
+  param.output_addr = module::getAddress(getOutput());
+  param.mean_addr = module::getAddress(getMean());
+  param.rstd_addr = module::getAddress(getRstd());
   param.dims = input_shape.size();
   for (int i = 0; i < param.dims; ++i) {
     param.shape[i] = (int)input_shape[i];
   }
-  param.axis = (int)axis();
-  param.eps = eps().convertToDouble();
+  param.axis = (int)getAxis();
+  param.eps = getEps().convertToDouble();
   param.affine = have_bias ? 3 : 1;
   param.need_mean = need_mean;
   param.need_rstd = need_rstd;
@@ -64,7 +64,7 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //                                                 int64_t out_hslice) {
 //   // TODO: supports group-3d case
 //   int64_t n, c, h, w;
-//   module::getNCHW(input(), n, c, h, w);
+//   module::getNCHW(getInput(), n, c, h, w);
 //   int num = in_nslice; // num = depth * nslice
 //   int in_wslice = 1;
 //   int c_per_npu = ceiling_func(c, BM1684X::NPU_NUM);
@@ -73,27 +73,27 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //   int tensor_size = sizeof(float) * num * c_per_npu *
 //                     align_up((int)in_hslice * in_wslice, EU_NUM);
 //   int64_t buffer_size = buffer1_size + tensor_size;
-//   const bool need_mean = !mean().getType().isa<NoneType>();
-//   const bool need_rstd = !rstd().getType().isa<NoneType>();
+//   const bool need_mean = !getMean().getType().isa<NoneType>();
+//   const bool need_rstd = !getRstd().getType().isa<NoneType>();
 //   if (!need_mean) buffer_size += buffer1_size;
 //   if (!need_rstd) buffer_size += buffer1_size;
 //   return buffer_size;
 // }
 
 // void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-//   const bool have_bias = !bias().getType().isa<NoneType>();
-//   const bool need_mean = !mean().getType().isa<NoneType>();
-//   const bool need_rstd = !rstd().getType().isa<NoneType>();
+//   const bool have_bias = !getBias().getType().isa<NoneType>();
+//   const bool need_mean = !getMean().getType().isa<NoneType>();
+//   const bool need_rstd = !getRstd().getType().isa<NoneType>();
 //   // TODO: support group-3d case
 //   assert(!need_mean && !need_rstd);
 //   int64_t n, c, h, w;
-//   module::getNCHW(input(), n, c, h, w);
+//   module::getNCHW(getInput(), n, c, h, w);
 //   auto gi = getGroupInfo(n_step, h_step);
-//   auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+//   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 //   layer_norm_local_param_t param = {0};
 //   param.input_addr = (uint32_t)in_gi.out_addr;
-//   param.weight_addr = module::getAddress(weight());
-//   param.bias_addr = have_bias ? module::getAddress(bias()): UINT64_MAX;
+//   param.weight_addr = module::getAddress(getWeight());
+//   param.bias_addr = have_bias ? module::getAddress(getBias()): UINT64_MAX;
 //   param.output_addr = (uint32_t)gi.out_addr;
 //   param.buffer_addr = (uint32_t)gi.buffer_addr;
 //   // NOTE: split mean and rstd if needed
@@ -104,7 +104,7 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //   param.input_h = gi.h_slice;
 //   param.input_w = w;
 //   param.depth = 1;
-//   param.eps = eps().convertToDouble();
+//   param.eps = getEps().convertToDouble();
 //   param.affine = have_bias ? 3 : 1;
 //   param.need_mean = need_mean;
 //   param.need_rstd = need_rstd;

@@ -37,7 +37,7 @@ void tpu::PReluOp::codegen_global_bm1684x() {
   memset(&spec, 0, sizeof(spec));
   spec.is_channel_shared = false;
   spec.slope_val = 0.f;
-  spec.rshift_bit = rshift();
+  spec.rshift_bit = getRshift();
   spec.upper_limit = -1;
   spec.round_mode = ROUND_UP;
   auto op = getOperation();
@@ -59,9 +59,9 @@ void tpu::PReluOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -84,7 +84,7 @@ void tpu::PReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   memset(&spec, 0, sizeof(spec));
   spec.is_channel_shared = false;
   spec.slope_val = 0.f;
-  spec.rshift_bit = rshift();
+  spec.rshift_bit = getRshift();
   spec.upper_limit = 0;
   spec.round_mode = ROUND_UP;
 

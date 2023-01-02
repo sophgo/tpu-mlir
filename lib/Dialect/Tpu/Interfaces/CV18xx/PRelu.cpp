@@ -25,15 +25,15 @@ using namespace tpu_mlir::backend;
 
 void tpu::PReluOp::codegen_global_cv18xx( int64_t layer_id) {
 
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
-  gaddr_t ga_slope =  module::getAddress(this->slope());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
+  gaddr_t ga_slope =  module::getAddress(this->getSlope());
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
-  if (module::isUniformQuantized(output())) {
-    int LE_scale = this->rshift();
-    int rshift_pos = this->rshift_pos().value();
-    int m_i8_pos = this->muliplier_pos().value();
+  module::getNCHW(getInput(), n, c, h, w);
+  if (module::isUniformQuantized(getOutput())) {
+    int LE_scale = this->getRshift();
+    int rshift_pos = this->getRshiftPos().value();
+    int m_i8_pos = this->getMultiplierPos().value();
     cvi_backend_tg_fixed_prelu_kernel( layer_id, ga_input, ga_output, ga_slope,
                                         n, c, h, w, rshift_pos, m_i8_pos, LE_scale);
   } else {

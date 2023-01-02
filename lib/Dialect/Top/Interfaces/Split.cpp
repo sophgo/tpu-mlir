@@ -21,10 +21,10 @@ LogicalResult top::SplitOp::init(InferenceParameter &p) { return success(); }
 void top::SplitOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SplitOp::inference(InferenceParameter &p) {
-  // auto out_num_elem = module::getNumElements(output());
-  int out_num = num();
-  int split_axis = axis();
-  auto in_shape = module::getShape(input());
+  // auto out_num_elem = module::getNumElements(getOutput());
+  int out_num = getNum();
+  int split_axis = getAxis();
+  auto in_shape = module::getShape(getInput());
   int64_t out_max_size = (in_shape[split_axis] + out_num - 1) / out_num;
   std::vector<int64_t>out_size(out_num);
   for (int i = 0; i < out_num - 1; ++i) {

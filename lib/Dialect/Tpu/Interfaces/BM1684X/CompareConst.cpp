@@ -30,13 +30,13 @@ extern "C" {
 
 void tpu::CompareConstOp::codegen_global_bm1684x() {
   constbinary_global_spec_t spec = {0};
-  spec.common.B_const_val = const_val().convertToDouble();
-  spec.common.inversed = inversed();
-  spec.common.binary_type = BM168x::compare_mode(mode());
+  spec.common.B_const_val = getConstVal().convertToDouble();
+  spec.common.inversed = getInversed();
+  spec.common.binary_type = BM168x::compare_mode(getMode());
   spec.common.if_relu = 0;
   spec.common.rshift_A = 0;
   spec.common.scale_A = 1;
-  spec.common.B_dtype = BM168x::getDataType(input());
+  spec.common.B_dtype = BM168x::getDataType(getInput());
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -61,9 +61,9 @@ void tpu::CompareConstOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(output(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -83,13 +83,13 @@ void tpu::CompareConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto output_spec = BM168x::get_output_spec(op);
 
   constbinary_local_spec_t spec = {0};
-  spec.common.B_const_val = const_val().convertToDouble();
-  spec.common.inversed = inversed();
-  spec.common.binary_type = BM168x::compare_mode(mode());
+  spec.common.B_const_val = getConstVal().convertToDouble();
+  spec.common.inversed = getInversed();
+  spec.common.binary_type = BM168x::compare_mode(getMode());
   spec.common.if_relu = 0;
   spec.common.rshift_A = 0;
   spec.common.scale_A = 1;
-  spec.common.B_dtype = BM168x::getDataType(input());
+  spec.common.B_dtype = BM168x::getDataType(getInput());
 
   BM168x::call_local_func("backend_api_constbinary_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());

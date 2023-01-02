@@ -15,7 +15,7 @@
 
 
 int64_t top::DequantizeLinearOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::DequantizeLinearOp::init(InferenceParameter &p) {
@@ -24,11 +24,11 @@ LogicalResult top::DequantizeLinearOp::init(InferenceParameter &p) {
 void top::DequantizeLinearOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(output());
-  auto shape = input().getType().cast<RankedTensorType>().getShape();
-  auto zero_point = module::getI32Array(x_zero_point());
+  auto num_element = module::getNumElements(getOutput());
+  auto shape = getInput().getType().cast<RankedTensorType>().getShape();
+  auto zero_point = module::getI32Array(getXZeroPoint());
   auto raw_zero_point = *zero_point;
-  auto scale = module::getF64Array(x_scale());
+  auto scale = module::getF64Array(getXScale());
   auto raw_scale = *scale;
   assert(raw_scale.size() == raw_zero_point.size() &&
          "zero point & scale size missmatch");
@@ -39,8 +39,8 @@ LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = (val - raw_zero_point[0]) * raw_scale[0];
     }
   } else {
-    assert(axis() == 0 && "Cannot handle axis!=0");
-    assert(raw_scale.size() == shape[axis()] &&
+    assert(getAxis() == 0 && "Cannot handle axis!=0");
+    assert(raw_scale.size() == shape[getAxis()] &&
            "zero point & input shape missmatch");
     int64_t res = 1;
     for (int i = 1; i < shape.size(); i++)

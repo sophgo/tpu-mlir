@@ -16,16 +16,16 @@
 
 conv_attr_t top::ConvOp::parseParam() {
   conv_attr_t p = {0};
-  auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
-  p.has_bias = !bias().getType().isa<NoneType>();
-  auto kernel = module::getI64Array(kernel_shape());
-  auto pads_v = module::getI64Array(pads());
-  auto strides_v = module::getI64Array(strides());
-  auto dilation = module::getI64Array(dilations(), kernel->size(), 1);
-  auto ins = module::getI64Array(inserts(), kernel->size(), 0);
+  auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
+  auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
+  p.has_bias = !getBias().getType().isa<NoneType>();
+  auto kernel = module::getI64Array(getKernelShape());
+  auto pads_v = module::getI64Array(getPads());
+  auto strides_v = module::getI64Array(getStrides());
+  auto dilation = module::getI64Array(getDilations(), kernel->size(), 1);
+  auto ins = module::getI64Array(getInserts(), kernel->size(), 0);
   p.n = i_s[0];
   p.ic = i_s[1];
   p.oc = o_s[1];
@@ -85,7 +85,7 @@ conv_attr_t top::ConvOp::parseParam() {
     p.ins_h = ins->at(0);
   }
   assert(p.ins_d == 0 && p.ins_h == 0 && p.ins_w == 0);
-  p.groups = group();
+  p.groups = getGroup();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
   return p;
 }
@@ -93,7 +93,7 @@ conv_attr_t top::ConvOp::parseParam() {
 int64_t top::ConvOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.has_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
-  return module::getNumElements(output()) *
+  return module::getNumElements(getOutput()) *
          (attr.kd * attr.kh * attr.kw * attr.ic / attr.groups * 2 + extra);
 }
 

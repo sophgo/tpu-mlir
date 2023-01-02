@@ -23,10 +23,10 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
-    if (concat_op.axis() != 1) {
+    if (concat_op.getAxis() != 1) {
       return failure();
     }
-    auto shape = module::getShape(concat_op.output());
+    auto shape = module::getShape(concat_op.getOutput());
     if (shape.size() != 4) {
       return failure();
     }
@@ -42,18 +42,18 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
     Value from;
     std::vector<int64_t> order;
     bool need_reorder = false;
-    int num_inputs = concat_op.inputs().size();
+    int num_inputs = concat_op.getInputs().size();
     for (int i = 0; i < num_inputs; i++) {
-      auto in_op = concat_op.inputs()[i].getDefiningOp();
+      auto in_op = concat_op.getInputs()[i].getDefiningOp();
       auto slice_op = dyn_cast<SliceOp>(in_op);
       if (!slice_op) {
         return failure();
       }
-      auto offset = module::getI64Array(slice_op.offset());
+      auto offset = module::getI64Array(slice_op.getOffset());
       if (offset->at(0) != 0 || offset->at(1) != 0) {
         return failure();
       }
-      auto steps = module::getI64Array(slice_op.steps());
+      auto steps = module::getI64Array(slice_op.getSteps());
       if (steps->at(0) != 1 || steps->at(1) != 1) {
         return failure();
       }
@@ -63,12 +63,12 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
         if (bh * bw != num_inputs) {
           return failure();
         }
-        from = slice_op.input();
+        from = slice_op.getInput();
       } else {
         if (bh != steps->at(2) || bw != steps->at(3)) {
           return failure();
         }
-        if (from != slice_op.input()) {
+        if (from != slice_op.getInput()) {
           return failure();
         }
       }
@@ -90,16 +90,16 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
       if (!conv_op) {
         return failure();
       }
-      if (conv_op.group() != 1) {
+      if (conv_op.getGroup() != 1) {
         return failure();
       }
-      auto filter_op = conv_op.filter().getDefiningOp<WeightOp>();
+      auto filter_op = conv_op.getFilter().getDefiningOp<WeightOp>();
       // TODO: maybe filter is i8 in Top Dialect
       auto filter_old = filter_op.read<float>();
       auto filter_new =
           std::make_shared<std::vector<float>>(filter_old->size(), 0.0);
       int64_t oc, ic, kh, kw;
-      module::getNCHW(conv_op.filter(), oc, ic, kh, kw);
+      module::getNCHW(conv_op.getFilter(), oc, ic, kh, kw);
       int64_t block = bh * bw;
       int64_t inner_dim = (ic / block) * kh * kw;
       int64_t outer_dim = oc;
@@ -111,7 +111,7 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
           std::copy(begin, end, to);
         }
       }
-      auto new_type = filter_op.output().getType().cast<RankedTensorType>();
+      auto new_type = filter_op.getOutput().getType().cast<RankedTensorType>();
       auto new_filter_op =
           WeightOp::create(use_op, "filter_S2D", *filter_new, new_type);
       use_op->setOperand(1, new_filter_op);
@@ -150,7 +150,7 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
     uint32_t h, w;
     int tmp_w = 0;
 
-    auto o_shape = module::getShape(concat_op.output());
+    auto o_shape = module::getShape(concat_op.getOutput());
     std::vector<float> resultT;
 
     std::vector<std::shared_ptr<std::vector<float>>> input_load_weight(

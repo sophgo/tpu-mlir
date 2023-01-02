@@ -34,12 +34,12 @@ class WeightReorderPass : public WeightReorderBase<WeightReorderPass> {
 public:
   WeightReorderPass() {}
   void runOnOperation() override {
-    auto module = getOperation();
+    auto mOp = getOperation();
     if (!module::isState(module::State::TPU_LOWERED)) {
       llvm_unreachable("module should be tpu quantized");
     }
     Arch::init();
-    RewritePatternSet patterns(module.getContext());
+    RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684Family()) {
       bm1684::populateWeightReorderPatterns(&patterns);
     } else if (module::isBM1684XFamily()) {
@@ -49,7 +49,7 @@ public:
     }
     auto config = GreedyRewriteConfig();
     config.maxIterations = 0; // apply each pattern only once.
-    applyPatternsAndFoldGreedily(module, std::move(patterns), config);
+    applyPatternsAndFoldGreedily(mOp, std::move(patterns), config);
     module::updateModuleTypes();
     module::setState(module::State::TPU_REORDERED);
   }

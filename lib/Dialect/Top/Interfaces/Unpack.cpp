@@ -19,9 +19,9 @@ LogicalResult top::UnpackOp::init(InferenceParameter &p) { return success(); }
 void top::UnpackOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::UnpackOp::inference(InferenceParameter &p) {
-  auto axis_ = axis();
-  auto num_ = num();
-  auto in_shape = module::getShape(input());
+  auto axis_ = getAxis();
+  auto num_ = getNum();
+  auto in_shape = module::getShape(getInput());
 
   int64_t high = 1, inner = 1;
   for (int64_t i = 0; i < axis_; ++i)

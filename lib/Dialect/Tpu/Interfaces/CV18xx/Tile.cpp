@@ -21,13 +21,13 @@ using namespace tpu_mlir::backend;
 // GloballGenInterface
 // =========================================
 void tpu::TileOp::codegen_global_cv18xx(int64_t layer_id) {
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
   int64_t n, c, h, w;
-  auto fmt = module::isUniformQuantized(output()) ? CVK_FMT_I8 : CVK_FMT_BF16;
-  module::getNCHW(input(), n, c, h, w);
-  cvi_backend_tg_tile_kernel(layer_id, ga_input, ga_output, n, c, h, w, axis(),
-                             tile(), fmt);
+  auto fmt = module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
+  module::getNCHW(getInput(), n, c, h, w);
+  cvi_backend_tg_tile_kernel(layer_id, ga_input, ga_output, n, c, h, w, getAxis(),
+                             getTile(), fmt);
 }
 
 // =========================================

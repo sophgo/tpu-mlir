@@ -14,8 +14,8 @@ namespace bm1684x {
 
 static void set_hsigmoid_attr(PatternRewriter &rewriter,
                               top::HardSigmoidOp op) {
-  const double beta_ = op.beta().convertToDouble();
-  const double alpha_ = op.alpha().convertToDouble();
+  const double beta_ = op.getBeta().convertToDouble();
+  const double alpha_ = op.getAlpha().convertToDouble();
   auto op_ = op.getOperation();
   op_->setAttr("mode", tpu::ActiveModeAttr::get(op.getContext(),
                                                 tpu::ActiveMode::HSIGMOID));
@@ -41,15 +41,15 @@ void HardSigmoidLowering::LoweringINT4(PatternRewriter &rewriter, top::HardSigmo
 void HardSigmoidLowering::LoweringINT8(PatternRewriter &rewriter,
                                        top::HardSigmoidOp op,
                                        bool asymmetric) const {
-  const double beta_ = op.beta().convertToDouble();
-  const double alpha_ = op.alpha().convertToDouble();
-  auto stype = module::getStorageType(op.output());
+  const double beta_ = op.getBeta().convertToDouble();
+  const double alpha_ = op.getAlpha().convertToDouble();
+  auto stype = module::getStorageType(op.getOutput());
   Value table = create_lookup_table(
-      op.input(), op.output(), asymmetric,
+      op.getInput(), op.getOutput(), asymmetric,
       [alpha_, beta_](double val) { return hsigmoid(val, alpha_, beta_); });
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void HardSigmoidLowering::LoweringBF16(PatternRewriter &rewriter,

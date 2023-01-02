@@ -15,7 +15,7 @@
 
 
 int64_t top::MaxUnpoolOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::MaxUnpoolOp::init(InferenceParameter &p) {
@@ -26,11 +26,11 @@ void top::MaxUnpoolOp::deinit(InferenceParameter &p) {}
 LogicalResult top::MaxUnpoolOp::inference(InferenceParameter &p) {
   int64_t N, C, H, W;
   int64_t ON, OC, OH, OW;
-  module::getNCHW(input(), N, C, H, W);
-  module::getNCHW(output(), ON, OC, OH, OW);
-  auto scale_h_ = scale_h();
-  auto scale_w_ = scale_w();
-  auto num_elem = module::getNumElements(output());
+  module::getNCHW(getInput(), N, C, H, W);
+  module::getNCHW(getOutput(), ON, OC, OH, OW);
+  auto scale_h_ = getScaleH();
+  auto scale_w_ = getScaleW();
+  auto num_elem = module::getNumElements(getOutput());
 
   int64_t NC = N * C;
   std::fill_n(p.outputs[0], num_elem, 0.0f);

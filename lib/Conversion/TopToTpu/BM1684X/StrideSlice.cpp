@@ -37,7 +37,7 @@ void StridedSliceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void StridedSliceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::StridedSliceOp op) const {
-  lowering_common<tpu::StridedSliceOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::StridedSliceOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

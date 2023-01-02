@@ -16,17 +16,17 @@
 
 
 int64_t top::CompareOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::CompareOp::init(InferenceParameter &p) { return success(); }
 void top::CompareOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::CompareOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(output());
+  auto num_element = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
-    p.outputs[0][i] = compare(p.inputs[0][i], p.inputs[1][i], mode());
+    p.outputs[0][i] = compare(p.inputs[0][i], p.inputs[1][i], getMode());
   }
   return success();
 }

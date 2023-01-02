@@ -20,8 +20,8 @@ LogicalResult tpu::LutOp::init(InferenceParameter &p) { return success(); }
 void tpu::LutOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LutOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(input());
-  auto stype = module::getStorageType(input());
+  auto num_element = module::getNumElements(getInput());
+  auto stype = module::getStorageType(getInput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     int offset = p.inputs[0][i];

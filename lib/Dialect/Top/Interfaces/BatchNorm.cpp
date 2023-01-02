@@ -14,7 +14,7 @@
 
 
 int64_t top::BatchNormOp::getFLOPs() {
-  return module::getNumElements(output()) * 2;
+  return module::getNumElements(getOutput()) * 2;
 }
 
 LogicalResult top::BatchNormOp::init(InferenceParameter &p) { return success(); }

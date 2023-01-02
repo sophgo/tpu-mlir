@@ -36,16 +36,16 @@ typedef struct {
 // =========================================
 void tpu::PadOp::codegen_global_bm1684x() {
   pad_param_t param = {0};
-  auto in_shape = module::getShape(input());
+  auto in_shape = module::getShape(getInput());
   int pad_dim = in_shape.size();
-  auto pads = module::getI64Array(paddings());
+  auto pads = module::getI64Array(getPaddings());
   for (int i = 0; i < pad_dim; i++) {
     param.pad[i][0] = pads->at(i);
     param.pad[i][1] = pads->at(i + pad_dim);
   }
-  param.type = mode();
+  param.type = getMode();
 
-  param.constant = val().convertToDouble();
+  param.constant = getVal().convertToDouble();
 
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);

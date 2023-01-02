@@ -26,10 +26,10 @@ using namespace tpu_mlir::backend;
 void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
   auto attr = parseParam();
   assert(!attr.do_relu);
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
-  if (pool_mode() == tpu::PoolMode::Avg) {
-    if (module::isUniformQuantized(output())) {
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    if (module::isUniformQuantized(getOutput())) {
       cvi_backend_tg_fixed_avg_pooling_kernel(
           layer_id,  // layer_id,
           ga_input,  // input_data_gaddr,
@@ -38,8 +38,8 @@ void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
           attr.pad_h_after, attr.pad_w, attr.pad_w_after, // pad (t, b, l, r)
           attr.sh, attr.sw,
           attr.do_relu,                 // int do_relu,
-          (int8_t)rshift().value(),     // int right_shift_width,
-          (int8_t)multiplier().value(), // &threshold_x_quantized,
+          (int8_t)getRshift().value(),     // int right_shift_width,
+          (int8_t)getMultiplier().value(), // &threshold_x_quantized,
           true);
     } else {
       cvi_backend_tg_bf16_pooling_kernel(
@@ -57,8 +57,8 @@ void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
           attr.do_relu, // int do_relu,
           true);
     }
-  } else if (pool_mode() == tpu::PoolMode::Max) {
-    if (module::isUniformQuantized(output())) {
+  } else if (getPoolMode() == tpu::PoolMode::Max) {
+    if (module::isUniformQuantized(getOutput())) {
       cvi_backend_tg_fixed_max_pooling_kernel(
 
           layer_id,  // layer_id,

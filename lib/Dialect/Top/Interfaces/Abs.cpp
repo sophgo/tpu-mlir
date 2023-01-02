@@ -14,14 +14,14 @@
 
 
 int64_t top::AbsOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::AbsOp::init(InferenceParameter &p) { return success(); }
 void top::AbsOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::AbsOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(output());
+  auto num_element = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     auto val = p.inputs[0][i];

@@ -24,12 +24,12 @@ void ExpLowering::LoweringINT4(PatternRewriter &rewriter, top::ExpOp op,
 }
 void ExpLowering::LoweringINT8(PatternRewriter &rewriter, top::ExpOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
-  Value table = create_lookup_table(op.input(), op.output(), asymmetric,
+  auto stype = module::getStorageType(op.getOutput());
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric,
                                     [](double val) { return std::exp(val); });
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void ExpLowering::LoweringBF16(PatternRewriter &rewriter, top::ExpOp op) const {

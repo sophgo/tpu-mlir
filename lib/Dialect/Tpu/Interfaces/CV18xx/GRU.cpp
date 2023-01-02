@@ -112,10 +112,10 @@ Value lowerBias(Operation *op, Value b_value) {
 template <>
 LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewrite(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.input()).isBF16())
+  if (!module::getStorageType(op.getInput()).isBF16())
     return failure();
-  auto lower_recurrence = lowerWeight(op.getOperation(), op.recurrence());
-  auto lower_bias = lowerBias(op.getOperation(), op.bias());
+  auto lower_recurrence = lowerWeight(op.getOperation(), op.getRecurrence());
+  auto lower_bias = lowerBias(op.getOperation(), op.getBias());
   op.setOperand(2, lower_recurrence);
   op.setOperand(3, lower_bias);
   return success();
@@ -124,10 +124,10 @@ LogicalResult WeightReorder<tpu::GRUOp, BFloat16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::GRUOp, int8_t>::matchAndRewrite(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.input()).isBF16())
+  if (!module::getStorageType(op.getInput()).isBF16())
     return failure();
-  auto lower_recurrence = lowerWeight(op.getOperation(), op.recurrence());
-  auto lower_bias = lowerBias(op.getOperation(), op.bias());
+  auto lower_recurrence = lowerWeight(op.getOperation(), op.getRecurrence());
+  auto lower_bias = lowerBias(op.getOperation(), op.getBias());
   op.setOperand(2, lower_recurrence);
   op.setOperand(3, lower_bias);
   return success();
@@ -140,7 +140,7 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   bool only_last = false;
   int64_t seq_len, batch_size, input_size, garbage;
   int64_t seq_len2, num_dir, batch_size2, hidden_size;
-  auto in_shape = module::getShape(input());
+  auto in_shape = module::getShape(getInput());
   module::getNCHW(in_shape, seq_len, batch_size, input_size, garbage);
   Value output;
   if (!getResults()[0].getType().isa<mlir::NoneType>()) {
@@ -160,20 +160,20 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   assert(batch_size == batch_size2);
   assert(input_size == num_dir * 3 * hidden_size);
 
-  bool with_bias = !bias().getType().isa<mlir::NoneType>();
-  bool with_h0 = !initial_h().getType().isa<mlir::NoneType>();
-  gaddr_t ga_input = module::getAddress(input());
+  bool with_bias = !getBias().getType().isa<mlir::NoneType>();
+  bool with_h0 = !getInitialH().getType().isa<mlir::NoneType>();
+  gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(output);
-  gaddr_t ga_bias = with_bias ? module::getAddress(bias()) : 0;
-  gaddr_t ga_initial_h = with_h0 ? module::getAddress(initial_h()) : 0;
-  gaddr_t ga_recurrence = module::getAddress(recurrence());
-  gaddr_t ga_sigmoid_table = module::getAddress(sigmoid_table());
-  gaddr_t ga_sigmoid_slope = module::getAddress(sigmoid_slope_table());
-  gaddr_t ga_tanh_table = module::getAddress(tanh_table());
-  gaddr_t ga_tanh_slope = module::getAddress(tanh_slope_table());
+  gaddr_t ga_bias = with_bias ? module::getAddress(getBias()) : 0;
+  gaddr_t ga_initial_h = with_h0 ? module::getAddress(getInitialH()) : 0;
+  gaddr_t ga_recurrence = module::getAddress(getRecurrence());
+  gaddr_t ga_sigmoid_table = module::getAddress(getSigmoidTable());
+  gaddr_t ga_sigmoid_slope = module::getAddress(getSigmoidSlopeTable());
+  gaddr_t ga_tanh_table = module::getAddress(getTanhTable());
+  gaddr_t ga_tanh_slope = module::getAddress(getTanhSlopeTable());
 
-  bool is_linear_before_reset = linear_before_reset();
-  bool is_bidirectional = bidirectional();
+  bool is_linear_before_reset = getLinearBeforeReset();
+  bool is_bidirectional = getBidirectional();
 
   if (module::isUniformQuantized(output)) {
     llvm_unreachable("Not supported now");

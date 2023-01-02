@@ -48,10 +48,10 @@ void tpu::PermuteOp::codegen_global_bm1684x() {
   transpose_param_t param = {0};
   param.if_getting_buffer_size = 0;
 
-  auto perm = module::getI64Array(order());
-  auto in_shape = module::getShape(input());
+  auto perm = module::getI64Array(getOrder());
+  auto in_shape = module::getShape(getInput());
   int dims = in_shape.size();
-  param.spec.buffer_global_addr = module::getAddress(buffer());
+  param.spec.buffer_global_addr = module::getAddress(getBuffer());
   for (int i = 0; i < dims; i++) {
     param.spec.order[i] = perm->at(i);
   }

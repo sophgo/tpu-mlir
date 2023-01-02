@@ -21,12 +21,12 @@ LogicalResult tpu::RequantFpAxisOp::init(InferenceParameter &p) {
 void tpu::RequantFpAxisOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
-  auto i_sType = module::getStorageType(input());
-  auto o_sType = module::getStorageType(output());
-  auto o_qtype = module::getUniformQuantizedType(output());
+  auto i_sType = module::getStorageType(getInput());
+  auto o_sType = module::getStorageType(getOutput());
+  auto o_qtype = module::getUniformQuantizedType(getOutput());
 
-  auto shape = module::getShape(output());
-  auto mode = quant_mode();
+  auto shape = module::getShape(getOutput());
+  auto mode = getQuantMode();
   int64_t inner = 1;
   for (int i = 2; i < shape.size(); ++i) {
     inner *= shape[i];
@@ -74,7 +74,7 @@ mlir::Type tpu::RequantFpAxisOp::type_verify(uint64_t opd_idx,
                                              TypeCastMode &mode) {
   if (opd_idx == 0) {
     auto op = getOperation();
-    auto stype = module::getStorageType(input());
+    auto stype = module::getStorageType(getInput());
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }

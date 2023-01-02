@@ -18,12 +18,12 @@ LogicalResult tpu::ShuffleChannelOp::init(InferenceParameter &p) { return succes
 void tpu::ShuffleChannelOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ShuffleChannelOp::inference(InferenceParameter &p) {
-  int64_t group = this->group();
-  //auto input = this->input();
+  int64_t group = this->getGroup();
+  //auto input = this->getInput();
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
   std::vector<int64_t> input_shape;
-  module::getShapeVec(this->input(), input_shape);
+  module::getShapeVec(this->getInput(), input_shape);
   int64_t n = input_shape[0];
   int64_t c = input_shape[1];
   int64_t frame_size = input_shape[2] * input_shape[3];

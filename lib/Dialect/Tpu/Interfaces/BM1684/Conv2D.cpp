@@ -23,11 +23,11 @@ using namespace tpu_mlir::bm1684;
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
 
   auto attr = op.parseParam();
-  auto filterOp = cast<top::WeightOp>(op.filter().getDefiningOp());
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
   auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
@@ -47,7 +47,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
       1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
   auto new_type =
       RankedTensorType::get(new_shape, filter_type.getElementType());
-  auto new_filter = top::WeightOp::create(op.filter().getDefiningOp(),
+  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
                                           "reorderd", *filter_new, new_type);
   op->setOperand(1, new_filter);
   return success();
@@ -57,23 +57,23 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
   auto attr = parseParam();
   if (attr.is_dw) {
     BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
-        module::getAddress(input()), module::getAddress(output()),
-        module::getAddress(filter()),
-        attr.has_bias ? module::getAddress(bias()) : 0, attr.n, attr.ic,
+        module::getAddress(getInput()), module::getAddress(getOutput()),
+        module::getAddress(getFilter()),
+        attr.has_bias ? module::getAddress(getBias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
         attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w,
-        rshift().value()[0].cast<IntegerAttr>().getInt(), attr.has_bias ? 1 : 0,
+        getRshift().value()[0].cast<IntegerAttr>().getInt(), attr.has_bias ? 1 : 0,
         0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
-        module::getAddress(input()), module::getAddress(output()),
-        module::getAddress(filter()),
-        attr.has_bias ? module::getAddress(bias()) : 0, attr.n, attr.ic,
+        module::getAddress(getInput()), module::getAddress(getOutput()),
+        module::getAddress(getFilter()),
+        attr.has_bias ? module::getAddress(getBias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
         attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
         attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0,
-        rshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0,
+        getRshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0,
         0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }

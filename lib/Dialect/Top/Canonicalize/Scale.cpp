@@ -30,13 +30,13 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
     }
 
     auto next_scale_op = cast<ScaleOp>(nextOp);
-    auto next_scale = dyn_cast<WeightOp>(next_scale_op.scale().getDefiningOp());
-    auto next_bias = dyn_cast<WeightOp>(next_scale_op.bias().getDefiningOp());
+    auto next_scale = dyn_cast<WeightOp>(next_scale_op.getScale().getDefiningOp());
+    auto next_bias = dyn_cast<WeightOp>(next_scale_op.getBias().getDefiningOp());
     auto next_scale_f32 = next_scale.read<float>();
     auto next_bias_f32 = next_bias.read<float>();
 
-    auto cur_scale = dyn_cast<WeightOp>(op.scale().getDefiningOp());
-    auto cur_bias = dyn_cast<WeightOp>(op.bias().getDefiningOp());
+    auto cur_scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto cur_bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
     auto cur_scale_f32 = cur_scale.read<float>();
     auto cur_bias_f32 = cur_bias.read<float>();
 
@@ -57,7 +57,7 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
     nextOp->setOperand(1, new_scale);
     nextOp->setOperand(2, new_bias);
 
-    rewriter.replaceOp(op, {op.input()});
+    rewriter.replaceOp(op, {op.getInput()});
     return success();
   }
 };
@@ -69,25 +69,25 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
-    auto formerOp = op.input().getDefiningOp();
+    auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->hasOneUse() || !isa<ConvOp>(formerOp)) {
       return failure();
     }
     auto conv_op = cast<ConvOp>(formerOp);
-    if (conv_op.do_relu()) {
+    if (conv_op.getDoRelu()) {
       return failure();
     }
 
-    auto cur_scale_op = dyn_cast<WeightOp>(op.scale().getDefiningOp());
-    auto cur_bias_op = dyn_cast<WeightOp>(op.bias().getDefiningOp());
+    auto cur_scale_op = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto cur_bias_op = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
     auto cur_scale_f32 = cur_scale_op.read<float>();
     auto cur_bias_f32 = cur_bias_op.read<float>();
 
-    auto conv_weight_op = dyn_cast<WeightOp>(conv_op.filter().getDefiningOp());
-    auto conv_bias_op = dyn_cast<WeightOp>(conv_op.bias().getDefiningOp());
+    auto conv_weight_op = dyn_cast<WeightOp>(conv_op.getFilter().getDefiningOp());
+    auto conv_bias_op = dyn_cast<WeightOp>(conv_op.getBias().getDefiningOp());
 
     int64_t oc, ic, kh, kw;
-    module::getNCHW(conv_weight_op.output(), oc, ic, kh, kw);
+    module::getNCHW(conv_weight_op.getOutput(), oc, ic, kh, kw);
 
     // merge weight: weight = weight * cur_scale
     std::vector<float> conv_weight_v(oc * ic * kh * kw, 0);
@@ -123,13 +123,13 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
     conv_op->setOperand(2, conv_bias);
 
     // update attrs
-    double relu_limit = op.relu_limit().convertToDouble();
+    double relu_limit = op.getReluLimit().convertToDouble();
     formerOp->setLoc(op.getLoc());
-    formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
+    formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
     // remove the scale Op
-    rewriter.replaceOp(op, {op.input()});
+    rewriter.replaceOp(op, {op.getInput()});
     return success();
   }
 };
@@ -141,22 +141,22 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
-    auto formerOp = op.input().getDefiningOp();
+    auto formerOp = op.getInput().getDefiningOp();
     if (!formerOp->getResult(0).hasOneUse() || !isa<BatchNormOp>(formerOp)) {
       return failure();
     }
     auto bn_op = cast<BatchNormOp>(formerOp);
-    if (bn_op.do_relu()) {
+    if (bn_op.getDoRelu()) {
       return failure();
     }
 
-    auto cur_scale_op = dyn_cast<WeightOp>(op.scale().getDefiningOp());
-    auto cur_bias_op = dyn_cast<WeightOp>(op.bias().getDefiningOp());
+    auto cur_scale_op = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto cur_bias_op = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
     auto cur_scale_f32 = cur_scale_op.read<float>();
     auto cur_bias_f32 = cur_bias_op.read<float>();
 
-    auto bn_mean_op = dyn_cast<WeightOp>(bn_op.mean().getDefiningOp());
-    auto bn_variance_op = dyn_cast<WeightOp>(bn_op.variance().getDefiningOp());
+    auto bn_mean_op = dyn_cast<WeightOp>(bn_op.getMean().getDefiningOp());
+    auto bn_variance_op = dyn_cast<WeightOp>(bn_op.getVariance().getDefiningOp());
     auto bn_mean_f32 = bn_mean_op.read<float>();
     auto bn_variance_f32 = bn_variance_op.read<float>();
 
@@ -195,12 +195,12 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     bn_op->setOperand(2, bn_variance);
 
     // update attrs
-    double relu_limit = op.relu_limit().convertToDouble();
-    formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.do_relu()));
+    double relu_limit = op.getReluLimit().convertToDouble();
+    formerOp->setAttr("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
     formerOp->setAttr("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
     // remove the scale Op
-    rewriter.replaceOp(op, {op.input()});
+    rewriter.replaceOp(op, {op.getInput()});
     return success();
   }
 };
@@ -213,10 +213,10 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     std::vector<int64_t> input_shape;
-    module::getShapeVec(op.input(), input_shape);
+    module::getShapeVec(op.getInput(), input_shape);
 
-    auto cur_scale = dyn_cast<WeightOp>(op.scale().getDefiningOp());
-    auto cur_bias = dyn_cast<WeightOp>(op.bias().getDefiningOp());
+    auto cur_scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto cur_bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
     if (!(cur_scale && cur_bias) || input_shape.size() < 4) {
       return failure();
     }
@@ -236,8 +236,8 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
     attrs.set("strides", rewriter.getI64ArrayAttr({1, 1}));
     attrs.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
     attrs.set("group", rewriter.getI64IntegerAttr(channel));
-    attrs.set("do_relu", rewriter.getBoolAttr(op.do_relu()));
-    auto relu_limit = op.relu_limit().convertToDouble();
+    attrs.set("do_relu", rewriter.getBoolAttr(op.getDoRelu()));
+    auto relu_limit = op.getReluLimit().convertToDouble();
     attrs.set("relu_limit", rewriter.getF64FloatAttr(relu_limit));
 
     auto filter_type =
@@ -250,7 +250,7 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
 
     rewriter.replaceOpWithNewOp<ConvOp>(
         op, op.getResult().getType(),
-        ValueRange{op.input(), new_scale, new_bias}, attrs);
+        ValueRange{op.getInput(), new_scale, new_bias}, attrs);
     return success();
   }
 };

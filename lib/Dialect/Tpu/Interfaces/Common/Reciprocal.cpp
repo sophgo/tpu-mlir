@@ -23,9 +23,9 @@ LogicalResult tpu::ReciprocalOp::init(InferenceParameter &p) {
 void tpu::ReciprocalOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReciprocalOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto out_type = module::getStorageType(output());
-  float const_s = const_val().convertToDouble();
+  auto num_elem = module::getNumElements(getOutput());
+  auto out_type = module::getStorageType(getOutput());
+  float const_s = getConstVal().convertToDouble();
   if (out_type.isa<FloatType>()) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {

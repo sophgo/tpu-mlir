@@ -13,7 +13,7 @@
 
 
 int64_t top::NormalizeOp::getFLOPs() {
-  return module::getNumElements(output()) * 2;
+  return module::getNumElements(getOutput()) * 2;
 }
 
 LogicalResult top::NormalizeOp::init(InferenceParameter &p) { return success(); }

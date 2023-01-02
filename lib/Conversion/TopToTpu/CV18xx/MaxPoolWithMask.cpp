@@ -17,7 +17,7 @@ namespace cv18xx {
 
 void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
                             top::MaxPoolWithMaskOp &op) {
-  auto kernel_shape = module::getI64Array(op.kernel_shape());
+  auto kernel_shape = module::getI64Array(op.getKernelShape());
   assert(kernel_shape->size() == 2 &&
          kernel_shape->at(0) == kernel_shape->at(1));
   std::vector<NamedAttribute> attrs;
@@ -27,17 +27,17 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
 
   // create max_pool op
   auto max_pool_op = rewriter.create<top::MaxPoolOp>(
-      op->getLoc(), op.output().getType().cast<RankedTensorType>(),
-      ValueRange{op.input()}, attrs);
+      op->getLoc(), op.getOutput().getType().cast<RankedTensorType>(),
+      ValueRange{op.getInput()}, attrs);
   rewriter.setInsertionPointAfter(max_pool_op);
 
   // create pool mask op
   attrs.clear();
   attrs.emplace_back(rewriter.getNamedAttr(
       "scale", rewriter.getI64IntegerAttr(kernel_shape->at(0))));
-  std::string name = module::getName(op.mask()).str() + "convert";
+  std::string name = module::getName(op.getMask()).str() + "convert";
   auto loc = NameLoc::get(rewriter.getStringAttr(name));
-  auto input_shape = module::getShape(op.input());
+  auto input_shape = module::getShape(op.getInput());
   std::vector<int64_t> mask_shape = input_shape.vec();
   mask_shape[2] = align_up(mask_shape[2], kernel_shape->at(0));
   mask_shape[3] = align_up(mask_shape[3], kernel_shape->at(0));
@@ -45,9 +45,10 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
   auto pool_mask_type =
       RankedTensorType::get(mask_shape, rewriter.getF32Type());
   auto pool_mask_op = rewriter.create<top::PoolMaskOp>(
-      loc, pool_mask_type, ValueRange{op.input()}, attrs);
-  op.mask().replaceAllUsesWith(pool_mask_op.output());
+      loc, pool_mask_type, ValueRange{op.getInput()}, attrs);
+  op.getMask().replaceAllUsesWith(pool_mask_op.getOutput());
   rewriter.replaceOp(op, {max_pool_op, pool_mask_op});
+  op.erase();
 }
 
 void MaxPoolWithMaskLowering::LoweringINT8(PatternRewriter &rewriter,

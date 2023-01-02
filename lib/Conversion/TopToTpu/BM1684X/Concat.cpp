@@ -24,7 +24,7 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
                                   top::ConcatOp concatOp,
                                   bool asymmetric) const {
   // checkout whether weight exist
-  for (auto in : concatOp.inputs()) {
+  for (auto in : concatOp.getInputs()) {
     if (isa<top::WeightOp>(in.getDefiningOp())) {
       LoweringF16(rewriter, concatOp);
       return;
@@ -32,11 +32,11 @@ void ConcatLowering::LoweringINT8(PatternRewriter &rewriter,
   }
   auto op = concatOp.getOperation();
   std::vector<Value> operands;
-  for (auto in : concatOp.inputs()) {
-    auto new_in = do_transfer(in, concatOp.output(), asymmetric);
+  for (auto in : concatOp.getInputs()) {
+    auto new_in = do_transfer(in, concatOp.getOutput(), asymmetric);
     operands.push_back(new_in);
   }
-  auto newType = getQuantInt8Type(concatOp.output(), asymmetric);
+  auto newType = getQuantInt8Type(concatOp.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, newType, operands,
                                              op->getAttrs());
 }
@@ -55,19 +55,19 @@ void ConcatLowering::LoweringQuantized(PatternRewriter &rewriter,
                                        top::ConcatOp concatOp) const {
   auto op = concatOp.getOperation();
   std::vector<Value> operands;
-  auto out_stype = module::getStorageType(concatOp.output());
+  auto out_stype = module::getStorageType(concatOp.getOutput());
   if (out_stype.isUnsignedInteger(8)) {
-    for (auto in : concatOp.inputs()) {
-      auto new_in = do_transfer_fp(in, concatOp.output(), true);
+    for (auto in : concatOp.getInputs()) {
+      auto new_in = do_transfer_fp(in, concatOp.getOutput(), true);
       operands.push_back(new_in);
     }
   } else {
-    for (auto in : concatOp.inputs()) {
+    for (auto in : concatOp.getInputs()) {
       operands.push_back(in);
     }
   }
 
-  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, concatOp.output().getType(),
+  rewriter.replaceOpWithNewOp<tpu::ConcatOp>(op, concatOp.getOutput().getType(),
                                              operands, op->getAttrs());
 }
 

@@ -15,8 +15,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-
 LogicalResult tpu::GenericCpuOp::init(InferenceParameter &p) {
   return success();
 }
@@ -349,11 +347,11 @@ static void interp_asymmetric(float *input, float *output, int n, int c, int ih,
 class InterpolationOpKernel {
 public:
   InterpolationOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
-    module::getShapeVec(op.inputs()[0], this->input_shape);
-    module::getShapeVec(op.output(), this->output_shape);
+    module::getShapeVec(op.getInputs()[0], this->input_shape);
+    module::getShapeVec(op.getOutput(), this->output_shape);
     assert(input_shape.size() == 4);
     assert(output_shape.size() == 4);
-    mlir::DictionaryAttr param = op.param().value();
+    mlir::DictionaryAttr param = op.getParam().value();
     this->height = param.get("height").cast<IntegerAttr>().getInt();
     this->width = param.get("width").cast<IntegerAttr>().getInt();
     this->pad_beg = param.get("pad_beg").cast<IntegerAttr>().getInt();
@@ -441,9 +439,9 @@ private:
 class EmbeddingOpKernel {
 public:
   EmbeddingOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
-    module::getShapeVec(op.inputs()[0], this->input_shape);
-    module::getShapeVec(op.inputs()[1], this->table_shape);
-    module::getShapeVec(op.output(), this->output_shape);
+    module::getShapeVec(op.getInputs()[0], this->input_shape);
+    module::getShapeVec(op.getInputs()[1], this->table_shape);
+    module::getShapeVec(op.getOutput(), this->output_shape);
     input_data = p.inputs[0];
     table_data = p.inputs[1];
     output_data = p.outputs[0];
@@ -488,14 +486,14 @@ private:
 };
 
 LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
-  std::string func_name = operation_name().str();
+  std::string func_name = getCpuOpName().str();
   if (func_name == "quant") {
-    assert(inputs().size() == 1);
-    auto num_elem = module::getNumElements(output());
-    auto in_type = module::getStorageType(inputs()[0]);
-    auto out_type = module::getStorageType(output());
+    assert(getInputs().size() == 1);
+    auto num_elem = module::getNumElements(getOutput());
+    auto in_type = module::getStorageType(getInputs()[0]);
+    auto out_type = module::getStorageType(getOutput());
     if (in_type.isF32() && out_type.isSignedInteger()) {
-      auto qtype = module::getUniformQuantizedType(output());
+      auto qtype = module::getUniformQuantizedType(getOutput());
       quantizeToInt8(p.inputs[0], p.outputs[0], num_elem,
                      1. / qtype.getScale());
     } else {
@@ -509,17 +507,18 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     embed_kernel.invoke();
   } else if (func_name == "detectionoutput") {
     DetParam det_param;
-    module::getShapeVec(inputs()[0], det_param.loc_shape);
-    module::getShapeVec(inputs()[1], det_param.conf_shape);
-    module::getShapeVec(inputs()[2], det_param.prior_shape);
+    module::getShapeVec(getInputs()[0], det_param.loc_shape);
+    module::getShapeVec(getInputs()[1], det_param.conf_shape);
+    module::getShapeVec(getInputs()[2], det_param.prior_shape);
     det_param.loc_data = p.inputs[0];
     det_param.conf_data = p.inputs[1];
     det_param.prior_data = p.inputs[2];
     det_param.output_data = p.outputs[0];
-    mlir::DictionaryAttr param = this->param().value();
+    mlir::DictionaryAttr param = this->getParam().value();
     det_param.keep_top_k = param.get("keep_top_k").cast<IntegerAttr>().getInt();
     det_param.top_k = param.get("top_k").cast<IntegerAttr>().getInt();
-    det_param.num_classes = param.get("num_classes").cast<IntegerAttr>().getInt();
+    det_param.num_classes =
+        param.get("num_classes").cast<IntegerAttr>().getInt();
     det_param.background_label_id =
         param.get("background_label_id").cast<IntegerAttr>().getInt();
     det_param.share_location =
@@ -543,93 +542,101 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     det_func.invoke();
   } else if (func_name == "yolo_detection") {
     YoloDetParam yolo_param;
-    mlir::DictionaryAttr param = this->param().value();
+    mlir::DictionaryAttr param = this->getParam().value();
     yolo_param.keep_topk = param.get("keep_topk").cast<IntegerAttr>().getInt();
     yolo_param.class_num = param.get("class_num").cast<IntegerAttr>().getInt();
-    yolo_param.net_input_h = param.get("net_input_h").cast<IntegerAttr>().getInt();
-    yolo_param.net_input_w = param.get("net_input_w").cast<IntegerAttr>().getInt();
+    yolo_param.net_input_h =
+        param.get("net_input_h").cast<IntegerAttr>().getInt();
+    yolo_param.net_input_w =
+        param.get("net_input_w").cast<IntegerAttr>().getInt();
     yolo_param.nms_threshold =
         param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
     yolo_param.obj_threshold =
         param.get("obj_threshold").cast<FloatAttr>().getValueAsDouble();
-    yolo_param.tiny =
-        param.get("tiny").cast<BoolAttr>().getValue();
-    yolo_param.yolo_v4 =
-        param.get("yolo_v4").cast<BoolAttr>().getValue();
-    yolo_param.spp_net =
-        param.get("spp_net").cast<BoolAttr>().getValue();
-    yolo_param.anchors =
-        param.get("anchors").cast<StringAttr>().getValue();
+    yolo_param.tiny = param.get("tiny").cast<BoolAttr>().getValue();
+    yolo_param.yolo_v4 = param.get("yolo_v4").cast<BoolAttr>().getValue();
+    yolo_param.spp_net = param.get("spp_net").cast<BoolAttr>().getValue();
+    yolo_param.anchors = param.get("anchors").cast<StringAttr>().getValue();
 
-    for (size_t i = 0; i < inputs().size(); ++i) {
+    for (size_t i = 0; i < getInputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = module::getNumElements(inputs()[i]);
-      module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(getInputs()[i]);
+      module::getShapeVec(getInputs()[i], tensor_list.shape);
       yolo_param.inputs.emplace_back(std::move(tensor_list));
     }
     yolo_param.output.ptr = p.outputs[0];
-    yolo_param.output.size = module::getNumElements(output());
-    module::getShapeVec(output(), yolo_param.output.shape);
+    yolo_param.output.size = module::getNumElements(getOutput());
+    module::getShapeVec(getOutput(), yolo_param.output.shape);
     YoloDetectionFunc yolo_func(yolo_param);
     yolo_func.invoke();
   } else if (func_name == "proposal") {
     ProposalParam proposal_param;
-    mlir::DictionaryAttr param = this->param().value();
-    proposal_param.anchor_base_size = param.get("anchor_base_size").cast<IntegerAttr>().getInt();
-    proposal_param.feat_stride = param.get("feat_stride").cast<IntegerAttr>().getInt();
-    proposal_param.net_input_h = param.get("net_input_h").cast<IntegerAttr>().getInt();
-    proposal_param.net_input_w = param.get("net_input_w").cast<IntegerAttr>().getInt();
-    proposal_param.rpn_nms_post_top_n = param.get("rpn_nms_post_top_n").cast<IntegerAttr>().getInt();
-    proposal_param.rpn_obj_threshold = param.get("rpn_obj_threshold").cast<FloatAttr>().getValueAsDouble();
-    proposal_param.rpn_nms_threshold = param.get("rpn_nms_threshold").cast<FloatAttr>().getValueAsDouble();
-    for (size_t i = 0; i < inputs().size(); ++i) {
+    mlir::DictionaryAttr param = this->getParam().value();
+    proposal_param.anchor_base_size =
+        param.get("anchor_base_size").cast<IntegerAttr>().getInt();
+    proposal_param.feat_stride =
+        param.get("feat_stride").cast<IntegerAttr>().getInt();
+    proposal_param.net_input_h =
+        param.get("net_input_h").cast<IntegerAttr>().getInt();
+    proposal_param.net_input_w =
+        param.get("net_input_w").cast<IntegerAttr>().getInt();
+    proposal_param.rpn_nms_post_top_n =
+        param.get("rpn_nms_post_top_n").cast<IntegerAttr>().getInt();
+    proposal_param.rpn_obj_threshold =
+        param.get("rpn_obj_threshold").cast<FloatAttr>().getValueAsDouble();
+    proposal_param.rpn_nms_threshold =
+        param.get("rpn_nms_threshold").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < getInputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = module::getNumElements(inputs()[i]);
-      module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(getInputs()[i]);
+      module::getShapeVec(getInputs()[i], tensor_list.shape);
       proposal_param.inputs.emplace_back(std::move(tensor_list));
     }
     proposal_param.output.ptr = p.outputs[0];
-    proposal_param.output.size = module::getNumElements(output());
-    module::getShapeVec(output(), proposal_param.output.shape);
+    proposal_param.output.size = module::getNumElements(getOutput());
+    module::getShapeVec(getOutput(), proposal_param.output.shape);
     ProposalFunc proposal_func(proposal_param);
     proposal_func.invoke();
   } else if (func_name == "roi_pooling") {
     ROIPoolingParam roip_param;
-    mlir::DictionaryAttr param = this->param().value();
+    mlir::DictionaryAttr param = this->getParam().value();
     roip_param.pooled_h = param.get("pooled_h").cast<IntegerAttr>().getInt();
     roip_param.pooled_w = param.get("pooled_w").cast<IntegerAttr>().getInt();
-    roip_param.spatial_scale = param.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
-    for (size_t i = 0; i < inputs().size(); ++i) {
+    roip_param.spatial_scale =
+        param.get("spatial_scale").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < getInputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = module::getNumElements(inputs()[i]);
-      module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(getInputs()[i]);
+      module::getShapeVec(getInputs()[i], tensor_list.shape);
       roip_param.inputs.emplace_back(std::move(tensor_list));
     }
     roip_param.output.ptr = p.outputs[0];
-    roip_param.output.size = module::getNumElements(output());
-    module::getShapeVec(output(), roip_param.output.shape);
+    roip_param.output.size = module::getNumElements(getOutput());
+    module::getShapeVec(getOutput(), roip_param.output.shape);
     ROIPoolingFunc roip_func(roip_param);
     roip_func.invoke();
   } else if (func_name == "frcn_detection") {
     FrcnDetParam frcn_param;
-    mlir::DictionaryAttr param = this->param().value();
+    mlir::DictionaryAttr param = this->getParam().value();
     frcn_param.class_num = param.get("class_num").cast<IntegerAttr>().getInt();
     frcn_param.keep_topk = param.get("keep_topk").cast<IntegerAttr>().getInt();
-    frcn_param.nms_threshold = param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
-    frcn_param.obj_threshold = param.get("obj_threshold").cast<FloatAttr>().getValueAsDouble();
-    for (size_t i = 0; i < inputs().size(); ++i) {
+    frcn_param.nms_threshold =
+        param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
+    frcn_param.obj_threshold =
+        param.get("obj_threshold").cast<FloatAttr>().getValueAsDouble();
+    for (size_t i = 0; i < getInputs().size(); ++i) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
-      tensor_list.size = module::getNumElements(inputs()[i]);
-      module::getShapeVec(inputs()[i], tensor_list.shape);
+      tensor_list.size = module::getNumElements(getInputs()[i]);
+      module::getShapeVec(getInputs()[i], tensor_list.shape);
       frcn_param.inputs.emplace_back(std::move(tensor_list));
     }
     frcn_param.output.ptr = p.outputs[0];
-    frcn_param.output.size = module::getNumElements(output());
-    module::getShapeVec(output(), frcn_param.output.shape);
+    frcn_param.output.size = module::getNumElements(getOutput());
+    module::getShapeVec(getOutput(), frcn_param.output.shape);
     FrcnDetctionFunc frcn_func(frcn_param);
     frcn_func.invoke();
   } else {
@@ -638,12 +645,12 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   return success();
 }
 
-mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
-  std::string func_name = operation_name().str();
+mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
+                                          TypeCastMode &mode) {
+  std::string func_name = getCpuOpName().str();
   auto op = getOperation();
   if (func_name == "embedding" && opd_idx == 0) {
     return do_nothing(mode);
   }
   return type_verify_case_same(op, opd_idx, mode);
 }
-

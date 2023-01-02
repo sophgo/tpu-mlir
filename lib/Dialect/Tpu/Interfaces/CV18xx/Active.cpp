@@ -32,18 +32,18 @@ extern "C" {
 // int8
 void tpu::ActiveOp::codegen_global_cv18xx(int64_t layer_id) {
   int input_num = 1;
-  gaddr_t input = module::getAddress(this->input());
+  gaddr_t input = module::getAddress(this->getInput());
   gaddr_t ga_inputs[] = {input};
   int64_t n, c, h, w;
-  module::getNCHW(this->input(), n, c, h, w);
-  gaddr_t ga_output = module::getAddress(output());
+  module::getNCHW(this->getInput(), n, c, h, w);
+  gaddr_t ga_output = module::getAddress(getOutput());
   bool do_relu = false;
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
-  switch (mode()) {
+  switch (getMode()) {
   case ActiveMode::ABSVAL: {
-    if (module::isUniformQuantized(output())) {
+    if (module::isUniformQuantized(getOutput())) {
       cvi_backend_tg_eltwise_abs_kernel(
           layer_id, ga_inputs, ga_output, input_num, n, c, h, w, do_relu,
           do_early_stride, early_stride_h, early_stride_w, 0, NULL, NULL,

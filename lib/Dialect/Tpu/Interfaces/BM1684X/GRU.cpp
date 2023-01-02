@@ -13,9 +13,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -92,17 +89,17 @@ static void zrh2rzh(std::shared_ptr<std::vector<T>> &filter, int num_dir,
 template <>
 LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
     tpu::GRUOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();
 
-  auto recurrenceOp = op.recurrence().getDefiningOp<top::WeightOp>();
+  auto recurrenceOp = op.getRecurrence().getDefiningOp<top::WeightOp>();
   auto recurrence_f32 = recurrenceOp.read<float>();
-  auto num_filter = module::getNumElements(op.filter());
-  auto num_recur = module::getNumElements(op.recurrence());
+  auto num_filter = module::getNumElements(op.getFilter());
+  auto num_recur = module::getNumElements(op.getRecurrence());
   auto filter_merged =
       std::make_shared<std::vector<float>>(num_filter + num_recur, 0);
   filter_merge(filter_merged, filter_f32, recurrence_f32, attr.num_direction,
@@ -111,7 +108,7 @@ LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> filter_reordered_shape = {
       attr.num_direction, 3 * attr.input_size + 3 * attr.hidden_size,
       attr.hidden_size};
-  auto filter_type = module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.getFilter());
   auto new_filter_type =
       RankedTensorType::get(filter_reordered_shape, filter_type);
   auto newFilterOp = top::WeightOp::create(op, "reordered_filter",
@@ -119,9 +116,9 @@ LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
   op->setOperand(1, newFilterOp);
   op->setOperand(2, module::getNoneOp(op));
   if (attr.have_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
-    auto type = op.bias().getType().cast<RankedTensorType>();
+    auto type = op.getBias().getType().cast<RankedTensorType>();
     zrh2rzh(bias_f32, attr.num_direction, attr.hidden_size);
     auto newBiasOp =
         top::WeightOp::create(op, "reordered_bias", *bias_f32, type);
@@ -131,7 +128,7 @@ LogicalResult WeightReorder<tpu::GRUOp, Float32Type>::matchAndRewrite(
   std::vector<int64_t> init_shape = {attr.num_direction, attr.batch_size,
                                      attr.hidden_size};
   if (!attr.have_h0) {
-    auto stype = module::getStorageType(op.input());
+    auto stype = module::getStorageType(op.getInput());
     auto initial_h = std::make_shared<std::vector<float>>(
         attr.num_direction * attr.batch_size * attr.hidden_size, 0.0f);
     auto new_type = RankedTensorType::get(init_shape, stype);
@@ -186,13 +183,13 @@ typedef struct {
 void tpu::GRUOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   gru_param_t p = {0};
-  p.xGlobalAddr = module::getAddress(input());
-  p.wGlobalAddr = module::getAddress(filter());
-  p.bGlobalAddr = module::getAddress(bias());
-  p.h0GlobalAddr = module::getAddress(initial_h());
-  p.yGlobalAddr = module::getAddress(Y());
-  p.hnGlobalAddr = module::getAddress(Y_h());
-  p.zGlobalAddr = module::getAddress(buffer());
+  p.xGlobalAddr = module::getAddress(getInput());
+  p.wGlobalAddr = module::getAddress(getFilter());
+  p.bGlobalAddr = module::getAddress(getBias());
+  p.h0GlobalAddr = module::getAddress(getInitialH());
+  p.yGlobalAddr = module::getAddress(getY());
+  p.hnGlobalAddr = module::getAddress(getYH());
+  p.zGlobalAddr = module::getAddress(getBuffer());
 
   p.bias = attr.have_bias;
   p.outputY = attr.output_y;
@@ -204,6 +201,6 @@ void tpu::GRUOp::codegen_global_bm1684x() {
   p.batchMode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
   p.bidirectional = (attr.num_direction == 2);
   p.numLayers = 1;
-  p.dtype = BM168x::getDataType(input());
+  p.dtype = BM168x::getDataType(getInput());
   BM168x::call_global_func("backend_api_gru_global", &p, sizeof(gru_param_t));
 }

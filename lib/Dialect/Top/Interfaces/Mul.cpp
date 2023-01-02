@@ -15,18 +15,18 @@
 
 
 int64_t top::MulOp::getFLOPs() {
-  return module::getNumElements(output()) *
-         (inputs().size() - 1 + do_relu() ? 1 : 0);
+  return module::getNumElements(getOutput()) *
+         (getInputs().size() - 1 + getDoRelu() ? 1 : 0);
 }
 
 LogicalResult top::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], module::getShape(inputs()[1]))
-      .dst(p.outputs[0], module::getShape(output()))
-      .do_relu(do_relu())
-      .relu_limit(relu_limit().convertToDouble())
+      .lhs(p.inputs[0], module::getShape(getInputs()[0]))
+      .rhs(p.inputs[1], module::getShape(getInputs()[1]))
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
       .algorithem(algorithm::binary_mul)
       .setup();
 

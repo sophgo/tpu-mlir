@@ -13,7 +13,7 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
 
-int64_t top::ProposalOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::ProposalOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ProposalOp::init(InferenceParameter &p) { return success(); }
 
@@ -21,23 +21,23 @@ void top::ProposalOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ProposalOp::inference(InferenceParameter &p) {
   ProposalParam param;
-  param.net_input_h = net_input_h();
-  param.net_input_w = net_input_w();
-  param.feat_stride = feat_stride();
-  param.anchor_base_size = anchor_base_size();
-  param.rpn_obj_threshold = rpn_obj_threshold().convertToDouble();
-  param.rpn_nms_threshold = rpn_nms_threshold().convertToDouble();
-  param.rpn_nms_post_top_n = rpn_nms_post_top_n();
-  for (size_t i = 0; i < inputs().size(); ++i) {
+  param.net_input_h = getNetInputH();
+  param.net_input_w = getNetInputW();
+  param.feat_stride = getFeatStride();
+  param.anchor_base_size = getAnchorBaseSize();
+  param.rpn_obj_threshold = getRpnObjThreshold().convertToDouble();
+  param.rpn_nms_threshold = getRpnNmsThreshold().convertToDouble();
+  param.rpn_nms_post_top_n = getRpnNmsPostTopN();
+  for (size_t i = 0; i < getInputs().size(); ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
-    tensor_list.size = module::getNumElements(inputs()[i]);
-    module::getShapeVec(inputs()[i], tensor_list.shape);
+    tensor_list.size = module::getNumElements(getInputs()[i]);
+    module::getShapeVec(getInputs()[i], tensor_list.shape);
     param.inputs.emplace_back(std::move(tensor_list));
   }
   param.output.ptr = p.outputs[0];
-  param.output.size = module::getNumElements(output());
-  module::getShapeVec(output(), param.output.shape);
+  param.output.size = module::getNumElements(getOutput());
+  module::getShapeVec(getOutput(), param.output.shape);
   ProposalFunc proposal_func(param);
   proposal_func.invoke();
   return success();

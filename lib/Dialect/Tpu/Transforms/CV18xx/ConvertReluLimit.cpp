@@ -58,7 +58,7 @@ struct ConvertReluLimitPattern : public RewritePattern {
         int32_t num = useOp->getNumOperands();
         for (int32_t i = 0; i < num; i++) {
           if (useOp->getOperand(i) == op->getResult(0)) {
-            useOp->setOperand(i, newOp.output());
+            useOp->setOperand(i, newOp.getOutput());
           }
         }
       }

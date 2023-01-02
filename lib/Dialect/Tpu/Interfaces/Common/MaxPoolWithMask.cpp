@@ -23,25 +23,25 @@ pool_attr_t tpu::MaxPoolWithMaskOp::parseParam() {
   p.od = 1;
   p.kd = 1;
   p.sd = 1;
-  auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
-  auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
+  auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
+  auto oshape = getOutput().getType().dyn_cast<RankedTensorType>().getShape();
   module::getNCHW(ishape, p.n, p.c, p.ih, p.iw);
   module::getNCHW(oshape, p.n, p.c, p.oh, p.ow);
 
-  auto kernel = module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(getKernelShape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
-  auto stride = module::getI64Array(strides());
+  auto stride = module::getI64Array(getStrides());
   p.sh = stride->at(0);
   p.sw = stride->at(1);
-  auto pad = module::getI64Array(pads());
+  auto pad = module::getI64Array(getPads());
   p.pad_h = pad->at(0);
   p.pad_w = pad->at(1);
   p.pad_h_after = pad->at(2);
   p.pad_w_after = pad->at(3);
   p.pad_value = 0;
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
   p.is_global = p.ih == p.kh && p.iw == p.kw && p.oh == 1 && p.ow == 1;
   p.count_include_pad = 0;
   return p;
@@ -56,7 +56,7 @@ void tpu::MaxPoolWithMaskOp::deinit(InferenceParameter &p) { return; }
 LogicalResult tpu::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
   auto attr = parseParam();
   int64_t nc = attr.n * attr.c;
-  auto num_elem = module::getNumElements(output());
+  auto num_elem = module::getNumElements(getOutput());
   std::fill_n(p.outputs[0], num_elem, (float)(-FLT_MAX));
 #pragma omp parallel for schedule(static, omp_schedule(nc))
   for (int64_t idx = 0; idx < nc; ++idx) {
@@ -93,7 +93,7 @@ LogicalResult tpu::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MaxPoolWithMaskOp::LocalGenSupport() {
-  // auto stride = module::getI64Array(strides());
+  // auto stride = module::getI64Array(getStrides());
   // if ((stride->at(0) > 15 || stride->at(1) > 15)) {
   //   return failure();
   // }

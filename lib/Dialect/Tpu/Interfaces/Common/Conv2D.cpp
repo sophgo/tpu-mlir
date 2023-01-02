@@ -15,16 +15,14 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 
-
-
 conv_attr_t tpu::Conv2DOp::parseParam() {
   conv_attr_t p = {0};
   p.id = p.od = p.kd = p.sd = p.dd = 1;
-  auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
-  p.has_bias = with_bias();
+  auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
+  auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
+  p.has_bias = getWithBias();
   p.n = i_s[0];
   p.ic = i_s[1];
   p.ih = i_s.size() > 2 ? i_s[2] : 1;
@@ -32,29 +30,29 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   p.oc = o_s[1];
   p.oh = o_s.size() > 2 ? o_s[2] : 1;
   p.ow = o_s.size() > 3 ? o_s[3] : 1;
-  auto kernel = module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(getKernelShape());
   p.kh = kernel->at(0);
   p.kw = kernel->at(1);
-  auto pads_v = module::getI64Array(pads());
+  auto pads_v = module::getI64Array(getPads());
   p.pht = pads_v->at(0);
   p.pwl = pads_v->at(1);
   p.phb = pads_v->at(2);
   p.pwr = pads_v->at(3);
-  if (module::isUniformQuantized(input())) {
-    p.pad_value = module::getUniformQuantizedType(input()).getZeroPoint();
+  if (module::isUniformQuantized(getInput())) {
+    p.pad_value = module::getUniformQuantizedType(getInput()).getZeroPoint();
   }
-  p.kernel_zp = kernel_zp();
-  auto strides_v = module::getI64Array(strides());
+  p.kernel_zp = getKernelZp();
+  auto strides_v = module::getI64Array(getStrides());
   p.sh = strides_v->at(0);
   p.sw = strides_v->at(1);
-  auto dhdw = module::getI64Array(dilations(), 2, 1);
+  auto dhdw = module::getI64Array(getDilations(), 2, 1);
   p.dh = dhdw->at(0);
   p.dw = dhdw->at(1);
-  auto ins = module::getI64Array(inserts(), 2, 0);
+  auto ins = module::getI64Array(getInserts(), 2, 0);
   p.ins_h = ins->at(0);
   p.ins_w = ins->at(1);
   assert(p.ins_h == 0 && p.ins_w == 0);
-  p.groups = group();
+  p.groups = getGroup();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
   return p;
 }
@@ -84,23 +82,24 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   conv->run();
   bool is_cv18xx = module::isCV18xx();
   // requant
-  auto out_type = module::getStorageType(output());
-  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(getOutput());
+  auto num_elem = module::getNumElements(getOutput());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (module::isUniformQuantized(output())) {
+  } else if (module::isUniformQuantized(getOutput())) {
     int64_t n, c, h, w;
-    auto sType = module::getStorageType(output());
-    module::getNCHW(output(), n, c, h, w);
-    auto o_qtype = module::getUniformQuantizedType(output());
-    auto rshift_v = module::getI64Array(rshift().value());
-    auto multiplier_v = module::getI64Array(multiplier(), rshift_v->size(), 1);
+    auto sType = module::getStorageType(getOutput());
+    module::getNCHW(getOutput(), n, c, h, w);
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
+    auto rshift_v = module::getI64Array(getRshift().value());
+    auto multiplier_v =
+        module::getI64Array(getMultiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
-    auto mode = quant_mode();
+    auto mode = getQuantMode();
     MultiplierType m_type;
     if (is_cv18xx) {
       m_type = CVI_QDM_QUANT;

@@ -19,9 +19,9 @@ void LeakyReluLowering::LoweringBF16(PatternRewriter &rewriter,
 void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
                                      top::LeakyReluOp op,
                                      bool asymmetric) const {
-  auto threshold_x = module::getThreshold(op.input());
-  auto threshold_y = module::getThreshold(op.output());
-  double negative_slope = op.alpha().convertToDouble();
+  auto threshold_x = module::getThreshold(op.getInput());
+  auto threshold_y = module::getThreshold(op.getOutput());
+  double negative_slope = op.getAlpha().convertToDouble();
   int64_t multiplier_pos, multiplier_neg;
   int64_t rshift_pos, rshift_neg;
 
@@ -48,8 +48,8 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr(
       "rshift_neg", rewriter.getI64IntegerAttr(rshift_neg)));
 
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType, Value(op.input()),
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType, Value(op.getInput()),
                                                 attrs);
 }
 } // namespace cv18xx

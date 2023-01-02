@@ -21,9 +21,9 @@ static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
                           std::vector<int64_t> &os_4, std::vector<int> &pad_4) {
   std::vector<int64_t> is, os, pads;
   auto castOp = llvm::dyn_cast<tpu::PadOp>(op);
-  module::getShapeVec(castOp.input(), is);
-  module::getShapeVec(castOp.output(), os);
-  auto _pads = module::getI64Array(castOp.paddings());
+  module::getShapeVec(castOp.getInput(), is);
+  module::getShapeVec(castOp.getOutput(), os);
+  auto _pads = module::getI64Array(castOp.getPaddings());
   pads.assign(_pads->begin(), _pads->end());
 
   int num_dims = is.size();
@@ -95,21 +95,21 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
   std::vector<int64_t> i_s;
   std::vector<int64_t> o_s;
   std::vector<int> pads;
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
   cvk_fmt_t fmt =
-      module::isUniformQuantized(output()) ? CVK_FMT_I8 : CVK_FMT_BF16;
-  if (mode() == 0) {
+      module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
+  if (getMode() == 0) {
     parsePadParam(getOperation(), i_s, o_s, pads);
-    float const_val = val().convertToDouble();
+    float const_val = getVal().convertToDouble();
     cvi_backend_tg_pad_kernel(layer_id, ga_input, ga_output, i_s[0], i_s[1],
                               i_s[2], i_s[3], pads.data(), const_val,
                               "constant", fmt);
-  } else if (mode() == 1) {
+  } else if (getMode() == 1) {
     // reflect
     std::vector<int> pads(4, 0);
-    auto num_dims = module::getShape(input()).size();
-    auto _pads = module::getI64Array(paddings());
+    auto num_dims = module::getShape(getInput()).size();
+    auto _pads = module::getI64Array(getPaddings());
     pads[0] = _pads->at(num_dims - 1);
     pads[1] = _pads->at(num_dims * 2 - 1);
     pads[num_dims * 2 - 1] = 0;
@@ -118,18 +118,18 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
       pads[3] = _pads->at(num_dims * 2 - 2);
     }
 
-    module::getShapeVec(input(), i_s);
+    module::getShapeVec(getInput(), i_s);
     int outer_size = std::accumulate(i_s.begin(), i_s.end() - 2, 1,
                                      std::multiplies<int64_t>());
     int ih = *(i_s.end() - 2);
     int iw = i_s.back();
-    gaddr_t ga_left_select = module::getAddress(left_select());
-    gaddr_t ga_right_select = module::getAddress(right_select());
+    gaddr_t ga_left_select = module::getAddress(getLeftSelect());
+    gaddr_t ga_right_select = module::getAddress(getRightSelect());
     cvi_backend_tg_reflectionpad_kernel(layer_id, ga_input, ga_output,
                                         ga_left_select, ga_right_select,
                                         outer_size, ih, iw, pads, fmt);
 
-  } else if (mode() == 3) {
+  } else if (getMode() == 3) {
     // edge
     llvm_unreachable("Unsupport pad type.");
   } else {

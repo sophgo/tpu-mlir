@@ -49,16 +49,16 @@ void ScaleLowering::LoweringINT4(PatternRewriter &rewriter, top::ScaleOp op,
 void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
                                  bool asymmetric) const {
   int64_t n, c, h, w;
-  module::getNCHW(op.output(), n, c, h, w);
+  module::getNCHW(op.getOutput(), n, c, h, w);
 
   std::vector<Value> operands;
   int64_t in_zp, out_zp;
   double in_scale, out_scale;
-  module::getScaleAndZeroPoint(op.input(), in_scale, in_zp, asymmetric);
-  module::getScaleAndZeroPoint(op.output(), out_scale, out_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
 
-  auto scaleOp = cast<top::WeightOp>(op.scale().getDefiningOp());
-  auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp());
+  auto scaleOp = cast<top::WeightOp>(op.getScale().getDefiningOp());
+  auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
   auto scale_f32 = scaleOp.read<float>();
   auto bias_f32 = biasOp.read<float>();
   auto scale_int8 = std::make_shared<std::vector<int8_t>>(scale_f32->size());
@@ -116,7 +116,7 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
   }
 
   // scale
-  auto scale_type = op.scale().getType().cast<RankedTensorType>();
+  auto scale_type = op.getScale().getType().cast<RankedTensorType>();
   auto new_scale_type =
       RankedTensorType::get(scale_type.getShape(), rewriter.getI8Type());
   auto new_scale =
@@ -134,15 +134,15 @@ void ScaleLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleOp op,
   auto new_lshift =
       top::WeightOp::create(op, "lshift_i8", *lshift_int8, new_lshift_type);
 
-  operands.push_back(op.input());
+  operands.push_back(op.getInput());
   operands.push_back(new_scale);
   operands.push_back(new_bias);
   operands.push_back(new_lshift);
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
-  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.relu_limitAttr()));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("relu_limit", op.getReluLimitAttr()));
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::ScaleOp>(op, newType, operands, attrs);
 }
 
@@ -202,7 +202,7 @@ void ScaleLowering::LoweringF16(PatternRewriter &rewriter,
 
 void ScaleLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::ScaleOp op) const {
-  lowering_common<tpu::ScaleOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::ScaleOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

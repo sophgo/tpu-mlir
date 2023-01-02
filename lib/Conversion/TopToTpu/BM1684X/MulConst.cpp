@@ -24,9 +24,9 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::MulConstOp op, bool asymmetric) const {
   double scale_i, scale_o;
   int64_t zp_i, zp_o;
-  module::getScaleAndZeroPoint(op.input(), scale_i, zp_i, asymmetric);
-  module::getScaleAndZeroPoint(op.output(), scale_o, zp_o, asymmetric);
-  auto scale = scale_i / scale_o * op.const_val().convertToDouble();
+  module::getScaleAndZeroPoint(op.getInput(), scale_i, zp_i, asymmetric);
+  module::getScaleAndZeroPoint(op.getOutput(), scale_o, zp_o, asymmetric);
+  auto scale = scale_i / scale_o * op.getConstVal().convertToDouble();
   int multiplier, rshift;
   get_scale_and_shift(scale, multiplier, rshift, 8);
   std::vector<NamedAttribute> attrs;
@@ -38,9 +38,9 @@ void MulConstLowering::LoweringINT8(PatternRewriter &rewriter,
       "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MulShiftOp>(op, newType,
-                                               ValueRange{op.input()}, attrs);
+                                               ValueRange{op.getInput()}, attrs);
 }
 
 void MulConstLowering::LoweringBF16(PatternRewriter &rewriter,

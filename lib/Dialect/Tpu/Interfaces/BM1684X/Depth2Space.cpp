@@ -39,20 +39,20 @@ typedef struct {
 
 void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
   depth2space_param_t param = {0};
-  param.input_global_mem_addr = module::getAddress(input());
-  param.output_global_mem_addr = module::getAddress(output());
-  param.dtype = BM168x::getDataType(output());
-  auto in_shape = module::getShape(input());
+  param.input_global_mem_addr = module::getAddress(getInput());
+  param.output_global_mem_addr = module::getAddress(getOutput());
+  param.dtype = BM168x::getDataType(getOutput());
+  auto in_shape = module::getShape(getInput());
   param.dims = in_shape.size();
   for (int i = 0; i < param.dims; i++) {
     param.input_shape[i] = in_shape[i];
   }
-  param.block_sizes[0] = block_h();
-  param.block_sizes[1] = block_w();
+  param.block_sizes[0] = getBlockH();
+  param.block_sizes[1] = getBlockW();
   param.in_is_nchw = 1;
-  param.is_inversed = is_inversed();
+  param.is_inversed = getIsInversed();
   param.out_is_nchw = 1;
-  param.is_crd_mode = is_CRD();
+  param.is_crd_mode = getIs_CRD();
   BM168x::call_global_func("backend_api_depth2space_global", &param,
                            sizeof(param));
 }

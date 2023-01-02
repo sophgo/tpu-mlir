@@ -109,7 +109,7 @@ CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
       ops.emplace_back(op);
       if (isa<tpu::GenericCpuOp>(op)) {
         op_ = op;
-        name = dyn_cast<tpu::GenericCpuOp>(op).operation_name().str();
+        name = dyn_cast<tpu::GenericCpuOp>(op).getCpuOpName().str();
       }
     }
   });

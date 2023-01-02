@@ -21,7 +21,7 @@ void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,
 void LRNLowering::LoweringBF16(PatternRewriter &rewriter, top::LRNOp op) const {
   Value table_weight, mantissa_weight;
   float range_start = -62, range_end = 63;
-  createBf16LutOp(op, "pow", TableMode::Mantissa, -1 * op.beta().convertToDouble(), 0.0,
+  createBf16LutOp(op, "pow", TableMode::Mantissa, -1 * op.getBeta().convertToDouble(), 0.0,
                   range_start, range_end, nullptr, table_weight, mantissa_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -34,10 +34,10 @@ void LRNLowering::LoweringBF16(PatternRewriter &rewriter, top::LRNOp op) const {
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LRNOp>(
       op, newType,
-      ValueRange{op.input(), table_weight, mantissa_weight},
+      ValueRange{op.getInput(), table_weight, mantissa_weight},
       attrs);
   return;
 }

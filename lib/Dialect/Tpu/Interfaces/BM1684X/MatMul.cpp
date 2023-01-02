@@ -65,7 +65,7 @@ typedef struct batch_matmul_common_spec {
 template <>
 LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {
-  // if (!module::getStorageType(op.bias()).isInteger(32))
+  // if (!module::getStorageType(op.getBias()).isInteger(32))
   //   return failure();
   auto p = op.parseParam();
 
@@ -73,8 +73,8 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
   if (p.input_zp == 0)
     return failure();
   i32_array_t bias_quant;
-  if (isa<top::WeightOp>(op.bias().getDefiningOp())) {
-    bias_quant = cast<top::WeightOp>(op.bias().getDefiningOp()).read<int32_t>();
+  if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
+    bias_quant = cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
     for (size_t i = 0; i < p.N; ++i) {
       bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
@@ -84,7 +84,7 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     for (size_t i = 0; i < p.N; ++i) {
       bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
-    auto stype = module::getStorageType(op.bias());
+    auto stype = module::getStorageType(op.getBias());
     // std::vector<int64_t> bias_shape = {N};
     auto new_type = RankedTensorType::get({p.N}, rewriter.getI32Type());
     auto new_op =
@@ -113,19 +113,19 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     spec.has_bias =p.with_bias;
     spec.hdim_is_batch = false;
     spec.requant_mode = -1;
-    if (module::isUniformQuantized(input())) {
+    if (module::isUniformQuantized(getInput())) {
       spec.R_zp_is_const = true;
       spec.R_zp_const_val = p.right_zp;
       spec.izp_const_val = p.input_zp;
-      if (module::isUniformQuantized(output())) {
-        spec.requant_mode = static_cast<int>(quant_mode());
-        auto rshift_v = module::getI64Array(rshifts(), 1, 0);
-        auto multiplier_v = module::getI64Array(multipliers(), 1, 1);
+      if (module::isUniformQuantized(getOutput())) {
+        spec.requant_mode = static_cast<int>(getQuantMode());
+        auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+        auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
         assert(rshift_v->size() == 1);
         assert(multiplier_v->size() == 1);
         spec.mul_val = multiplier_v->at(0);
         spec.shift_val = -rshift_v->at(0);
-        auto output_type = module::getUniformQuantizedType(output());
+        auto output_type = module::getUniformQuantizedType(getOutput());
         spec.offset_val = output_type.getZeroPoint();
       }
     }
@@ -145,21 +145,21 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   spec.have_bias = p.with_bias;
   spec.requant_mode = -1;
   spec.R_transpose = p.right_transpose;
-  if (module::isUniformQuantized(input())) {
+  if (module::isUniformQuantized(getInput())) {
     spec.rshift = 0;
     spec.is_asymmetric = 1;
     spec.rzp_is_const = 1;
     spec.rzp_const_val = p.right_zp;
     spec.izp_const_val = p.input_zp;
-    if (module::isUniformQuantized(output())) {
-      auto rshift_v = module::getI64Array(rshifts(), 1, 0);
-      auto multiplier_v = module::getI64Array(multipliers(), 1, 1);
+    if (module::isUniformQuantized(getOutput())) {
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
       assert(rshift_v->size() == 1);
       assert(multiplier_v->size() == 1);
-      spec.requant_mode = static_cast<int>(quant_mode());
+      spec.requant_mode = static_cast<int>(getQuantMode());
       spec.mul_val = multiplier_v->at(0);
       spec.shift_val = -rshift_v->at(0);
-      auto output_type = module::getUniformQuantizedType(output());
+      auto output_type = module::getUniformQuantizedType(getOutput());
       spec.offset_val = output_type.getZeroPoint();
       spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
     }

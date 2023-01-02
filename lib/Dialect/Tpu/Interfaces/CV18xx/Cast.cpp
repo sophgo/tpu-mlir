@@ -27,20 +27,20 @@ void tpu::CastOp::codegen_global_cv18xx(int64_t layer_id) {
   int64_t n, c, h, w;
   int64_t offset = 0;
   float_t scale = 1.;
-  module::getNCHW(input(), n, c, h, w);
-  cvk_fmt_t from = CV18xx::getDataType(input());
-  cvk_fmt_t to = CV18xx::getDataType(output());
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  module::getNCHW(getInput(), n, c, h, w);
+  cvk_fmt_t from = CV18xx::getDataType(getInput());
+  cvk_fmt_t to = CV18xx::getDataType(getOutput());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
 
-  bool qInput = module::isUniformQuantized(input());
-  bool qOutput = module::isUniformQuantized(output());
+  bool qInput = module::isUniformQuantized(getInput());
+  bool qOutput = module::isUniformQuantized(getOutput());
   if (qInput || qOutput) {
     if (!qInput && qOutput) {
-      auto qtype = module::getUniformQuantizedType(output());
+      auto qtype = module::getUniformQuantizedType(getOutput());
       scale = 1. / qtype.getScale();
     } else {
-      auto qtype = module::getUniformQuantizedType(input());
+      auto qtype = module::getUniformQuantizedType(getInput());
       scale = qtype.getScale();
     }
   }

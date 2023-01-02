@@ -13,20 +13,20 @@ namespace tpu_mlir {
 namespace cv18xx {
 void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
                                bool asymmetric) const {
-  auto in_thr = module::getThreshold(op.input());
+  auto in_thr = module::getThreshold(op.getInput());
   auto in_scale = module::getScale(in_thr, true);
   std::vector<NamedAttribute> attrs;
-  auto val = op.val().convertToDouble();
+  auto val = op.getVal().convertToDouble();
   val = to_int8(val / in_scale, ROUNDING_HALF_UP);
-  attrs.push_back(rewriter.getNamedAttr("paddings", op.paddingsAttr()));
+  attrs.push_back(rewriter.getNamedAttr("paddings", op.getPaddingsAttr()));
   attrs.push_back(rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(val)));
-  attrs.push_back(rewriter.getNamedAttr("mode", op.modeAttr()));
+  attrs.push_back(rewriter.getNamedAttr("mode", op.getModeAttr()));
   std::vector<Value> operands;
-  operands.push_back(op.input());
-  if (op.mode() == 1) {
+  operands.push_back(op.getInput());
+  if (op.getMode() == 1) {
     // pad reflect
-   auto nofDims = module::getShape(op.input()).size();
-    auto pads = module::getI64Array(op.paddings());
+   auto nofDims = module::getShape(op.getInput()).size();
+    auto pads = module::getI64Array(op.getPaddings());
     int32_t count = 0;
     for (int i = 0; i < pads->size(); i++) {
       if (pads->at(i) != 0) {
@@ -54,17 +54,17 @@ void PadLowering::LoweringINT8(PatternRewriter &rewriter, top::PadOp op,
     operands.push_back(module::getNoneOp(op));
     operands.push_back(module::getNoneOp(op));
   }
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::PadOp>(op, newType, operands, attrs);
 }
 
 void PadLowering::LoweringBF16(PatternRewriter &rewriter, top::PadOp op) const {
   std::vector<Value> operands;
-  operands.push_back(op.input());
-  if (op.mode() == 1) {
+  operands.push_back(op.getInput());
+  if (op.getMode() == 1) {
     // pad reflect
-    auto nofDims = module::getShape(op.input()).size();
-    auto pads = module::getI64Array(op.paddings());
+    auto nofDims = module::getShape(op.getInput()).size();
+    auto pads = module::getI64Array(op.getPaddings());
     int32_t count = 0;
     for (int i = 0; i < pads->size(); i++) {
       if (pads->at(i) != 0) {

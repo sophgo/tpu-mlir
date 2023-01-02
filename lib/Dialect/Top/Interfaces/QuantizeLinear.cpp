@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t onnx_rounding(double f) {
   if (f > 0) {
     int a = f;
@@ -33,7 +31,7 @@ int64_t onnx_rounding(double f) {
 }
 
 int64_t top::QuantizeLinearOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::QuantizeLinearOp::init(InferenceParameter &p) {
@@ -42,11 +40,11 @@ LogicalResult top::QuantizeLinearOp::init(InferenceParameter &p) {
 void top::QuantizeLinearOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(output());
-  auto shape = input().getType().cast<RankedTensorType>().getShape();
-  auto zero_point = module::getI32Array(y_zero_point());
+  auto num_element = module::getNumElements(getOutput());
+  auto shape = getInput().getType().cast<RankedTensorType>().getShape();
+  auto zero_point = module::getI32Array(getYZeroPoint());
   auto raw_zero_point = *zero_point;
-  auto scale = module::getF64Array(y_scale());
+  auto scale = module::getF64Array(getYScale());
   auto raw_scale = *scale;
   assert(raw_scale.size() == raw_zero_point.size() &&
          "zero point & scale size missmatch");
@@ -57,8 +55,8 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = onnx_rounding(val / raw_scale[0] + raw_zero_point[0]);
     }
   } else {
-    assert(axis() == 0 && "Cannot handle axis!=0");
-    assert(raw_scale.size() == shape[axis()] &&
+    assert(getAxis() == 0 && "Cannot handle axis!=0");
+    assert(raw_scale.size() == shape[getAxis()] &&
            "zero point & input shape missmatch");
     int64_t res = 1;
     for (int i = 1; i < shape.size(); i++)

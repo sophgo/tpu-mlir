@@ -18,13 +18,13 @@ int64_t top::SoftmaxOp::getFLOPs() {
   //   2*n          -- compute shifted logits
   //   n            -- exp of shifted logits
   //   2*n          -- compute softmax from exp of shifted logits
-  return module::getNumElements(input()) * (5 + log() ? 1 : 0);
+  return module::getNumElements(getInput()) * (5 + getLog() ? 1 : 0);
 }
 
 LogicalResult top::SoftmaxOp::init(InferenceParameter &p) {
   auto softmax = new Softmax();
-  auto axis_ = axis();
-  auto input_shape = module::getShape(input());
+  auto axis_ = getAxis();
+  auto input_shape = module::getShape(getInput());
   softmax_attr_t attr;
   int channel = input_shape[axis_];
 
@@ -40,7 +40,7 @@ LogicalResult top::SoftmaxOp::init(InferenceParameter &p) {
   attr.src_shape = {outer_dim, channel, inner_dim};
   attr.dst_shape = attr.src_shape;
   attr.axis = 1;
-  attr.log = log();
+  attr.log = getLog();
   softmax->setup(p.inputs[0], p.outputs[0], attr);
   p.handle = (void *)softmax;
   return success();

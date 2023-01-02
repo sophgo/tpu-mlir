@@ -16,21 +16,21 @@
 
 
 int64_t top::MaskedFillOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::MaskedFillOp::init(InferenceParameter &p) { return success(); }
 void top::MaskedFillOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::MaskedFillOp::inference(InferenceParameter &p) {
-  const auto num_element = module::getNumElements(output());
-  const float const_val_ = const_val().convertToDouble();
+  const auto num_element = module::getNumElements(getOutput());
+  const float const_val_ = getConstVal().convertToDouble();
   const float* in = p.inputs[0];
   const float* brn = p.inputs[1];
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
-    const float tbrn = inversed() ? const_val_ : brn[i];
-    const float fbrn = inversed() ? brn[i] : const_val_;
+    const float tbrn = getInversed() ? const_val_ : brn[i];
+    const float fbrn = getInversed() ? brn[i] : const_val_;
     p.outputs[0][i] = in[i] ? tbrn : fbrn;
   }
   return success();

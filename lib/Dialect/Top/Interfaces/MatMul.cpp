@@ -11,8 +11,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 // clang-format off
 // case 1: [5, 6] * [6, 7] = [5, 7] => batch = 1, M = 5, K = 6, N = 7
 // case 2: [1, 512, 7, 7] * [25088, 4096] = [1, 4096] => batch = 1, M = 1, K = 25088, N = 4096
@@ -21,15 +19,15 @@
 // clang-format on
 matmul_attr_t top::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
-  auto a_s = module::getShape(input());
-  auto b_s = module::getShape(right());
-  auto o_s = module::getShape(output());
-  p.with_bias = !bias().getType().isa<mlir::NoneType>();
-  p.do_relu = do_relu();
-  p.relu_limit = this->relu_limit().convertToDouble();
+  auto a_s = module::getShape(getInput());
+  auto b_s = module::getShape(getRight());
+  auto o_s = module::getShape(getOutput());
+  p.with_bias = !getBias().getType().isa<mlir::NoneType>();
+  p.do_relu = getDoRelu();
+  p.relu_limit = this->getReluLimit().convertToDouble();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
-  p.right_transpose = right_transpose();
+  p.right_transpose = getRightTranspose();
   assert(b_dims >= 2);
   p.N = p.right_transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
   assert(p.N == o_s[o_dims - 1]);

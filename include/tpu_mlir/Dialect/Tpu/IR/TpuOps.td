@@ -37,7 +37,6 @@ def Tpu_Dialect : Dialect {
   let summary = "A tpu dialect for the SOPHGO AI chips";
   let cppNamespace = "::tpu_mlir::tpu";
   let useDefaultAttributePrinterParser = 1;
-  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
 }
 
 //===----------------------------------------------------------------------===//
@@ -208,11 +207,11 @@ def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 //===----------------------------------------------------------------------===//
 
 class Tpu_BaseOp<string mnemonic, list<Trait> traits = []> :
-    Op<Tpu_Dialect, mnemonic, !listconcat(traits,[NoSideEffect, TpuTypeRestrict])> ;
+    Op<Tpu_Dialect, mnemonic, !listconcat(traits,[TpuTypeRestrict])> ;
 
 class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
-       [NoSideEffect, TpuTypeRestrict,
+       [TpuTypeRestrict,
        DeclareOpInterfaceMethods<GlobalGenInterface>,
        DeclareOpInterfaceMethods<InferenceInterface>])> ;
 
@@ -259,7 +258,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -290,7 +289,7 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
     // OptionalAttr<I64ArrayAttr>:$multiplier,
     // OptionalAttr<I64ArrayAttr>:$rshift,
     // Tpu_RequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 }
 
@@ -393,7 +392,7 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -416,7 +415,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -441,7 +440,7 @@ def Tpu_SubOp: Tpu_Op<"Sub",
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -466,7 +465,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst",
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -488,7 +487,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -510,7 +509,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -532,7 +531,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -550,7 +549,7 @@ def Tpu_ActiveOp: Tpu_Op<"Active",
     AnyTensor:$input,
     Tpu_ActiveModeAttr:$mode,
     OptionalAttr<F64ArrayAttr>:$coeffs,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -568,7 +567,7 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
     AnyTensor:$input,
     F64Attr:$min,
     F64Attr:$max,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -590,7 +589,7 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -609,7 +608,7 @@ def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape,
     DefaultValuedAttr<F64Attr, "1.0">: $const_val,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -651,7 +650,7 @@ def Tpu_LutOp: Tpu_Op<"Lut",
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$table,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -674,7 +673,7 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
     DefaultValuedAttr<F64Attr, "8">:$max_range,
     DefaultValuedAttr<F64Attr, "-8">:$min_range,
     DefaultValuedAttr<Tpu_LutBF16ModeAttr, "tpu::LutBF16Mode::Other">:$lut_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -701,7 +700,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<I64Attr, "0">:$input_zp,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -720,7 +719,7 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
 
   let arguments = (
     ins AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
 
@@ -761,7 +760,7 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
   }];
   let arguments = (ins
     AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
@@ -778,7 +777,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
     AnyTensor:$input,
     DefaultValuedAttr<BoolAttr, "false">:$do_bcast,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -790,7 +789,7 @@ def Tpu_StoreOp:Tpu_Op<"Store",
   }];
   let arguments = (ins
     AnyTensor:$input,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -808,7 +807,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
     SI32Attr:$multiplier,
     I64Attr:$rshift,
     Tpu_RequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -825,7 +824,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
     AnyTensor:$input,
     AnyTensor:$quant,
     Tpu_RequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -843,7 +842,7 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
     F64Attr:$scale,
     DefaultValuedAttr<F64Attr, "0.0">:$offset,
     Tpu_RequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -860,7 +859,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
     AnyTensor:$input,
     AnyTensor:$quant,
     Tpu_RequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -879,7 +878,7 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
     I64Attr:$shift,
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -897,7 +896,7 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
     AnyTensor:$quant,
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -918,8 +917,7 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
   let regions = (region SizedRegion<1>:$body);
 }
 
-def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
-    Terminator, HasParent<"GroupOp">]> {
+def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp">]> {
   let summary = "Yield values to parent operation";
   let description = [{
   }];
@@ -927,7 +925,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [NoSideEffect,
   let arguments = (ins Variadic<AnyType>:$operands);
 
   let builders = [
-    OpBuilder<(ins), [{ build($_builder, $_state, llvm::None); }]>
+    OpBuilder<(ins), [{ build($_builder, $_state, std::nullopt); }]>
   ];
 
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
@@ -972,7 +970,7 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
     OptionalAttr<SI32Attr>:$multiplier_neg,
     OptionalAttr<I64Attr>:$rshift,
     OptionalAttr<I64Attr>:$rshift_neg,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTenor:$output);
 }
@@ -987,7 +985,7 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     I64Attr:$axis,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
     // param for cv18xx
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
@@ -1011,7 +1009,7 @@ def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
     ins AnyTensor:$input,
     SI32Attr:$multiplier,
     I64Attr:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -1029,7 +1027,7 @@ def Tpu_PermuteOp: Tpu_Op<"Permute"> {
     ins AnyTensor:$input,
     I64ArrayAttr:$order,
     AnyTensorOrNone:$buffer,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -1046,7 +1044,7 @@ def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
   let arguments = (
     ins AnyTensor:$input,
     I64Attr:$group,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -1065,7 +1063,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     I64Attr:$scale_w,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1081,7 +1079,7 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
     AnyTensor:$mask,
     I64Attr:$scale_h,
     I64Attr:$scale_w,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }
@@ -1121,7 +1119,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -1211,7 +1209,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -1254,7 +1252,7 @@ def Tpu_ScaleOp: Tpu_Op<"Scale", [
 
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
@@ -1416,14 +1414,14 @@ def Tpu_PReluOp : Tpu_Op<"PReluOp", [
     AnyTensor:$slope,
     DefaultValuedAttr<SI32Attr, "0">:$rshift,
     OptionalAttr<SI32Attr>:$rshift_pos,
-    OptionalAttr<SI32Attr>:$muliplier_pos,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<SI32Attr>:$multiplier_pos,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
   let results = (outs AnyTensor:$output);
 }
 
-def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp", [
+def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
   DeclareOpInterfaceMethods<TypeInterface>]> {
   let summary = "generic cpu operator";
   let description = [{
@@ -1432,7 +1430,7 @@ def TPU_GenericCpuOp : Tpu_Op<"GenericCpuOp", [
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
-    StrAttr:$operation_name,
+    StrAttr:$cpu_op_name,
     OptionalAttr<DictionaryAttr>:$param
   );
 
@@ -1450,7 +1448,7 @@ def Tpu_InterpOp: Tpu_Op<"Interp"> {
     F64Attr:$scale_w,
     Tpu_ResizeModeAttr:$mode,
     Tpu_ResizeCoordModeAttr:$coord_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$group_info
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }

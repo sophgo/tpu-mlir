@@ -40,7 +40,7 @@ void Depth2SpaceLowering::LoweringF16(PatternRewriter &rewriter,
 void Depth2SpaceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                             top::Depth2SpaceOp op) const {
   lowering_common<tpu::Depth2SpaceOp>(rewriter, op.getOperation(),
-                                      op.output().getType());
+                                      op.getOutput().getType());
 }
 
 } // namespace bm1684x

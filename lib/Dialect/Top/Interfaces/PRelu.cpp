@@ -14,14 +14,14 @@
 
 
 
-int64_t top::PReluOp::getFLOPs() { return module::getNumElements(output()); }
+int64_t top::PReluOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::PReluOp::init(InferenceParameter &p) {
   auto prelu = new PRelu();
   (*prelu)
-      .src(p.inputs[0], module::getShape(input()))
-      .weights(p.inputs[1], module::getShape(slope()))
-      .dst(p.outputs[0], module::getShape(output()))
+      .src(p.inputs[0], module::getShape(getInput()))
+      .weights(p.inputs[1], module::getShape(getSlope()))
+      .dst(p.outputs[0], module::getShape(getOutput()))
       .setup();
 
   p.handle = (void *)prelu;

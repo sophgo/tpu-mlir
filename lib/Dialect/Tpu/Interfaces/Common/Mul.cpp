@@ -18,17 +18,17 @@
 
 LogicalResult tpu::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
-  auto in0_shape = module::getShape(inputs()[0]);
-  auto in1_shape = module::getShape(inputs()[1]);
+  auto in0_shape = module::getShape(getInputs()[0]);
+  auto in1_shape = module::getShape(getInputs()[1]);
   int dims = std::max(in0_shape.size(), in1_shape.size());
   auto input0_shape = shape_expand_dim(in0_shape, dims);
   auto input1_shape = shape_expand_dim(in1_shape, dims);
   (*binary)
       .lhs(p.inputs[0], input0_shape)
       .rhs(p.inputs[1], input1_shape)
-      .dst(p.outputs[0], module::getShape(output()))
-      .do_relu(do_relu())
-      .relu_limit(relu_limit().convertToDouble())
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .do_relu(getDoRelu())
+      .relu_limit(getReluLimit().convertToDouble())
       .algorithem(algorithm::binary_mul)
       .setup();
   p.handle = (void *)binary;
@@ -44,8 +44,8 @@ void tpu::MulOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto out_type = module::getStorageType(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto out_type = module::getStorageType(getOutput());
   auto asym = module::isAsymmetric();
   auto binary = (Binary *)p.handle;
   binary->run();
@@ -68,7 +68,7 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];
-      sum = applyMultiplierAndRShift(sum, multiplier(), rshift(), m_type);
+      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), m_type);
       p.outputs[0][i] = out_type.isUnsignedInteger(8) ? to_uint8(sum)
                                                       : to_int8(sum);
     }
@@ -83,9 +83,9 @@ LogicalResult tpu::MulOp::LocalGenSupport() {
   // The same n_slice and h_slice value will propagate to each inputs.
   // Thus, the local layer is only safe when we do not need to slice n and h
   // dimensions.
-  auto out_shape = module::getShape(output());
-  auto lhs_shape = module::getShape(inputs()[0]);
-  auto rhs_shape = module::getShape(inputs()[1]);
+  auto out_shape = module::getShape(getOutput());
+  auto lhs_shape = module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
   if (getOperand(1).getDefiningOp() &&
       isa<top::WeightOp>(getOperand(1).getDefiningOp()))
     return failure();

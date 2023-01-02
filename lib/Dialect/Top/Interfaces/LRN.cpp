@@ -12,25 +12,23 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 int64_t top::LRNOp::getFLOPs() {
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
-  return module::getNumElements(input()) *
+  module::getNCHW(getInput(), n, c, h, w);
+  return module::getNumElements(getInput()) *
          (5 /*eltwise gops*/ +
-          (c - size()) /*fully reduce sum*/ * (size() - 1) /*sum gops*/ -
-          size() /*fix edge split*/);
+          (c - getSize()) /*fully reduce sum*/ * (getSize() - 1) /*sum gops*/ -
+          getSize() /*fix edge split*/);
 }
 
 LogicalResult top::LRNOp::init(InferenceParameter &p) {
   auto lrn = new LRN();
   (*lrn)
-      .src(p.inputs[0], module::getShape(input()))
-      .dst(p.outputs[0], module::getShape(output()))
-      .size(size())
-      .param(alpha().convertToDouble(), beta().convertToDouble(),
-             bias().convertToDouble())
+      .src(p.inputs[0], module::getShape(getInput()))
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .size(getSize())
+      .param(getAlpha().convertToDouble(), getBeta().convertToDouble(),
+             getBias().convertToDouble())
       .algorithem(algorithm::lrn_across_channels)
       .setup();
 

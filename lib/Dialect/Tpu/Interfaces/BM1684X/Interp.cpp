@@ -65,17 +65,17 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   common.pad_bag = 0;
   common.pad_end = 0;
   int coord = 0;
-  if (coord_mode() == tpu::ResizeCoordMode::half_pixel)
+  if (getCoordMode() == tpu::ResizeCoordMode::half_pixel)
     coord = 0;
-  else if (coord_mode() == tpu::ResizeCoordMode::pytorch_half_pixel)
+  else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel)
     coord = 1;
-  else if (coord_mode() == tpu::ResizeCoordMode::align_corners)
+  else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
-  if (mode() == tpu::ResizeMode::nearest) {
+  if (getMode() == tpu::ResizeMode::nearest) {
     common.platform_sp = ONNX_NEAREST;
     common.align_corners = true;
     common.half_pixel_centers = false;
-  } else if (mode() == tpu::ResizeMode::linear) {
+  } else if (getMode() == tpu::ResizeMode::linear) {
     common.platform_sp = PYTORCH_SUPPORT;
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
@@ -95,11 +95,11 @@ int64_t tpu::InterpOp::getBufferSize_bm1684x(
 }
 
 void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   int64_t n, c, ih, iw, oh, ow;
-  module::getNCHW(input(), n, c, ih, iw);
-  module::getNCHW(output(), n, c, oh, ow);
+  module::getNCHW(getInput(), n, c, ih, iw);
+  module::getNCHW(getOutput(), n, c, oh, ow);
   interp_local_param_t param = {0};
   param.input_addr = in_gi.out_addr;
   param.output_addr = gi.out_addr;
@@ -111,22 +111,22 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
   param.output_w = ow;
   param.pad_bag = 0;
   param.pad_end = 0;
-  param.dtype = BM168x::getDataType(input());
+  param.dtype = BM168x::getDataType(getInput());
 
   int coord = 0;
-  bool align_corners = (coord_mode() == tpu::ResizeCoordMode::align_corners);
-  bool half_pixel = (coord_mode() == tpu::ResizeCoordMode::half_pixel);
-  if (coord_mode() == tpu::ResizeCoordMode::half_pixel)
+  bool align_corners = (getCoordMode() == tpu::ResizeCoordMode::align_corners);
+  bool half_pixel = (getCoordMode() == tpu::ResizeCoordMode::half_pixel);
+  if (getCoordMode() == tpu::ResizeCoordMode::half_pixel)
     coord = 0;
-  else if (coord_mode() == tpu::ResizeCoordMode::pytorch_half_pixel)
+  else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel)
     coord = 1;
-  else if (coord_mode() == tpu::ResizeCoordMode::align_corners)
+  else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
-  if (mode() == tpu::ResizeMode::nearest) {
+  if (getMode() == tpu::ResizeMode::nearest) {
     param.platform_sp = ONNX_NEAREST;
     param.align_corners = true;
     param.half_pixel_centers = false;
-  } else if (mode() == tpu::ResizeMode::linear) {
+  } else if (getMode() == tpu::ResizeMode::linear) {
     param.platform_sp = PYTORCH_SUPPORT;
     param.align_corners = (coord == 2) ? 1: 0;
     param.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;

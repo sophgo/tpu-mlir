@@ -37,7 +37,7 @@ void SliceLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SliceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::SliceOp op) const {
-  lowering_common<tpu::SliceOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::SliceOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

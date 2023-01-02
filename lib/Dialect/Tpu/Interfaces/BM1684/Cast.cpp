@@ -17,29 +17,29 @@
 using namespace tpu_mlir::backend;
 
 void tpu::CastOp::codegen_global_bm1684() {
-  bool qInput = module::isUniformQuantized(input());
-  bool qOutput = module::isUniformQuantized(output());
+  bool qInput = module::isUniformQuantized(getInput());
+  bool qOutput = module::isUniformQuantized(getOutput());
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   if (qInput && !qOutput) {
     // int8 => fp32
-    auto scale = module::getUniformQuantizedType(input()).getScale();
+    auto scale = module::getUniformQuantizedType(getInput()).getScale();
     BM1684::instance().dl_nodechip_global_int2float(
-        module::getAddress(input()), module::getAddress(output()), n, c, h, w,
+        module::getAddress(getInput()), module::getAddress(getOutput()), n, c, h, w,
         1, STORAGE_MODE_4N_INT8, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
     BM1684::instance().dl_nodechip_const_binary(
-        module::getAddress(output()), n * c * h * w, scale,
-        module::getAddress(output()), BINARY_MUL, 0, 0, 0,
+        module::getAddress(getOutput()), n * c * h * w, scale,
+        module::getAddress(getOutput()), BINARY_MUL, 0, 0, 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
   } else if (qOutput && !qInput) {
     // fp32 => int8
-    auto scale = module::getUniformQuantizedType(output()).getScale();
+    auto scale = module::getUniformQuantizedType(getOutput()).getScale();
     BM1684::instance().dl_nodechip_const_binary(
-        module::getAddress(input()), n * c * h * w, scale,
-        module::getAddress(input()), BINARY_DIV, 0, 0, 0,
+        module::getAddress(getInput()), n * c * h * w, scale,
+        module::getAddress(getInput()), BINARY_DIV, 0, 0, 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
     BM1684::instance().dl_nodechip_float2int8_v2(
-        module::getAddress(input()), module::getAddress(output()), n, c, h, w,
+        module::getAddress(getInput()), module::getAddress(getOutput()), n, c, h, w,
         1, STORAGE_MODE_4N_INT8, ROUND_INF,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {

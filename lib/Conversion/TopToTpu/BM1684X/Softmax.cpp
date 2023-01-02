@@ -37,14 +37,14 @@ void SoftmaxLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SoftmaxOp op) const {
-  if (module::isUniformQuantized(op.input(), op.output()) == false) {
+  if (module::isUniformQuantized(op.getInput(), op.getOutput()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   int64_t zeropoint;
   double i_scale;
-  module::getScaleAndZeroPoint(op.input(), i_scale, zeropoint, true);
+  module::getScaleAndZeroPoint(op.getInput(), i_scale, zeropoint, true);
   std::vector<float> table(256, 0.0f);
-  auto beta_v = op.beta().convertToDouble();
+  auto beta_v = op.getBeta().convertToDouble();
   auto scale = -i_scale * beta_v;
 
   // const int int_bits = 5;
@@ -70,33 +70,33 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
-    if (attr.getName() == "axis" && op.axis() != 1) {
+    if (attr.getName() == "axis" && op.getAxis() != 1) {
       attrs.push_back(
           rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(1)));
     } else
       attrs.push_back(attr);
   }
-  if (op.axis() == 1) {
+  if (op.getAxis() == 1) {
     rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
-        op, op.output().getType(),
-        ValueRange{op.input(), table_opd, module::getNoneOp(op.getOperation()),
+        op, op.getOutput().getType(),
+        ValueRange{op.getInput(), table_opd, module::getNoneOp(op.getOperation()),
                    module::getNoneOp(op.getOperation()),
                    module::getNoneOp(op.getOperation())},
         attrs);
   } else {
     // transpose
-    std::string new_name = module::getName(op.input()).str() + "__transpose";
+    std::string new_name = module::getName(op.getInput()).str() + "__transpose";
     auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     int64_t odr[] = {0, 3, 1, 2};
     std::vector<int64_t> order(odr, odr + 4);
-    auto to_type = module::getElementType(op.input());
-    auto TransOp = do_transpose(name_loc, op.input(), order);
+    auto to_type = module::getElementType(op.getInput());
+    auto TransOp = do_transpose(name_loc, op.getInput(), order);
     // softmax
     rewriter.setInsertionPointAfter(op);
-    new_name = (module::getName(op.output()).str()) + "__softmax";
+    new_name = (module::getName(op.getOutput()).str()) + "__softmax";
     name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
     auto newType = RankedTensorType::get(module::getShape(TransOp),
-                                         module::getElementType(op.output()));
+                                         module::getElementType(op.getOutput()));
     auto newOp = rewriter.create<tpu::SoftmaxOp>(
         name_loc, newType,
         ValueRange{TransOp, table_opd, module::getNoneOp(op.getOperation()),

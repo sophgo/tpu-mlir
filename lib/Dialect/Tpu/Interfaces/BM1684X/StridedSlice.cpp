@@ -12,9 +12,6 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -57,25 +54,26 @@ void tpu::StridedSliceOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
 
   strideslice_common_spec_t param = {0};
-  param.begin_mask = begin_mask();
-  param.end_mask = end_mask();
+  param.begin_mask = getBeginMask();
+  param.end_mask = getEndMask();
 
-  std::vector<int64_t> input_shape = module::getShape(input());
-  std::vector<int64_t> output_shape = module::getShape(output());
+  std::vector<int64_t> input_shape = module::getShape(getInput());
+  std::vector<int64_t> output_shape = module::getShape(getOutput());
 
   auto in_dims = input_shape.size();
   auto out_dims = output_shape.size();
   assert(in_dims == out_dims);
-  auto start_v = cast<top::WeightOp>(starts().getDefiningOp()).read<int32_t>();
-  auto stride_v = cast<top::WeightOp>(strides().getDefiningOp()).read<int32_t>();
-  auto end_v = cast<top::WeightOp>(ends().getDefiningOp()).read<int32_t>();
+  auto start_v =
+      cast<top::WeightOp>(getStarts().getDefiningOp()).read<int32_t>();
+  auto stride_v =
+      cast<top::WeightOp>(getStrides().getDefiningOp()).read<int32_t>();
+  auto end_v = cast<top::WeightOp>(getEnds().getDefiningOp()).read<int32_t>();
   for (int i = 0; i < in_dims; i++) {
     param.begin_index[i] = start_v->at(i);
     param.end_index[i] = end_v->at(i);
     param.strides[i] = stride_v->at(i);
   }
   BM168x::call_global_func("backend_api_strideslice_global", &param,
-                                       sizeof(param), input_spec->data(),
-                                       output_spec->data());
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
-

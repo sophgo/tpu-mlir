@@ -16,12 +16,12 @@
 
 pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
-  assert(kernel_shape().size() == 2); // only support 2d now
-  auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
-  auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  auto kernel = module::getI64Array(kernel_shape());
-  auto stride = module::getI64Array(strides());
-  auto pad = module::getI64Array(pads());
+  assert(getKernelShape().size() == 2); // only support 2d now
+  auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
+  auto oshape = getOutput().getType().dyn_cast<RankedTensorType>().getShape();
+  auto kernel = module::getI64Array(getKernelShape());
+  auto stride = module::getI64Array(getStrides());
+  auto pad = module::getI64Array(getPads());
   p.id = 1;
   p.od = 1;
   p.kd = 1;
@@ -37,18 +37,18 @@ pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   p.pad_h_after = pad->at(2);
   p.pad_w_after = pad->at(3);
   p.pad_value = 0;
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
   p.is_global = p.id == p.kd && p.ih == p.kh && p.iw == p.kw && p.od == 1 &&
                 p.oh == 1 && p.ow == 1;
-  p.count_include_pad = count_include_pad();
+  p.count_include_pad = getCountIncludePad();
   return p;
 }
 
 int64_t top::MaxPoolWithMaskOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.do_relu ? 1 : 0;
-  return module::getNumElements(output()) *
+  return module::getNumElements(getOutput()) *
          (attr.kd * attr.kh * attr.kw + extra);
 }
 
@@ -61,7 +61,7 @@ void top::MaxPoolWithMaskOp::deinit(InferenceParameter &p) { return; }
 LogicalResult top::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
   auto attr = parseParam();
   int64_t nc = attr.n * attr.c;
-  auto num_elem = module::getNumElements(output());
+  auto num_elem = module::getNumElements(getOutput());
   std::fill_n(p.outputs[0], num_elem, (float)(-FLT_MAX));
 #pragma omp parallel for schedule(static, omp_schedule(nc))
   for (int64_t idx = 0; idx < nc; ++idx) {

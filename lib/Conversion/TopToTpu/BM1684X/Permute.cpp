@@ -37,7 +37,7 @@ void PermuteLowering::LoweringF16(PatternRewriter &rewriter,
 
 void PermuteLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::PermuteOp op) const {
-  lowering_common<tpu::PermuteOp>(rewriter, op, op.output().getType(), 2);
+  lowering_common<tpu::PermuteOp>(rewriter, op, op.getOutput().getType(), 2);
 }
 
 } // namespace bm1684x

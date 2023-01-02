@@ -21,11 +21,11 @@ LogicalResult top::SliceOp::init(InferenceParameter &p) { return success(); }
 void top::SliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::SliceOp::inference(InferenceParameter &p) {
-  auto out_num_elem = module::getNumElements(output());
-  auto offset_v = module::getI64Array(offset());
-  auto steps_v = module::getI64Array(steps());
-  auto out_shape = module::getShape(output());
-  auto in_shape = module::getShape(input());
+  auto out_num_elem = module::getNumElements(getOutput());
+  auto offset_v = module::getI64Array(getOffset());
+  auto steps_v = module::getI64Array(getSteps());
+  auto out_shape = module::getShape(getOutput());
+  auto in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.

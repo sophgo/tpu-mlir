@@ -56,11 +56,11 @@ void tpu::LeakyReluOp::codegen_global_bm1684x() {
   spec.is_channel_shared = true;
   spec.upper_limit = -1;
   spec.round_mode = ROUND_UP;
-  if (module::isUniformQuantized(input())) {
-    spec.slope_val = static_cast<float>(multiplier().value());
-    spec.rshift_bit = rshift().value();
+  if (module::isUniformQuantized(getInput())) {
+    spec.slope_val = static_cast<float>(getMultiplier().value());
+    spec.rshift_bit = getRshift().value();
   } else {
-    spec.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
+    spec.slope_val = static_cast<float>(getAlpha().value().convertToDouble());
     spec.rshift_bit = 0;
   }
   auto op = getOperation();
@@ -86,9 +86,9 @@ void tpu::LeakyReluOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -112,11 +112,11 @@ void tpu::LeakyReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.is_channel_shared = true;
   spec.upper_limit = -1;
   spec.round_mode = ROUND_UP;
-  if (module::isUniformQuantized(input())) {
-    spec.slope_val = static_cast<float>(multiplier().value());
-    spec.rshift_bit = rshift().value();
+  if (module::isUniformQuantized(getInput())) {
+    spec.slope_val = static_cast<float>(getMultiplier().value());
+    spec.rshift_bit = getRshift().value();
   } else {
-    spec.slope_val = static_cast<float>(alphaAttr().getValueAsDouble());
+    spec.slope_val = static_cast<float>(getAlpha().value().convertToDouble());
     spec.rshift_bit = 0;
   }
 

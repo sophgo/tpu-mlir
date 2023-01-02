@@ -16,7 +16,7 @@ namespace cv18xx {
 void ReluLowering::LoweringINT8(PatternRewriter &rewriter, top::ReluOp op,
                                 bool asymmetric) const {
   assert(!asymmetric && "CV18xx not support asymmetric quantify");
-  if (op.relu_limit().convertToDouble() != -1) {
+  if (op.getReluLimit().convertToDouble() != -1) {
     LoweringBF16(rewriter, op);
   } else {
     lowering_common_int8<tpu::ReluOp>(rewriter, op, asymmetric);
@@ -25,11 +25,11 @@ void ReluLowering::LoweringINT8(PatternRewriter &rewriter, top::ReluOp op,
 
 void ReluLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ReluOp op) const {
-  if (op.relu_limit().convertToDouble() != -1) {
+  if (op.getReluLimit().convertToDouble() != -1) {
     std::vector<NamedAttribute> attrs;
     attrs.push_back(rewriter.getNamedAttr("min", rewriter.getF64FloatAttr(0.)));
-    attrs.push_back(rewriter.getNamedAttr("max", op.relu_limitAttr()));
-    auto newType = getQuantBF16Type(op.output());
+    attrs.push_back(rewriter.getNamedAttr("max", op.getReluLimitAttr()));
+    auto newType = getQuantBF16Type(op.getOutput());
     rewriter.replaceOpWithNewOp<tpu::ClipOp>(op, newType, op->getOperands(),
                                              attrs);
   } else {

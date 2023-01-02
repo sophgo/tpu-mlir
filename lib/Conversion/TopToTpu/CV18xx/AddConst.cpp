@@ -20,11 +20,11 @@ void lowering_add_const(PatternRewriter &rewriter, top::AddConstOp op) {
   std::vector<Value> operands;
   std::vector<float> weight_data;
 
-  weight_data.emplace_back(op.const_val().convertToDouble());
+  weight_data.emplace_back(op.getConstVal().convertToDouble());
   auto weight_type = RankedTensorType::get({1}, rewriter.getF32Type());
   auto weight_operand =
       top::WeightOp::create(op, "const_val", weight_data, weight_type);
-  operands.emplace_back(op.input());
+  operands.emplace_back(op.getInput());
   operands.emplace_back(weight_operand);
 
   std::vector<NamedAttribute> attrs;
@@ -32,7 +32,7 @@ void lowering_add_const(PatternRewriter &rewriter, top::AddConstOp op) {
     attrs.push_back(attr);
   }
   rewriter.replaceOpWithNewOp<top::AddOp>(
-      op, op.output().getType().cast<RankedTensorType>(), operands, attrs);
+      op, op.getOutput().getType().cast<RankedTensorType>(), operands, attrs);
   return;
 }
 

@@ -55,7 +55,7 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isInteger(8))
+  if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
   // assume that ic = input_channel / groups, oc = output_channel / groups
   // for original model, deconv kernel is {groups * ic, oc, kh, kw},
@@ -65,15 +65,15 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   auto attr = op.parseParam();
 
   // filter op
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_i8 = filterOp.read<int8_t>();
-  auto filter_type = module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.getFilter());
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   if (attr.is_dw) {
     filter_shape = {1, attr.oc, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    op.filter().setType(new_filter_type);
+    op.getFilter().setType(new_filter_type);
   } else {
     filter_reorder(filter_i8, filter_shape);
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -84,11 +84,11 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
 
   // bias op
   if (attr.with_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-    auto bias_type = module::getStorageType(op.bias());
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getStorageType(op.getBias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
-    op.bias().setType(new_bias_type);
+    op.getBias().setType(new_bias_type);
   }
   return success();
 }
@@ -98,15 +98,15 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
   auto attr = op.parseParam();
 
   // filter op
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_u16 = filterOp.read<uint16_t>();
-  auto filter_type = module::getStorageType(op.filter());
+  auto filter_type = module::getStorageType(op.getFilter());
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   if (attr.is_dw) {
     filter_shape = {1, attr.oc, attr.kh, attr.kw};
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-    op.filter().setType(new_filter_type);
+    op.getFilter().setType(new_filter_type);
   } else {
     filter_reorder(filter_u16, filter_shape);
     auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
@@ -117,11 +117,11 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
 
   // bias op
   if (attr.with_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-    auto bias_type = module::getStorageType(op.bias());
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getStorageType(op.getBias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
-    op.bias().setType(new_bias_type);
+    op.getBias().setType(new_bias_type);
   }
   return success();
 }
@@ -129,7 +129,7 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::DeconvOp op,
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isBF16())
+  if (!module::getStorageType(op.getFilter()).isBF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -137,7 +137,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isF16())
+  if (!module::getStorageType(op.getFilter()).isF16())
     return failure();
   return weight_reorder_bf16_bm1684x(op, rewriter);
 }
@@ -145,26 +145,26 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
     tpu::DeconvOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.filter()).isF32())
+  if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
 
   auto attr = op.parseParam();
 
   // filter op
-  auto filterOp = op.filter().getDefiningOp<top::WeightOp>();
-  auto filter_type = module::getStorageType(op.filter());
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
+  auto filter_type = module::getStorageType(op.getFilter());
   std::vector<int64_t> filter_shape = {1, attr.oc, attr.ic / attr.g,
                                        attr.kh * attr.kw};
   auto new_filter_type = RankedTensorType::get(filter_shape, filter_type);
-  op.filter().setType(new_filter_type);
+  op.getFilter().setType(new_filter_type);
 
   // bias op
   if (attr.with_bias) {
-    auto biasOp = op.bias().getDefiningOp<top::WeightOp>();
-    auto bias_type = module::getStorageType(op.bias());
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getStorageType(op.getBias());
     int64_t bias_shape[4] = {1, attr.oc, 1, 1};
     auto new_bias_type = RankedTensorType::get(bias_shape, bias_type);
-    op.bias().setType(new_bias_type);
+    op.getBias().setType(new_bias_type);
   }
   return success();
 }
@@ -253,10 +253,10 @@ typedef struct {
 void tpu::DeconvOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   deconv_global_param_t param = {0};
-  param.input_global_addr = module::getAddress(input());
-  param.weight_global_addr = module::getAddress(filter());
-  param.bias_global_addr = module::getAddress(bias());
-  param.output_global_addr = module::getAddress(output());
+  param.input_global_addr = module::getAddress(getInput());
+  param.weight_global_addr = module::getAddress(getFilter());
+  param.bias_global_addr = module::getAddress(getBias());
+  param.output_global_addr = module::getAddress(getOutput());
   param.input_shape[0] = attr.n;
   param.input_shape[1] = attr.ic;
   param.input_shape[2] = attr.ih;
@@ -276,16 +276,16 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
   param.output_pad[0] = attr.output_pad_h;
   param.output_pad[1] = attr.output_pad_w;
   param.has_bias = attr.with_bias;
-  param.input_dtype = BM168x::getDataType(input());
-  param.weight_dtype = BM168x::getDataType(filter());
-  if (bias().getType().isa<RankedTensorType>()) {
-    param.bias_dtype = BM168x::getDataType(bias());
+  param.input_dtype = BM168x::getDataType(getInput());
+  param.weight_dtype = BM168x::getDataType(getFilter());
+  if (getBias().getType().isa<RankedTensorType>()) {
+    param.bias_dtype = BM168x::getDataType(getBias());
   }
-  param.output_dtype = BM168x::getDataType(output());
+  param.output_dtype = BM168x::getDataType(getOutput());
   param.if_relu = attr.do_relu;
   param.upper_limit = attr.relu_limit;
-  if (module::isUniformQuantized(input())) {
-    auto in_qtype = module::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
     param.is_asym = true;
     param.rshift = 0;
     param.kzp_global_addr = 0;
@@ -310,7 +310,7 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   int64_t sz = out_lmem_bytes * sizeof(int32_t);
   auto &attr = getDeconvParam(*this);
 
-  auto idtype = BM168x::getDataType(input());
+  auto idtype = BM168x::getDataType(getInput());
   int type_len = BM168x::getFmtBytes(idtype);
   int64_t eu_num = BM168x::eu_num(type_len);
 
@@ -338,7 +338,7 @@ void tpu::DeconvOp::assign_sec_info(int64_t n_step, int64_t h_step,
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info->n_slice = in_gi.n_slice;
   sec_info->d_slice = 1;
   sec_info->h_slice = in_gi.h_slice;
@@ -356,9 +356,9 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
-  auto in_gi = LocalGenInterface::getGroupInfo(input(), n_step, h_step);
-  auto filter_gi = LocalGenInterface::getGroupInfo(filter(), n_step, h_step);
-  auto bias_gi = LocalGenInterface::getGroupInfo(bias(), n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), n_step, h_step);
+  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), n_step, h_step);
 
   deconv_local_param_t param = {0};
   param.input_local_addr = (uint32_t)in_gi.out_addr;
@@ -390,17 +390,17 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.pad[2] = attr.kw - attr.pad_w - 1;
   param.pad[3] = attr.kw - attr.pad_w_after - 1;
   param.has_bias = attr.with_bias;
-  param.input_dtype = BM168x::getDataType(input());
-  param.weight_dtype = BM168x::getDataType(filter());
-  if (bias().getType().isa<RankedTensorType>()) {
-    param.bias_dtype = BM168x::getDataType(bias());
+  param.input_dtype = BM168x::getDataType(getInput());
+  param.weight_dtype = BM168x::getDataType(getFilter());
+  if (getBias().getType().isa<RankedTensorType>()) {
+    param.bias_dtype = BM168x::getDataType(getBias());
   }
 
-  param.output_dtype = BM168x::getDataType(output());
+  param.output_dtype = BM168x::getDataType(getOutput());
   param.if_relu = attr.do_relu;
   param.upper_limit = attr.relu_limit;
-  if (module::isUniformQuantized(input())) {
-    auto in_qtype = module::getUniformQuantizedType(input());
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
     param.is_asym = true;
     param.rshift = 0;
     param.kzp_local_addr = 0;

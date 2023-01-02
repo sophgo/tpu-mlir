@@ -54,7 +54,7 @@ struct TopFusePad : public OpRewritePattern<PadOp> {
     nextOp->setAttr(
         "pads", rewriter.getArrayAttr({paddings.begin() + 4, paddings.end()}));
     // remove the pad Op
-    rewriter.replaceOp(op, {op.input()});
+    rewriter.replaceOp(op, {op.getInput()});
     return success();
   }
 };

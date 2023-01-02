@@ -15,9 +15,9 @@ namespace cv18xx {
 static double g_ex, g_max;
 void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
                                bool asymmetric) const {
-  auto stype = module::getStorageType(op.output());
-  auto qtype = module::getCalibratedType(op.output());
-  g_ex = op.exponent().convertToDouble();
+  auto stype = module::getStorageType(op.getOutput());
+  auto qtype = module::getCalibratedType(op.getOutput());
+  g_ex = op.getExponent().convertToDouble();
   g_max = qtype.getMax();
   auto fn = [](double val) {
     if (g_ex < 0 && val == 0) {
@@ -28,18 +28,18 @@ void PowLowering::LoweringINT8(PatternRewriter &rewriter, top::PowOp op,
       return std::pow(val, g_ex);
     }
   };
-  Value table = create_lookup_table(op.input(), op.output(), asymmetric, fn);
+  Value table = create_lookup_table(op.getInput(), op.getOutput(), asymmetric, fn);
                                     // , ROUNDING_HALF_UP);
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::LutOp>(op, newType,
-                                          ValueRange{op.input(), table});
+                                          ValueRange{op.getInput(), table});
 }
 
 void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
   Value table_weight, mantissa_weight;
   float range_start = -62, range_end = 63;
   createBf16LutOp(op, "pow", TableMode::Mantissa,
-                  op.exponent().convertToDouble(), 0.0, range_start, range_end,
+                  op.getExponent().convertToDouble(), 0.0, range_start, range_end,
                   nullptr, table_weight, mantissa_weight);
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -52,9 +52,9 @@ void PowLowering::LoweringBF16(PatternRewriter &rewriter, top::PowOp op) const {
                                         rewriter.getF64FloatAttr(range_start)));
   attrs.push_back(
       rewriter.getNamedAttr("max_range", rewriter.getF64FloatAttr(range_end)));
-  auto newType = getQuantBF16Type(op.output());
+  auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::LutBF16Op>(
-      op, newType, ValueRange{op.input(), table_weight, mantissa_weight},
+      op, newType, ValueRange{op.getInput(), table_weight, mantissa_weight},
       attrs);
 }
 } // namespace cv18xx

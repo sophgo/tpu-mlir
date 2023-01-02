@@ -27,8 +27,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   auto addr = start_addr;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
-      module::setAddress(op.output(), addr);
-      int64_t bytes = module::getBytes(op.output());
+      module::setAddress(op.getOutput(), addr);
+      int64_t bytes = module::getBytes(op.getOutput());
       addr = align_up(addr + bytes, weight_alignment);
     });
   }
@@ -280,7 +280,7 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
     }
   } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
     auto operand = module::getOperand(op, 0);
-    module::setAddress(reshapeOp.output(), module::getAddress(operand));
+    module::setAddress(reshapeOp.getOutput(), module::getAddress(operand));
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     std::vector<int64_t> i_s;
     std::vector<int64_t> o_s;
@@ -293,13 +293,13 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
       ;
     size_t offset_bytes = 0;
     if (axis != 4) {
-      offset_bytes = offset_4[axis] * module::getDtypeSize(sliceOp.output());
+      offset_bytes = offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
       for (int i = axis + 1; i < 4; ++i) {
         offset_bytes *= i_s[i];
       }
     }
     auto operand = module::getOperand(op, 0);
-    module::setAddress(sliceOp.output(),
+    module::setAddress(sliceOp.getOutput(),
                        module::getAddress(operand) + offset_bytes);
   } else {
     llvm_unreachable("set address of undefined inplace op!");
@@ -311,7 +311,7 @@ bool CVAddressAssign::isInPlaceOp(Operation *op) {
     return true;
   } else if (isa<tpu::ConcatOp>(op)) {
     auto concat_op = dyn_cast<tpu::ConcatOp>(op);
-    if (concat_op.only_merge()) {
+    if (concat_op.getOnlyMerge()) {
       return true;
     }
   } else if (isa<tpu::SliceOp>(op)) {

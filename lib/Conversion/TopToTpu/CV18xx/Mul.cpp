@@ -18,7 +18,7 @@ namespace cv18xx {
 void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
                                bool asymmetric) const {
   // for convert from DivOp
-  auto div_v = op.inputs()[1];
+  auto div_v = op.getInputs()[1];
   if (!module::isCalibratedType(div_v) && !module::isUniformQuantized(div_v)) {
     LoweringBF16(rewriter, op);
     return;
@@ -29,7 +29,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   int64_t o_zp;
   double o_scale;
   bool sign = true;
-  module::getScaleAndZeroPoint(op.output(), o_scale, o_zp, sign, false);
+  module::getScaleAndZeroPoint(op.getOutput(), o_scale, o_zp, sign, false);
   double scalef = 1.0;
   double scale_i;
   int64_t i_zp;
@@ -78,12 +78,12 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   getRShiftAndMultiplierFromQScale(scalef, &multiplier, &rshift, true);
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
 }
 

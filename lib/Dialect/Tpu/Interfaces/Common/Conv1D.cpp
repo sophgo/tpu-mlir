@@ -20,35 +20,35 @@ conv_attr_t tpu::Conv1DOp::parseParam() {
   conv_attr_t p = {0};
   p.id = p.od = p.kd = p.sd = p.dd = 1;
   p.iw = p.ow = p.kw = p.sw = p.dw = 1;
-  auto i_s = input().getType().cast<RankedTensorType>().getShape();
-  auto o_s = output().getType().cast<RankedTensorType>().getShape();
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
-  p.has_bias = with_bias();
+  auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
+  auto o_s = getOutput().getType().cast<RankedTensorType>().getShape();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
+  p.has_bias = getWithBias();
   p.n = i_s[0];
   p.ic = i_s[1];
   p.ih = i_s[2];
   p.oc = o_s[1];
   p.oh = o_s[2];
-  auto kernel = module::getI64Array(kernel_shape());
+  auto kernel = module::getI64Array(getKernelShape());
   p.kh = kernel->at(0);
-  auto pads_v = module::getI64Array(pads());
+  auto pads_v = module::getI64Array(getPads());
   p.pht = pads_v->at(0);
   p.phb = pads_v->at(1);
-  if (module::isUniformQuantized(input())) {
-    p.pad_value = module::getUniformQuantizedType(input()).getZeroPoint();
+  if (module::isUniformQuantized(getInput())) {
+    p.pad_value = module::getUniformQuantizedType(getInput()).getZeroPoint();
   }
-  if (module::isUniformQuantized(filter())) {
-    p.kernel_zp = module::getUniformQuantizedType(filter()).getZeroPoint();
+  if (module::isUniformQuantized(getFilter())) {
+    p.kernel_zp = module::getUniformQuantizedType(getFilter()).getZeroPoint();
   }
-  auto strides_v = module::getI64Array(strides());
+  auto strides_v = module::getI64Array(getStrides());
   p.sh = strides_v->at(0);
-  auto dilation = module::getI64Array(dilations(), 1, 1);
+  auto dilation = module::getI64Array(getDilations(), 1, 1);
   p.dh = dilation->at(0);
-  auto ins = module::getI64Array(inserts(), 1, 0);
+  auto ins = module::getI64Array(getInserts(), 1, 0);
   p.ins_h = ins->at(0);
   assert(p.ins_h == 0 && p.ins_w == 0);
-  p.groups = group();
+  p.groups = getGroup();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
   return p;
 }
@@ -77,23 +77,23 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
   auto conv = (Conv *)p.handle;
   conv->run();
   // requant
-  auto out_type = module::getStorageType(output());
-  auto num_elem = module::getNumElements(output());
+  auto out_type = module::getStorageType(getOutput());
+  auto num_elem = module::getNumElements(getOutput());
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (module::isUniformQuantized(output())) {
+  } else if (module::isUniformQuantized(getOutput())) {
     int64_t n, c, h, w;
-    auto sType = module::getStorageType(output());
-    module::getNCHW(output(), n, c, h, w);
-    auto o_qtype = module::getUniformQuantizedType(output());
-    auto rshift_v = module::getI64Array(rshift().value());
-    auto multiplier_v = module::getI64Array(multiplier(), rshift_v->size(), 1);
+    auto sType = module::getStorageType(getOutput());
+    module::getNCHW(getOutput(), n, c, h, w);
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
+    auto rshift_v = module::getI64Array(getRshift().value());
+    auto multiplier_v = module::getI64Array(getMultiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
-    auto mode = quant_mode();
+    auto mode = getQuantMode();
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);

@@ -15,7 +15,7 @@
 
 
 int64_t top::HardSwishOp::getFLOPs() {
-  return module::getNumElements(output()) * 5;
+  return module::getNumElements(getOutput()) * 5;
 }
 
 LogicalResult top::HardSwishOp::init(InferenceParameter &p) { return success(); }
@@ -26,7 +26,7 @@ static inline double hswish(double x) {
 }
 
 LogicalResult top::HardSwishOp::inference(InferenceParameter &p) {
-  const auto num_element = module::getNumElements(output());
+  const auto num_element = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     p.outputs[0][i] = hswish(p.inputs[0][i]);

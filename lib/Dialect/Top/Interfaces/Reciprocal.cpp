@@ -15,7 +15,7 @@
 
 
 int64_t top::ReciprocalOp::getFLOPs() {
-  return module::getNumElements(output()) * (1 + do_relu() ? 1 : 0);
+  return module::getNumElements(getOutput()) * (1 + getDoRelu() ? 1 : 0);
 }
 
 LogicalResult top::ReciprocalOp::init(InferenceParameter &p) {
@@ -24,14 +24,14 @@ LogicalResult top::ReciprocalOp::init(InferenceParameter &p) {
 void top::ReciprocalOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ReciprocalOp::inference(InferenceParameter &p) {
-  int64_t num_elem = module::getNumElements(output());
-  float const_s = const_val().convertToDouble();
+  int64_t num_elem = module::getNumElements(getOutput());
+  float const_s = getConstVal().convertToDouble();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = const_s / p.inputs[0][i];
   }
-  if (do_relu()) {
-    auto limit = relu_limit().convertToDouble();
+  if (getDoRelu()) {
+    auto limit = getReluLimit().convertToDouble();
     function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
   }
   return success();

@@ -16,12 +16,12 @@
 
 pool_attr_t top::MaxPoolOp::parseParam() {
   pool_attr_t p = {0};
-  auto ishape = input().getType().dyn_cast<RankedTensorType>().getShape();
-  auto oshape = output().getType().dyn_cast<RankedTensorType>().getShape();
-  auto kernel = module::getI64Array(kernel_shape());
-  auto stride = module::getI64Array(strides());
-  auto pad = module::getI64Array(pads());
-  if (kernel_shape().size() == 3) {
+  auto ishape = getInput().getType().dyn_cast<RankedTensorType>().getShape();
+  auto oshape = getOutput().getType().dyn_cast<RankedTensorType>().getShape();
+  auto kernel = module::getI64Array(getKernelShape());
+  auto stride = module::getI64Array(getStrides());
+  auto pad = module::getI64Array(getPads());
+  if (getKernelShape().size() == 3) {
     p.n = ishape[0];
     p.c = ishape[1];
     p.id = ishape[2];
@@ -42,7 +42,7 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.pad_d_after = pad->at(3);
     p.pad_h_after = pad->at(4);
     p.pad_w_after = pad->at(5);
-  } else if (kernel_shape().size() == 2) {
+  } else if (getKernelShape().size() == 2) {
     p.id = 1;
     p.od = 1;
     p.kd = 1;
@@ -57,7 +57,7 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.pad_w = pad->at(1);
     p.pad_h_after = pad->at(2);
     p.pad_w_after = pad->at(3);
-  } else if (kernel_shape().size() == 1) {
+  } else if (getKernelShape().size() == 1) {
     p.id = 1;
     p.od = 1;
     p.kd = 1;
@@ -71,19 +71,19 @@ pool_attr_t top::MaxPoolOp::parseParam() {
     p.pad_h = pad->at(0);
     p.pad_h_after = pad->at(1);
   }
-  p.pad_value = pad_value();
-  p.do_relu = do_relu();
-  p.relu_limit = relu_limit().convertToDouble();
+  p.pad_value = getPadValue();
+  p.do_relu = getDoRelu();
+  p.relu_limit = getReluLimit().convertToDouble();
   p.is_global = p.id == p.kd && p.ih == p.kh && p.iw == p.kw && p.od == 1 &&
                 p.oh == 1 && p.ow == 1;
-  p.count_include_pad = count_include_pad();
+  p.count_include_pad = getCountIncludePad();
   return p;
 }
 
 int64_t top::MaxPoolOp::getFLOPs() {
   auto attr = parseParam();
   auto extra = attr.do_relu ? 1 : 0;
-  return module::getNumElements(output()) *
+  return module::getNumElements(getOutput()) *
          (attr.kd * attr.kh * attr.kw + extra);
 }
 
@@ -110,9 +110,9 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   }
   auto pooling = (Pooling *)p.handle;
   pooling->run();
-  if (do_relu()) {
-    auto limit = relu_limit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(output()),
+  if (getDoRelu()) {
+    auto limit = getReluLimit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(getOutput()),
                   limit);
   }
   return success();

@@ -28,17 +28,18 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   std::vector<int64_t> inpShape;
-  module::getShapeVec(op.input(), inpShape);
-  assert(inpShape.size() == 3 && op.batch_first() == false &&
+  module::getShapeVec(op.getInput(), inpShape);
+  assert(inpShape.size() == 3 && op.getBatchFirst() == false &&
          "Now just support [seq_len, batch_size, embed_size] as input.");
-  operands.push_back(op.input());
+  operands.push_back(op.getInput());
   auto filterOp =
-      cast<top::WeightOp>(op.filter().getDefiningOp()); // transpose later
-  auto recurrenceOp = cast<top::WeightOp>(op.recurrence().getDefiningOp());
-  auto biasOp = cast<top::WeightOp>(op.bias().getDefiningOp()); // spilt later
+      cast<top::WeightOp>(op.getFilter().getDefiningOp()); // transpose later
+  auto recurrenceOp = cast<top::WeightOp>(op.getRecurrence().getDefiningOp());
+  auto biasOp =
+      cast<top::WeightOp>(op.getBias().getDefiningOp()); // spilt later
 
   std::vector<int64_t> filterShape;
-  module::getShapeVec(op.filter(), filterShape);
+  module::getShapeVec(op.getFilter(), filterShape);
   assert(filterShape.size() == 3 && "please check filter shape.");
   auto filterF32 = filterOp.read<float>();
   auto N = filterShape[0] * filterShape[1];
@@ -53,7 +54,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   // split bias to filterBias and recurrenceBias
   std::vector<int64_t> biasShape;
-  module::getShapeVec(op.bias(), biasShape);
+  module::getShapeVec(op.getBias(), biasShape);
   assert(biasShape.size() == 2 && biasShape[0] * biasShape[1] == 2 * N &&
          biasShape[1] % 2 == 0 && "please check bias shape.");
   auto biasF32 = biasOp.read<float>();
@@ -61,10 +62,9 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<float_t> filterBias;
   std::vector<float_t> recurrenceBias;
   for (int ndir = 0; ndir < biasShape[0]; ndir++) {
-    filterBias.insert(
-        filterBias.end(),
-        biasF32->begin() + ndir * biasShape[1],
-        biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2);
+    filterBias.insert(filterBias.end(), biasF32->begin() + ndir * biasShape[1],
+                      biasF32->begin() + ndir * biasShape[1] +
+                          biasShape[1] / 2);
     recurrenceBias.insert(
         recurrenceBias.end(),
         biasF32->begin() + ndir * biasShape[1] + biasShape[1] / 2,
@@ -74,7 +74,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   // for caffe which these is no recurrenceBias
   bool has_rBias = false;
   for (auto v : recurrenceBias) {
-    if ( v != 0) {
+    if (v != 0) {
       has_rBias = true;
       break;
     }
@@ -96,11 +96,11 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
 
   // creat LSTMCviOp
   operands.clear();
-  operands.push_back(fcOp.output());
+  operands.push_back(fcOp.getOutput());
   // trans weight and bias in codegen
   operands.push_back(recurrenceOp.clone_bf16(op));
   std::vector<int64_t> recurrenceShape;
-  module::getShapeVec(op.recurrence(), recurrenceShape);
+  module::getShapeVec(op.getRecurrence(), recurrenceShape);
   auto numDir = recurrenceShape[0];
   auto hiddenSize = recurrenceShape[2];
   if (has_rBias) {
@@ -115,15 +115,15 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   }
 
   // convert intit_h intit_c
-  if (auto castOp = dyn_cast<top::WeightOp>(op.initial_h().getDefiningOp())) {
+  if (auto castOp = dyn_cast<top::WeightOp>(op.getInitialH().getDefiningOp())) {
     operands.push_back(castOp.clone_bf16(op));
   } else {
-    operands.push_back(op.initial_h());
+    operands.push_back(op.getInitialH());
   }
-  if (auto castOp = dyn_cast<top::WeightOp>(op.initial_c().getDefiningOp())) {
+  if (auto castOp = dyn_cast<top::WeightOp>(op.getInitialC().getDefiningOp())) {
     operands.push_back(castOp.clone_bf16(op));
   } else {
-    operands.push_back(op.initial_c());
+    operands.push_back(op.getInitialC());
   }
   // insert table
   int table_h = 32;
@@ -163,7 +163,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   operands.push_back(slope_table_weight_op.clone_bf16(op));
   attrs.clear();
   attrs.push_back(
-      rewriter.getNamedAttr("bidirectional", op.bidirectionalAttr()));
+      rewriter.getNamedAttr("bidirectional", op.getBidirectionalAttr()));
   std::vector<Type> new_types;
   for (auto out : op.getResults()) {
     new_types.push_back(getQuantBF16Type(out));

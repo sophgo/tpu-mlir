@@ -19,16 +19,16 @@
 using namespace tpu_mlir::backend;
 
 void tpu::Depth2SpaceOp::codegen_global_cv18xx(int64_t layer_id) {
-  gaddr_t ga_input = module::getAddress(input());
-  gaddr_t ga_output = module::getAddress(output());
+  gaddr_t ga_input = module::getAddress(getInput());
+  gaddr_t ga_output = module::getAddress(getOutput());
   int64_t n, c, h, w;
-  module::getNCHW(this->input(), n, c, h, w);
-  int64_t scale_h = block_h();
-  int64_t scale_w = block_w();
+  module::getNCHW(this->getInput(), n, c, h, w);
+  int64_t scale_h = getBlockH();
+  int64_t scale_w = getBlockW();
   assert(scale_h == scale_w);
-  bool isDCR = !is_CRD();
-  bool isInversed = is_inversed();
-  if (module::isUniformQuantized(output())) {
+  bool isDCR = !getIs_CRD();
+  bool isInversed = getIsInversed();
+  if (module::isUniformQuantized(getOutput())) {
     if (isInversed) {
       cvi_backend_tg_reorg_kernel(layer_id, ga_input, ga_output, n, c, h, w,
                                   scale_h, CVK_FMT_I8);

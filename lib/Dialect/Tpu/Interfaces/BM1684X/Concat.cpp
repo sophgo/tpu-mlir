@@ -46,12 +46,12 @@ typedef struct concat_local_param {
 
 void tpu::ConcatOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  int num_input = inputs().size();
+  int num_input = getInputs().size();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   concat_global_spec_t spec = {0};
   spec.common.input_num = num_input;
-  spec.common.concat_axis = axis();
+  spec.common.concat_axis = getAxis();
   SmallVector<int> is_st_concat_way(num_input, 0);
   spec.is_st_concat_way = is_st_concat_way.data();
 
@@ -75,9 +75,9 @@ void tpu::ConcatOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(output(), n, c, h, w);
+  module::getNCHW(getOutput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
-  auto in0_gi = LocalGenInterface::getGroupInfo(inputs()[0], n_step, h_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->h_slice = in0_gi.h_slice;
   sec_info->w_slice = w;
@@ -97,11 +97,11 @@ void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto output_spec = BM168x::get_output_spec(op);
 
   concat_local_spec_t spec = {0};
-  int num_input = inputs().size();
+  int num_input = getInputs().size();
   SmallVector<int> is_st_concat_way(num_input, 0);
   spec.is_st_concat_way = is_st_concat_way.data();
   spec.common.input_num = num_input;
-  spec.common.concat_axis = axis();
+  spec.common.concat_axis = getAxis();
 
   BM168x::call_local_func("backend_api_concat_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());

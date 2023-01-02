@@ -36,12 +36,12 @@ template <typename T> std::shared_ptr<std::vector<T>> WeightOp::read() {
     auto weight_file = module::getWeightFile();
     topDialect->loadWeightFile(weight_file);
   }
-  auto type = output().getType().cast<RankedTensorType>();
+  auto type = getOutput().getType().cast<RankedTensorType>();
   return topDialect->wFile->readTensor<T>(module::getName(op).str(), type);
 }
 
 std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
-  auto dtype = module::getStorageType(output());
+  auto dtype = module::getStorageType(getOutput());
   if (dtype.isUnsignedInteger(8)) {
     auto data_u8 = read<uint8_t>();
     return std::make_shared<std::vector<float>>(data_u8->begin(),
@@ -88,7 +88,7 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
   return nullptr;
 }
 std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
-  auto dtype = module::getStorageType(output());
+  auto dtype = module::getStorageType(getOutput());
   if (dtype.isInteger(8)) {
     return read<uint8_t>();
   } else if (dtype.isF32()) {

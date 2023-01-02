@@ -13,8 +13,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::LoadOp::codegen_global_bm1684x() {
@@ -30,12 +28,12 @@ int64_t tpu::LoadOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 }
 
 void tpu::LoadOp::assign_sec_info(int64_t n_step, int64_t h_step,
-                                   void *sec_info_) {
+                                  void *sec_info_) {
   local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->d_slice = 1;
@@ -54,14 +52,14 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
-  auto data_type = BM168x::getDataType(output());
+  auto data_type = BM168x::getDataType(getOutput());
   auto gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
-  module::getNCHW(output(), N, C, H, W);
+  module::getNCHW(getOutput(), N, C, H, W);
   auto g_stride = BM168x::getGlobalStride(N, C, H, W);
 
-  if (do_bcast() == true) {
+  if (getDoBcast() == true) {
     C = BM168x::NPU_NUM;
     g_stride.N = 0;
     g_stride.C = 0;
@@ -69,14 +67,14 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   }
   auto s_stride = BM168x::getLocalStride(gi.n_slice, C, gi.h_slice, W,
                                          fmt_bytes, gi.eu_align);
-  auto g_addr = module::getAddress(input());
+  auto g_addr = module::getAddress(getInput());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;
-  int64_t use_3ic = use_3ic_optimize();
+  int64_t use_3ic = getUse_3icOptimize();
   if (use_3ic < 4 && use_3ic > 0) {
-    auto use_op = *output().getUsers().begin();
+    auto use_op = *getOutput().getUsers().begin();
     auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
-    auto kernel = module::getI64Array(conv_op.kernel_shape());
+    auto kernel = module::getI64Array(conv_op.getKernelShape());
     int64_t to_ic =
         use_3ic == 1
             ? kernel->at(0)

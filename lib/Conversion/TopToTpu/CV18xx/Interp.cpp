@@ -57,14 +57,14 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   int64_t mode = 0;
 
   std::vector<int64_t> shape_after_pad;
-  auto input_shape = module::getShape(op.input());
+  auto input_shape = module::getShape(op.getInput());
   for (int i = 0; i < input_shape.size(); ++i) {
     shape_after_pad.emplace_back(pads[i] + input_shape[i] + pads[i + 4]);
   }
 
   // insert pad op
-  rewriter.setInsertionPointAfterValue(op.input());
-  std::string name = module::getName(op.input()).str() + "_pad_edge";
+  rewriter.setInsertionPointAfterValue(op.getInput());
+  std::string name = module::getName(op.getInput()).str() + "_pad_edge";
   auto loc = NameLoc::get(rewriter.getStringAttr(name));
   std::vector<NamedAttribute> pad_attrs;
   pad_attrs.emplace_back(
@@ -73,11 +73,11 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
       rewriter.getNamedAttr("val", rewriter.getF64FloatAttr(const_val)));
   pad_attrs.emplace_back(
       rewriter.getNamedAttr("mode", rewriter.getI64IntegerAttr(mode)));
-  auto input_type = op.input().getType().cast<RankedTensorType>();
+  auto input_type = op.getInput().getType().cast<RankedTensorType>();
   auto pad_type = RankedTensorType::get(shape_after_pad,
-                                        op.input().getType().getElementType());
+                                        op.getInput().getType().getElementType());
   auto pad_op = rewriter.create<top::PadOp>(loc, pad_type,
-                                            ValueRange{op.input()}, pad_attrs);
+                                            ValueRange{op.getInput()}, pad_attrs);
 
   // insert conv op
   int64_t ic = shape_after_pad[1];
@@ -108,12 +108,12 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<int64_t> weight_shape = {ic, 1, 1, conv_kernel_shape[0],
                                        conv_kernel_shape[1]};
   auto weight_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
-  std::string weight_name = module::getName(op.input()).str() + "_add_weight";
+  std::string weight_name = module::getName(op.getInput()).str() + "_add_weight";
   auto weight_operand =
       top::WeightOp::create(op, weight_name, weight, weight_type);
 
   // create conv op
-  operands.emplace_back(pad_op.output());
+  operands.emplace_back(pad_op.getOutput());
   operands.emplace_back(weight_operand);
   operands.emplace_back(module::getNoneOp(op));
   std::vector<NamedAttribute> conv_attrs;
@@ -136,7 +136,7 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
 static void resize_to_conv2(PatternRewriter &rewriter, top::InterpOp &op,
                             double scale_h, double scale_w) {
   std::vector<Value> operands;
-  auto input_shape = module::getShape(op.input());
+  auto input_shape = module::getShape(op.getInput());
   int64_t ic = input_shape[1];
   std::vector<int64_t> conv_strides = {2, 2};
   std::vector<int64_t> conv_pads = {0, 0, 0, 0};
@@ -154,12 +154,12 @@ static void resize_to_conv2(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<int64_t> weight_shape = {ic, 1, 1, conv_kernel_shape[0],
                                        conv_kernel_shape[1]};
   auto weight_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
-  std::string weight_name = module::getName(op.input()).str() + "_conv_filter";
+  std::string weight_name = module::getName(op.getInput()).str() + "_conv_filter";
   auto weight_operand =
       top::WeightOp::create(op, weight_name, weight, weight_type);
 
   // create conv op
-  operands.emplace_back(op.input());
+  operands.emplace_back(op.getInput());
   operands.emplace_back(weight_operand);
   operands.emplace_back(module::getNoneOp(op));
   std::vector<NamedAttribute> conv_attrs;
@@ -548,7 +548,7 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
     // prepare filter
     auto filter_type =
         RankedTensorType::get(filter_shape, rewriter.getF32Type());
-    std::string filter_name = module::getName(op.input()).str() + "_filter";
+    std::string filter_name = module::getName(op.getInput()).str() + "_filter";
     auto weight_operand =
         top::WeightOp::create(op, filter_name, filter, filter_type);
 
@@ -738,12 +738,12 @@ static bool resize_to_conv_deconv(PatternRewriter &rewriter, top::InterpOp &op,
 template <typename T>
 static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
                            bool asymmetric) {
-  auto mode = tpu::symbolizeResizeMode(op.mode());
-  auto coord_mode = tpu::symbolizeResizeCoordMode(op.coord_mode());
+  auto mode = tpu::symbolizeResizeMode(op.getMode());
+  auto coord_mode = tpu::symbolizeResizeCoordMode(op.getCoordMode());
   assert(mode && coord_mode);
   std::string coordinate_transformation_mode;
-  auto o_shape = module::getShape(op.output());
-  auto i_shape = module::getShape(op.input());
+  auto o_shape = module::getShape(op.getOutput());
+  auto i_shape = module::getShape(op.getInput());
   assert(o_shape.size() >= 2);
   switch (coord_mode.value()) {
   case tpu::ResizeCoordMode::half_pixel:
@@ -769,8 +769,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   }
 
   // convert interp to conv/deconv ...
-  double scale_h = op.scale_h().convertToDouble();
-  double scale_w = op.scale_w().convertToDouble();
+  double scale_h = op.getScaleH().convertToDouble();
+  double scale_w = op.getScaleW().convertToDouble();
   if (mode.value() == tpu::ResizeMode::linear) {
     if (coordinate_transformation_mode == "half_pixel") {
       if (std::ceil(scale_h) == std::floor(scale_h) &&
@@ -812,7 +812,7 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;
-  attrs.emplace_back(rewriter.getNamedAttr("operation_name",
+  attrs.emplace_back(rewriter.getNamedAttr("cpu_op_name",
                                            rewriter.getStringAttr("interp")));
   param.emplace_back(rewriter.getNamedAttr(
       "width", rewriter.getI32IntegerAttr(o_shape[o_shape.size() - 1])));
@@ -832,16 +832,16 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(param)));
   std::vector<Value> operands;
-  operands.emplace_back(op.input());
+  operands.emplace_back(op.getInput());
   mlir::Type new_type;
   if (mode.value() == tpu::ResizeMode::nearest) {
     if constexpr (std::is_same_v<T, mlir::IntegerType>) {
-      new_type = getQuantInt8Type(op.output(), asymmetric);
+      new_type = getQuantInt8Type(op.getOutput(), asymmetric);
     } else {
-      new_type = getQuantBF16Type(op.output());
+      new_type = getQuantBF16Type(op.getOutput());
     }
   } else {
-    new_type = getQuantFloatType(op.output());
+    new_type = getQuantFloatType(op.getOutput());
   }
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_type, operands, attrs);
 }

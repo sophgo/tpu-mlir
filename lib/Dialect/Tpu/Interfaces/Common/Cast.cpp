@@ -72,11 +72,11 @@ LogicalResult tpu::CastOp::init(InferenceParameter &p) { return success(); }
 void tpu::CastOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
-  auto in_type = module::getStorageType(input());
-  auto out_type = module::getStorageType(output());
-  bool isInQuant = module::isUniformQuantized(input());
-  bool isOutQuant = module::isUniformQuantized(output());
+  auto num_elem = module::getNumElements(getOutput());
+  auto in_type = module::getStorageType(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  bool isInQuant = module::isUniformQuantized(getInput());
+  bool isOutQuant = module::isUniformQuantized(getOutput());
   auto op = getOperation();
   bool is_cv18xx = module::isCV18xx();
   auto round_mode =
@@ -89,7 +89,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     BF16(p.inputs[0], p.outputs[0], num_elem, false);
   } else if (isOutQuant && false == isInQuant) {
     // FP32|BF16|F16|... => INT8|UINT8|...
-    auto qtype = module::getUniformQuantizedType(output());
+    auto qtype = module::getUniformQuantizedType(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       float v;
@@ -114,7 +114,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
     }
   } else if (isInQuant && false == isOutQuant) {
     // INT8|UINT8|... ==> FP32|BF16|F16|...
-    auto qtype = module::getUniformQuantizedType(input());
+    auto qtype = module::getUniformQuantizedType(getInput());
     if (is_cv18xx) {
       cvi_int8_to_bf16(p.inputs[0], p.outputs[0], qtype.getScale(), num_elem,
                        is_tpu);
@@ -125,8 +125,8 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       }
     }
     //   } else if (isInQuant && isOutQuant)  {
-    //     auto in_qtype = module::getUniformQuantizedType(input());
-    //     auto out_qtype = module::getUniformQuantizedType(output());
+    //     auto in_qtype = module::getUniformQuantizedType(getInput());
+    //     auto out_qtype = module::getUniformQuantizedType(getOutput());
     //     if (in_qtype.getScale() == out_qtype.getScale() &&
     //         in_type.isInteger(8) && out_type.isInteger(8)) {
     //       int zero_diff = in_qtype.getZeroPoint() - out_qtype.getZeroPoint();
@@ -164,9 +164,9 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
   LogicalResult
   matchAndRewrite(tpu::CastOp op,
                   mlir::PatternRewriter &rewriter) const override {
-    auto in = op.input();
+    auto in = op.getInput();
     auto in_type = in.getType();
-    auto out_type = op.output().getType();
+    auto out_type = op.getOutput().getType();
     if (in_type == out_type) {
       rewriter.replaceOp(op, {in});
       return success();
@@ -176,8 +176,8 @@ struct SimplifyRedundantCast : public OpRewritePattern<tpu::CastOp> {
       return failure();
     }
 
-    if (out_type == castInputOp.input().getType()) {
-      rewriter.replaceOp(op, {castInputOp.input()});
+    if (out_type == castInputOp.getInput().getType()) {
+      rewriter.replaceOp(op, {castInputOp.getInput()});
       return success();
     }
     return failure();

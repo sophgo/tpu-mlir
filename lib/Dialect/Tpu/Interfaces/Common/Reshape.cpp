@@ -19,7 +19,7 @@ LogicalResult tpu::ReshapeOp::init(InferenceParameter &p) { return success(); }
 void tpu::ReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReshapeOp::inference(InferenceParameter &p) {
-  auto num_elem = module::getNumElements(output());
+  auto num_elem = module::getNumElements(getOutput());
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
   for (int64_t i = 0; i < num_elem; i++) {
     p.outputs[0][i] = p.inputs[0][i];

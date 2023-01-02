@@ -30,7 +30,7 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   double scale = 1;
   int64_t zp_o = 0;
   double scale_o = 1;
-  module::getScaleAndZeroPoint(op.output(), scale_o, zp_o, asymmetric);
+  module::getScaleAndZeroPoint(op.getOutput(), scale_o, zp_o, asymmetric);
 
   double scale_i;
   int64_t zp;
@@ -77,12 +77,12 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
   get_scale_and_shift(scale, multiplier, rshift, 8);
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
-  auto newType = getQuantInt8Type(op.output(), asymmetric);
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
 }
 
@@ -96,7 +96,7 @@ void MulLowering::LoweringF16(PatternRewriter &rewriter, top::MulOp op) const {
 
 void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
                                     top::MulOp op) const {
-  if (module::isUniformQuantized(op.inputs()[0], op.output()) == false) {
+  if (module::isUniformQuantized(op.getInputs()[0], op.getOutput()) == false) {
     llvm_unreachable("input output should be quantized");
   }
   std::vector<Value> operands;
@@ -123,7 +123,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
         input, rewriter.getI16Type(), -zeropoint);
     operands.push_back(input_sub_zp);
   }
-  module::getScaleAndZeroPoint(op.output(), scale, zeropoint, true);
+  module::getScaleAndZeroPoint(op.getOutput(), scale, zeropoint, true);
   scale_mul = scale_mul / scale;
 
   int64_t multiplier;
@@ -131,18 +131,18 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   QuantizeMultiplier(scale_mul, &multiplier, &shift);
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
   std::string suffix = "_mul";
   std::string new_name = module::getName(op.getOperation()).str() + suffix;
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
   rewriter.setInsertionPointAfter(op);
-  auto newType = RankedTensorType::get(module::getShape(op.output()),
+  auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
                                        rewriter.getI32Type());
   if (is_const == false) {
     auto newOp =
         rewriter.create<tpu::MulOp>(name_loc, newType, operands, attrs);
     // requant to int8
-    auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
+    auto v = do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
                         true, multiplier, shift, tpu::RequantMode::TFlite);
     rewriter.replaceOp(op, {v});
   } else {
@@ -151,7 +151,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto newOp =
         rewriter.create<tpu::MulConstOp>(name_loc, newType, operands, attrs);
     // requant to int8
-    auto v = do_requant(op->getLoc(), newOp.output(), op.output().getType(),
+    auto v = do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
                         true, multiplier, shift, tpu::RequantMode::TFlite);
     rewriter.replaceOp(op, {v});
   }

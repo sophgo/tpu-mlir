@@ -34,7 +34,6 @@ def Top_Dialect : Dialect {
   let name = "top";
   let summary = "A topdialect for the TPU_MLIR specification";
   let cppNamespace = "::tpu_mlir::top";
-  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
   let extraClassDeclaration = [{
   void loadWeightFile(llvm::StringRef file) {
     wFile = std::make_unique<mlir::TensorFile>(file, false);
@@ -84,7 +83,7 @@ def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
 //===----------------------------------------------------------------------===//
 
 class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
-    Op<Top_Dialect, mnemonic, !listconcat(traits,[NoSideEffect])> ;
+    Op<Top_Dialect, mnemonic, traits> ;
 
 class Top_Op<string mnemonic, list<Trait> traits = []> :
     Top_BaseOp<mnemonic, !listconcat(traits,

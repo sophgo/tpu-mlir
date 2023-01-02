@@ -14,39 +14,36 @@
 #define DEBUG_TYPE "lowering-roipooling"
 namespace tpu_mlir {
 namespace cv18xx {
-void loweringROIPooling(PatternRewriter &rewriter,
-                             top::ROIPoolingOp op) {
-  auto o_shape = module::getShape(op.output());
+void loweringROIPooling(PatternRewriter &rewriter, top::ROIPoolingOp op) {
+  auto o_shape = module::getShape(op.getOutput());
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;
   attrs.emplace_back(rewriter.getNamedAttr(
-      "operation_name", rewriter.getStringAttr("roi_pooling")));
+      "cpu_op_name", rewriter.getStringAttr("roi_pooling")));
   param.emplace_back(rewriter.getNamedAttr(
-      "pooled_h",
-      rewriter.getI32IntegerAttr(op.pooled_h())));
+      "pooled_h", rewriter.getI32IntegerAttr(op.getPooledH())));
   param.emplace_back(rewriter.getNamedAttr(
-      "pooled_w",
-      rewriter.getI32IntegerAttr(op.pooled_w())));
+      "pooled_w", rewriter.getI32IntegerAttr(op.getPooledW())));
   param.emplace_back(rewriter.getNamedAttr(
       "spatial_scale",
-      rewriter.getF32FloatAttr(op.spatial_scale().convertToDouble())));
+      rewriter.getF32FloatAttr(op.getSpatialScale().convertToDouble())));
   attrs.emplace_back(
       rewriter.getNamedAttr("param", rewriter.getDictionaryAttr(param)));
   std::vector<Value> operands(op.getOperands().begin(), op.getOperands().end());
-  mlir::Type new_type = getQuantFloatType(op.output());
+  mlir::Type new_type = getQuantFloatType(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op, new_type, operands, attrs);
 }
 
 void ROIPoolingLowering::LoweringINT8(PatternRewriter &rewriter,
-                                           top::ROIPoolingOp op,
-                                           bool asymmetric) const {
+                                      top::ROIPoolingOp op,
+                                      bool asymmetric) const {
   loweringROIPooling(rewriter, op);
 }
 
 void ROIPoolingLowering::LoweringBF16(PatternRewriter &rewriter,
-                                           top::ROIPoolingOp op) const {
+                                      top::ROIPoolingOp op) const {
   loweringROIPooling(rewriter, op);
 }
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir

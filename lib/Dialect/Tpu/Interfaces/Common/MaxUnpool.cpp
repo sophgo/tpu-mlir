@@ -22,12 +22,12 @@ void tpu::MaxUnpoolOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MaxUnpoolOp::inference(InferenceParameter &p) {
   int64_t N, C, H, W;
-  module::getNCHW(input(), N, C, H, W);
-  auto scale_h_ = scale_h();
-  auto scale_w_ = scale_w();
+  module::getNCHW(getInput(), N, C, H, W);
+  auto scale_h_ = getScaleH();
+  auto scale_w_ = getScaleW();
   int64_t OH = H * scale_h_;
   int64_t OW = W * scale_w_;
-  auto num_elem = module::getNumElements(output());
+  auto num_elem = module::getNumElements(getOutput());
 
   int64_t NC = N * C;
   std::fill_n(p.outputs[0], num_elem, 0.0f);
@@ -49,7 +49,7 @@ LogicalResult tpu::MaxUnpoolOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::MaxUnpoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                           int64_t out_idx, int64_t out_slice) {
-  auto unit = scale_h();
+  auto unit = getScaleH();
   if (out_idx % unit || out_slice % unit) {
     return failure();
   }

@@ -20,10 +20,10 @@ LogicalResult tpu::SoftmaxOp::init(InferenceParameter &p) { return success(); }
 void tpu::SoftmaxOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
-  auto axis_ = axis();
-  auto input_shape = module::getShape(input());
-  auto out_type = module::getStorageType(output());
-  auto num_elem = module::getNumElements(output());
+  auto axis_ = getAxis();
+  auto input_shape = module::getShape(getInput());
+  auto out_type = module::getStorageType(getOutput());
+  auto num_elem = module::getNumElements(getOutput());
   bool is_cv18xx = module::isCV18xx();
 
   int outer_dim = 1;
@@ -37,11 +37,11 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   }
 
   int channel = input_shape[axis_];
-  bool has_table = !table().getType().isa<mlir::NoneType>();
+  bool has_table = !getTable().getType().isa<mlir::NoneType>();
   if (out_type.isa<FloatType>()) {
     float scale = 1.0f;
-    if (module::isUniformQuantized(input())) {
-      auto qtype = module::getUniformQuantizedType(input());
+    if (module::isUniformQuantized(getInput())) {
+      auto qtype = module::getUniformQuantizedType(getInput());
       scale = qtype.getScale();
     }
     std::vector<float> max_arr(inner_dim);
@@ -86,7 +86,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         // convert to bf16
         BF16(sum_arr.data(), sum_arr.data(), sum_arr.size());
 
-        std::string mehod = log() ? "log" : "mantissa";
+        std::string mehod = getLog() ? "log" : "mantissa";
         bf16_lut_mantissa(sum_arr.data(), sum_arr.data(), sum_arr.size(),
                           p.inputs[3], p.inputs[4], mehod);
 
@@ -94,7 +94,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
           for (int k = 0; k < inner_dim; k++) {
             auto idx = j * inner_dim + k;
-            if (log()) {
+            if (getLog()) {
               top_data[c_offset + k] = sub_arr[idx] - sum_arr[k];
             } else {
               top_data[c_offset + k] = ex_arr[idx] * sum_arr[k];
@@ -117,7 +117,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         for (int j = 0; j < channel; ++j, c_offset += inner_dim) {
           for (int k = 0; k < inner_dim; k++) {
             top_data[c_offset + k] /= sum_arr[k];
-            if (log()) {
+            if (getLog()) {
               top_data[c_offset + k] = std::log(top_data[c_offset + k]);
             }
           }
@@ -129,11 +129,11 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (module::isUniformQuantized(input(),
-                                       output())) { // for quant softmax
+  } else if (module::isUniformQuantized(getInput(),
+                                       getOutput())) { // for quant softmax
     assert(has_table == true);
     auto exp_table = p.inputs[1];
-    auto o_qtype = module::getUniformQuantizedType(output());
+    auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto zp = o_qtype.getZeroPoint();
     float scale = o_qtype.getScale();
     for (int i = 0; i < outer_dim; ++i) {
@@ -178,8 +178,8 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
 
 mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   auto op = getOperation();
-  auto i_stype = module::getStorageType(input());
-  auto o_stype = module::getStorageType(output());
+  auto i_stype = module::getStorageType(getInput());
+  auto o_stype = module::getStorageType(getOutput());
   if (opd_idx == 0) {
     if (o_stype.isF32() && (i_stype.isInteger(8) || i_stype.isF32())) {
       if (module::isAsymmetric() == false) {

@@ -19,9 +19,9 @@
 
 lstm_attr_t tpu::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
-  auto in_shape = module::getShape(input());
+  auto in_shape = module::getShape(getInput());
   assert(in_shape.size() == 3);
-  if (batch_first()) {
+  if (getBatchFirst()) {
     attr.batch_size = in_shape[0];
     attr.seq_len = in_shape[1];
     attr.batch_first = true;
@@ -30,15 +30,15 @@ lstm_attr_t tpu::LSTMOp::parseParam() {
     attr.seq_len = in_shape[0];
     attr.batch_first = false;
   }
-  attr.num_direction = bidirectional() ? 2 : 1;
-  attr.hidden_size = hidden_size();
+  attr.num_direction = getBidirectional() ? 2 : 1;
+  attr.hidden_size = getHiddenSize();
   attr.input_size = in_shape[2];
-  attr.have_bias = !bias().getType().isa<NoneType>();
-  attr.have_h0 = !initial_h().getType().isa<NoneType>();
-  attr.have_c0 = !initial_c().getType().isa<NoneType>();
-  attr.output_y = !Y().getType().isa<NoneType>();
-  attr.output_yh = !Y_h().getType().isa<NoneType>();
-  attr.output_yc = !Y_c().getType().isa<NoneType>();
+  attr.have_bias = !getBias().getType().isa<NoneType>();
+  attr.have_h0 = !getInitialH().getType().isa<NoneType>();
+  attr.have_c0 = !getInitialC().getType().isa<NoneType>();
+  attr.output_y = !getY().getType().isa<NoneType>();
+  attr.output_yh = !getYH().getType().isa<NoneType>();
+  attr.output_yc = !getYC().getType().isa<NoneType>();
   return attr;
 }
 

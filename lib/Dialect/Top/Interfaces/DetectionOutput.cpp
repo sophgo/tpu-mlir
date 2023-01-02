@@ -19,7 +19,7 @@
 
 
 int64_t top::DetectionOutputOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::DetectionOutputOp::init(InferenceParameter &p) {
@@ -29,21 +29,21 @@ void top::DetectionOutputOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
   DetParam param;
-  param.keep_top_k = this->keep_top_k();
-  param.confidence_threshold = this->confidence_threshold().convertToDouble();
-  param.nms_threshold = this->nms_threshold().convertToDouble();
-  param.top_k = this->top_k();
-  param.num_classes = this->num_classes();
-  param.share_location = this->share_location();
-  param.background_label_id = this->background_label_id();
+  param.keep_top_k = this->getKeepTopK();
+  param.confidence_threshold = this->getConfidenceThreshold().convertToDouble();
+  param.nms_threshold = this->getNmsThreshold().convertToDouble();
+  param.top_k = this->getTopK();
+  param.num_classes = this->getNumClasses();
+  param.share_location = this->getShareLocation();
+  param.background_label_id = this->getBackgroundLabelId();
   std::vector<int64_t> loc_shape;
   std::vector<int64_t> conf_shape;
   std::vector<int64_t> prior_shape;
-  module::getShapeVec(this->inputs()[0], param.loc_shape);
-  module::getShapeVec(this->inputs()[1], param.conf_shape);
-  module::getShapeVec(this->inputs()[2], param.prior_shape);
+  module::getShapeVec(this->getInputs()[0], param.loc_shape);
+  module::getShapeVec(this->getInputs()[1], param.conf_shape);
+  module::getShapeVec(this->getInputs()[2], param.prior_shape);
 
-  std::string str_code_type = this->code_type().str();
+  std::string str_code_type = this->getCodeType().str();
   if (str_code_type == "CORNER") {
     param.code_type = PriorBoxParameter_CodeType_CORNER;
   } else if (str_code_type == "CENTER_SIZE") {

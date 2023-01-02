@@ -18,9 +18,9 @@ LogicalResult tpu::StridedSliceOp::init(InferenceParameter &p) { return success(
 void tpu::StridedSliceOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::StridedSliceOp::inference(InferenceParameter &p) {
-  auto out_num_elem = module::getNumElements(output());
-  auto out_shape = module::getShape(output());
-  auto in_shape = module::getShape(input());
+  auto out_num_elem = module::getNumElements(getOutput());
+  auto out_shape = module::getShape(getOutput());
+  auto in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
 
@@ -29,13 +29,13 @@ LogicalResult tpu::StridedSliceOp::inference(InferenceParameter &p) {
   auto starts_ = p.inputs[1];
   auto ends_ = p.inputs[2];
   auto strides_ = p.inputs[3];
-  auto s_dims = module::getNumElements(strides());
+  auto s_dims = module::getNumElements(getStrides());
   int32_t begin[8], end[8], step[8], input_shape[8];
   int32_t dims, b_mask, e_mask, shrink_mask;
 
   stride_slice_gen_params(in_shape.data(), in_dims, starts_, ends_, strides_, s_dims,
-                          begin_mask(), end_mask(), ellipsis_mask(), new_axis_mask(),
-                          shrink_axis_mask(), input_shape, &dims,
+                          getBeginMask(), getEndMask(), getEllipsisMask(), getNewAxisMask(),
+                          getShrinkAxisMask(), input_shape, &dims,
                           begin, end, step, &b_mask, &e_mask, &shrink_mask);
   for (int i = 0; i < dims; ++i) {
     begin[i] = StartForAxis(begin, step, b_mask, input_shape, i);

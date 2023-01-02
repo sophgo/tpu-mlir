@@ -32,11 +32,11 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
                                             cali_type.getExpressedType(), scale,
                                             0, -128, 127);
   }
-  module::getShapeVec(op.input(), input_shape);
-  module::getShapeVec(op.output(), output_shape);
-  auto kernel = module::getI64Array(op.kernel_shape());
-  auto strides = module::getI64Array(op.strides());
-  auto pads = module::getI64Array(op.pads());
+  module::getShapeVec(op.getInput(), input_shape);
+  module::getShapeVec(op.getOutput(), output_shape);
+  auto kernel = module::getI64Array(op.getKernelShape());
+  auto strides = module::getI64Array(op.getStrides());
+  auto pads = module::getI64Array(op.getPads());
   auto op_name = module::getName(op.getOperation()).str();
   // 0. reshape [n c f h w] -> [n*c h w f].
   // PoolOp should align_right, this may casuse layerGroup err (FIX ME)
@@ -61,7 +61,7 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
   newType = RankedTensorType::get(tmp_shape0, type);
   name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_0"));
   auto newOp0 = rewriter.create<tpu::Pool2DOp>(
-      name_loc, newType, ValueRange{reshapeOp.output()}, op->getAttrs());
+      name_loc, newType, ValueRange{reshapeOp.getOutput()}, op->getAttrs());
   newOp0->setAttr("kernel_shape", rewriter.getI64ArrayAttr(_kernel));
   newOp0->setAttr("strides", rewriter.getI64ArrayAttr(_strides));
   newOp0->setAttr("pads", rewriter.getI64ArrayAttr(_pad));
@@ -79,14 +79,14 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
   newType = RankedTensorType::get(tmp_shape1, type);
   name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
   auto newOp1 = rewriter.create<tpu::PermuteOp>(
-      name_loc, newType, ValueRange{newOp0.output(), module::getNoneOp(op)},
+      name_loc, newType, ValueRange{newOp0.getOutput(), module::getNoneOp(op)},
       attrs);
   // 3. do pool last dim
   tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
   newType = RankedTensorType::get(tmp_shape1, type);
   name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_1"));
   auto newOp2 = rewriter.create<tpu::Pool2DOp>(
-      name_loc, newType, ValueRange{newOp1.output()}, op->getAttrs());
+      name_loc, newType, ValueRange{newOp1.getOutput()}, op->getAttrs());
   newOp2->setAttr("kernel_shape", rewriter.getI64ArrayAttr({1, kernel->at(0)}));
   newOp2->setAttr("strides", rewriter.getI64ArrayAttr({1, strides->at(0)}));
   newOp2->setAttr("pads",
@@ -101,23 +101,23 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
   attrs.push_back(
       rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
   auto newOp3 = rewriter.create<tpu::PermuteOp>(
-      name_loc, newType, ValueRange{newOp2.output(), module::getNoneOp(op)},
+      name_loc, newType, ValueRange{newOp2.getOutput(), module::getNoneOp(op)},
       attrs);
   // 5. reshape back
   newType = RankedTensorType::get(output_shape, type);
   auto reshape_backOp = rewriter.create<tpu::ReshapeOp>(
-      op->getLoc(), newType, ValueRange{newOp3.output()});
+      op->getLoc(), newType, ValueRange{newOp3.getOutput()});
 
-  rewriter.replaceOp(op, {reshape_backOp.output()});
+  rewriter.replaceOp(op, {reshape_backOp.getOutput()});
 }
 
 void MaxPoolLowering::LoweringINT8(PatternRewriter &rewriter, top::MaxPoolOp op,
                                    bool asymmetric) const {
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
-  if (op.kernel_shape().size() == 3) {
-    convertMaxPool3D(rewriter, op, op.output().getType());
-  } else if (op.kernel_shape().size() == 2) {
+  if (op.getKernelShape().size() == 3) {
+    convertMaxPool3D(rewriter, op, op.getOutput().getType());
+  } else if (op.getKernelShape().size() == 2) {
     lowering_common_int8<tpu::Pool2DOp>(rewriter, op, asymmetric);
   } else {
     lowering_common_int8<tpu::Pool1DOp>(rewriter, op, asymmetric);
@@ -128,9 +128,9 @@ void MaxPoolLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::MaxPoolOp op) const {
   op->setAttr("pool_mode",
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Max));
-  if (op.kernel_shape().size() == 3) {
+  if (op.getKernelShape().size() == 3) {
     convertMaxPool3D(rewriter, op, rewriter.getBF16Type());
-  } else if (op.kernel_shape().size() == 2) {
+  } else if (op.getKernelShape().size() == 2) {
     lowering_common_bf16<tpu::Pool2DOp>(rewriter, op);
   } else {
     lowering_common_bf16<tpu::Pool1DOp>(rewriter, op);

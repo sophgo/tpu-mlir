@@ -26,7 +26,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   float max_qscale = 0.0;
   assert(nInputs == 2);
 
-  o_scale = module::getThreshold(op.output());
+  o_scale = module::getThreshold(op.getOutput());
   bool hasConst = false;
   for (int i = 1; i < nInputs; ++i) {
     if (isa<top::WeightOp>(op->getOperand(i).getDefiningOp())) {
@@ -72,7 +72,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
       max_qscale = std::max(qscale[0], qscale[1]);
     }
   } else {
-    auto coeff_v = module::getF64Array(op.coeff(), nInputs, 1.0);
+    auto coeff_v = module::getF64Array(op.getCoeff(), nInputs, 1.0);
 
     for (int i = 0; i < nInputs; i++) {
       auto input = op->getOperand(i);
@@ -98,12 +98,12 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   }
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.do_reluAttr()));
+  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
   attrs.push_back(rewriter.getNamedAttr(
       "multipliers", rewriter.getI64ArrayAttr(multiplier_v)));
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift_v)));
-  auto newType = getQuantInt8Type(op.output(), false);
+  auto newType = getQuantInt8Type(op.getOutput(), false);
   rewriter.replaceOpWithNewOp<tpu::AddOp>(op.getOperation(), newType, operands,
                                           attrs);
   return;

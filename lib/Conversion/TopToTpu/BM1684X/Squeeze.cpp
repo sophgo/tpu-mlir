@@ -37,7 +37,7 @@ void SqueezeLowering::LoweringF16(PatternRewriter &rewriter,
 
 void SqueezeLowering::LoweringQuantized(PatternRewriter &rewriter,
                                         top::SqueezeOp op) const {
-  lowering_common<tpu::SqueezeOp>(rewriter, op, op.output().getType());
+  lowering_common<tpu::SqueezeOp>(rewriter, op, op.getOutput().getType());
 }
 
 } // namespace bm1684x

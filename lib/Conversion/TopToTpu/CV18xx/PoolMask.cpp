@@ -35,15 +35,15 @@ void PoolMaskLowering::LoweringINT8(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.emplace_back(attr);
   }
-  auto mask_shape = module::getShape(op.output());
-  auto output_type = op.output().getType().cast<RankedTensorType>();
+  auto mask_shape = module::getShape(op.getOutput());
+  auto output_type = op.getOutput().getType().cast<RankedTensorType>();
   auto quant_type =
       quant::CalibratedQuantizedType::get(output_type.getElementType(), -127, 127);
   auto new_type = RankedTensorType::get(mask_shape, quant_type);
   auto pool_mask_type = createQuantInt8Type(new_type);
 
   rewriter.replaceOpWithNewOp<tpu::PoolMaskOp>(op, pool_mask_type,
-                                               ValueRange{op.input()}, attrs);
+                                               ValueRange{op.getInput()}, attrs);
 }
 
 void PoolMaskLowering::LoweringBF16(PatternRewriter &rewriter,

@@ -15,15 +15,15 @@
 
 
 int64_t top::MaxOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::MaxOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], module::getShape(inputs()[0]))
-      .rhs(p.inputs[1], module::getShape(inputs()[1]))
-      .dst(p.outputs[0], module::getShape(output()))
+      .lhs(p.inputs[0], module::getShape(getInputs()[0]))
+      .rhs(p.inputs[1], module::getShape(getInputs()[1]))
+      .dst(p.outputs[0], module::getShape(getOutput()))
       .algorithem(algorithm::binary_max)
       .setup();
 

@@ -16,7 +16,7 @@
 
 
 int64_t top::YoloDetectionOp::getFLOPs() {
-  return module::getNumElements(output());
+  return module::getNumElements(getOutput());
 }
 
 LogicalResult top::YoloDetectionOp::init(InferenceParameter &p) {
@@ -26,26 +26,26 @@ void top::YoloDetectionOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   YoloDetParam param;
-  param.class_num = class_num();
-  param.net_input_h = net_input_h();
-  param.net_input_w = net_input_w();
-  param.keep_topk = keep_topk();
-  param.nms_threshold = nms_threshold().convertToDouble();
-  param.obj_threshold = obj_threshold().convertToDouble();
-  param.tiny = tiny();
-  param.yolo_v4 = yolo_v4();
-  param.spp_net = spp_net();
-  param.anchors = anchors().str();
-  for (size_t i = 0; i < inputs().size(); ++i) {
+  param.class_num = getClassNum();
+  param.net_input_h = getNetInputH();
+  param.net_input_w = getNetInputW();
+  param.keep_topk = getKeepTopk();
+  param.nms_threshold = getNmsThreshold().convertToDouble();
+  param.obj_threshold = getObjThreshold().convertToDouble();
+  param.tiny = getTiny();
+  param.yolo_v4 = getYoloV4();
+  param.spp_net = getSppNet();
+  param.anchors = getAnchors().str();
+  for (size_t i = 0; i < getInputs().size(); ++i) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
-    tensor_list.size = module::getNumElements(inputs()[i]);
-    module::getShapeVec(inputs()[i], tensor_list.shape);
+    tensor_list.size = module::getNumElements(getInputs()[i]);
+    module::getShapeVec(getInputs()[i], tensor_list.shape);
     param.inputs.emplace_back(std::move(tensor_list));
   }
   param.output.ptr = p.outputs[0];
-  param.output.size = module::getNumElements(output());
-  module::getShapeVec(output(), param.output.shape);
+  param.output.size = module::getNumElements(getOutput());
+  module::getShapeVec(getOutput(), param.output.shape);
   YoloDetectionFunc yolo_func(param);
   yolo_func.invoke();
   return success();

@@ -32,7 +32,7 @@ void tpu::StoreOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
-  module::getNCHW(input(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   sec_info->n_slice = gi.n_slice;
   sec_info->d_slice = 1;
@@ -50,15 +50,15 @@ void tpu::StoreOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                          void *sec_info_) {
   CMD_ID_NODE *pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
-  auto data_type = BM168x::getDataType(output());
+  auto data_type = BM168x::getDataType(getOutput());
   auto gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
-  module::getNCHW(output(), N, C, H, W);
+  module::getNCHW(getOutput(), N, C, H, W);
   auto g_stride = BM168x::getGlobalStride(N, C, H, W);
   auto s_stride = BM168x::getLocalStride(gi.n_slice, C, gi.h_slice, W,
                                          fmt_bytes, gi.eu_align);
-  auto g_addr = module::getAddress(output());
+  auto g_addr = module::getAddress(getOutput());
   int64_t g_offset =
       (gi.n_idx * g_stride.N + gi.h_idx * g_stride.H) * fmt_bytes;
   BM168x::instance()->dl_tensor_stride_move_gen_cmd(

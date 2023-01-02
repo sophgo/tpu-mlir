@@ -19,26 +19,26 @@ LogicalResult tpu::ConcatOp::init(InferenceParameter &p) { return success(); }
 void tpu::ConcatOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
-  auto axis_ = axis();
+  auto axis_ = getAxis();
   bool is_cv18xx = module::isCV18xx();
-  auto nInputs = inputs().size();
+  auto nInputs = getInputs().size();
   // allocate tmp input
   std::vector<float *> tmp_inputs(nInputs);
   for (int i = 0; i < nInputs; ++i) {
-    auto num_elem = module::getNumElements(inputs()[i]);
+    auto num_elem = module::getNumElements(getInputs()[i]);
     tmp_inputs[i] = new float[num_elem];
     memcpy(tmp_inputs[i], p.inputs[i], num_elem * sizeof(float));
   }
 
-  if (is_cv18xx && module::isUniformQuantized(output())) {
-    auto out_type = module::getStorageType(output());
-    auto multiplier_v = module::getI64Array(multipliers(), nInputs, 1);
-    auto rshift_v = module::getI64Array(rshifts(), nInputs, 0);
+  if (is_cv18xx && module::isUniformQuantized(getOutput())) {
+    auto out_type = module::getStorageType(getOutput());
+    auto multiplier_v = module::getI64Array(getMultipliers(), nInputs, 1);
+    auto rshift_v = module::getI64Array(getRshifts(), nInputs, 0);
     for (int idx = 0; idx < nInputs; ++idx) {
       if (multiplier_v->at(idx) == 1 && rshift_v->at(idx) == 0) {
         continue;
       }
-      auto num_elem = module::getNumElements(inputs()[idx]);
+      auto num_elem = module::getNumElements(getInputs()[idx]);
       auto &inp = tmp_inputs[idx];
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; ++i) {
@@ -49,14 +49,14 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
       }
     }
   }
-  auto op0_shape = inputs()[0].getType().cast<RankedTensorType>().getShape();
+  auto op0_shape = getInputs()[0].getType().cast<RankedTensorType>().getShape();
 
   int64_t high = 1;
   for (int64_t i = 0; i < axis_; ++i)
     high *= op0_shape[i];
 
-  SmallVector<int64_t> tailNum(inputs().size());
-  for (auto idt : llvm::enumerate(inputs())) {
+  SmallVector<int64_t> tailNum(getInputs().size());
+  for (auto idt : llvm::enumerate(getInputs())) {
     tailNum[idt.index()] =
         idt.value().getType().cast<RankedTensorType>().getNumElements() / high;
   }
@@ -69,9 +69,9 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
     }
   }
 
-  if (do_relu()) {
-    auto limit = relu_limit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(output()),
+  if (getDoRelu()) {
+    auto limit = getReluLimit().convertToDouble();
+    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(getOutput()),
                   limit);
   }
 
@@ -83,9 +83,9 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::ConcatOp::LocalGenSupport() {
-  auto shape = module::getShape(output());
+  auto shape = module::getShape(getOutput());
   int num_dims = shape.size();
-  auto ax = axis();
+  auto ax = getAxis();
   if (ax == 1 && (num_dims == 3 || num_dims == 4)) {
     return success();
   }
