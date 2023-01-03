@@ -33,16 +33,12 @@ public:
     for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](Operation *op) {
         if (op->getLoc().dyn_cast<NameLoc>() && !module::isOpInGroup(op)) {
-          if (op->getUses().empty()) {
-            op->erase();
-          } else {
-            auto name = module::getName(op);
-            if (all_names.find(name) != all_names.end()) {
-              op->dump();
-              llvm_unreachable("op name conflict");
-            }
-            all_names.insert(name);
+          auto name = module::getName(op);
+          if (all_names.find(name) != all_names.end()) {
+            op->dump();
+            llvm_unreachable("op name conflict");
           }
+          all_names.insert(name);
         }
       });
     }

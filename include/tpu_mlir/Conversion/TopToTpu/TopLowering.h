@@ -234,7 +234,8 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
                    std::string &to_name);
 
 template <typename OpTy>
-Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
+Value do_binary_saclar(Value input, Type to_type, int64_t scalar,
+                       const char *suffix = "_binary") {
   auto from_stype = module::getStorageType(input);
   auto to_stype = module::getStorageType(to_type);
   auto ctx = input.getContext();
@@ -247,8 +248,7 @@ Value do_binary_saclar(Value input, Type to_type, int64_t scalar) {
   attrs.push_back(
       builder.getNamedAttr("const_val", builder.getF64FloatAttr(scalar)));
 
-  std::string new_name =
-      module::getName(input.getDefiningOp()).str() + "_binary";
+  std::string new_name = module::getName(input.getDefiningOp()).str() + suffix;
   auto name_loc = NameLoc::get(builder.getStringAttr(new_name));
   auto newOp =
       builder.create<OpTy>(name_loc, newType, ValueRange{input}, attrs);

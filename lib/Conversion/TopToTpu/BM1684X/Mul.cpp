@@ -16,7 +16,7 @@ void MulLowering::LoweringF32(PatternRewriter &rewriter, top::MulOp op) const {
   lowering_common_f32<tpu::MulOp>(rewriter, op);
 }
 void MulLowering::LoweringINT4(PatternRewriter &rewriter, top::MulOp op,
-                                   bool asymmetric) const {
+                               bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
@@ -106,8 +106,22 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   double scale, scale_mul = 1.f;
   bool is_const = false;
   float const_val = 0.f;
+  std::string name = module::getName(op.getOutput()).str();
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
+    bool same = false;
+    for (int j = 0; j < i; j++) {
+      auto old = op->getOperand(j);
+      if (old == input) {
+        // same input
+        same = true;
+        operands.push_back(operands[j]);
+        continue;
+      }
+    }
+    if (same) {
+      continue;
+    }
     module::getScaleAndZeroPoint(input, scale, zeropoint, true);
     scale_mul *= scale;
     if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
@@ -119,8 +133,9 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
         continue;
       }
     }
+    std::string suffix = name + "_binary";
     auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
-        input, rewriter.getI16Type(), -zeropoint);
+        input, rewriter.getI16Type(), -zeropoint, suffix.c_str());
     operands.push_back(input_sub_zp);
   }
   module::getScaleAndZeroPoint(op.getOutput(), scale, zeropoint, true);
@@ -133,7 +148,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::vector<NamedAttribute> attrs;
   attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
   std::string suffix = "_mul";
-  std::string new_name = module::getName(op.getOperation()).str() + suffix;
+  std::string new_name = name + suffix;
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));
   rewriter.setInsertionPointAfter(op);
   auto newType = RankedTensorType::get(module::getShape(op.getOutput()),
@@ -142,8 +157,9 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto newOp =
         rewriter.create<tpu::MulOp>(name_loc, newType, operands, attrs);
     // requant to int8
-    auto v = do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                        true, multiplier, shift, tpu::RequantMode::TFlite);
+    auto v =
+        do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
+                   true, multiplier, shift, tpu::RequantMode::TFlite);
     rewriter.replaceOp(op, {v});
   } else {
     attrs.push_back(rewriter.getNamedAttr("const_val",
@@ -151,8 +167,9 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto newOp =
         rewriter.create<tpu::MulConstOp>(name_loc, newType, operands, attrs);
     // requant to int8
-    auto v = do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                        true, multiplier, shift, tpu::RequantMode::TFlite);
+    auto v =
+        do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
+                   true, multiplier, shift, tpu::RequantMode::TFlite);
     rewriter.replaceOp(op, {v});
   }
 }

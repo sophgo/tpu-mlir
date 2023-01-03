@@ -262,7 +262,6 @@ CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
   coeff_size = module::getCoeffSize(); // set in assignAddr
   auto main_func = module::getMainFuncOp();
   main_func.walk([&](func::CallOp call) { addRoutine(call, &layer_id); });
-  module::removeUnusedOp();
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) { weights.push_back(op); });
   }
