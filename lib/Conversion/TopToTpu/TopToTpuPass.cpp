@@ -289,7 +289,9 @@ public:
     } else {
       llvm_unreachable("Not Implemented");
     }
-    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    auto config = GreedyRewriteConfig();
+    config.maxIterations = 0; // apply each pattern only once.
+    applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
     // if (failed(
     //         applyPartialConversion(module_, target, std::move(patterns)))) {
     //   signalPassFailure();

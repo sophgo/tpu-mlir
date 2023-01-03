@@ -95,7 +95,7 @@ public:
       return failure(); // Not quantized.
     }
     oprand.setType(quantized_type);
-    while (!op->getUses().empty()) {
+    while (!op->use_empty()) {
       op->getUses().begin()->set(oprand);
     }
     rewriter.eraseOp(op);
@@ -139,7 +139,7 @@ public:
     } else {
       llvm_unreachable("Cannot handle this case.");
     }
-    while (!op->getUses().empty()) {
+    while (!op->use_empty()) {
       op->getUses().begin()->set(operand);
     }
     rewriter.eraseOp(op);
