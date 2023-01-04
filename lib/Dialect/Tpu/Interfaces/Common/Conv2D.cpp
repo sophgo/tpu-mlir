@@ -12,8 +12,8 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Support/MathUtils.h"
 
 conv_attr_t tpu::Conv2DOp::parseParam() {
   conv_attr_t p = {0};
@@ -60,7 +60,12 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
 LogicalResult tpu::Conv2DOp::init(InferenceParameter &p) {
   auto conv = new Conv();
   auto attr = parseParam();
-
+  if (module::isUniformQuantized(getOutput()) && attr.has_bias) {
+    attr.do_relu = false;
+    for (int i = 0; i < attr.oc; i++) {
+      p.inputs[2][i] = 0.f;
+    }
+  }
   conv->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], attr);
   p.handle = (void *)conv;
   return success();
@@ -99,6 +104,13 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     auto multiplier_v =
         module::getI64Array(getMultiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
+    // do bias after conv prevent precision issue
+    auto bias_i32 = std::make_shared<std::vector<int32_t>>(c, 0);
+    bool do_relu = getDoRelu();
+    if (getWithBias()) {
+      auto biasOp = cast<top::WeightOp>(getBias().getDefiningOp());
+      bias_i32 = biasOp.read<int32_t>();
+    }
     auto mode = getQuantMode();
     MultiplierType m_type;
     if (is_cv18xx) {
@@ -116,13 +128,18 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
       int64_t multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
+      int32_t bias = bias_i32->at(ic);
+
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
           int64_t v = 0;
-          v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
-                                       m_type) +
+          int64_t tmp = p.outputs[0][offset] + bias;
+          v = applyMultiplierAndRShift(tmp, multi, shift, m_type) +
               o_qtype.getZeroPoint();
+          if (do_relu && (v < 0)) {
+            v = 0;
+          }
           if (sType.isInteger(8)) {
             p.outputs[0][offset] =
                 sType.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);

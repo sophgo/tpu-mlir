@@ -325,14 +325,14 @@ protected:
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::MaxPoolWithMaskOp>,
-                 // notice when it's dominated by negative value
-                 // and factor is very small it'll cause cumulative error
-                 BackwardCalibartion<top::LeakyReluOp>,
+                //  BackwardCalibartion<top::LeakyReluOp>,
                 //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
     if (!module::isCV18xx()) {
-      // notice it will cause cumulative error
-      patterns.add<BackwardCalibartion<top::PReluOp>>(ctx_);
+      // notice when it's dominated by negative value
+      // and factor is very small it'll cause cumulative error
+      patterns.add<BackwardCalibartion<top::LeakyReluOp>,
+                   BackwardCalibartion<top::PReluOp>>(ctx_);
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
@@ -350,15 +350,15 @@ protected:
                  ForwardCalibartion<top::PermuteOp>,
                  ForwardCalibartion<top::ReverseOp>,
                  ForwardCalibartion<top::UpsampleOp>,
-                 // same issue as backward
-                 ForwardCalibartion<top::LeakyReluOp>,
+                //  ForwardCalibartion<top::LeakyReluOp>,
                 //  ForwardCalibartion<top::PReluOp>,
                  ForwardCalibartion<top::AbsOp>
                 >(ctx_);
     // clang-format on
     if (!module::isCV18xx()) {
       // notice it will cause cumulative error
-      patterns.add<ForwardCalibartion<top::PReluOp>>(ctx_);
+      patterns.add<ForwardCalibartion<top::LeakyReluOp>,
+                   ForwardCalibartion<top::PReluOp>>(ctx_);
     }
     if (module::isBM1684Family()) {
       // TODO: support asymmetric mode

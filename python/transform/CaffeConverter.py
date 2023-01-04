@@ -795,7 +795,7 @@ class CaffeConverter(BaseConverter):
             'zoom_factor': p.zoom_factor,
             'scale_h': float(output_shape[2]) / input_shape[2],
             'scale_w': float(output_shape[3]) / input_shape[3],
-            'coordinate_transformation_mode': 'align_corners',
+            'coordinate_transformation_mode': 'nearest',
             'mode': 'nearest',
         }
 
