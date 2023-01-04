@@ -169,7 +169,7 @@ void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, double scale) {
   // used in CV18xx bias quant
   int32_t qmax = INT_MAX;
   int32_t qmin = INT_MIN;
-  int tmp = 0;
+  int64_t tmp = 0;
   for (int i = 0; i < len; i++) {
     tmp = to_int(pSrc[i] * scale, ROUNDING_HALF_TO_EVEN);
     pDst[i] = (int32_t)((tmp > qmax) ? qmax : ((tmp < qmin) ? qmin : tmp));
@@ -314,7 +314,7 @@ double getQscaleForBias(float max_bias, float threshold_y) {
                  << threshold_y << "\n";
     threshold_y = 0.00001;
   }
-  double qscale = (max_bias * 127.0f) / (0x7fffffff * threshold_y);
+  double qscale = (max_bias * 127.0f) / (0x7fffffff * 0.998 * threshold_y);
   return qscale;
 }
 
