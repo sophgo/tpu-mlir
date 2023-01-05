@@ -232,6 +232,12 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
 
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
+  // for convert from hsigmoid/hswish
+  if (!module::isCalibratedType(op.getOutput()) &&
+      !module::isUniformQuantized(op.getOutput())) {
+    LoweringBF16(rewriter, op);
+    return;
+  }
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());

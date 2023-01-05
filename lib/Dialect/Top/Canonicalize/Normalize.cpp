@@ -29,7 +29,8 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
     int64_t c = shape[1];
     auto weight_op = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
     auto scale_data = weight_op.read<float>();
-    auto result_type = op.getOutput().getType().cast<RankedTensorType>();
+    //input_shape is the same with output_shape
+    auto result_type = RankedTensorType::get(shape, rewriter.getF32Type());
     auto none = module::getNoneOp(op);
 
     // separate Normalize op to below 6 ops.

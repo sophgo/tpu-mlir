@@ -195,6 +195,11 @@ if [ -f ${CALI_TABLE} ]; then
   cali_opt="--calibration_table ${CALI_TABLE}"
 fi
 
+mix_opt=
+if [ ${MIX_PRECISION_TABLE} != '-'1 ]; then
+  mix_opt="--quantize_table ${MIX_PRECISION_TABLE}"
+fi
+
 tolerance_sym_opt=
 if [ x${TOLERANCE_INT8} != x ]; then
   tolerance_sym_opt="--tolerance ${TOLERANCE_INT8}"
@@ -203,6 +208,7 @@ model_deploy.py \
   --mlir ${NET}.mlir \
   --quantize INT8 \
   ${cali_opt} \
+  ${mix_opt} \
   --chip ${CHIP_NAME} \
   ${test_innpz_opt} \
   ${test_reference_opt} \
