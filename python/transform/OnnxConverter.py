@@ -1315,6 +1315,7 @@ class OnnxConverter(BaseConverter):
                 in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1", "ReduceSum"])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
+        op = self.getOperand(onnx_node.inputs[0])
         if (np.prod(input_shape) == np.prod(output_shape)):
             p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type)}
             new_op = self.mlir.create_reshape_op([op], output_shape, **p)
@@ -1328,7 +1329,6 @@ class OnnxConverter(BaseConverter):
             if ax < 0:
                 axes[idx] += num_dims
         axes.sort()
-        op = self.getOperand(onnx_node.inputs[0])
         if onnx_node.op_type in ["ReduceMean", "ReduceMax"] and (num_dims == 4 and axes == [2, 3]):
             p = {
                 'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
