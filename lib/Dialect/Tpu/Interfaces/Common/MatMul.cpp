@@ -19,12 +19,13 @@
 // case 2: [1, 512, 7, 7] * [25088, 4096] = [1, 4096] => batch = 1, M = 1, K = 25088, N = 4096
 // case 3: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7] => batch = 12, M = 5, K = 6, N = 7
 // case 4: [4, 5, 6] * [6,7] = [4, 5, 7] => batch =1, M = 20, K = 6, N = 7
+// case 5: [4, 5, 6] * [6] = [4, 5] => batch =1, M = 20, K = 6, N = 1
 // clang-format on
 matmul_attr_t tpu::MatMulOp::parseParam() {
   matmul_attr_t p = {0};
   auto a_s = module::getShape(getInput());
-  auto b_s = module::getShape(getRight());
-  auto o_s = module::getShape(getOutput());
+  auto b_s = SmallVector<int64_t>(module::getShape(getRight()));
+  auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
   p.input_zp = getInputZp();
   p.with_bias = !getBias().getType().isa<mlir::NoneType>();
   p.do_relu = getDoRelu();
@@ -33,7 +34,13 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   p.right_transpose = getRightTranspose();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
-  assert(b_dims >= 2);
+  if (b_dims == 1) {
+    assert(p.right_transpose == false);
+    b_s.push_back(1);
+    o_s.push_back(1);
+    b_dims += 1;
+    o_dims += 1;
+  }
   p.N = p.right_transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
   assert(p.N == o_s[o_dims - 1]);
   p.K = p.right_transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
