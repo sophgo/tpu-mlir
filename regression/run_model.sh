@@ -135,12 +135,12 @@ fi
 
 pad_value_opt=
 if [ x${pad_value} != x ]; then
-  channel_format_opt="--pad_value=${pad_value}"
+  pad_value_opt="--pad_value=${pad_value}"
 fi
 
 pad_type_opt=
 if [ x${pad_type} != x ]; then
-  channel_format_opt="--pad_type=${pad_type}"
+  pad_type_opt="--pad_type=${pad_type}"
 fi
 
 model_format_opt=
@@ -172,6 +172,8 @@ model_transform.py \
   ${scale_opt} \
   ${pixel_format_opt} \
   ${channel_format_opt} \
+  ${pad_value_opt} \
+  ${pad_type_opt} \
   ${model_format_opt} \
   ${test_input_opt} \
   ${test_result_opt} \

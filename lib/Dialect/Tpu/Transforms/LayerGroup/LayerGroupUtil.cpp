@@ -241,7 +241,7 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
 }
 
 bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
-                              Operation *op) {
+                             Operation *op) {
   auto lg_op = cast<LocalGenInterface>(op);
   int64_t idx = 0, slice = 0;
   for (auto &s : out_si.n) {
@@ -433,8 +433,12 @@ int64_t get_buffer_size(const GdmaElt &tensor) {
 void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t hidx, int64_t hslice) {
   auto ctx = op->getContext();
-  auto lg_attr = LayerGroupAttr::get(ctx, 0, 0, 0, 0, true, {hidx}, {hslice},
-                                     {nidx}, {nslice}, 0, 0);
+  auto builder = OpBuilder(ctx);
+  auto lg_attr = LayerGroupAttr::get(
+      ctx, 0, 0, 0, 0, true, builder.getDenseI64ArrayAttr({hidx}),
+      builder.getDenseI64ArrayAttr({hslice}),
+      builder.getDenseI64ArrayAttr({nidx}),
+      builder.getDenseI64ArrayAttr({nslice}), 0, 0);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName, lg_attr);
 }
 

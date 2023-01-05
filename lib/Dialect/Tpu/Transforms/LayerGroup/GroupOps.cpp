@@ -325,9 +325,12 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
   if (buffer_size == 0) {
     buffer_addr = 0;
   }
-  return LayerGroupAttr::get(ctx_, out_addr, out_size, buffer_addr, buffer_size,
-                             tensor_info.eu_align, h_idxs, h_slices, n_idxs,
-                             n_slices, id, tensor_info.stage);
+  return LayerGroupAttr::get(
+      ctx_, out_addr, out_size, buffer_addr, buffer_size, tensor_info.eu_align,
+      builder.getDenseI64ArrayAttr(h_idxs),
+      builder.getDenseI64ArrayAttr(h_slices),
+      builder.getDenseI64ArrayAttr(n_idxs),
+      builder.getDenseI64ArrayAttr(n_slices), id, tensor_info.stage);
 }
 
 /*
