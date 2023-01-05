@@ -78,6 +78,8 @@ def mlir_to_model(tpu_mlir: str,
     codegen_param = '--codegen="model_file={}"'.format(model)
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
+
+    # generate final mlir
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -89,13 +91,24 @@ def mlir_to_model(tpu_mlir: str,
         '--layer-group="opt=2"',
         "--address-assign",
         "--save-weight",
-        codegen_param,
         "--mlir-print-debuginfo",
         "-o",
         final_mlir,
     ]
 
     _os_system(cmd)
+
+    # codegen based on final mlir
+    cmd = [
+        "tpuc-opt",
+        final_mlir,
+        "--init",
+        codegen_param,
+        ">/dev/null",
+    ]
+
+    _os_system(cmd)
+
     try:
         _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
     except RuntimeError:
@@ -111,6 +124,8 @@ def mlir_to_cvi_model(tpu_mlir: str,
     codegen_param = '--cv-codegen="model_file={}"'.format(model)
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
+
+    # generate final mlir
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -120,11 +135,21 @@ def mlir_to_cvi_model(tpu_mlir: str,
         "--weight-reorder",
         "--subnet-divide",
         "--address-assign",
-        codegen_param,
         "--save-weight",
         "--mlir-print-debuginfo",
         "-o",
         final_mlir,
+    ]
+
+    _os_system(cmd)
+
+    # codegen based on final mlir
+    cmd = [
+        "tpuc-opt",
+        final_mlir,
+        "--init",
+        codegen_param,
+        ">/dev/null",
     ]
 
     _os_system(cmd)
