@@ -10,10 +10,10 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include "tpu_mlir/Support/Module.h"
 #include <fstream>
 #include <regex>
 #include <sstream>
-#include "tpu_mlir/Support/Module.h"
 
 namespace mlir {
 #define GEN_PASS_DEF_CONVERTTOPTOTPU
@@ -317,8 +317,7 @@ protected:
                  ForwardCalibartion<top::PermuteOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
-                 BackwardMutiInSingleOut<top::MinOp>,
+    patterns.add<BackwardMutiInSingleOut<top::MinOp>,
                  BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
@@ -507,9 +506,8 @@ protected:
         builder.getNamedAttr("from", builder.getStringAttr("FP32")));
     param.emplace_back(
         builder.getNamedAttr("to", builder.getStringAttr("INT8")));
-    param.emplace_back(builder.getNamedAttr(
-        "scale",
-        builder.getF32FloatAttr(scale)));
+    param.emplace_back(
+        builder.getNamedAttr("scale", builder.getF32FloatAttr(scale)));
     attrs.emplace_back(
         builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
     auto castOp = builder.create<tpu::GenericCpuOp>(

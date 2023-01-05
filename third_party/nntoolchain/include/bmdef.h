@@ -35,6 +35,8 @@ typedef enum bm_data_type_e {
   BM_INT32 = 6,
   BM_UINT32 = 7,
   BM_BFLOAT16 = 8,
+  BM_INT4 = 9,
+  BM_UINT4 = 10,
 } bm_data_type_t;
 
 /* store mode definitions */

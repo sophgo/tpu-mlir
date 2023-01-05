@@ -11,14 +11,19 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct layer_norm_common_spec {
+  int axis;
+  float eps;
+  int affine;
+  int need_mean;
+  int need_rstd;
+} layer_norm_common_spec_t;
 
 #ifdef __cplusplus
 }
@@ -29,28 +34,22 @@ extern "C" {
 // =========================================
 
 void tpu::LayerNormOp::codegen_global_bm1684x() {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+
+  layer_norm_common_spec_t param = {0};
   const bool have_bias = !getBias().getType().isa<NoneType>();
   const bool need_mean = !getMean().getType().isa<NoneType>();
   const bool need_rstd = !getRstd().getType().isa<NoneType>();
-  const auto input_shape = module::getShape(getInput());
-  layer_norm_global_param_t param = {0};
-  param.input_addr = module::getAddress(getInput());
-  param.weight_addr = module::getAddress(getWeight());
-  param.bias_addr = have_bias ? module::getAddress(getBias()) : UINT64_MAX;
-  param.output_addr = module::getAddress(getOutput());
-  param.mean_addr = module::getAddress(getMean());
-  param.rstd_addr = module::getAddress(getRstd());
-  param.dims = input_shape.size();
-  for (int i = 0; i < param.dims; ++i) {
-    param.shape[i] = (int)input_shape[i];
-  }
   param.axis = (int)getAxis();
   param.eps = getEps().convertToDouble();
   param.affine = have_bias ? 3 : 1;
   param.need_mean = need_mean;
   param.need_rstd = need_rstd;
-  param.dtype = DTYPE_FP32;
-  BM168x::call_global_func("backend_api_layer_norm_global", &param, sizeof(param));
+  BM168x::call_global_func("backend_api_layer_norm_global", &param,
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
 }
 
 // // =========================================
@@ -59,9 +58,10 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 
 // int64_t tpu::LayerNormOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 //                                                 int64_t out_lmem_bytes,
-//                                                 int64_t in_nslice, int64_t in_hslice,
-//                                                 int64_t out_nslice,
-//                                                 int64_t out_hslice) {
+//                                                 int64_t in_nslice, int64_t
+//                                                 in_hslice, int64_t
+//                                                 out_nslice, int64_t
+//                                                 out_hslice) {
 //   // TODO: supports group-3d case
 //   int64_t n, c, h, w;
 //   module::getNCHW(getInput(), n, c, h, w);
@@ -80,7 +80,8 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //   return buffer_size;
 // }
 
-// void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
+// void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step)
+// {
 //   const bool have_bias = !getBias().getType().isa<NoneType>();
 //   const bool need_mean = !getMean().getType().isa<NoneType>();
 //   const bool need_rstd = !getRstd().getType().isa<NoneType>();
@@ -109,5 +110,6 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //   param.need_mean = need_mean;
 //   param.need_rstd = need_rstd;
 //   param.dtype = DTYPE_FP32;
-//   BM168x::call_local_func("backend_api_layer_norm_local", &param, sizeof(param));
+//   BM168x::call_local_func("backend_api_layer_norm_local", &param,
+//   sizeof(param));
 // }
