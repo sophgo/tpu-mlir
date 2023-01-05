@@ -497,6 +497,8 @@ protected:
 
   Value insert_18xx_cpu_cast(OpBuilder &builder, Value &v, NameLoc &loc,
                              Type &newType) {
+    float scale = module::getUniformQuantizedType(newType).getScale();
+    scale = 1 / scale;
     std::vector<NamedAttribute> attrs;
     std::vector<NamedAttribute> param;
     attrs.emplace_back(
@@ -507,8 +509,7 @@ protected:
         builder.getNamedAttr("to", builder.getStringAttr("INT8")));
     param.emplace_back(builder.getNamedAttr(
         "scale",
-        builder.getF64FloatAttr(
-            1. / module::getUniformQuantizedType(newType).getScale())));
+        builder.getF32FloatAttr(scale)));
     attrs.emplace_back(
         builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
     auto castOp = builder.create<tpu::GenericCpuOp>(

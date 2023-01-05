@@ -795,8 +795,8 @@ class CaffeConverter(BaseConverter):
             'zoom_factor': p.zoom_factor,
             'scale_h': float(output_shape[2]) / input_shape[2],
             'scale_w': float(output_shape[3]) / input_shape[3],
-            'coordinate_transformation_mode': 'nearest',
-            'mode': 'nearest',
+            'coordinate_transformation_mode': 'align_corners',
+            'mode': 'linear',
         }
 
         new_op = self.mlir.create_interp_op([in_op], output_shape, **param)

@@ -88,13 +88,13 @@ template <typename T> void func_log(int n, T *src, T *dst);
 int calRightShiftNumUseCblas(float fmax, double thBottom, double thTop,
                              int numBits);
 float func_log2(double dataInput);
-void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, double scale);
+void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, float scale);
 float quantizeToInt16(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
                       int rshift = 0);
 template <typename T>
-void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
+void quantizeToInt8(const float *pSrc, T *pDst, int len, float scale,
                     RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO);
 // to compitable with tflite
 void QuantizeMultiplier(double double_multiplier, int64_t *quantized_multiplier,

@@ -493,9 +493,9 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     auto in_type = module::getStorageType(getInputs()[0]);
     auto out_type = module::getStorageType(getOutput());
     if (in_type.isF32() && out_type.isSignedInteger()) {
-      auto qtype = module::getUniformQuantizedType(getOutput());
-      quantizeToInt8(p.inputs[0], p.outputs[0], num_elem,
-                     1. / qtype.getScale());
+      mlir::DictionaryAttr param = this->getParam().value();
+      float scale = param.get("scale").cast<FloatAttr>().getValueAsDouble();
+      quantizeToInt8(p.inputs[0], p.outputs[0], num_elem, scale);
     } else {
       llvm_unreachable("not supported!\n");
     }
