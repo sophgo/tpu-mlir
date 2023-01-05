@@ -165,7 +165,7 @@ float func_log2(double dataInput) {
   return result;
 }
 
-void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, double scale) {
+void quantizeToInt32(const float *pSrc, int32_t *pDst, int len, float scale) {
   // used in CV18xx bias quant
   int32_t qmax = INT_MAX;
   int32_t qmin = INT_MIN;
@@ -219,7 +219,7 @@ float quantizeToInt15(const float *pSrc, int16_t *pDst, int len, float scale,
 }
 
 template <typename T>
-void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
+void quantizeToInt8(const float *pSrc, T *pDst, int len, float scale,
                     RoundingMode round_mode) {
   for (int i = 0; i < len; i++) {
     pDst[i] = to_int8(pSrc[i] * scale, round_mode);
@@ -227,9 +227,9 @@ void quantizeToInt8(const float *pSrc, T *pDst, int len, double scale,
 }
 
 template void quantizeToInt8(const float *pSrc, int8_t *pDst, int len,
-                             double scale, RoundingMode round_mode);
+                             float scale, RoundingMode round_mode);
 template void quantizeToInt8(const float *pSrc, float *pDst, int len,
-                             double scale, RoundingMode round_mode);
+                             float scale, RoundingMode round_mode);
 
 // tensorflow/lite/kernels/internal/quantization_util.cc
 // mlir/lib/Dialect/Tosa/Utils/QuantUtils.cpp
