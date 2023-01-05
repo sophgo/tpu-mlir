@@ -31,6 +31,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       FrcnDetectionLowering,
       GatherLowering,
       GRULowering,
+      HardSigmoidLowering,
+      HardSwishLowering,
       InterpLowering,
       LeakyReluLowering,
       LogLowering,
