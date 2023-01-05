@@ -76,6 +76,12 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
 
   LogicalResult matchAndRewrite(TyOp op,
                                 PatternRewriter &rewriter) const override {
+    if constexpr (std::is_same_v<TyOp, top::ReduceOp>) {
+      std::string mode = op.getMode().str();
+      if (mode != "ReduceMax" && mode != "ReduceMin") {
+        return failure();
+      }
+    }
     Value in = op.getInput();
     Value out = op.getOutput();
     if (!module::isCalibratedType(in)) {
@@ -358,6 +364,8 @@ protected:
       // notice it will cause cumulative error
       patterns.add<ForwardCalibartion<top::LeakyReluOp>,
                    ForwardCalibartion<top::PReluOp>>(ctx_);
+    } else {
+      patterns.add<ForwardCalibartion<top::ReduceOp>>(ctx_);
     }
     if (module::isBM1684Family()) {
       // TODO: support asymmetric mode
