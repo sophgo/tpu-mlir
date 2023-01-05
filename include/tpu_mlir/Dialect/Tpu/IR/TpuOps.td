@@ -70,10 +70,10 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
     "int64_t":$buffer_addr,
     "int64_t":$buffer_size,
     "bool":$eu_align,
-    ArrayRefParameter<"int64_t">:$h_idx,
-    ArrayRefParameter<"int64_t">:$h_slice,
-    ArrayRefParameter<"int64_t">:$n_idx,
-    ArrayRefParameter<"int64_t">:$n_slice,
+    "DenseI64ArrayAttr":$h_idx,
+    "DenseI64ArrayAttr":$h_slice,
+    "DenseI64ArrayAttr":$n_idx,
+    "DenseI64ArrayAttr":$n_slice,
     "int64_t":$id,
     "int64_t":$stage
   );
