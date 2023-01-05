@@ -605,8 +605,19 @@ def TorchHardSwishPattern2():
                                dst_nodes=[hard_swish]))
     return patterns
 
+def remove_tensor_from_input(model):
+    tensor_names = [x.name for x in model.graph.initializer]
+    tensor_names.extend([x.name for x in model.graph.node if x.op_type == "Constant"])
+    inputs = model.graph.input
+    tensors = []
+    for i in inputs:
+        if i.name in tensor_names:
+            tensors.append(i)
+    for t in tensors:
+        model.graph.input.remove(t)
 
 def onnx_opt(model, dump=False, rigorous=True):
+    remove_tensor_from_input(model)
     # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,

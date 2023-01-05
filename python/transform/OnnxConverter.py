@@ -306,34 +306,41 @@ class OnnxConverter(BaseConverter):
                 v = self.model.graph.value_info[0]
                 self.model.graph.value_info.remove(v)
 
+    def model_simplify(self):
+        nof_run = 0
+        self.clean_up_shape_info()
+        while (1):
+            try:
+                model_simplified, is_ok = onnxsim.simplify(self.model)
+                nof_run += 1
+            except:
+                is_ok = False
+            if not is_ok:
+                break
+            if model_simplified == self.model:
+                break
+            self.model = model_simplified
+        print("Run onnxsim {} times, model simplified: {}".format(nof_run - 1, is_ok))
+        if not is_ok:
+            self.model = onnx.shape_inference.infer_shapes(model_simplified)
+        return is_ok
+
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
         if isinstance(onnx_file, str):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
-        self.clean_up_shape_info()
-        try:
-            # additional simplify before select_output to aviod some cases that onnx.shape_inference doesnt work
-            model_simplified, is_ok = onnxsim.simplify(self.model)
-        except:
-            is_ok = False
-        if is_ok:
-            self.model = model_simplified
+        is_ok = self.model_simplify()  # need shape_info for select_output
         # select_output before model_shape_infer to remove useless inputs
         # so that those inputs dont have to be specified in cfg file
         if output_names:
             self.select_output(output_names)
         self.input_names = self.get_input_names(self.model)
         self.num_input = len(self.input_names)
-        self.model_shape_infer(input_shapes)
+        self.input_shape_assign(input_shapes)
         self.input_shapes = self.get_input_shapes(self.model)
         self.input_types = self.get_input_types(self.model)
-        try:
-            model_simplified, is_ok = onnxsim.simplify(self.model)
-        except:
-            is_ok = False
-        if is_ok:
-            self.model = onnx.shape_inference.infer_shapes(model_simplified)
+        is_ok = self.model_simplify()
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
@@ -362,7 +369,7 @@ class OnnxConverter(BaseConverter):
             # fuse ops such as layernorm gelu...
             self.model, self.node_name_mapping = onnx_opt(self.model, True)
 
-    def model_shape_infer(self, input_shapes):
+    def input_shape_assign(self, input_shapes):
         inputs = self.get_inputs(self.model)
         outputs = self.get_outputs(self.model)
         no_shape = True
@@ -394,7 +401,6 @@ class OnnxConverter(BaseConverter):
             for _odim in _odims:
                 if _odim.dim_value <= 0:
                     _odim.dim_param = '?'
-        self.model = onnx.shape_inference.infer_shapes(self.model)
 
     def init_MLIRImporter(self):
         input_shapes = list()
