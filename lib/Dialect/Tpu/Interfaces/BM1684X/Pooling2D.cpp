@@ -143,11 +143,15 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     int64_t size = 0;
     if (module::isAsymmetric()) {
       auto &p = getPool2DParam(*this);
+      bool with_pad = has_pad(p) && p.count_include_pad == 0;
       auto kernel = module::getI64Array(getKernelShape());
       int64_t dtype_bytes = p.kh * p.kw > 256 ? sizeof(int) : sizeof(short);
+      if (with_pad) {
+        dtype_bytes = sizeof(int);
+      }
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       int64_t npu_num = BM168x::NPU_NUM;
-      size = align_up(out_hslice * p.iw, eu_num) * ceiling_func(p.c, npu_num) *
+      size = align_up(out_hslice * p.ow, eu_num) * ceiling_func(p.c, npu_num) *
              dtype_bytes;
     }
     return size;
