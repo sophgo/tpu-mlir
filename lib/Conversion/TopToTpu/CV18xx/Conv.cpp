@@ -15,6 +15,42 @@
 
 namespace tpu_mlir {
 namespace cv18xx {
+// TODO use passes
+static bool ConvertConv1d(PatternRewriter &rewriter, top::ConvOp op) {
+  auto kernel = module::getI64Array(op.getKernelShape());
+  if (kernel->size() != 1) {
+    return false;
+  }
+  std::vector<int64_t> vfilterShape, vAttr;
+  module::getShapeVec(op.getFilter(), vfilterShape);
+  vfilterShape.push_back(1);
+  auto new_type = RankedTensorType::get(vfilterShape, rewriter.getF32Type());
+  op.getFilter().setType(new_type);
+
+  // update kernel_shape
+  auto kernel_shape = module::getI64Array(op.getKernelShape());
+  vAttr = {kernel_shape->at(0), 1};
+  op->setAttr("kernel_shape", rewriter.getI64ArrayAttr(vAttr));
+  // update strides
+  vAttr.clear();
+  auto strides = module::getI64Array(op.getStrides());
+  vAttr = {strides->at(0), 1};
+  op->setAttr("strides", rewriter.getI64ArrayAttr(vAttr));
+  // update pads
+  vAttr.clear();
+  auto pads_v = module::getI64Array(op.getPads());
+  vAttr = {pads_v->at(0), 0, pads_v->at(1), 0};
+  op->setAttr("pads", rewriter.getI64ArrayAttr(vAttr));
+  // update dilations
+  vAttr.clear();
+  auto dilations = module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
+  vAttr = {dilations->at(0), 1};
+  op->setAttr("dilations", rewriter.getI64ArrayAttr(vAttr));
+  auto convOp = rewriter.create<top::ConvOp>(op->getLoc(), op->getResultTypes(),
+                                             op->getOperands(), op->getAttrs());
+  rewriter.replaceOp(op, {convOp.getOutput()});
+  return true;
+}
 
 static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
                             const conv_attr_t &attr) {
@@ -200,6 +236,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   auto attr = op.parseParam();
+  if (ConvertConv1d(rewriter, op)) {
+    return;
+  }
   if (ConvertPading(rewriter, op, attr)) {
     return;
   }
@@ -315,6 +354,9 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   auto attr = op.parseParam();
+  if (ConvertConv1d(rewriter, op)) {
+    return;
+  }
   if (ConvertPading(rewriter, op, attr)) {
     return;
   }
