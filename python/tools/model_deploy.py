@@ -122,9 +122,9 @@ class DeployTool:
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts)
         else:
-            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness)
+            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts)
 
 
 if __name__ == '__main__':

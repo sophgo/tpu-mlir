@@ -35,7 +35,7 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
   attrs.clear();
   attrs.emplace_back(rewriter.getNamedAttr(
       "scale", rewriter.getI64IntegerAttr(kernel_shape->at(0))));
-  std::string name = module::getName(op.getMask()).str() + "convert";
+  std::string name = module::getName(op.getMask()).str() + "_convert";
   auto loc = NameLoc::get(rewriter.getStringAttr(name));
   auto input_shape = module::getShape(op.getInput());
   std::vector<int64_t> mask_shape = input_shape.vec();
@@ -48,7 +48,6 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
       loc, pool_mask_type, ValueRange{op.getInput()}, attrs);
   op.getMask().replaceAllUsesWith(pool_mask_op.getOutput());
   rewriter.replaceOp(op, {max_pool_op, pool_mask_op});
-  op.erase();
 }
 
 void MaxPoolWithMaskLowering::LoweringINT8(PatternRewriter &rewriter,
