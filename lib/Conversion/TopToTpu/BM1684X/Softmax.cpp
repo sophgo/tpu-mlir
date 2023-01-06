@@ -58,6 +58,8 @@ void SoftmaxLowering::LoweringINT4(PatternRewriter &rewriter, top::SoftmaxOp op,
 }
 void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
                                    bool asymmetric) const {
+  LoweringF32(rewriter, op);
+  #if 0
   auto in_shape = module::getShape(op);
   std::vector<int64_t> new_shape(in_shape);
   bool need_reshape = false;
@@ -179,6 +181,7 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
       rewriter.replaceOp(op, {trans_out_op});
     }
   }
+  #endif
 }
 
 void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
