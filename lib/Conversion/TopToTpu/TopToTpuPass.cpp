@@ -323,7 +323,8 @@ protected:
                  ForwardCalibartion<top::PermuteOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
-    patterns.add<BackwardMutiInSingleOut<top::MinOp>,
+    patterns.add<BackwardMutiInSingleOut<top::ConcatOp>,
+                 BackwardMutiInSingleOut<top::MinOp>,
                  BackwardMutiInSingleOut<top::MaxOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
