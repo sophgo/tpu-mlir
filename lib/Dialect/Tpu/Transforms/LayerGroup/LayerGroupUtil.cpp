@@ -56,9 +56,10 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
     module::getNCHW(outs[0], out_n, out_c, out_h, out_w);
     // Need consider different backends
     auto lg_op = cast<LocalGenInterface>(op);
-    total_size += lg_op.getBufferSize(
-        Arch::get_tensor_lmem_bytes(ins[0], -1, -1),
-        Arch::get_tensor_lmem_bytes(outs[0], -1, -1), in_n, in_h, out_n, out_h);
+    total_size +=
+        lg_op.getBufferSize(Arch::get_tensor_lmem_bytes(ins[0], in_n, in_h),
+                            Arch::get_tensor_lmem_bytes(outs[0], out_n, out_h),
+                            in_n, in_h, out_n, out_h);
     total_secs =
         std::min(total_secs, ceiling_func(total_size, Arch::LMEM_BYTES));
 
@@ -138,7 +139,7 @@ bool update_data_split(BasicTimeStepPtr time_step, const LgInfo &lg_info,
   bool status = false;
   auto &tensor_infos = time_step->get_tensor_infos();
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
-  for (int64_t nsec = 1; nsec < max_shape_secs.nsecs; ++nsec) {
+  for (int64_t nsec = 1; nsec <= max_shape_secs.nsecs; ++nsec) {
     shape_secs.nsecs = nsec;
     tensor_infos.clear();
     if (stripe_mine_max_slice(lg_info, shape_secs, tensor_infos) == false) {

@@ -1,12 +1,12 @@
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "mlir/Support/LLVM.h"
 #include "omp.h"
+#include "progressbar.hpp"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "progressbar.hpp"
 #include <list>
 #include <map>
 #include <set>
@@ -229,6 +229,10 @@ void GroupMethod::sweep_for_min_cost(
 
 void GroupMethod::dynamic_programming_layer_group_with_cluster(
     std::vector<LgInfo> &lg_infos, const std::vector<Operation *> &subnet_ops) {
+  llvm::errs() << "\n"
+               << "=======================================================\n"
+               << "***** Dynamic Programming layer group with cluster ****\n"
+               << "=======================================================\n";
   cut_results_.clear();
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
@@ -255,7 +259,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
         cut_points[j][j] = j;
       }
       llvm::errs() << "Searching best group slices...\n";
-      progressbar bar(cluster_num-1);
+      progressbar bar(cluster_num - 1);
       for (size_t len = 2; len <= cluster_num; ++len) {
         bar.update();
         // llvm::errs() << llvm::format("process cluster len = %d\n", len);
@@ -297,20 +301,25 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
 
   show_cut_results();
   // some post process for cluster
-  llvm::errs() << "start consider_redundant_computation_and_gdma_cost\n";
+  llvm::errs() << "-------------------------------------------------------\n";
+  llvm::errs() << "Consider redundant computation and gdma cost\n";
+  llvm::errs() << "-------------------------------------------------------\n";
   consider_redundant_computation_and_gdma_cost(base_groups, subnet_ops);
-  llvm::errs() << "end consider_redundant_computation_and_gdma_cost\n";
   show_cut_results();
 
-  llvm::errs() << "start merge_cut_idx_to_reduce_gdma_cost\n";
+  llvm::errs() << "-------------------------------------------------------\n";
+  llvm::errs() << "Merge cut idx to reduce gdma cost\n";
+  llvm::errs() << "-------------------------------------------------------\n";
   bool take_effective =
       merge_cut_idx_to_reduce_gdma_cost(base_groups, subnet_ops);
-  llvm::errs() << "end merge_cut_idx_to_reduce_gdma_cost\n";
   show_cut_results();
+
   if (take_effective) {
-    llvm::errs() << "start consider_redundant_computation_and_gdma_cost\n";
+    llvm::errs() << "-------------------------------------------------------\n";
+    llvm::errs() << "Consider redundant computation and gdma cost again\n"
+                 << "due to cut idx merged in the previous step\n";
+    llvm::errs() << "-------------------------------------------------------\n";
     consider_redundant_computation_and_gdma_cost(base_groups, subnet_ops);
-    llvm::errs() << "end consider_redundant_computation_and_gdma_cost\n";
     show_cut_results();
   }
 
@@ -511,6 +520,11 @@ bool GroupMethod::merge_cut_idx_to_reduce_gdma_cost(
 
 void GroupMethod::simple_layer_group(
     std::vector<LgInfo> &lg_infos, const std::vector<Operation *> &subnet_ops) {
+  llvm::errs() << "\n"
+               << "=======================================================\n"
+               << "*********** Group layers as many as possible **********\n"
+               << "=======================================================\n";
+
   cut_results_.clear();
   LgInfo sub_group;
   std::vector<std::vector<Operation *>> base_groups;
@@ -537,11 +551,11 @@ void GroupMethod::simple_layer_group(
         }
       } else {
         start_idx++;
-      }
-      if (start_idx == end_idx && start_idx > 0) {
-        cut_result.insert(cut_result.begin(), start_idx);
-        end_idx = start_idx - 1;
-        start_idx = 0;
+        if (start_idx == end_idx) {
+          cut_result.insert(cut_result.begin(), start_idx-1);
+          end_idx = start_idx - 1;
+          start_idx = 0;
+        }
       }
     }
     cut_results_.insert(cut_results_.begin(), std::move(cut_result));
@@ -586,7 +600,7 @@ void GroupMethod::get_final_groups(
 void GroupMethod::show_cut_results() {
   for (size_t i = 0; i < cut_results_.size(); ++i) {
     auto &cut_result = cut_results_[i];
-    llvm::errs() << "base group idx " << i << " cut results: ";
+    llvm::errs() << "base group[" << i << "] cut results: ";
     for (size_t j = 0; j < cut_result.size(); ++j) {
       llvm::errs() << cut_result[j] << ", ";
     }

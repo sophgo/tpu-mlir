@@ -143,8 +143,8 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
 void TimeStepMethod::bubble_tensor_to_best_ts(
     std::list<GdmaElt>::iterator sel_list_iter, int64_t cur_ts, int64_t best_ts,
     BasicTimeStep *time_step,
-    std::map<Value, int64_t, value_compare> &tensor_to_cycle,
-    std::map<Value, int64_t, value_compare> &tensor_to_bufsize,
+    ValueIntMap &tensor_to_cycle,
+    ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
     std::vector<int64_t> &timestep_cycle_slack) {
   // bubble the selected tensor to the right ts
@@ -226,8 +226,8 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
     return;
   }
   std::vector<int64_t> timestep_cycle_slack(timestep_num, 0);
-  std::map<Value, int64_t, value_compare> tensor_to_cycle;
-  std::map<Value, int64_t, value_compare> tensor_to_bufsize;
+  ValueIntMap tensor_to_cycle;
+  ValueIntMap tensor_to_bufsize;
   std::vector<std::list<GdmaElt>> tensor_timesteps;
 
 // remove it after pid_node is extracted
@@ -270,8 +270,8 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
 
 void TimeStepMethod::get_timestep_cycle_slack(
     BasicTimeStep *time_step, const LgInfo &lg_info,
-    std::map<Value, int64_t, value_compare> &tensor_to_cycle,
-    std::map<Value, int64_t, value_compare> &tensor_to_bufsize,
+    ValueIntMap &tensor_to_cycle,
+    ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
     std::vector<int64_t> &timestep_cycle_slack) {
   int64_t timestep_num = time_step->get_timestep_num();
@@ -320,8 +320,8 @@ int64_t TimeStepMethod::get_to_ts(bool &is_valid, int64_t cur_ts,
 
 int64_t TimeStepMethod::get_best_ts(
     BasicTimeStep *time_step, const LgInfo &lg_info, int64_t cur_ts,
-    std::map<Value, int64_t, value_compare> &tensor_to_cycle,
-    std::map<Value, int64_t, value_compare> &tensor_to_bufsize,
+    ValueIntMap &tensor_to_cycle,
+    ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
     std::vector<int64_t> &timestep_cycle_slack,
     std::list<GdmaElt>::iterator &sel_list_iter) {

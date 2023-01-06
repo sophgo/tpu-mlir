@@ -30,7 +30,7 @@ def LayerGroup : Pass<"layer-group", "FuncOp"> {
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"opt", "opt", "int64_t", /*default=*/"2",
-           "opt=1: group layers length as long as possible. opt=2: dynamic programming layer group">,
+           "opt=1: group layers as many as possible. opt=2: dynamic programming layer group">,
   ];
 }
 
