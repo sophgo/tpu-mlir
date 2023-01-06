@@ -94,26 +94,62 @@ void BasicTimeStep::show_timestep() {
   size_t timestep_num = get_timestep_num();
   std::string s;
   llvm::raw_string_ostream ss(s);
+
+  ValueIntMap value_ids;
+  std::map<Operation *, int64_t> op_ids;
+  int64_t idx = 0;
+  for (size_t ts = 0; ts < timestep_num; ++ts) {
+    auto &layer_field = getLayers(ts);
+    for (auto op : layer_field) {
+      if (op_ids.find(op) == op_ids.end()) {
+        op_ids[op] = idx++;
+      }
+
+      for (auto in : op->getOperands()) {
+        if (value_ids.find(in) == value_ids.end()) {
+          value_ids[in] = idx++;
+        }
+      }
+      for (auto out : get_output_values(op)) {
+        if (value_ids.find(out) == value_ids.end()) {
+          value_ids[out] = idx++;
+        }
+      }
+    }
+  }
+
+  mem_buffer_key_t buffer_key;
   for (size_t ts = 0; ts < timestep_num; ++ts) {
     s.clear();
     ss << "=== timestep " << ts << ": \n";
     const auto &layer_field = getLayers(ts);
     for (auto op : layer_field) {
-      ss << "layer " << module::getName(op) << "([";
+      ss << "layer " << op_ids[op] << "([";
       for (auto in : op->getOperands()) {
         if (in.getType().isa<NoneType>()) {
           continue;
         }
-        ss << module::getName(in) << ",";
+        buffer_key.value = in;
+        if (dyn_cast_or_null<top::WeightOp>(in.getDefiningOp())) {
+          buffer_key.type = LMEM_WEIGHT;
+        } else {
+          buffer_key.type = LMEM_ACTIVATION;
+        }
+        auto &buffer_value = get_lmem_buffer_value(buffer_key);
+        ss << value_ids[in] << "(" << buffer_value.start_ts << ", "
+           << buffer_value.end_ts << "), ";
       }
       ss << "] -> [";
       for (auto out : get_output_values(op)) {
-        ss << module::getName(out) << ",";
+        buffer_key.type = LMEM_ACTIVATION;
+        buffer_key.value = out;
+        auto &buffer_value = get_lmem_buffer_value(buffer_key);
+        ss << value_ids[out] << "(" << buffer_value.start_ts << ", "
+         << buffer_value.end_ts << "), ";
       }
       ss << "])\n";
     }
 
-    mem_buffer_key_t buffer_key;
     const auto &tensor_field = getTensors(ts);
     ss << "tensor(start_ts, end_ts): ";
     for (auto &iter : tensor_field) {
@@ -124,39 +160,13 @@ void BasicTimeStep::show_timestep() {
         buffer_key.type = LMEM_ACTIVATION;
       }
       auto &buffer_value = get_lmem_buffer_value(buffer_key);
-      ss << module::getName(iter.first) << "(" << buffer_value.start_ts << ", "
+      ss << value_ids[iter.first] << "(" << buffer_value.start_ts << ", "
          << buffer_value.end_ts << "), ";
     }
     ss << "\n";
     llvm::errs() << s;
   }
   llvm::errs() << "====================================\n";
-
-  //  llvm::errs() << "============= show time step =============\n";
-  //  std::string s;
-  //  llvm::raw_string_ostream ss(s);
-  //  for (int time_idx = 0; time_idx < this->get_timestep_num(); ++time_idx) {
-  //    s.clear();
-  //    ss << "=====Time step " << time_idx << "=====\n";
-  //    const TpuTsField &layer_field = timestep_table_[time_idx].tpu0_ts_field;
-  //    for (uint32_t i = 0; i < layer_field.size(); ++i) {
-  //      auto layer = layer_field[i];
-  //      ss << "==layer: ";
-  //      layer->print(ss);
-  //      ss << "(stage=" << this->get_layer_swpipl_stage(layer) << ")\n";
-  //    }
-  //    const GdmaTsField &tensor_field =
-  //    timestep_table_[time_idx].gdma0_ts_field; for (uint32_t i = 0; i <
-  //    tensor_field.size(); ++i) {
-  //      auto tensor = tensor_field[i].first;
-  //      ss << "==tensor: ";
-  //      tensor.print(ss);
-  //      ss << "(stage=" << this->get_tensor_swpipl_stage(tensor) << ")\n";
-  //    }
-  //    ss << "\n";
-  //    llvm::errs() << s;
-  //  }
-  //  llvm::errs() << "====================================\n";
 }
 
 void BasicTimeStep::gen_hold_coeff() {
@@ -191,15 +201,14 @@ void BasicTimeStep::gen_all_mem_buffer() {
   lmem_buffer_.clear();
 
   mem_buffer_key_t lmem_key;
-  mem_buffer_value_t lmem_value;
+  mem_buffer_value_t lmem_value={0};
   lmem_value.align_bytes = 32;
 
   for (int64_t stg = 0; stg < this->swpipl_stage_num_; ++stg) {
+    // add for software pipeline
     bool layer_timestep_valid =
         (swpipl_stage_num_ == 1) || (swpipl_stage_num_ > 1 && stg == 1);
     for (size_t ts = 0; ts < get_timestep_num(); ++ts) {
-      // add for software pipeline
-
       // process current timestep layers
       const TpuTsField &cur_tpu_field = timestep_table_[ts].tpu0_ts_field;
       if (layer_timestep_valid) {
@@ -212,8 +221,6 @@ void BasicTimeStep::gen_all_mem_buffer() {
 
             lmem_value.start_ts = ts;
             lmem_value.end_ts = -1;
-            lmem_value.addr = 0;
-            lmem_value.size = 0;
 
             lmem_buffer_[lmem_key] = lmem_value;
           }
@@ -239,8 +246,6 @@ void BasicTimeStep::gen_all_mem_buffer() {
 
           lmem_value.start_ts = ts;
           lmem_value.end_ts = ts;
-          lmem_value.addr = 0;
-          lmem_value.size = 0;
 
           lmem_buffer_[lmem_key] = lmem_value;
         } // cur_tpu_field
@@ -264,8 +269,6 @@ void BasicTimeStep::gen_all_mem_buffer() {
 
           lmem_value.start_ts = ts;
           lmem_value.end_ts = -1;
-          lmem_value.addr = 0;
-          lmem_value.size = 0;
 
           lmem_buffer_[lmem_key] = lmem_value;
         } else if (tensor_info.mode == TIMESTEP_STORE) {
@@ -435,7 +438,7 @@ int64_t BasicTimeStep::get_tensor_range_end(const GdmaElt &tensor,
       // layers
       auto &ts_layers = timestep_table_[ts].tpu0_ts_field;
       for (auto op : ts_layers) {
-        auto outs = get_output_values(op);
+        auto outs = op->getResults();
         find_flag = std::find(outs.begin(), outs.end(), v) != outs.end();
         if (find_flag) {
           result = std::min(result, ts - 1);

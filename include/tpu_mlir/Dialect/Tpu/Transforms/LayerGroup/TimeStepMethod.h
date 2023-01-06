@@ -43,16 +43,16 @@ public:
 
   void get_timestep_cycle_slack(
       BasicTimeStep *time_step, const LgInfo &lg_info,
-      std::map<Value, int64_t, value_compare> &tensor_to_cycle,
-      std::map<Value, int64_t, value_compare> &tensor_to_bufsize,
+      ValueIntMap &tensor_to_cycle,
+      ValueIntMap &tensor_to_bufsize,
       std::vector<std::list<GdmaElt>> &tensor_timesteps,
       std::vector<int64_t> &timestep_cycle_slack);
   int64_t get_to_ts(bool &is_valid, int64_t cur_ts, TIMESTEP_LD_ST ld_st,
                     int64_t range_end);
   int64_t
   get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info, int64_t cur_ts,
-              std::map<Value, int64_t, value_compare> &tensor_to_cycle,
-              std::map<Value, int64_t, value_compare> &tensor_to_bufsize,
+              ValueIntMap &tensor_to_cycle,
+              ValueIntMap &tensor_to_bufsize,
               std::vector<std::list<GdmaElt>> &tensor_timesteps,
               std::vector<int64_t> &timestep_cycle_slack,
               std::list<GdmaElt>::iterator &sel_list_iter);
@@ -60,8 +60,8 @@ public:
   void bubble_tensor_to_best_ts(
       std::list<GdmaElt>::iterator sel_list_iter, int64_t cur_ts,
       int64_t best_ts, BasicTimeStep *time_step,
-      std::map<Value, int64_t, value_compare> &tensor_to_cycle,
-      std::map<Value, int64_t, value_compare> &tensor_to_bufsize,
+      ValueIntMap &tensor_to_cycle,
+      ValueIntMap &tensor_to_bufsize,
       std::vector<std::list<GdmaElt>> &tensor_timesteps,
       std::vector<int64_t> &timestep_cycle_slack);
 
