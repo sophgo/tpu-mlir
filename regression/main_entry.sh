@@ -72,9 +72,10 @@ run_all() {
   echo "run_onnx_op" >cmd.txt
   echo "run_script_test" >>cmd.txt
   cat cmd.txt
+  ERR=0
   parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
   if [[ "$?" -ne 0 ]]; then
-    return 1
+    ERR=1
   fi
   for chip in ${chip_support[@]}; do
     echo "" >cmd.txt
@@ -85,26 +86,20 @@ run_all() {
     cat cmd.txt
     parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
     if [[ "$?" -ne 0 ]]; then
-      return 1
+      ERR=1
     fi
   done
-
-  return 0
+  return $ERR
 }
 
-ERR=0
 run_all
 if [ "$?" -ne 0 ]; then
-  ERR=1
-fi
-
-if [ $ERR -eq 0 ]; then
-  cat result.log
-  echo run ${test_type} TEST PASSED
-else
   cat fail.log
   cat result.log
   echo run ${test_type} TEST FAILED
+else
+  cat result.log
+  echo run ${test_type} TEST PASSED
 fi
 
 popd
