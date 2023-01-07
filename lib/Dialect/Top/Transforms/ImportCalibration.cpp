@@ -217,7 +217,7 @@ public:
     if (isa<top::AbsOp>(op)) {
       min = -info.threshold;
       max = info.threshold;
-    } else if (isa<top::SigmoidOp>(op)) {
+    } else if (isa<top::SigmoidOp, top::SoftmaxOp>(op)) {
       min = 0;
       max = 1;
     } else if (isAsymmetric == false) {

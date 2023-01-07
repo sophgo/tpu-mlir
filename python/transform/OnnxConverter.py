@@ -308,16 +308,20 @@ class OnnxConverter(BaseConverter):
 
     def model_simplify(self):
         self.clean_up_shape_info()
+        is_ok = False
+        times = 0
         for i in range(5):
             try:
                 model_simplified, is_ok = onnxsim.simplify(self.model)
             except:
                 is_ok = False
+            if not is_ok:
                 break
             if model_simplified == self.model:
                 break
+            times += 1
             self.model = model_simplified
-        print("Run onnxsim {} times, model simplified: {}".format(i+1, is_ok))
+        print("Run onnxsim {} times, model simplified: {}".format(times, is_ok))
         if not is_ok:
             try:
                 self.model = onnx.shape_inference.infer_shapes(self.model)
