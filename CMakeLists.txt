@@ -75,6 +75,11 @@ link_directories(${NNTOOLCHAIN_PATH}/lib)
 set(CV18XX_PATH ${PROJECT_SOURCE_DIR}/third_party/CV18xx)
 include_directories(${CV18XX_PATH}/include)
 link_directories(${CV18XX_PATH}/lib)
+#-------------------------------------------------------------------------------
+# PROGRESSBAR Configuration
+#-------------------------------------------------------------------------------
+set(PROGRESSBAR_PATH ${PROJECT_SOURCE_DIR}/third_party/progressbar)
+include_directories(${PROGRESSBAR_PATH}/include)
 
 OPTION (USE_OpenMP "Use OpenMP" ON)
 IF(USE_OpenMP)
