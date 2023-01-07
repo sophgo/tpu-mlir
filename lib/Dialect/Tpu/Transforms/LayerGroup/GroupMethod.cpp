@@ -1,11 +1,12 @@
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "mlir/Support/LLVM.h"
 #include "omp.h"
 #include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include "progressbar.hpp"
 #include <list>
 #include <map>
 #include <set>
@@ -253,9 +254,11 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
         assert(is_layer_group_valid(sub_group, true, &cost_table[j][j]));
         cut_points[j][j] = j;
       }
-
+      llvm::errs() << "Searching best group slices...\n";
+      progressbar bar(cluster_num-1);
       for (size_t len = 2; len <= cluster_num; ++len) {
-        llvm::errs() << llvm::format("process cluster len = %d\n", len);
+        bar.update();
+        // llvm::errs() << llvm::format("process cluster len = %d\n", len);
         // #pragma omp parallel for private(sub_group)
         for (int64_t start = 0; start <= cluster_num - len; ++start) {
           int64_t end = start + len - 1;
@@ -282,6 +285,7 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
           cut_points[start][end] = optimal_point;
         }
       }
+      llvm::errs() << "\n";
       std::vector<int64_t> cut_result;
       get_layer_cut_result(cut_result, clusters, cut_points, 0,
                            cluster_num - 1);
