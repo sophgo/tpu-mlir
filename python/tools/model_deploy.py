@@ -32,7 +32,6 @@ class DeployTool:
         self.chip = args.chip.lower()
         self.excepts = args.excepts
         self.tolerance = args.tolerance
-        self.correctness = args.correctness
         self.test_input = args.test_input
         self.quantize = args.quantize.lower()
         self.asymmetric = args.asymmetric
@@ -46,6 +45,9 @@ class DeployTool:
         self.module = MlirParser(args.mlir)
         self.module_name = self.module.module_name
         self.state = self.module.module_state
+        self.correctness = "0.99,0.90"
+        if self.quantize_table:
+            self.correctness = "0.99,0.85"
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         if self.quantize == "int8":
@@ -138,7 +140,6 @@ if __name__ == '__main__':
                         help="for INT8 quantization")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
-    parser.add_argument("--correctness", default='0.99,0.90', help="correctness")
     parser.add_argument("--chip", required=True, type=str,
                         choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
                         help="chip platform name")

@@ -200,15 +200,12 @@ Convert the mlir file into the corresponding model, the parameters are as follow
    * - tolerance
      - N
      - Tolerance for the minimum similarity between MLIR quantized and MLIR fp32 inference results
-   * - correctness
-     - N
-     - Tolerance for the minimum similarity between simulator and MLIR quantized inference results. 0.99,0.90 by default
    * - test_input
      - N
      - The input file for validation, which can be an image, npy or npz. No validation will be carried out if it is not specified
    * - test_reference
      - N
-     - Reference data for validating model correctness (in npz format). It is the result of each operator
+     - Reference data for validating mlir tolerance (in npz format). It is the result of each operator
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma
