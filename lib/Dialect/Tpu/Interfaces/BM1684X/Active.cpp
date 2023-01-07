@@ -73,7 +73,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     // | tensor_size | tensor_size |     32     |    192    |
     buffer_size = 2 * align_up(tensor_size, 64l);
     buffer_size +=
-        align_up(64 * dtype_len, 64l) + align_up(192 * dtype_len, 64l);
+        align_up(32 * dtype_len, 64l) + align_up(192 * dtype_len, 64l);
     break;
   case ActiveMode::GELU:
     buffer_size = 4 * tensor_size;

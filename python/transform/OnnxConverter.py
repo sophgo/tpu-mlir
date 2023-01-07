@@ -307,22 +307,22 @@ class OnnxConverter(BaseConverter):
                 self.model.graph.value_info.remove(v)
 
     def model_simplify(self):
-        nof_run = 0
         self.clean_up_shape_info()
-        while (1):
+        for i in range(5):
             try:
                 model_simplified, is_ok = onnxsim.simplify(self.model)
-                nof_run += 1
             except:
                 is_ok = False
-            if not is_ok:
                 break
             if model_simplified == self.model:
                 break
             self.model = model_simplified
-        print("Run onnxsim {} times, model simplified: {}".format(nof_run - 1, is_ok))
+        print("Run onnxsim {} times, model simplified: {}".format(i+1, is_ok))
         if not is_ok:
-            self.model = onnx.shape_inference.infer_shapes(model_simplified)
+            try:
+                self.model = onnx.shape_inference.infer_shapes(self.model)
+            except:
+                return is_ok
         return is_ok
 
     def load_onnx_model(self, onnx_file, input_shapes: list, output_names: list):
