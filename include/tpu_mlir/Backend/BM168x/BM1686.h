@@ -28,8 +28,12 @@ protected:
     LMEM_BYTES = 1 << 17; // 128KB
     LMEM_BANKS = 16;
     IC_PARALLEL = 32;
+    ALIGNMENT = 0x1000;
+    GMEM_START_ADDR = 0x100000000ull;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
+    CTX_START_ADDR = GMEM_START_ADDR;
     LIB_NAME = "libbackend_1686.so";
+    start_env();
   };
   virtual ~BM1686(){};
 };

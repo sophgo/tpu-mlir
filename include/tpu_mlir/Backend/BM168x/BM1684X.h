@@ -33,7 +33,6 @@ public:
   set_cmd_len_ptr dl_set_cmd_len_ptr;
 
 public:
-  virtual void start_env() override;
   virtual void after_codegen(int64_t flops = 0) override;
 
   // arch info
@@ -42,6 +41,10 @@ public:
 
 protected:
   BM1684X() {
+    if (chip != module::Chip::BM1684X) {
+      // avoid bm1686 construct
+      return;
+    }
     NPU_NUM = 64;
     EU_BYTES = 64;
     LMEM_BYTES = 1 << 18; // 256KB
@@ -52,9 +55,13 @@ protected:
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     CTX_START_ADDR = GMEM_START_ADDR;
     LIB_NAME = "libbackend_1684x.so";
+    start_env();
   };
-  virtual ~BM1684X(){};
+  virtual ~BM1684X(){
+    end_env();
+  };
 
+  virtual void start_env() override;
   virtual void load_functions() override;
 };
 } // namespace backend

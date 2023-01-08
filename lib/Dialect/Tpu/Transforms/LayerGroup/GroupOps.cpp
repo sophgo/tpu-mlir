@@ -69,10 +69,7 @@ void GroupOps::buildGroups(int64_t opt) {
   auto pm = std::make_shared<LgPassManager>();
   auto inner_optimizer = std::make_unique<InternalLgOptimizer>();
   inner_optimizer->manage_passes(pm, options);
-
-  BM168x::instance()->start_env();
   pm->run(lg_pass_ir_);
-  BM168x::instance()->end_env();
 }
 
 void GroupOps::buildMlir() {

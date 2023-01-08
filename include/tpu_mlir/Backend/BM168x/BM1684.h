@@ -368,8 +368,11 @@ protected:
     CTX_START_ADDR = GMEM_START_ADDR + 0x5000000 + 0x100000;
     LIB_NAME = "libbackend_1684.so";
     ALIGN_4N = true;
+    start_env();
   };
-  virtual ~BM1684(){};
+  virtual ~BM1684(){
+    end_env();
+  };
   virtual void load_functions() override;
 };
 } // namespace backend
