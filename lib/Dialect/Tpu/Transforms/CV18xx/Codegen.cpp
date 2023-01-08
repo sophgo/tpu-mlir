@@ -35,7 +35,6 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    Arch::init();
     CviModelBuilder builder(module);
     builder.storeModel(filename);
   }

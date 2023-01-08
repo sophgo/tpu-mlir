@@ -531,9 +531,9 @@ namespace tpu_mlir {
 namespace backend {
 
 #define CAST_FUNCTION(name)                                                    \
-  dl_##name = BM168x::instance()->CastToFPtr<name>(#name)
+  dl_##name = CastToFPtr<name>(#name)
 #define CAST_FUNCTION_WITH_SYM(name, sym)                                      \
-  dl_##name = BM168x::instance()->CastToFPtr<name>(#sym)
+  dl_##name = CastToFPtr<name>(#sym)
 
 class BM168x : public Arch {
 
@@ -610,10 +610,8 @@ public:
   // -------------------------------------------------------------------
   // functions for codegen
   // -------------------------------------------------------------------
-  virtual void start_env();
   virtual void before_codegen();
   virtual void after_codegen(int64_t flops = 0);
-  virtual void end_env();
 
   void *get_gmem_addr(uint64_t addr);
   void *get_gmem_addr(const bm_device_mem_t &mem);
@@ -658,6 +656,8 @@ protected:
   BM168x(){};
   virtual ~BM168x() = 0;
   virtual void load_functions();
+  virtual void start_env();
+  virtual void end_env();
 
 protected:
   static BM168x *bm168x;

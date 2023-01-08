@@ -56,7 +56,7 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
     module::getNCHW(outs[0], out_n, out_c, out_h, out_w);
     // Need consider different backends
     auto lg_op = cast<LocalGenInterface>(op);
-    total_size += lg_op.getBufferSize_bm1684x(
+    total_size += lg_op.getBufferSize(
         Arch::get_tensor_lmem_bytes(ins[0], -1, -1),
         Arch::get_tensor_lmem_bytes(outs[0], -1, -1), in_n, in_h, out_n, out_h);
     total_secs =
@@ -489,6 +489,7 @@ bool isWeightValue(Value v) {
 }
 
 bool is_eu_align(Value opd) {
+  // Eu align rule may be different in different platforms
   auto op = *opd.getUsers().begin();
   if (isWeightValue(opd)) {
     if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op) &&

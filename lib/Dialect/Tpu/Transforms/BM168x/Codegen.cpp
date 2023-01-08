@@ -42,9 +42,7 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    Arch::init();
     bm168x = BM168x::instance();
-    bm168x->start_env();
     std::vector<top::WeightOp> weights;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
@@ -96,7 +94,6 @@ public:
     model_gen->AddNet(module::getModuleName().str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
-    bm168x->end_env();
   }
 
 private:

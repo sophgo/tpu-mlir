@@ -30,6 +30,7 @@ public:
   static int64_t LMEM_BANK_BYTES;
   static llvm::StringRef LIB_NAME;
   static bool ALIGN_4N;
+  static llvm::StringRef chip;
   // dbytes is 0.5 for INT4
   static int64_t eu_num(double dbytes) { return EU_BYTES / dbytes; }
   static int64_t get_n_align(int64_t dtype_bytes) {
@@ -53,7 +54,6 @@ public:
 
 protected:
   static Arch *inst;
-  llvm::StringRef chip;
   llvm::sys::DynamicLibrary DL;
   Arch(){};
   virtual ~Arch() = 0;

@@ -39,7 +39,6 @@ public:
     if (!module::isState(module::State::TPU_LOWERED)) {
       llvm_unreachable("module should be tpu quantized");
     }
-    Arch::init();
     RewritePatternSet patterns(mOp.getContext());
     if (module::isBM1684Family()) {
       bm1684::populateWeightReorderPatterns(&patterns);

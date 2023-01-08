@@ -27,6 +27,7 @@ int64_t Arch::LMEM_BANKS = 0;
 int64_t Arch::LMEM_BANK_BYTES = 0;
 bool Arch::ALIGN_4N = false;
 llvm::StringRef Arch::LIB_NAME = "";
+llvm::StringRef Arch::chip = "";
 
 Arch *Arch::inst = nullptr;
 
@@ -34,7 +35,7 @@ void Arch::init() {
   if (inst != nullptr) {
     return;
   }
-  auto chip = module::getChip();
+  chip = module::getChip();
   if (chip == module::Chip::BM1684) {
     inst = &BM1684::instance();
   } else if (chip == module::Chip::BM1684X) {
@@ -43,10 +44,12 @@ void Arch::init() {
     inst = &BM1686::instance();
   } else if (module::isCV18xx()) {
     inst = &CV18xx::instance(chip);
+  } else if (chip == module::Chip::ALL) {
+    // do nothing
+    return;
   } else {
     llvm_unreachable("unsupport chip");
   }
-  inst->chip = chip;
 }
 
 int64_t Arch::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
