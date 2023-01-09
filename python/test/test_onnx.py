@@ -2401,14 +2401,15 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, input_data={"input": input_data})
 
     def test_PRelu(self, case_name):
-        input_shape = [3, 5, 100, 100]
-        slope_shape = [1, 5, 1, 1]
-        output_shape = [3, 5, 100, 100]
-        slope = helper.make_tensor(name='slope',
-                                   data_type=onnx.TensorProto.FLOAT,
-                                   dims=slope_shape,
-                                   vals=[0.40, 0.37, 0.31, 0.19, 0.11])
-
+        input_shape = [3, 128, 100, 100]
+        slope_shape = [1, 128, 1, 1]
+        output_shape = [3, 128, 100, 100]
+        slope = helper.make_tensor(
+            name="slope",
+            data_type=onnx.TensorProto.FLOAT,
+            dims=slope_shape,
+            vals=np.random.rand(*slope_shape).astype(np.float32),
+        )
         inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)]
         outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)]
         prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output"])

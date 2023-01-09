@@ -336,8 +336,6 @@ class CaffeConverter(BaseConverter):
         output_shape = input_shape
         attrs = {'name': self.get_loc(layer.top[0])}
         assert (num_dims == 4 or num_dims == 2)
-        if num_dims == 2:
-            raise RuntimeError("Not support now, shape {}".format(input_shape))
         if len(layer.bottom) == 2:
             op1 = self.getOperand(layer.bottom[1])
             input_shape1 = self.getShape(layer.bottom[1])
