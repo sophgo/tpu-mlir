@@ -73,12 +73,13 @@ void HardSigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
 
   //2.clip op
   //rewriter.setInsertionPointAfterValue(conv_out);
+  auto caliType = getQuantBF16Type(op.getOutput());
   std::vector<Value> clip_operands;
   clip_operands.emplace_back(conv_out);
   std::vector<NamedAttribute> clip_attrs;
   clip_attrs.emplace_back(rewriter.getNamedAttr("min", rewriter.getF64FloatAttr(0.0)));
   clip_attrs.emplace_back(rewriter.getNamedAttr("max", rewriter.getF64FloatAttr(1.0)));
-  rewriter.replaceOpWithNewOp<top::ClipOp>(op.getOperation(), newType, clip_operands, clip_attrs);
+  rewriter.replaceOpWithNewOp<top::ClipOp>(op.getOperation(), caliType, clip_operands, clip_attrs);
 }
 } // namespace cv18xx
 } // namespace tpu_mlir
