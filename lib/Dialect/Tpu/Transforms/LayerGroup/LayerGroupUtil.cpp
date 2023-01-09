@@ -492,7 +492,8 @@ bool is_eu_align(Value opd) {
   // Eu align rule may be different in different platforms
   auto op = *opd.getUsers().begin();
   if (isWeightValue(opd)) {
-    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op) &&
+    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp,
+            tpu::PReluOp>(op) &&
         (opd == op->getOperand(1) || opd == op->getOperand(2))) {
       return false;
     }
