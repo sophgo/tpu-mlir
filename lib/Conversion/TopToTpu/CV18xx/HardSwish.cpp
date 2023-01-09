@@ -82,12 +82,13 @@ void HardSwishLowering::LoweringBF16(PatternRewriter &rewriter,
 
   //3.eltwise mul
   //rewriter.setInsertionPointAfter(clip_out);
+  auto caliType = getQuantBF16Type(op.getOutput());
   std::vector<Value> mul_operands;
   mul_operands.emplace_back(input_val);
   mul_operands.emplace_back(clip_out);
   std::vector<NamedAttribute> mul_attrs;
   mul_attrs.emplace_back(rewriter.getNamedAttr("relu_limit", rewriter.getF64FloatAttr(-1.0)));
-  rewriter.replaceOpWithNewOp<top::MulOp>(op.getOperation(), newType, mul_operands, mul_attrs);
+  rewriter.replaceOpWithNewOp<top::MulOp>(op.getOperation(), caliType, mul_operands, mul_attrs);
 }
 }
 }
