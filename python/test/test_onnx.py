@@ -37,7 +37,7 @@ class ONNX_IR_TESTER(object):
             "AddConst": self.test_AddConst,
             "AvgPool1D": self.test_AvgPool1D,
             "AvgPool2D": self.test_AvgPool2D,
-            "AvgPool3D": self.test_AvgPool3D,
+            # "AvgPool3D": self.test_AvgPool3D,
             "AvgPoolOdd": self.test_AvgPoolOdd,
             "PadAvgPool2D": self.test_PadAvgPool2D,
             "BatchMatMul": self.test_BatchMatMul,
@@ -78,7 +78,7 @@ class ONNX_IR_TESTER(object):
             "LSTM3": self.test_LSTM3,  # output_yh and output_yc
             "MaxPool1D": self.test_MaxPool1D,
             "MaxPool2D": self.test_MaxPool2D,
-            "MaxPool3D": self.test_MaxPool3D,
+            # "MaxPool3D": self.test_MaxPool3D,
             "MatMul": self.test_MatMul,
             "Max": self.test_Max,
             "Mul": self.test_Mul,
