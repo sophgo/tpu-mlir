@@ -334,9 +334,11 @@ class OnnxConverter(BaseConverter):
             self.model = onnx.load(onnx_file)
         else:
             self.model = onnx_file
-        is_ok = self.model_simplify()  # need shape_info for select_output
+        is_ok_ = self.model_simplify()  # need shape_info for select_output
         # select_output before model_shape_infer to remove useless inputs
         # so that those inputs dont have to be specified in cfg file
+        if (not is_ok_):
+            print("Warning onnx-sim failed please check onnx model.")
         if output_names:
             self.select_output(output_names)
         self.input_names = self.get_input_names(self.model)
@@ -345,6 +347,8 @@ class OnnxConverter(BaseConverter):
         self.input_shapes = self.get_input_shapes(self.model)
         self.input_types = self.get_input_types(self.model)
         is_ok = self.model_simplify()
+        if (is_ok_ and not is_ok):
+            print("Warning onnx-sim failed caused by assign input_shape.")
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
@@ -394,17 +398,18 @@ class OnnxConverter(BaseConverter):
             for _i, _dim in enumerate(_dims):
                 if _dim.dim_value <= 0:
                     _dim.dim_value = 1 if no_shape else input_shapes[idx][_i]
-                elif not no_shape:
-                    check_shape(_dim.dim_value, input_shapes[idx][_i])
+                # elif not no_shape:
+                #     check_shape(_dim_value, input_shapes)
+                elif not no_shape and not input_shapes[idx][_i] == _dim.dim_value:
+                    _dim.dim_value = input_shapes[idx][_i]
                 _shape.append(_dim.dim_value)
             self.addShape(input.name, _shape)
 
         for o in outputs:
-            # for some paddle paddle model dynamic dim is constant value
+            # for set arbitrary batch_size
             _odims = o.type.tensor_type.shape.dim
             for _odim in _odims:
-                if _odim.dim_value <= 0:
-                    _odim.dim_param = '?'
+                _odim.dim_param = '?'
 
     def init_MLIRImporter(self):
         input_shapes = list()

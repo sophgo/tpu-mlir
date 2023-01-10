@@ -27,6 +27,20 @@ class CaffeConverter(BaseConverter):
                  output_names: list,
                  preprocess_args=None):
         super().__init__()
+        # yapf: disable
+        # for caffe v1
+        self.layer_type = {
+            0: 'None', 35: 'Absval', 1: 'Accuracy', 30: 'Argmax', 2: 'Bnll',
+            3: 'Concat', 37: 'ContrastiveLoss', 4: 'Convolution', 5: 'Data',
+            39: 'Deconvolution', 6: 'Dropout', 32: 'DummyData', 7: 'EuclideanLoss',
+            25: 'Eltwise', 38: 'Exp', 8: 'Flatten', 9: 'Hdf5Data', 10: 'Hdf5Output',
+            28: 'HingeLoss', 11: 'Im2col', 12: 'ImageData', 13: 'InfogainLoss',
+            14: 'InnerProduct', 15: 'LRN', 29: 'MemoryData', 16: 'MultinomialLogisticLoss',
+            34: 'MVN', 17: 'Pooling', 26: 'Power', 18: 'ReLU', 19: 'Sigmoid',
+            27: 'SigmoidCrossEntropyLoss', 36: 'Silence', 20: 'Softmax', 21: 'SoftmaxLoss',
+            22: 'Split', 33: 'Slice', 23: 'Tanh', 24: 'WindowData', 31: 'Threshold', 32: 'Relu6',
+        }
+        # yapf: enable
         self.model_name = model_name
         self.prototxt = prototxt
         self.caffemodel = caffemodel
@@ -98,20 +112,7 @@ class CaffeConverter(BaseConverter):
             'YoloDetection': lambda layer: self.convert_yolo_detection_op(layer),
             'MatMul': lambda layer: self.convert_matmul_op(layer),
         }
-        # yapf: disable
-        # for caffe v1
-        self.layer_type = {
-            0: 'None', 35: 'Absval', 1: 'Accuracy', 30: 'Argmax', 2: 'Bnll',
-            3: 'Concat', 37: 'ContrastiveLoss', 4: 'Convolution', 5: 'Data',
-            39: 'Deconvolution', 6: 'Dropout', 32: 'DummyData', 7: 'EuclideanLoss',
-            25: 'Eltwise', 38: 'Exp', 8: 'Flatten', 9: 'Hdf5Data', 10: 'Hdf5Output',
-            28: 'HingeLoss', 11: 'Im2col', 12: 'ImageData', 13: 'InfogainLoss',
-            14: 'InnerProduct', 15: 'LRN', 29: 'MemoryData', 16: 'MultinomialLogisticLoss',
-            34: 'MVN', 17: 'Pooling', 26: 'Power', 18: 'ReLU', 19: 'Sigmoid',
-            27: 'SigmoidCrossEntropyLoss', 36: 'Silence', 20: 'Softmax', 21: 'SoftmaxLoss',
-            22: 'Split', 33: 'Slice', 23: 'Tanh', 24: 'WindowData', 31: 'Threshold', 32: 'Relu6',
-        }
-        # yapf: enable
+
 
     def __del__(self):
         if self.mlir != None:
