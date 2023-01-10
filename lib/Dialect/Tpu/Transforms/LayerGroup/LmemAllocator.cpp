@@ -602,11 +602,11 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
                                            shape_secs_t &shape_secs) {
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
-  update_data_split(time_step, lg_info, shape_secs);
-  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
-    return true;
-  }
-  update_shape_secs(shape_secs, max_shape_secs);
+ update_data_split(time_step, lg_info, shape_secs);
+//  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
+//    return true;
+//  }
+//  update_shape_secs(shape_secs, max_shape_secs);
 
   int64_t try_num = 0;
   bool status = false;
