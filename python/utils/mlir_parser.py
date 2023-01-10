@@ -217,7 +217,7 @@ class MlirParser:
             if op == self.return_op:
                 continue
             for opd in self.return_op.operands:
-                if op.result == opd:
+                if opd in op.results:
                     shape_type = mlir.ir.ShapedType(opd.type)
                     shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
                     name = Operation.name(op)

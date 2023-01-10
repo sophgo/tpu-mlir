@@ -88,6 +88,7 @@ def npz_visualize_diff(args_list):
         vertical_spacing=0.1,
         subplot_titles=("ref vs target",
                     "ref - target   COS:{}".format(blob_COS)))
+
     fig.add_trace(go.Scattergl(y=blob_fp.reshape([-1])[::step],
                                 x=index,
                                 name='ref',
@@ -119,6 +120,8 @@ def npz_visualize_diff(args_list):
                     row=2,
                     col=1)
     fig.update_layout(height=400*rows, width=900)
+    fig.update_layout(margin=dict(l=5, r=10, t=20, b=0))
+    fig.update_layout(legend=dict(yanchor="top", y=0.95, xanchor="right", x=0.95))
     fig.write_html('./tensor_diff_fp32_vs_int8/{:0>4d}_{}'.format(i, name.replace('/','_'))+'.html')
     fig.write_image('./tensor_diff_fp32_vs_int8/{:0>4d}_{}'.format(i, name.replace('/','_'))+'.png')
 
