@@ -120,7 +120,6 @@ bool is_tensor_accessed_by_npu(Value v, BasicTimeStep *time_step, int64_t ts) {
 bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
                              const LgInfo &lg_info,
                              const shape_secs_t &shape_secs, bool gen_idx) {
-  tensor_infos.clear();
   if (gen_idx) {
     if (stripe_mine_idx_slice(lg_info, shape_secs, tensor_infos) == false) {
       return false;
