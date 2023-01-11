@@ -121,3 +121,39 @@ LogicalResult tpu::Conv3DOp::LocalGenSupport() { return failure(); }
 mlir::Type tpu::Conv3DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
 }
+
+LogicalResult tpu::Conv3DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
+                                       int64_t out_idx, int64_t out_slice) {
+  auto attr = parseParam();
+  int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
+  in_slice = (out_slice - 1) * attr.sh +
+             (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
+  in_idx = out_idx * attr.sh - attr.pht;
+  return success();
+}
+
+LogicalResult tpu::Conv3DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
+  auto attr = parseParam();
+  int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
+  in_kh = (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
+  return success();
+}
+
+
+LogicalResult tpu::Conv3DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+  auto attr = parseParam();
+  in_stride_h = out_stride_h * attr.sh;
+  return success();
+}
+
+LogicalResult tpu::Conv3DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+  auto attr = parseParam();
+  in_up_pad_h = out_up_pad_h * attr.sh + attr.pht;
+  return success();
+}
+
+LogicalResult tpu::Conv3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+  auto attr = parseParam();
+  in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
+  return success();
+}

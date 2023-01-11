@@ -47,6 +47,7 @@ public:
   int64_t get_layer_swpipl_stage(Operation *op);
   int64_t get_tensor_swpipl_stage(Value v);
   int64_t get_swpipl_stage_num() { return swpipl_stage_num_; }
+  void set_swpipl_stage_num(int num) { swpipl_stage_num_ = num;} //just for ir gen
   void software_pipeline();
 
   // getter

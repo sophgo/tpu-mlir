@@ -26,6 +26,8 @@ add_llvm_library(TPUMLIRTpu
   MLIRInferenceInterfaceIncGen
   MLIRGlobalGenInterfaceIncGen
   MLIRLocalGenInterfaceIncGen
+  MLIRDynLocalGenInterfaceIncGen
+  MLIRDynGlobalGenInterfaceIncGen
   MLIRTypeInterfaceIncGen
 
   LINK_LIBS PUBLIC
@@ -41,6 +43,8 @@ add_llvm_library(TPUMLIRTpu
   MLIRInferenceInterface
   MLIRGlobalGenInterface
   MLIRLocalGenInterface
+  MLIRDynLocalGenInterface
+  MLIRDynGlobalGenInterface
   MLIRTypeInterface
   TPUMLIRSupport
   TPUMLIRTrait

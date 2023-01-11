@@ -4,6 +4,8 @@ set(LLVM_OPTIONAL_SOURCES
   GlobalGenInterface.cpp
   FlopsInterface.cpp
   LocalGenInterface.cpp
+  DynLocalGenInterface.cpp
+  DynGlobalGenInterface.cpp
   TypeInterface.cpp
   )
 
@@ -26,4 +28,6 @@ add_mlir_interface_library(InferenceInterface)
 add_mlir_interface_library(GlobalGenInterface)
 add_mlir_interface_library(FlopsInterface)
 add_mlir_interface_library(LocalGenInterface)
+add_mlir_interface_library(DynLocalGenInterface)
+add_mlir_interface_library(DynGlobalGenInterface)
 add_mlir_interface_library(TypeInterface)

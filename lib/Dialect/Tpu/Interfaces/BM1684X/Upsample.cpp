@@ -92,3 +92,33 @@ void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void
   BM168x::call_local_func("backend_api_upsample_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());
 }
+
+//dynamic codegen
+int64_t tpu::UpsampleOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(upsample_spec_t);
+  upsample_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.size = getScaleH();
+  spec.if_relu = getDoRelu();
+
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::UpsampleOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(upsample_spec_t);
+  upsample_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.size = getScaleH();
+  spec.if_relu = getDoRelu();
+
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}

@@ -226,3 +226,79 @@ void tpu::Pool2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_pooling_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());
 }
+
+//dynamic codegen
+int64_t tpu::Pool2DOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(pooling_local_spec_t);
+  pooling_local_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  auto attrs = parseParam();
+  auto &common = spec.common;
+  SpecAssign(attrs, common);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  auto gi = getGroupInfo(0, 0);
+
+  spec.buffer_addr = gi.buffer_addr;
+  common.pad_h_t = (in_gi.h_idx == 0 ? attrs.pad_h : 0);
+  common.pad_h_b =
+      (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
+
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+    common.is_avg_pooling = true;
+    common.avg_pooling_quant_mode =
+        module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+
+    if (common.avg_pooling_quant_mode == 0) {
+      common.multiplier = getMultiplier().has_value() ? getMultiplier().value() : -1;
+      common.rshiftbits = getRshift().has_value() ? getRshift().value() : -1;
+    } else if (common.avg_pooling_quant_mode == 2) {
+      common.merge_requant = true;
+      common.rq_scale =
+          getScale().has_value() ? (getScale().value().convertToDouble()) : -1.;
+      common.rq_offset =
+          getOffset().has_value() ? (getOffset().value().convertToDouble()) : -1.;
+    }
+  }
+
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::Pool2DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(pooling_common_spec_t);
+  pooling_common_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+
+  auto attrs = parseParam();
+  SpecAssign(attrs, spec);
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    spec.is_avg_pooling = true;
+    if (module::isUniformQuantized(getInput())) {
+      bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
+      spec.avg_pooling_quant_mode =
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+
+      if (spec.avg_pooling_quant_mode == 0) {
+        spec.multiplier = getMultiplier().has_value() ? getMultiplier().value() : 1;
+        spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
+      } else if (spec.avg_pooling_quant_mode == 2) {
+        spec.merge_requant = true;
+        spec.rq_scale =
+            getScale().has_value() ? (getScale().value().convertToDouble()) : 1.;
+        spec.rq_offset =
+            getOffset().has_value() ? (getOffset().value().convertToDouble()) : 0.;
+      }
+    }
+  }
+
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}

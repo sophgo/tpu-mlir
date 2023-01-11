@@ -46,3 +46,15 @@ void tpu::ClipOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                         void *sec_info_) {
   llvm_unreachable("Not Implemented");
 }
+
+//dynamic codegen
+int64_t tpu::ClipOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::ClipOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

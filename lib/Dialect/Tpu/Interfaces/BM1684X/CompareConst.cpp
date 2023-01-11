@@ -94,3 +94,15 @@ void tpu::CompareConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_constbinary_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());
 }
+
+//dynamic codegen
+int64_t tpu::CompareConstOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::CompareConstOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}
