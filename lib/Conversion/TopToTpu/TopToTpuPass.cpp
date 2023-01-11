@@ -107,7 +107,7 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   }
 };
 
-template <typename TyOp>
+template <typename TyOp, bool KeepMin = false>
 struct BackwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
 
@@ -121,16 +121,21 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
     if (in.hasOneUse() == false) {
       return failure();
     }
-
+    auto in_qtype = module::getCalibratedType(in);
     auto out_qtype = module::getCalibratedType(out);
     if (module::isCalibratedType(in)) {
       auto in_qtype = module::getCalibratedType(in);
       if (in_qtype.getMax() == out_qtype.getMax() &&
-          in_qtype.getMin() == out_qtype.getMin()) {
+          (KeepMin || in_qtype.getMin() == out_qtype.getMin())) {
         return failure();
       }
     }
     auto in_type = in.getType().cast<RankedTensorType>();
+    if (KeepMin) {
+      auto etype = module::getStorageType(out);
+      out_qtype = quant::CalibratedQuantizedType::get(etype, in_qtype.getMin(),
+                                                      out_qtype.getMax());
+    }
     auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
     in.setType(new_type);
     if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
@@ -331,13 +336,13 @@ protected:
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::MaxPoolWithMaskOp>,
-                 BackwardCalibartion<top::LeakyReluOp>,
+                 BackwardCalibartion<top::LeakyReluOp, true>,
                 //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
     if (!module::isCV18xx()) {
       // notice when it's dominated by negative value
       // and factor is very small it'll cause cumulative error
-      patterns.add<BackwardCalibartion<top::PReluOp>>(ctx_);
+      patterns.add<BackwardCalibartion<top::PReluOp, true>>(ctx_);
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();

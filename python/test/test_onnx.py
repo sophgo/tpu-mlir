@@ -995,32 +995,33 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, oc, 100, 100]
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
+        alpha_cases = [0.67, -0.2]
+        for i, a in enumerate(alpha_cases):
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+            bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
 
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+            conv_def = helper.make_node(
+                "Conv",
+                inputs=['input', 'weight', 'bias'],
+                outputs=['conv_output'],
+                kernel_shape=[3, 3],
+                pads=[1, 1, 1, 1],
+                strides=[1, 1],
+                dilations=[1, 1],
+                group=1,
+            )
 
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['conv_output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
+            leakyrelu_def = helper.make_node("LeakyRelu",
+                                             inputs=['conv_output'],
+                                             outputs=['output'],
+                                             alpha=a)
 
-        leakyrelu_def = helper.make_node("LeakyRelu",
-                                         inputs=['conv_output'],
-                                         outputs=['output'],
-                                         alpha=0.67)
-
-        graph_def = helper.make_graph([conv_def, leakyrelu_def],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias])
-        self.onnx_and_test(graph_def)
+            graph_def = helper.make_graph([conv_def, leakyrelu_def],
+                                          "{}_{}".format(case_name, i), [input], [output],
+                                          initializer=[weight, bias])
+            self.onnx_and_test(graph_def)
 
     def test_Mul(self, case_name):
         input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
@@ -1290,7 +1291,10 @@ class ONNX_IR_TESTER(object):
             for axis in axiss:
                 input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
                 output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
-                softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
+                softmax_def = helper.make_node(case_name,
+                                               inputs=['input'],
+                                               outputs=['output'],
+                                               axis=axis)
                 graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
                 self.onnx_and_test(graph_def)
 
@@ -1836,6 +1840,7 @@ class ONNX_IR_TESTER(object):
 
     def test_TorchLayerNorm(self, case_name):
         normalize_shape = [13, 22]
+
         class Net(torch.nn.Module):
 
             def __init__(self):
@@ -2404,17 +2409,25 @@ class ONNX_IR_TESTER(object):
         input_shape = [3, 128, 100, 100]
         slope_shape = [1, 128, 1, 1]
         output_shape = [3, 128, 100, 100]
-        slope = helper.make_tensor(
-            name="slope",
-            data_type=onnx.TensorProto.FLOAT,
-            dims=slope_shape,
-            vals=np.random.rand(*slope_shape).astype(np.float32),
-        )
-        inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)]
-        outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)]
-        prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output"])
-        graph_def = helper.make_graph([prelu_def], case_name, inputs, outputs, initializer=[slope])
-        self.onnx_and_test(graph_def)
+        scales0 = np.random.rand(*slope_shape).astype(np.float32)
+        scales1 = np.negative(np.abs(scales0))
+        scales_case = [scales0, scales1]
+        for i, s in enumerate(scales_case):
+            slope = helper.make_tensor(
+                name="slope",
+                data_type=onnx.TensorProto.FLOAT,
+                dims=slope_shape,
+                vals=s,
+            )
+            inputs = [helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)]
+            outputs = [helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)]
+            prelu_def = helper.make_node("PRelu", ["input", "slope"], ["output"])
+            graph_def = helper.make_graph([prelu_def],
+                                          "{}_{}".format(case_name, i),
+                                          inputs,
+                                          outputs,
+                                          initializer=[slope])
+            self.onnx_and_test(graph_def)
 
     def test_Sqrt(self, case_name):
         shape = [3, 5, 100, 100]

@@ -60,7 +60,7 @@ void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
     auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
     rewriter.replaceOpWithNewOp<tpu::PReluOp>(op, newType, operands, attrs);
   } else {
-    LoweringF32(rewriter, op);
+    LoweringF16(rewriter, op);
   }
 }
 
