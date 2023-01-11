@@ -558,9 +558,9 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int pht, int phb, int pwl, int pwr,
                            float pad_value) {
   int nc = n * c;
-  int od = (d - 1) * sd + 1 + dd * (kd - 1);
-  int oh = (h - 1) * sh + 1 + dh * (kh - 1);
-  int ow = (w - 1) * sw + 1 + dw * (kw - 1);
+  int od = (d - 1) * sd + 1 + dd * (2 * kd - 2 - pdf - pdb);
+  int oh = (h - 1) * sh + 1 + dh * (2 * kh - 2 - pht - phb);
+  int ow = (w - 1) * sw + 1 + dw * (2 * kw - 2 - pwl - pwr);
   int pst[3] = {(kd - 1) * dd - pdf, (kh - 1) * dh - pht, (kw - 1) * dw - pwl};
   int ped[3] = {(kd - 1) * dd - pdb, (kh - 1) * dh - phb, (kw - 1) * dw - pwr};
   for (int i = 0; i < nc; i++) {
