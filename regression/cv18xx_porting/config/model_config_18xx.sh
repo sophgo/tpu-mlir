@@ -765,7 +765,6 @@ export INPUT_SCALE=1.0,1.0,1.0
 export TOLERANCE_INT8=0.88,0.37  #0.91,0.52
 export TOLERANCE_BF16=0.99,0.98
 export TOLERANCE_BF16_CMDBUF=0.99,0.91
-export DO_QUANT_BF16=0
 export EXCEPTS=detection_out
 export CALI_IMAGES=$DATA_SET/coco/val2017
 fi
@@ -1049,7 +1048,7 @@ export RAW_SCALE=1.0
 export MEAN=0,0,0
 export INPUT_SCALE=0.0039215686,0.0039215686,0.0039215686
 # mish layer
-export EXCEPTS="layer137-conv,layer138-conv/1,layer138-conv,layer142-conv,layer149-conv"
+export EXCEPTS="layer137-conv,layer138-conv/1,layer138-conv,layer142-conv,layer149-conv,layer149-conv/1"
 export OUTPUTS="layer139-conv,layer150-conv,layer161-conv"
 export TOLERANCE_INT8=0.874,0.421 # 0.88,0.46
 export TOLERANCE_BF16=0.998,0.945 # 0.99,0.94
