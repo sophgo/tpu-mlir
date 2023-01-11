@@ -255,8 +255,35 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
   }
 };
 
+struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
+  using OpRewritePattern::OpRewritePattern;
+  ScaleShapeAlign(MLIRContext *context, PatternBenefit benefit = 1)
+      : OpRewritePattern<ScaleOp>(context, benefit) {}
+
+  LogicalResult matchAndRewrite(ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto input_shape = module::getShape(op.getInput());
+    bool changed = false;
+    for (auto operand : op->getOperands()) {
+      if (auto weight = dyn_cast<WeightOp>(op.getScale().getDefiningOp())) {
+        auto weight_shape = module::getShape(operand);
+        if (weight_shape.size() == 1 && input_shape[1] == weight_shape[0]) {
+          auto expand_shape = RankedTensorType::get(
+              {1, weight_shape[0]}, module::getElementType(operand));
+          operand.setType(expand_shape);
+          changed = true;
+        }
+      }
+    }
+    if (changed)
+      return success();
+    else
+      return failure();
+  }
+};
+
 void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<TopScaleToDwConv, TopScaleMergeToConv, TopMultiScaleMergeToOne,
-                 TopScaleMergeToBatchNorm>(context);
+                 TopScaleMergeToBatchNorm, ScaleShapeAlign>(context);
 }
