@@ -324,6 +324,8 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   if (lg_info.group_ops.size() == 1) {
     return true;
   }
+  tensor_infos.clear();
+
 
   int64_t n, c, h, w;
   int64_t max_nslice = 0, max_hslice = 0;
@@ -371,6 +373,7 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   if (lg_info.group_ops.size() == 1) {
     return true;
   }
+  tensor_infos.clear();
 
   int64_t n, c, h, w;
   int64_t max_nslice = 0, max_hslice = 0;

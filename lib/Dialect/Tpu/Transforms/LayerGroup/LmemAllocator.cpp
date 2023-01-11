@@ -511,7 +511,7 @@ static void init_membuf_list(std::list<MemBufSortStd> &membuf_list,
 }
 
 void init_buffer_avail_space(BufferAvailSpace &buffer_avail_space,
-                      std::list<MemBufSortStd> &membuf_list) {
+                             std::list<MemBufSortStd> &membuf_list) {
   avail_space_t avail_space;
   for (auto buflist_it = membuf_list.begin(); buflist_it != membuf_list.end();
        ++buflist_it) {
@@ -602,7 +602,7 @@ bool LmemAllocator::assignLmemAddrWithSecs(const LgInfo &lg_info,
                                            BasicTimeStepPtr &time_step,
                                            shape_secs_t &shape_secs) {
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
- update_data_split(time_step, lg_info, shape_secs);
+  update_data_split(time_step, lg_info, shape_secs);
 //  if (assignLmemAddr(lg_info, time_step, shape_secs)) {
 //    return true;
 //  }
