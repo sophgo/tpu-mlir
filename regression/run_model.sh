@@ -1,15 +1,15 @@
 #!/bin/bash
 set -ex
 
-# all test (f32/f16/bf16/int8): run_model.sh mobilenet_v2 bm1684x all
-# basic test (f32/int8): run_model.sh mobilenet_v2 bm1684x basic
+# all test (f32/f16/bf16/int8): run_model.sh mobilenet_v2 bm1684x all 1/0
+# basic test (f32/int8): run_model.sh mobilenet_v2 bm1684x basic 1/0
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 model_name=$1
 chip_name=$2
 test_type=$3
-
+dyn_mode=$4
 if [ x$1 == x ]; then
   echo "Error: $0 model_name [bm1684x|cv183x]"
   exit 1
@@ -21,6 +21,14 @@ fi
 
 if [ x$test_type == x ]; then
   test_type=all
+fi
+
+if [ x$3 == x ]; then
+  test_type=all
+fi
+
+if [ x$4 == x ]; then
+  dyn_mode=0
 fi
 
 cfg_file=$REGRESSION_PATH/config/${model_name}.cfg
@@ -192,7 +200,8 @@ if [ ${do_f32} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.99,0.99 \
-    --model ${model_name}_${chip_name}_f32.${model_type}
+    --model ${model_name}_${chip_name}_f32.${model_type} \
+    --dyn ${dyn_mode}
 fi
 
 if [ ${do_f16} == 1 ]; then
@@ -204,7 +213,8 @@ if [ ${do_f16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
-    --model ${model_name}_${chip_name}_f16.${model_type}
+    --model ${model_name}_${chip_name}_f16.${model_type} \
+    --dyn ${dyn_mode}
 fi
 
 if [ ${do_bf16} == 1 ]; then
@@ -216,7 +226,8 @@ if [ ${do_bf16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
-    --model ${model_name}_${chip_name}_bf16.${model_type}
+    --model ${model_name}_${chip_name}_bf16.${model_type} \
+    --dyn ${dyn_mode}
 fi
 #########################
 # deploy to int8 bmodel
@@ -269,7 +280,8 @@ if [ ${do_symmetric} == 1 ]; then
     ${excepts_opt} \
     --quant_input \
     --quant_output \
-    --model ${model_name}_${chip_name}_int8_sym.${model_type}
+    --model ${model_name}_${chip_name}_int8_sym.${model_type} \
+    --dyn ${dyn_mode}
 
 fi #do_symmetric
 
@@ -291,7 +303,8 @@ if [ $do_asymmetric == 1 ]; then
     ${test_reference_opt} \
     ${tolerance_asym_opt} \
     ${excepts_opt} \
-    --model ${model_name}_${chip_name}_int8_asym.${model_type}
+    --model ${model_name}_${chip_name}_int8_asym.${model_type} \
+    --dyn ${dyn_mode}
 
 fi #do_asymmetric
 

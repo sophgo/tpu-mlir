@@ -57,3 +57,10 @@ void tpu::SoftmaxOp::codegen_global_bm1684x() {
                              output_spec->data());
   }
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::SoftmaxOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

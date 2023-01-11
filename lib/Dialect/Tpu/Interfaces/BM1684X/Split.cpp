@@ -68,3 +68,10 @@ void tpu::SplitOp::codegen_global_bm1684x() {
   param.dtype = BM168x::getDataType(getInput());
   BM168x::call_global_func("backend_api_split_global", &param, sizeof(param));
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::SplitOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

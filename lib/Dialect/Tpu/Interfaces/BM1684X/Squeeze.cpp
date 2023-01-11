@@ -19,3 +19,10 @@ using namespace tpu_mlir::backend;
 void tpu::SqueezeOp::codegen_global_bm1684x() {
   // do nothing
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::SqueezeOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

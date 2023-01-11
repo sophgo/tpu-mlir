@@ -113,3 +113,10 @@ void tpu::LayerNormOp::codegen_global_bm1684x() {
 //   BM168x::call_local_func("backend_api_layer_norm_local", &param,
 //   sizeof(param));
 // }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::LayerNormOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

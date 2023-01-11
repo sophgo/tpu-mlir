@@ -31,3 +31,10 @@ extern "C" {
 void tpu::GenericCpuOp::codegen_global_bm1684x() {
   llvm_unreachable("Not Implemented");
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::GenericCpuOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

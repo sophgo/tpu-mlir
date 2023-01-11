@@ -60,3 +60,31 @@ void tpu::PermuteOp::codegen_global_bm1684x() {
                            sizeof(param), input_spec->data(),
                            output_spec->data());
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::PermuteOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(transpose_spec_t);
+  transpose_spec_t spec;
+  auto perm = module::getI64Array(getOrder());
+  auto in_shape = module::getShape(getInput());
+  int dims = in_shape.size();
+  spec.buffer_global_addr = module::getAddress(getBuffer());
+  for (int i = 0; i < dims; i++) {
+    spec.order[i] =perm->at(i);
+  }
+
+  int input_neuron_tensors = 0;
+  auto op = getOperation();
+  for (auto v: op->getOperands()) {
+    if (!isa<top::WeightOp, top::NoneOp>(v.getDefiningOp())) {
+      input_neuron_tensors++;
+    }
+  }
+  spec.is_dynamic = input_neuron_tensors > 1;
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}

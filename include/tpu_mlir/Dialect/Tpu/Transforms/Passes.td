@@ -82,4 +82,13 @@ def ConvertReluLimit : Pass<"convert-relu-limit", "FuncOp"> {
   let dependentDialects = ["TpuDialect"];
 }
 
+def DynCodegen : Pass<"dyn_codegen", "ModuleOp"> {
+  let summary = "dynamic codegen for BM168x in tpu by tpuc-opt";
+  let constructor = "createDynCodegenPass()";
+  let dependentDialects = ["TpuDialect"];
+  let options = [
+    Option<"model_file", "model_file", "std::string", /*default=*/"",
+           "save to model file">,
+  ];
+}
 #endif

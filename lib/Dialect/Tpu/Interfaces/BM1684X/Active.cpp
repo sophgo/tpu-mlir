@@ -140,3 +140,44 @@ void tpu::ActiveOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_active_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());
 }
+
+//dynamic codegen
+int64_t tpu::ActiveOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(active_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  active_local_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.common.active_type = (int)getMode();
+  spec.buffer_addr = gi.buffer_addr;
+  if (getCoeffs().has_value()) {
+    const auto coeffs_ = module::getF64Array(getCoeffs().value());
+    for (int i = 0; i < coeffs_->size(); ++i) {
+      spec.common.coeffs[i] = (float)coeffs_->at(i);
+    }
+  }
+
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::ActiveOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(active_global_spec_t);
+  active_global_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.common.active_type = (int)getMode();
+  if (getCoeffs().has_value()) {
+    const auto coeffs_ = module::getF64Array(getCoeffs().value());
+    for (int i = 0; i < coeffs_->size(); ++i) {
+      spec.common.coeffs[i] = (float)coeffs_->at(i);
+    }
+  }
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}
