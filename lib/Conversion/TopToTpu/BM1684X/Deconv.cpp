@@ -37,10 +37,6 @@ void DeconvLowering::LoweringINT4(PatternRewriter &rewriter, top::DeconvOp op,
 }
 void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
                                   bool asymmetric) const {
-  if (asymmetric) {
-    LoweringF32(rewriter, op);
-    return;
-  }
   auto param = op.parseParam();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
