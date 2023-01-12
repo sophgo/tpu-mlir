@@ -7,7 +7,6 @@ file(GLOB _sources
           Canonicalize/*.cpp
           Transforms/*.cpp
           Transforms/BM168x/*.cpp
-          Transforms/BM1684/*.cpp
           Transforms/CV18xx/*.cpp
           Transforms/LayerGroup/*.cpp)
 
