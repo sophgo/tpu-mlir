@@ -120,3 +120,63 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_bcbinary_local", &param, sizeof(param),
                           sec_info_, input_spec->data(), output_spec->data());
 }
+
+//dynamic codegen
+int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(bcbinary_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  std::vector<int64_t> multi_v(2, 1);
+  std::vector<int64_t> rshift_v(2, 0);
+
+  if (module::isUniformQuantized(getInputs()[0], getOutput())) {
+    auto m_v = module::getI64Array(getMultipliers(), 2, 1);
+    auto r_v = module::getI64Array(getRshifts(), 2, 0);
+    multi_v = *m_v.get();
+    rshift_v = *r_v.get();
+  }
+
+  bcbinary_local_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.common.binary_type = BINARY_ADD;
+  spec.common.if_relu = getDoRelu();
+  spec.common.relu_upper_limit = getReluLimit().convertToDouble();
+  spec.common.rshift_A = rshift_v[0];
+  spec.common.rshift_B = rshift_v[1];
+  spec.common.scale_A = multi_v[0];
+  spec.common.scale_B = multi_v[1];
+  spec.buffer_addr = gi.buffer_addr;
+
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::AddOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(bcbinary_common_spec_t);
+  bcbinary_common_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  std::vector<int64_t> multi_v(2, 1);
+  std::vector<int64_t> rshift_v(2, 0);
+
+  if (module::isUniformQuantized(getInputs()[0], getOutput())) {
+    auto m_v = module::getI64Array(getMultipliers(), 2, 1);
+    auto r_v = module::getI64Array(getRshifts(), 2, 0);
+    multi_v = *m_v.get();
+    rshift_v = *r_v.get();
+  }
+  spec.binary_type = BINARY_ADD;
+  spec.if_relu = getDoRelu();
+  spec.relu_upper_limit = getReluLimit().convertToDouble();
+  spec.rshift_A = rshift_v[0];
+  spec.rshift_B = rshift_v[1];
+  spec.scale_A = multi_v[0];
+  spec.scale_B = multi_v[1];
+  auto p = static_cast<char *>(buffer);
+  memcpy(p, &spec, sizeof(spec));
+  p += sizeof(spec);
+  return p - static_cast<char *>(buffer);
+}

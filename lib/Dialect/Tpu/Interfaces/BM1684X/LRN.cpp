@@ -62,3 +62,10 @@ void tpu::LRNOp::codegen_global_bm1684x() {
   BM168x::call_global_func("backend_api_lrn_global", &p,
                            sizeof(lrn_global_param_t));
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::LRNOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

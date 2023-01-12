@@ -204,3 +204,10 @@ void tpu::GRUOp::codegen_global_bm1684x() {
   p.dtype = BM168x::getDataType(getInput());
   BM168x::call_global_func("backend_api_gru_global", &p, sizeof(gru_param_t));
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::GRUOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

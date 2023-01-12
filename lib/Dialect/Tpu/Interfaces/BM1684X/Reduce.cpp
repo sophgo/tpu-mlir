@@ -107,3 +107,10 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
                            sizeof(reduce_full_global_param_t),
                            input_spec->data(), output_spec->data());
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::ReduceOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

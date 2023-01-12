@@ -53,3 +53,10 @@ void tpu::PadOp::codegen_global_bm1684x() {
   BM168x::call_global_func("backend_api_pad_global", &param, sizeof(param),
                                        input_spec->data(), output_spec->data());
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::PadOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

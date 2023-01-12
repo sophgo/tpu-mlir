@@ -192,3 +192,15 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, void *s
                             sizeof(scale_float_local_param_t));
   }
 }
+
+//dynamic codegen
+int64_t tpu::ScaleOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::ScaleOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

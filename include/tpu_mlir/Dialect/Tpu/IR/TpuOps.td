@@ -24,6 +24,8 @@ include "tpu_mlir/Interfaces/LocalGenInterface.td"
 include "tpu_mlir/Interfaces/GlobalGenInterface.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/TypeInterface.td"
+include "tpu_mlir/Interfaces/DynLocalGenInterface.td"
+include "tpu_mlir/Interfaces/DynGlobalGenInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
 // =============================================================================
@@ -213,7 +215,8 @@ class Tpu_Op<string mnemonic, list<Trait> traits = []> :
     Op<Tpu_Dialect, mnemonic, !listconcat(traits,
        [TpuTypeRestrict,
        DeclareOpInterfaceMethods<GlobalGenInterface>,
-       DeclareOpInterfaceMethods<InferenceInterface>])> ;
+       DeclareOpInterfaceMethods<InferenceInterface>,
+       DeclareOpInterfaceMethods<DynGlobalGenInterface>])> ;
 
 def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
   let summary = "buffer operator";
@@ -232,7 +235,8 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>])> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>])> {
   let summary = "convolution operator";
 
   let description = [{
@@ -295,7 +299,8 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   [SupportFuseRelu,
-   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>]> {
+   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>,
+   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>]> {
   let summary = "pool operator";
 
   let description = [{
@@ -334,7 +339,8 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   [SupportFuseRelu,
-   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max pool with operator";
 
   let description = [{
@@ -376,7 +382,8 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
 
   let description = [{
@@ -400,7 +407,8 @@ def Tpu_AddOp: Tpu_Op<"Add", [
 
 def Tpu_AddConstOp: Tpu_Op<"AddConst",
     [SupportFuseRelu, InOutSameShape,
-    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add const operator";
 
   let description = [{
@@ -423,7 +431,8 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
 
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
 
   let description = [{
@@ -448,7 +457,8 @@ def Tpu_SubOp: Tpu_Op<"Sub",
 
 def Tpu_SubConstOp: Tpu_Op<"SubConst",
     [SupportFuseRelu, InOutSameShape,
-    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub const operator";
 
   let description = [{
@@ -473,7 +483,8 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst",
 
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
 
   let description = [{
@@ -494,7 +505,8 @@ def Tpu_MulOp: Tpu_Op<"Mul",
 }
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max operator";
 
   let description = [{
@@ -516,7 +528,8 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
 }
 
 def Tpu_MinOp: Tpu_Op<"Min", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min operator";
 
   let description = [{
@@ -538,7 +551,8 @@ def Tpu_MinOp: Tpu_Op<"Min", [
 }
 
 def Tpu_ActiveOp: Tpu_Op<"Active",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Active operator";
 
   let description = [{
@@ -556,9 +570,9 @@ def Tpu_ActiveOp: Tpu_Op<"Active",
 }
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  [DeclareOpInterfaceMethods<LocalGenInterface>,
+   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Clip operator";
-
   let description = [{
      The operator limits the given input to a certain range.
   }];
@@ -574,7 +588,8 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
 }
 
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul const operator";
 
   let description = [{
@@ -596,7 +611,8 @@ def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
 }
 
 def Tpu_ReciprocalOp: Tpu_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "ConstantBinary (Div) operator";
 
   let description = [{
@@ -640,6 +656,7 @@ def Tpu_Depth2SpaceOp: Tpu_Op<"Depth2Space"> {
 
 def Tpu_LutOp: Tpu_Op<"Lut",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]>{
   let summary = "Lut operator";
 
@@ -658,6 +675,7 @@ def Tpu_LutOp: Tpu_Op<"Lut",
 
 def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
     [DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]>{
   let summary = "LutBF16 operator";
 
@@ -710,7 +728,9 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
 }
 
 def Tpu_ReluOp: Tpu_Op<"Relu",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]>{
+  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  InOutSameShape]>{
   let summary = "Relu operator";
 
   let description = [{
@@ -726,7 +746,8 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_ReshapeOp:Tpu_Op<"Reshape"> {
+def Tpu_ReshapeOp:Tpu_Op<"Reshape",
+    [DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Reshape operation";
   let description = [{
     Returns a tensor with the same type/values as the input, with a new shape
@@ -753,6 +774,7 @@ def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
 
 def Tpu_CastOp:Tpu_Op<"Cast", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>,
   InOutSameShape]> {
   let summary = "Cast operation";
@@ -767,7 +789,8 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
     load input or weight from gmem to lmem;
@@ -783,7 +806,8 @@ def Tpu_LoadOp:Tpu_Op<"Load",
 }
 
 def Tpu_StoreOp:Tpu_Op<"Store",
-  [DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Store operation";
   let description = [{
   }];
@@ -796,8 +820,8 @@ def Tpu_StoreOp:Tpu_Op<"Store",
 
 def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>,
-  InOutSameShape]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, by int multiplier and int shift
@@ -814,8 +838,8 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
 
 def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>,
-  InOutSameShape]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
@@ -831,8 +855,8 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
 
 def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>,
-  InOutSameShape]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant float operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, by float scale and float offset
@@ -849,8 +873,8 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
 
 def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>,
-  InOutSameShape]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "requant float operation";
   let description = [{
     Requant 32/16/8 bit data to int8 or uint8 data, PerAxis(or PerChannel)
@@ -866,8 +890,8 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
 
 def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>,
-  InOutSameShape]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
     Dequant 8 bit data to 32/16 bit data
@@ -885,8 +909,8 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
 
 def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
   DeclareOpInterfaceMethods<LocalGenInterface>,
-  DeclareOpInterfaceMethods<TypeInterface>,
-  InOutSameShape]> {
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  DeclareOpInterfaceMethods<TypeInterface>, InOutSameShape]> {
   let summary = "dequant operation";
   let description = [{
     Dequant 8 bit data to 32/16 bit data, PerAxis(or PerChannel)
@@ -956,6 +980,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
 
 def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
    [DeclareOpInterfaceMethods<LocalGenInterface>,
+   DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]> {
   let summary = "leakyrelu operation";
   let description = [{
@@ -976,7 +1001,8 @@ def Tpu_LeakyReluOp: Tpu_Op<"LeakyRelu",
 }
 
 def Tpu_ConcatOp:Tpu_Op<"Concat", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Concatate operation";
   let description = [{
   Concatenates the given sequence of seq tensors in the given dimension.
@@ -997,7 +1023,8 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
 }
 
 def Tpu_MulShiftOp: Tpu_Op<"MulShift", [
-    DeclareOpInterfaceMethods<LocalGenInterface>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
 
   let summary = "MulShift operator";
 
@@ -1052,7 +1079,8 @@ def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
 
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Upsample operation";
   let description = [{
     Perform nearest upsample on input.
@@ -1069,7 +1097,8 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
 }
 
 def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]>  {
   let summary = "MaxUnpool operation";
   let description = [{
     Perform MaxUnpool on input.
@@ -1185,7 +1214,8 @@ def Tpu_SplitOp: Tpu_Op<"Split"> {
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "deconvolution operator";
 
   let description = [{
@@ -1236,7 +1266,8 @@ def Tpu_SqueezeOp: Tpu_Op<"Squeeze"> {
 
 def Tpu_ScaleOp: Tpu_Op<"Scale", [
   SupportFuseRelu, InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Scale operator";
 
   let description = [{
@@ -1371,7 +1402,8 @@ def Tpu_LSTMCVIOp: Tpu_Op<"LSTMCVI"> {
 }
 
 def Tpu_TileOp:Tpu_Op<"Tile", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Tile operation";
   let description = [{
     Returns a tensor with the same type as the input, with a new shape
@@ -1403,7 +1435,9 @@ def Tpu_GatherOp: Tpu_Op<"Gather", [
 }
 
 def Tpu_PReluOp : Tpu_Op<"PReluOp", [
-  DeclareOpInterfaceMethods<LocalGenInterface>, InOutSameShape]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>,
+  InOutSameShape]> {
   let summary = "PReluOp operator";
   let description = [{
      f(x) = slope * x   for x < 0
@@ -1478,7 +1512,8 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
 }
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Where operator";
   let description = [{
     Return elements, either from X or Y, depending on condition.
@@ -1492,7 +1527,8 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
 }
 
 def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "MaskedFill operator";
   let description = [{
     Return elements, either from X or Y, depending on condition.
@@ -1507,7 +1543,8 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
 }
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Compare operator";
   let description = [{
     Returns the tensor resulted from performing the compare
@@ -1523,7 +1560,8 @@ def Tpu_CompareOp: Tpu_Op<"Compare", [
 
 def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "CompareConst operator";
   let description = [{
     Returns the tensor resulted from performing the compare

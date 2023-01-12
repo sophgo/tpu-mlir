@@ -168,3 +168,45 @@ LogicalResult tpu::Pool2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   LocalGenInterface::fixSlice(in_idx, in_slice, attr.ih, is_last);
   return success();
 }
+
+LogicalResult tpu::Pool2DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
+                                       int64_t out_idx, int64_t out_slice) {
+  auto &attr = getPool2DParam(*this);
+  if (attr.is_global) {
+    if (out_idx != 0 || out_slice != attr.oh) {
+      return failure();
+    }
+    in_idx = 0;
+    in_slice = attr.ih;
+    return success();
+  }
+  in_slice = (out_slice - 1) * attr.sh + attr.kh;
+  in_idx = out_idx * attr.sh - attr.pad_h;
+  return success();
+}
+
+
+LogicalResult tpu::Pool2DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
+  auto &attr = getPool2DParam(*this);
+  in_kh = (out_kh - 1) * attr.sh + attr.kh;
+  return success();
+}
+
+
+LogicalResult tpu::Pool2DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+  auto &attr = getPool2DParam(*this);
+  in_stride_h = out_stride_h * attr.sh;
+  return success();
+}
+
+LogicalResult tpu::Pool2DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+  auto &attr = getPool2DParam(*this);
+  in_up_pad_h = out_up_pad_h * attr.sh + attr.pad_h;
+  return success();
+}
+
+LogicalResult tpu::Pool2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+  auto &attr = getPool2DParam(*this);
+  in_down_pad_h = out_down_pad_h * attr.sh + attr.pad_h_after;
+  return success();
+}

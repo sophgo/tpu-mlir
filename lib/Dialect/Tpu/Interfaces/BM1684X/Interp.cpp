@@ -136,3 +136,10 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
                                       sizeof(param));
 }
 #endif
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

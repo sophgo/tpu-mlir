@@ -111,3 +111,15 @@ void tpu::DequantIntAxisOp::codegen_local_bm1684x(int64_t n_step,
   BM168x::call_local_func("backend_api_dequant_int_local", &param,
                           sizeof(param));
 }
+
+//dynamic codegen
+int64_t tpu::DequantIntAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::DequantIntAxisOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}
