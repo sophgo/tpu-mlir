@@ -33,7 +33,7 @@ typedef struct stage_param{
 class SubnetIr {
   public:
     explicit SubnetIr(StringRef chip_name, int version) : chip(chip_name), dynamic_version(version) {fw_ir_length = 0;}
-    ~SubnetIr () {clear_all();}
+    virtual ~SubnetIr () {clear_all();}
     void generate_compiler_ir(ModuleOp &module, func::CallOp &call,
                               std::function<void(Operation *, SubnetIr*)> task);
 

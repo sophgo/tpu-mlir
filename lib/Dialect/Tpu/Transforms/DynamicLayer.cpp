@@ -70,15 +70,6 @@ int get_layer_id(Operation *op) {
     return layer_ID[op];
   }
 }
-
-Operation *get_op_from_layer_id(int layer_id) {
-  for (auto it = layer_ID.begin(); it != layer_ID.end(); it++) {
-    if (it->second == layer_id)
-      return it->first;
-  }
-
-  return nullptr;
-}
 #else
 int get_tensor_id(Value v) {
   if (tensor_ID.find(v) != tensor_ID.end())
@@ -96,15 +87,6 @@ int get_layer_id(Operation *op) {
     layer_ID[op] = g_layer_id++;
     return layer_ID[op];
   }
-}
-
-Operation *get_op_from_layer_id(int layer_id) {
-  for (auto it = layer_ID.begin(); it != layer_ID.end(); it++) {
-    if (it->second == layer_id)
-      return it->first;
-  }
-
-  return nullptr;
 }
 #endif
 
