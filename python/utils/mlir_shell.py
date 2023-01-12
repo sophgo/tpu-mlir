@@ -73,12 +73,13 @@ def mlir_lowering(top_mlir: str,
 def mlir_to_model(tpu_mlir: str,
                   model: str,
                   final_mlir: str,
+                  dyn: int = 0,
                   quant_input: bool = False,
                   quant_output: bool = False):
     codegen_param = '--codegen="model_file={}"'.format(model)
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
-
+    dyn_codegen_param = '--dyn_codegen="model_file={}"'.format(model)
     # generate final mlir
     cmd = [
         "tpuc-opt",
@@ -103,7 +104,7 @@ def mlir_to_model(tpu_mlir: str,
         "tpuc-opt",
         final_mlir,
         "--init",
-        codegen_param,
+        codegen_param if dyn == 0 else dyn_codegen_param,
         ">/dev/null",
     ]
 

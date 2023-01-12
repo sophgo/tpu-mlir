@@ -25,3 +25,10 @@ using namespace tpu_mlir::bm1684x;
 void tpu::PoolMaskOp::codegen_global_bm1684x() {
   llvm_unreachable("This is for cv18xx.");
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::PoolMaskOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

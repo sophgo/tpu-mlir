@@ -34,3 +34,4 @@ typedef struct {
 
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/LocalGenInterface.h.inc"
+#include "tpu_mlir/Interfaces/DynLocalGenInterface.h.inc"

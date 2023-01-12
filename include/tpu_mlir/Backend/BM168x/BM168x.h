@@ -97,8 +97,7 @@ typedef struct bmcompiler_mem_info {
 } bm_mem_desc_t;
 typedef struct bmcompiler_mem_info bm_device_mem_t;
 
-static constexpr int MAX_SHAPE_DIMS = 8;
-
+#define MAX_SHAPE_DIMS 8
 typedef struct local_tensor_spec {
   uint64_t addr;
   int32_t dtype;
@@ -473,6 +472,10 @@ typedef struct {
   int dtype;
 } layer_norm_local_param_t;
 
+typedef struct reshape_spec {
+    int32_t dims;
+    int32_t shape[MAX_SHAPE_DIMS];
+} reshape_spec_t ;
 #ifdef __cplusplus
 }
 #endif

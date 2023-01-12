@@ -106,3 +106,47 @@ void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_concat_local", &spec, sizeof(spec),
                           sec_info_, input_spec->data(), output_spec->data());
 }
+
+//dynamic codegen
+int64_t tpu::ConcatOp::dyn_codegen_local_bm1684x(void *buffer) {
+  int input_num = getInputs().size();
+  if (buffer) {
+      concat_common_spec_t common;
+      memset(&common, 0, sizeof(common));
+      common.input_num = input_num;
+      common.concat_axis = getAxis();
+      auto p = static_cast<char *>(buffer);
+      memcpy(p, &common, sizeof(common));
+      p += sizeof(common);
+      int size = p - static_cast<char *>(buffer);
+      buffer = (char*)buffer + size;
+      SmallVector<int> is_st_concat_way(input_num, 0);
+      p = static_cast<char *>(buffer);
+      memcpy(p,is_st_concat_way.data(), sizeof(is_st_concat_way[0]) * input_num);
+      p += sizeof(is_st_concat_way[0]) * input_num;
+  }
+  return sizeof(concat_common_spec_t) + input_num * sizeof(int);
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::ConcatOp::dyn_codegen_global_bm1684x(void *buffer) {
+  int input_num = getInputs().size();
+  if (buffer) {
+      concat_common_spec_t common;
+      memset(&common, 0, sizeof(common));
+      common.input_num = input_num;
+      common.concat_axis = getAxis();
+      auto p = static_cast<char *>(buffer);
+      memcpy(p, &common, sizeof(common));
+      p += sizeof(common);
+      int size = p - static_cast<char *>(buffer);
+      buffer = (char*)buffer + size;
+      SmallVector<int> is_st_concat_way(input_num, 0);
+      p = static_cast<char *>(buffer);
+      memcpy(p,is_st_concat_way.data(), sizeof(is_st_concat_way[0]) * input_num);
+      p += sizeof(is_st_concat_way[0]) * input_num;
+  }
+  return sizeof(concat_common_spec_t) + input_num * sizeof(int);
+}

@@ -20,3 +20,9 @@ void tpu::ShuffleChannelOp::codegen_global_bm1684x() {
   llvm_unreachable("Not Implemented");
 }
 
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::ShuffleChannelOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

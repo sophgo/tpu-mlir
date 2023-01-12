@@ -253,3 +253,15 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_pool3d_local", &spec,
                           sizeof(pooling3d_spec_t));
 }
+
+//dynamic codegen
+int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

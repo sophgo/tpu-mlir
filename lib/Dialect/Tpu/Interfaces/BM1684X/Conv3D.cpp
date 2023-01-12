@@ -406,3 +406,15 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_conv3d_local", &spec,
                           sizeof(conv3d_local_spec_t));
 }
+
+//dynamic codegen
+int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

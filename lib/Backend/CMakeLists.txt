@@ -10,4 +10,5 @@ add_llvm_library(TPUMLIRBackend
   LINK_LIBS PUBLIC
   TPUMLIRSupport
   MLIRLocalGenInterface
+  MLIRDynLocalGenInterface
 )

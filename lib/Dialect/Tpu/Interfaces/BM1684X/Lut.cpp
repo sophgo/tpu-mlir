@@ -120,3 +120,15 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   p.shape[3] = w;
   BM168x::call_local_func("backend_api_lut", &p, sizeof(p));
 }
+
+//dynamic codegen
+int64_t tpu::LutOp::dyn_codegen_local_bm1684x(void *buffer) {
+return 0;
+}
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::LutOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}

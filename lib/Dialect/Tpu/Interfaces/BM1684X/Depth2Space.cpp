@@ -56,3 +56,10 @@ void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
   BM168x::call_global_func("backend_api_depth2space_global", &param,
                            sizeof(param));
 }
+
+// ======================================
+// Dynamic GlobalGenInterface
+// ======================================
+int64_t tpu::Depth2SpaceOp::dyn_codegen_global_bm1684x(void *buffer) {
+  return 0;
+}
