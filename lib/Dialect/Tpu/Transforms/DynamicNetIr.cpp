@@ -531,8 +531,6 @@ void SubnetIr::generate_group_time_step_ir(
             gdma_field.emplace_back(make_pair(sub_group.group_ops[id]->getResult(0), ti));
           }
         } else {
-          auto lgOp = dyn_cast<DynLocalGenInterface>(sub_group.group_ops[id]);
-          auto ginfo = lgOp.DynGetGroupInfo((int64_t)0, (int64_t)0);
           tpu_field.emplace_back(sub_group.group_ops[id]);
           if (get_dynamic_version() >= 2)
           {
