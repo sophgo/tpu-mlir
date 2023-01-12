@@ -799,19 +799,20 @@ class ONNX_IR_TESTER(object):
         self.ConvBase(case_name, [1, 16, 100], [oc, 16, 3], [1, oc, 100], [3], [1, 1], [1], [1], 1)
 
     def test_Conv2d(self, case_name):
-        oc = 65
-        input_shape = [1, 16, 100, 100]
-        filter_shape = [oc, 16, 3, 3]
-        output_shape = [1, oc, 100, 100]
-        self.ConvBase(case_name,
-                      input_shape,
-                      filter_shape,
-                      output_shape,
-                      kernel=[3, 3],
-                      padding=[1, 1, 1, 1],
-                      stride=[1, 1],
-                      dilation=[1, 1],
-                      groups=1)
+        batchs = [1, 2, 4]
+        for idx, batch in enumerate(batchs):
+            input_shape = [batch, 16, 100, 100]
+            filter_shape = [65, 16, 3, 3]
+            output_shape = [batch, 65, 100, 100]
+            self.ConvBase("{}_{}".format(case_name, idx),
+                          input_shape,
+                          filter_shape,
+                          output_shape,
+                          kernel=[3, 3],
+                          padding=[1, 1, 1, 1],
+                          stride=[1, 1],
+                          dilation=[1, 1],
+                          groups=1)
 
     def test_ConvStride(self, case_name):
         in_shape0 = [1, 32, 320, 320]

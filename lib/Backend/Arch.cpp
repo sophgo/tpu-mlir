@@ -52,6 +52,15 @@ void Arch::init() {
   }
 }
 
+int64_t Arch::eu_num(double dbytes) {
+  return EU_BYTES / dbytes;
+  // if (chip != module::Chip::BM1684) {
+  //   return EU_BYTES / dbytes;
+  // }
+  // // 1684 is special
+  // return dbytes == 1 ? EU_BYTES : EU_BYTES / 8;
+}
+
 int64_t Arch::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
                              Type type, bool eu_align) {
   int64_t npu_num = Arch::NPU_NUM;

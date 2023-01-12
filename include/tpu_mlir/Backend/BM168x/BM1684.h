@@ -76,7 +76,7 @@ typedef void (*nodechip_multiregion_forward_parallel)(uint64_t *bottom_global_of
 typedef void (*nodechip_deconv_forward_parallel_with_data_split)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t weight_offset_global, uint64_t bias_offset_global, int input_n, int input_c, int input_h, int input_w, int groups, int output_c, int kh, int kw, int dh, int dw, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int stride_h, int stride_w, int output_padding_h, int output_padding_w, int using_bias, int result_add, int if_relu, int coef_st_way, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_deconv_fix16b_forward_parallel)(uint64_t ifmap_global_addr, uint64_t ofmap_global_addr, uint64_t weight_global_addr, uint64_t bias_global_addr, int input_n, int input_c, int input_h, int input_w, int output_c, int groups, int kh, int kw, int dh, int dw, int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r, int stride_h, int stride_w, int output_padding_h, int output_padding_w, int using_bias, int if_relu, int rshift_num, int coef_st_way, int ifmap_sign, int weight_sign, int bias_sign, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_deconv_fix8b_forward_parallel)(uint64_t ifmap_global_addr, uint64_t ofmap_global_addr, uint64_t weight_global_addr, uint64_t bias_global_addr, int input_n, int input_c, int input_h, int input_w, int output_c, int groups, int kh, int kw, int dh, int dw, int pad_h_t, int pad_h_b, int pad_w_l, int pad_w_r, int stride_h, int stride_w, int output_padding_h, int output_padding_w, int using_bias, int if_relu, int rshift_num, int coef_st_way, int ifmap_sign, int weight_sign, int bias_sign, CMD_ID_NODE *pid_node);
-typedef void (*nodechip_depthwise_forward_parallel_with_dilation)(uint64_t input_global_offset, uint64_t output_global_offset, uint64_t weight_global_offset, uint64_t bias_global_offset, int input_n, int input_c, int input_h, int input_w, int kernel_h, int kernel_w, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int stride_h, int stride_w, int dilate_h, int dilate_w, int using_bias, int if_relu, float relu_upper_limit, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_depthwise_forward_parallel)(uint64_t input_global_offset, uint64_t output_global_offset, uint64_t weight_global_offset, uint64_t bias_global_offset, int input_n, int input_c, int input_h, int input_w, int kernel_h, int kernel_w, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int stride_h, int stride_w, int dilate_h, int dilate_w, int using_bias, int if_relu, float relu_upper_limit, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_conv_forward_parallel_with_data_split)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t weight_offset_global, uint64_t bias_offset_global, int input_n, int input_c, int input_h, int input_w, int groups, int output_c, int kh, int kw, int dh, int dw, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int stride_h, int stride_w, int using_bias, int result_add, int if_relu, float relu_upper_limit, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_winograd_forward_parallel_with_data_split)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t weight_offset_global, uint64_t bias_offset_global, int input_n, int input_c, int input_h, int input_w, int groups, int output_c, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int using_bias, int result_add, int if_relu, float relu_upper_limit, int winograd_flag, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_winograd_forward_parallel_fix8b_with_data_split)(uint64_t ifmap_offset_global, uint64_t ofmap_offset_global, uint64_t weight_offset_global, uint64_t bias_offset_global, int input_n, int input_c, int input_h, int input_w, int groups, int output_c, int pad_h, int pad_h_after, int pad_w, int pad_w_after, int using_bias, int if_relu, int upper_limit, int winograd_flag, int ins_h, int ins_w, int rshiftbits, int opd0_sign, int opd1_sign, int opd2_sign, int opd0_short_str, int if_concat_scale, int concat_scale_val, int concat_scale_rshift, int concat_output_sign, CMD_ID_NODE *pid_node);
@@ -250,7 +250,7 @@ public:
   nodechip_deconv_forward_parallel_with_data_split dl_nodechip_deconv_forward_parallel_with_data_split;
   nodechip_deconv_fix16b_forward_parallel dl_nodechip_deconv_fix16b_forward_parallel;
   nodechip_deconv_fix8b_forward_parallel dl_nodechip_deconv_fix8b_forward_parallel;
-  nodechip_depthwise_forward_parallel_with_dilation dl_nodechip_depthwise_forward_parallel_with_dilation;
+  nodechip_depthwise_forward_parallel dl_nodechip_depthwise_forward_parallel;
   nodechip_conv_forward_parallel_with_data_split dl_nodechip_conv_forward_parallel_with_data_split;
   nodechip_winograd_forward_parallel_with_data_split dl_nodechip_winograd_forward_parallel_with_data_split;
   nodechip_winograd_forward_parallel_fix8b_with_data_split dl_nodechip_winograd_forward_parallel_fix8b_with_data_split;
@@ -359,7 +359,7 @@ public:
 protected:
   BM1684() {
     NPU_NUM = 64;
-    EU_BYTES = 128;
+    EU_BYTES = 128; // only for int8; 128 for fp32
     LMEM_BYTES = 1 << 19; // 512KB
     LMEM_BANKS = 8;
     ALIGNMENT = 0x1000;

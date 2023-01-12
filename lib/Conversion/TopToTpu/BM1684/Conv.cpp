@@ -14,7 +14,6 @@ namespace bm1684 {
 
 void ConvLowering::LoweringF32(PatternRewriter &rewriter,
                                top::ConvOp op) const {
-  rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   const int nInputs = op->getNumOperands();
   for (auto i = 0; i < nInputs; ++i) {
@@ -30,19 +29,15 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 
   Value newValue;
   if (op.getKernelShape().size() == 1) {
-    auto newOp = rewriter.create<tpu::Conv1DOp>(
-        op->getLoc(), op.getOutput().getType(), operands, attrs);
-    newValue = newOp.getOutput();
+    rewriter.replaceOpWithNewOp<tpu::Conv1DOp>(op, op.getOutput().getType(),
+                                               operands, attrs);
   } else if (op.getKernelShape().size() == 2) {
-    auto newOp = rewriter.create<tpu::Conv2DOp>(
-        op->getLoc(), op.getOutput().getType(), operands, attrs);
-    newValue = newOp.getOutput();
+    rewriter.replaceOpWithNewOp<tpu::Conv2DOp>(op, op.getOutput().getType(),
+                                               operands, attrs);
   } else {
-    auto newOp = rewriter.create<tpu::Conv3DOp>(
-        op->getLoc(), op.getOutput().getType(), operands, attrs);
-    newValue = newOp.getOutput();
+    rewriter.replaceOpWithNewOp<tpu::Conv3DOp>(op, op.getOutput().getType(),
+                                               operands, attrs);
   }
-  rewriter.replaceOp(op, {newValue});
 }
 
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
