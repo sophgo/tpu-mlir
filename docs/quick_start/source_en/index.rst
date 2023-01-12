@@ -16,4 +16,5 @@ TPU-MLIR Quick Start
    04_tflite
    05_caffe
    06_mix_precision
-   07_test_sdk
+   07_to_onnx_convert
+   08_test_sdk
