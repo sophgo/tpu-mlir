@@ -773,7 +773,7 @@ class ONNX_IR_TESTER(object):
         self.ConvBase(case_name, [1, 16, 100], [oc, 16, 3], [1, oc, 100], [3], [1, 1], [1], [1], 1)
 
     def test_Conv2d(self, case_name):
-        oc = 32
+        oc = 65
         input_shape = [1, 16, 100, 100]
         filter_shape = [oc, 16, 3, 3]
         output_shape = [1, oc, 100, 100]
@@ -1094,10 +1094,10 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Scale(self, case_name):
-        input_shape = [1, 32, 100, 100]
-        output_shape = [1, 32, 100, 100]
-        weight_shape = [1, 32, 1, 1]
-        offset_shape = [1, 32, 1, 1]
+        input_shape = [1, 65, 100, 100]
+        output_shape = [1, 65, 100, 100]
+        weight_shape = [1, 65, 1, 1]
+        offset_shape = [1, 65, 1, 1]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         offset_data = np.random.randn(*offset_shape).astype(np.float32)
 

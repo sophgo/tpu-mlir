@@ -85,7 +85,6 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
   }
   auto conv = (Conv *)p.handle;
   conv->run();
-  bool is_cv18xx = module::isCV18xx();
   // requant
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
@@ -113,6 +112,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     }
     auto mode = getQuantMode();
     MultiplierType m_type;
+    bool is_cv18xx = module::isCV18xx();
     if (is_cv18xx) {
       m_type = CVI_QDM_QUANT;
     } else {
@@ -129,7 +129,6 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
       int64_t multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
       int32_t bias = bias_i32->at(ic);
-
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
@@ -140,13 +139,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           if (do_relu && (v < 0)) {
             v = 0;
           }
-          if (sType.isInteger(8)) {
-            p.outputs[0][offset] =
-                sType.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
-          } else {
-            p.outputs[0][offset] =
-                sType.isUnsignedInteger(4) ? to_uint4(v) : to_int4(v);
-          }
+          p.outputs[0][offset] = saturate(v, out_type);
         }
       }
     }
