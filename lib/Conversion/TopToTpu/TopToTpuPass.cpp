@@ -272,7 +272,6 @@ public:
     LoweringConfig::isQuantized = false;
     module::setChip(StringRef(chip).upper());
     module::setMode(StringRef(mode).upper());
-
     if (module::isState(module::State::TOP_QUANTIZED)) {
       module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;
@@ -336,13 +335,16 @@ protected:
     patterns.add<BackwardCalibartion<top::ReluOp>,
                  BackwardCalibartion<top::MaxPoolOp>,
                  BackwardCalibartion<top::MaxPoolWithMaskOp>,
-                 BackwardCalibartion<top::LeakyReluOp, true>,
+                 //BackwardCalibartion<top::LeakyReluOp, true>,
                 //  BackwardCalibartion<top::PReluOp>,
                  BackwardCalibartion<top::AbsOp>>(ctx_);
     if (!module::isCV18xx()) {
       // notice when it's dominated by negative value
       // and factor is very small it'll cause cumulative error
       patterns.add<BackwardCalibartion<top::PReluOp, true>>(ctx_);
+      patterns.add<BackwardCalibartion<top::LeakyReluOp, true>>(ctx_);
+    } else {
+      patterns.add<BackwardCalibartion<top::LeakyReluOp, false>>(ctx_);
     }
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
     patterns.clear();
@@ -388,6 +390,10 @@ protected:
           }
           auto out_qtype = module::getCalibratedType(value);
           if (out_qtype.getMin() != -out_qtype.getMax()) {
+            if (out_qtype.getMin() == 0 && out_qtype.getMax() == 255) {
+              //uint8 output
+              continue;
+            }
             auto max = out_qtype.getMax();
             auto quant_type = quant::CalibratedQuantizedType::get(
                 out_qtype.getExpressedType(), -max, max);

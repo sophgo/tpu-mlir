@@ -80,6 +80,7 @@ top::NoneOp getNoneOp(Operation *op) {
   return NoneOp;
 }
 
+
 Value getOriValue(Value v) {
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
@@ -115,6 +116,19 @@ Value getOriValue(Value v) {
     }
   }
   llvm_unreachable("Failed to get preOperation.FIx me");
+}
+
+Operation* getNextOp(Operation *op) {
+  Operation *nextOp = nullptr;
+  if (op->getResult(0).hasOneUse()) {
+    for (auto &use : op->getResult(0).getUses()) {
+      nextOp = use.getOwner();
+      break;
+    }
+    assert(nextOp && "nextOp is nullptr");
+  }
+  // if not found, will return NULL
+  return nextOp;
 }
 
 Value getOperand(Operation *op, int i) {
