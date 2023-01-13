@@ -91,7 +91,7 @@ def align_type_and_shape(d1, d2):
             d2 = d2[:, :, ::sh, ::sw]
             print("Ignore this warning, continue")
         else:
-            raise ValueError("Fatal, stop")
+            raise RuntimeError("Fatal, stop")
 
     t1 = d1.dtype
     t2 = d2.dtype
@@ -117,27 +117,26 @@ def dequantize(d1, threshold):
     return d1
 
 
-def compare_one_array(tc, npz1, npz2, name, thresholds, verbose, lock, dic, int8_tensor_close):
+def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close):
     lock.acquire()
     d1 = npz1[name]
     d2 = npz2[name]
     lock.release()
-    if name in thresholds and not thresholds[name] == 0.0:
-        d1 = dequantize(d1, thresholds[name])
     try:
         d1, d2 = align_type_and_shape(d1, d2)
     except:
-        raise ValueError("{} in two npz file is not same shape. {} v.s. {}".format(
+        print("Error: {} in two npz file is not same shape. {} v.s. {}".format(
             name, d1.shape, d2.shape))
+        result = (False, tc.NOT_MATCH, {}, None)
+        dic[name] = result
+        return result
     result = tc.compare(d1, d2, verbose, int8_tensor_close)
     dic[name] = result
     return result
 
 
-def print_result_one_array(tc, npz1, name, thresholds, dic, verbose):
+def print_result_one_array(tc, npz1, name, dic, verbose):
     d1 = npz1[name]
-    if name in thresholds and not thresholds[name] == 0.0:
-        print("Apply dequantization with threhold {}".format(thresholds[name]))
     tc.print_result(d1, name, dic[name], verbose)
 
 
@@ -159,7 +158,6 @@ def npz_compare(args_list):
         excepts = [str(s) for s in args.excepts.split(',')]
 
     ordered_names = []
-    thresholds = {}
     operations = {}
     quant_types = {}
 
@@ -197,7 +195,7 @@ def npz_compare(args_list):
         processes = []
         for name in compare_process_name_list:
             p = multiprocessing.Process(target=compare_one_array,
-                                        args=(tc, npz1, npz2, name, thresholds, args.verbose, lock,
+                                        args=(tc, npz1, npz2, name , args.verbose, lock,
                                               dic, int8_tensor_close))
             processes.append(p)
             p.start()
@@ -209,7 +207,7 @@ def npz_compare(args_list):
         if dic.get(name) == None:
             continue
         stats.update(name, dic.get(name))
-        print_result_one_array(tc, npz1, name, thresholds, dic, args.verbose)
+        print_result_one_array(tc, npz1, name, dic, args.verbose)
 
     stats.print_result()
     if (args.save):

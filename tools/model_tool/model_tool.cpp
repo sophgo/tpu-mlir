@@ -33,23 +33,18 @@ using namespace std;
 // show usage of tool
 static void usage(void) {
   cout << "Usage:" << endl;
+  // clang-format off
   cout << "  model_tool" << endl
        << "    --info model_file : show brief model info" << endl
        << "    --chip model_file : show chip of model" << endl
+       << "    --dynamic model_file : true or false" << endl
        << "    --print model_file : show detailed model info" << endl
-       << "    --extract model_file : extract one multi-net bmodel to multi "
-          "one-net bmodels"
-       << endl
-       << "    --combine file1 .. fileN -o new_file: combine bmodels to one "
-          "bmodel by filepath"
-       << endl
-       << "    --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one "
-          "bmodel by directory path"
-       << endl
-       << "    --dump model_file start_offset byte_size out_file: dump binary "
-          "data to file from bmodel"
-       << endl
+       << "    --extract model_file : extract one multi-net bmodel to multi one-net bmodels" << endl
+       << "    --combine file1 .. fileN -o new_file: combine bmodels to one bmodel by filepath" << endl
+       << "    --combine_dir dir1 .. dirN -o new_dir: combine bmodels to one bmodel by directory path" << endl
+       << "    --dump model_file start_offset byte_size out_file: dump binary data to file from bmodel" << endl
        << endl;
+  // clang-format on
 }
 
 // print all model parameters by json format
@@ -196,6 +191,19 @@ static void show_chip(const string &filename) {
   }
   auto model = model_ctx.model();
   cout << model->chip()->c_str();
+}
+
+static void show_dynamic(const string &filename) {
+  ModelCtx model_ctx(filename);
+  if (!model_ctx) {
+    FATAL("file[%s] is not correct", filename.c_str());
+  }
+  auto model = model_ctx.model();
+  if (model->net()->Get(0)->parameter()->Get(0)->is_dynamic()) {
+    cout << "true";
+  } else {
+    cout << "false";
+  }
 }
 
 // update binary data when copy one net to new flatbuffers
@@ -586,6 +594,8 @@ int main(int argc, char **argv) {
     show(argv[2]);
   } else if (cmd == "--chip") {
     show_chip(argv[2]);
+  } else if (cmd == "--is_dynamic") {
+    show_dynamic(argv[2]);
   } else if (cmd == "--extract") {
     extract(argv[2]);
   } else if (cmd == "--combine") {

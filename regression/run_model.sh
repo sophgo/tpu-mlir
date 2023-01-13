@@ -44,6 +44,7 @@ eval do_bf16=\${${chip_name}_support_bf16}
 eval do_f16=\${${chip_name}_support_f16}
 eval do_asymmetric=\${${chip_name}_support_asym}
 eval do_symmetric=\${${chip_name}_support_sym}
+eval do_dynamic=\${${chip_name}_support_dyn}
 eval model_type=\${${chip_name}_model_type}
 
 if [ x${model_type} == x ]; then
@@ -94,6 +95,7 @@ if echo ${model_path} | grep -q -E '\.tflite$'; then
   do_bf16=0
   do_symmetric=0
   do_asymmetric=1
+  do_dynamic=0
 fi
 
 excepts_opt=
@@ -200,8 +202,7 @@ if [ ${do_f32} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.99,0.99 \
-    --model ${model_name}_${chip_name}_f32.${model_type} \
-    --dyn ${dyn_mode}
+    --model ${model_name}_${chip_name}_f32.${model_type}
 fi
 
 if [ ${do_f16} == 1 ]; then
@@ -213,8 +214,7 @@ if [ ${do_f16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
-    --model ${model_name}_${chip_name}_f16.${model_type} \
-    --dyn ${dyn_mode}
+    --model ${model_name}_${chip_name}_f16.${model_type}
 fi
 
 if [ ${do_bf16} == 1 ]; then
@@ -226,9 +226,9 @@ if [ ${do_bf16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
-    --model ${model_name}_${chip_name}_bf16.${model_type} \
-    --dyn ${dyn_mode}
+    --model ${model_name}_${chip_name}_bf16.${model_type}
 fi
+
 #########################
 # deploy to int8 bmodel
 #########################
@@ -280,8 +280,7 @@ if [ ${do_symmetric} == 1 ]; then
     ${excepts_opt} \
     --quant_input \
     --quant_output \
-    --model ${model_name}_${chip_name}_int8_sym.${model_type} \
-    --dyn ${dyn_mode}
+    --model ${model_name}_${chip_name}_int8_sym.${model_type}
 
 fi #do_symmetric
 
@@ -303,10 +302,97 @@ if [ $do_asymmetric == 1 ]; then
     ${test_reference_opt} \
     ${tolerance_asym_opt} \
     ${excepts_opt} \
-    --model ${model_name}_${chip_name}_int8_asym.${model_type} \
-    --dyn ${dyn_mode}
+    --model ${model_name}_${chip_name}_int8_asym.${model_type}
 
 fi #do_asymmetric
+
+#########################
+# deploy to dynamic bmodel
+#########################
+if [ $do_dynamic == 1 ]; then
+
+  dynamic_shapes_opt="--input_shapes=${dynamic_shapes}"
+  static_model_name=${model_name}_static
+  dynamic_model_name=${model_name}_dynamic
+  model_transform.py \
+    --model_name ${static_model_name} \
+    ${model_def_opt} \
+    ${model_data_opt} \
+    ${output_names_opt} \
+    ${dynamic_shapes_opt} \
+    ${resize_dims_opt} \
+    ${keep_aspect_ratio_opt} \
+    ${mean_opt} \
+    ${scale_opt} \
+    ${pixel_format_opt} \
+    ${channel_format_opt} \
+    ${pad_value_opt} \
+    ${pad_type_opt} \
+    ${model_format_opt} \
+    ${test_input_opt} \
+    ${test_result_opt} \
+    ${excepts_opt} \
+    --mlir ${static_model_name}.mlir
+
+  static_input_npz=${static_model_name}_in_f32.npz
+
+  if [ ${do_f32} == 1 ]; then
+    static_model=${static_model_name}_${chip_name}_f32.${model_type}
+    dynamic_model=${dynamic_model_name}_${chip_name}_f32.${model_type}
+    model_deploy.py \
+      --mlir ${static_model_name}.mlir \
+      --quantize F32 \
+      --chip ${chip_name} \
+      --model ${static_model}
+
+    model_deploy.py \
+      --mlir ${model_name}.mlir \
+      --quantize F32 \
+      --chip ${chip_name} \
+      --dynamic \
+      ${test_innpz_opt} \
+      ${test_reference_opt} \
+      ${excepts_opt} \
+      --tolerance 0.99,0.99 \
+      --model ${dynamic_model}
+
+    model_runner.py --input ${static_input_npz} \
+                --model ${static_model} \
+                --output ${static_model_name}_out_f32.npz
+    model_runner.py --input ${static_input_npz} \
+                --model ${dynamic_model} \
+                --output ${dynamic_model_name}_out_f32.npz
+    npz_tool.py compare ${static_model_name}_out_f32.npz \
+                ${dynamic_model_name}_out_f32.npz -vv
+  fi
+
+  # if [ ${do_f16} == 1 ]; then
+  #   model_deploy.py \
+  #     --mlir ${model_name}.mlir \
+  #     --quantize F16 \
+  #     --chip ${chip_name} \
+  #     --dynamic \
+  #     ${test_innpz_opt} \
+  #     ${test_reference_opt} \
+  #     ${excepts_opt} \
+  #     --tolerance 0.95,0.85 \
+  #     --model ${model_name}_${chip_name}_f16.${model_type}
+  # fi
+
+  # if [ ${do_bf16} == 1 ]; then
+  #   model_deploy.py \
+  #     --mlir ${model_name}.mlir \
+  #     --quantize BF16 \
+  #     --chip ${chip_name} \
+  #     --dynamic \
+  #     ${test_innpz_opt} \
+  #     ${test_reference_opt} \
+  #     ${excepts_opt} \
+  #     --tolerance 0.95,0.85 \
+  #     --model ${model_name}_${chip_name}_bf16.${model_type}
+  # fi
+
+fi #do_dynamic
 
 #########################
 # app
