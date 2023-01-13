@@ -22,7 +22,7 @@ TPU-MLIR中的精度验证主要针对mlir模型, fp32采用top层的mlir模型�
    AP^{small}\quad & \text{\% AP for small objects: $area < 32^2$} \\
    AP^{medium}\quad & \text{\% AP for medium objects: $32^2 < area < 96^2$} \\
    AP^{large}\quad & \text{\% AP for large objects: $area > 96^2$} \\
-   \boldsymbol{Average Recall (AR):} & \\ 
+   \boldsymbol{Average Recall (AR):} & \\
    AR^{max=1}\quad & \text{\% AR given 1 detection per image} \\
    AR^{max=10}\quad & \text{\% AR given 10 detections per image} \\
    AR^{max=100}\quad & \text{\% AR given 100 detections per image} \\
@@ -95,18 +95,22 @@ mobilenet_v2
 
 2. 模型转换
 
-   使用model_transform.py接口将原模型转换为mobilenet_v2.mlir模型, 并通过run_calibration.py接口获得mobilenet_v2_cali_table。具体使用方法请参照“用户界面”章节。tpu层的INT8模型则通过以下命令获得:
+   使用model_transform.py接口将原模型转换为mobilenet_v2.mlir模型, 并通过run_calibration.py接口获得mobilenet_v2_cali_table。具体使用方法请参照“用户界面”章节。tpu层的INT8模型则通过下方的命令获得，运行完命令后会获得一个名为mobilenet_v2_bm1684x_int8_sym_tpu.mlir的中间文件，接下来我们将用该文件进行INT8对称量化模型的精度验证：
 
 .. code-block:: shell
 
     # INT8 对称量化模型
-    $ tpuc-opt mobilenet_v2.mlir \
-        --import-calibration-table='file=mobilenet_v2_cali_table asymmetric=false' \
-        --convert-top-to-tpu="mode=INT8 asymmetric=false chip=bm1684x" \
-        --save-weight \
-        --canonicalize \
-        --mlir-print-debuginfo \
-        -o mobilenet_v2_tpu_int8_sym.mlir
+    $ model_deploy.py \
+       --mlir mobilenet_v2.mlir \
+       --quantize INT8 \
+       --calibration_table mobilenet_v2_cali_table \
+       --chip bm1684x \
+       --test_input mobilenet_v2_in_f32.npz \
+       --test_reference mobilenet_v2_top_outputs.npz \
+       --tolerance 0.95,0.69 \
+       --model mobilenet_v2_int8.bmodel
+
+
 
 3. 精度验证
 
@@ -124,7 +128,7 @@ mobilenet_v2
 
     # INT8 对称量化模型精度验证
     $ model_eval.py \
-        --model_file mobilenet_v2_tpu_int8_sym.mlir \
+        --model_file mobilenet_v2_bm1684x_int8_sym_tpu.mlir \
         --count 50000 \
         --dataset_type imagenet \
         --postprocess_type topx \
@@ -138,7 +142,7 @@ F32模型与INT8对称量化模型的精度验证结果如下:
     2022/11/08 01:30:29 - INFO : idx:50000, top1:0.710, top5:0.899
     INFO:root:idx:50000, top1:0.710, top5:0.899
 
-    # mobilenet_v2_tpu_int8_sym.mlir精度验证结果
+    # mobilenet_v2_bm1684x_int8_sym_tpu.mlir精度验证结果
     2022/11/08 05:43:27 - INFO : idx:50000, top1:0.702, top5:0.895
     INFO:root:idx:50000, top1:0.702, top5:0.895
 
@@ -170,7 +174,7 @@ yolov5s
 
     # INT8 对称量化模型精度验证
     $ model_eval.py \
-        --model_file yolov5s_tpu_int8_sym.mlir \
+        --model_file yolov5s_bm1684x_int8_sym_tpu.mlir \
         --count 5000 \
         --dataset_type coco \
         --postprocess_type coco_mAP \
@@ -195,7 +199,7 @@ F32模型与INT8对称量化模型的精度验证结果如下:
     Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.602
     Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.670
 
-    # yolov5s_tpu_int8_sym.mlir精度验证结果
+    # yolov5s_bm1684x_int8_sym_tpu.mlir精度验证结果
     Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.337
     Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.544
     Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.365
