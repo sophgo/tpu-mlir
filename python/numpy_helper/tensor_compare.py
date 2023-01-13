@@ -241,7 +241,8 @@ class TensorCompareStats():
     else:
       self.failed = self.failed + 1
       assert (result[1] == TensorCompare.NOT_EQUAL
-              or result[1] == TensorCompare.NOT_SIMILAR)
+              or result[1] == TensorCompare.NOT_SIMILAR
+              or result[1] == TensorCompare.NOT_MATCH)
     self.count[result[1]] = self.count[result[1]] + 1
     # record min similarity
     if result[1] == TensorCompare.SIMILAR or result[1] == TensorCompare.NOT_SIMILAR:

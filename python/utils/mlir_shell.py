@@ -73,14 +73,12 @@ def mlir_lowering(top_mlir: str,
 def mlir_to_model(tpu_mlir: str,
                   model: str,
                   final_mlir: str,
-                  dyn: int = 0,
+                  dynamic: bool = False,
                   quant_input: bool = False,
                   quant_output: bool = False):
-    codegen_param = '--codegen="model_file={}"'.format(model)
+    # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
-    dyn_codegen_param = '--dyn_codegen="model_file={}"'.format(model)
-    # generate final mlir
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -88,7 +86,6 @@ def mlir_to_model(tpu_mlir: str,
         strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",
-        # "--layer-group",
         '--layer-group="opt=2"',
         "--address-assign",
         "--save-weight",
@@ -100,11 +97,13 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     # codegen based on final mlir
+    codegen_param = '--codegen="model_file={}"'.format(model)
+    dyn_codegen_param = '--dyn_codegen="model_file={}"'.format(model)
     cmd = [
         "tpuc-opt",
         final_mlir,
         "--init",
-        codegen_param if dyn == 0 else dyn_codegen_param,
+        codegen_param if not dynamic else dyn_codegen_param,
         ">/dev/null",
     ]
 

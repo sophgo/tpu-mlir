@@ -46,8 +46,15 @@ def show_fake_cmd(in_npz: str, model: str, out_npz: str):
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
+    is_dynamic = False
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
+        # check dynamic
+        fd = os.popen("model_tool --is_dynamic {}".format(model_file))
+        dynamic = fd.read()
+        fd.close()
+        if dynamic == 'true':
+            is_dynamic = True
         # trick for runtime link chip cmodel
         fd = os.popen("model_tool --chip {}".format(model_file))
         chip = fd.read()
@@ -70,25 +77,40 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         net = model.Net(model.networks[0])
     except AttributeError:
         net = model
+    dyn_input_shapes = []
     for i in net.inputs:
         assert i.name in inputs
-        assert np.prod(i.data.shape) == np.prod(inputs[i.name].shape)
+        input = inputs[i.name]
+        overflow = np.prod(i.data.shape) - np.prod(input.shape)
+        if is_dynamic:
+            assert(len(i.data.shape) == len(input.shape))
+            for max,dim in zip(i.data.shape, input.shape):
+                if dim > max:
+                    raise RuntimeError("Error shape: form {} to {}".format(i.data.shape, input.shape))
+            dyn_input_shapes.append(input.shape)
+            input = np.concatenate([input.flatten(), np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
+        elif overflow != 0:
+            raise RuntimeError("Error shape: form {} to {}".format(i.data.shape, input.shape))
         zp = i.qzero_point
-        if i.data.dtype == inputs[i.name].dtype:
-            i.data[:] = inputs[i.name].reshape(i.data.shape)
-        elif i.dtype == "i8" and inputs[i.name].dtype == np.float32:
-            data = round_away_from_zero(inputs[i.name] * i.qscale + zp)
+        if i.data.dtype == input.dtype:
+            i.data[:] = input.reshape(i.data.shape)
+        elif i.dtype == "i8" and input.dtype == np.float32:
+            data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, -128, 127).astype(np.int8).reshape(i.data.shape)
-        elif i.dtype == "u8" and inputs[i.name].dtype == np.float32:
-            data = round_away_from_zero(inputs[i.name] * i.qscale + zp)
+        elif i.dtype == "u8" and input.dtype == np.float32:
+            data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, 0, 255).astype(np.uint8).reshape(i.data.shape)
-        elif i.dtype == "f16" and inputs[i.name].dtype == np.float32:
-            i.data[:] = inputs[i.name].astype(np.float16)
-        elif i.dtype == "bf16" and inputs[i.name].dtype == np.float32:
-            i.data[:] = fp32_to_bf16(inputs[i.name])
+        elif i.dtype == "f16" and input.dtype == np.float32:
+            i.data[:] = input.astype(np.float16)
+        elif i.dtype == "bf16" and input.dtype == np.float32:
+            i.data[:] = fp32_to_bf16(input)
         else:
-            raise ValueError(f"unknown type: form {inputs[i.name].dtype} to {i.data.dtype}")
-    net.forward()
+            raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
+    if not is_dynamic:
+        net.forward()
+    else:
+        dyn_output_shapes = net.forward_dynamic(dyn_input_shapes)
+    dyn_idx = 0
     for i in net.outputs:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
             if is_cv18xx and i.name in inputs:
@@ -104,6 +126,11 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             outputs[i.name] = bf16_to_fp32(i.data)
         else:
             outputs[i.name] = np.array(i.data)
+        if is_dynamic:
+            if outputs[i.name].shape != dyn_output_shapes[dyn_idx]:
+                dyn_len = np.prod(dyn_output_shapes[dyn_idx])
+                outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(*dyn_output_shapes[dyn_idx])
+                dyn_idx += 1
     return outputs
 
 

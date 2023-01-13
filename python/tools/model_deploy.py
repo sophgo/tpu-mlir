@@ -50,7 +50,7 @@ class DeployTool:
             self.correctness = "0.99,0.85"
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
-        self.dyn = args.dyn
+        self.dynamic = args.dynamic
         if self.quantize == "int8":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -111,7 +111,7 @@ class DeployTool:
                 self.tpu_mlir,
                 self.model,
                 self.final_mlir,
-                self.dyn,
+                self.dynamic,
                 self.quant_input,
                 self.quant_output,
             )
@@ -139,7 +139,7 @@ if __name__ == '__main__':
     parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8','QDQ'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true', default=False,
-                        help="for INT8 quantization")
+                        help="do INT8 asymmetric quantization")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--chip", required=True, type=str,
@@ -155,7 +155,8 @@ if __name__ == '__main__':
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
-    parser.add_argument("--dyn", required=False, default=0, type=int, help="compile mode: static or dynamic")
+    parser.add_argument("--dynamic", action='store_true', default=False,
+                        help="do compile dynamic")
     # yapf: enable
     args = parser.parse_args()
     tool = DeployTool(args)

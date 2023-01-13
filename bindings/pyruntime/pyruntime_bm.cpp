@@ -136,6 +136,41 @@ struct PythonNet {
     assert(true == ret);
   }
 
+  std::vector<std::vector<size_t>>
+  forward_dynamic(std::vector<std::vector<size_t>> dyn_input_shapes) {
+    // auto ret = bmrt_launch_data(
+    //     p_bmrt, name.c_str(), input_datas.data(), dyn_input_shapes.data(),
+    //     num_input, output_datas.data(), dyn_output_shapes.data(), num_output,
+    //     true);
+    // assert(true == ret);
+    auto input_shapes_ = input_shapes;
+    auto output_shapes_ = output_shapes;
+    auto num_inputs = input_shapes.size();
+    assert(num_inputs == dyn_input_shapes.size());
+    for (int i = 0; i < num_inputs; i++) {
+      auto &in_ = input_shapes_[i];
+      auto &dyn_in_ = dyn_input_shapes[i];
+      assert(in_.num_dims == dyn_in_.size());
+      for (int j = 0; j < in_.num_dims; j++) {
+        in_.dims[j] = dyn_in_[j];
+      }
+    }
+    auto ret =
+        bmrt_launch_data(p_bmrt, name.c_str(), input_datas.data(),
+                         input_shapes_.data(), num_input, output_datas.data(),
+                         output_shapes_.data(), num_output, true);
+    assert(true == ret);
+    std::vector<std::vector<size_t>> dyn_output_shapes;
+    for (auto &o_s : output_shapes_) {
+      std::vector<size_t> shape;
+      for (int i = 0; i < o_s.num_dims; i++) {
+        shape.push_back(o_s.dims[i]);
+      }
+      dyn_output_shapes.push_back(shape);
+    }
+    return dyn_output_shapes;
+  }
+
   void dump() { bmrt_print_network_info(info); }
 
   std::string name;
@@ -203,6 +238,7 @@ PYBIND11_MODULE(pyruntime_bm, m) {
 
   py::class_<PythonNet, std::shared_ptr<PythonNet>>(m, "Net")
       .def("forward", &PythonNet::forward)
+      .def("forward_dynamic", &PythonNet::forward_dynamic)
       .def("dump", &PythonNet::dump)
       .def_readonly("name", &PythonNet::name)
       .def_readonly("num_input", &PythonNet::num_input)
