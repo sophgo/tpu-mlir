@@ -65,6 +65,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
+
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
@@ -191,8 +192,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(has_bias)));
 
   bool output_int32 = false;
-  if (module::isBM1686() || op.getKernelShape().size() == 3) {
-    output_int32 = true;
+  if (op.getKernelShape().size() == 3) {
+      output_int32 = true;
   }
   if (output_int32) {
     // to int32, and then requant to int8

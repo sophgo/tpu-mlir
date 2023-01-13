@@ -13,7 +13,6 @@
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/DynamicLayer.hpp"
 
@@ -30,7 +29,8 @@ using namespace tpu_mlir::bm1684x;
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.getFilter()).isInteger(8) || op.getCoeffMerged())
+  if (!module::getStorageType(op.getFilter()).isInteger(8) ||
+      op.getCoeffMerged())
     return failure();
 
   auto attr = op.parseParam();
@@ -109,22 +109,44 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
 
   // requant
   auto qtype = module::getUniformQuantizedType(op.getOutput());
-  std::vector<int64_t> quant_shape = {1, attr.oc, 1, 3};
+  int32_t out_zp = qtype.getZeroPoint();
   auto quant_data = std::make_shared<std::vector<int32_t>>(attr.oc * 3, 0);
   auto m_data = module::getI64Array(op.getMultiplier(), attr.oc, 1);
   auto r_data = module::getI64Array(op.getRshift(), attr.oc, 0);
-  for (int i = 0; i < attr.oc; i++) {
-    quant_data->at(i * 3) = m_data->at(i);
-    quant_data->at(i * 3 + 1) = -r_data->at(i);
-    quant_data->at(i * 3 + 2) = qtype.getZeroPoint();
+  int64_t quant_dim = 0;
+  bool align = true;
+  if (module::isBM1686()) {
+    align = false;
+    quant_dim = 2;
+    for (int i = 0; i < attr.oc; i++) {
+      quant_data->at(i * 2) = m_data->at(i);
+      quant_data->at(i * 2 + 1) =
+          (int32_t)(((-(int32_t)r_data->at(i)) & 0x000000ff) |
+                    ((out_zp & 0x0000ffff) << 16));
+    }
+  } else {
+    quant_dim = 3;
+    for (int i = 0; i < attr.oc; i++) {
+      quant_data->at(i * 3) = m_data->at(i);
+      quant_data->at(i * 3 + 1) = -r_data->at(i);
+      quant_data->at(i * 3 + 2) = out_zp;
+    }
   }
-  tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, true);
+
+  std::vector<int64_t> quant_shape = {1, attr.oc, 1, quant_dim};
+  tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align);
   assert(new_oc == quant_shape[1]);
   int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
 
   // merge
   int64_t quant_offset = 0, bias_offset = 0, filter_offset = 0;
-  int64_t filter_align = attr.is_dw ? 1 : BM168x::EU_BYTES;
+  int64_t filter_align = BM168x::EU_BYTES;
+  if (attr.is_dw) {
+    if (!module::isBM1686()) {
+      filter_align = 1;
+    }
+  }
+
   if (attr.has_bias) {
     bias_offset =
         align_up(quant_offset + quant_w_bytes, (int64_t)sizeof(int32_t));
@@ -151,11 +173,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
   if (merge_w > MAX_TPU_DIM) {
     if (attr.is_dw) {
-      coeff_shape[2] = ceiling_func(attr.oc, (int64_t)64);
+      coeff_shape[2] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
       coeff_shape[3] /= coeff_shape[2];
     } else {
-      coeff_shape[2] = 64;
-      coeff_shape[3] /= 64;
+      coeff_shape[2] = IC_PARALLEL;
+      coeff_shape[3] /= IC_PARALLEL;
     }
   }
   auto elem_type = module::getStorageType(op.getFilter());
@@ -239,11 +261,11 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
 
   if (filter_shape[3] > MAX_TPU_DIM) {
     if (attr.is_dw) {
-      filter_shape[2] = ceiling_func(attr.oc, (int64_t)64);
+      filter_shape[2] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
       filter_shape[3] /= filter_shape[2];
     } else {
-      filter_shape[2] = 64;
-      filter_shape[3] /= 64;
+      filter_shape[2] = IC_PARALLEL;
+      filter_shape[3] /= IC_PARALLEL;
     }
   }
 
@@ -361,6 +383,9 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  if (module::isBM1686() && getCoeffMerged()) {
+      return 0;
+  }
   auto &p = getConv2DParam(*this);
   int64_t sz = 0;
   auto in_type = BM168x::getDataType(getInput());
