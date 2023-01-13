@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
 namespace tpu_mlir {
 namespace cv18xx {
@@ -23,12 +24,15 @@ static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx
   std::vector<int64_t> output_shape;
   module::getShapeVec(input_val, input_shape);
   module::getShapeVec(output_val, output_shape);
+  int64_t on, oc, oh, ow;
+  module::getNCHW(output_shape, on, oc, oh, ow, false);
 
   uint64_t lmem_size = 32 * 1024;
   int64_t output_size = std::accumulate(std::begin(output_shape), std::end(output_shape), 1,
                                         std::multiplies<>());
-  int64_t n = input_shape[0], c = input_shape[1], ih = input_shape[2], iw = input_shape[3];
-  if ((uint64_t)(ih * iw) < ((lmem_size - output_size) / 2) || !(output_shape[2] == 1 && output_shape[3] == 1)) {
+  int64_t n, c, ih, iw;
+  module::getNCHW(input_shape, n, c, ih, iw, false);
+  if ((uint64_t)(ih * iw) < ((lmem_size - output_size) / 2) || !(oh == 1 && ow == 1)) {
     return;
   }
   std::string name = module::getName(output_val).str();

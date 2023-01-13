@@ -52,4 +52,21 @@ def SaveWeight : Pass<"save-weight", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
 }
 
+def FusePreprocess : Pass<"fuse-preprocess", "ModuleOp"> {
+  let summary = "Fuse preprocess in cvimodels";
+  let constructor = "createFusePreprocessPass()";
+  let options = [
+    Option<"mode", "mode", "std::string", /*default=*/"",
+        "default quantization mode: INT8/BF16">,
+    Option<"customization_format", "customization_format", "std::string", /*default=*/"",
+           "cv18xx pixel_format">,
+  ];
+  let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
+}
+
+def AlignInput : Pass<"align-input", "ModuleOp"> {
+  let summary = "Fuse align-input in cvimodels";
+  let constructor = "createAlignInputPass()";
+  let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
+}
 #endif

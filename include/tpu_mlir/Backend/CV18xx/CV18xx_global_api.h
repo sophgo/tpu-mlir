@@ -371,5 +371,26 @@ void cvi_backend_tg_reverse_kernel(uint32_t layer_id, gaddr_t ga_input,
 void cvi_backend_tg_pool_mask_kernel(uint32_t layer_id, gaddr_t input_gaddr,
                                      gaddr_t output_gaddr, int n, int c, int h,
                                      int w, int scale, cvk_fmt_t fmt);
+
+void cvi_backend_tg_scale_lut_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                     gaddr_t ga_output, gaddr_t ga_lut, int n,
+                                     int c, int h, int w, cvk_fmt_t fmt);
+
+void cvi_backend_tg_swap_channel_kernel(uint32_t layer_id, gaddr_t input_gaddr,
+                                        gaddr_t output_gaddr,
+                                        int input_dim_size, int *input_dim,
+                                        int *channel_order, cvk_fmt_t fmt);
+
+void cvi_backend_tg_copy_kernel(gaddr_t ga_input, gaddr_t ga_output,
+                                const std::vector<int> &shape,
+                                const std::vector<int> &i_stride,
+                                const std::vector<int> &o_stride, cvk_fmt_t fmt);
+
+void cvi_backend_tg_yuv420_csc_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                      gaddr_t ga_output, int n, int c, int h,
+                                      int w, const std::vector<int> &order,
+                                      cvk_fmt_t fmt, int32_t pixel_type, int32_t y_align,
+                                      int32_t w_align, int32_t channel_align);
+
 } // namespace backend
 } // namespace tpu_mlir

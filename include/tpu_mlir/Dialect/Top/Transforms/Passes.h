@@ -23,6 +23,8 @@ std::unique_ptr<OperationPass<ModuleOp>> createImportCalibrationTablePass();
 std::unique_ptr<OperationPass<ModuleOp>> createQDQConvertPass();
 std::unique_ptr<OperationPass<ModuleOp>> createMarkFLOPsPass();
 std::unique_ptr<OperationPass<ModuleOp>> createSaveWeightPass();
+std::unique_ptr<OperationPass<ModuleOp>> createFusePreprocessPass();
+std::unique_ptr<OperationPass<ModuleOp>> createAlignInputPass();
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h.inc"

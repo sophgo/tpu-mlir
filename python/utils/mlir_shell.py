@@ -42,7 +42,9 @@ def mlir_lowering(top_mlir: str,
                   cali_table: str = None,
                   asymmetric: bool = False,
                   quantize_table: str = None,
-                  qdq: bool = False):
+                  qdq: bool = False,
+                  customization_format: str = None,
+                  fuse_preprocess: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--init"]
     qdq = mode.upper() == 'QDQ'
     if qdq:
@@ -54,6 +56,9 @@ def mlir_lowering(top_mlir: str,
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
         cmd.extend([cali_param])
+    if fuse_preprocess:
+        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(mode.upper() ,customization_format)
+        cmd.extend([fuse_pre_param])
     qtable = ""
     if quantize_table:
         qtable = "qtable={}".format(quantize_table)

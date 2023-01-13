@@ -1484,4 +1484,104 @@ def Top_FrcnDetectionOp : Top_Op<"FrcnDetection"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Top_CopyOp: Top_Op<"Copy"> {
+  let summary = "Copy operator";
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$shape,
+    I64ArrayAttr:$input_stride,
+    I64ArrayAttr:$output_stride
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_CscOp: Top_Op<"Csc"> {
+  let summary = "Color space convert for model's inputs";
+
+  let description = [{
+    Performs csc operation on inputs.
+
+    Inputs:
+      `input`          : required, input tensors.
+
+    Attributes:
+      `pixel_format`    : required, pixel format type.
+      `y_align`         : width alignment of channel y.
+      `w_align`         : width alignment of channel uv.
+      `channel_align`   : alignment of channel.
+
+    Result:
+      `output`          : result tensor.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    StrAttr:$pixel_format,
+    BoolAttr:$aligned,
+    I64Attr:$y_align,
+    I64Attr:$w_align,
+    I64Attr:$channel_align
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ScaleLutOp: Top_Op<"ScaleLut", [InOutSameShape]> {
+  let summary = "Scale by lut operator";
+
+  let description = [{
+    Performs scale on input, y = input * scale + bias.
+
+    Inputs:
+      `input`           : required, the input activation tensor.
+
+    Attributes:
+      `scale`   : each channel scale
+      `bias`    : each channel bias
+
+
+    Result:
+      `output`          : result tensor.
+
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$bias
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_SwapChannelOp: Top_Op<"SwapChannel", [InOutSameShape]> {
+  let summary = "swap channel operator, normally RGB <=> BGR";
+
+  let description = [{
+    Swap Channel on input.
+
+    Inputs:
+      `input`           : required, the input activation tensor.
+
+    Attributes:
+      `channel_order`   : required, channel swap order
+      `quant`           : required, a QuantParam struct attributes.
+      `name`            : required, name for calibration, comparing, or debug.
+
+
+    Result:
+      `output`          : result tensor.
+
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$channel_order
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // Top_OPS

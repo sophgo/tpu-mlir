@@ -24,14 +24,16 @@ void tpu::ShuffleChannelOp::codegen_global_cv18xx( int64_t layer_id) {
   gaddr_t ga_output = module::getAddress(getOutput());
   std::vector<int64_t> input_shape;
   module::getShapeVec(getInput(), input_shape);
+  int64_t n, c, h, w;
+  module::getNCHW(input_shape, n, c, h, w, false);
   int64_t group = this->getGroup();
   if (module::isUniformQuantized(getOutput())) {
     cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
-          input_shape[0], group, input_shape[1] / group, input_shape[2] * input_shape[3],
+          n, group, c / group, h * w,
           0, 2, 1, 3, CVK_FMT_I8);
   } else {
     cvi_backend_tg_permute_kernel( layer_id, ga_input, ga_output,
-          input_shape[0], group, input_shape[1] / group, input_shape[2] * input_shape[3],
+          n, group, c / group, h * w,
           0, 2, 1, 3, CVK_FMT_BF16);
   }
 }

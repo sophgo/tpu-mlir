@@ -1618,4 +1618,118 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm"
   );
 }
 
+def Tpu_CopyOp: Tpu_Op<"Copy"> {
+  let summary = "TG copy operator.";
+
+  let description = [{
+    Inputs:
+      `input`          : required, the activation memref.
+
+    Attributes:
+      `input_stride`    : required, input data stride(saved as I64ArrayAttr).
+      `output_stride`   : required, output data stride(saved as I64ArrayAttr).
+
+    Result:
+      `output`          : result tensor.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$shape,
+    I64ArrayAttr:$input_stride,
+    I64ArrayAttr:$output_stride,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyTensor:$output);
+
+}
+
+def Tpu_CscOp : Tpu_Op<"Csc"> {
+  let summary = "Color space convert for model's inputs";
+  let description = [{
+    Inputs:
+      `input`           : required, the input activation memref.
+
+    Attributes:
+
+      `y_align`         : width alignment of channel y.
+      `w_align`         : width alignment of channel uv.
+      `channel_align`   : alignment of channel.
+      `pixel_type`      : required, 1--i420 2--nv12 3--nv21
+
+
+    Result:
+      `output`          : result tensor.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    OptionalAttr<I32ArrayAttr>:$channel_order,
+    StrAttr:$pixel_format,
+    DefaultValuedAttr<BoolAttr, "true">:$aligned,
+    DefaultValuedAttr<I64Attr, "1">:$pixel_type,
+    DefaultValuedAttr<I64Attr, "64">:$y_align,
+    DefaultValuedAttr<I64Attr, "64">:$w_align,
+    DefaultValuedAttr<I64Attr, "64">:$channel_align
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  InOutSameShape]> {
+  let summary = "scale lut operator.";
+
+  let description = [{
+    Inputs:
+      `input`          : required, the variadic activation memref.
+      `table`          : required, the lookup table
+
+    Result:
+      `output`          : result tensor.
+
+    Interfaces or Traits:
+      `NoSideEffect`
+      `TpuOpCommonInterface`    : support common TPU TG Op interface.
+      `TpuTGOpCodegenInterface` : support generate TPU instuctions.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    AnyTensor:$table,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  InOutSameShape]> {
+  let summary = "SwapChannel operator.";
+
+  let description = [{
+    Inputs:
+      `input`           : required, the input activation memref.
+
+    Attributes:
+      `channel_order`   : required, channel swap order
+
+    Result:
+      `output`          : result tensor.
+
+    Interfaces or Traits:
+      `NoSideEffect`
+      `TpuOpCommonInterface`    : support common TPU TG Op interface.
+      `TpuTGOpCodegenInterface` : support generate TPU instuctions.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$channel_order
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS
