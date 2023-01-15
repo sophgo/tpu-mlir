@@ -92,6 +92,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
     buffer_size = tensor_size + align_up(32 * dtype_len, 64l);
     break;
   case ActiveMode::HSWISH:
+  case ActiveMode::HSIGMOID:
     buffer_size = in_lmem_bytes;
     break;
   }

@@ -157,7 +157,7 @@ int64_t tpu::Pool2DOp::getBufferSize_bm1684x(
     if (p.is_global) {
       int64_t dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
-      size += eu_num * ceiling_func(p.c, npu_num) * dtype_bytes;
+      size += out_nslice * eu_num * ceiling_func(p.c, npu_num) * dtype_bytes;
     }
     return size;
   }
