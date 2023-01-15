@@ -31,20 +31,13 @@ if [ x$4 == x ]; then
   dyn_mode=0
 fi
 
-cfg_file=$REGRESSION_PATH/config/${model_name}.cfg
-
-if [ ! -f $cfg_file ]; then
-  echo "Error: can't open config file ${cfg_file}"
-  exit 1
-fi
-
 source $REGRESSION_PATH/chip.cfg
 eval do_f32=\${${chip_name}_support_f32}
 eval do_bf16=\${${chip_name}_support_bf16}
 eval do_f16=\${${chip_name}_support_f16}
 eval do_asymmetric=\${${chip_name}_support_asym}
 eval do_symmetric=\${${chip_name}_support_sym}
-eval do_dynamic=\${${chip_name}_support_dyn}
+eval support_dynamic=\${${chip_name}_support_dyn}
 eval model_type=\${${chip_name}_model_type}
 
 if [ x${model_type} == x ]; then
@@ -58,7 +51,20 @@ if [ x${test_type} == xbasic ]; then
   do_bf16=0
 fi
 
+cfg_file=$REGRESSION_PATH/config/${model_name}.cfg
+
+if [ ! -f $cfg_file ]; then
+  echo "Error: can't open config file ${cfg_file}"
+  exit 1
+fi
+
 source ${cfg_file}
+if [ x$do_dynamic == x1 ] && [ x$support_dynamic == x1]; then
+  do_dynamic=1
+else
+  do_dynamic=0
+fi
+
 
 NET_DIR=$REGRESSION_PATH/regression_out/${model_name}_${chip_name}
 mkdir -p $NET_DIR

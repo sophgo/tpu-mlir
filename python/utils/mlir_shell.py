@@ -79,6 +79,10 @@ def mlir_to_model(tpu_mlir: str,
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
+    lg_param = '--layer-group="opt=2"'
+    if model.endswith(".cvimodel"):
+        # TODO: cv18xx support later
+        lg_param = ""
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -86,7 +90,7 @@ def mlir_to_model(tpu_mlir: str,
         strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",
-        '--layer-group="opt=2"',
+        lg_param,
         "--address-assign",
         "--save-weight",
         "--mlir-print-debuginfo",
@@ -97,53 +101,13 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     # codegen based on final mlir
-    codegen_param = '--codegen="model_file={}"'.format(model)
-    dyn_codegen_param = '--dyn_codegen="model_file={}"'.format(model)
-    cmd = [
-        "tpuc-opt",
-        final_mlir,
-        "--init",
-        codegen_param if not dynamic else dyn_codegen_param,
-        ">/dev/null",
-    ]
-
-    _os_system(cmd)
-
-    try:
-        _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
-    except RuntimeError:
-        pass
-
-
-# tmp for cvitek, remove in the future
-def mlir_to_cvi_model(tpu_mlir: str,
-                      model: str,
-                      final_mlir: str,
-                      quant_input: bool = False,
-                      quant_output: bool = False):
-    codegen_param = '--cv-codegen="model_file={}"'.format(model)
-    strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
-        quant_input, quant_output)
-
-    # generate final mlir
-    cmd = [
-        "tpuc-opt",
-        tpu_mlir,
-        "--init",
-        "--convert-relu-limit",
-        strip_io_quant_param,
-        "--weight-reorder",
-        "--subnet-divide",
-        "--address-assign",
-        "--save-weight",
-        "--mlir-print-debuginfo",
-        "-o",
-        final_mlir,
-    ]
-
-    _os_system(cmd)
-
-    # codegen based on final mlir
+    if model.endswith(".bmodel"):
+        if not dynamic:
+            codegen_param = '--codegen="model_file={}"'.format(model)
+        else:
+            codegen_param = '--dyn_codegen="model_file={}"'.format(model)
+    elif model.endswith(".cvimodel"):
+        codegen_param = '--cv-codegen="model_file={}"'.format(model)
     cmd = [
         "tpuc-opt",
         final_mlir,
@@ -151,9 +115,12 @@ def mlir_to_cvi_model(tpu_mlir: str,
         codegen_param,
         ">/dev/null",
     ]
-
     _os_system(cmd)
 
+    try:
+        _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+    except RuntimeError:
+        pass
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]

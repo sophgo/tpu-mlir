@@ -98,23 +98,14 @@ class DeployTool:
         f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
-        if self.chip.find("cv18") >= 0:
-            mlir_to_cvi_model(
-                self.tpu_mlir,
-                self.model,
-                self.final_mlir,
-                self.quant_input,
-                self.quant_output,
-            )
-        else:
-            mlir_to_model(
-                self.tpu_mlir,
-                self.model,
-                self.final_mlir,
-                self.dynamic,
-                self.quant_input,
-                self.quant_output,
-            )
+        mlir_to_model(
+            self.tpu_mlir,
+            self.model,
+            self.final_mlir,
+            self.dynamic,
+            self.quant_input,
+            self.quant_output,
+        )
         if self.do_validate:
             tool.validate_model()
 
@@ -138,8 +129,7 @@ if __name__ == '__main__':
     parser.add_argument("--quantize_table", help="table of OPs that quantized to specific mode")
     parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8','QDQ'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
-    parser.add_argument("--asymmetric", action='store_true', default=False,
-                        help="do INT8 asymmetric quantization")
+    parser.add_argument("--asymmetric", action='store_true', help="do INT8 asymmetric quantization")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--chip", required=True, type=str,
@@ -155,8 +145,7 @@ if __name__ == '__main__':
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
-    parser.add_argument("--dynamic", action='store_true', default=False,
-                        help="do compile dynamic")
+    parser.add_argument("--dynamic", action='store_true',  help="do compile dynamic")
     # yapf: enable
     args = parser.parse_args()
     tool = DeployTool(args)
