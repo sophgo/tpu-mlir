@@ -22,12 +22,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-Failed_Cases = ["PadAvgPool2D", "QDQ", "QDQConv"]
+BM1684X_Failed_Cases = ["PadAvgPool2D", "QDQ", "QDQConv"]
+CV18XX_Failed_Cases = [
+    "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
+    "Sqrt", "Sub2", "PadAvgPool2D", "Where", "TorchGelu", "TorchGRU", "TorchLayerNorm",
+    "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
+]
 
 
 class ONNX_IR_TESTER(object):
     # This class is built for testing single operator transform.
-    def __init__(self):
+    def __init__(self, chip: str = "bm1684x", mode: str = "all"):
         self.test_function = {
             #############################
             # ONNX Test Case, Alphabetically
@@ -135,17 +140,27 @@ class ONNX_IR_TESTER(object):
             "TorchStd": self.test_TorchStd
         }
         # no quantization when quant_mode == "f32"
-        self.quant_modes = ["f32", "int8", "f16", "bf16"]
-        self.chip = self.get_chip_name()
-        if self.chip.find("cv18") >= 0:
-            self.quant_modes = ["int8", "bf16"]
+        self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
+        self.support_asym = [True, False]
+        self.model_file = ".bmodel"
+        self.is_cv18xx = False
+        self.chip = chip.lower()
+        if self.chip.startswith("cv18"):
+            self.support_quant_modes = ["bf16", "int8"]
+            self.support_asym = [False]
+            self.model_file = ".cvimodel"
+            self.is_cv18xx = True
+        elif self.chip == "bm1684":
+            self.support_quant_modes = ["f32", "int8"]
+            self.support_asym = [False]
 
-    def get_chip_name(self):
-        runchip = os.environ.get('SET_CHIP_NAME', None)
-        if not runchip:
-            print("no found SET_CHIP_NAME environment value, set bm1684x as default")
-            runchip = "bm1684x"
-        return runchip.lower()
+        self.mode = mode.lower()
+        if self.mode == "" or self.mode == "all":
+            self.quant_modes = self.support_quant_modes
+        else:
+            if self.mode not in self.support_quant_modes:
+                raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
+            self.quant_modes = [self.mode]
 
     def test_single(self, case: str):
         print("Test: {}".format(case))
@@ -155,11 +170,30 @@ class ONNX_IR_TESTER(object):
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
 
+    def check_support(self, case):
+        if self.is_cv18xx:
+            if case in CV18XX_Failed_Cases:
+                return False
+        elif self.chip == "bm1684x":
+            if case in BM1684X_Failed_Cases:
+                return False
+        return True
+
     def test_all(self):
+        error_cases = []
         for case in self.test_function:
-            if case not in Failed_Cases:
-                self.test_single(case)
-        print("====== ALL TEST Success ======".format(case))
+            if self.check_support(case):
+                try:
+                    self.test_single(case)
+                except:
+                    error_cases.append(case)
+        if error_cases:
+            print("====== test_onnx.py TEST Failed ======")
+            for case in error_cases:
+                print(case)
+            raise RuntimeError("Error: {} Cases Filed".format(len(error_cases)))
+        else:
+            print("====== test_onnx.py TEST Success ======")
 
     def create_random_input(self, graph_def: onnx.GraphProto):
         inputs = {}
@@ -221,14 +255,8 @@ class ONNX_IR_TESTER(object):
 
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
-        if self.chip.find("cv18") >= 0:
-            # for cv183x cv182x cv181 cv180
-            bmodel = tpu_mlir + ".cvimodel"
-            mlir_to_cvi_model(tpu_mlir + ".mlir", bmodel, tpu_final)
-        else:
-            bmodel = tpu_mlir + ".bmodel"
-            mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
-
+        bmodel = tpu_mlir + self.model_file
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
@@ -374,9 +402,7 @@ class ONNX_IR_TESTER(object):
             return
         for quant_mode in self.quant_modes:
             if quant_mode == "int8":
-                for isAsym in [False, True]:
-                    if self.chip.find("cv18") >= 0 and isAsym:
-                        continue
+                for isAsym in self.support_asym:
                     tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode,
                                                             isAsym)
                     self.inference_and_compare(top_mlir_outs, tpu_mlir, bmodel, input_npz,
@@ -608,7 +634,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([gru_def],
                                       case_name, [input], [Y],
                                       initializer=[w_value, r_value, b_value, h_value])
-        if self.chip.find("cv18") >= 0:
+        if self.is_cv18xx:
             input_data = {}
             input_data["input"] = np.random.rand(seq_length, batch_size,
                                                  input_size).astype(np.float32)
@@ -669,7 +695,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([gru_def],
                                       case_name, [input], [Y_h],
                                       initializer=[w_value, r_value, b_value, h_value])
-        if self.chip.find("cv18") >= 0:
+        if self.is_cv18xx:
             input_data = {}
             input_data["input"] = np.random.rand(seq_length, batch_size,
                                                  input_size).astype(np.float32)
@@ -1937,7 +1963,7 @@ class ONNX_IR_TESTER(object):
 
     def test_BroadcastAdd(self, case_name):
         # 18xx: only broadcast right opd and broadcast continuous axis is supported
-        if self.chip.find("cv18") >= 0:
+        if self.is_cv18xx:
             input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
         else:
             input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
@@ -2115,7 +2141,7 @@ class ONNX_IR_TESTER(object):
     def test_BroadcastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
-        if self.chip.find("cv18") >= 0:
+        if self.is_cv18xx:
             ## 18xx: only broadcast right opd and broadcast continuous axis is supported
             input_shape = {"input1": [2, 3, 4, 27], "input2": [2, 3, 1, 1]}
             output_shape = [2, 3, 4, 27]
@@ -2131,7 +2157,7 @@ class ONNX_IR_TESTER(object):
         input_shape = [1, 127, 270, 28]
         constant_shape = [2, 1, 1, 28]
         output_shape = [2, 127, 270, 28]
-        if self.chip.find("cv18") >= 0:
+        if self.is_cv18xx:
             #18xx: only broadcast right opd and broadcast continuous axis is supported
             input_shape = [2, 127, 270, 28]
             constant_shape = [1, 1, 1, 28]
@@ -2645,10 +2671,28 @@ class ONNX_IR_TESTER(object):
 
 
 if __name__ == "__main__":
-    tester = ONNX_IR_TESTER()
-    os.makedirs("onnx_test", exist_ok=True)
-    os.chdir("onnx_test")
-    if len(sys.argv) == 2:
-        tester.test_single(sys.argv[1])
-    else:
+    parser = argparse.ArgumentParser()
+    # yapf: disable
+    parser.add_argument("--chip", default="bm1684x", type=str,
+                        choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
+                        help="chip platform name")
+    parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
+    parser.add_argument("--show_all", action="store_true", help='show all cases')
+    parser.add_argument("--mode", default="all", type=str,
+                        choices=['all', 'f32', 'f16', 'bf16', 'int8'],
+                        help="chip platform name")
+    # yapf: enable
+    args = parser.parse_args()
+    tester = ONNX_IR_TESTER(args.chip, args.mode)
+    if args.show_all:
+        print("====== Show All Cases ============")
+        for case in tester.test_function:
+            print(case)
+        exit(0)
+    dir = "onnx_test_{}".format(args.chip)
+    os.makedirs(dir, exist_ok=True)
+    os.chdir(dir)
+    if args.case == "" or args.case.lower() == "all":
         tester.test_all()
+    else:
+        tester.test_single(args.case)

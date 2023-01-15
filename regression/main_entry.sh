@@ -38,15 +38,21 @@ export -f run_regression_net
 
 run_onnx_op() {
   echo "======= test_onnx.py ====="
-  test_onnx.py >test_onnx.log 2>&1 | true
+  test_onnx.py --chip bm1684x >test_onnx_bm1684x.log 2>&1 | true
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-    echo "test_onnx.py FAILED" >>result.log
-    cat test_onnx.log >>fail.log
+    echo "test_onnx.py --chip bm1684x FAILED" >>result.log
+    cat test_onnx_bm1684x.log >>fail.log
     return 1
-  else
-    echo "test_onnx.py PASSED" >>result.log
-    return 0
   fi
+  echo "test_onnx.py --chip bm1684x PASSED" >>result.log
+  test_onnx.py --chip cv183x >test_onnx_cv183x.log 2>&1 | true
+  if [ "${PIPESTATUS[0]}" -ne "0" ]; then
+    echo "test_onnx.py --chip cv183x FAILED" >>result.log
+    cat test_onnx_cv183x.log >>fail.log
+    return 1
+  fi
+  echo "test_onnx.py --chip cv183x PASSED" >>result.log
+  return 0
 }
 
 export -f run_onnx_op
@@ -79,7 +85,7 @@ run_all() {
   fi
   for chip in ${chip_support[@]}; do
     echo "" >cmd.txt
-    declare -n list="model_list_${chip}_${test_type}"
+    declare -n list="${chip}_model_list_${test_type}"
     for net in ${list[@]}; do
       echo "run_regression_net ${net} ${chip} ${test_type}" >>cmd.txt
     done
