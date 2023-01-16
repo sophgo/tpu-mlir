@@ -120,6 +120,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   template<typename T>
   std::shared_ptr<std::vector<T>> read();
   std::shared_ptr<std::vector<float>> read_as_float();
+  std::shared_ptr<std::vector<int32_t>> read_as_int32();
   std::shared_ptr<std::vector<uint8_t>> read_as_byte();
   template<typename T>
   static mlir::Value create(mlir::Operation * OwnerOp,
