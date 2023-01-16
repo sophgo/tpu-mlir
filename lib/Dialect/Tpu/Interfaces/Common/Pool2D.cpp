@@ -85,7 +85,7 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
   }
   // average pooling
   bool is_cv18xx = module::isCV18xx();
-  auto m_type = is_cv18xx ? CVI_QUANT : BM_QUANT;
+  auto m_type = is_cv18xx ? CVI_QUANT_NORMAL : BM_QUANT_NORMAL;
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {

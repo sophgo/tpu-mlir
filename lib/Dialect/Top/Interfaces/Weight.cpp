@@ -84,9 +84,36 @@ std::shared_ptr<std::vector<float>> WeightOp::read_as_float() {
                                                 data_i32->end());
   }
   dump();
-  llvm_unreachable("weight data not support read now");
+  llvm_unreachable("weight data not support read as float now");
   return nullptr;
 }
+
+std::shared_ptr<std::vector<int32_t>> WeightOp::read_as_int32() {
+  auto dtype = module::getStorageType(getOutput());
+  if (dtype.isInteger(32)) {
+    return read<int32_t>();
+  } else if (dtype.isUnsignedInteger(16)) {
+    auto data_u16 = read<uint16_t>();
+    return std::make_shared<std::vector<int32_t>>(data_u16->begin(),
+                                                  data_u16->end());
+  } else if (dtype.isInteger(16)) {
+    auto data_i16 = read<int16_t>();
+    return std::make_shared<std::vector<int32_t>>(data_i16->begin(),
+                                                  data_i16->end());
+  } else if (dtype.isUnsignedInteger(8)) {
+    auto data_u8 = read<uint8_t>();
+    return std::make_shared<std::vector<int32_t>>(data_u8->begin(),
+                                                  data_u8->end());
+  } else if (dtype.isInteger(8)) {
+    auto data_i8 = read<int8_t>();
+    return std::make_shared<std::vector<int32_t>>(data_i8->begin(),
+                                                  data_i8->end());
+  }
+  dump();
+  llvm_unreachable("weight data not support read as int32 now");
+  return nullptr;
+}
+
 std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
   auto dtype = module::getStorageType(getOutput());
   if (dtype.isInteger(8)) {

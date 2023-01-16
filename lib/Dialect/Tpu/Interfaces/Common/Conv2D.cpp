@@ -108,33 +108,37 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
     bool do_relu = getDoRelu();
     if (getWithBias()) {
       auto biasOp = cast<top::WeightOp>(getBias().getDefiningOp());
-      bias_i32 = biasOp.read<int32_t>();
+      bias_i32 = biasOp.read_as_int32();
     }
     auto mode = getQuantMode();
-    MultiplierType m_type;
-    bool is_cv18xx = module::isCV18xx();
-    if (is_cv18xx) {
-      m_type = CVI_QDM_QUANT;
+    QuantMode q_mode;
+    if (module::isCV18xx()) {
+      q_mode = CVI_QUANT_QDM;
+    } else if (module::isBM1684Family()) {
+      q_mode = BM_QUANT_ONLY_SHIFT;
     } else {
       if (mode == tpu::RequantMode::TFlite_Lshift ||
           mode == tpu::RequantMode::TFlite) {
-        m_type = BM_TFLITE_QUANT;
+        q_mode = BM_QUANT_TFLITE;
       } else {
-        m_type = BM_QUANT;
+        q_mode = BM_QUANT_NORMAL;
       }
     }
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
-      int64_t multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
+      int64_t multi = 1;
+      if (q_mode != BM_QUANT_ONLY_SHIFT) {
+        multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
+      }
       int32_t bias = bias_i32->at(ic);
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
           int64_t v = 0;
           int64_t tmp = p.outputs[0][offset] + bias;
-          v = applyMultiplierAndRShift(tmp, multi, shift, m_type) +
+          v = applyMultiplierAndRShift(tmp, multi, shift, q_mode) +
               o_qtype.getZeroPoint();
           if (do_relu && (v < 0)) {
             v = 0;
@@ -165,7 +169,7 @@ mlir::Type tpu::Conv2DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::Conv2DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+                                          int64_t out_idx, int64_t out_slice) {
   auto &attr = getConv2DParam(*this);
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
   in_slice = (out_slice - 1) * attr.sh +
@@ -177,24 +181,27 @@ LogicalResult tpu::Conv2DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::Conv2DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   auto &attr = getConv2DParam(*this);
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
-  in_kh = (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
+  in_kh =
+      (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
   return success();
 }
 
-
-LogicalResult tpu::Conv2DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+LogicalResult tpu::Conv2DOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
   auto &attr = getConv2DParam(*this);
   in_stride_h = out_stride_h * attr.sh;
   return success();
 }
 
-LogicalResult tpu::Conv2DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+LogicalResult tpu::Conv2DOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
   auto &attr = getConv2DParam(*this);
   in_up_pad_h = out_up_pad_h * attr.sh + attr.pht;
   return success();
 }
 
-LogicalResult tpu::Conv2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+LogicalResult tpu::Conv2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
   auto &attr = getConv2DParam(*this);
   in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
   return success();

@@ -87,7 +87,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         auto &out = p.outputs[0][i];
-        out = applyMultiplierAndRShift(out, 1, rshift_v->at(0), CVI_QUANT);
+        out = applyMultiplierAndRShift(out, 1, rshift_v->at(0), CVI_QUANT_NORMAL);
         out = out_type.isUnsignedInteger(8) ? to_uint8(out)
                                             : to_int8(out);
       }

@@ -43,7 +43,7 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; ++i) {
         inp[i] = applyMultiplierAndRShift(inp[i], multiplier_v->at(idx),
-                                          rshift_v->at(idx), CVI_QUANT);
+                                          rshift_v->at(idx), CVI_QUANT_NORMAL);
         inp[i] = out_type.isUnsignedInteger(8) ? to_uint8(inp[i])
                                                : to_int8(inp[i]);
       }

@@ -56,8 +56,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
-
   auto attr = op.parseParam();
+  // if (attr.is_dw == false) {
+  //   // merge weight and bias
+  //   return success();
+  // }
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
   int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
@@ -91,8 +94,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     return failure();
 
   auto attr = op.parseParam();
+  auto type_bytes = 4;
   auto out_type = module::getStorageType(op.getOutput());
-  auto type_bytes = out_type.getIntOrFloatBitWidth() / 8;
   // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto weight_data = filterOp.read_as_byte();
@@ -110,14 +113,12 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     op->setOperand(1, new_filter);
   } else {
     int64_t filter_shape[4];
-    if (out_type.isF32()) {
-      filter_shape[0] = 1;
-      filter_shape[1] = attr.oc;
-      filter_shape[2] = attr.ic / attr.groups;
-      filter_shape[3] = attr.kh * attr.kw;
-      auto new_type = RankedTensorType::get(filter_shape, out_type);
-      op.getFilter().setType(new_type);
-    }
+    filter_shape[0] = 1;
+    filter_shape[1] = attr.oc;
+    filter_shape[2] = attr.ic / attr.groups;
+    filter_shape[3] = attr.kh * attr.kw;
+    auto new_type = RankedTensorType::get(filter_shape, out_type);
+    op.getFilter().setType(new_type);
   }
 
   // bias op

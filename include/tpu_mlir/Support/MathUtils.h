@@ -43,12 +43,13 @@ typedef enum {
 // I8 multiplier type
 // =======================
 typedef enum {
-  BM_QUANT = 0,
-  BM_TFLITE_QUANT = 1,
-  CVI_QUANT = 2,
-  CVI_QDM_QUANT = 3, /* FLOOR */
+  BM_QUANT_NORMAL = 0,
+  BM_QUANT_TFLITE = 1,
+  BM_QUANT_ONLY_SHIFT = 2,
+  CVI_QUANT_NORMAL = 100,
+  CVI_QUANT_QDM = 101, /* FLOOR */
   UNKNOWN = -1
-} MultiplierType;
+} QuantMode;
 
 // =======================
 // alignment function
@@ -122,7 +123,7 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
-                                 MultiplierType m_type = BM_QUANT);
+                                 QuantMode m_type = BM_QUANT_NORMAL);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);

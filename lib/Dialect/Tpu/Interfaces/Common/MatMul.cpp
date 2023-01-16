@@ -116,7 +116,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset],
                                        multiplier_v->at(i), rshift_v->at(i),
-                                       CVI_QDM_QUANT);
+                                       CVI_QUANT_QDM);
           p.outputs[0][offset] =
               out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
         }

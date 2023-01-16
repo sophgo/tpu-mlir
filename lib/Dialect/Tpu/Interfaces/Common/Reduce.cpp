@@ -165,7 +165,7 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
     if (shift != 0 || multi != 1) {
       for (size_t i = 0; i < num_elem; ++i) {
         int64_t v =
-            applyMultiplierAndRShift(output_v[i], multi, shift, CVI_QUANT);
+            applyMultiplierAndRShift(output_v[i], multi, shift, CVI_QUANT_NORMAL);
         output_v[i] = to_int8(v);
       }
     }

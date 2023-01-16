@@ -105,7 +105,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
           int offset = (on * c + oc) * h * w + hw;
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
-                                       CVI_QDM_QUANT);
+                                       CVI_QUANT_QDM);
           p.outputs[0][offset] = to_int8(v);
         }
       }

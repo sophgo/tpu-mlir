@@ -80,9 +80,9 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
         if (is_cv18xx) {
           int64_t v;
           if (p.inputs[0][idx] < 0) {
-            v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift, CVI_QUANT);
+            v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift, CVI_QUANT_NORMAL);
           } else {
-            v = applyMultiplierAndRShift(p.inputs[0][idx], multiplier_pos, shift_pos, CVI_QUANT);
+            v = applyMultiplierAndRShift(p.inputs[0][idx], multiplier_pos, shift_pos, CVI_QUANT_NORMAL);
           }
           p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? to_uint8(v)
                                                   : to_int8(v);

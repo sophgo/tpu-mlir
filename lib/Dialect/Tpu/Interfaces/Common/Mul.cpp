@@ -59,11 +59,11 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   } else if (out_type.isInteger(32)) {
     return success();
   } else if (asym == false) {
-    MultiplierType m_type;
+    QuantMode m_type;
     if (is_cv18xx) {
-      m_type = CVI_QDM_QUANT;
+      m_type = CVI_QUANT_QDM;
     } else {
-      m_type = BM_QUANT;
+      m_type = BM_QUANT_NORMAL;
     }
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {

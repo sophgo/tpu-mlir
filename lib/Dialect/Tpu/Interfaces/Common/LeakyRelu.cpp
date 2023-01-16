@@ -57,10 +57,10 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       if (is_cv18xx) {
         if (src >= 0) {
           dst = do_pos_scale
-                    ? applyMultiplierAndRShift(src, scalei, shifti, CVI_QUANT)
+                    ? applyMultiplierAndRShift(src, scalei, shifti, CVI_QUANT_NORMAL)
                     : src;
         } else {
-          dst = applyMultiplierAndRShift(src, scale_neg, shift_neg, CVI_QUANT);
+          dst = applyMultiplierAndRShift(src, scale_neg, shift_neg, CVI_QUANT_NORMAL);
         }
       } else {
         dst = src >= 0 ? src : applyMultiplierAndRShift(src, scalei, shifti);
