@@ -416,7 +416,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(has_bias)));
 
   bool output_int32 = false;
-  if (module::isBM1686() || op.getKernelShape().size() == 3) {
+  if (op.getKernelShape().size() == 3) {
     output_int32 = true;
   }
   if (output_int32) {
