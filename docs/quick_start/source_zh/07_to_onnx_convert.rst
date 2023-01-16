@@ -109,33 +109,11 @@ TensorFlow模型转ONNX
    $ tar xzf mobilenet_v1_0.25_224.tgz
    $ python -m tf2onnx.convert --graphdef mobilenet_v1_0.25_224_frozen.pb \
        --output mnet_25.onnx --inputs input:0 \
+       --inputs-as-nchw input:0 \
        --outputs MobilenetV1/Predictions/Reshape_1:0
 
 运行以上所有命令后我们即可在当前目录下得到名为mnet_25.onnx的onnx模型。
 
-步骤2：转换输入格式
-~~~~~~~~~~~~~~~~~~~~
-
-因为TensorFlow模型的输入格式默认为NHWC，转为ONNX模型后仍然是NHWC的输入格式，并连接一个Transpose算子将格式转换为NCHW，所以我们还需要运行以下python脚本将输入格式修改为NCHW并将Transpose算子去除：
-
-.. code-block:: python3
-   :linenos:
-
-   #!/usr/bin/env python3
-   import onnx
-
-   model = onnx.load('mnet_25.onnx')
-   print(model.graph.input[0].type.tensor_type.shape.dim)
-   model.graph.input[0].type.tensor_type.shape.dim[1].dim_value = 3 # channel
-   model.graph.input[0].type.tensor_type.shape.dim[2].dim_value = 224 # height
-   model.graph.input[0].type.tensor_type.shape.dim[3].dim_value = 224 # width
-   print(model.graph.input[0].type.tensor_type.shape.dim)
-   input_name = model.graph.input[0].name
-   del model.graph.node[0]
-   model.graph.node[0].input[0] = input_name
-   onnx.save(model, 'mnet_25_new.onnx')
-
-运行完脚本后，我们即可在当前目录下得到名为mnet_25_new.onnx的onnx模型。
 
 PaddlePaddle模型转ONNX
 ------------------------
@@ -170,8 +148,8 @@ PaddlePaddle模型转ONNX
 .. code-block:: shell
    :linenos:
 
-   $ wget https://github.com/PaddlePaddle/Paddle2ONNX/blob/develop/tools/paddle/paddle_infer_shape.py
-   $ paddle_infer_shape.py  --model_dir . \
+   $ wget https://raw.githubusercontent.com/PaddlePaddle/Paddle2ONNX/develop/tools/paddle/paddle_infer_shape.py
+   $ python paddle_infer_shape.py  --model_dir . \
                              --model_filename inference.pdmodel \
                              --params_filename inference.pdiparams \
                              --save_dir new_model \
