@@ -18,7 +18,6 @@
 
 using namespace tpu_mlir::backend;
 
-
 void *BM168x::get_gmem_addr(uint64_t addr) {
   auto start = static_cast<char *>(this->dl_get_global_memaddr(0));
   return start + addr - GMEM_START_ADDR;
@@ -272,12 +271,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
   CAST_FUNCTION(tensor_compact_move_gen_cmd);
-  CAST_FUNCTION(tensor_broadcast_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
-  CAST_FUNCTION(sg_set_profile_dump);
-  CAST_FUNCTION(sg_stas_dump);
-  CAST_FUNCTION(sg_flops_dump);
-  CAST_FUNCTION(sg_stas_reset);
 }
 
 BM168x::~BM168x() {}
@@ -333,9 +327,7 @@ int BM168x::compare_mode(StringRef mode) {
 void BM168x::before_codegen() {
   // set_command_issue_flag(true);
   dl_sg_set_profile_dump(true);
-  dl_reset_cmd_id(cmdid_node);
-  dl_reset_cmd_id(bdc_node);
-  dl_reset_cmd_id(gdma_node);
+  reset_cmd_id_node();
   gdma_group_id.clear();
   gdma_group_id.push_back(0);
   bdc_group_id.clear();
@@ -349,8 +341,9 @@ void BM168x::before_codegen() {
 
 void BM168x::after_codegen(int64_t flops) {
   dl_sg_stas_dump(cmdid_node);
-  if (flops)
+  if (flops) {
     dl_sg_flops_dump(flops, cmdid_node);
+  }
 }
 
 void BM168x::set_command_issue_flag(bool value) {

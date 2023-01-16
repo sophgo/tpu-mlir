@@ -40,8 +40,24 @@ def fp32_to_bf16(d_fp32):
         d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
     return d_bf16.reshape(s)
 
+
 def show_fake_cmd(in_npz: str, model: str, out_npz: str):
     print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
+
+
+def get_chip_from_model(model_file: str) -> str:
+    fd = os.popen("model_tool --chip {}".format(model_file))
+    chip = fd.read()
+    fd.close()
+    return chip
+
+def is_dynamic_model(model_file: str) -> str:
+    fd = os.popen("model_tool --is_dynamic {}".format(model_file))
+    dynamic = fd.read()
+    fd.close()
+    if dynamic == 'true':
+        return True
+    return False
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
@@ -49,19 +65,14 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     is_dynamic = False
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
-        # check dynamic
-        fd = os.popen("model_tool --is_dynamic {}".format(model_file))
-        dynamic = fd.read()
-        fd.close()
-        if dynamic == 'true':
-            is_dynamic = True
+        is_dynamic = is_dynamic_model(model_file)
+        chip = get_chip_from_model(model_file)
         # trick for runtime link chip cmodel
-        fd = os.popen("model_tool --chip {}".format(model_file))
-        chip = fd.read()
-        fd.close()
         lib_so = 'libcmodel_1684x.so'
         if chip == 'BM1686':
             lib_so = 'libcmodel_1686.so'
+        elif chip == 'BM1684':
+            lib_so = 'libcmodel_1684.so'
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
     elif model_file.endswith(".cvimodel"):
@@ -115,8 +126,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if (i.data.dtype == np.int8 or i.data.dtype == np.uint8) and i.qscale != 0:
             if is_cv18xx and i.name in inputs:
                 name = i.name + "_si8" if i.data.dtype == np.int8 else "_ui8"
-                outputs[name] = np.array(i.data.astype(np.float32)/ np.float32(i.qscale))
-            else :
+                outputs[name] = np.array(i.data.astype(np.float32) / np.float32(i.qscale))
+            else:
                 zp = i.qzero_point
                 outputs[i.name] = np.array((i.data.astype(np.float32) - zp) * np.float32(i.qscale),
                                            dtype=np.float32)
@@ -164,9 +175,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         # plz refre https://github.com/microsoft/onnxruntime/issues/1455
         output_keys = []
         model = onnx.load(onnx_file)
-        no_list = [
-            "Cast", "Shape", "Unsqueeze", "Constant", "Dropout", "Loop", "TopK"
-        ]
+        no_list = ["Cast", "Shape", "Unsqueeze", "Constant", "Dropout", "Loop", "TopK"]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
         for x in model.graph.node:

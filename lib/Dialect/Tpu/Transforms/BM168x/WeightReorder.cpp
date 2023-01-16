@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/GmemAllocator.hpp"
@@ -45,4 +46,20 @@ void populateWeightReorderPatterns(RewritePatternSet *patterns) {
 };
 
 } // namespace bm1684x
+
+namespace bm1684 {
+
+void populateWeightReorderPatterns(RewritePatternSet *patterns) {
+  // clang-format off
+  patterns->add<
+    WeightReorder<tpu::Conv1DOp, int8_t>,
+    WeightReorder<tpu::Conv2DOp, int8_t>,
+    WeightReorder<tpu::DeconvOp, int8_t>,
+    WeightReorder<tpu::Conv2DOp, Float32Type>
+  >(patterns->getContext());
+  // clang-format on
+};
+
+} // namespace bm1684
+
 } // namespace tpu_mlir

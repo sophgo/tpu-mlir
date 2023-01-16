@@ -14,7 +14,6 @@
 
 using namespace tpu_mlir::backend;
 
-
 uint32_t BM1684::get_bdc_len(int bdc_num, int group_id) {
   return bdc_num * BDC_CMD_ALIGNED_NUM * sizeof(uint32_t);
 }
@@ -25,8 +24,14 @@ uint32_t BM1684::get_gdma_len(int gdma_num, int group_id) {
 
 void BM1684::load_functions() {
   BM168x::load_functions();
+  // clang-format off
   CAST_FUNCTION_WITH_SYM(cmd_id_divide, __cmd_id_divide);
   CAST_FUNCTION_WITH_SYM(cmd_id_merge, __cmd_id_merge);
+  CAST_FUNCTION_WITH_SYM(sg_set_profile_dump, bm_set_profile_dump);
+  CAST_FUNCTION_WITH_SYM(sg_stas_dump, bm_stas_dump);
+  CAST_FUNCTION_WITH_SYM(sg_flops_dump, bm_flops_dump);
+  CAST_FUNCTION_WITH_SYM(sg_stas_reset, bm_stas_reset);
+  CAST_FUNCTION_WITH_SYM(nodechip_depthwise_forward_parallel, nodechip_depthwise_forward_parallel_with_dilation);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(general_matrix_move_gen_cmd);
   CAST_FUNCTION(nodechip_conv_forward_local);
@@ -91,7 +96,6 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_deconv_forward_parallel_with_data_split);
   CAST_FUNCTION(nodechip_deconv_fix16b_forward_parallel);
   CAST_FUNCTION(nodechip_deconv_fix8b_forward_parallel);
-  CAST_FUNCTION(nodechip_depthwise_forward_parallel_with_dilation);
   CAST_FUNCTION(nodechip_conv_forward_parallel_with_data_split);
   CAST_FUNCTION(nodechip_winograd_forward_parallel_with_data_split);
   CAST_FUNCTION(nodechip_winograd_forward_parallel_fix8b_with_data_split);
@@ -184,4 +188,5 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_global_int2float);
   CAST_FUNCTION(nodechip_float2int8_v2);
   CAST_FUNCTION(nodechip_const_binary_local);
+  // clang-format on
 }
