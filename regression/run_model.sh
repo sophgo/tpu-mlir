@@ -38,6 +38,7 @@ eval do_f16=\${${chip_name}_support_f16}
 eval do_asymmetric=\${${chip_name}_support_asym}
 eval do_symmetric=\${${chip_name}_support_sym}
 eval support_dynamic=\${${chip_name}_support_dyn}
+eval do_int4_sym=\${${chip_name}_support_int4_sym}
 eval model_type=\${${chip_name}_model_type}
 
 if [ x${model_type} == x ]; then
@@ -104,6 +105,15 @@ if echo ${model_path} | grep -q -E '\.tflite$'; then
   do_dynamic=0
 fi
 
+#only for in4 test, only for debug
+if [ ${do_int4_sym} == 1 ]; then
+  do_cali=0
+  do_f32=0
+  do_f16=0
+  do_bf16=0
+  do_symmetric=0
+  do_asymmetric=0
+fi
 excepts_opt=
 if [ x${excepts} != x ]; then
   excepts_opt="--excepts=${excepts}"
@@ -241,6 +251,9 @@ fi
 
 # only once
 CALI_TABLE=${REGRESSION_PATH}/cali_tables/${model_name}_cali_table
+if [ x${specified_cali_table} != x ]; then
+  CALI_TABLE=${specified_cali_table}
+fi
 QTABLE=${REGRESSION_PATH}/cali_tables/${model_name}_qtable
 if [ ${do_cali} == 1 ] && [ ! -f ${CALI_TABLE} ]; then
   if [ x${dataset} == x ]; then
@@ -400,6 +413,51 @@ if [ $do_dynamic == 1 ]; then
 
 fi #do_dynamic
 
+# to int4 symmetric
+if [ ${do_int4_sym} == 1 ]; then
+
+  tolerance_sym_opt=
+  if [ x${int4_sym_tolerance} != x ]; then
+    tolerance_sym_opt="--tolerance ${int4_sym_tolerance}"
+  fi
+
+  #It is not supported now, first comment it
+  # model_deploy.py \
+  #   --mlir ${model_name}.mlir \
+  #   --quantize INT4 \
+  #   ${cali_opt} \
+  #   ${qtable_opt} \
+  #   --chip ${chip_name} \
+  #   ${test_innpz_opt} \
+  #   ${test_reference_opt} \
+  #   ${tolerance_sym_opt} \
+  #   ${excepts_opt} \
+  #   --quant_input \
+  #   --quant_output \
+  #   --model ${model_name}_${chip_name}_int4_sym.${model_type}
+
+  #Temporary test code
+  tpuc-opt ${model_name}.mlir \
+      --init \
+      --import-calibration-table="file=${CALI_TABLE} asymmetric=false" \
+      --convert-top-to-tpu="mode=INT4 asymmetric=false chip=bm1686" \
+      --canonicalize \
+      --save-weight \
+      --mlir-print-debuginfo \
+      -o ${model_name}_bm1686_tpu_int4_sym.mlir
+
+  model_runner.py \
+      --model ${model_name}_bm1686_tpu_int4_sym.mlir \
+      --input ${model_name}_in_f32.npz \
+      --dump_all_tensors \
+      --output ${model_name}_bm1686_tpu_int4_sym_outputs.npz
+
+  npz_tool.py compare \
+      ${model_name}_bm1686_tpu_int4_sym_outputs.npz \
+      ${model_name}_top_outputs.npz \
+      --tolerance ${int4_sym_tolerance} -v
+
+fi #do_int4_sym
 #########################
 # app
 #########################
