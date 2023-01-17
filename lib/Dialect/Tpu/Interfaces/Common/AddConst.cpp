@@ -14,8 +14,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-
-
 LogicalResult tpu::AddConstOp::init(InferenceParameter &p) { return success(); }
 
 void tpu::AddConstOp::deinit(InferenceParameter &p) {}
@@ -47,22 +45,22 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // coeff has been merge in multiplier&&rshift
-        double sum =
-            applyMultiplierAndRShift(p.outputs[0][i], getMultiplier(), getRshift());
-        if (getDoRelu() && sum < 0)
+        double sum = applyMultiplierAndRShift(p.outputs[0][i], getMultiplier(),
+                                              getRshift());
+        if (getDoRelu() && sum < 0) {
           sum = 0;
-        p.outputs[0][i] =
-            out_type.isUnsignedInteger(8) ? to_uint8(sum) : to_int8(sum);
+        }
+        p.outputs[0][i] = saturate(sum, out_type);
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         // inputs has been requant
         double sum = p.outputs[0][i];
-        if (getDoRelu() && sum < 0)
+        if (getDoRelu() && sum < 0) {
           sum = 0;
-        p.outputs[0][i] =
-            out_type.isUnsignedInteger(8) ? to_uint8(sum) : to_int8(sum);
+        }
+        p.outputs[0][i] = saturate(sum, out_type);
       }
     }
   }

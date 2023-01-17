@@ -61,8 +61,7 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];
       sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode);
-      p.outputs[0][i] =
-          out_type.isUnsignedInteger(8) ? to_uint8(sum) : to_int8(sum);
+      p.outputs[0][i] = saturate(sum, out_type);
     }
   } else {
     llvm_unreachable("MulOp asymmetric use FP32");

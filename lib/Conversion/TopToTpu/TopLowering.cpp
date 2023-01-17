@@ -232,9 +232,7 @@ int32_t do_const_dequant(Value input, int64_t multiplier, int64_t shift,
   auto input_stype = module::getStorageType(input);
   auto input_quant = cast<top::WeightOp>(input.getDefiningOp()).read<int8_t>();
   int64_t input_offset = qtype.getZeroPoint();
-  int32_t input_data = input_stype.isUnsignedInteger(8)
-                           ? (uint8_t)(input_quant->at(0))
-                           : input_quant->at(0);
+  int32_t input_data = saturate(input_quant->at(0), input_stype);
   int64_t tmp = (input_data - input_offset) * (int64_t)multiplier;
   auto v = RightShiftRound(tmp, 31 - lshift, ROUNDING_HALF_UP);
   v = RightShiftRound(v, shift, ROUNDING_HALF_AWAY_FROM_ZERO);

@@ -103,8 +103,7 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
           auto v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
                                             mode) +
                    o_qtype.getZeroPoint();
-          p.outputs[0][offset] =
-              sType.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
+          p.outputs[0][offset] = saturate(v, sType);
         }
       }
     }

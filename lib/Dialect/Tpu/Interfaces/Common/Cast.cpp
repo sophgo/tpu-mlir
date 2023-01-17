@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 float requant(const float &data, const quant::UniformQuantizedType &qtype) {
   auto stype = qtype.getExpressedType();
   if (stype.isF32()) {
@@ -98,19 +96,7 @@ LogicalResult tpu::CastOp::inference(InferenceParameter &p) {
       } else {
         v = requant(p.inputs[0][i], qtype);
       }
-      if (out_type.isInteger(4)) {
-        if (out_type.isUnsignedInteger(4)) {
-          p.outputs[0][i] = to_uint4(v, round_mode);
-        } else {
-          p.outputs[0][i] = to_int4(v, round_mode);
-        }
-      } else {
-        if (out_type.isUnsignedInteger(8)) {
-          p.outputs[0][i] = to_uint8(v, round_mode);
-        } else {
-          p.outputs[0][i] = to_int8(v, round_mode);
-        }
-      }
+      p.outputs[0][i] = saturate(v, out_type, round_mode);
     }
   } else if (isInQuant && false == isOutQuant) {
     // INT8|UINT8|... ==> FP32|BF16|F16|...

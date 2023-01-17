@@ -86,7 +86,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
       for (int i = 0; i < num_elem; i++) {
         auto &out = p.outputs[0][i];
         out = applyMultiplierAndRShift(out, 1, rshift_v->at(0));
-        out = out_type.isUnsignedInteger(8) ? to_uint8(out) : to_int8(out);
+        out = saturate(out, out_type);
       }
     } else {
       auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
@@ -114,8 +114,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
-        auto &out = p.outputs[0][i];
-        out = out_type.isUnsignedInteger(8) ? to_uint8(out) : to_int8(out);
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
       }
     }
   } else {
@@ -147,9 +146,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       p.outputs[0][i] = p.outputs[0][i] * (float)(1.0 / scale) + zp;
-      p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                            ? to_uint8(p.outputs[0][i])
-                            : to_int8(p.outputs[0][i]);
+      p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
     }
     return success();
   }

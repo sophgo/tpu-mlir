@@ -137,25 +137,6 @@ int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
 int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
                             uint32_t rshift);
 
-static inline int32_t saturate(int32_t input, mlir::Type stype) {
-  int32_t output;
-  if (stype.isUnsignedInteger(8))
-    output = input > 255 ? 255 : input < 0 ? 0 : input;
-  else if (stype.isSignedInteger(8))
-    output = input > 127 ? 127 : input < -128 ? -128 : input;
-  else if (stype.isUnsignedInteger(16))
-    output = input > 65535 ? 65535 : input < 0 ? 0 : input;
-  else if (stype.isSignedInteger(16))
-    output = input > 32767 ? 32767 : input < -32768 ? -32768 : input;
-  else if (stype.isUnsignedInteger(4))
-    output = input > 15 ? 15 : input < 0 ? 0 : input;
-  else if (stype.isSignedInteger(4))
-    output = input > 7 ? 7 : input < -8 ? -8 : input;
-  else
-    output = input;
-  return output;
-}
-
 // to compilable with tflite stride slice
 void stride_slice_gen_params(const int64_t *input_shape_, int input_dim_,
                              const float *begin_index_, const float *end_index_,
@@ -179,11 +160,6 @@ bool compare(float lhs, float rhs, llvm::StringRef mode);
 int32_t exp_on_negative_values(int input, int int_bits);
 
 template <typename T> static int64_t to_int(T v, RoundingMode round_mode) {
-  // round_mode:
-  // HALF_DOWN for bm168x
-  // ROUNDING_HALF_TO_EVEN for cv18xx
-  // ROUNDING_DOWN  for cv18xx
-  // ROUNDING_HALF_UP for cv18xx
   int64_t i64_val;
   if (round_mode == ROUNDING_HALF_AWAY_FROM_ZERO) {
     i64_val = std::round(v);
@@ -212,6 +188,33 @@ template <typename T> static int64_t to_int(T v, RoundingMode round_mode) {
     llvm_unreachable("not support round_mode.");
   }
   return i64_val;
+}
+
+template <typename T>
+static int64_t
+saturate(T v, mlir::Type type,
+         RoundingMode round_mode = ROUNDING_HALF_AWAY_FROM_ZERO) {
+  auto itype = dyn_cast<mlir::IntegerType>(type);
+  if (!itype) {
+    type.dump();
+    llvm_unreachable("not support type");
+  }
+  int64_t max, min;
+  auto N = itype.getWidth();
+  if (itype.isUnsigned()) {
+    max = llvm::maxUIntN(N);
+    min = 0;
+  } else {
+    max = llvm::maxIntN(N);
+    min = llvm::minIntN(N);
+  }
+  v = to_int(v, round_mode);
+  if (v > max) {
+    v = max;
+  } else if (v < min) {
+    v = min;
+  }
+  return v;
 }
 
 template <typename T>

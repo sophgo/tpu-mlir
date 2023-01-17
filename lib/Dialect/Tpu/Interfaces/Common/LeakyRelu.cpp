@@ -64,8 +64,7 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       } else {
         dst = src >= 0 ? src : applyMultiplierAndRShift(src, scalei, shifti);
       }
-      p.outputs[0][i] =
-          out_type.isUnsignedInteger(8) ? to_uint8(dst) : to_int8(dst);
+      p.outputs[0][i] = saturate(dst, out_type);
     }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
@@ -80,9 +79,7 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
                 ? src
                 : ((src - i_qtype.getZeroPoint()) * (float)(1.0 / scale) +
                    o_qtype.getZeroPoint());
-
-      p.outputs[0][i] =
-          out_type.isUnsignedInteger(8) ? to_uint8(dst) : to_int8(dst);
+      p.outputs[0][i] = saturate(dst, out_type);
     }
   }
   return success();

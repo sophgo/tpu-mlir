@@ -118,8 +118,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           v = applyMultiplierAndRShift(p.outputs[0][offset],
                                        multiplier_v->at(i), rshift_v->at(i),
                                        qmode);
-          p.outputs[0][offset] =
-              out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
+          p.outputs[0][offset] = saturate(v, out_type);
         }
       }
     } else {
@@ -137,31 +136,17 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           // rft);
           auto v = MultiplyByQuantizedMultiplier((int32_t)(p.outputs[0][i]),
                                                  (int32_t)multiplier_v->at(0),
-                                                 -(int32_t)rshift_v->at(0));
-          if (out_type.isUnsignedInteger(8)) {
-            p.outputs[0][i] = to_uint8(v + o_qtype.getZeroPoint());
-          } else {
-            p.outputs[0][i] = to_int8(v + o_qtype.getZeroPoint());
-          }
+                                                 -(int32_t)rshift_v->at(0)) +
+                   o_qtype.getZeroPoint();
+          p.outputs[0][i] = saturate(v, out_type);
         }
       } else if (qmode == tpu::RequantMode::MultiplierShift) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
         for (int i = 0; i < num_output; ++i) {
           auto v = applyMultiplierAndRShift(
-              p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0));
-          if (out_type.isInteger(8)) {
-            if (out_type.isUnsignedInteger(8)) {
-              p.outputs[0][i] = to_uint8(v + o_qtype.getZeroPoint());
-            } else {
-              p.outputs[0][i] = to_int8(v + o_qtype.getZeroPoint());
-            }
-          } else {
-            if (out_type.isUnsignedInteger(4)) {
-              p.outputs[0][i] = to_uint4(v + o_qtype.getZeroPoint());
-            } else {
-              p.outputs[0][i] = to_int4(v + o_qtype.getZeroPoint());
-            }
-          }
+                       p.outputs[0][i], multiplier_v->at(0), rshift_v->at(0)) +
+                   o_qtype.getZeroPoint();
+          p.outputs[0][i] = saturate(v, out_type);
         }
       }
     }

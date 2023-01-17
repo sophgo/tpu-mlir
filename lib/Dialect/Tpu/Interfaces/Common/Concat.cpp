@@ -42,8 +42,7 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
       for (int i = 0; i < num_elem; ++i) {
         inp[i] = applyMultiplierAndRShift(inp[i], multiplier_v->at(idx),
                                           rshift_v->at(idx));
-        inp[i] =
-            out_type.isUnsignedInteger(8) ? to_uint8(inp[i]) : to_int8(inp[i]);
+        inp[i] = saturate(inp[i], out_type);
       }
     }
   }
