@@ -52,6 +52,10 @@ def parse_args(args_list):
                         default=1,
                         help="whether int8 tensor compare close")
     parser.add_argument("--save", type=str, help="Save result as a csv file")
+    parser.add_argument("--per_axis_compare",
+                        type=int,
+                        default=-1,
+                        help="Compare along axis, usually along axis 1 as per-channel")
     args = parser.parse_args(args_list)
     return args
 
@@ -117,7 +121,7 @@ def dequantize(d1, threshold):
     return d1
 
 
-def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close):
+def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close, per_axis_compare):
     lock.acquire()
     d1 = npz1[name]
     d2 = npz2[name]
@@ -130,14 +134,14 @@ def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_clos
         result = (False, tc.NOT_MATCH, {}, None)
         dic[name] = result
         return result
-    result = tc.compare(d1, d2, verbose, int8_tensor_close)
+    result = tc.compare(d1, d2, verbose, int8_tensor_close, per_axis_compare)
     dic[name] = result
     return result
 
 
-def print_result_one_array(tc, npz1, name, dic, verbose):
+def print_result_one_array(tc, npz1, name, dic, verbose, per_axis_compare):
     d1 = npz1[name]
-    tc.print_result(d1, name, dic[name], verbose)
+    tc.print_result(d1, name, dic[name], verbose, per_axis_compare)
 
 
 def npz_compare(args_list):
@@ -168,7 +172,8 @@ def npz_compare(args_list):
     tc = TensorCompare(close_order_tol=3,
                        cosine_similarity_tol=tolerance[0],
                        euclidean_similarity_tol=tolerance[1],
-                       signal_to_quantization_noise_tol=float('-inf'))
+                       signal_to_quantization_noise_tol=float('-inf'),
+                       per_axis_compare=args.per_axis_compare)
 
     common = list()
     for name in npz1.files:
@@ -185,7 +190,8 @@ def npz_compare(args_list):
     stats = TensorCompareStats()
 
     names_list = list(names)  # deep copy
-    process_number = multiprocessing.cpu_count()
+    #process_number = multiprocessing.cpu_count()
+    process_number = 1
 
     while (len(names_list) > 0):
         # take process number names
@@ -196,7 +202,7 @@ def npz_compare(args_list):
         for name in compare_process_name_list:
             p = multiprocessing.Process(target=compare_one_array,
                                         args=(tc, npz1, npz2, name , args.verbose, lock,
-                                              dic, int8_tensor_close))
+                                              dic, int8_tensor_close, args.per_axis_compare))
             processes.append(p)
             p.start()
 
@@ -207,7 +213,7 @@ def npz_compare(args_list):
         if dic.get(name) == None:
             continue
         stats.update(name, dic.get(name))
-        print_result_one_array(tc, npz1, name, dic, args.verbose)
+        print_result_one_array(tc, npz1, name, dic, args.verbose, args.per_axis_compare)
 
     stats.print_result()
     if (args.save):
