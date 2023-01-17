@@ -13,6 +13,7 @@
 #include "tpu_mlir/Builder/CV18xx/cvimodel_generated.h"
 #include "tpu_mlir/Builder/CV18xx/parameter_generated.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include <chrono>
 #include <ctime>
@@ -85,6 +86,7 @@ public:
 private:
   int *layer_id;
   void codeGen();
+  void codegen_for_group(tpu::GroupOp gOP);
 };
 
 class CviCpuRoutine : public CviRoutine {

@@ -178,3 +178,17 @@ void tpu::CastOp::getCanonicalizationPatterns(RewritePatternSet &results,
 mlir::Type tpu::CastOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return do_nothing(mode);
 }
+
+LogicalResult tpu::CastOp::LocalGenSupport() {
+  // BackwardH and BackwardN can not handle more than one input right now.
+  // The same n_slice and h_slice value will propagate to each inputs.
+  // Thus, the local layer is only safe when we do not need to slice n and h
+  // dimensions.
+  if (module::isCV18xx()) {
+    // if (module::getStorageType(getOutput()).isBF16()) {
+    //   return success();
+    // }
+    return failure();
+  }
+  return success();
+}

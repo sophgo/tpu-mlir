@@ -23,7 +23,14 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
   std::vector<std::pair<Value, coeff_cost_t>> tensor_to_coeff_cost;
   int64_t cycle_cost, life_time;
   int64_t timestep_num = time_step->get_timestep_num();
-  CycleCalculator cycle_calculator;
+  std::unique_ptr<CycleCalculator> cycle_calculator;
+  if (module::isCV18xx()) {
+    Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
+    cycle_calculator.reset(cyc_ptr);
+  } else {
+    Bm168xCycleCalculator *cyc_ptr = new Bm168xCycleCalculator();
+    cycle_calculator.reset(cyc_ptr);
+  }
   time_step->gen_all_mem_buffer();
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     int64_t slack = 0;
@@ -34,7 +41,7 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
     }
     for (auto &tensor : ts_tensors) {
       const tensor_info_t &tensor_info = tensor_infos[tensor.first];
-      cycle_cost = cycle_calculator.getGdmaCycle(tensor.first, tensor_info);
+      cycle_cost = cycle_calculator->getGdmaCycle(tensor.first, tensor_info);
       if (time_step->is_tensor_hold_in_lmem(tensor.first)) {
         life_time = time_step->get_tensor_life_time(tensor.first);
         coeff_cost_t cost = {life_time, cycle_cost};
@@ -49,7 +56,7 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
 
     const TpuTsField &ts_layers = time_step->getLayers(ts);
     for (auto op : ts_layers) {
-      cycle_cost = cycle_calculator.getLocalLayerCycle(op, tensor_infos, true);
+      cycle_cost = cycle_calculator->getLocalLayerCycle(op, tensor_infos, true);
       slack += cycle_cost;
     }
     if (slack < 0) {

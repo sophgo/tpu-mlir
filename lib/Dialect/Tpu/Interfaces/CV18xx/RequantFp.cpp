@@ -35,6 +35,6 @@ int64_t tpu::RequantFpOp::getBufferSize_cv18xx(
   return 0;
 }
 
-void tpu::RequantFpOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step) {
+void tpu::RequantFpOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

@@ -80,7 +80,7 @@ top::NoneOp getNoneOp(Operation *op) {
   return NoneOp;
 }
 
-Value getOriValue(Value &v) {
+Value getOriValue(Value v) {
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
     auto parent_op = v.getParentBlock()->getParentOp();

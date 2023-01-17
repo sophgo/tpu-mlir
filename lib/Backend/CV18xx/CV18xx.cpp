@@ -12,20 +12,20 @@
  * Copyright (C) Cvitek Co., Ltd. 2019-2020. All rights reserved.
  */
 
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Interfaces/LocalGenInterface.h"
+#include "tpu_mlir/Support/Module.h"
 #include <iostream>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/MathExtras.h>
 #include <llvm/Support/raw_ostream.h>
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Support/Module.h"
 
 #define DEBUG_TYPE "CviBackendContext"
 
-
 namespace tpu_mlir {
 namespace backend {
-CV18xx * CV18xx ::cv18xx = nullptr;
+CV18xx *CV18xx ::cv18xx = nullptr;
 void CV18xx::write_cmdbuf(const void *cmdbuf, uint32_t size) {
   cv18xx->cmdbuf_.resize(size);
   memcpy(&cv18xx->cmdbuf_[0], cmdbuf, size);
@@ -38,16 +38,17 @@ void CV18xx::read_cmdbuf(std::vector<uint8_t> &out_cmdbuf) {
 void CV18xx::dmabuf_convert(std::vector<uint8_t> &dmabuf) {
   uint32_t dmabuf_sz = 0;
   uint32_t pmu_sz = 0;
-  cv18xx->cvk_ctx_->ops->dmabuf_size(cv18xx->cmdbuf_.data(), cv18xx->cmdbuf_.size(),
-                                   &dmabuf_sz, &pmu_sz);
+  cv18xx->cvk_ctx_->ops->dmabuf_size(
+      cv18xx->cmdbuf_.data(), cv18xx->cmdbuf_.size(), &dmabuf_sz, &pmu_sz);
   dmabuf.resize(dmabuf_sz);
   cv18xx->cvk_ctx_->ops->dmabuf_convert(cv18xx->cmdbuf_.data(),
-                                      cv18xx->cmdbuf_.size(), dmabuf.data());
+                                        cv18xx->cmdbuf_.size(), dmabuf.data());
 }
 
 void CV18xx::submit() {
   uint32_t size;
-  uint8_t *cmdbuf = cv18xx->cvk_ctx_->ops->acquire_cmdbuf(cv18xx->cvk_ctx_, &size);
+  uint8_t *cmdbuf =
+      cv18xx->cvk_ctx_->ops->acquire_cmdbuf(cv18xx->cvk_ctx_, &size);
   write_cmdbuf(cmdbuf, size);
   cv18xx->cvk_ctx_->ops->reset(cv18xx->cvk_ctx_);
 }
@@ -680,11 +681,23 @@ CV18xx::~CV18xx() {
 
 cvk_fmt_t CV18xx::getDataType(mlir::Type type) {
   auto bits = type.getIntOrFloatBitWidth();
-  if (bits == 8) {
-    if (type.isUnsignedInteger()) {
+  if (type.isUnsignedInteger()) {
+    switch (bits) {
+    case 8:
       return CVK_FMT_U8;
-    } else {
+    case 16:
+      return CVK_FMT_U16;
+    default:
+      break;
+    }
+  } else if (type.isSignedInteger() || type.isSignlessInteger()) {
+    switch (bits) {
+    case 8:
       return CVK_FMT_I8;
+    // case 16:
+    //   return CVK_FMT_I16;
+    default:
+      break;
     }
   } else if (type.isF32()) {
     return CVK_FMT_F32;

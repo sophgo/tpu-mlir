@@ -1,7 +1,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/CVAddressAssign.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -43,6 +43,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   std::map<std::string, std::vector<ValueInfo>> shared_outs_regions;
   std::vector<ValueInfo> private_outs;
   std::vector<ValueInfo> io_outs;
+  std::vector<Operation *> group_ops;
 
   // assign activation
   uint32_t loc = 0;
@@ -50,8 +51,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     func.walk([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
-      if (isa<FuncOp, top::NoneOp, top::WeightOp, func::CallOp, tpu::YieldOp>(
-              op)) {
+      if (isa<FuncOp, top::NoneOp, top::WeightOp, func::CallOp> (op) ||
+          module::isOpInGroup(op)) {
         return;
       }
       ops.emplace_back(op);
@@ -68,6 +69,9 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   updateConcatOpTargetV(inplace_ops, op_infos);
   for (auto iter = ops.begin(); iter != ops.end(); ++iter) {
     auto op = *iter;
+    if (isa<tpu::GroupOp>(op)) {
+      group_ops.emplace_back(op);
+    }
     int n = op->getNumResults();
     for (int i = 0; i < n; ++i) {
       if (op->getResult(i).getType().isa<mlir::NoneType>()) {
@@ -131,6 +135,20 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   }
   for (auto &v_info : inplace_ops) {
     updateAddressOfInPlaceOp(v_info, op_infos, neuron_alignment);
+  }
+  // 5. set in group op's addr
+  for (auto &op : group_ops) {
+    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
+      auto &last_op = gOp.getBody().back().back();
+      auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
+      assert(yield_op);
+      int idx = 0;
+      for (auto opd : yield_op.getOperands()) {
+        auto addr = module::getAddress(gOp.getResult(idx));
+        module::setAddress(opd, addr);
+        idx++;
+      }
+    }
   }
 
   // TODO markGmemReusedOp

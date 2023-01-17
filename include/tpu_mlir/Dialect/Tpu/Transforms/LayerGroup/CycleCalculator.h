@@ -16,19 +16,41 @@ namespace tpu {
 
 class CycleCalculator {
 public:
-  CycleCalculator() {}
-  int64_t getGlobalLayerCycle(Operation *op);
+  CycleCalculator() {};
+  virtual ~CycleCalculator() {};
+  virtual int64_t getGlobalLayerCycle(Operation *op) = 0;
   int64_t getGroupCycle(BasicTimeStepPtr &time_step, shape_secs_t &shape_secs);
-  int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
-                             bool calc_bdc_slack);
-  int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info);
-  int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info);
-  int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info);
+  virtual int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
+                                     bool calc_bdc_slack) = 0;
+  virtual int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info) = 0;
+  virtual int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info) = 0;
+  virtual int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info) = 0;
 
 protected:
   void set_local_sec_info(local_sec_info_t &sec_info, Operation *op,
                           TensorInfo &tensor_infos);
 };
 
+class Bm168xCycleCalculator : public CycleCalculator {
+public:
+  Bm168xCycleCalculator() {}
+  int64_t getGlobalLayerCycle(Operation *op) override;
+  int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
+                             bool calc_bdc_slack) override;
+  int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info) override;
+  int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info) override;
+  int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info) override;
+};
+
+class Cv18xxCycleCalculator : public CycleCalculator {
+public:
+  Cv18xxCycleCalculator() {}
+  int64_t getGlobalLayerCycle(Operation *op) override;
+  int64_t getLocalLayerCycle(Operation *op, TensorInfo &tensor_infos,
+                             bool calc_bdc_slack) override;
+  int64_t getGdmaCycle(Value v, const tensor_info_t &tensor_info) override;
+  int64_t getLoadCycle(Value v, const tensor_info_t &tensor_info) override;
+  int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info) override;
+};
 } // namespace tpu
 } // namespace tpu_mlir

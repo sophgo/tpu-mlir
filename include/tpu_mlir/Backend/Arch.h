@@ -9,13 +9,13 @@
 
 #pragma once
 
-#include <vector>
-#include <cstring>
+#include "mlir/IR/Builders.h"
+#include "tpu_mlir/Support/Module.h"
+#include "llvm/Support/DynamicLibrary.h"
 #include <assert.h>
 #include <cmath>
-#include "mlir/IR/Builders.h"
-#include "llvm/Support/DynamicLibrary.h"
-#include "tpu_mlir/Support/Module.h"
+#include <cstring>
+#include <vector>
 
 namespace tpu_mlir {
 namespace backend {

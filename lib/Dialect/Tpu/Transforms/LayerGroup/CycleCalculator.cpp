@@ -22,20 +22,6 @@ struct gdma_cycle_info_t {
       : stage(stage), cycle(cycle), hold_in_lmem(hold_in_lmem) {}
 };
 
-int64_t CycleCalculator::getGlobalLayerCycle(Operation *op) {
-  auto bm168x = BM168x::instance();
-  bm168x->set_command_issue_flag(false);
-  bm168x->reset_cmd_id_node();
-
-  // generate_fake_global_addr(op);
-  auto castOp = dyn_cast<GlobalGenInterface>(op);
-  castOp.codegen_global_bm168x();
-
-  int64_t cycle = bm168x->get_cmd_cycle();
-  bm168x->dl_sg_stas_reset();
-  return cycle;
-}
-
 void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
                                          Operation *op,
                                          TensorInfo &tensor_infos) {
@@ -69,139 +55,6 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
       sec_info.w_slice = W;
     }
   }
-}
-
-int64_t CycleCalculator::getLocalLayerCycle(Operation *op,
-                                            TensorInfo &tensor_infos,
-                                            bool calc_bdc_slack) {
-  auto bm168x = BM168x::instance();
-  int64_t cycle = 0;
-  local_sec_info_t sec_info;
-  set_local_sec_info(sec_info, op, tensor_infos);
-  auto lgOp = dyn_cast<LocalGenInterface>(op);
-  // #pragma omp critical
-  {
-    bm168x->set_command_issue_flag(false);
-    bm168x->reset_cmd_id_node();
-
-    // set_local_layer_io_addr(op);
-    lgOp.codegen_local_bm168x(0, 0, sec_info);
-
-    int64_t bdc_cycle = bm168x->get_bdc_cycle();
-    int64_t gdma_cycle = bm168x->get_gdma_cycle();
-    if (calc_bdc_slack) {
-      cycle = bdc_cycle - gdma_cycle;
-    } else {
-      cycle = bdc_cycle > gdma_cycle ? bdc_cycle : gdma_cycle;
-    }
-    bm168x->dl_sg_stas_reset();
-  }
-  return cycle;
-}
-
-int64_t CycleCalculator::getGdmaCycle(Value v,
-                                      const tensor_info_t &tensor_info) {
-  auto bm168x = BM168x::instance();
-  bm168x->set_command_issue_flag(false);
-  bm168x->reset_cmd_id_node();
-
-  // because LoadOp/StoreOp are not created during LayerGroup
-  int64_t cycle = 0;
-  if (tensor_info.mode == TIMESTEP_LOAD) {
-    cycle = getLoadCycle(v, tensor_info);
-  } else {
-    cycle = getStoreCycle(v, tensor_info);
-  }
-  bm168x->dl_sg_stas_reset();
-  return cycle;
-}
-
-int64_t CycleCalculator::getLoadCycle(Value v,
-                                      const tensor_info_t &tensor_info) {
-  // need_info:
-  // - n_slice, h_slice, eu_align, g_addr, l_addr
-  // - need_bcast, use_3ic
-  auto bm168x = BM168x::instance();
-  int64_t n_slice, h_slice;
-  auto &si = tensor_info.slice_info;
-  get_max_slice_nh(si, n_slice, h_slice);
-  int64_t use_3ic = tensor_info.use_3ic_opt;
-  bool need_bcast = tensor_info.need_bcast;
-  bool eu_align = tensor_info.eu_align;
-  auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
-  bm168x->dl_reset_cmd_id(pid_node);
-  auto data_type = BM168x::getDataType(v);
-  auto gdma_format = BM168x::getGdmaFormat(data_type);
-  auto fmt_bytes = BM168x::getFmtBytes(data_type);
-  int64_t N, C, H, W;
-  module::getNCHW(v, N, C, H, W);
-
-  auto g_stride = bm168x->getGlobalStride(N, C, H, W);
-  if (need_bcast) {
-    C = Arch::NPU_NUM;
-    g_stride.N = 0;
-    g_stride.C = 0;
-    g_stride.H = 0;
-  }
-  auto l_stride =
-      bm168x->getLocalStride(n_slice, C, h_slice, W, fmt_bytes, eu_align);
-  auto g_addr = module::getAddress(v);
-  auto l_addr = 0;
-  if (use_3ic < 4 && use_3ic > 0) {
-    auto use_op = *v.getUsers().begin();
-    auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
-    auto kernel = module::getI64Array(conv_op.getKernelShape());
-    int64_t to_ic =
-        use_3ic == 1
-            ? kernel->at(0)
-            : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
-    for (int i = 0; i < C; ++i) {
-      bm168x->dl_tensor_broadcast_move_gen_cmd(
-          g_addr + i * W * H * fmt_bytes, 0, l_addr, i * to_ic, n_slice,
-          h_slice, W, to_ic, g_stride.N, g_stride.H, l_stride.N, l_stride.H,
-          gdma_format, true, GDMA_VALUE_DIR_S2L, pid_node);
-    }
-  } else {
-    bm168x->dl_tensor_stride_move_gen_cmd(
-        l_addr, 0, g_addr, n_slice, C, h_slice, W, g_stride.N, g_stride.C,
-        g_stride.H, g_stride.W, l_stride.N, l_stride.C, l_stride.H, l_stride.W,
-        gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
-  }
-  int64_t gdma_cycle = bm168x->dl_get_cmd_id_cycle(pid_node);
-  bm168x->dl_destroy_cmd_id_node(pid_node);
-  return gdma_cycle;
-}
-
-int64_t CycleCalculator::getStoreCycle(Value v,
-                                       const tensor_info_t &tensor_info) {
-  // need_info:
-  // - n_slice, h_slice, eu_align, g_addr, l_addr
-  auto bm168x = BM168x::instance();
-  int64_t n_slice, h_slice;
-  auto &si = tensor_info.slice_info;
-  get_max_slice_nh(si, n_slice, h_slice);
-  bool eu_align = tensor_info.eu_align;
-  auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
-  bm168x->dl_reset_cmd_id(pid_node);
-  auto data_type = BM168x::getDataType(v);
-  auto gdma_format = BM168x::getGdmaFormat(data_type);
-  auto fmt_bytes = BM168x::getFmtBytes(data_type);
-  int64_t N, C, H, W;
-  module::getNCHW(v, N, C, H, W);
-  auto g_stride = bm168x->getGlobalStride(N, C, H, W);
-  auto l_stride =
-      bm168x->getLocalStride(n_slice, C, h_slice, W, fmt_bytes, eu_align);
-  auto g_addr = module::getAddress(v);
-  int64_t l_addr = 0;
-
-  bm168x->dl_tensor_stride_move_gen_cmd(
-      l_addr, 0, g_addr, n_slice, C, h_slice, W, l_stride.N, l_stride.C,
-      l_stride.H, l_stride.W, g_stride.N, g_stride.C, g_stride.H, g_stride.W,
-      gdma_format, GDMA_VALUE_DIR_L2S, 0, pid_node);
-
-  int64_t gdma_cycle = bm168x->dl_get_cmd_id_cycle(pid_node);
-  bm168x->dl_destroy_cmd_id_node(pid_node);
-  return gdma_cycle;
 }
 
 int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
@@ -302,6 +155,178 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
       filling_cycle + draining_cycle +
       std::max(loop_num - swpipl_stage_num, (int64_t)0) * kernel_cycle;
   return total_cycle;
+}
+
+int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
+  auto bm168x = BM168x::instance();
+  bm168x->set_command_issue_flag(false);
+  bm168x->reset_cmd_id_node();
+
+  // generate_fake_global_addr(op);
+  auto castOp = dyn_cast<GlobalGenInterface>(op);
+  castOp.codegen_global_bm1684x();
+
+  int64_t cycle = bm168x->get_cmd_cycle();
+  bm168x->dl_sg_stas_reset();
+  return cycle;
+}
+
+int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
+                                            TensorInfo &tensor_infos,
+                                            bool calc_bdc_slack) {
+  auto bm168x = BM168x::instance();
+  int64_t cycle = 0;
+  local_sec_info_t sec_info;
+  set_local_sec_info(sec_info, op, tensor_infos);
+  auto lgOp = dyn_cast<LocalGenInterface>(op);
+  // #pragma omp critical
+  {
+    bm168x->set_command_issue_flag(false);
+    bm168x->reset_cmd_id_node();
+
+    // set_local_layer_io_addr(op);
+    lgOp.codegen_local_bm168x(0, 0, sec_info);
+
+    int64_t bdc_cycle = bm168x->get_bdc_cycle();
+    int64_t gdma_cycle = bm168x->get_gdma_cycle();
+    if (calc_bdc_slack) {
+      cycle = bdc_cycle - gdma_cycle;
+    } else {
+      cycle = bdc_cycle > gdma_cycle ? bdc_cycle : gdma_cycle;
+    }
+    bm168x->dl_sg_stas_reset();
+  }
+  return cycle;
+}
+
+int64_t Bm168xCycleCalculator::getGdmaCycle(Value v,
+                                      const tensor_info_t &tensor_info) {
+  auto bm168x = BM168x::instance();
+  bm168x->set_command_issue_flag(false);
+  bm168x->reset_cmd_id_node();
+
+  // because LoadOp/StoreOp are not created during LayerGroup
+  int64_t cycle = 0;
+  if (tensor_info.mode == TIMESTEP_LOAD) {
+    cycle = getLoadCycle(v, tensor_info);
+  } else {
+    cycle = getStoreCycle(v, tensor_info);
+  }
+  bm168x->dl_sg_stas_reset();
+  return cycle;
+}
+
+int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
+                                      const tensor_info_t &tensor_info) {
+  // need_info:
+  // - n_slice, h_slice, eu_align, g_addr, l_addr
+  // - need_bcast, use_3ic
+  auto bm168x = BM168x::instance();
+  int64_t n_slice, h_slice;
+  auto &si = tensor_info.slice_info;
+  get_max_slice_nh(si, n_slice, h_slice);
+  int64_t use_3ic = tensor_info.use_3ic_opt;
+  bool need_bcast = tensor_info.need_bcast;
+  bool eu_align = tensor_info.eu_align;
+  auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
+  bm168x->dl_reset_cmd_id(pid_node);
+  auto data_type = BM168x::getDataType(v);
+  auto gdma_format = BM168x::getGdmaFormat(data_type);
+  auto fmt_bytes = BM168x::getFmtBytes(data_type);
+  int64_t N, C, H, W;
+  module::getNCHW(v, N, C, H, W);
+
+  auto g_stride = bm168x->getGlobalStride(N, C, H, W);
+  if (need_bcast) {
+    C = Arch::NPU_NUM;
+    g_stride.N = 0;
+    g_stride.C = 0;
+    g_stride.H = 0;
+  }
+  auto l_stride =
+      bm168x->getLocalStride(n_slice, C, h_slice, W, fmt_bytes, eu_align);
+  auto g_addr = module::getAddress(v);
+  auto l_addr = 0;
+  if (use_3ic < 4 && use_3ic > 0) {
+    auto use_op = *v.getUsers().begin();
+    auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
+    auto kernel = module::getI64Array(conv_op.getKernelShape());
+    int64_t to_ic =
+        use_3ic == 1
+            ? kernel->at(0)
+            : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
+    for (int i = 0; i < C; ++i) {
+      bm168x->dl_tensor_broadcast_move_gen_cmd(
+          g_addr + i * W * H * fmt_bytes, 0, l_addr, i * to_ic, n_slice,
+          h_slice, W, to_ic, g_stride.N, g_stride.H, l_stride.N, l_stride.H,
+          gdma_format, true, GDMA_VALUE_DIR_S2L, pid_node);
+    }
+  } else {
+    bm168x->dl_tensor_stride_move_gen_cmd(
+        l_addr, 0, g_addr, n_slice, C, h_slice, W, g_stride.N, g_stride.C,
+        g_stride.H, g_stride.W, l_stride.N, l_stride.C, l_stride.H, l_stride.W,
+        gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
+  }
+  int64_t gdma_cycle = bm168x->dl_get_cmd_id_cycle(pid_node);
+  bm168x->dl_destroy_cmd_id_node(pid_node);
+  return gdma_cycle;
+}
+
+int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
+                                       const tensor_info_t &tensor_info) {
+  // need_info:
+  // - n_slice, h_slice, eu_align, g_addr, l_addr
+  auto bm168x = BM168x::instance();
+  int64_t n_slice, h_slice;
+  auto &si = tensor_info.slice_info;
+  get_max_slice_nh(si, n_slice, h_slice);
+  bool eu_align = tensor_info.eu_align;
+  auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
+  bm168x->dl_reset_cmd_id(pid_node);
+  auto data_type = BM168x::getDataType(v);
+  auto gdma_format = BM168x::getGdmaFormat(data_type);
+  auto fmt_bytes = BM168x::getFmtBytes(data_type);
+  int64_t N, C, H, W;
+  module::getNCHW(v, N, C, H, W);
+  auto g_stride = bm168x->getGlobalStride(N, C, H, W);
+  auto l_stride =
+      bm168x->getLocalStride(n_slice, C, h_slice, W, fmt_bytes, eu_align);
+  auto g_addr = module::getAddress(v);
+  int64_t l_addr = 0;
+
+  bm168x->dl_tensor_stride_move_gen_cmd(
+      l_addr, 0, g_addr, n_slice, C, h_slice, W, l_stride.N, l_stride.C,
+      l_stride.H, l_stride.W, g_stride.N, g_stride.C, g_stride.H, g_stride.W,
+      gdma_format, GDMA_VALUE_DIR_L2S, 0, pid_node);
+
+  int64_t gdma_cycle = bm168x->dl_get_cmd_id_cycle(pid_node);
+  bm168x->dl_destroy_cmd_id_node(pid_node);
+  return gdma_cycle;
+}
+
+int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
+  return 0;
+}
+
+int64_t Cv18xxCycleCalculator::getLocalLayerCycle(Operation *op,
+                                            TensorInfo &tensor_infos,
+                                            bool calc_bdc_slack) {
+  return 0;
+}
+
+int64_t Cv18xxCycleCalculator::getGdmaCycle(Value v,
+                                      const tensor_info_t &tensor_info) {
+  return 0;
+}
+
+int64_t Cv18xxCycleCalculator::getLoadCycle(Value v,
+                                      const tensor_info_t &tensor_info) {
+  return 0;
+}
+
+int64_t Cv18xxCycleCalculator::getStoreCycle(Value v,
+                                       const tensor_info_t &tensor_info) {
+  return 0;
 }
 
 } // namespace tpu

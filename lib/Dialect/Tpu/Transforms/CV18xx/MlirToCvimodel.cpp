@@ -10,8 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/MlirToCvimodel.hpp"
 #include "mlir/Support/FileUtilities.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ToolOutputFile.h"
@@ -36,6 +35,7 @@ static llvm::cl::opt<std::string>
 #define VERSION(V0, V1, V2) (uint32_t)((V0) << 24 | (V1) << 16 | (V2) << 8)
 
 using namespace tpu_mlir::backend;
+using namespace tpu_mlir::tpu;
 
 // v1.4.0
 // 1) add scale/mean/pixel_format/align in Tensor
@@ -217,7 +217,7 @@ CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
   auto func = module::getFuncOp(call.getCallee());
   name = func.getName().str();
   func.walk([&](Operation *op) {
-    if (isa<GlobalGenInterface>(op) && !module::isOpInGroup(op)) {
+    if (isa<GlobalGenInterface, tpu::GroupOp>(op) && !module::isOpInGroup(op)) {
       ops.push_back(op);
     }
   });
@@ -225,18 +225,106 @@ CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
   codeGen();
 }
 
+void CviTpuRoutine::codegen_for_group(tpu::GroupOp gOp) {
+  auto nsecs = gOp.getNsecs();
+  auto hsecs = gOp.getHsecs();
+  auto swpipl_stage_num = gOp.getSwpiplStageNum();
+  auto &body = gOp.getBody().front();
+  auto flow = module::getI64Array(gOp.getFlow());
+  // 1. restore timestep_table from flow
+  std::vector<std::vector<int64_t>> timestep_table;
+  std::vector<int64_t> ts_row;
+  int64_t max_id = 0;
+  for (size_t i = 1; i < flow->size(); ++i) {
+    if (flow->at(i) < 0) {
+      timestep_table.push_back(ts_row);
+      ts_row.clear();
+      continue;
+    }
+    ts_row.push_back(flow->at(i));
+    max_id = std::max(max_id, flow->at(i));
+  }
+  timestep_table.push_back(ts_row);
+  int timestep_num = timestep_table.size();
+  // 2. create a vector to map id to op
+  std::vector<Operation *> group_ops;
+  for (int64_t id = 0; id < max_id;) {
+    body.walk([&](Operation *op) {
+      if (auto lgOp = dyn_cast<LocalGenInterface>(op)) {
+        auto ginfo = lgOp.getGroupInfo((int64_t)0, (int64_t)0);
+        if (ginfo.id == id) {
+          group_ops.push_back(op);
+          id++;
+        }
+      }
+    });
+  }
+  // 3. codegen for group
+  int64_t stage_idx = 0;
+  int64_t draining_idx = 0;
+  bool draining_period = false;
+  SoftwarePipeline timestep_swpipl;
+  for (uint64_t nstep = 0, hstep = 0; nstep < nsecs || draining_period;) {
+    /* add for software pipeline */
+    timestep_swpipl.write_swloop_buffer(nstep, hstep, swpipl_stage_num);
+    for (uint32_t ts = 0; ts < timestep_num; ++ts) {
+      CV18xx::parallel_enable();
+      auto cur_op_ids = timestep_table[ts];
+      for (auto id : cur_op_ids) {
+        auto lgOp = cast<LocalGenInterface>(group_ops[id]);
+        auto ginfo = lgOp.getGroupInfo(nstep, hstep);
+        if ((!draining_period && ginfo.stage > stage_idx) ||
+            (draining_period &&
+             (ginfo.stage < draining_idx || ginfo.stage > stage_idx))) {
+          continue;
+        }
+        const tensor_step_t *tensor_step =
+            timestep_swpipl.read_swloop_buffer(ginfo.stage);
+        ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
+
+        // add prefix to each cmd in profile.txt
+        std::string prefix = module::getName(group_ops[id]).str();
+        if (ginfo.overstepped == false) {
+          CV18xx::set_layer_id(*layer_id);
+          lgOp.codegen_local_cv18xx(tensor_step->nstep, tensor_step->hstep,
+                                    *layer_id);
+          ++(*layer_id);
+        }
+      } // ops, include Load/Store op
+      CV18xx::parallel_disable();
+    } // timestep
+
+    if (!draining_period) {
+      hstep++;
+      if (hstep >= hsecs) {
+        hstep = 0;
+        nstep++;
+        if (nstep >= nsecs) {
+          draining_period = true;
+        }
+      }
+    }
+    if (draining_period) {
+      draining_idx++;
+      if (draining_idx >= swpipl_stage_num) {
+        draining_period = false;
+      }
+    }
+    stage_idx++;
+  }
+}
+
 void CviTpuRoutine::codeGen() {
   for (auto op : ops) {
     if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
-      // codegen_for_group(castOp)
-      llvm_unreachable("layer group not support now");
+      codegen_for_group(castOp);
     } else if (module::isOpInGroup(op)) {
-      // continue
+      continue;
     } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
       CV18xx::set_layer_id(*layer_id);
       castOp.codegen_global_cv18xx(*layer_id);
+      ++(*layer_id);
     }
-    ++(*layer_id);
     // sotre neuron
   }
   CV18xx::submit();
@@ -503,9 +591,9 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
   }
   for (auto rt : routines_) {
     for (auto &neuronOp : rt->ops) {
-      if (isa<tpu::GroupOp>(neuronOp)) {
-        llvm_unreachable("Not support layerGroup now");
-      }
+      // if (isa<tpu::GroupOp>(neuronOp)) {
+      //   llvm_unreachable("Not support layerGroup now");
+      // }
       for (uint32_t i = 0; i < neuronOp->getNumResults(); ++i) {
         if (!neuronOp->getResults()[i].getType().isa<mlir::NoneType>()) {
           op_info_t op_info;
