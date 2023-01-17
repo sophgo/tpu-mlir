@@ -109,33 +109,11 @@ Download the model with the following commands and use the tf2onnx tool to expor
    $ tar xzf mobilenet_v1_0.25_224.tgz
    $ python -m tf2onnx.convert --graphdef mobilenet_v1_0.25_224_frozen.pb \
        --output mnet_25.onnx --inputs input:0 \
+       --inputs-as-nchw input:0 \
        --outputs MobilenetV1/Predictions/Reshape_1:0
 
+
 After running all commands, we can get the onnx model named mnet_25.onnx in the current directory.
-
-Step 2: Modify the Input Format
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The input format of the TensorFlow model is NHWC by default even after it is converted to the ONNX format. An additional transpose operator is connected to the input to convert the format to NCHW. Therefore, we need to run the following python script to modify the input format to NCHW and remove that transpose operator.
-
-.. code-block:: python3
-   :linenos:
-
-   #!/usr/bin/env python3
-   import onnx
-
-   model = onnx.load('mnet_25.onnx')
-   print(model.graph.input[0].type.tensor_type.shape.dim)
-   model.graph.input[0].type.tensor_type.shape.dim[1].dim_value = 3 # channel
-   model.graph.input[0].type.tensor_type.shape.dim[2].dim_value = 224 # height
-   model.graph.input[0].type.tensor_type.shape.dim[3].dim_value = 224 # width
-   print(model.graph.input[0].type.tensor_type.shape.dim)
-   input_name = model.graph.input[0].name
-   del model.graph.node[0]
-   model.graph.node[0].input[0] = input_name
-   onnx.save(model, 'mnet_25_new.onnx')
-
-After running the script, we can get the onnx model named mnet_25_new.onnx in the current directory.
 
 PaddlePaddle model to ONNX
 ---------------------------
@@ -170,8 +148,8 @@ In addition, use the paddle_infer_shape.py script from the PaddlePaddle project 
 .. code-block:: shell
    :linenos:
 
-   $ wget https://github.com/PaddlePaddle/Paddle2ONNX/blob/develop/tools/paddle/paddle_infer_shape.py
-   $ paddle_infer_shape.py  --model_dir . \
+   $ wget https://raw.githubusercontent.com/PaddlePaddle/Paddle2ONNX/develop/tools/paddle/paddle_infer_shape.py
+   $ python paddle_infer_shape.py  --model_dir . \
                              --model_filename inference.pdmodel \
                              --params_filename inference.pdiparams \
                              --save_dir new_model \
