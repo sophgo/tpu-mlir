@@ -83,6 +83,9 @@ void MulLowering::LoweringINT8(PatternRewriter &rewriter, top::MulOp op,
       "multiplier", rewriter.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(getContext(), tpu::RequantMode::QDM)));
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
   rewriter.replaceOpWithNewOp<tpu::MulOp>(op, newType, operands, attrs);
 }

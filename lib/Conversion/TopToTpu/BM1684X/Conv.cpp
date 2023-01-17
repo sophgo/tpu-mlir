@@ -226,14 +226,14 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                             rewriter.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue = do_requant(op->getLoc(), conv_out, quant_value, output_type,
-                               true, tpu::RequantMode::Normal);
+                               true, tpu::RequantMode::MultiplierShift);
     rewriter.replaceOp(op, {newValue});
     return;
   }
 
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
@@ -439,14 +439,14 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
         RankedTensorType::get({1, attr.oc, 1, 1, 3}, rewriter.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue = do_requant(op->getLoc(), conv_out, quant_value, output_type,
-                               true, tpu::RequantMode::Normal);
+                               true, tpu::RequantMode::MultiplierShift);
     rewriter.replaceOp(op, {newValue});
     return;
   }
 
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
@@ -659,7 +659,7 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
   if (quant_size == 1) {
     newValue =
         do_requant(op->getLoc(), newValue, op.getOutput().getType(), true,
-                   multiplier[0], shift[0], tpu::RequantMode::TFlite_Lshift);
+                   multiplier[0], shift[0], tpu::RequantMode::TFLite_LShift);
   } else {
     std::vector<int32_t> quant(quant_size * 3, 0);
     for (int i = 0; i < quant_size; ++i) {
@@ -675,7 +675,7 @@ void ConvLowering::LoweringQuantized(PatternRewriter &rewriter,
     auto quantValue = top::WeightOp::create(op, "quant", quant, quant_type);
     newValue =
         do_requant(op->getLoc(), newValue, quantValue, op.getOutput().getType(),
-                   true, tpu::RequantMode::TFlite_Lshift);
+                   true, tpu::RequantMode::TFLite_LShift);
   }
   rewriter.replaceOp(op, {newValue});
 }

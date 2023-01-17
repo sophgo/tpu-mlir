@@ -11,6 +11,7 @@
 
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 namespace tpu_mlir {
 
@@ -38,18 +39,6 @@ typedef enum {
   /* FLOOR */ // 1.6 -> 1   -1.4 -> -2
   ROUNDING_UNKNOWN = -1
 } RoundingMode;
-
-// =======================
-// I8 multiplier type
-// =======================
-typedef enum {
-  BM_QUANT_NORMAL = 0,
-  BM_QUANT_TFLITE = 1,
-  BM_QUANT_ONLY_SHIFT = 2,
-  CVI_QUANT_NORMAL = 100,
-  CVI_QUANT_QDM = 101, /* FLOOR */
-  UNKNOWN = -1
-} QuantMode;
 
 // =======================
 // alignment function
@@ -122,8 +111,9 @@ template <typename T>
 T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
-int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
-                                 QuantMode m_type = BM_QUANT_NORMAL);
+int64_t applyMultiplierAndRShift(
+    int64_t v, int64_t multiplier, int64_t rshift,
+    tpu::RequantMode qmode = tpu::RequantMode::MultiplierShift);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);

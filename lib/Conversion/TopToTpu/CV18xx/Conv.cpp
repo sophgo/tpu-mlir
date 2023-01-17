@@ -43,7 +43,8 @@ static bool ConvertConv1d(PatternRewriter &rewriter, top::ConvOp op) {
   op->setAttr("pads", rewriter.getI64ArrayAttr(vAttr));
   // update dilations
   vAttr.clear();
-  auto dilations = module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
+  auto dilations =
+      module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
   vAttr = {dilations->at(0), 1};
   op->setAttr("dilations", rewriter.getI64ArrayAttr(vAttr));
   auto convOp = rewriter.create<top::ConvOp>(op->getLoc(), op->getResultTypes(),
@@ -129,7 +130,8 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   // update convOp attr
   std::vector<int64_t> new_kernel_shape, new_dilations;
   auto kernel_shape = module::getI64Array(op.getKernelShape());
-  auto dilations = module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
+  auto dilations =
+      module::getI64Array(op.getDilations(), kernel_shape->size(), 1);
   new_kernel_shape.assign(kernel_shape->begin(), kernel_shape->end());
   new_dilations.assign(dilations->begin(), dilations->end());
   auto kernel_size = new_kernel_shape.size();
@@ -340,7 +342,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   }
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::QDM)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(

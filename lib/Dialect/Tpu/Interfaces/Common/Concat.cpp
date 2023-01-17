@@ -13,8 +13,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::ConcatOp::init(InferenceParameter &p) { return success(); }
 void tpu::ConcatOp::deinit(InferenceParameter &p) {}
 
@@ -43,9 +41,9 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; ++i) {
         inp[i] = applyMultiplierAndRShift(inp[i], multiplier_v->at(idx),
-                                          rshift_v->at(idx), CVI_QUANT_NORMAL);
-        inp[i] = out_type.isUnsignedInteger(8) ? to_uint8(inp[i])
-                                               : to_int8(inp[i]);
+                                          rshift_v->at(idx));
+        inp[i] =
+            out_type.isUnsignedInteger(8) ? to_uint8(inp[i]) : to_int8(inp[i]);
       }
     }
   }
@@ -71,8 +69,8 @@ LogicalResult tpu::ConcatOp::inference(InferenceParameter &p) {
 
   if (getDoRelu()) {
     auto limit = getReluLimit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(getOutput()),
-                  limit);
+    function_relu(p.outputs[0], p.outputs[0],
+                  module::getNumElements(getOutput()), limit);
   }
 
   // free tmp input

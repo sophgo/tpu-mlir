@@ -37,7 +37,7 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
       p.outputs[0][idx] = v;
     }
   } break;
-  case DequantMode::TFlite: {
+  case DequantMode::TFLite: {
     int64_t lshift_val = getLshift();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t idx = 0; idx < num_elem; idx++) {

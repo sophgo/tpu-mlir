@@ -13,8 +13,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::RequantIntAxisOp::init(InferenceParameter &p) {
   return success();
 }
@@ -35,9 +33,10 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
   if (module::isUniformQuantized(getInput())) {
     auto i_qtype = module::getUniformQuantizedType(getInput());
     zp_x = i_qtype.getZeroPoint();
-    assert(mode == tpu::RequantMode::Normal);
+    assert(mode == tpu::RequantMode::MultiplierShift);
   }
-  if (mode == tpu::RequantMode::TFlite_Lshift) {
+  if (mode == tpu::RequantMode::TFLite_LShift ||
+      mode == tpu::RequantMode::TFLite) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi = p.inputs[1][c * 3];
@@ -53,24 +52,7 @@ LogicalResult tpu::RequantIntAxisOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == tpu::RequantMode::TFlite) {
-#pragma omp parallel for schedule(static, omp_schedule(shape[1]))
-    for (int c = 0; c < shape[1]; ++c) {
-      int64_t multi = p.inputs[1][c * 3];
-      int64_t shift_val = p.inputs[1][c * 3 + 1];
-      int64_t zero_point = p.inputs[1][c * 3 + 2];
-      assert(shift_val <= 0);
-      for (int n = 0; n < shape[0]; ++n) {
-        for (int i = 0; i < inner; ++i) {
-          int offset = (n * shape[1] + c) * inner + i;
-          int v = zero_point + MultiplyByQuantizedMultiplier(
-                                   (int32_t)(p.inputs[0][offset]),
-                                   (int32_t)multi, (int32_t)shift_val);
-          p.outputs[0][offset] = saturate(v, o_sType);
-        }
-      }
-    }
-  } else if (mode == tpu::RequantMode::Normal) {
+  } else if (mode == tpu::RequantMode::MultiplierShift) {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       int64_t multi, rshift_val, zero_point;

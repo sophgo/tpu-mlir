@@ -99,6 +99,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   }
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
+  attrs.push_back(rewriter.getNamedAttr(
+      "quant_mode",
+      tpu::RequantModeAttr::get(getContext(), tpu::RequantMode::OnlyShift)));
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(attr.has_bias)));
   auto newType = getQuantInt8Type(op.getOutput());

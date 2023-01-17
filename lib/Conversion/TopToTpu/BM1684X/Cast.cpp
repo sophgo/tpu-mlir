@@ -77,7 +77,7 @@ void CastLowering::LoweringQuantized(PatternRewriter &rewriter,
   attrs.push_back(
       rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(-shift)));
   attrs.push_back(
-      rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
+      rewriter.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFLite_LShift)));
 
   rewriter.replaceOpWithNewOp<tpu::RequantIntOp>(op.getOperation(), op.getOutput().getType(),
                                                  operands, attrs);

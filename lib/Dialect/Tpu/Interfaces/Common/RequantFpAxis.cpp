@@ -33,8 +33,8 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
   }
 
   switch (mode) {
-  case RequantMode::TFlite:
-  case RequantMode::TFlite_Lshift: {
+  case RequantMode::TFLite:
+  case RequantMode::TFLite_LShift: {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       float scale = p.inputs[1][c * 2];
@@ -48,7 +48,7 @@ LogicalResult tpu::RequantFpAxisOp::inference(InferenceParameter &p) {
       }
     }
   } break;
-  case RequantMode::Normal: {
+  case RequantMode::MultiplierShift: {
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {
       float scale = p.inputs[1][c * 2];

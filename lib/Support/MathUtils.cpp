@@ -490,20 +490,25 @@ int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
 }
 
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
-                                 QuantMode q_mode) {
-  switch (q_mode) {
-  case BM_QUANT_NORMAL:
-    return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
-  case BM_QUANT_ONLY_SHIFT:
+                                 tpu::RequantMode qmode) {
+  switch (qmode) {
+  case tpu::RequantMode::MultiplierShift:
+    if (module::isCV18xx) {
+      return to_int(((((float)v * multiplier)) / (1 << rshift)),
+                    ROUNDING_HALF_UP);
+    } else {
+      return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
+    }
+  case tpu::RequantMode::OnlyShift:
     return RightShiftRound(v, (int)rshift, ROUNDING_HALF_UP);
-  case CVI_QUANT_QDM:
-    rshift = -rshift;
-  case BM_QUANT_TFLITE:
+  case tpu::RequantMode::QDM:
+  case tpu::RequantMode::TFLite:
+  case tpu::RequantMode::TFLite_LShift:
+    if (module::isCV18xx) {
+      rshift = -rshift;
+    }
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
                                          (int32_t)rshift);
-  case CVI_QUANT_NORMAL:
-    return to_int(((((float)v * multiplier)) / (1 << rshift)),
-                  ROUNDING_HALF_UP);
   }
   llvm_unreachable("unsupport quant multiplier mode.");
   return 0;

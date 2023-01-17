@@ -166,7 +166,7 @@ void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
       auto name_loc = NameLoc::get(rewriter.getStringAttr(name));
       auto input_dequant =
           do_dequant(name_loc, input, rewriter.getI32Type(), multiplier_v[i],
-                     shift_v[i], tpu::DequantMode::TFlite, lshift);
+                     shift_v[i], tpu::DequantMode::TFLite, lshift);
       operands.push_back(input_dequant);
     }
   }
@@ -195,7 +195,7 @@ void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);
   auto v = do_requant(op->getLoc(), addout, addOp.getOutput().getType(), true,
-                      scalei, shifti, tpu::RequantMode::TFlite);
+                      scalei, shifti, tpu::RequantMode::TFLite);
   rewriter.replaceOp(op, {v});
 }
 

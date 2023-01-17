@@ -141,7 +141,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::QDM)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshifts", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshifts})));
   attrs.push_back(rewriter.getNamedAttr(

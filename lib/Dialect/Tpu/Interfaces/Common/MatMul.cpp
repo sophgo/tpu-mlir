@@ -94,6 +94,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (module::isUniformQuantized(getOutput())) {
+    auto qmode = getQuantMode();
     if (is_cv18xx) {
       auto a = parseParam();
       bool is_fc = isa<top::WeightOp>(getRight().getDefiningOp());
@@ -116,7 +117,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset],
                                        multiplier_v->at(i), rshift_v->at(i),
-                                       CVI_QUANT_QDM);
+                                       qmode);
           p.outputs[0][offset] =
               out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
         }
@@ -128,8 +129,8 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
       assert(rshift_v->size() == 1);
       assert(multiplier_v->size() == 1);
       auto num_output = module::getNumElements(getOutput());
-      if (getQuantMode() == tpu::RequantMode::TFlite_Lshift ||
-          getQuantMode() == tpu::RequantMode::TFlite) {
+      if (qmode == tpu::RequantMode::TFLite_LShift ||
+          qmode == tpu::RequantMode::TFLite) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
         for (int64_t i = 0; i < num_output; i++) {
           // auto v = (((int64_t)(p.outputs[0][i] * mlti) + (1 << (rft - 1))) >>
@@ -143,7 +144,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
             p.outputs[0][i] = to_int8(v + o_qtype.getZeroPoint());
           }
         }
-      } else if (getQuantMode() == tpu::RequantMode::Normal) {
+      } else if (qmode == tpu::RequantMode::MultiplierShift) {
 #pragma omp parallel for schedule(static, omp_schedule(num_output))
         for (int i = 0; i < num_output; ++i) {
           auto v = applyMultiplierAndRShift(
