@@ -96,7 +96,7 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"codegen_local_cv18xx",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "int64_t":$layer_id)
       >,
       InterfaceMethod<
         /*desc=*/[{}],

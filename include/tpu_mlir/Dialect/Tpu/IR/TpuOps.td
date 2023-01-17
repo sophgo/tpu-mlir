@@ -776,7 +776,7 @@ def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
 }
 
 def Tpu_CastOp:Tpu_Op<"Cast", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>,
   DeclareOpInterfaceMethods<TypeInterface>,
   InOutSameShape]> {

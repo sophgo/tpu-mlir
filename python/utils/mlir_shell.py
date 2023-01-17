@@ -80,13 +80,16 @@ def mlir_to_model(tpu_mlir: str,
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
     lg_param = '--layer-group="opt=2"'
+    convert_relu_limit = ""
     if model.endswith(".cvimodel"):
         # TODO: cv18xx support later
-        lg_param = ""
+        lg_param = ''
+        convert_relu_limit = "--convert-relu-limit"
     cmd = [
         "tpuc-opt",
         tpu_mlir,
         "--init",
+        convert_relu_limit,
         strip_io_quant_param,
         "--weight-reorder",
         "--subnet-divide",

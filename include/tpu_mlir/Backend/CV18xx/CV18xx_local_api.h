@@ -116,5 +116,25 @@ void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
                                           laddr_t la_slope_table,
                                           int thresh_min, int thresh_max, int n,
                                           int c, int h, int w);
+void cvi_backend_tl_conv(
+    uint32_t layer_id, laddr_t la_ifmap, laddr_t la_ofmap, laddr_t la_weight,
+    laddr_t la_working, laddr_t la_perchannel, int input_n, int input_c,
+    int input_h, int input_w, int group, int output_c, int output_h,
+    int output_w, uint32_t kh, uint32_t kw, uint32_t dilation_h,
+    uint32_t dilation_w, uint32_t pad_h_top, uint32_t pad_h_bottom,
+    uint32_t pad_w_left, uint32_t pad_w_right, uint32_t stride_h,
+    uint32_t stride_w, uint32_t insert_h, uint32_t insert_w,
+    uint32_t result_add, uint32_t ctrl, bool do_bias, bool do_relu, float slope,
+    int rshift, int rshift_len, int8_t rshift_pos, int8_t rshift_neg,
+    int8_t m_i8_pos, int8_t m_i8_neg, bool do_ic_alignment);
+
+void cvi_backend_bf16_tl_conv(
+    uint32_t layer_id, laddr_t la_ifmap, laddr_t la_ofmap, laddr_t la_weight,
+    laddr_t la_working, laddr_t la_bias, int input_n, int input_c, int input_h,
+    int input_w, int group, int output_c, int output_h, int output_w,
+    uint32_t kh, uint32_t kw, uint32_t dilation_h, uint32_t dilation_w,
+    uint32_t pad_h_top, uint32_t pad_h_bottom, uint32_t pad_w_left,
+    uint32_t pad_w_right, uint32_t stride_h, uint32_t stride_w,
+    uint32_t insert_h, uint32_t insert_w, bool with_bias, bool do_relu);
 } // namespace backend
 } // namespace tpu_mlir

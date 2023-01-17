@@ -1005,6 +1005,7 @@ typedef cvk_context_t *(*cvikernel_register)(cvk_reg_info_t *req_info);
 
 namespace tpu_mlir {
 namespace backend {
+
 class CV18xx : public Arch {
 public:
   static CV18xx &instance(const llvm::StringRef chip) {

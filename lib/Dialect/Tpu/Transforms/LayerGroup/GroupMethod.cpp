@@ -40,7 +40,13 @@ static void get_layer_group(LgInfo &lg_info,
 }
 
 GroupMethod::GroupMethod(int64_t opt) {
-  cycle_calculator_ = std::make_shared<CycleCalculator>();
+  if (module::isCV18xx()) {
+    Cv18xxCycleCalculator *cyc_ptr = new Cv18xxCycleCalculator();
+    cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
+  } else {
+    Bm168xCycleCalculator *cyc_ptr = new Bm168xCycleCalculator();
+    cycle_calculator_ = std::shared_ptr<CycleCalculator>(cyc_ptr);
+  }
   MAX_COST = llvm::maxIntN(64);
   opt_ = opt;
 }
@@ -127,7 +133,7 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   }
 
   if (calc_cost) {
-// remove it after pid_node is extracted
+// remove it after pid_node is extractedb
 #pragma omp critical(get_cycle)
     *group_cost = cycle_calculator_->getGroupCycle(time_step, shape_secs);
   }

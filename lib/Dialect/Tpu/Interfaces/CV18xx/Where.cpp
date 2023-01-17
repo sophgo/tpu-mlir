@@ -46,6 +46,6 @@ int64_t tpu::WhereOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
   llvm_unreachable("Not supported now");
 }
 
-void tpu::WhereOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step) {
+void tpu::WhereOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

@@ -56,6 +56,6 @@ int64_t tpu::LutBF16Op::getBufferSize_cv18xx(
   llvm_unreachable("Not supported now");
 }
 
-void tpu::LutBF16Op::codegen_local_cv18xx(int64_t n_step, int64_t h_step) {
+void tpu::LutBF16Op::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
   llvm_unreachable("Not supported now");
 }

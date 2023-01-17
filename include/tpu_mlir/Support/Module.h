@@ -115,7 +115,7 @@ MLIRContext *getCtx();
 void push_back(FuncOp funcOp);
 
 top::NoneOp getNoneOp(Operation *op);
-Value getOriValue(Value &v);
+Value getOriValue(Value v);
 Value getOperand(Operation *op, int i);
 void updateModuleTypes();
 void removeUnusedOp();
