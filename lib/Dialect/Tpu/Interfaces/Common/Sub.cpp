@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::SubOp::init(InferenceParameter &p) {
   auto in0_shape = module::getShape(getInputs()[0]);
   auto in1_shape = module::getShape(getInputs()[1]);
@@ -87,9 +85,8 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         auto &out = p.outputs[0][i];
-        out = applyMultiplierAndRShift(out, 1, rshift_v->at(0), CVI_QUANT_NORMAL);
-        out = out_type.isUnsignedInteger(8) ? to_uint8(out)
-                                            : to_int8(out);
+        out = applyMultiplierAndRShift(out, 1, rshift_v->at(0));
+        out = out_type.isUnsignedInteger(8) ? to_uint8(out) : to_int8(out);
       }
     } else {
       auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
@@ -118,8 +115,7 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         auto &out = p.outputs[0][i];
-        out = out_type.isUnsignedInteger(8) ? to_uint8(out)
-                                            : to_int8(out);
+        out = out_type.isUnsignedInteger(8) ? to_uint8(out) : to_int8(out);
       }
     }
   } else {

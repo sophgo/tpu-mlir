@@ -86,7 +86,7 @@ def Tpu_DequantMode: I32EnumAttr<"DequantMode",
     "dequant mode supported by DequantOp",
     [
       I32EnumAttrCase<"Normal", 0>,
-      I32EnumAttrCase<"TFlite", 1>
+      I32EnumAttrCase<"TFLite", 1>
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -96,9 +96,11 @@ def Tpu_DequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_DequantMode, "dq_mode">;
 def Tpu_RequantMode: I32EnumAttr<"RequantMode",
     "requant mode supported by RequantOp",
     [
-      I32EnumAttrCase<"TFlite_Lshift", 0>,
-      I32EnumAttrCase<"TFlite", 1>,
-      I32EnumAttrCase<"Normal", 2>,
+      I32EnumAttrCase<"TFLite_LShift", 0>,
+      I32EnumAttrCase<"TFLite", 1>,  // * Multi >> 31 >> shift, == QDM
+      I32EnumAttrCase<"MultiplierShift", 2>, // * Multi >> shift
+      I32EnumAttrCase<"OnlyShift", 3>, // >> shift
+      I32EnumAttrCase<"QDM", 4>       // similar to TFLite
     ]>{
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::tpu";
@@ -261,7 +263,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     DefaultValuedAttr<I64Attr, "0">:$kernel_zp,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
-    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -498,6 +500,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
     // quant param
     DefaultValuedAttr<SI32Attr, "1">:$multiplier,
     DefaultValuedAttr<I64Attr, "0">:$rshift,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -717,7 +720,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     DefaultValuedAttr<I64ArrayAttr, "{0}">:$rshifts,
     DefaultValuedAttr<I64Attr, "0">:$right_zp,
     DefaultValuedAttr<I64Attr, "0">:$input_zp,
-    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -1238,7 +1241,7 @@ def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     BoolAttr:$with_bias,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
-    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::Normal">:$quant_mode,
+    DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 

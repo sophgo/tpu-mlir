@@ -348,7 +348,7 @@ class TFLiteConverter(BaseConverter):
                 raise ValueError("Cannot handle experimental quantization")
             is_signed = tensor.type_str is 'INT8' or tensor.type_str is 'INT16' or tensor.type_str is 'INT32'
             storage_type = self.type_to_mlir[tensor.type]
-            # TFlite uses narrow-range [u]int8 for constant buffers of quantized weights.
+            # TFLite uses narrow-range [u]int8 for constant buffers of quantized weights.
             # Since we don't know which ones are weights, we represent this optimization
             # as a change in the storage bounds for the type for all constants of this type.
             is_constant = tensor.buffer is not None

@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 conv_attr_t tpu::Conv1DOp::parseParam() {
   conv_attr_t p = {0};
   p.id = p.od = p.kd = p.sd = p.dd = 1;
@@ -91,7 +89,8 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
     module::getNCHW(getOutput(), n, c, h, w);
     auto o_qtype = module::getUniformQuantizedType(getOutput());
     auto rshift_v = module::getI64Array(getRshift().value());
-    auto multiplier_v = module::getI64Array(getMultiplier(), rshift_v->size(), 1);
+    auto multiplier_v =
+        module::getI64Array(getMultiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
     auto mode = getQuantMode();
 #pragma omp parallel for schedule(static, omp_schedule(c))
@@ -101,16 +100,9 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
       for (int in = 0; in < n; in++) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
-          int64_t v = 0;
-          if (mode == tpu::RequantMode::TFlite_Lshift ||
-              mode == tpu::RequantMode::TFlite) {
-            v = MultiplyByQuantizedMultiplier((int32_t)p.outputs[0][offset],
-                                              (int32_t)multi, (int32_t)shift) +
-                o_qtype.getZeroPoint();
-          } else {
-            v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift) +
-                o_qtype.getZeroPoint();
-          }
+          auto v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
+                                            mode) +
+                   o_qtype.getZeroPoint();
           p.outputs[0][offset] =
               sType.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
         }
@@ -138,7 +130,7 @@ mlir::Type tpu::Conv1DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::Conv1DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+                                          int64_t out_idx, int64_t out_slice) {
   auto attr = parseParam();
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
   in_slice = (out_slice - 1) * attr.sh +
@@ -150,23 +142,27 @@ LogicalResult tpu::Conv1DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::Conv1DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   auto attr = parseParam();
   int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
-  in_kh = (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
+  in_kh =
+      (out_kh - 1) * attr.sh + (kh_with_dh >= attr.sh ? kh_with_dh : attr.sh);
   return success();
 }
 
-LogicalResult tpu::Conv1DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+LogicalResult tpu::Conv1DOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
   auto attr = parseParam();
   in_stride_h = out_stride_h * attr.sh;
   return success();
 }
 
-LogicalResult tpu::Conv1DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+LogicalResult tpu::Conv1DOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
   auto attr = parseParam();
   in_up_pad_h = out_up_pad_h * attr.sh + attr.pht;
   return success();
 }
 
-LogicalResult tpu::Conv1DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+LogicalResult tpu::Conv1DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
   auto attr = parseParam();
   in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
   return success();

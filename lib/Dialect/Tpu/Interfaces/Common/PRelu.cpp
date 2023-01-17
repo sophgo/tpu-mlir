@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
   auto prelu = new PRelu();
   (*prelu)
@@ -80,17 +78,18 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
         if (is_cv18xx) {
           int64_t v;
           if (p.inputs[0][idx] < 0) {
-            v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift, CVI_QUANT_NORMAL);
+            v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift);
           } else {
-            v = applyMultiplierAndRShift(p.inputs[0][idx], multiplier_pos, shift_pos, CVI_QUANT_NORMAL);
+            v = applyMultiplierAndRShift(p.inputs[0][idx], multiplier_pos,
+                                         shift_pos);
           }
-          p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? to_uint8(v)
-                                                  : to_int8(v);
+          p.outputs[0][idx] =
+              out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
         } else {
           if (p.inputs[0][idx] < 0) {
             auto v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift);
-            p.outputs[0][idx] = out_type.isUnsignedInteger(8) ? to_uint8(v)
-                                                              : to_int8(v);
+            p.outputs[0][idx] =
+                out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
           } else {
             p.outputs[0][idx] = p.inputs[0][idx];
           }

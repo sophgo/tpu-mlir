@@ -455,7 +455,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     //        rewriter.getI64ArrayAttr(-shift)));
     //    attrs.push_back(rewriter.getNamedAttr(
     //        "quant_mode",
-    //        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFlite_Lshift)));
+    //        tpu::RequantModeAttr::get(ctx, tpu::RequantMode::TFLite_LShift)));
     if (input_zeroPoint) {
       // merge input_zeroPoint to bias
       std::shared_ptr<std::vector<int8_t>> right_quant;
@@ -486,7 +486,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // do requant
     auto newValue =
         do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFlite_Lshift);
+                   true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
     rewriter.replaceOp(op, {newValue});
     // rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, op.getOutput().getType(),
     //                                            operands, attrs);
@@ -562,7 +562,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // do requant
     auto newValue =
         do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFlite_Lshift);
+                   true, multiplier, shift, tpu::RequantMode::TFLite_LShift);
     rewriter.replaceOp(op, {newValue});
   }
 }

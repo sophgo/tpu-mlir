@@ -16,8 +16,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <float.h>
 
-
-
 typedef enum reduce_type {
   REDUCE_MEAN = 0,
   REDUCE_SUM = 1,
@@ -164,8 +162,7 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
     int64_t multi = module::getI64Array(getMultiplier().value())->at(0);
     if (shift != 0 || multi != 1) {
       for (size_t i = 0; i < num_elem; ++i) {
-        int64_t v =
-            applyMultiplierAndRShift(output_v[i], multi, shift, CVI_QUANT_NORMAL);
+        int64_t v = applyMultiplierAndRShift(output_v[i], multi, shift);
         output_v[i] = to_int8(v);
       }
     }

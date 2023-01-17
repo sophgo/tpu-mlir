@@ -159,7 +159,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // requant to int8
     auto v =
         do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFlite);
+                   true, multiplier, shift, tpu::RequantMode::TFLite);
     rewriter.replaceOp(op, {v});
   } else {
     attrs.push_back(rewriter.getNamedAttr("const_val",
@@ -169,7 +169,7 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     // requant to int8
     auto v =
         do_requant(op->getLoc(), newOp.getOutput(), op.getOutput().getType(),
-                   true, multiplier, shift, tpu::RequantMode::TFlite);
+                   true, multiplier, shift, tpu::RequantMode::TFLite);
     rewriter.replaceOp(op, {v});
   }
 }

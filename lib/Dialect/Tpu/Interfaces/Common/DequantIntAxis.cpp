@@ -47,7 +47,7 @@ LogicalResult tpu::DequantIntAxisOp::inference(InferenceParameter &p) {
         }
       }
     }
-  } else if (mode == DequantMode::TFlite) {
+  } else if (mode == DequantMode::TFLite) {
     int64_t lshift_val = getLshift();
 #pragma omp parallel for schedule(static, omp_schedule(shape[1]))
     for (int c = 0; c < shape[1]; ++c) {

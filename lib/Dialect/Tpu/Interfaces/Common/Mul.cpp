@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
   auto in0_shape = module::getShape(getInputs()[0]);
@@ -49,7 +47,6 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   auto asym = module::isAsymmetric();
   auto binary = (Binary *)p.handle;
   binary->run();
-  bool is_cv18xx = module::isCV18xx();
   if (out_type.isa<FloatType>()) {
     if (out_type.isBF16()) {
       BF16(p.outputs[0], p.outputs[0], num_elem);
@@ -59,18 +56,13 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
   } else if (out_type.isInteger(32)) {
     return success();
   } else if (asym == false) {
-    QuantMode m_type;
-    if (is_cv18xx) {
-      m_type = CVI_QUANT_QDM;
-    } else {
-      m_type = BM_QUANT_NORMAL;
-    }
+    auto qmode = getQuantMode();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
       double sum = p.outputs[0][i];
-      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), m_type);
-      p.outputs[0][i] = out_type.isUnsignedInteger(8) ? to_uint8(sum)
-                                                      : to_int8(sum);
+      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode);
+      p.outputs[0][i] =
+          out_type.isUnsignedInteger(8) ? to_uint8(sum) : to_int8(sum);
     }
   } else {
     llvm_unreachable("MulOp asymmetric use FP32");

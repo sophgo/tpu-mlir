@@ -35,15 +35,15 @@ LogicalResult tpu::RequantFpOp::inference(InferenceParameter &p) {
   int64_t zero_point = o_qtype.getZeroPoint();
 
   switch (mode) {
-  case RequantMode::TFlite:
-  case RequantMode::TFlite_Lshift: {
+  case RequantMode::TFLite:
+  case RequantMode::TFLite_LShift: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
       int32_t v = (int32_t)(round(p.inputs[0][i] * scale_v)) + zero_point;
       p.outputs[0][i] = saturate(v, o_sType);
     }
   } break;
-  case RequantMode::Normal: {
+  case RequantMode::MultiplierShift: {
 #pragma omp parallel for schedule(static, omp_schedule(length))
     for (int64_t i = 0; i < length; ++i) {
       int32_t v =

@@ -56,11 +56,10 @@ LogicalResult tpu::LeakyReluOp::inference(InferenceParameter &p) {
       int64_t src = static_cast<int64_t>(p.inputs[0][i]);
       if (is_cv18xx) {
         if (src >= 0) {
-          dst = do_pos_scale
-                    ? applyMultiplierAndRShift(src, scalei, shifti, CVI_QUANT_NORMAL)
-                    : src;
+          dst = do_pos_scale ? applyMultiplierAndRShift(src, scalei, shifti)
+                             : src;
         } else {
-          dst = applyMultiplierAndRShift(src, scale_neg, shift_neg, CVI_QUANT_NORMAL);
+          dst = applyMultiplierAndRShift(src, scale_neg, shift_neg);
         }
       } else {
         dst = src >= 0 ? src : applyMultiplierAndRShift(src, scalei, shifti);

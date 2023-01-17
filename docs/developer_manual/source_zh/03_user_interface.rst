@@ -112,7 +112,7 @@
        --model somenet_mix.bmodel
 
 
-支持量化模型TFlite
+支持量化模型TFLite
 ~~~~~~~~~~~~~~~~~~~
 
 支持TFLite模型的转换, 命令参考如下:

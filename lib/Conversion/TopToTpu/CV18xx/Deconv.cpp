@@ -109,7 +109,7 @@ void DeconvLowering::LoweringINT8(PatternRewriter &rewriter, top::DeconvOp op,
   }
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::QDM)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(

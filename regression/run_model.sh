@@ -414,7 +414,7 @@ if [ $do_dynamic == 1 ]; then
 fi #do_dynamic
 
 # to int4 symmetric
-if [ ${do_int4_sym} == 1 ]; then
+if [ x${do_int4_sym} == x1 ]; then
 
   tolerance_sym_opt=
   if [ x${int4_sym_tolerance} != x ]; then

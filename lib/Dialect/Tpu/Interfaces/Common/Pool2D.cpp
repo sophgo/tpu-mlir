@@ -85,7 +85,6 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
   }
   // average pooling
   bool is_cv18xx = module::isCV18xx();
-  auto m_type = is_cv18xx ? CVI_QUANT_NORMAL : BM_QUANT_NORMAL;
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
@@ -104,7 +103,7 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
         } else {
           v = std::round(p.outputs[0][i] * pooling->kh * pooling->kw);
         }
-        p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs, m_type);
+        p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs);
         p.outputs[0][i] = out_type.isUnsignedInteger(8)
                               ? to_uint8(p.outputs[0][i])
                               : to_int8(p.outputs[0][i]);
@@ -170,7 +169,7 @@ LogicalResult tpu::Pool2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 }
 
 LogicalResult tpu::Pool2DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+                                          int64_t out_idx, int64_t out_slice) {
   auto &attr = getPool2DParam(*this);
   if (attr.is_global) {
     if (out_idx != 0 || out_slice != attr.oh) {
@@ -185,27 +184,28 @@ LogicalResult tpu::Pool2DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
-
 LogicalResult tpu::Pool2DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   auto &attr = getPool2DParam(*this);
   in_kh = (out_kh - 1) * attr.sh + attr.kh;
   return success();
 }
 
-
-LogicalResult tpu::Pool2DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+LogicalResult tpu::Pool2DOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
   auto &attr = getPool2DParam(*this);
   in_stride_h = out_stride_h * attr.sh;
   return success();
 }
 
-LogicalResult tpu::Pool2DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+LogicalResult tpu::Pool2DOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
   auto &attr = getPool2DParam(*this);
   in_up_pad_h = out_up_pad_h * attr.sh + attr.pad_h;
   return success();
 }
 
-LogicalResult tpu::Pool2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+LogicalResult tpu::Pool2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
   auto &attr = getPool2DParam(*this);
   in_down_pad_h = out_down_pad_h * attr.sh + attr.pad_h_after;
   return success();

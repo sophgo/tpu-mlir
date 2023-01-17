@@ -52,7 +52,9 @@ void tpu::RequantFpAxisOp::codegen_global_bm1684x() {
   param.w = (int)w;
 
   param.is_perchannel = true;
-  param.mode = static_cast<int>(getQuantMode()) / 2;
+  if (getQuantMode() == RequantMode::MultiplierShift) {
+    param.mode = 1;
+  }
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   param.round_mode = ROUNDING_AWAY_FROM_ZERO;
@@ -68,7 +70,7 @@ int64_t tpu::RequantFpAxisOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
   int64_t buffer_size = 0;
-  if (getQuantMode() != RequantMode::Normal) {
+  if (getQuantMode() != RequantMode::MultiplierShift) {
     buffer_size = in_lmem_bytes;
   }
   return buffer_size;
@@ -117,7 +119,9 @@ void tpu::RequantFpAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.is_perchannel = true;
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
-  param.mode = static_cast<int>(getQuantMode()) / 2;
+  if (getQuantMode() == RequantMode::MultiplierShift) {
+    param.mode = 1;
+  }
   param.round_mode = ROUNDING_AWAY_FROM_ZERO;
   BM168x::call_local_func("backend_api_requant_float_local", &param,
                           sizeof(param));

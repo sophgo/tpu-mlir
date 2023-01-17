@@ -99,7 +99,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
       auto name_loc = NameLoc::get(rewriter.getStringAttr(name));
       auto input_dequant =
           do_dequant(name_loc, input, rewriter.getI32Type(), multiplier_v[i],
-                     shift_v[i], tpu::DequantMode::TFlite, lshift);
+                     shift_v[i], tpu::DequantMode::TFLite, lshift);
       operands.push_back(input_dequant);
     }
   }
@@ -108,7 +108,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   // auto name_loc_d0 = NameLoc::get(rewriter.getStringAttr(d0_name));
   // auto input0_dequant =
   //     do_dequant(name_loc_d0, subOp.getInputs()[0], rewriter.getI32Type(),
-  //                multiplier_v[0], shift_v[0], tpu::DequantMode::TFlite,
+  //                multiplier_v[0], shift_v[0], tpu::DequantMode::TFLite,
   //                lshift);
   // // op->setOperand(0, input0_dequant);
   // operands.push_back(input0_dequant);
@@ -117,7 +117,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   // auto name_loc_d1 = NameLoc::get(rewriter.getStringAttr(d1_name));
   // auto input1_dequant =
   //     do_dequant(name_loc_d1, subOp.getInputs()[1], rewriter.getI32Type(),
-  //                multiplier_v[1], shift_v[1], tpu::DequantMode::TFlite,
+  //                multiplier_v[1], shift_v[1], tpu::DequantMode::TFLite,
   //                lshift);
   // // op->setOperand(1, input1_dequant);
   // operands.push_back(input1_dequant);
@@ -149,7 +149,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   QuantizeMultiplier((scale_max * 2) / ((1 << lshift) * o_scale), &scalei,
                      &shifti);
   auto v = do_requant(op->getLoc(), subout, subOp.getOutput().getType(), true,
-                      scalei, shifti, tpu::RequantMode::TFlite);
+                      scalei, shifti, tpu::RequantMode::TFLite);
   rewriter.replaceOp(op, {v});
 }
 

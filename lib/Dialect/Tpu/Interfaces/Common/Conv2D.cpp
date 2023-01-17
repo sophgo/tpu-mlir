@@ -110,26 +110,13 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       auto biasOp = cast<top::WeightOp>(getBias().getDefiningOp());
       bias_i32 = biasOp.read_as_int32();
     }
-    auto mode = getQuantMode();
-    QuantMode q_mode;
-    if (module::isCV18xx()) {
-      q_mode = CVI_QUANT_QDM;
-    } else if (module::isBM1684Family()) {
-      q_mode = BM_QUANT_ONLY_SHIFT;
-    } else {
-      if (mode == tpu::RequantMode::TFlite_Lshift ||
-          mode == tpu::RequantMode::TFlite) {
-        q_mode = BM_QUANT_TFLITE;
-      } else {
-        q_mode = BM_QUANT_NORMAL;
-      }
-    }
+    auto qmode = getQuantMode();
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
       int64_t multi = 1;
-      if (q_mode != BM_QUANT_ONLY_SHIFT) {
+      if (qmode != tpu::RequantMode::OnlyShift) {
         multi = per_axis ? multiplier_v->at(ic) : multiplier_v->at(0);
       }
       int32_t bias = bias_i32->at(ic);
@@ -138,7 +125,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           int offset = (in * c + ic) * h * w + hw;
           int64_t v = 0;
           int64_t tmp = p.outputs[0][offset] + bias;
-          v = applyMultiplierAndRShift(tmp, multi, shift, q_mode) +
+          v = applyMultiplierAndRShift(tmp, multi, shift, qmode) +
               o_qtype.getZeroPoint();
           if (do_relu && (v < 0)) {
             v = 0;

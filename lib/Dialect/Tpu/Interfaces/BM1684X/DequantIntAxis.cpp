@@ -53,7 +53,7 @@ void tpu::DequantIntAxisOp::codegen_global_bm1684x() {
 int64_t tpu::DequantIntAxisOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  if (getQuantMode() == DequantMode::TFlite) {
+  if (getQuantMode() == DequantMode::TFLite) {
     return in_lmem_bytes;
   }
   return 0;

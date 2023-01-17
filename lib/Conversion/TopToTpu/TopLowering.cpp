@@ -56,7 +56,7 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     attrs.push_back(builder.getNamedAttr(
         "quant_mode",
-        tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
+        tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::MultiplierShift)));
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                   ValueRange{in}, attrs);
@@ -106,7 +106,7 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(builder.getNamedAttr(
       "quant_mode",
-      tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::Normal)));
+      tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::MultiplierShift)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
                                                ValueRange{rq_in}, attrs);
   if (out_zp == 0) {
@@ -132,7 +132,7 @@ Value do_dequant(Location name_loc, Value input, Type to_type,
                                        builder.getSI32IntegerAttr(multiplier)));
   attrs.push_back(
       builder.getNamedAttr("shift", builder.getI64IntegerAttr(shift)));
-  if (mode == tpu::DequantMode::TFlite) {
+  if (mode == tpu::DequantMode::TFLite) {
     attrs.push_back(
         builder.getNamedAttr("lshift", builder.getI64IntegerAttr(lshift)));
   }
@@ -206,7 +206,7 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
   attrs.push_back(
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(builder.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::Normal)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 

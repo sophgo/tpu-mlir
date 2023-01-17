@@ -43,7 +43,7 @@ void tpu::RequantIntOp::codegen_global_bm1684x() {
   param.mode = static_cast<int>(getQuantMode());
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
-  param.round_mode = getQuantMode() == tpu::RequantMode::Normal
+  param.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
   BM168x::call_global_func("backend_api_requant_int_global", &param,
@@ -62,8 +62,8 @@ int64_t tpu::RequantIntOp::getBufferSize_bm1684x(
   if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
     // store INT16:(X - Zx)
     buffer_size = in_lmem_bytes * 2;
-  } else if (getQuantMode() == tpu::RequantMode::TFlite_Lshift ||
-             getQuantMode() == tpu::RequantMode::TFlite) {
+  } else if (getQuantMode() == tpu::RequantMode::TFLite_LShift ||
+             getQuantMode() == tpu::RequantMode::TFLite) {
     buffer_size = in_lmem_bytes;
   }
   return buffer_size;
@@ -118,7 +118,7 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.input_dtype = BM168x::getDataType(getInput());
   param.output_dtype = BM168x::getDataType(getOutput());
   param.mode = static_cast<int>(getQuantMode());
-  param.round_mode = getQuantMode() == tpu::RequantMode::Normal
+  param.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
   BM168x::call_local_func("backend_api_requant_int_local", &param,

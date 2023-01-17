@@ -45,7 +45,7 @@
      - support convert caffe model
    * - v0.3.0
      - 2022.08.24
-     - Support TFlite. Add the chapter on TFLite model conversion.
+     - Support TFLite. Add the chapter on TFLite model conversion.
    * - v0.2.0
      - 2022.08.02
      - Add the chapter on test samples in running SDK.

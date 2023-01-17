@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 deconv_attr_t tpu::DeconvOp::parseParam() {
   deconv_attr_t p = {0};
   p.id = 1;
@@ -79,7 +77,6 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
   }
   auto deconv = (Deconv *)p.handle;
   deconv->run();
-  bool is_cv18xx = module::isCV18xx();
   // requant
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
@@ -89,13 +86,14 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
     } else if (out_type.isF16()) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
-  } else if (is_cv18xx && module::isUniformQuantized(getOutput())) {
+  } else if (module::isUniformQuantized(getOutput())) {
+    auto qmode = getQuantMode();
     // apply multiplier && rshift inplace
     int64_t n, c, h, w;
     module::getNCHW(getOutput(), n, c, h, w);
     auto rshift_v = module::getI64Array(getRshift().value());
     auto multiplier_v = module::getI64Array(getMultiplier().value());
-    assert(rshift_v->size() == c && "CV18xx must be per_axis.");
+    assert(rshift_v->size() == c);
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int oc = 0; oc < c; oc++) {
       int64_t shift = rshift_v->at(oc);
@@ -105,7 +103,7 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
           int offset = (on * c + oc) * h * w + hw;
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
-                                       CVI_QUANT_QDM);
+                                       qmode);
           p.outputs[0][offset] = to_int8(v);
         }
       }
