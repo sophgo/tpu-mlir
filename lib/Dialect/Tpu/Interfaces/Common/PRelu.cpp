@@ -83,13 +83,11 @@ LogicalResult tpu::PReluOp::inference(InferenceParameter &p) {
             v = applyMultiplierAndRShift(p.inputs[0][idx], multiplier_pos,
                                          shift_pos);
           }
-          p.outputs[0][idx] =
-              out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
+          p.outputs[0][idx] = saturate(v, out_type);
         } else {
           if (p.inputs[0][idx] < 0) {
             auto v = applyMultiplierAndRShift(p.inputs[0][idx], slopei, shift);
-            p.outputs[0][idx] =
-                out_type.isUnsignedInteger(8) ? to_uint8(v) : to_int8(v);
+            p.outputs[0][idx] = saturate(v, out_type);
           } else {
             p.outputs[0][idx] = p.inputs[0][idx];
           }

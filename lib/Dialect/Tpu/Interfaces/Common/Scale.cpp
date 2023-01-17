@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::ScaleOp::init(InferenceParameter &p) { return success(); }
 void tpu::ScaleOp::deinit(InferenceParameter &p) {}
 
@@ -56,8 +54,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           if (getDoRelu() && res < 0) {
             res = 0;
           }
-          dst[idx] = out_type.isUnsignedInteger(8) ? to_uint8(res)
-                                                   : to_int8(res);
+          dst[idx] = saturate(res, out_type);
         }
       }
     }
@@ -78,8 +75,7 @@ LogicalResult tpu::ScaleOp::inference(InferenceParameter &p) {
           if (getDoRelu() && res < 0) {
             res = 0;
           }
-          dst[idx] = out_type.isUnsignedInteger(8) ? to_uint8(res)
-                                                   : to_int8(res);
+          dst[idx] = saturate(res, out_type);
         }
       }
     }

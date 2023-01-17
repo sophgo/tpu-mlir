@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 pool_attr_t tpu::Pool1DOp::parseParam() {
   pool_attr_t p = {0};
   p.id = 1;
@@ -99,19 +97,15 @@ LogicalResult tpu::Pool1DOp::inference(InferenceParameter &p) {
       for (int64_t i = 0; i < num_elem; ++i) {
         p.outputs[0][i] = applyMultiplierAndRShift(
             std::round(p.outputs[0][i] * pooling->kh), multi, rs);
-        p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                              ? to_uint8(p.outputs[0][i])
-                              : to_int8(p.outputs[0][i]);
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int64_t i = 0; i < num_elem; ++i) {
-        p.outputs[0][i] =
-            p.outputs[0][i] * pooling->kh * getScale().value().convertToDouble() +
-            getOffset().value().convertToDouble();
-        p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                              ? to_uint8(p.outputs[0][i])
-                              : to_int8(p.outputs[0][i]);
+        p.outputs[0][i] = p.outputs[0][i] * pooling->kh *
+                              getScale().value().convertToDouble() +
+                          getOffset().value().convertToDouble();
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
       }
     }
   } else if (out_type.isa<FloatType>()) {
@@ -148,13 +142,12 @@ LogicalResult tpu::Pool1DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 }
 
 LogicalResult tpu::Pool1DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+                                          int64_t out_idx, int64_t out_slice) {
   auto attr = parseParam();
   in_slice = (out_slice - 1) * attr.sh + attr.kh;
   in_idx = out_idx * attr.sh - attr.pad_h;
   return success();
 }
-
 
 LogicalResult tpu::Pool1DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   auto attr = parseParam();
@@ -162,20 +155,22 @@ LogicalResult tpu::Pool1DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   return success();
 }
 
-
-LogicalResult tpu::Pool1DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+LogicalResult tpu::Pool1DOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
   auto attr = parseParam();
   in_stride_h = out_stride_h * attr.sh;
   return success();
 }
 
-LogicalResult tpu::Pool1DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+LogicalResult tpu::Pool1DOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
   auto attr = parseParam();
   in_up_pad_h = out_up_pad_h * attr.sh + attr.pad_h;
   return success();
 }
 
-LogicalResult tpu::Pool1DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+LogicalResult tpu::Pool1DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
   auto attr = parseParam();
   in_down_pad_h = out_down_pad_h * attr.sh + attr.pad_h_after;
   return success();

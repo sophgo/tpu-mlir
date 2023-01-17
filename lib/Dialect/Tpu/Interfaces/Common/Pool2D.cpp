@@ -104,9 +104,7 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
           v = std::round(p.outputs[0][i] * pooling->kh * pooling->kw);
         }
         p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs);
-        p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                              ? to_uint8(p.outputs[0][i])
-                              : to_int8(p.outputs[0][i]);
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -114,9 +112,7 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
         p.outputs[0][i] = p.outputs[0][i] * pooling->kh * pooling->kw *
                               getScale().value().convertToDouble() +
                           getOffset().value().convertToDouble();
-        p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                              ? to_uint8(p.outputs[0][i])
-                              : to_int8(p.outputs[0][i]);
+        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
       }
     }
   } else if (out_type.isa<FloatType>()) {

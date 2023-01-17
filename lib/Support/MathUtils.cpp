@@ -666,12 +666,8 @@ void function_relu(float *src, float *dst, int64_t size, float relu_limit,
     if (relu_limit > 0.f && dst[i] > relu_limit) {
       dst[i] = relu_limit;
     }
-    if (elem_type) {
-      if (elem_type.isUnsignedInteger(8)) {
-        dst[i] = to_uint8(dst[i]);
-      } else if (elem_type.isInteger(8)) {
-        dst[i] = to_int8(dst[i]);
-      }
+    if (elem_type && elem_type.isa<mlir::IntegerType>()) {
+      dst[i] = saturate(dst[i], elem_type);
     }
   }
 }

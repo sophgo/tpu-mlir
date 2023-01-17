@@ -13,15 +13,12 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 LogicalResult tpu::MulShiftOp::init(InferenceParameter &p) { return success(); }
 void tpu::MulShiftOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
   auto sType = module::getStorageType(getOutput());
-  bool isUnsignInt = sType.isUnsignedInteger(8);
   int64_t in_zp = 0, out_zp = 0;
   if (module::isUniformQuantized(getInput())) {
     auto qtype = module::getUniformQuantizedType(getInput());
@@ -38,7 +35,7 @@ LogicalResult tpu::MulShiftOp::inference(InferenceParameter &p) {
                                       (int64_t)getMultiplier(), getRshift());
     // should add zp to the outputs.
     v += out_zp;
-    p.outputs[0][i] = isUnsignInt ? to_uint8(v) : to_int8(v);
+    p.outputs[0][i] = saturate(v, sType);
   }
   return success();
 }

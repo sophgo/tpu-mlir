@@ -60,7 +60,7 @@ if [ ! -f $cfg_file ]; then
 fi
 
 source ${cfg_file}
-if [ x$do_dynamic == x1 ] && [ x$support_dynamic == x1]; then
+if [ x$do_dynamic == x1 ] && [ x$support_dynamic == x1 ]; then
   do_dynamic=1
 else
   do_dynamic=0

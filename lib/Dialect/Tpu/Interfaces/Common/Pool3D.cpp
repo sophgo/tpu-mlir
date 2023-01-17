@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 pool_attr_t tpu::Pool3DOp::parseParam() {
   pool_attr_t p = {0};
   assert(getKernelShape().size() == 3);
@@ -103,9 +101,7 @@ LogicalResult tpu::Pool3DOp::inference(InferenceParameter &p) {
       p.outputs[0][i] = p.outputs[0][i] * pooling->kd * pooling->kh *
                             pooling->kw * getScale().value().convertToDouble() +
                         getOffset().value().convertToDouble();
-      p.outputs[0][i] = out_type.isUnsignedInteger(8)
-                            ? to_uint8(p.outputs[0][i])
-                            : to_int8(p.outputs[0][i]);
+      p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
     }
   } else if (out_type.isa<FloatType>()) {
     if (getDoRelu()) {
@@ -142,7 +138,7 @@ LogicalResult tpu::Pool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 }
 
 LogicalResult tpu::Pool3DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
-                                       int64_t out_idx, int64_t out_slice) {
+                                          int64_t out_idx, int64_t out_slice) {
   auto attr = parseParam();
   in_slice = (out_slice - 1) * attr.sh + attr.kh;
   in_idx = out_idx * attr.sh - attr.pad_h;
@@ -155,20 +151,22 @@ LogicalResult tpu::Pool3DOp::DynBackwardKh(int64_t &in_kh, int64_t out_kh) {
   return success();
 }
 
-
-LogicalResult tpu::Pool3DOp::DynBackwardStrideH(int64_t &in_stride_h, int64_t out_stride_h) {
+LogicalResult tpu::Pool3DOp::DynBackwardStrideH(int64_t &in_stride_h,
+                                                int64_t out_stride_h) {
   auto attr = parseParam();
   in_stride_h = out_stride_h * attr.sh;
   return success();
 }
 
-LogicalResult tpu::Pool3DOp::DynBackwardUpPadH(int64_t &in_up_pad_h, int64_t out_up_pad_h) {
+LogicalResult tpu::Pool3DOp::DynBackwardUpPadH(int64_t &in_up_pad_h,
+                                               int64_t out_up_pad_h) {
   auto attr = parseParam();
   in_up_pad_h = out_up_pad_h * attr.sh + attr.pad_h;
   return success();
 }
 
-LogicalResult tpu::Pool3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t out_down_pad_h) {
+LogicalResult tpu::Pool3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
+                                                 int64_t out_down_pad_h) {
   auto attr = parseParam();
   in_down_pad_h = out_down_pad_h * attr.sh + attr.pad_h_after;
   return success();
