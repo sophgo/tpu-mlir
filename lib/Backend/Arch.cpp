@@ -74,6 +74,24 @@ int64_t Arch::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
   return n_aligned * c_per_npu * eu_aligned;
 }
 
+size_t Arch::get_gmem_bytes(Value v) {
+  if (!Arch::ALIGN_4N) {
+    return module::getBytes(v);
+  }
+  if (v.getType().isa<NoneType>()) {
+    return 0;
+  }
+  auto type = v.getType().cast<RankedTensorType>();
+  std::vector<int64_t> shape = module::getShape(v);
+  auto etype = module::getStorageType(v);
+  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
+  int64_t align = 4 / elm_bytes;
+  shape[0] = align_up(shape[0], align);
+  int64_t elem_count = std::accumulate(shape.begin(), shape.end(), 1,
+                                       std::multiplies<int64_t>());
+  return elem_count * elm_bytes;
+}
+
 int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
                                     bool eu_align) {
   int64_t n, c, h, w;

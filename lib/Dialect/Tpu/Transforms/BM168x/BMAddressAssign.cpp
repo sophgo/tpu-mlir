@@ -40,7 +40,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
       module::setAddress(op.getOutput(), addr);
-      int64_t bytes = module::getBytes(op.getOutput());
+      int64_t bytes = Arch::get_gmem_bytes(op.getOutput());
       addr = align_up(addr + bytes, alignment);
     });
   }
@@ -216,7 +216,7 @@ int BMAddressAssign::getOutIndex(Operation *op, Value &out) {
 
 uint32_t BMAddressAssign::getTensorGmemSize(Operation *op, int index,
                                             int64_t aligment_) {
-  uint32_t size = module::getBytes(op->getResult(index));
+  uint32_t size = Arch::get_gmem_bytes(op->getResult(index));
   // pad to aligment_
   if (size % aligment_) {
     size = size + aligment_ - (size % aligment_);

@@ -83,7 +83,7 @@ typedef void (*nodechip_winograd_forward_parallel_fix8b_with_data_split)(uint64_
 typedef void (*nodechip_lstm_forward_parallel)(uint64_t x_global_offset, uint64_t cont_global_offset, uint64_t x_static_global_offset, uint64_t h_0_global_offset, uint64_t c_0_global_offset, uint64_t x_weight_global_offset, uint64_t x_bias_global_offset, uint64_t xstatic_weight_global_offset, uint64_t h_weight_global_offset, uint64_t h_global_offset, uint64_t c_T_global_offset, uint64_t h_T_global_offset, uint64_t wxc_buf_global_offset, uint64_t wxc_sta_buf_global_offset, int batch_num, int time_num, int input_dim, int output_dim, int with_x_static, int expose_hidden, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_scale_forward)(uint64_t bottom_global_offset, uint64_t scale_global_offset, uint64_t bias_global_offset, uint64_t top_global_offset, int bottom_n, int bottom_c, int bottom_h, int bottom_w, int shape_axis, int shape_axis_num, int add_bias, int if_relu, CMD_ID_NODE *pid_node);
 typedef void (*nodechip_eltwise_forward)(uint64_t *bottom_global_offset, uint64_t top_global_offset, uint64_t mask_global_offset, uint64_t buffer_offset, int *input1_shape, int *input2_shape, int input_num, int input_dims, int op_code, float *coeff, int need_mask, float *mask_index, int if_relu, CMD_ID_NODE *pid_node);
-typedef void (*nodechip_eltwise_fix8b_forward_parallel)(uint64_t bottom_A_global_addr, uint64_t bottom_B_global_addr, uint64_t top_global_addr, int tensor_n, int tensor_c, int tensor_h, int tensor_w, int op_code, int scale_A, int scale_B, int sign_A, int sign_B, int rshift_A, int rshift_B, int if_relu, CMD_ID_NODE *id_node);
+typedef void (*nodechip_eltwise_fix8b_forward_parallel)(uint64_t *bottom_global_offset, uint64_t top_global_offset, int tensor_n, int tensor_c, int tensor_h, int tensor_w, int op_code, int *coeff, uint8_t *sign, uint8_t *rshift, int if_relu, int input_num, CMD_ID_NODE *id_node);
 typedef void (*nodechip_prelu_forward)(uint64_t bottom_global_addr, uint64_t slope_global_addr, uint64_t top_global_addr, float slope_val, int channel_shared, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, CMD_ID_NODE *id_node);
 typedef void (*nodechip_prelu_forward_fix8b)(uint64_t bottom_global_addr, uint64_t slope_global_addr, uint64_t top_global_addr, float slope_val, int channel_shared, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int input_sign, int slope_sign, int output_sign, int rshift_bit, int if_global_4N, CMD_ID_NODE *id_node);
 typedef void (*nodechip_relu_forward_fix16b)(uint64_t bottom_global_addr, uint64_t top_global_addr, int Tensor_N, int Tensor_C, int Tensor_H, int Tensor_W, int input_sign, int output_sign, int if_global_2N, CMD_ID_NODE *id_node);
@@ -359,7 +359,7 @@ public:
 protected:
   BM1684() {
     NPU_NUM = 64;
-    EU_BYTES = 128; // only for int8; 128 for fp32
+    EU_BYTES = 128;       // only for int8; 128 for fp32
     LMEM_BYTES = 1 << 19; // 512KB
     LMEM_BANKS = 8;
     ALIGNMENT = 0x1000;
@@ -370,9 +370,7 @@ protected:
     ALIGN_4N = true;
     start_env();
   };
-  virtual ~BM1684(){
-    end_env();
-  };
+  virtual ~BM1684() { end_env(); };
   virtual void load_functions() override;
 };
 } // namespace backend

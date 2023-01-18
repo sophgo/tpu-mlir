@@ -144,10 +144,10 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     auto v_name = module::getName(v).str();
     auto type = module::getStorageType(v);
     auto shape = module::getShape(v);
-    auto typeBytes = type.getIntOrFloatBitWidth() / 8;
     auto data_type = BM168x::getDataType(type);
     auto gmem_stmode = STORE_MODE_1N;
-    if (chip == module::Chip::BM1684) {
+    if (module::isBM1684Family()) {
+      auto typeBytes = type.getIntOrFloatBitWidth() / 8;
       if (typeBytes == 1) {
         gmem_stmode = STORE_MODE_4N;
       } else if (typeBytes == 2) {
@@ -176,7 +176,7 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
       tb.add_zero_point(zero_point);
     }
     tb.add_device_addr(module::getAddress(v));
-    tb.add_size(module::getBytes(v));
+    tb.add_size(Arch::get_gmem_bytes(v));
     tensor_v.push_back(tb.Finish());
   }
   return builder.CreateVector(tensor_v);

@@ -190,7 +190,7 @@ DynCodegenPass::CreateTensorVector(const std::vector<Value> &values) {
       tb.add_zero_point(zero_point);
     }
     tb.add_device_addr(module::getAddress(v));
-    tb.add_size(module::getBytes(v));
+    tb.add_size(Arch::get_gmem_bytes(v));
     tensor_v.push_back(tb.Finish());
   }
   return builder.CreateVector(tensor_v);
