@@ -504,7 +504,7 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
   case tpu::RequantMode::QDM:
   case tpu::RequantMode::TFLite:
   case tpu::RequantMode::TFLite_LShift:
-    if (module::isCV18xx) {
+    if (module::isCV18xx()) {
       rshift = -rshift;
     }
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
