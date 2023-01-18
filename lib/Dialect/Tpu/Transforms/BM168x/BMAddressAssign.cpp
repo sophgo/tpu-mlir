@@ -40,7 +40,7 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
       module::setAddress(op.getOutput(), addr);
-      int64_t bytes = Arch::get_gmem_bytes(op.getOutput());
+      int64_t bytes = module::getBytes(op.getOutput());
       addr = align_up(addr + bytes, alignment);
     });
   }

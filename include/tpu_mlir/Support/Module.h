@@ -134,6 +134,7 @@ Type getStorageType(Value v); // storage type
 Type getStorageType(Type type);
 Type getElementType(Value v);
 llvm::ArrayRef<int64_t> getShape(Value v);
+bool isSign(Value v);
 FuncOp getMainFuncOp();
 i32_array_t getI32Array(ArrayAttr arrayAttr);
 i32_array_t getI32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,

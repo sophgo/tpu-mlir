@@ -39,10 +39,8 @@ void tpu::AddOp::codegen_global_bm1684() {
     auto rshift_v = module::getI64Array(getRshifts(), input_num, 0);
     int coeff[2] = {(int)multiplier_v->at(0), (int)multiplier_v->at(1)};
     uint8_t shift[2] = {(uint8_t)rshift_v->at(0), (uint8_t)rshift_v->at(1)};
-    uint8_t a_sign =
-        module::getStorageType(getInputs()[0]).isUnsignedInteger(8) ? 0 : 1;
-    uint8_t b_sign =
-        module::getStorageType(getInputs()[1]).isUnsignedInteger(8) ? 0 : 1;
+    uint8_t a_sign = module::isSign(getInputs()[0]) ? 1 : 0;
+    uint8_t b_sign = module::isSign(getInputs()[1]) ? 1 : 0;
     uint8_t sign[2] = {a_sign, b_sign};
     BM1684::instance().dl_nodechip_eltwise_fix8b_forward_parallel(
         bottom_addrs, o_addr, (int)n, (int)c, (int)h, (int)w, op_code, coeff,
