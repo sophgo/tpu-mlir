@@ -496,6 +496,14 @@ StringRef getName(Operation *op, int index) {
 
 FuncOp getMainFuncOp() { return getFuncOp("main"); }
 
+bool isSign(Value v) {
+  auto stype = getStorageType(v);
+  if (stype.isUnsignedInteger()) {
+    return false;
+  }
+  return true;
+}
+
 llvm::StringRef getModuleName() {
   return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
 }

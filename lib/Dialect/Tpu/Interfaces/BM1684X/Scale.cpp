@@ -73,8 +73,8 @@ void tpu::ScaleOp::codegen_global_bm1684x() {
   p.merge_weight_bias = 0;
   p.round_mode = ROUND_UP;
   if (module::isUniformQuantized(getInput())) {
-    p.scale_sign = !module::getStorageType(getScale()).isUnsignedInteger();
-    p.bias_sign = !module::getStorageType(getBias()).isUnsignedInteger();
+    p.scale_sign = module::isSign(getScale());
+    p.bias_sign = module::isSign(getBias());
     p.version = 10;
     BM168x::call_global_func("backend_api_scale_global", &p, sizeof(p),
                              input_spec->data(), output_spec->data());

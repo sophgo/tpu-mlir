@@ -365,7 +365,7 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
     if (getCoeffMerged()) {
       spec.merge_coeff = 2;
       auto out_etype = module::getStorageType(getOutput());
-      if (out_etype.isUnsignedInteger(8)) {
+      if (out_etype.isUnsignedInteger()) {
         common.if_relu = true;
       }
     }
@@ -502,7 +502,7 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       p.spec.merge_coeff = 2;
       p.spec.with_requant = 1;
       auto out_etype = module::getStorageType(getOutput());
-      if (out_etype.isUnsignedInteger(8)) {
+      if (out_etype.isUnsignedInteger()) {
         common.if_relu = true;
       }
     }
@@ -555,7 +555,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
     if (getCoeffMerged()) {
       spec.merge_coeff = 2;
       auto out_etype = module::getStorageType(getOutput());
-      common.if_relu = out_etype.isUnsignedInteger(8);
+      common.if_relu = out_etype.isUnsignedInteger();
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
@@ -605,7 +605,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
     if (getCoeffMerged()) {
       spec.merge_coeff = 2;
       auto out_etype = module::getStorageType(getOutput());
-      common.if_relu = out_etype.isUnsignedInteger(8);
+      common.if_relu = out_etype.isUnsignedInteger();
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
