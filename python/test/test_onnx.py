@@ -58,6 +58,7 @@ class ONNX_IR_TESTER(object):
             "Conv2d": self.test_Conv2d,
             "Conv3d": self.test_Conv3d,
             "ConvStride": self.test_ConvStride,
+            "ConvDw": self.test_ConvDw,
             "ConvTranspose": self.test_ConvTranspose,
             "ConvTranspose2": self.test_ConvTranspose2,  #no pad
             "Clip": self.test_Clip,
@@ -819,6 +820,20 @@ class ONNX_IR_TESTER(object):
                           stride=[1, 1],
                           dilation=[1, 1],
                           groups=1)
+
+    def test_ConvDw(self, case_name):
+        input_shape = [1, 16, 100, 100]
+        filter_shape = [16, 1, 3, 3]
+        output_shape = [1, 16, 100, 100]
+        self.ConvBase(case_name,
+                      input_shape,
+                      filter_shape,
+                      output_shape,
+                      kernel=[3, 3],
+                      padding=[1, 1, 1, 1],
+                      stride=[1, 1],
+                      dilation=[1, 1],
+                      groups=16)
 
     def test_ConvStride(self, case_name):
         in_shape0 = [1, 32, 320, 320]
@@ -1938,7 +1953,7 @@ class ONNX_IR_TESTER(object):
             b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
             output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
             add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["output"])
-            graph_def = helper.make_graph([add_def], "{}_{}".format(case_name,i), [a,b], [output])
+            graph_def = helper.make_graph([add_def], "{}_{}".format(case_name, i), [a, b], [output])
             self.onnx_and_test(graph_def)
 
     def test_AddConst(self, case_name):
