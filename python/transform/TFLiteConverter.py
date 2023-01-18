@@ -246,7 +246,6 @@ class TFLiteConverter(BaseConverter):
         self.shape_infer = self.__shape_infer(input_shapes)
         self.preprocess_args = preprocess_args
         self.need_transpose = preprocess_args['model_format'] == 'image'
-        # self.need_transpose = True
 
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
@@ -280,6 +279,7 @@ class TFLiteConverter(BaseConverter):
             "ADD": self.add_op,
             "SUB": self.sub_op,
             "PAD": self.pad_op,
+            "PADV2": self.pad_op,
             "SOFTMAX": self.softmax_op,
             "MEAN": self.mean_op,
             "CONV_2D": self.conv_2d_op,
@@ -677,7 +677,7 @@ class TFLiteConverter(BaseConverter):
         op_options = op.builtin_options
         param = ConcatenationOptions()
         param.Init(op_options.Bytes, op_options.Pos)
-        axis = _axis_transpose(op, param.Axis())
+        axis = _axis_transpose(op, param.Axis()) if self.need_transpose else param.Axis()
         fused_active = param.FusedActivationFunction()
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
@@ -839,7 +839,6 @@ class TFLiteConverter(BaseConverter):
                 operands = []
                 for x in operation.inputs:
                     operands.append(symbol_table[self.__nhwc2nchw(x)] if x is not None else self.mlir.none_op)
-                # operands = [symbol_table[self.__nhwc2nchw(x)] for x in operation.inputs]
             rst_type = [
                 self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
             ]
