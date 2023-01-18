@@ -125,18 +125,34 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
     module::getScaleAndZeroPoint(input, scale, zeropoint, true);
     scale_mul *= scale;
     if (auto constOp = dyn_cast<top::WeightOp>(input.getDefiningOp())) {
+      // do sub zp in here
       auto num_element = module::getNumElements(input);
       if (num_element == 1) {
         is_const = true;
         auto constF32 = constOp.read_as_float();
         const_val = constF32->data()[0] - zeropoint;
-        continue;
+      } else {
+        auto input_stype = module::getStorageType(input);
+        auto input_sub_zp = std::make_shared<std::vector<int16_t>>(num_element);
+        auto input_quant = constOp.read<int8_t>();
+        if (input_stype.isUnsignedInteger(8)) {
+          for (int64_t i = 0; i < num_element; ++i) {
+            input_sub_zp->at(i) = (uint8_t)(input_quant->at(i)) - zeropoint;
+          }
+        } else {
+          for (int64_t i = 0; i < num_element; ++i) {
+            input_sub_zp->at(i) = input_quant->at(i) - zeropoint;
+          }
+        }
+        auto new_type = RankedTensorType::get(module::getShape(input), rewriter.getI16Type());
+        auto new_input = top::WeightOp::create(op, "_int16", *input_sub_zp, new_type);
+        operands.push_back(new_input);
       }
+    } else {
+      auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
+          input, rewriter.getI16Type(), -zeropoint);
+      operands.push_back(input_sub_zp);
     }
-    std::string suffix = name + "_binary";
-    auto input_sub_zp = do_binary_saclar<tpu::AddConstOp>(
-        input, rewriter.getI16Type(), -zeropoint, suffix.c_str());
-    operands.push_back(input_sub_zp);
   }
   module::getScaleAndZeroPoint(op.getOutput(), scale, zeropoint, true);
   scale_mul = scale_mul / scale;

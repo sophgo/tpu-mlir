@@ -57,6 +57,20 @@ run_onnx_op() {
 
 export -f run_onnx_op
 
+run_tflite_op() {
+  echo "======= test_tflite.py ====="
+  test_tflite.py --chip bm1684x >test_tflite_bm1684x.log 2>&1 | true
+  if [ "${PIPESTATUS[0]}" -ne "0" ]; then
+    echo "test_tflite.py --chip bm1684x FAILED" >>result.log
+    cat test_tflite_bm1684x.log >>fail.log
+    return 1
+  fi
+  echo "test_tflite.py --chip bm1684x PASSED" >>result.log
+  return 0
+}
+
+export -f run_tflite_op
+
 run_script_test() {
   echo "======= script test ====="
   $REGRESSION_PATH/script_test/run.sh >script_test.log 2>&1 | true
@@ -76,6 +90,7 @@ run_all() {
   echo "" >fail.log
   echo "" >result.log
   echo "run_onnx_op" >cmd.txt
+#  echo "run_tflite_op" >cmd.txt
   echo "run_script_test" >>cmd.txt
   cat cmd.txt
   ERR=0
