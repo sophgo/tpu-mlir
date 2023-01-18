@@ -493,7 +493,7 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
                                  tpu::RequantMode qmode) {
   switch (qmode) {
   case tpu::RequantMode::MultiplierShift:
-    if (module::isCV18xx) {
+    if (module::isCV18xx()) {
       return to_int(((((float)v * multiplier)) / (1 << rshift)),
                     ROUNDING_HALF_UP);
     } else {
