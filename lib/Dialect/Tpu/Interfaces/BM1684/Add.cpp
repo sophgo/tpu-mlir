@@ -12,8 +12,6 @@
 
 #include "tpu_mlir/Support/Module.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::AddOp::codegen_global_bm1684() {
@@ -22,27 +20,35 @@ void tpu::AddOp::codegen_global_bm1684() {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
   int op_code = 1; // (0: Product; 1: Sum; 2: Max)
-  auto multiplier_v = module::getI64Array(getMultipliers(), input_num, 1);
-  auto rshift_v = module::getI64Array(getRshifts(), input_num, 0);
-
-  BM1684::instance().dl_nodechip_eltwise_fix8b_forward_parallel(
-      module::getAddress(getInputs()[0]), // u64    bottom_A_global_addr,
-      module::getAddress(getInputs()[1]), // u64    bottom_B_global_addr,
-      module::getAddress(getOutput()),    // u64    top_global_addr,
-      n,                               // int    tensor_n,
-      c,                               // int    tensor_c,
-      h,                               // int    tensor_h,
-      w,                               // int    tensor_w,
-      op_code,                         // int    op_code,
-      (int8_t)multiplier_v->at(0),     // int    scale_A,
-      (int8_t)multiplier_v->at(1),     // int    scale_B,
-      1,                               // int    sign_A,
-      1,                               // int    sign_B,
-      rshift_v->at(0),                 // int    rshift_A,
-      rshift_v->at(1),                 // int    rshift_B,
-      getDoRelu() ? 1 : 0,               // int    getDoRelu(),
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node // CMD_ID_NODE *id_node
-  );
+  auto a_addr = module::getAddress(getInputs()[0]);
+  auto b_addr = module::getAddress(getInputs()[1]);
+  auto o_addr = module::getAddress(getOutput());
+  uint64_t bottom_addrs[2] = {(uint64_t)a_addr, (uint64_t)b_addr};
+  int a_shape[4] = {(int)n, (int)c, (int)h, (int)w};
+  int b_shape[4] = {(int)n, (int)c, (int)h, (int)w};
+  if (false == module::isUniformQuantized(getOutput())) {
+    float coeff[2] = {1.0, 1.0};
+    float mask[2] = {0, 0};
+    BM1684::instance().dl_nodechip_eltwise_forward(
+        bottom_addrs, o_addr,
+        /*mask_global_offset*/ 0, /*buffer_offset*/ 0, a_shape, b_shape,
+        input_num, 4, op_code, coeff, /*need_mask*/ 0, mask,
+        getDoRelu() ? 1 : 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else {
+    auto multiplier_v = module::getI64Array(getMultipliers(), input_num, 1);
+    auto rshift_v = module::getI64Array(getRshifts(), input_num, 0);
+    int coeff[2] = {(int)multiplier_v->at(0), (int)multiplier_v->at(1)};
+    uint8_t shift[2] = {(uint8_t)rshift_v->at(0), (uint8_t)rshift_v->at(1)};
+    uint8_t a_sign =
+        module::getStorageType(getInputs()[0]).isUnsignedInteger(8) ? 0 : 1;
+    uint8_t b_sign =
+        module::getStorageType(getInputs()[1]).isUnsignedInteger(8) ? 0 : 1;
+    uint8_t sign[2] = {a_sign, b_sign};
+    BM1684::instance().dl_nodechip_eltwise_fix8b_forward_parallel(
+        bottom_addrs, o_addr, (int)n, (int)c, (int)h, (int)w, op_code, coeff,
+        sign, shift, getDoRelu() ? 1 : 0, input_num,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  }
 }
 
 int64_t tpu::AddOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
@@ -79,6 +85,6 @@ void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
   BM1684::instance().dl_nodechip_eltwise_fix8b_forward_local(
       input_addrs.data(), out_ginfo.out_addr, out_ginfo.buffer_addr,
       out_ginfo.n_slice, c, out_ginfo.h_slice, w, input_strides.data(), 0, 1,
-      mul_v.data(), rshift_v.data(), input_signs.data(), num_inputs, getDoRelu(),
-      BM1684::instance().bdc_node);
+      mul_v.data(), rshift_v.data(), input_signs.data(), num_inputs,
+      getDoRelu(), BM1684::instance().bdc_node);
 }

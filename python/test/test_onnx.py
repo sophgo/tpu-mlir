@@ -1932,17 +1932,14 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test((a, b), Net(), case_name)
 
     def test_Add(self, case_name):
-        input_shape = {"input1": [1, 3, 27, 27], "input2": [1, 3, 27, 27]}
-        output_shape = [1, 3, 27, 27]
-        inputs = [
-            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in input_shape.items()
-        ]
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        add_def = helper.make_node("Add", inputs=list(input_shape.keys()), outputs=["output"])
-
-        graph_def = helper.make_graph([add_def], case_name, inputs, [output])
-        self.onnx_and_test(graph_def)
+        shapes = ([1, 3, 27, 27], [2, 6, 56, 56], [4, 9, 56, 56])
+        for i, s in enumerate(shapes):
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, s)
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+            add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["output"])
+            graph_def = helper.make_graph([add_def], "{}_{}".format(case_name,i), [a,b], [output])
+            self.onnx_and_test(graph_def)
 
     def test_AddConst(self, case_name):
         input_shape = [1, 16, 28, 28]

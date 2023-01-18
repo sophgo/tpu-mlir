@@ -113,7 +113,7 @@ def mlir_to_model(tpu_mlir: str,
         final_mlir,
         "--init",
         codegen_param,
-        ">/dev/null",
+        "-o /dev/null",
     ]
     _os_system(cmd)
 
@@ -121,6 +121,7 @@ def mlir_to_model(tpu_mlir: str,
         _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
     except RuntimeError:
         pass
+
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
     cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
