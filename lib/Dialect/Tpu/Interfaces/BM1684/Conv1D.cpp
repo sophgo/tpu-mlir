@@ -15,8 +15,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684;
 
@@ -62,9 +60,9 @@ void tpu::Conv1DOp::codegen_global_bm1684() {
         attr.has_bias ? module::getAddress(getBias()) : 0, attr.n, attr.ic,
         attr.ih, attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl,
         attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w,
-        getRshift().value()[0].cast<IntegerAttr>().getInt(), attr.has_bias ? 1 : 0,
-        0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
-        (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        getRshift().value()[0].cast<IntegerAttr>().getInt(),
+        attr.has_bias ? 1 : 0, 0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
+        attr.relu_limit, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     BM1684::instance().dl_nodechip_conv_forward_parallel_fix8b_with_data_split(
         module::getAddress(getInput()), module::getAddress(getOutput()),
@@ -73,8 +71,8 @@ void tpu::Conv1DOp::codegen_global_bm1684() {
         attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
         attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
         attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0,
-        getRshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0, 0,
-        0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+        getRshift().value()[0].cast<IntegerAttr>().getInt(), 1, 1, 1, 3, 0, 0,
+        0, 0, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
 }
 

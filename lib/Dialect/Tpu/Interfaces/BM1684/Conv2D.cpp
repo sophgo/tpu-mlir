@@ -57,33 +57,47 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (!module::getStorageType(op.getFilter()).isInteger(8))
     return failure();
   auto attr = op.parseParam();
-  // if (attr.is_dw == false) {
-  //   // merge weight and bias
-  //   return success();
-  // }
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_int8 = filterOp.read<int8_t>();
-  int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
-  auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
-  for (int oc_idx = 0; oc_idx < attr.oc; oc_idx++) {
-    for (int ic_idx = 0; ic_idx < attr.ic; ic_idx++) {
-      for (int k_idx = 0; k_idx < attr.kh * attr.kw; k_idx++) {
-        int orig_offset = ic_idx * attr.kh * attr.kw + k_idx +
-                          oc_idx * attr.kh * attr.kw * attr.ic;
-        int trans_offset = ic_idx + k_idx * align_up(attr.ic, 4l) +
-                           oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4l));
-        filter_new->at(trans_offset) = filter_int8->at(orig_offset);
+  auto filter_type = module::getElementType(op.getFilter());
+  if (attr.is_dw == false) {
+    int new_size = attr.oc * (align_up(attr.ic, 4l)) * attr.kh * attr.kw;
+    auto filter_new = std::make_shared<std::vector<int8_t>>(new_size, 0);
+    for (int oc_idx = 0; oc_idx < attr.oc; oc_idx++) {
+      for (int ic_idx = 0; ic_idx < attr.ic; ic_idx++) {
+        for (int k_idx = 0; k_idx < attr.kh * attr.kw; k_idx++) {
+          int orig_offset = ic_idx * attr.kh * attr.kw + k_idx +
+                            oc_idx * attr.kh * attr.kw * attr.ic;
+          int trans_offset =
+              ic_idx + k_idx * align_up(attr.ic, 4l) +
+              oc_idx * (attr.kh * attr.kw * align_up(attr.ic, 4l));
+          filter_new->at(trans_offset) = filter_int8->at(orig_offset);
+        }
       }
     }
+    std::vector<int64_t> new_shape = {
+        1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
+    auto new_type = RankedTensorType::get(new_shape, filter_type);
+    auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
+                                            "reorderd", *filter_new, new_type);
+    op->setOperand(1, new_filter);
+  } else {
+    int64_t filter_shape[4];
+    filter_shape[0] = 1;
+    filter_shape[1] = attr.oc;
+    filter_shape[2] = attr.ic / attr.groups;
+    filter_shape[3] = attr.kh * attr.kw;
+    auto new_type = RankedTensorType::get(filter_shape, filter_type);
+    op.getFilter().setType(new_type);
   }
-  auto filter_type = filterOp.getType().cast<RankedTensorType>();
-  std::vector<int64_t> new_shape = {
-      1, attr.oc, attr.kh * attr.kw * align_up(attr.ic, 4l), 1};
-  auto new_type =
-      RankedTensorType::get(new_shape, filter_type.getElementType());
-  auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
-                                          "reorderd", *filter_new, new_type);
-  op->setOperand(1, new_filter);
+  // bias op
+  if (attr.has_bias) {
+    auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
+    auto bias_type = module::getElementType(op.getBias());
+    int64_t bias_shape[4] = {1, attr.oc, 1, 1};
+    auto new_type = RankedTensorType::get(bias_shape, bias_type);
+    op.getBias().setType(new_type);
+  }
   return success();
 }
 
@@ -140,12 +154,17 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
   if (module::isUniformQuantized(getInput())) {
     auto shift_v = module::getI64Array(getRshift(), 1, 0);
     auto shift = shift_v->at(0);
+    auto in_sign = module::isSign(getInput());
+    auto filter_sign = module::isSign(getFilter());
+    auto bias_sign = attr.has_bias ? module::isSign(getBias()) : 0;
+    auto out_sign = module::isSign(getOutput());
     if (attr.is_dw) {
       BM1684::instance().dl_nodechip_depthwise_fix8b_forward_parallel(
           in_addr, out_addr, filter_addr, bias_addr, attr.n, attr.ic, attr.ih,
           attr.iw, attr.kh, attr.kw, attr.pht, attr.phb, attr.pwl, attr.pwr,
           attr.sh, attr.sw, attr.ins_h, attr.ins_w, shift,
-          attr.has_bias ? 1 : 0, 0, 1, 1, 1, 1, attr.do_relu ? 1 : 0,
+          attr.has_bias ? 1 : 0, /*shift_sign*/ 0, in_sign, filter_sign,
+          bias_sign, out_sign, attr.do_relu ? 1 : 0, attr.relu_limit,
           (CMD_ID_NODE *)BM1684::instance().cmdid_node);
     } else {
       BM1684::instance()
@@ -154,7 +173,7 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
               attr.ih, attr.iw, attr.groups, attr.oc, attr.kh, attr.kw, attr.dh,
               attr.dw, attr.pht, attr.phb, attr.pwl, attr.pwr, attr.sh, attr.sw,
               attr.has_bias ? 1 : 0, 0, attr.do_relu ? 1 : 0, 0, 1, 0, 0, shift,
-              1, 1, 1, 3, 0, 0, 0, 0, 0,
+              in_sign, filter_sign, bias_sign, 3, 0, 0, 0, 0, 0,
               (CMD_ID_NODE *)BM1684::instance().cmdid_node);
     }
   } else {

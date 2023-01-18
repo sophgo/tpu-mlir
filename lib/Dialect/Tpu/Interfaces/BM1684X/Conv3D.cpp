@@ -272,7 +272,7 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
   spec.relu_limit = attr.relu_limit;
   if (module::isUniformQuantized(getInput())) {
     auto out_etype = module::getStorageType(getOutput());
-    spec.do_relu = out_etype.isUnsignedInteger(8);
+    spec.do_relu = out_etype.isUnsignedInteger();
     auto in_qtype = module::getUniformQuantizedType(getInput());
     spec.kzp_is_const = true;
     spec.kzp_val = attr.kernel_zp;
