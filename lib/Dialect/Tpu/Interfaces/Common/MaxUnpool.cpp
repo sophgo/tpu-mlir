@@ -58,4 +58,9 @@ LogicalResult tpu::MaxUnpoolOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+void tpu::MaxUnpoolOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                       local_sec_info_t &sec_info) {
+  llvm_unreachable("Not Implemented");
+}
+
 LogicalResult tpu::MaxUnpoolOp::LocalGenSupport() { return failure(); }

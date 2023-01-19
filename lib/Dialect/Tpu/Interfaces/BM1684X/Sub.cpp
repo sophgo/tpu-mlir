@@ -65,27 +65,6 @@ int64_t tpu::SubOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::SubOp::assign_sec_info(int64_t n_step, int64_t h_step,
-                                 local_sec_info_t &sec_info) {
-  memset(&sec_info, 0, sizeof(local_sec_info_t));
-
-  int64_t n, c, h, w;
-  module::getNCHW(getOutput(), n, c, h, w);
-  auto gi = getGroupInfo(n_step, h_step);
-  auto in0_gi = LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
-  auto in1_gi = LocalGenInterface::getGroupInfo(getInputs()[1], n_step, h_step);
-  sec_info.n_slice = gi.n_slice;
-  sec_info.h_slice = in0_gi.h_slice;
-  sec_info.w_slice = w;
-  sec_info.out_n_slice = gi.n_slice;
-  sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
-  sec_info.h_idx = in0_gi.h_idx;
-  sec_info.out_h_idx = gi.h_idx;
-  sec_info.out_h_slice = gi.h_slice;
-  sec_info.is_w_split = false;
-  sec_info.out_w_slice = w;
-}
-
 void tpu::SubOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                        local_sec_info_t &sec_info) {
   auto op = getOperation();

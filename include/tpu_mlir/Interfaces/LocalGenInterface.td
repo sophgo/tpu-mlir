@@ -31,7 +31,28 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"assign_sec_info",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info)
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info),
+        [{}],
+        [{
+            memset(&sec_info, 0, sizeof(local_sec_info_t));
+            int64_t n, c, h, w, on, oc, oh, ow;
+            auto input = $_op->getOperand(0);
+            auto output = $_op->getResult(0);
+            module::getNCHW(input, n, c, h, w);
+            module::getNCHW(output, on, oc, oh, ow);
+            auto gi = getGroupInfo(n_step, h_step);
+            auto in_gi = LocalGenInterface::getGroupInfo(input, n_step, h_step);
+            sec_info.n_slice = in_gi.n_slice;
+            sec_info.d_slice = 1;
+            sec_info.h_slice = in_gi.h_slice;
+            sec_info.h_idx = in_gi.h_idx;
+            sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+            sec_info.w_slice = w;
+            sec_info.out_n_slice = gi.n_slice;
+            sec_info.out_h_idx = gi.h_idx;
+            sec_info.out_h_slice = gi.h_slice;
+            sec_info.out_w_slice = ow;
+        }]
       >,
       InterfaceMethod<
         /*desc=*/[{}],
