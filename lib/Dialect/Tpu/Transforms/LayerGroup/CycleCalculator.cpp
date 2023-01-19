@@ -36,10 +36,10 @@ int64_t CycleCalculator::getGlobalLayerCycle(Operation *op) {
   return cycle;
 }
 
-void CycleCalculator::set_local_sec_info(local_sec_info_t *sec_info,
+void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
                                          Operation *op,
                                          TensorInfo &tensor_infos) {
-  memset(sec_info, 0, sizeof(local_sec_info_t));
+  memset(&sec_info, 0, sizeof(local_sec_info_t));
 
   // Note: WhereOp, MaskedFillOp may need to be processed differently.
   int64_t N, C, H, W;
@@ -49,9 +49,9 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t *sec_info,
   if (iter != tensor_infos.end()) {
     module::getNCHW(in, N, C, H, W);
     auto &si = iter->second.slice_info;
-    sec_info->n_slice = si.n[0].second;
-    sec_info->h_slice = si.h[0].second;
-    sec_info->w_slice = W;
+    sec_info.n_slice = si.n[0].second;
+    sec_info.h_slice = si.h[0].second;
+    sec_info.w_slice = W;
     has_input = true;
   }
 
@@ -60,13 +60,13 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t *sec_info,
   if (iter != tensor_infos.end()) {
     module::getNCHW(out, N, C, H, W);
     auto &si = iter->second.slice_info;
-    sec_info->out_n_slice = si.n[0].second;
-    sec_info->out_h_slice = si.h[0].second;
-    sec_info->out_w_slice = W;
+    sec_info.out_n_slice = si.n[0].second;
+    sec_info.out_h_slice = si.h[0].second;
+    sec_info.out_w_slice = W;
     if (!has_input) {
-      sec_info->n_slice = si.n[0].second;
-      sec_info->h_slice = si.h[0].second;
-      sec_info->w_slice = W;
+      sec_info.n_slice = si.n[0].second;
+      sec_info.h_slice = si.h[0].second;
+      sec_info.w_slice = W;
     }
   }
 }
@@ -77,15 +77,15 @@ int64_t CycleCalculator::getLocalLayerCycle(Operation *op,
   auto bm168x = BM168x::instance();
   int64_t cycle = 0;
   local_sec_info_t sec_info;
-  set_local_sec_info(&sec_info, op, tensor_infos);
+  set_local_sec_info(sec_info, op, tensor_infos);
   auto lgOp = dyn_cast<LocalGenInterface>(op);
-// #pragma omp critical
+  // #pragma omp critical
   {
     bm168x->set_command_issue_flag(false);
     bm168x->reset_cmd_id_node();
 
     // set_local_layer_io_addr(op);
-    lgOp.codegen_local_bm1684x(0, 0, &sec_info);
+    lgOp.codegen_local_bm168x(0, 0, sec_info);
 
     int64_t bdc_cycle = bm168x->get_bdc_cycle();
     int64_t gdma_cycle = bm168x->get_gdma_cycle();
@@ -128,7 +128,7 @@ int64_t CycleCalculator::getLoadCycle(Value v,
   int64_t use_3ic = tensor_info.use_3ic_opt;
   bool need_bcast = tensor_info.need_bcast;
   bool eu_align = tensor_info.eu_align;
-  auto pid_node = (CMD_ID_NODE*)bm168x->dl_create_cmd_id_node();
+  auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
   bm168x->dl_reset_cmd_id(pid_node);
   auto data_type = BM168x::getDataType(v);
   auto gdma_format = BM168x::getGdmaFormat(data_type);
@@ -181,7 +181,7 @@ int64_t CycleCalculator::getStoreCycle(Value v,
   auto &si = tensor_info.slice_info;
   get_max_slice_nh(si, n_slice, h_slice);
   bool eu_align = tensor_info.eu_align;
-  auto pid_node = (CMD_ID_NODE*)bm168x->dl_create_cmd_id_node();
+  auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
   bm168x->dl_reset_cmd_id(pid_node);
   auto data_type = BM168x::getDataType(v);
   auto gdma_format = BM168x::getGdmaFormat(data_type);

@@ -30,20 +30,34 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"codegen_local_bm1684",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step)
+        /*methodName=*/"assign_sec_info",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
-        /*methodName=*/"assign_sec_info",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "void *":$sec_info_)
+        /*methodName=*/"codegen_local_bm1684",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"codegen_local_bm1684x",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "void *":$sec_info_)
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info)
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
+        /*methodName=*/"codegen_local_bm168x",
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info),
+        [{}],
+        [{
+          if (module::isBM1684XFamily()) {
+            $_op.codegen_local_bm1684x(n_step, h_step, sec_info);
+          } else if (module::isBM1684Family()) {
+            $_op.codegen_local_bm1684(n_step, h_step, sec_info);
+          }
+        }]
       >,
       InterfaceMethod<
         /*desc=*/[{}],

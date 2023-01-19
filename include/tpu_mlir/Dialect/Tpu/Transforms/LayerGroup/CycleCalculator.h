@@ -26,7 +26,8 @@ public:
   int64_t getStoreCycle(Value v, const tensor_info_t &tensor_info);
 
 protected:
-  void set_local_sec_info(local_sec_info_t *sec_info, Operation *op, TensorInfo &tensor_infos);
+  void set_local_sec_info(local_sec_info_t &sec_info, Operation *op,
+                          TensorInfo &tensor_infos);
 };
 
 } // namespace tpu

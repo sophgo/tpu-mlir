@@ -309,21 +309,15 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         // add prefix to each cmd in profile.txt
         std::string prefix = module::getName(group_ops[id]).str();
         if (ginfo.overstepped == false) {
-          if (module::isBM1684Family()) {
-            lgOp.codegen_local_bm1684(tensor_step->nstep, tensor_step->hstep);
-          } else if (module::isBM1684XFamily()) {
-            auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
-            if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
-              pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
-            }
-            BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
-            lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
-                                 &sec_info);
-            lgOp.codegen_local_bm1684x(tensor_step->nstep, tensor_step->hstep,
-                                       &sec_info);
-          } else {
-            llvm_unreachable("chip not support");
+          auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
+          if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
+            pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
           }
+          BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+          lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
+                               sec_info);
+          lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
+                                    sec_info);
         }
       } // ops, include Load/Store op
 
@@ -356,7 +350,7 @@ void CodegenPass::codegen(Operation *op) {
   } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-      castOp.codegen_global_bm168x();
+    castOp.codegen_global_bm168x();
   }
 }
 

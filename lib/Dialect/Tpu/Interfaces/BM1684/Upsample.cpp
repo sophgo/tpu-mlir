@@ -38,7 +38,7 @@ int64_t tpu::UpsampleOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   return 0;
 }
 
-void tpu::UpsampleOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::UpsampleOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
   auto out_ginfo = LocalGenInterface::getGroupInfo(getOutput());
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);

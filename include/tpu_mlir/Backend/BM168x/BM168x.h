@@ -120,27 +120,6 @@ typedef enum {
   GROUP_3D = 1,
 } group_type_t;
 
-typedef struct local_sec_info {
-  int32_t group_type;
-
-  int32_t n_slice;
-  int32_t out_n_slice;
-
-  int32_t d_slice;
-
-  int32_t is_h_split;
-  int32_t h_idx;
-  int32_t h_slice;
-  int32_t out_h_idx;
-  int32_t out_h_slice;
-
-  int32_t is_w_split;
-  int32_t w_idx;
-  int32_t w_slice;
-  int32_t out_w_idx;
-  int32_t out_w_slice;
-} local_sec_info_t;
-
 typedef struct stride {
   int64_t N, C, H, W;
 } stride_4D_t;

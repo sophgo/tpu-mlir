@@ -12,17 +12,14 @@
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::Pool1DOp::codegen_global_bm1684() {
   auto attr = parseParam();
   bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;
   BM1684::instance().dl_nodechip_pooling_fix8b_forward_parallel_with_data_split(
-      module::getAddress(getInput()), module::getAddress(getOutput()), attr.n, attr.c,
-      attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h, attr.pad_h_after,
+      module::getAddress(getInput()), module::getAddress(getOutput()), attr.n,
+      attr.c, attr.ih, attr.iw, attr.kh, attr.kw, attr.pad_h, attr.pad_h_after,
       attr.pad_w, attr.pad_w_after, attr.sh, attr.sw, 0, 0, is_avg_pooling, 0,
       0, 0, 0, 1, 0, 0, 1, attr.do_relu ? 1 : 0,
       (CMD_ID_NODE *)BM1684::instance().cmdid_node);
@@ -34,6 +31,7 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684(
   return 0;
 }
 
-void tpu::Pool1DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::Pool1DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                         local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }

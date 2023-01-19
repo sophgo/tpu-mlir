@@ -38,12 +38,12 @@ int64_t tpu::ClipOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 }
 
 void tpu::ClipOp::assign_sec_info(int64_t n_step, int64_t h_step,
-                                  void *sec_info_) {
+                                  local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }
 
 void tpu::ClipOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
-                                        void *sec_info_) {
+                                        local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }
 
