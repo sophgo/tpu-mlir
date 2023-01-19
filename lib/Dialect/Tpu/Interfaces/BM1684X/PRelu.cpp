@@ -54,28 +54,27 @@ int64_t tpu::PReluOp::getBufferSize_bm1684x(
 }
 
 void tpu::PReluOp::assign_sec_info(int64_t n_step, int64_t h_step,
-                                   void *sec_info_) {
-  local_sec_info_t *sec_info = (local_sec_info_t *)sec_info_;
-  memset(sec_info, 0, sizeof(local_sec_info_t));
+                                   local_sec_info_t &sec_info) {
+  memset(&sec_info, 0, sizeof(local_sec_info_t));
 
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  sec_info->n_slice = in_gi.n_slice;
-  sec_info->d_slice = 1;
-  sec_info->h_slice = in_gi.h_slice;
-  sec_info->h_idx = in_gi.h_idx;
-  sec_info->is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
-  sec_info->w_slice = w;
-  sec_info->out_n_slice = gi.n_slice;
-  sec_info->out_h_idx = gi.h_idx;
-  sec_info->out_h_slice = gi.h_slice;
-  sec_info->out_w_slice = w;
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.d_slice = 1;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = w;
 }
 
 void tpu::PReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
-                                         void *sec_info_) {
+                                         local_sec_info_t &sec_info) {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -89,7 +88,7 @@ void tpu::PReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   spec.round_mode = ROUND_UP;
 
   BM168x::call_local_func("backend_api_prelu_local", &spec, sizeof(spec),
-                          sec_info_, input_spec->data(), output_spec->data());
+                          &sec_info, input_spec->data(), output_spec->data());
 }
 
 //dynamic codegen

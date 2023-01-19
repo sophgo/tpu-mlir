@@ -13,6 +13,10 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 
 namespace tpu_mlir {
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
   int64_t out_addr;
   int64_t out_size;
@@ -27,10 +31,35 @@ typedef struct {
   bool eu_align;
   bool overstepped;
 } group_info_t;
+
+typedef struct local_sec_info {
+  int32_t group_type;
+
+  int32_t n_slice;
+  int32_t out_n_slice;
+
+  int32_t d_slice;
+
+  int32_t is_h_split;
+  int32_t h_idx;
+  int32_t h_slice;
+  int32_t out_h_idx;
+  int32_t out_h_slice;
+
+  int32_t is_w_split;
+  int32_t w_idx;
+  int32_t w_slice;
+  int32_t out_w_idx;
+  int32_t out_w_slice;
+} local_sec_info_t;
+
+#ifdef __cplusplus
+}
+#endif
+
 } // namespace tpu_mlir
 
 #include "tpu_mlir/Support/Module.h"
-
 
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/LocalGenInterface.h.inc"

@@ -35,6 +35,6 @@ int64_t tpu::ReciprocalOp::getBufferSize_bm1684(
   return 0;
 }
 
-void tpu::ReciprocalOp::codegen_local_bm1684(int64_t n_step, int64_t h_step) {
+void tpu::ReciprocalOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
 }
