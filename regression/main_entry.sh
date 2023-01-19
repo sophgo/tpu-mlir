@@ -38,20 +38,16 @@ export -f run_regression_net
 
 run_onnx_op() {
   echo "======= test_onnx.py ====="
-  test_onnx.py --chip bm1684x >test_onnx_bm1684x.log 2>&1 | true
-  if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-    echo "test_onnx.py --chip bm1684x FAILED" >>result.log
-    cat test_onnx_bm1684x.log >>fail.log
-    return 1
-  fi
-  echo "test_onnx.py --chip bm1684x PASSED" >>result.log
-  test_onnx.py --chip cv183x >test_onnx_cv183x.log 2>&1 | true
-  if [ "${PIPESTATUS[0]}" -ne "0" ]; then
-    echo "test_onnx.py --chip cv183x FAILED" >>result.log
-    cat test_onnx_cv183x.log >>fail.log
-    return 1
-  fi
-  echo "test_onnx.py --chip cv183x PASSED" >>result.log
+  chip_list=("bm1684x" "bm1684" "cv183x")
+  for chip in ${chip_list[@]}; do
+    test_onnx.py --chip $chip >test_onnx_${chip}.log 2>&1 | true
+    if [ "${PIPESTATUS[0]}" -ne "0" ]; then
+      echo "test_onnx.py --chip ${chip} FAILED" >>result.log
+      cat test_onnx_${chip}.log >>fail.log
+      return 1
+    fi
+    echo "test_onnx.py --chip ${chip} PASSED" >>result.log
+  done
   return 0
 }
 
@@ -90,7 +86,7 @@ run_all() {
   echo "" >fail.log
   echo "" >result.log
   echo "run_onnx_op" >cmd.txt
-#  echo "run_tflite_op" >cmd.txt
+  #  echo "run_tflite_op" >cmd.txt
   echo "run_script_test" >>cmd.txt
   cat cmd.txt
   ERR=0

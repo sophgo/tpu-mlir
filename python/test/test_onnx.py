@@ -22,10 +22,24 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-BM1684X_Failed_Cases = ["PadAvgPool2D", "QDQ", "QDQConv"]
+BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv"]
+BM1684_Failed_Cases = [
+    "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul",
+    "BroadcastAdd", "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat",
+    "Concat2", "Conv1d", "Conv3d", "ConvStride", "ConvTranspose",
+    "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf", "Exp", "Expand", "Expand2", "Gather",
+    "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3", "LeakyRelu", "Log", "LogSoftmax",
+    "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul", "Min",
+    "MulConst", "Neg", "Pad0", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ", "Resize",
+    "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum", "Reciprocal",
+    "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale", "Sqrt", "Sub",
+    "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Where", "TorchHardSwish", "TorchHardSigmoid",
+    "TorchGelu", "TorchGRU", "TorchLayerGroup", "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM",
+    "TorchMaskedFill", "TorchWhere", "TorchStd"
+]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
-    "Sqrt", "Sub2", "PadAvgPool2D", "Where", "TorchGelu", "TorchGRU", "TorchLayerNorm",
+    "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TorchGelu", "TorchGRU", "TorchLayerNorm",
     "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
 ]
 
@@ -40,11 +54,11 @@ class ONNX_IR_TESTER(object):
             "Abs": self.test_Abs,
             "Add": self.test_Add,
             "AddConst": self.test_AddConst,
-            "AvgPool1D": self.test_AvgPool1D,
-            "AvgPool2D": self.test_AvgPool2D,
-            # "AvgPool3D": self.test_AvgPool3D,
+            "AvgPool1d": self.test_AvgPool1d,
+            "AvgPool2d": self.test_AvgPool2d,
+            # "AvgPool3d": self.test_AvgPool3d,
             "AvgPoolOdd": self.test_AvgPoolOdd,
-            "PadAvgPool2D": self.test_PadAvgPool2D,
+            "PadAvgPool2d": self.test_PadAvgPool2d,
             "BatchMatMul": self.test_BatchMatMul,
             "BroadcastAdd": self.test_BroadcastAdd,
             "BroadcastMul": self.test_BroadcastMul,
@@ -82,9 +96,9 @@ class ONNX_IR_TESTER(object):
             "LSTM": self.test_LSTM,  # output_y
             "LSTM2": self.test_LSTM2,  # output all
             "LSTM3": self.test_LSTM3,  # output_yh and output_yc
-            "MaxPool1D": self.test_MaxPool1D,
-            "MaxPool2D": self.test_MaxPool2D,
-            # "MaxPool3D": self.test_MaxPool3D,
+            "MaxPool1d": self.test_MaxPool1d,
+            "MaxPool2d": self.test_MaxPool2d,
+            # "MaxPool3d": self.test_MaxPool3d,
             "MatMul": self.test_MatMul,
             "Max": self.test_Max,
             "Mul": self.test_Mul,
@@ -177,6 +191,9 @@ class ONNX_IR_TESTER(object):
                 return False
         elif self.chip == "bm1684x":
             if case in BM1684X_Failed_Cases:
+                return False
+        elif self.chip == "bm1684":
+            if case in BM1684_Failed_Cases:
                 return False
         return True
 
@@ -436,7 +453,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([pool_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
-    def test_AvgPool1D(self, case_name):
+    def test_AvgPool1d(self, case_name):
         input_shape = [1, 32, 128]
         output_shape = [1, 32, 64]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
@@ -461,16 +478,16 @@ class ONNX_IR_TESTER(object):
                                       initializer=[mul_const])
         self.onnx_and_test(graph_def)
 
-    def test_AvgPool2D(self, case_name):
+    def test_AvgPool2d(self, case_name):
         self.AvgPoolBase(case_name, [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
 
     def test_AvgPoolOdd(self, case_name):
         self.AvgPoolBase(case_name, [1, 32, 143, 143], [1, 32, 71, 71], [2, 2], [2, 2])
 
-    def test_AvgPool3D(self, case_name):
+    def test_AvgPool3d(self, case_name):
         self.AvgPoolBase(case_name, [2, 32, 16, 32, 64], [2, 32, 8, 16, 32], [2, 2, 2], [2, 2, 2])
 
-    def test_PadAvgPool2D(self, case_name):
+    def test_PadAvgPool2d(self, case_name):
         input_shape = [1, 16, 56, 56]
         pad_out_shape = [1, 16, 58, 58]
         output_shape = [1, 16, 56, 56]
@@ -766,13 +783,13 @@ class ONNX_IR_TESTER(object):
                                       initializer=[w_value, r_value, b_value, h_value])
         self.onnx_and_test(graph_def)
 
-    def test_MaxPool1D(self, case_name):
+    def test_MaxPool1d(self, case_name):
         self.MaxPoolBase(case_name, [1, 32, 128], [1, 32, 64], [2], [2])
 
-    def test_MaxPool2D(self, case_name):
+    def test_MaxPool2d(self, case_name):
         self.MaxPoolBase(case_name, [1, 32, 128, 128], [1, 32, 64, 64], [2, 2], [2, 2])
 
-    def test_MaxPool3D(self, case_name):
+    def test_MaxPool3d(self, case_name):
         self.MaxPoolBase(case_name, [1, 32, 16, 32, 64], [1, 32, 8, 16, 63], [2, 1, 2], [2, 2, 1])
 
     def ConvBase(self, case_name, input_shape, filter_shape, output_shape, kernel, padding, stride,
@@ -1128,9 +1145,9 @@ class ONNX_IR_TESTER(object):
         M = 50
         K = 100
         N = 25
-        input_shape = [10, M, K]
+        input_shape = [4, 10, M, K]
         weight_shape = [K, N]
-        output_shape = [10, M, N]
+        output_shape = [4, 10, M, N]
         weight_data = np.random.randn(*weight_shape).astype(np.float32)
         input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
