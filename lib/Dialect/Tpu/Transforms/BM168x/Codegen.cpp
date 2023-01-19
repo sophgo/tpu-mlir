@@ -356,13 +356,7 @@ void CodegenPass::codegen(Operation *op) {
   } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
-    if (module::isBM1684Family()) {
-      castOp.codegen_global_bm1684();
-    } else if (module::isBM1684XFamily()) {
-      castOp.codegen_global_bm1684x();
-    } else {
-      llvm_unreachable("chip not support");
-    }
+      castOp.codegen_global_bm168x();
   }
 }
 

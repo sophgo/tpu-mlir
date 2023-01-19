@@ -32,6 +32,20 @@ def GlobalGenInterface : OpInterface<"GlobalGenInterface"> {
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
+        /*methodName=*/"codegen_global_bm168x",
+        /*args=*/(ins),
+        [{}],
+        [{
+          if (module::isBM1684Family()) {
+            $_op.codegen_global_bm1684();
+          } else if (module::isBM1684XFamily()) {
+            $_op.codegen_global_bm1684x();
+          }
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
+        /*retType=*/"void",
         /*methodName=*/"codegen_global_cv18xx",
         /*args=*/(ins "int64_t":$layer_id)
       >,
