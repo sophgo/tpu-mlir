@@ -19,7 +19,41 @@ void AddConstLowering::LoweringF32(PatternRewriter &rewriter,
 
 void AddConstLowering::LoweringINT8(PatternRewriter &rewriter,
                                     top::AddConstOp op, bool asymmetric) const {
-  LoweringF16(rewriter, op);
+  if (asymmetric)
+    return LoweringF16(rewriter, op);
+
+  auto in = op.getInput();
+  auto out = op.getOutput();
+  double in_scale, out_scale;
+
+  int64_t in_zp, out_zp;
+  module::getScaleAndZeroPoint(in, in_scale, in_zp, asymmetric);
+  module::getScaleAndZeroPoint(out, out_scale, out_zp, asymmetric);
+  int multiplier, rshift;
+  get_scale_and_shift_positive(in_scale / out_scale, multiplier, rshift, 8);
+
+  double const_b = op.getConstVal().convertToDouble();
+  const_b = static_cast<int>(round(const_b / out_scale)) << rshift;
+
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    if (attr.getName() == "const_val") {
+      attrs.push_back(rewriter.getNamedAttr("const_val",
+                                            rewriter.getF64FloatAttr(const_b)));
+    } else {
+      attrs.push_back(attr);
+    }
+  }
+
+  attrs.push_back(
+    rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(multiplier)));
+  attrs.push_back(
+    rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(rshift)));
+
+
+  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+  rewriter.replaceOpWithNewOp<tpu::AddConstOp>(op, newType, op.getInput(),
+                                               attrs);
 }
 
 void AddConstLowering::LoweringINT4(PatternRewriter &rewriter,
