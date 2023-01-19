@@ -151,6 +151,32 @@ LogicalResult tpu::Conv2DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+void tpu::Conv2DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    local_sec_info_t &sec_info) {
+  memset(&sec_info, 0, sizeof(local_sec_info_t));
+
+  auto attr = parseParam();
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  int64_t pad_h_b = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == attr.ih);
+  // to be compatible with nntoolchain
+  if (sec_info.is_h_split) {
+    sec_info.h_idx = h_step == 0 ? -attr.pht : in_gi.h_idx;
+    sec_info.h_slice = sec_info.h_idx < 0 ? sec_info.h_slice - sec_info.h_idx
+                                          : sec_info.h_slice;
+    sec_info.h_slice = sec_info.h_slice + pad_h_b;
+  }
+  sec_info.w_slice = attr.iw;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = attr.ow;
+}
+
 mlir::Type tpu::Conv2DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
 }

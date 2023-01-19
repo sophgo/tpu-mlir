@@ -237,7 +237,7 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>])> {
   let summary = "convolution operator";
 
@@ -276,7 +276,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
 def Tpu_Conv1DOp : Tpu_ConvOp<"Conv1D">;
 def Tpu_Conv2DOp : Tpu_ConvOp<"Conv2D">;
 def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>]> {
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>]> {
   let arguments = (ins
     AnyTensor:$input,
     AnyTensor:$filter,
@@ -301,7 +301,7 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
 
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   [SupportFuseRelu,
-   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>,
+   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH","assign_sec_info"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>]> {
   let summary = "pool operator";
 
@@ -341,7 +341,7 @@ def Tpu_Pool3DOp:Tpu_PoolOp<"Pool3D">;
 
 def Tpu_MaxPoolWithMaskOp: Tpu_Op<"MaxPoolWithMask",
   [SupportFuseRelu,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max pool with operator";
 
@@ -792,7 +792,7 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
 }
 
 def Tpu_LoadOp:Tpu_Op<"Load",
-  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Load operation";
   let description = [{
@@ -809,7 +809,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
 }
 
 def Tpu_StoreOp:Tpu_Op<"Store",
-  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]> {
   let summary = "Store operation";
   let description = [{
@@ -1100,7 +1100,7 @@ def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
 }
 
 def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]>  {
   let summary = "MaxUnpool operation";
   let description = [{

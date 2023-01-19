@@ -137,6 +137,26 @@ LogicalResult tpu::Pool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
   return success();
 }
 
+void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    local_sec_info_t &sec_info) {
+  memset(&sec_info, 0, sizeof(local_sec_info_t));
+
+  int64_t n, c, h, w;
+  module::getNCHW(getInput(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  sec_info.n_slice = in_gi.n_slice;
+  sec_info.d_slice = 1;
+  sec_info.h_slice = in_gi.h_slice;
+  sec_info.h_idx = in_gi.h_idx;
+  sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);
+  sec_info.w_slice = w;
+  sec_info.out_n_slice = gi.n_slice;
+  sec_info.out_h_idx = gi.h_idx;
+  sec_info.out_h_slice = gi.h_slice;
+  sec_info.out_w_slice = w;
+}
+
 LogicalResult tpu::Pool3DOp::DynBackwardH(int64_t &in_idx, int64_t &in_slice,
                                           int64_t out_idx, int64_t out_slice) {
   auto attr = parseParam();
