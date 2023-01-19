@@ -84,7 +84,6 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
     return success();
   }
   // average pooling
-  bool is_cv18xx = module::isCV18xx();
   auto out_type = module::getStorageType(getOutput());
   auto num_elem = module::getNumElements(getOutput());
   if (out_type.isInteger(8)) {
@@ -92,19 +91,23 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
     auto o_qtype = module::getUniformQuantizedType(getOutput());
 
     if (module::isAsymmetric() == false) {
-      auto multi = getMultiplier().value();
-      auto rs = getRshift().value();
+      auto rmode =
+          module::isCV18xx() ? ROUNDING_HALF_UP : ROUNDING_HALF_AWAY_FROM_ZERO;
+      if (getMultiplier().has_value() || getRshift().has_value()) {
+        auto multi = getMultiplier().value_or(1);
+        auto rs = getRshift().value_or(0);
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
-      for (int64_t i = 0; i < num_elem; ++i) {
-        int64_t v = 0;
-        if (is_cv18xx) {
-          v = to_int(p.outputs[0][i] * pooling->kh * pooling->kw,
-                     ROUNDING_HALF_UP);
-        } else {
-          v = std::round(p.outputs[0][i] * pooling->kh * pooling->kw);
+        for (int64_t i = 0; i < num_elem; ++i) {
+          int64_t v =
+              to_int(p.outputs[0][i] * pooling->kh * pooling->kw, rmode);
+          p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs);
+          p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
         }
-        p.outputs[0][i] = applyMultiplierAndRShift(v, multi, rs);
-        p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+      } else {
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+        for (int64_t i = 0; i < num_elem; ++i) {
+          p.outputs[0][i] = saturate(p.outputs[0][i], out_type);
+        }
       }
     } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
