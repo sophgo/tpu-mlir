@@ -164,7 +164,7 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
 
   // generate_fake_global_addr(op);
   auto castOp = dyn_cast<GlobalGenInterface>(op);
-  castOp.codegen_global_bm1684x();
+  castOp.codegen_global_bm168x();
 
   int64_t cycle = bm168x->get_cmd_cycle();
   bm168x->dl_sg_stas_reset();

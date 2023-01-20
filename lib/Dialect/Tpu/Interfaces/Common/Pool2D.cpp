@@ -139,13 +139,6 @@ LogicalResult tpu::Pool2DOp::LocalGenSupport() {
   if ((stride->at(0) > 15 || stride->at(1) > 15)) {
     return failure();
   }
-  // if (attr.is_global) {
-  //   // TODO: bug, need to be fixed
-  //   auto in_stype = module::getStorageType(getInput());
-  //   if (in_stype.isF16() || in_stype.isBF16()) {
-  //     return failure();
-  //   }
-  // }
   return success();
 }
 
