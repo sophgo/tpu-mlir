@@ -89,6 +89,7 @@ class ONNX_IR_TESTER(object):
             "GRU": self.test_GRU,  # test gru output Y
             "GRU2": self.test_GRU2,  # test gru output Yh
             "GRU3": self.test_GRU3,  # test gru output Y and Yh
+            # "LayerNorm": self.test_LayerNorm,
             "LeakyRelu": self.test_LeakyRelu,
             "Log": self.test_Log,
             "LogSoftmax": self.test_LogSoftmax,
@@ -2735,6 +2736,33 @@ class ONNX_IR_TESTER(object):
 
         self.onnx_and_test(graph_def, qdq=True)
 
+    # def test_LayerNorm(self, case_name):
+    #     axis = 2
+    #     io_shape = [3, 4, 5, 2]
+    #     wb_shape = [x for x in io_shape]
+    #     mr_shape = [x for x in io_shape]
+    #     for i in range(axis):
+    #         wb_shape[i] = 1
+    #     for i in range(axis, 4):
+    #         mr_shape[i] = 1
+    #     w_data = np.random.randn(*wb_shape).astype(np.float32)
+    #     b_data = np.random.randn(*wb_shape).astype(np.float32)
+    #     input = helper.make_tensor_value_info('input', TensorProto.FLOAT, io_shape)
+    #     weight = helper.make_tensor('weight', TensorProto.FLOAT, w_data.shape, w_data)
+    #     bias = helper.make_tensor('bias', TensorProto.FLOAT, b_data.shape, b_data)
+    #     output = helper.make_tensor_value_info('output', TensorProto.FLOAT, io_shape)
+    #     mean = helper.make_tensor_value_info('mean', TensorProto.FLOAT, mr_shape)
+    #     rstd = helper.make_tensor_value_info('rstd', TensorProto.FLOAT, mr_shape)
+
+    #     node_def = helper.make_node(
+    #         "LayerNormalization",
+    #         inputs=['input', 'weight', 'bias'],
+    #         outputs=['output', 'mean', 'rstd'],
+    #     )
+    #     graph_def = helper.make_graph([node_def], case_name,
+    #                                   [input], [output, mean, rstd],
+    #                                   initializer=[weight, bias])
+    #     self.onnx_and_test(graph_def)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

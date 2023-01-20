@@ -1598,9 +1598,10 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_LayerNormOp : Tpu_Op<"LayerNorm"
-  // ,[DeclareOpInterfaceMethods<LocalGenInterface>]
-  > {
+def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>
+  ]> {
   let summary = "LayerNorm operation";
   let description = [{
     layer normalization
