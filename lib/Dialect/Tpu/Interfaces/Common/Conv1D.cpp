@@ -193,3 +193,7 @@ LogicalResult tpu::Conv1DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
   in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
   return success();
 }
+
+LogicalResult tpu::Conv1DOp::LocalGenSupport() {
+  return success();
+}

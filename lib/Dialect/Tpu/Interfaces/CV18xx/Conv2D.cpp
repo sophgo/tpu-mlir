@@ -210,10 +210,9 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   // rewrite weightOp shape (oc, ic/g, kh, kw) -> (1, oc, kh*kw, ic/g)
   std::vector<int64_t> new_filter_shape = {
       1, attr.oc, attr.kh * attr.kw,
-      attr.ic / attr.groups + (do_ic_alignment ? 1 : 0)};
+      (attr.ic + (do_ic_alignment ? 1 : 0)) / attr.groups};
 
-  if (attr.groups != 1 && attr.ic / attr.groups == 1) {
-    // dw
+  if (attr.is_dw) {
     new_filter_shape = {1, attr.oc, attr.kh, attr.kw};
   }
   // rewrite weightOp
@@ -245,8 +244,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, BFloat16Type>::matchAndRewrite(
   // rewrite weightOp shape (oc, ic/g, kh, kw) -> (1, oc, kh*kw, ic/g)
   std::vector<int64_t> new_filter_shape = {1, attr.oc, attr.kh * attr.kw,
                                            attr.ic / attr.groups};
-  if (attr.groups != 1 && attr.ic / attr.groups == 1) {
-    // dw
+  if (attr.is_dw) {
     new_filter_shape = {1, attr.oc, attr.kh, attr.kw};
   }
 
@@ -365,7 +363,7 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
-  auto out_gi = LocalGenInterface::getGroupInfo(getOutput());
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   auto w_gi = LocalGenInterface::getGroupInfo(getFilter());
   auto b_gi = LocalGenInterface::getGroupInfo(getBias());
 
@@ -379,7 +377,7 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
 
   int n = in_gi.n_slice;
   int ih = in_gi.h_slice;
-  int oh = gi.h_slice;
+  int oh = out_gi.h_slice;
 
   uint32_t pht = (in_gi.h_idx == 0 ? attr.pht : 0);
   uint32_t phb = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
@@ -388,19 +386,19 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   int8_t neg_rshift = 0, neg_m_i8 = 0;
   float neg_slope = 0.0l;
   if (module::isUniformQuantized(getOutput())) {
-    cvi_backend_tl_conv(
-        layer_id, la_input, la_output, la_weight, la_working, la_bias, attr.n,
-        attr.ic, attr.ih, attr.iw, attr.groups, attr.oc, attr.oh, attr.ow,
-        attr.kh, attr.kw, attr.dh, attr.dw, attr.pht, attr.phb, attr.pwl,
-        attr.pwr, attr.sh, attr.sw, attr.ins_h, attr.ins_w, 0, /*result_add*/
-        0,                                                     /*crtl*/
-        attr.has_bias, getDoRelu(), neg_slope, 0,              /*rshift*/
-        attr.oc,    /*rshift_shift_len*/
-        pos_rshift, /*rshift_pos*/
-        neg_rshift, /*rshift8_neg*/
-        pos_m_i8,   /*m_i8_pos*/
-        neg_m_i8,   /*m_i8_neg*/
-        do_ic_alignment);
+    cvi_backend_tl_conv(layer_id, la_input, la_output, la_weight, la_working,
+                        la_bias, n, attr.ic, ih, attr.iw, attr.groups, attr.oc,
+                        oh, attr.ow, attr.kh, attr.kw, attr.dh, attr.dw, pht,
+                        phb, attr.pwl, attr.pwr, attr.sh, attr.sw, attr.ins_h,
+                        attr.ins_w, 0,                            /*result_add*/
+                        0,                                        /*crtl*/
+                        attr.has_bias, getDoRelu(), neg_slope, 0, /*rshift*/
+                        attr.oc,    /*rshift_shift_len*/
+                        pos_rshift, /*rshift_pos*/
+                        neg_rshift, /*rshift8_neg*/
+                        pos_m_i8,   /*m_i8_pos*/
+                        neg_m_i8,   /*m_i8_neg*/
+                        do_ic_alignment);
   } else {
     cvi_backend_bf16_tl_conv(
         layer_id, la_input, la_output, la_weight, la_working, la_bias, n,

@@ -237,7 +237,7 @@ def Tpu_BufferOp: Tpu_BaseOp<"Buffer"> {
 class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "assign_sec_info"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>])> {
   let summary = "convolution operator";
 

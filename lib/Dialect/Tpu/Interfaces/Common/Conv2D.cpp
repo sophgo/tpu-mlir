@@ -11,9 +11,12 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
 #include "tpu_mlir/Support/MathUtils.h"
+
+using namespace tpu_mlir::backend;
 
 conv_attr_t tpu::Conv2DOp::parseParam() {
   conv_attr_t p = {0};
@@ -219,3 +222,25 @@ LogicalResult tpu::Conv2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
   in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
   return success();
 }
+
+LogicalResult tpu::Conv2DOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    auto attr = parseParam();
+    if (attr.groups > 1 && false == attr.is_dw) {
+      // for group conv
+      // if oc / g > 32, then we will have two bias at one lane without
+      // EU_NUM align,
+      // so we can only specify the align type to bias memory layout
+      // but skip the oc/g>32 cases.
+      if (attr.oc / attr.groups > CV18xx::NPU_NUM) {
+        return failure();
+      }
+    }
+    if (attr.ins_h > 0 || attr.ins_w > 0) {
+      // ins mode cant slice h/w
+      return failure();
+    }
+  }
+  return success();
+}
+

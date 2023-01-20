@@ -506,7 +506,6 @@ void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
   for (int i = 0; i < 4; i++) {
     size *= shape[i];
   }
-  // TODO if is group op get yeild addr
   offset = module::getAddress(v);
 }
 
@@ -516,7 +515,8 @@ flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(op_info_t &op_info) {
   float qscale = 0.0f; // fix me sophone set 1.0
   QuantType quant_type = QuantType_NONE;
   if (module::isUniformQuantized(op_info.op->getResult(op_info.idx))) {
-    auto qtype = module::getUniformQuantizedType(op_info.op->getResult(0));
+    auto qtype =
+        module::getUniformQuantizedType(op_info.op->getResult(op_info.idx));
     qscale = qtype.getScale();
     if (isa<top::InputOp>(op_info.op->getResult(0).getDefiningOp())) {
       qscale = 1. / qscale;
@@ -591,9 +591,6 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
   }
   for (auto rt : routines_) {
     for (auto &neuronOp : rt->ops) {
-      // if (isa<tpu::GroupOp>(neuronOp)) {
-      //   llvm_unreachable("Not support layerGroup now");
-      // }
       for (uint32_t i = 0; i < neuronOp->getNumResults(); ++i) {
         if (!neuronOp->getResults()[i].getType().isa<mlir::NoneType>()) {
           op_info_t op_info;
