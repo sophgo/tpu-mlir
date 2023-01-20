@@ -326,7 +326,6 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   }
   tensor_infos.clear();
 
-
   int64_t n, c, h, w;
   int64_t max_nslice = 0, max_hslice = 0;
   std::list<Value> tensor_branchs;
@@ -498,6 +497,20 @@ bool is_eu_align(Value opd) {
   if (isWeightValue(opd)) {
     if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op) &&
         (opd == op->getOperand(1) || opd == op->getOperand(2))) {
+      if (module::isCV18xx()) {
+        if (auto castOp = dyn_cast<tpu::Conv2DOp>(op)) {
+          auto attr = castOp.parseParam();
+          if (opd == op->getOperand(1) && attr.is_dw) {
+            // if is dw conv, filter need to align.
+            return true;
+          }
+          if (module::isUniformQuantized(castOp.getOutput()) &&
+              opd == op->getOperand(2) && !attr.is_dw && attr.groups > 1) {
+            // if is int8 group conv, bias need to align.
+            return true;
+          }
+        }
+      }
       return false;
     }
     if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {

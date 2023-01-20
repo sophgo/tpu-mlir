@@ -68,11 +68,6 @@ void tpu::LoadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
     // g_stride.H = 0;
   }
 
-  int64_t use_3ic = getUse_3icOptimize();
-  if (use_3ic < 4 && use_3ic > 0) {
-    llvm_unreachable("Not support now");
-  }
-
   int64_t g_offset =
       (gi.n_idx * g_stride.n + gi.h_idx * g_stride.h);
   gaddr_t src_gaddr = module::getAddress(getInput()) + g_offset;

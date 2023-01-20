@@ -33,7 +33,7 @@ void tpu::StoreOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
 
   std::vector<int64_t> shape;
   int64_t g_n, g_c, g_h, g_w;
-  module::getNCHW(getInput(), g_n, g_c, g_h, g_w); // global
+  module::getNCHW(getOutput(), g_n, g_c, g_h, g_w); // global
   cvk_tg_shape_t gshape = {(uint32_t)g_n, (uint32_t)g_c, (uint32_t)g_h,
                            (uint32_t)g_w};
   auto ifmt = CV18xx::getDataType(getInput());
