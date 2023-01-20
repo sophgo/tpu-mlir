@@ -51,13 +51,6 @@ typedef enum {
 #define GDMA_VALUE_DIR_S2S 2
 #define GDMA_VALUE_DIR_L2L 3
 
-#define GDMA_VALUE_FORMAT_INT8 0
-#define GDMA_VALUE_FORMAT_FLOAT16 1
-#define GDMA_VALUE_FORMAT_FLOAT32 2
-#define GDMA_VALUE_FORMAT_INT16 3
-#define GDMA_VALUE_FORMAT_INT32 4
-#define GDMA_VALUE_FORMAT_BFLOAT16 5
-
 typedef enum {
   DTYPE_FP32 = 0,
   DTYPE_FP16 = 1,
@@ -557,6 +550,16 @@ public:
   static uint64_t GMEM_START_ADDR;
   static uint64_t CTX_START_ADDR;
   static const uint64_t CMODEL_GMEM_SIZE = 0x100000000ull;
+  // GDMA Format
+  static int GDMA_VALUE_FORMAT_UINT8;
+  static int GDMA_VALUE_FORMAT_INT8;
+  static int GDMA_VALUE_FORMAT_FLOAT16;
+  static int GDMA_VALUE_FORMAT_FLOAT32;
+  static int GDMA_VALUE_FORMAT_INT16;
+  static int GDMA_VALUE_FORMAT_INT32;
+  static int GDMA_VALUE_FORMAT_BFLOAT16;
+  static int GDMA_VALUE_FORMAT_INT4;
+  static int GDMA_VALUE_FORMAT_NUM;
 
   // -------------------------------------------------------------------
   // functions from nodechip

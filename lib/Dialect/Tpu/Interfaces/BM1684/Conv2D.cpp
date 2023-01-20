@@ -21,11 +21,11 @@ using namespace tpu_mlir::bm1684;
 void conv_weight_transform(int ic, int oc, int kh, int kw,
                            const void *weight_orig, const void *weight_trans,
                            int type_bytes) {
+  int trans_offset;
   for (int oc_idx = 0; oc_idx < oc; oc_idx++) {
     for (int ic_idx = 0; ic_idx < ic; ic_idx++) {
       for (int k_idx = 0; k_idx < kh * kw; k_idx++) {
         int orig_offset = ic_idx * kh * kw + k_idx + oc_idx * kh * kw * ic;
-        int trans_offset = ic_idx + k_idx * ic + oc_idx * kh * kw * ic;
         switch (type_bytes) {
         case 4:
           trans_offset = ic_idx + k_idx * align_up(ic, 2) +
@@ -40,6 +40,7 @@ void conv_weight_transform(int ic, int oc, int kh, int kw,
               *((char *)weight_orig + orig_offset);
           break;
         case 2:
+          trans_offset = ic_idx + k_idx * ic + oc_idx * kh * kw * ic;
           *((short *)weight_trans + trans_offset) =
               *((short *)weight_orig + orig_offset);
           break;
@@ -114,12 +115,12 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto weight_data = filterOp.read_as_byte();
   if (attr.is_dw == false) {
-    std::vector<int64_t> new_shape = {
-        1, attr.oc, attr.kh * attr.kw * align_up(attr.ic / attr.groups, 4l), 1};
+    std::vector<int64_t> new_shape = {1, attr.oc, attr.kh * attr.kw,
+                                      align_up(attr.ic / attr.groups, 2l)};
     int new_count =
-        align_up(attr.ic / attr.groups, 4l) * attr.oc * attr.kh * attr.kw;
+        align_up(attr.ic / attr.groups, 2l) * attr.oc * attr.kh * attr.kw;
     auto filter_new = std::make_shared<std::vector<float>>(new_count, 0);
-    conv_weight_transform(attr.ic, attr.oc, attr.kh, attr.kw,
+    conv_weight_transform(attr.ic / attr.groups, attr.oc, attr.kh, attr.kw,
                           weight_data->data(), filter_new->data(), type_bytes);
     auto new_type = RankedTensorType::get(new_shape, out_type);
     auto new_filter = top::WeightOp::create(op.getFilter().getDefiningOp(),
@@ -199,10 +200,50 @@ void tpu::Conv2DOp::codegen_global_bm1684() {
 int64_t tpu::Conv2DOp::getBufferSize_bm1684(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  // TODO for spicial situation
   return 0;
 }
 
-void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                         local_sec_info_t &sec_info) {
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto f_gi = LocalGenInterface::getGroupInfo(getFilter());
+  auto b_gi = LocalGenInterface::getGroupInfo(getBias());
+  auto gi = getGroupInfo(n_step, h_step);
+  auto p = parseParam();
+  int bottom_dim[4] = {(int)p.n, (int)p.ic, (int)p.ih, (int)p.iw};
+  int top_dim[4] = {(int)p.n, (int)p.oc, (int)p.oh, (int)p.ow};
+  if (module::isUniformQuantized(getInput())) {
+    auto shift_v = module::getI64Array(getRshift(), 1, 0);
+    auto shift = shift_v->at(0);
+    auto in_sign = module::isSign(getInput());
+    auto filter_sign = module::isSign(getFilter());
+    auto bias_sign = p.has_bias ? module::isSign(getBias()) : 0;
+    auto out_sign = module::isSign(getOutput());
+    if (p.is_dw) {
+      BM1684::instance().dl_nodechip_pooling_fix8b_forward_local(
+          in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr, bottom_dim,
+          top_dim, p.kh, p.kw, p.pht, p.phb, p.pwl, p.pwr, p.sh, p.sw, p.ins_h,
+          p.ins_w,
+          2, // is depthwise conv
+          0, shift, p.has_bias,
+          1, // shift type, useless param, but must be set...
+          in_sign, filter_sign, bias_sign, out_sign, p.do_relu,
+          BM1684::instance().bdc_node);
+    } else {
+      BM1684::instance().dl_nodechip_conv_forward_local_fix8b(
+          in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
+          gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
+          p.pht, p.phb, p.pwl, p.pwr, p.sh, p.sw, p.has_bias, 0, p.do_relu,
+          p.relu_limit, /*unused_ht*/ 0, 0, 0, 0, /* insert h*/ p.ins_h,
+          p.ins_w, shift, in_sign, filter_sign, bias_sign, true, /*mulshift*/ 0,
+          0, 0, 0, BM1684::instance().bdc_node);
+    }
+  } else {
+    BM1684::instance().dl_nodechip_conv_forward_local(
+        in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
+        gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
+        p.pht, p.phb, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
+        /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, 0, 0, 0, 0,
+        BM1684::instance().bdc_node);
+  }
 }

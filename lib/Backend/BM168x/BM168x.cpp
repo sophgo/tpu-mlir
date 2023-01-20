@@ -98,23 +98,19 @@ DATA_TYPE_T BM168x::getDataType(mlir::Type type) {
 }
 
 int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
-  int gdma_format = GDMA_VALUE_FORMAT_FLOAT32;
   switch (data_type) {
   case DTYPE_INT8:
   case DTYPE_UINT8:
-    gdma_format = GDMA_VALUE_FORMAT_INT8;
-    break;
+    return GDMA_VALUE_FORMAT_INT8;
   case DTYPE_INT16:
   case DTYPE_UINT16:
   case DTYPE_FP16:
   case DTYPE_BFP16:
-    gdma_format = GDMA_VALUE_FORMAT_INT16;
-    break;
+    return GDMA_VALUE_FORMAT_INT16;
   default:
-    gdma_format = GDMA_VALUE_FORMAT_FLOAT32;
-    break;
+    return GDMA_VALUE_FORMAT_FLOAT32;
   }
-  return gdma_format;
+  return 0;
 }
 
 int BM168x::getFmtBytes(DATA_TYPE_T data_type) {
@@ -203,6 +199,7 @@ stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
   s.W = 1;
   return s;
 }
+
 stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
                                    int fmtBytes, bool eu_align) {
   stride_4D_t s;
@@ -251,6 +248,16 @@ uint64_t BM168x::CTX_START_ADDR = 0;
 int64_t BM168x::IC_PARALLEL = 0;
 uint64_t BM168x::GMEM_START_ADDR = 0;
 int64_t BM168x::ALIGNMENT = 0;
+
+int BM168x::GDMA_VALUE_FORMAT_UINT8 = 0;
+int BM168x::GDMA_VALUE_FORMAT_INT8 = 0;
+int BM168x::GDMA_VALUE_FORMAT_FLOAT16 = 0;
+int BM168x::GDMA_VALUE_FORMAT_FLOAT32 = 0;
+int BM168x::GDMA_VALUE_FORMAT_INT16 = 0;
+int BM168x::GDMA_VALUE_FORMAT_INT32 = 0;
+int BM168x::GDMA_VALUE_FORMAT_BFLOAT16 = 0;
+int BM168x::GDMA_VALUE_FORMAT_INT4 = 0;
+int BM168x::GDMA_VALUE_FORMAT_NUM = 0;
 
 void BM168x::load_functions() {
   CAST_FUNCTION(cmodel_init);

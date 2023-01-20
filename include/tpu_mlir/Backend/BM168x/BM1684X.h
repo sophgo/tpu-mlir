@@ -54,12 +54,19 @@ protected:
     GMEM_START_ADDR = 0x100000000ull;
     LMEM_BANK_BYTES = LMEM_BYTES / LMEM_BANKS;
     CTX_START_ADDR = GMEM_START_ADDR;
+    // GDMA format
+    GDMA_VALUE_FORMAT_INT8 = 0;
+    GDMA_VALUE_FORMAT_FLOAT16 = 1;
+    GDMA_VALUE_FORMAT_FLOAT32 = 2;
+    GDMA_VALUE_FORMAT_INT16 = 3;
+    GDMA_VALUE_FORMAT_INT32 = 4;
+    GDMA_VALUE_FORMAT_BFLOAT16 = 5;
+    GDMA_VALUE_FORMAT_INT4 = 6;
+    GDMA_VALUE_FORMAT_NUM = 7;
     LIB_NAME = "libbackend_1684x.so";
     start_env();
   };
-  virtual ~BM1684X(){
-    end_env();
-  };
+  virtual ~BM1684X() { end_env(); };
 
   virtual void start_env() override;
   virtual void load_functions() override;
