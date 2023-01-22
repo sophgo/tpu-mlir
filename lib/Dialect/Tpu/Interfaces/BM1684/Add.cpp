@@ -61,28 +61,37 @@ int64_t tpu::AddOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
   return out_lmem_bytes;
 }
 
-void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-  auto out_ginfo = LocalGenInterface::getGroupInfo(getOutput());
+void tpu::AddOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                      local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
   module::getNCHW(getOutput(), n, c, h, w);
+  auto out_gi = getGroupInfo(n_step, h_step);
   int num_inputs = getInputs().size();
-  auto muls = module::getI64Array(getMultipliers(), num_inputs, 1);
-  auto rs = module::getI64Array(getRshifts(), num_inputs, 0);
-
   llvm::SmallVector<int, 8> input_addrs;
   llvm::SmallVector<int, 8> input_signs;
-  llvm::SmallVector<int, 8> input_strides(num_inputs * 2, 0);
-  llvm::SmallVector<int, 8> mul_v(muls->begin(), muls->end());
-  llvm::SmallVector<int, 8> rshift_v(rs->begin(), rs->end());
+  llvm::SmallVector<int, 8> input_cstrides(num_inputs * 2, 0);
   for (int i = 0; i < num_inputs; i++) {
-    auto in_ginfo = LocalGenInterface::getGroupInfo(getInputs()[i]);
+    auto in = getInputs()[i];
+    auto in_ginfo = LocalGenInterface::getGroupInfo(in);
     input_addrs.push_back(in_ginfo.out_addr);
-    auto in_type = module::getStorageType(getInputs()[i]);
-    input_signs.push_back(in_type.isUnsignedInteger() == false);
+    input_signs.push_back(module::isSign(in));
   }
-  BM1684::instance().dl_nodechip_eltwise_fix8b_forward_local(
-      input_addrs.data(), out_ginfo.out_addr, out_ginfo.buffer_addr,
-      out_ginfo.n_slice, c, out_ginfo.h_slice, w, input_strides.data(), 0, 1,
-      mul_v.data(), rshift_v.data(), input_signs.data(), num_inputs,
-      getDoRelu(), BM1684::instance().bdc_node);
+  if (module::isUniformQuantized(getOutput())) {
+    auto muls = module::getI64Array(getMultipliers(), num_inputs, 1);
+    auto rs = module::getI64Array(getRshifts(), num_inputs, 0);
+    llvm::SmallVector<int, 8> mul_v(muls->begin(), muls->end());
+    llvm::SmallVector<int, 8> rshift_v(rs->begin(), rs->end());
+    BM1684::instance().dl_nodechip_eltwise_fix8b_forward_local(
+        input_addrs.data(), out_gi.out_addr, out_gi.buffer_addr, out_gi.n_slice,
+        c, out_gi.h_slice, w, input_cstrides.data(), 0, 1, mul_v.data(),
+        rshift_v.data(), input_signs.data(), num_inputs, getDoRelu(),
+        BM1684::instance().bdc_node);
+  } else {
+    llvm::SmallVector<float, 8> coeff(num_inputs, 1.0);
+    BM1684::instance().dl_nodechip_eltwise_forward_local(
+        input_addrs.data(), out_gi.out_addr, out_gi.n_slice, c, out_gi.h_slice,
+        w, input_cstrides.data(), 0,
+        /*op_code*/ 1, coeff.data(), num_inputs, getDoRelu(),
+        BM1684::instance().bdc_node);
+  }
 }

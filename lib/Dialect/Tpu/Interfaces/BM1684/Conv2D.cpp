@@ -210,8 +210,9 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   auto b_gi = LocalGenInterface::getGroupInfo(getBias());
   auto gi = getGroupInfo(n_step, h_step);
   auto p = parseParam();
-  int bottom_dim[4] = {(int)p.n, (int)p.ic, (int)p.ih, (int)p.iw};
-  int top_dim[4] = {(int)p.n, (int)p.oc, (int)p.oh, (int)p.ow};
+  int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.ic, (int)in_gi.h_slice,
+                       (int)p.iw};
+  int top_dim[4] = {(int)gi.n_slice, (int)p.oc, (int)gi.h_slice, (int)p.ow};
   if (module::isUniformQuantized(getInput())) {
     auto shift_v = module::getI64Array(getRshift(), 1, 0);
     auto shift = shift_v->at(0);
