@@ -145,7 +145,7 @@ void BasicTimeStep::show_timestep() {
         buffer_key.value = out;
         auto &buffer_value = get_lmem_buffer_value(buffer_key);
         ss << value_ids[out] << "(" << buffer_value.start_ts << ", "
-         << buffer_value.end_ts << "), ";
+           << buffer_value.end_ts << "), ";
       }
       ss << "])\n";
     }
@@ -179,8 +179,7 @@ void BasicTimeStep::gen_hold_coeff() {
       v = gdma_field[i].first;
       auto &tensor_info = gdma_field[i].second;
       if (tensor_info.mode == TIMESTEP_LOAD) {
-        auto op = v.getDefiningOp();
-        if (op != nullptr && isa<top::WeightOp>(op)) {
+        if (module::isWeight(v)) {
           this->hold_coeff_[v] = ts;
         }
       }
@@ -201,7 +200,7 @@ void BasicTimeStep::gen_all_mem_buffer() {
   lmem_buffer_.clear();
 
   mem_buffer_key_t lmem_key;
-  mem_buffer_value_t lmem_value={0};
+  mem_buffer_value_t lmem_value = {0};
   lmem_value.align_bytes = 32;
 
   for (int64_t stg = 0; stg < this->swpipl_stage_num_; ++stg) {
@@ -230,7 +229,7 @@ void BasicTimeStep::gen_all_mem_buffer() {
             if (in.getType().isa<NoneType>()) {
               continue;
             }
-            if (isWeightValue(in)) {
+            if (module::isWeight(in)) {
               lmem_key.type = LMEM_WEIGHT;
             } else {
               lmem_key.type = LMEM_ACTIVATION;
@@ -260,7 +259,7 @@ void BasicTimeStep::gen_all_mem_buffer() {
 
         if (tensor_info.mode == TIMESTEP_LOAD) {
           // Need some process for concat opt case
-          if (isWeightValue(tensor.first)) {
+          if (module::isWeight(tensor.first)) {
             lmem_key.type = LMEM_WEIGHT;
           } else {
             lmem_key.type = LMEM_ACTIVATION;
@@ -455,7 +454,7 @@ int64_t BasicTimeStep::get_tensor_range_end(const GdmaElt &tensor,
 
 int64_t BasicTimeStep::get_tensor_life_time(Value v) {
   mem_buffer_key_t key = {LMEM_ACTIVATION, v, nullptr};
-  if (isWeightValue(v)) {
+  if (module::isWeight(v)) {
     key.type = LMEM_WEIGHT;
   }
   auto &buffer_value = this->get_lmem_buffer_value(key);

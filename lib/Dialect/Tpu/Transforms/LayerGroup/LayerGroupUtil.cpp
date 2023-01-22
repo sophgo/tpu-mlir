@@ -13,12 +13,15 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
   int64_t max_nsecs = batch_size;
   int64_t max_hsecs = llvm::maxIntN(64);
   int64_t n, c, h, w;
-
   // Need consider n_align if backend is BM1684
-  int64_t n_align = Arch::get_n_align(1);
+  int64_t n_align = 1;
   for (auto op : lg_info.group_ops) {
     for (auto v : get_output_values(op)) {
       module::getNCHW(v, n, c, h, w);
+      if (Arch::ALIGN_4N) {
+        auto stype = module::getStorageType(v);
+        n_align = 32 / stype.getIntOrFloatBitWidth();
+      }
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
       max_hsecs = std::min(max_hsecs, h);
     }
@@ -335,6 +338,11 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   for (auto out : lg_info.group_outs) {
     module::getNCHW(out, n, c, h, w);
     max_nslice = std::max(max_nslice, ceiling_func(n, shape_secs.nsecs));
+    if (Arch::ALIGN_4N) {
+      auto stype = module::getStorageType(out);
+      int64_t align_n = 32 / stype.getIntOrFloatBitWidth();
+      max_nslice = align_up(max_nslice, align_n);
+    }
     max_hslice = (h + shape_secs.hsecs - 1) / shape_secs.hsecs;
     si.n.clear();
     si.h.clear();
@@ -422,7 +430,7 @@ int64_t get_buffer_size(const GdmaElt &tensor) {
   auto v = tensor.first;
   auto &ti = tensor.second;
   int64_t buf_size = 0;
-  if (isWeightValue(v)) {
+  if (module::isWeight(v)) {
     buf_size = Arch::get_weight_lmem_bytes(v, ti.eu_align);
   } else {
     int64_t nslice, hslice;
@@ -486,15 +494,10 @@ void delete_fake_global_addr(Operation *op) {
   }
 }
 
-bool isWeightValue(Value v) {
-  auto op = v.getDefiningOp();
-  return (op != nullptr && isa<top::WeightOp>(op));
-}
-
 bool is_eu_align(Value opd) {
   // Eu align rule may be different in different platforms
   auto op = *opd.getUsers().begin();
-  if (isWeightValue(opd)) {
+  if (module::isWeight(opd)) {
     if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op) &&
         (opd == op->getOperand(1) || opd == op->getOperand(2))) {
       if (module::isCV18xx()) {

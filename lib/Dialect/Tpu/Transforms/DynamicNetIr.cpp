@@ -74,7 +74,7 @@ void SubnetIr::layer_data_back_dynamic_info(
   vector<Value> back_tensors;
 
   for (auto in : src_op->getOperands()) {
-    if (!isWeightValue(in) && !load_from_weightop(in))
+    if (!module::isWeight(in) && !load_from_weightop(in))
       back_tensors.push_back(in);
   }
 
@@ -100,7 +100,7 @@ void SubnetIr::layer_data_back_dynamic_info(
 
   for(uint32_t i = 0; i < back_tensors.size(); ++i) {
     bool set_value = false;
-    if (!isWeightValue(back_tensors[i])) {
+    if (!module::isWeight(back_tensors[i])) {
       it = tensor_to_dynamic_info.find(get_tensor_id(back_tensors[i]));
       cur_h_slice = it->second.max_hslice;
 
@@ -157,7 +157,7 @@ void SubnetIr::get_fw_input_tensor_info(
     if (!loadOp_and_load_from_weightop(it)) {
       for (int i = 0; i < it->getNumOperands(); i++) {
         auto opd = it->getOperand(i);
-        if (!isWeightValue(opd) && !load_from_weightop(opd)
+        if (!module::isWeight(opd) && !load_from_weightop(opd)
           && tensor_to_dynamic_info.find(get_tensor_id(opd)) == tensor_to_dynamic_info.end()) {
           tensor_to_dynamic_info[get_tensor_id(opd)] = tensor_info_tmp;
         }
@@ -262,7 +262,7 @@ void SubnetIr::get_neuron_timestep_consumer(map<int, int>& tensor_to_consumer_nu
         for (auto in : op->getOperands())
           in_tensors.push_back(in);
         for(auto& in_tensor : in_tensors) {
-          if(!isWeightValue(in_tensor)) {
+          if(!module::isWeight(in_tensor)) {
             tensor_to_consumer_num[get_tensor_id(in_tensor)] += 1;
           }
         }
@@ -279,7 +279,7 @@ void SubnetIr::get_neuron_timestep_consumer(map<int, int>& tensor_to_consumer_nu
         } else if (!isa_and_nonnull<tpu::LoadOp>(tensor.first.getDefiningOp())) {
            //load op
           //gdma produced tensor
-          if(!isWeightValue(tensor.first)) {
+          if(!module::isWeight(tensor.first)) {
             tensor_to_consumer_num[get_tensor_id(tensor.first)] = 1;
           }
         }
