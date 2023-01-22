@@ -504,6 +504,14 @@ bool isSign(Value v) {
   return true;
 }
 
+bool isWeight(Value v) {
+  auto op = v.getDefiningOp();
+  if (op != nullptr && isa<top::WeightOp>(op)) {
+    return true;
+  }
+  return false;
+}
+
 llvm::StringRef getModuleName() {
   return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
 }
@@ -607,7 +615,6 @@ void push_back(FuncOp funcOp) { m.push_back(funcOp); }
 
 double getThreshold(Value v) {
   auto type = getCalibratedType(v);
-  assert(type.getMax() == -type.getMin());
   return type.getMax();
 }
 

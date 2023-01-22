@@ -58,8 +58,6 @@ void generate_fake_global_addr(Operation *op);
 
 void delete_fake_global_addr(Operation *op);
 
-bool isWeightValue(Value v);
-
 bool is_eu_align(Value opd);
 
 bool need_bcast(Value opd);

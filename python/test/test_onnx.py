@@ -24,17 +24,16 @@ import onnxruntime
 
 BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv"]
 BM1684_Failed_Cases = [
-    "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul",
-    "BroadcastAdd", "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat",
-    "Concat2", "Conv1d", "Conv3d", "ConvStride", "ConvTranspose",
-    "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf", "Exp", "Expand", "Expand2", "Gather",
-    "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3", "LeakyRelu", "Log", "LogSoftmax",
-    "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul", "Min",
-    "MulConst", "Neg", "Pad0", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ", "Resize",
-    "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum", "Reciprocal",
-    "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale", "Sqrt", "Sub",
-    "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Where", "TorchHardSwish", "TorchHardSigmoid",
-    "TorchGelu", "TorchGRU", "TorchLayerGroup", "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM",
+    "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul", "BroadcastAdd",
+    "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat", "Concat2", "Conv1d",
+    "Conv3d", "ConvStride", "ConvTranspose", "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf",
+    "Exp", "Expand", "Expand2", "Gather", "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3",
+    "LeakyRelu", "Log", "LogSoftmax", "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul",
+    "Min", "MulConst", "Neg", "Pad0", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
+    "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum",
+    "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale",
+    "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Where", "TorchHardSwish",
+    "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM",
     "TorchMaskedFill", "TorchWhere", "TorchStd"
 ]
 CV18XX_Failed_Cases = [
@@ -1832,8 +1831,10 @@ class ONNX_IR_TESTER(object):
                 y2 = y0 + y1
                 return y0, y2
 
-        x = torch.randn(4, 3, 50, 50).float()
-        self.torch_and_test(x, Model(), case_name)
+        shapes = ([1, 3, 50, 50], [3, 3, 50, 50], [4, 3, 60, 70], [7, 3, 80, 40])
+        for idx, shape in enumerate(shapes):
+            x = torch.randn(*shape).float()
+            self.torch_and_test(x, Model(), "{}_{}".format(case_name, idx))
 
     def test_TorchLogSoftmax(self, case_name):
 

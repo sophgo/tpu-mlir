@@ -52,27 +52,7 @@ void Arch::init() {
   }
 }
 
-int64_t Arch::eu_num(double dbytes) {
-  return EU_BYTES / dbytes;
-  // if (chip != module::Chip::BM1684) {
-  //   return EU_BYTES / dbytes;
-  // }
-  // // 1684 is special
-  // return dbytes == 1 ? EU_BYTES : EU_BYTES / 8;
-}
-
-int64_t Arch::get_lmem_bytes(int64_t n, int64_t c, int64_t h, int64_t w,
-                             Type type, bool eu_align) {
-  int64_t npu_num = Arch::NPU_NUM;
-  int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
-  int64_t eu_num = Arch::eu_num(dbytes);
-  int64_t c_per_npu = ceiling_func(c, npu_num);
-  int64_t n_align = get_n_align(dbytes);
-  int64_t n_aligned = align_up(n, n_align);
-  int64_t eu_aligned =
-      eu_align ? align_up(h * w, eu_num) * dbytes : (h * w * dbytes);
-  return n_aligned * c_per_npu * eu_aligned;
-}
+int64_t Arch::eu_num(double dbytes) { return EU_BYTES / dbytes; }
 
 size_t Arch::get_gmem_bytes(Value v) {
   if (!Arch::ALIGN_4N) {
@@ -81,30 +61,50 @@ size_t Arch::get_gmem_bytes(Value v) {
   if (v.getType().isa<NoneType>()) {
     return 0;
   }
+  if (module::isWeight(v)) {
+    return module::getBytes(v);
+  }
   auto type = v.getType().cast<RankedTensorType>();
   std::vector<int64_t> shape = module::getShape(v);
-  auto etype = module::getStorageType(v);
-  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
-  int64_t align = 4 / elm_bytes;
-  shape[0] = align_up(shape[0], align);
+  auto stype = module::getStorageType(v);
+  int elm_bytes = stype.getIntOrFloatBitWidth() / 8;
+  shape[0] = align_up(shape[0], (int64_t)4 / elm_bytes);
   int64_t elem_count = std::accumulate(shape.begin(), shape.end(), 1,
                                        std::multiplies<int64_t>());
-  return elem_count * elm_bytes;
+  return elem_count * 4;
 }
 
 int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
                                     bool eu_align) {
   int64_t n, c, h, w;
   module::getNCHW(v, n, c, h, w);
+  n = slice_n;
+  h = slice_h;
   auto type = module::getStorageType(v);
-  return get_lmem_bytes(slice_n, c, slice_h, w, type, eu_align);
+  int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
+  if (ALIGN_4N) {
+    int64_t eu_num = Arch::eu_num(4);
+    int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
+    int64_t n_aligned = align_up(n, 4 / dbytes);
+    int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
+    return n_aligned * c_per_npu * eu_aligned * 4;
+  } else {
+    int64_t eu_num = Arch::eu_num(dbytes);
+    int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
+    int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
+    return n * c_per_npu * eu_aligned * dbytes;
+  }
 }
 
 int64_t Arch::get_weight_lmem_bytes(Value v, bool eu_align) {
   int64_t n, c, h, w;
   module::getNCHW(v, n, c, h, w);
   auto type = module::getStorageType(v);
-  return get_lmem_bytes(n, c, h, w, type, eu_align);
+  int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
+  int64_t eu_num = Arch::eu_num(dbytes);
+  int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
+  int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
+  return n * c_per_npu * eu_aligned * dbytes;
 }
 
 Arch::~Arch() {}
