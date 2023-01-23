@@ -19,7 +19,9 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   std::vector<int64_t> rshift_v(nInputs);
   std::vector<int64_t> multiplier_v(nInputs, 1);
   std::vector<double> coeff_v(nInputs, 1.0);
-  auto th_output = module::getThreshold(op.getOutput());
+  int64_t o_zp;
+  double o_scale;
+  module::getScaleAndZeroPoint(op.getOutput(), o_scale, o_zp, asymmetric);
 
   if (op.getCoeff().has_value()) {
     int idx = 0;
@@ -31,10 +33,12 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   for (int i = 0; i < nInputs; i++) {
     auto input = op->getOperand(i);
     operands.push_back(input);
-    auto th_input = module::getThreshold(input);
-    rshift_v[i] = calRightShiftNumUseCblas(coeff_v[i], th_input, th_output,
-                                           BITS_INT8);
-    float scale = 1.0 * (1 << rshift_v[i]) * th_input / th_output;
+    int64_t in_zp;
+    double in_scale;
+    module::getScaleAndZeroPoint(input, in_scale, in_zp, asymmetric);
+    rshift_v[i] =
+        calRightShiftNumUseCblas(coeff_v[i], in_scale, o_scale, BITS_INT8);
+    float scale = 1.0 * (1 << rshift_v[i]) * in_scale / o_scale;
     int8_t multiplier_int8 = 0;
     float coeff = coeff_v[i];
     quantizeToInt8(&coeff, &multiplier_int8, 1, scale);
