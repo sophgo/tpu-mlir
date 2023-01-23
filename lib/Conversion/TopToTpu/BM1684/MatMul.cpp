@@ -25,17 +25,18 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   std::vector<NamedAttribute> attrs;
   auto p = op.parseParam();
   assert(p.batch == 1); // only for fullyconnected now
-  auto th_output = module::getThreshold(op.getOutput());
-  auto th_input = module::getThreshold(op.getInput());
+  int64_t in_zp = 0, out_zp = 0;
+  double in_scale = 1, out_scale = 1;
+  module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
+  module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   auto filterOp = cast<top::WeightOp>(op.getRight().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
   double filter_max = findMaxabs(filter_f32->data(), filter_f32->size());
-  int rshift =
-      calRightShiftNum(filter_max, th_input, th_output, BITS_INT8);
+  int rshift = calRightShiftNum(filter_max, in_scale, out_scale, BITS_INT8);
   rshift = rshift >= 0 ? rshift : 0;
   std::shared_ptr<std::vector<int16_t>> bias_int16;
   if (p.with_bias) {
-    float bias_scale = 1.0 * (1 << rshift) * QMAX_INT8 / th_output;
+    float bias_scale = 1.0 * (1 << rshift) / out_scale;
     auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
     auto bias_f32 = biasOp.read<float>();
     bias_int16 = std::make_shared<std::vector<int16_t>>(bias_f32->size());
@@ -44,14 +45,14 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
 
     while (overflow_ratio > 0.03 && rshift > 0) {
       rshift--;
-      bias_scale = 1.0 * (1 << rshift) * QMAX_INT8 / th_output;
+      bias_scale = 1.0 * (1 << rshift) / out_scale;
       overflow_ratio = quantizeToInt16(bias_f32->data(), bias_int16->data(),
                                        bias_f32->size(), bias_scale);
     }
   }
   attrs.push_back(
       rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(rshift)));
-  float scale = 1.0 * (1 << rshift) * th_input / th_output;
+  float scale = 1.0 * (1 << rshift) * in_scale / out_scale;
   auto filter_int8 = std::make_shared<std::vector<int8_t>>(filter_f32->size());
   quantizeToInt8(filter_f32->data(), filter_int8->data(), filter_f32->size(),
                  scale);

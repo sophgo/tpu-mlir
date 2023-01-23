@@ -213,6 +213,8 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
   int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.ic, (int)in_gi.h_slice,
                        (int)p.iw};
   int top_dim[4] = {(int)gi.n_slice, (int)p.oc, (int)gi.h_slice, (int)p.ow};
+  auto pad_h_t = (in_gi.h_idx == 0 ? p.pht : 0);
+  auto pad_h_b = (in_gi.h_idx + in_gi.h_slice == p.ih ? p.phb : 0);
   if (module::isUniformQuantized(getInput())) {
     auto shift_v = module::getI64Array(getRshift(), 1, 0);
     auto shift = shift_v->at(0);
@@ -223,8 +225,8 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     if (p.is_dw) {
       BM1684::instance().dl_nodechip_pooling_fix8b_forward_local(
           in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr, bottom_dim,
-          top_dim, p.kh, p.kw, p.pht, p.phb, p.pwl, p.pwr, p.sh, p.sw, p.ins_h,
-          p.ins_w,
+          top_dim, p.kh, p.kw, pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw,
+          p.ins_h, p.ins_w,
           2, // is depthwise conv
           0, shift, p.has_bias,
           1, // shift type, useless param, but must be set...
@@ -234,7 +236,7 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
       BM1684::instance().dl_nodechip_conv_forward_local_fix8b(
           in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
           gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
-          p.pht, p.phb, p.pwl, p.pwr, p.sh, p.sw, p.has_bias, 0, p.do_relu,
+          pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias, 0, p.do_relu,
           p.relu_limit, /*unused_ht*/ 0, 0, 0, 0, /* insert h*/ p.ins_h,
           p.ins_w, shift, in_sign, filter_sign, bias_sign, true, /*mulshift*/ 0,
           0, 0, 0, BM1684::instance().bdc_node);
@@ -243,7 +245,7 @@ void tpu::Conv2DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     BM1684::instance().dl_nodechip_conv_forward_local(
         in_gi.out_addr, f_gi.out_addr, b_gi.out_addr, gi.out_addr,
         gi.buffer_addr, bottom_dim, top_dim, p.groups, p.kh, p.kw, p.dh, p.dw,
-        p.pht, p.phb, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
+        pad_h_t, pad_h_b, p.pwl, p.pwr, p.sh, p.sw, p.has_bias ? 1 : 0,
         /* result_add*/ 0, p.do_relu ? 1 : 0, p.relu_limit, 0, 0, 0, 0,
         BM1684::instance().bdc_node);
   }

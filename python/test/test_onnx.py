@@ -1823,13 +1823,15 @@ class ONNX_IR_TESTER(object):
             def __init__(self):
                 super(Model, self).__init__()
                 self.m1 = nn.Conv2d(3, 8, 3, 1, 0)
+                self.r1 = nn.ReLU()
                 self.m2 = nn.Conv2d(8, 8, 3, 1, 1)
 
             def forward(self, x):
                 y0 = self.m1(x)
-                y1 = self.m2(y0)
-                y2 = y0 + y1
-                return y0, y2
+                y1 = self.r1(y0)
+                y2 = self.m2(y1)
+                y3 = y2 + y1
+                return y3, y1
 
         shapes = ([1, 3, 50, 50], [3, 3, 50, 50], [4, 3, 60, 70], [7, 3, 80, 40])
         for idx, shape in enumerate(shapes):

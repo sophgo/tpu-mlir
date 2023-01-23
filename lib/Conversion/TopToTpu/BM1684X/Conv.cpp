@@ -61,11 +61,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   auto attr = op.parseParam();
-  // in/out scale/zp
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   module::getScaleAndZeroPoint(op.getInput(), in_scale, in_zp, asymmetric);
-
   module::getScaleAndZeroPoint(op.getOutput(), out_scale, out_zp, asymmetric);
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
