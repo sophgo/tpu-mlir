@@ -12,8 +12,9 @@
 #include "mlir/IR/PatternMatch.h"
 #include "omp.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-
 #include "llvm/Support/Debug.h"
+#include <algorithm>
+#include <queue>
 #include <map>
 #include <numeric>
 
@@ -892,6 +893,36 @@ int StopForAxis(const int *stop_indices, const int *strides, const int mask,
     stop = Clamp(stop, -1, axis_size - 1);
   }
   return stop;
+}
+
+void topk_indices(std::vector<std::pair<int, float>> &result,
+                  const float *items, int num_elem, int k, bool largest) {
+  using pair_t = std::pair<int, float>;
+  auto cmp_large = [](pair_t const &item1, pair_t const &item2) {
+    return item1.second > item2.second;
+  };
+  auto cmp_small = [](pair_t const &item1, pair_t const &item2) {
+    return item1.second < item2.second;
+  };
+  auto cmp = largest ? cmp_large : cmp_small;
+
+  std::priority_queue<pair_t, std::vector<pair_t>, decltype(cmp)> topk(cmp);
+  for (int i = 0; i < num_elem; ++i) {
+    if (topk.size() < k) {
+      topk.emplace(i, items[i]);
+    } else if (largest && items[i] <= topk.top().second) {
+      continue;
+    } else if (largest == false && items[i] >= topk.top().second) {
+      continue;
+    } else {
+      topk.emplace(i, items[i]);
+      topk.pop();
+    }
+  }
+  while (!topk.empty()) {
+    result.insert(result.begin(), pair_t(topk.top().first, topk.top().second));
+    topk.pop();
+  }
 }
 
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {

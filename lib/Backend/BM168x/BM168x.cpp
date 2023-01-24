@@ -168,7 +168,7 @@ std::shared_ptr<std::vector<tensor_spec_t>>
 BM168x::get_spec(ValueRange values) {
   auto specs = std::make_shared<std::vector<tensor_spec_t>>();
   for (auto v : values) {
-    if (v.getType().isa<mlir::NoneType>()) {
+    if (module::isNone(v)) {
       continue;
     }
     specs->push_back(value_to_spec(v));

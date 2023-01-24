@@ -143,7 +143,7 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   auto in_shape = module::getShape(getInput());
   module::getNCHW(in_shape, seq_len, batch_size, input_size, garbage);
   Value output;
-  if (!getResults()[0].getType().isa<mlir::NoneType>()) {
+  if (!module::isNone(getResults()[0])) {
     output = getResults()[0];
   } else {
     output = getResults()[1];
@@ -160,8 +160,8 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   assert(batch_size == batch_size2);
   assert(input_size == num_dir * 3 * hidden_size);
 
-  bool with_bias = !getBias().getType().isa<mlir::NoneType>();
-  bool with_h0 = !getInitialH().getType().isa<mlir::NoneType>();
+  bool with_bias = !module::isNone(getBias());
+  bool with_h0 = !module::isNone(getInitialH());
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(output);
   gaddr_t ga_bias = with_bias ? module::getAddress(getBias()) : 0;

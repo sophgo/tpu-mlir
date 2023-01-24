@@ -74,7 +74,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     }
     int n = op->getNumResults();
     for (int i = 0; i < n; ++i) {
-      if (op->getResult(i).getType().isa<mlir::NoneType>()) {
+      if (module::isNone(op->getResult(i))) {
         continue;
       }
       ValueInfo v_info(op, i);
@@ -166,7 +166,7 @@ void CVAddressAssign::updateLiveRangeofPreOp(
     int64_t alignment) {
   for (int i = 0; i < op->getNumOperands(); ++i) {
     auto operand = module::getOperand(op, i);
-    if (operand.getType().isa<mlir::NoneType>()) {
+    if (module::isNone(operand)) {
       continue;
     }
     auto preOp = operand.getDefiningOp();
@@ -261,7 +261,7 @@ void CVAddressAssign::updateLiveRange(Operation *op,
   } else if (op->getDialect()->getNamespace() == "tpu") {
     for (int i = 0; i < op->getNumResults(); ++i) {
       ValueInfo cur_info(op, i);
-      if (!op->getResult(i).getType().isa<mlir::NoneType>()) {
+      if (!module::isNone(op->getResult(i))) {
         assert(op_infos.find(cur_info) != op_infos.end());
       }
     }

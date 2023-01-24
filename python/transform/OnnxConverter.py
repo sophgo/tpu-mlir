@@ -181,6 +181,7 @@ class OnnxConverter(BaseConverter):
             "Sqrt": lambda node: self.convert_sqrt_op(node),
             "Tanh": lambda node: self.convert_tanh_op(node),
             "Tile": lambda node: self.convert_tile_op(node),
+            "TopK": lambda node: self.convert_topk_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
             "Where": lambda node: self.convert_where_op(node),
@@ -448,6 +449,13 @@ class OnnxConverter(BaseConverter):
         for n in self.model.graph.node:
             node = OnnxNode(n)
             self.converted_nodes.append(node)
+        # checkout all type is supported
+        unsupported = set()
+        for n in self.converted_nodes:
+            if n.op_type not in self.onnxop_factory:
+                unsupported.add(n.op_type)
+        if unsupported:
+            raise RuntimeError("Op not support:{}".format(unsupported))
 
         for n in self.converted_nodes:
             self.onnxop_factory.get(n.op_type, lambda x: NoneAndRaise(x))(n)
@@ -1549,6 +1557,38 @@ class OnnxConverter(BaseConverter):
             last_shape[i] = int(last_shape[i] * tile_data[i])
             last_op = self.mlir.create_tile_op([last_op], last_shape, **attr)
         self.addOperand(onnx_node.name, last_op)
+
+    def convert_topk_op(self, onnx_node):
+        assert (onnx_node.op_type == "TopK")
+        in_op = self.getOperand(onnx_node.inputs[0])
+        in_shape = self.getShape(onnx_node.inputs[0])
+        K = self.getScalar(onnx_node.inputs[1])
+        axis = onnx_node.attrs.get('axis', -1)
+        largest = onnx_node.attrs.get('largest', True)
+        sorted = onnx_node.attrs.get('sorted', True)
+        num_dim = len(in_shape)
+        if axis < 0:
+            axis += num_dim
+        p = {
+            "name": [onnx_node.name + '_TopK_indices', onnx_node.name + "_TopK_values"],
+            "axis": axis,
+            "K": K,
+            "largest": largest,
+            "sorted": sorted,
+        }
+        out_shapes = [[], []]
+        out_needs = [False, False]
+        for idx, out in enumerate(onnx_node.outputs):
+            need = len(out) > 0 and self.check_need(out)
+            if need:
+                p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
+                out_needs[idx] = True
+                out_shapes[idx] = self.getShape(out)
+        idx_op, val_op = self.mlir.create_topk_op([in_op], out_shapes, **p)
+        out_ops = [idx_op, val_op]
+        for idx, need in enumerate(out_needs):
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
 
     def convert_max_op(self, onnx_node):
         assert (onnx_node.op_type == "Max")

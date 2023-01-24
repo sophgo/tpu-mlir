@@ -592,7 +592,7 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
   for (auto rt : routines_) {
     for (auto &neuronOp : rt->ops) {
       for (uint32_t i = 0; i < neuronOp->getNumResults(); ++i) {
-        if (!neuronOp->getResults()[i].getType().isa<mlir::NoneType>()) {
+        if (!module::isNone(neuronOp->getResults()[i])) {
           op_info_t op_info;
           op_info.op = neuronOp;
           op_info.overwrite = false;

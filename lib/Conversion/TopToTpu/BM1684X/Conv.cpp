@@ -46,7 +46,7 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
+  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newValue =
@@ -191,7 +191,7 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
 
   bool output_int32 = false;
   if (op.getKernelShape().size() == 3) {
-      output_int32 = true;
+    output_int32 = true;
   }
   if (output_int32) {
     // to int32, and then requant to int8
@@ -231,7 +231,8 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
 
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
@@ -444,7 +445,8 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
 
   auto ctx = op->getContext();
   attrs.push_back(rewriter.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
+      "quant_mode",
+      tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
   attrs.push_back(rewriter.getNamedAttr(
       "rshift", rewriter.getI64ArrayAttr(ArrayRef<int64_t>{rshift_v})));
   attrs.push_back(rewriter.getNamedAttr(
@@ -504,7 +506,7 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
+  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.getOutput());
@@ -525,7 +527,7 @@ void ConvLowering::LoweringF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
+  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantF16Type(op.getOutput());

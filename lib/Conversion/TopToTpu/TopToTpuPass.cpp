@@ -383,8 +383,7 @@ protected:
     mainFunc_.walk([&](Operation *op) {
       if (isa<tpu_mlir::InferenceInterface>(op) || isa<top::InputOp>(op)) {
         for (auto value : op->getResults()) {
-          if (value.getType().isa<mlir::NoneType>() ||
-              !module::isCalibratedType(value)) {
+          if (module::isNone(value) || !module::isCalibratedType(value)) {
             continue;
           }
           auto out_qtype = module::getCalibratedType(value);

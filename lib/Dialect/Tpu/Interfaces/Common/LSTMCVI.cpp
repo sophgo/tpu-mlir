@@ -41,12 +41,12 @@ lstm_attr_t tpu::LSTMCVIOp::parseParam() {
   attr.batch_first = false;
   attr.num_direction = getBidirectional() ? 2 : 1;
   attr.hidden_size = r_shape[2];
-  attr.have_bias = !getBias().getType().isa<mlir::NoneType>();
-  attr.have_h0 = !getInitialH().getType().isa<mlir::NoneType>();
-  attr.have_c0 = !getInitialC().getType().isa<mlir::NoneType>();
-  attr.output_y = !getY().getType().isa<mlir::NoneType>();
-  attr.output_yh = !getYH().getType().isa<mlir::NoneType>();
-  attr.output_yc = !getYC().getType().isa<mlir::NoneType>();
+  attr.have_bias = !module::isNone(getBias());
+  attr.have_h0 = !module::isNone(getInitialH());
+  attr.have_c0 = !module::isNone(getInitialC());
+  attr.output_y = !module::isNone(getY());
+  attr.output_yh = !module::isNone(getYH());
+  attr.output_yc = !module::isNone(getYC());
   return attr;
 }
 

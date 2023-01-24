@@ -27,7 +27,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   auto b_s = SmallVector<int64_t>(module::getShape(getRight()));
   auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
   p.input_zp = getInputZp();
-  p.with_bias = !getBias().getType().isa<mlir::NoneType>();
+  p.with_bias = !module::isNone(getBias());
   p.do_relu = getDoRelu();
   p.relu_limit = this->getReluLimit().convertToDouble();
   p.right_zp = getRightZp();

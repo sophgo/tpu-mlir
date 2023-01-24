@@ -23,7 +23,7 @@ matmul_attr_t top::MatMulOp::parseParam() {
   auto a_s = module::getShape(getInput());
   auto b_s = SmallVector<int64_t>(module::getShape(getRight()));
   auto o_s = SmallVector<int64_t>(module::getShape(getOutput()));
-  p.with_bias = !getBias().getType().isa<mlir::NoneType>();
+  p.with_bias = !module::isNone(getBias());
   p.do_relu = getDoRelu();
   p.relu_limit = this->getReluLimit().convertToDouble();
   auto b_dims = b_s.size();

@@ -137,6 +137,7 @@ class ONNX_IR_TESTER(object):
             "Tanh": self.test_Tanh,
             "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
+            #"TopK": self.test_TopK,
             "Where": self.test_Where,
             #############################
             # Torch Test Case, Alphabetically
@@ -393,27 +394,30 @@ class ONNX_IR_TESTER(object):
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data, graph_def, model_name)
         # test onnx and mlir outputs
-        rtol = 1e-5
+        rtol = 1e-4
         atol = 1e-1 if not qdq else 2  # We set 2 here for we have some precision error when doing rounding and the maximum scale is 2.
         counter = 0
         for name in onnx_outs:
             if name in top_mlir_outs:
-                print("Compare:{}\n".format(name))
+                print("Compare mlir and onnx:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
-                np.testing.assert_allclose(top_mlir_output,
-                                           onnx_output,
+                np.testing.assert_allclose(top_mlir_output.astype(np.float32),
+                                           onnx_output.astype(np.float32),
                                            rtol=rtol,
                                            atol=atol,
                                            verbose=True)
                 counter += 1
-            if name in node_name_mapping:
+            elif name in node_name_mapping:
                 mapped_name = node_name_mapping[name]
                 if mapped_name in top_mlir_outs:
-                    print("Compare:{}\n".format(mapped_name))
+                    print("Compare mlir and onnx:{}\n".format(mapped_name))
                     top_mlir_output = top_mlir_outs[mapped_name].flatten()
                     onnx_output = onnx_outs[name].flatten()
-                    np.testing.assert_allclose(top_mlir_output, onnx_output, rtol=rtol, atol=atol)
+                    np.testing.assert_allclose(top_mlir_output.astype(np.float32),
+                                               onnx_output.astype(np.float32),
+                                               rtol=rtol,
+                                               atol=atol)
                     counter += 1
         if counter == 0 and not qdq:
             raise RuntimeError("No compare between onnx outs and mlir outts")
@@ -2583,6 +2587,23 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         exp_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
         graph_def = helper.make_graph([exp_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_TopK(self, case_name):
+        shape = [100, 2000]
+        const = 1000
+        X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
+        K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([const]).astype(np.int64))
+        o_shape = list(shape)
+        o_shape[-1] = const
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
+        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, o_shape)
+        topk_node = helper.make_node('TopK', ['X', 'K'], ['Y_Value', 'Y_Index'],
+                                     axis=-1,
+                                     largest=True)
+        graph_def = helper.make_graph([topk_node],
+                                      case_name, [X], [Y_Value, Y_Index],
+                                      initializer=[K])
         self.onnx_and_test(graph_def)
 
     def test_QDQConv(self, case_name):

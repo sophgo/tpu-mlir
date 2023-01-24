@@ -33,10 +33,10 @@ gru_attr_t tpu::GRUOp::parseParam() {
   attr.num_direction = getBidirectional() ? 2 : 1;
   attr.hidden_size = getHiddenSize();
   attr.input_size = in_shape[2];
-  attr.have_bias = !getBias().getType().isa<mlir::NoneType>();
-  attr.have_h0 = !getInitialH().getType().isa<mlir::NoneType>();
-  attr.output_y = !getY().getType().isa<mlir::NoneType>();
-  attr.output_yh = !getYH().getType().isa<mlir::NoneType>();
+  attr.have_bias = !module::isNone(getBias());
+  attr.have_h0 = !module::isNone(getInitialH());
+  attr.output_y = !module::isNone(getY());
+  attr.output_yh = !module::isNone(getYH());
   return attr;
 }
 
@@ -204,7 +204,7 @@ public:
     auto in_shape = module::getShape(op->getInput());
     Value output;
     for (uint32_t i = 0; i < op->getNumResults(); ++i) {
-      if (!op->getResults()[i].getType().isa<mlir::NoneType>()) {
+      if (!module::isNone(op->getResults()[i])) {
         output = op->getResults()[i];
         gp.out_idx = i;
         break;

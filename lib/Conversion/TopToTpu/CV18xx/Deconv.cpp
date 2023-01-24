@@ -135,7 +135,7 @@ void DeconvLowering::LoweringBF16(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  bool with_bias = !op.getBias().getType().isa<mlir::NoneType>();
+  bool with_bias = !module::isNone(op.getBias());
   attrs.push_back(
       rewriter.getNamedAttr("with_bias", rewriter.getBoolAttr(with_bias)));
   auto newType = getQuantBF16Type(op.getOutput());

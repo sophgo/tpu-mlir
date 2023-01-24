@@ -73,6 +73,7 @@ class Top:
     ShuffleChannelOp = 'top.ShuffleChannel'
     TileOp = 'top.Tile'
     TanhOp = 'top.Tanh'
+    TopKOp = 'top.TopK'
     UnpackOp = 'top.Unpack'
     UpsampleOp = 'top.Upsample'
     WeightOp = 'top.Weight'
@@ -686,6 +687,23 @@ class MLIRImporter(object):
             'batch_first': BoolAttr.get(kargs['batch_first']),
         }
         return self.buildOp(Top.LSTMOp, operands, out_types, **param)
+
+    def create_topk_op(self, operands, out_shapes, **kargs):
+        out_types = list()
+        for s in out_shapes:
+            if len(s) == 0:
+                out_types.append(NoneType.get())
+            else:
+                t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
+                out_types.append(t)
+        param = {
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type["INT64"], kargs["axis"]),
+            'K': IntegerAttr.get(self.mlir_type["INT64"], kargs["K"]),
+            'largest': BoolAttr.get(kargs['largest']),
+            'sorted': BoolAttr.get(kargs['sorted']),
+        }
+        return self.buildOp(Top.TopKOp, operands, out_types, **param)
 
     def create_gather_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
