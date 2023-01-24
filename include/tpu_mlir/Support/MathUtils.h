@@ -59,6 +59,8 @@ int omp_schedule(int count);
 void function_relu(float *src, float *dst, int64_t size, float relu_limit = 0.f,
                    mlir::Type elem_type = nullptr);
 
+void topk_indices(std::vector<std::pair<int, float>> &result,
+                  const float *items, int num_elem, int k, bool largest);
 // =======================
 // interfece for quantization
 // =======================

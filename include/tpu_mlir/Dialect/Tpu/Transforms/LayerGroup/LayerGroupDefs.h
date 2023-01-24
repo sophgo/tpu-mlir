@@ -152,7 +152,7 @@ struct LgInfo {
       }
       // update group_outs
       for (auto out : op->getResults()) {
-        if (out.getType().isa<mlir::NoneType>()) {
+        if (module::isNone(out)) {
           continue;
         }
         for (auto dst_op : out.getUsers()) {

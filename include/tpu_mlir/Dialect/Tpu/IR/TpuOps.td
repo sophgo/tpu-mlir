@@ -1214,6 +1214,24 @@ def Tpu_SplitOp: Tpu_Op<"Split"> {
   let results = (outs Variadic<AnyTensor>:$outputs);
 }
 
+def Tpu_TopKOp:Tpu_Op<"TopK"> {
+  let summary = "TopK operation";
+  let description = [{
+    Integrates some operations related to topk.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$K,
+    DefaultValuedAttr<BoolAttr, "true">:$largest,
+    DefaultValuedAttr<BoolAttr, "true">:$sorted
+  );
+  let results = (outs
+    AnyTensorOrNone:$values,
+    AnyTensorOrNone:$indices
+  );
+}
+
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,

@@ -37,7 +37,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
   }
 
   int channel = input_shape[axis_];
-  bool has_table = !getTable().getType().isa<mlir::NoneType>();
+  bool has_table = !module::isNone(getTable());
   if (out_type.isa<FloatType>()) {
     float scale = 1.0f;
     if (module::isUniformQuantized(getInput())) {

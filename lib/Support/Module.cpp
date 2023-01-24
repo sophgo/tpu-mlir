@@ -512,6 +512,10 @@ bool isWeight(Value v) {
   return false;
 }
 
+bool isNone(Value v) {
+  return v.getType().isa<mlir::NoneType>();
+}
+
 llvm::StringRef getModuleName() {
   return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
 }

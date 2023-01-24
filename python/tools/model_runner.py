@@ -175,7 +175,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         # plz refre https://github.com/microsoft/onnxruntime/issues/1455
         output_keys = []
         model = onnx.load(onnx_file)
-        no_list = ["Cast", "Shape", "Unsqueeze", "Constant", "Dropout", "Loop", "TopK"]
+        no_list = ["Cast", "Shape", "Unsqueeze", "Constant", "Dropout", "Loop"]
 
         # tested commited #c3cea486d https://github.com/microsoft/onnxruntime.git
         for x in model.graph.node:

@@ -782,6 +782,24 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_TopKOp:Top_Op<"TopK", [InOutSameDim]> {
+  let summary = "TopK operation";
+  let description = [{
+    Integrates some operations related to topk.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$K,
+    DefaultValuedAttr<BoolAttr, "true">:$largest,
+    DefaultValuedAttr<BoolAttr, "true">:$sorted
+  );
+  let results = (outs
+    AnyTensorOrNone:$values,
+    AnyTensorOrNone:$indices
+  );
+}
+
 def Top_LeakyReluOp : Top_Op<"LeakyRelu", [InOutSameShape]> {
   let summary = "LeakyRelu operation";
   let description = [{

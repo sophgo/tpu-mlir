@@ -29,7 +29,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::GRUOp GRUOp,
                                 PatternRewriter &rewriter) const override {
-    if (!GRUOp.getBuffer().getType().isa<mlir::NoneType>()) {
+    if (!module::isNone(GRUOp.getBuffer())) {
       return failure();
     }
     auto attr = GRUOp.parseParam();
@@ -51,7 +51,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::LSTMOp lstmOp,
                                 PatternRewriter &rewriter) const override {
-    if (!lstmOp.getBuffer().getType().isa<mlir::NoneType>()) {
+    if (!module::isNone(lstmOp.getBuffer())) {
       return failure();
     }
     auto attr = lstmOp.parseParam();
@@ -73,7 +73,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::ReduceOp reduceOp,
                                 PatternRewriter &rewriter) const override {
-    if (!reduceOp.getBuffer().getType().isa<mlir::NoneType>()) {
+    if (!module::isNone(reduceOp.getBuffer())) {
       return failure();
     }
     auto attr = reduceOp.parseParam();
@@ -153,7 +153,7 @@ public:
 
   LogicalResult matchAndRewrite(tpu::PermuteOp permuteOp,
                                 PatternRewriter &rewriter) const override {
-    if (!permuteOp.getBuffer().getType().isa<mlir::NoneType>()) {
+    if (!module::isNone(permuteOp.getBuffer())) {
       return failure();
     }
     transpose_param_t param = {0};
