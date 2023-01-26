@@ -533,10 +533,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
 
   spec.reference_id = get_tensor_id(op->getResult(0));
   spec.concat_c = attr.oc;
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
 // ======================================
@@ -582,8 +579,5 @@ int64_t tpu::Conv2DOp::dyn_codegen_global_bm1684x(void *buffer) {
     common.ipad_value = in_qtype.getZeroPoint();
   }
 
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

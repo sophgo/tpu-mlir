@@ -251,16 +251,24 @@ void SubnetIr::get_neuron_timestep_consumer(map<int, int>& tensor_to_consumer_nu
 
         //layer produced tensor
         vector<Value> out_tensors;
-        for (auto out: op->getResults())
+        for (auto out: op->getResults()) {
+          if (module::isNone(out)) {
+            continue;
+          }
           out_tensors.push_back(out);
+        }
         for(auto& out_tensor : out_tensors) {
           insert_produced_tensors(tensor_to_consumer_num, get_tensor_id(out_tensor));
         }
 
         //layer consumed neuron tensor
         vector<Value> in_tensors;
-        for (auto in : op->getOperands())
+        for (auto in : op->getOperands()) {
+          if (module::isNone(in)) {
+            continue;
+          }
           in_tensors.push_back(in);
+        }
         for(auto& in_tensor : in_tensors) {
           if(!module::isWeight(in_tensor)) {
             tensor_to_consumer_num[get_tensor_id(in_tensor)] += 1;

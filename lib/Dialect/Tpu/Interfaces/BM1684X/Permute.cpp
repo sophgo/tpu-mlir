@@ -83,8 +83,5 @@ int64_t tpu::PermuteOp::dyn_codegen_global_bm1684x(void *buffer) {
     }
   }
   spec.is_dynamic = input_neuron_tensors > 1;
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

@@ -45,7 +45,7 @@ CV18XX_Failed_Cases = [
 
 class ONNX_IR_TESTER(object):
     # This class is built for testing single operator transform.
-    def __init__(self, chip: str = "bm1684x", mode: str = "all"):
+    def __init__(self, chip: str = "bm1684x", mode: str = "all", dynamic: bool = True):
         self.test_function = {
             #############################
             # ONNX Test Case, Alphabetically
@@ -160,6 +160,7 @@ class ONNX_IR_TESTER(object):
         self.model_file = ".bmodel"
         self.is_cv18xx = False
         self.chip = chip.lower()
+        self.dynamic = dynamic
         if self.chip.startswith("cv18"):
             self.support_quant_modes = ["bf16", "int8"]
             self.support_asym = [False]
@@ -274,13 +275,14 @@ class ONNX_IR_TESTER(object):
         # transform
         tpu_final = tpu_mlir + "_final.mlir"
         bmodel = tpu_mlir + self.model_file
-        if self.chip == "bm1684":
+        if self.chip == "bm1684" or self.dynamic:
+            # TODO: dynamic cast not support now
             quant_input = True
             quant_output = True
         else:
             quant_input = False
             quant_output = False
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, False, quant_input, quant_output)
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, self.dynamic, quant_input, quant_output)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
@@ -2737,13 +2739,13 @@ if __name__ == "__main__":
                         choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
-    parser.add_argument("--show_all", action="store_true", help='show all cases')
-    parser.add_argument("--mode", default="all", type=str,
-                        choices=['all', 'f32', 'f16', 'bf16', 'int8'],
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")
+    parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
+    parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = ONNX_IR_TESTER(args.chip, args.mode)
+    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_function:

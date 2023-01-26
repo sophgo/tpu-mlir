@@ -506,7 +506,10 @@ bool isSign(Value v) {
 
 bool isWeight(Value v) {
   auto op = v.getDefiningOp();
-  if (op != nullptr && isa<top::WeightOp>(op)) {
+  if (op == nullptr) {
+    return false;
+  }
+  if (isa<top::WeightOp>(op)) {
     return true;
   }
   return false;
