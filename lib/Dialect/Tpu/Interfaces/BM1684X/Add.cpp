@@ -123,10 +123,8 @@ int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
   spec.common.scale_B = multi_v[1];
   spec.buffer_addr = gi.buffer_addr;
 
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+
+ return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
 // ======================================
@@ -152,8 +150,5 @@ int64_t tpu::AddOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.rshift_B = rshift_v[1];
   spec.scale_A = multi_v[0];
   spec.scale_B = multi_v[1];
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

@@ -445,9 +445,9 @@ typedef struct {
 } layer_norm_local_param_t;
 
 typedef struct reshape_spec {
-    int32_t dims;
-    int32_t shape[MAX_SHAPE_DIMS];
-} reshape_spec_t ;
+  int32_t dims;
+  int32_t shape[MAX_SHAPE_DIMS];
+} reshape_spec_t;
 #ifdef __cplusplus
 }
 #endif
@@ -505,10 +505,8 @@ typedef void (*sg_stas_reset)();
 namespace tpu_mlir {
 namespace backend {
 
-#define CAST_FUNCTION(name)                                                    \
-  dl_##name = CastToFPtr<name>(#name)
-#define CAST_FUNCTION_WITH_SYM(name, sym)                                      \
-  dl_##name = CastToFPtr<name>(#sym)
+#define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
+#define CAST_FUNCTION_WITH_SYM(name, sym) dl_##name = CastToFPtr<name>(#sym)
 
 class BM168x : public Arch {
 
@@ -545,6 +543,17 @@ public:
                                      int64_t W);
   static stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
                                     int fmtBytes, bool eu_align = true);
+  template <typename T>
+  static int64_t dynamic_spec_to_buffer(void *buffer, const T &spec) {
+    auto p = static_cast<char *>(buffer);
+    memcpy(p, &spec, sizeof(spec));
+    p += sizeof(spec);
+    return p - static_cast<char *>(buffer);
+  }
+
+  // -------------------------------------------------------------------
+  // global chip config
+  // -------------------------------------------------------------------
   static int64_t ALIGNMENT;
   static int64_t IC_PARALLEL;
   static uint64_t GMEM_START_ADDR;

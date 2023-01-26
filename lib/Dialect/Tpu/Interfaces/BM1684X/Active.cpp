@@ -137,10 +137,7 @@ int64_t tpu::ActiveOp::dyn_codegen_local_bm1684x(void *buffer) {
     }
   }
 
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
 // ======================================
@@ -158,8 +155,5 @@ int64_t tpu::ActiveOp::dyn_codegen_global_bm1684x(void *buffer) {
       spec.common.coeffs[i] = (float)coeffs_->at(i);
     }
   }
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

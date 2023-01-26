@@ -11,9 +11,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 #ifdef __cplusplus
@@ -215,45 +212,41 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   }
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(cast_local_spec_t);
-  cast_local_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
   if (!qInput && !qOutput) {
+    if (!buffer)
+      return sizeof(cast_local_spec_t);
+    cast_local_spec_t spec;
+    memset(&spec, 0, sizeof(spec));
     spec.common.src_dtype = BM168x::getDataType(getInput());
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
     spec.common.round_mode = ROUND_INF;
     spec.buffer_addr = -1;
+    return BM168x::dynamic_spec_to_buffer(buffer, spec);
   } else {
     llvm_unreachable("Not Implemented");
   }
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::CastOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(cast_global_spec_t);
-  cast_global_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
   if (!qInput && !qOutput) {
+    if (!buffer)
+      return sizeof(cast_global_spec_t);
+    cast_global_spec_t spec;
+    memset(&spec, 0, sizeof(spec));
     spec.common.src_dtype = BM168x::getDataType(getInput());
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
     spec.common.round_mode = ROUND_INF;
+    return BM168x::dynamic_spec_to_buffer(buffer, spec);
   } else {
     llvm_unreachable("Not Implemented");
   }
-  auto p = static_cast<char *>(buffer);
-  memcpy(p, &spec, sizeof(spec));
-  p += sizeof(spec);
-  return p - static_cast<char *>(buffer);
 }

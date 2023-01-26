@@ -46,12 +46,18 @@ void SetNetIO(vector<Value> &inputs, vector<Value> &outputs) {
 }
 
 bool is_net_input(Value v) {
-    return net_input_tensors.count(v);
+    return v.isa<BlockArgument>();
 }
 
 bool is_net_output(Value v) {
-    return net_output_tensors.count(v);
+    for (auto user : v.getUsers()) {
+        if (isa<ReturnOp>(user)) {
+          return true;
+        }
+    }
+    return false;
 }
+
 #if 1
 int get_tensor_id(Value v) {
   if (tensor_ID.count(v))
@@ -266,42 +272,44 @@ size_t dynamic_layer::write_global_tensor_specs(void *buffer, bool feign)
     return u8_buffer - static_cast<uint8_t *>(buffer);
 }
 
-DynamicTensorType to_dynamic_tensor_type(Value v)
-{
+DynamicTensorType to_dynamic_tensor_type(Value v) {
     auto op = v.getDefiningOp();
-    if ((op != nullptr && isa<top::WeightOp>(op))
-       || (op != nullptr && isa<tpu::LoadOp>(op) && isa_and_nonnull<top::WeightOp>(op->getOperand(0).getDefiningOp())))
-        return DYNAMIC_COEFF;
-    else
+    if (op == nullptr) {
         return DYNAMIC_NEURON;
+    }
+    if (isa<top::WeightOp>(op)) {
+        return DYNAMIC_COEFF;
+    }
+    if (auto load_op = dyn_cast<tpu::LoadOp>(op)) {
+        // TODO: LoadOp belong to weight ?
+        if (module::isWeight(load_op.getInput())) {
+          return DYNAMIC_COEFF;
+        }
+    }
+    return DYNAMIC_NEURON;
 }
 
 std::vector<dynamic_global_tensor_spec>
-dynamic_layer::get_input_global_tensor_specs()
-{
+dynamic_layer::get_input_global_tensor_specs() {
     std::vector<dynamic_global_tensor_spec> specs;
-    int input_num = 0;
-    for (auto v: op_->getOperands()) {
-        if (!isa<top::NoneOp>(v.getDefiningOp())) {
-            input_num++;
+    for (auto v : op_->getOperands()) {
+        if (module::isNone(v)) {
+          continue;
         }
-    }
-
-    specs.resize(input_num);
-    for (int i = 0; i < input_num; ++i)
-    {
-        specs[i].type = to_dynamic_tensor_type(op_->getOperand(i));
-        specs[i].id = get_tensor_id(op_->getOperand(i));
-        specs[i].is_net_io = is_net_input(op_->getOperand(i));
-        specs[i].dtype = BM168x::getDataType(op_->getOperand(i));
-        specs[i].addr = module::getAddress(op_->getOperand(i));
-        auto shape = module::getShape(op_->getOperand(i));
-        specs[i].dims = shape.size();
-        for (int j = 0; j < specs[i].dims; j++) {
-            specs[i].shape[j] = shape[j];
+        dynamic_global_tensor_spec spec = {0};
+        spec.type = to_dynamic_tensor_type(v);
+        spec.id = get_tensor_id(v);
+        spec.is_net_io = is_net_input(v);
+        spec.dtype = BM168x::getDataType(v);
+        spec.addr = module::getAddress(v);
+        auto shape = module::getShape(v);
+        spec.dims = shape.size();
+        for (int j = 0; j < spec.dims; j++) {
+          spec.shape[j] = shape[j];
         }
-        specs[i].host_data = nullptr;
-        specs[i].elem_num = module::getNumElements(op_->getOperand(i));
+        spec.host_data = nullptr;
+        spec.elem_num = module::getNumElements(v);
+        specs.emplace_back(spec);
     }
     return specs;
 }
@@ -310,22 +318,24 @@ std::vector<dynamic_global_tensor_spec>
 dynamic_layer::get_output_global_tensor_specs()
 {
     std::vector<dynamic_global_tensor_spec> specs;
-    auto output_num = op_->getNumResults();
-    specs.resize(output_num);
-    for (int i = 0; i < output_num; ++i)
-    {
-        specs[i].type = to_dynamic_tensor_type(op_->getResult(i));
-        specs[i].id = get_tensor_id(op_->getResult(i));
-        specs[i].is_net_io = is_net_output(op_->getResult(i));
-        specs[i].dtype = BM168x::getDataType(op_->getResult(i));
-        specs[i].addr = module::getAddress(op_->getResult(i));
-        auto shape = module::getShape(op_->getResult(i));
-        specs[i].dims = shape.size();
-        for (int j = 0; j < specs[i].dims; j++) {
-            specs[i].shape[j] = shape[j];
+    for (auto v:op_->getResults()) {
+        if (module::isNone(v)) {
+          continue;
         }
-        specs[i].host_data = nullptr;
-        specs[i].elem_num = module::getNumElements(op_->getResult(i));
+        dynamic_global_tensor_spec spec = {0};
+        spec.type = to_dynamic_tensor_type(v);
+        spec.id = get_tensor_id(v);
+        spec.is_net_io = is_net_output(v);
+        spec.dtype = BM168x::getDataType(v);
+        spec.addr = module::getAddress(v);
+        auto shape = module::getShape(v);
+        spec.dims = shape.size();
+        for (int j = 0; j < spec.dims; j++) {
+            spec.shape[j] = shape[j];
+        }
+        spec.host_data = nullptr;
+        spec.elem_num = module::getNumElements(v);
+        specs.emplace_back(spec);
     }
     return specs;
 }
@@ -334,27 +344,24 @@ std::vector<dynamic_local_tensor_spec>
 dynamic_layer::get_input_local_tensor_specs()
 {
     std::vector<dynamic_local_tensor_spec> specs;
-    int input_num = 0;
-    for (auto v: op_->getOperands()) {
-        if (!isa<top::NoneOp>(v.getDefiningOp())) {
-            input_num++;
+    for (auto v : op_->getOperands()) {
+        if (module::isNone(v)) {
+            continue;
         }
-    }
-    specs.resize(input_num);
-    for (int i = 0; i < input_num; ++i)
-    {
-        specs[i].id = get_tensor_id(op_->getOperand(i));
-        specs[i].type = to_dynamic_tensor_type(op_->getOperand(i));
-        specs[i].dtype = BM168x::getDataType(op_->getOperand(i));
-        auto gi = DynLocalGenInterface::DynGetGroupInfo(op_->getOperand(i));
-        specs[i].addr = gi.out_addr;
-        auto shape = module::getShape(op_->getOperand(i));
-        specs[i].dims = shape.size();
-        for (int j = 0; j < specs[i].dims; j++) {
-            specs[i].shape[j] = shape[j];
+        dynamic_local_tensor_spec spec = {0};
+        spec.id = get_tensor_id(v);
+        spec.type = to_dynamic_tensor_type(v);
+        spec.dtype = BM168x::getDataType(v);
+        auto gi = DynLocalGenInterface::DynGetGroupInfo(v);
+        spec.addr = gi.out_addr;
+        auto shape = module::getShape(v);
+        spec.dims = shape.size();
+        for (int j = 0; j < spec.dims; j++) {
+            spec.shape[j] = shape[j];
         }
-        specs[i].host_data = nullptr;
-        specs[i].elem_num = module::getNumElements(op_->getOperand(i));
+        spec.host_data = nullptr;
+        spec.elem_num = module::getNumElements(v);
+        specs.emplace_back(spec);
     }
     return specs;
 }
@@ -363,22 +370,24 @@ std::vector<dynamic_local_tensor_spec>
 dynamic_layer::get_output_local_tensor_specs()
 {
     std::vector<dynamic_local_tensor_spec> specs;
-    auto output_num = op_->getNumResults();
-    specs.resize(output_num);
-    for (int i = 0; i < output_num; ++i)
-    {
-        specs[i].id = get_tensor_id(op_->getResult(i));
-        specs[i].type = to_dynamic_tensor_type(op_->getResult(i));
-        specs[i].dtype = BM168x::getDataType(op_->getResult(i));
-        auto shape = module::getShape(op_->getResult(i));
-        specs[i].dims = shape.size();
-        for (int j = 0; j < specs[i].dims; j++) {
-            specs[i].shape[j] = shape[j];
+    for (auto v : op_->getResults()) {
+        if (module::isNone(v)) {
+            continue;
         }
-        auto gi = DynLocalGenInterface::DynGetGroupInfo(op_->getResult(i));
-        specs[i].addr = gi.out_addr;
-        specs[i].host_data = nullptr;
-        specs[i].elem_num = module::getNumElements(op_->getResult(i));
+        dynamic_local_tensor_spec spec = {0};
+        spec.id = get_tensor_id(v);
+        spec.type = to_dynamic_tensor_type(v);
+        spec.dtype = BM168x::getDataType(v);
+        auto shape = module::getShape(v);
+        spec.dims = shape.size();
+        for (int j = 0; j < spec.dims; j++) {
+            spec.shape[j] = shape[j];
+        }
+        auto gi = DynLocalGenInterface::DynGetGroupInfo(v);
+        spec.addr = gi.out_addr;
+        spec.host_data = nullptr;
+        spec.elem_num = module::getNumElements(v);
+        specs.emplace_back(spec);
     }
 
     return specs;
