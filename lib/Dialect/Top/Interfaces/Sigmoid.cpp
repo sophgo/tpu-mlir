@@ -14,7 +14,7 @@
 
 
 
-int64_t top::SigmoidOp::getFLOPs() { return 0; }
+int64_t top::SigmoidOp::getFLOPs() { return module::getNumElements(getInput()) * 2; }
 
 LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
 void top::SigmoidOp::deinit(InferenceParameter &p) {}
