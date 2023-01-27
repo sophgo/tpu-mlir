@@ -20,20 +20,14 @@ static void LoweringTopK(PatternRewriter &rewriter, top::TopKOp op, Type type) {
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  if (type.isF32()) {
-    rewriter.replaceOpWithNewOp<tpu::TopKOp>(op, op.getResultTypes(), operands,
-                                             attrs);
-    return;
-  }
   std::vector<Type> new_types;
-  for (auto out : op.getResults()) {
-    if (type.isF16()) {
-      new_types.push_back(getQuantF16Type(out));
-    } else if (type.isBF16()) {
-      new_types.push_back(getQuantBF16Type(out));
-    } else {
-      new_types.push_back(out.getType());
-    }
+  new_types.push_back(op.getValues().getType());
+  if (!module::isNone(op.getIndices())) {
+    auto shape = module::getShape(op.getIndices());
+    auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
+    new_types.push_back(new_type);
+  } else {
+    new_types.push_back(op.getIndices().getType());
   }
   rewriter.replaceOpWithNewOp<tpu::TopKOp>(op, new_types, operands, attrs);
   return;
@@ -45,23 +39,23 @@ void TopKLowering::LoweringF32(PatternRewriter &rewriter,
 }
 void TopKLowering::LoweringINT4(PatternRewriter &rewriter, top::TopKOp op,
                                 bool asymmetric) const {
-  LoweringINT8(rewriter, op, asymmetric);
+  LoweringF32(rewriter, op);
 }
 void TopKLowering::LoweringINT8(PatternRewriter &rewriter, top::TopKOp op,
                                 bool asymmetric) const {
-  LoweringTopK(rewriter, op, rewriter.getF32Type());
+  LoweringF32(rewriter, op);
 }
 
 void TopKLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::TopKOp op) const {
   // LoweringTopK(rewriter, op, rewriter.getBF16Type());
-  LoweringTopK(rewriter, op, rewriter.getF32Type());
+  LoweringF32(rewriter, op);
 }
 
 void TopKLowering::LoweringF16(PatternRewriter &rewriter,
                                top::TopKOp op) const {
   // LoweringTopK(rewriter, op, rewriter.getF16Type());
-  LoweringTopK(rewriter, op, rewriter.getF32Type());
+  LoweringF32(rewriter, op);
 }
 
 void TopKLowering::LoweringQuantized(PatternRewriter &rewriter,
