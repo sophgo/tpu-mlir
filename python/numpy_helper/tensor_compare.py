@@ -37,11 +37,13 @@ class TensorCompare():
   def __init__(self, close_order_tol=3,
                cosine_similarity_tol = 0.99,
                euclidean_similarity_tol = 0.90,
-               signal_to_quantization_noise_tol = 50):
+               signal_to_quantization_noise_tol = 50,
+               per_axis_compare = -1):
     self.close_order_tol            = close_order_tol
     self.cosine_similarity_tol      = cosine_similarity_tol
     self.euclidean_similarity_tol   = euclidean_similarity_tol
     self.signal_to_quantization_noise_tol   = signal_to_quantization_noise_tol
+    self.per_axis_compare = per_axis_compare
     return
 
   def square_rooted(self, x):
@@ -113,57 +115,85 @@ class TensorCompare():
       details['all'] = (d1, d2)
     return details
 
-  def compare(self, d1, d2, verbose, int8_tensor_close=True):
+  # structure of result is (result T/F, level, channel, similarity, detail)
+  def compare(self, d1, d2, verbose, int8_tensor_close=True, per_axis_compare=-1):
     similarities = {}
     if d1.size != d2.size:
-      return (False, self.NOT_MATCH, similarities, None)
+      return (False, self.NOT_MATCH, 0, similarities, None)
 
     if np.array_equal(d1, d2):
-      return (True, self.EQUAL, similarities, None)
+      return (True, self.EQUAL, 0, similarities, None)
 
     # int8 only check equal, not close
     if d1.dtype == np.int8 and int8_tensor_close:
       details = self.diff_details(d1, d2, verbose)
-      return (False, self.NOT_EQUAL, similarities, details)
+      return (False, self.NOT_EQUAL, 0, similarities, details)
 
-    # check allclose
-    for order in range((self.close_order_tol + 2), 1, -1):
-      if (np.allclose(d1, d2, rtol=1 * 10**(-order), atol=1e-8, equal_nan=True)):
-        break
-    if order >= self.close_order_tol:
-      similarities["close_order"] = order
-      return (True, self.CLOSE, similarities, None)
-
-    d1[np.isnan(d1)] = 0.0
-    d2[np.isnan(d2)] = 0.0
-    # check similarity
-    # cosine similarity
-    # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())
-    cosine_similarity = 1 - spatial.distance.cosine(d1.flatten().astype(np.float32),
-                                                    d2.flatten().astype(np.float32))
-    # measure euclidean similarity
-    m = (d1+d2)/2
-    ed = self.euclidean_distance(d1.flatten(), d2.flatten())
-    sr = self.square_rooted(m.flatten())
-    if (np.isinf(ed) or np.isinf(sr)):
-      euclidean_similarity = 0.0
+    outer_dim = 1
+    inner_dim = 1
+    if per_axis_compare < len(d1.shape) and per_axis_compare >= 0:
+      outer_dim = np.prod(d1.shape[0:per_axis_compare+1])
+      inner_dim = np.prod(d1.shape[per_axis_compare+1:len(d1.shape)])
     else:
-      euclidean_similarity = 1 - ed / sr
+      inner_dim = np.prod(d1.shape)
 
-    sqnr = self.sqnr_similarity(d1, d2)
+    channel_simi = {}
+    for loop in np.arange(outer_dim):
+      d1_loop = d1.flatten()[loop*inner_dim:(loop+1)*inner_dim]
+      d2_loop = d2.flatten()[loop*inner_dim:(loop+1)*inner_dim]
+      simi = {}
+      # check allclose
+      for order in range((self.close_order_tol + 2), 1, -1):
+        if (np.allclose(d1_loop, d2_loop, rtol=1 * 10**(-order), atol=1e-8, equal_nan=True)):
+          break
+      if order >= self.close_order_tol:
+        simi["close_order"] = order
+        channel_simi[loop] = (True, self.CLOSE, 0, simi, None)
+        continue
 
-    similarities["cosine"] = cosine_similarity
-    similarities["euclid"] = euclidean_similarity
-    similarities["sqnr"] = sqnr
-    # check similarity
-    if (cosine_similarity > self.cosine_similarity_tol
+      d1_loop[np.isnan(d1_loop)] = 0.0
+      d2_loop[np.isnan(d2_loop)] = 0.0
+      # check similarity
+      # cosine similarity
+      # cosine_similarity_my = self.cosine_similarity(d1.flatten(), d2.flatten())
+      if np.sum(np.abs(d1_loop)) != 0 and np.sum(np.abs(d2_loop) != 0):
+        cosine_similarity = 1 - spatial.distance.cosine(d1_loop.astype(np.float32),
+                                                    d2_loop.astype(np.float32))
+      else:
+        cosine_similarity = 0.0
+      # measure euclidean similarity
+      m = (d1_loop+d2_loop)/2
+      ed = self.euclidean_distance(d1_loop, d2_loop)
+      sr = self.square_rooted(m)
+      if (np.isinf(ed) or np.isinf(sr)):
+        euclidean_similarity = 0.0
+      else:
+        euclidean_similarity = 1 - ed / sr
+
+      sqnr = self.sqnr_similarity(d1_loop, d2_loop)
+
+      simi["cosine"] = cosine_similarity
+      simi["euclid"] = euclidean_similarity
+      simi["sqnr"] = sqnr
+      # check similarity
+      if (cosine_similarity > self.cosine_similarity_tol
         and euclidean_similarity > self.euclidean_similarity_tol
         and sqnr > self.signal_to_quantization_noise_tol):
-      return (True, self.SIMILAR, similarities, None)
-    else:
-      # Not similar
-      details = self.diff_details(d1, d2, verbose)
-      return (False, self.NOT_SIMILAR, similarities, details)
+        channel_simi [loop] = (True, self.SIMILAR, loop, simi, None)
+      else:
+        # Not similar
+        details = self.diff_details(d1_loop, d2_loop, verbose)
+        channel_simi[loop] = (False, self.NOT_SIMILAR, loop, simi, details)
+
+    result = channel_simi[loop]
+    min_cos = 1.0
+    for loop in np.arange(outer_dim):
+      (r, s, c, ss, d) = channel_simi[loop]
+      if (not r) and (ss['cosine'] < min_cos):
+          result = channel_simi[loop]
+          min_cos = ss['cosine']
+    return result
+
 
   def int8_tensor_stats(self, d):
     d_int8 = d.astype(np.int8)
@@ -177,17 +207,19 @@ class TensorCompare():
     print("    zeros(x=0)    = {:.4f}  [{}/{}]".format(zeros / tol, zeros, tol))
     print("    low(abs(x)<8) = {:.4f}  [{}/{}]".format(b_low / tol, b_low, tol))
 
-  def print_result(self, d1, name, result, verbose):
+  def print_result(self, d1, name, result, verbose, per_axis_compare):
     print("[{:<32}] {:>12} [{:>6}]".format(name, result[1],
            "PASSED" if result[0] else "FAILED"))
     if (verbose > 0):
       print("    {} {} ".format(d1.shape, d1.dtype))
       if (result[1] == self.CLOSE):
-        print("    close order            = {}".format(result[2]["close_order"]))
+        print("    close order            = {}".format(result[3]["close_order"]))
       if (result[1] == self.SIMILAR or result[1] == self.NOT_SIMILAR):
-        print("    cosine_similarity      = {:.6f}".format(result[2]["cosine"]))
-        print("    euclidean_similarity   = {:.6f}".format(result[2]["euclid"]))
-        print("    sqnr_similarity        = {:.6f}".format(result[2]["sqnr"]))
+        if per_axis_compare >= 0 and per_axis_compare < len(d1.shape):
+          print("    channel {} on axis {} :".format(result[2], per_axis_compare))
+        print("    cosine_similarity      = {:.6f}".format(result[3]["cosine"]))
+        print("    euclidean_similarity   = {:.6f}".format(result[3]["euclid"]))
+        print("    sqnr_similarity        = {:.6f}".format(result[3]["sqnr"]))
     if d1.dtype == np.int8:
       self.int8_tensor_stats(d1)
 
@@ -246,9 +278,9 @@ class TensorCompareStats():
     self.count[result[1]] = self.count[result[1]] + 1
     # record min similarity
     if result[1] == TensorCompare.SIMILAR or result[1] == TensorCompare.NOT_SIMILAR:
-      self.min_cosine_similarity = min(self.min_cosine_similarity, result[2]["cosine"])
-      self.min_euclidean_similarity = min(self.min_euclidean_similarity, result[2]["euclid"])
-      self.min_sqnr = min(self.min_sqnr, result[2]["sqnr"])
+      self.min_cosine_similarity = min(self.min_cosine_similarity, result[3]["cosine"])
+      self.min_euclidean_similarity = min(self.min_euclidean_similarity, result[3]["euclid"])
+      self.min_sqnr = min(self.min_sqnr, result[3]["sqnr"])
 
   def print_result(self):
     print("%d compared"%(len(self.results)))
