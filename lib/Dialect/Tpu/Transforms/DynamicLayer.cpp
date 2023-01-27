@@ -116,7 +116,10 @@ FW_LAYER_TYPE_T get_layer_type(Operation *op) {
     return FW_BMNET_BROADCAST_BINARY;
   } else if (isa<tpu::CastOp>(op)) {
     return FW_BMNET_DTYPE_CONVERT;
+  } else if (isa<tpu::TopKOp>(op)) {
+    return FW_BMNET_TOPK;
   } else
+    llvm_unreachable("Not Implemented");
     return FW_LAYER_UNKNOWN;
 }
 
@@ -299,7 +302,7 @@ dynamic_layer::get_input_global_tensor_specs() {
         dynamic_global_tensor_spec spec = {0};
         spec.type = to_dynamic_tensor_type(v);
         spec.id = get_tensor_id(v);
-        spec.is_net_io = is_net_input(v);
+        spec.is_net_io = is_net_input(v) || is_net_output(v);
         spec.dtype = BM168x::getDataType(v);
         spec.addr = module::getAddress(v);
         auto shape = module::getShape(v);
