@@ -11,9 +11,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -98,9 +95,10 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                           &sec_info, input_spec->data(), output_spec->data());
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(bcbinary_local_spec_t);
+  if (!buffer)
+    return sizeof(bcbinary_local_spec_t);
   auto gi = getGroupInfo(0, 0);
   std::vector<int64_t> multi_v(2, 1);
   std::vector<int64_t> rshift_v(2, 0);
@@ -123,32 +121,26 @@ int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
   spec.common.scale_B = multi_v[1];
   spec.buffer_addr = gi.buffer_addr;
 
-
- return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::AddOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(bcbinary_common_spec_t);
-  bcbinary_common_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
-  std::vector<int64_t> multi_v(2, 1);
-  std::vector<int64_t> rshift_v(2, 0);
-
-  if (module::isUniformQuantized(getInputs()[0], getOutput())) {
-    auto m_v = module::getI64Array(getMultipliers(), 2, 1);
-    auto r_v = module::getI64Array(getRshifts(), 2, 0);
-    multi_v = *m_v.get();
-    rshift_v = *r_v.get();
+  if (!buffer) {
+    return sizeof(bcbinary_common_spec_t);
   }
+  bcbinary_common_spec_t spec = {0};
   spec.binary_type = BINARY_ADD;
   spec.if_relu = getDoRelu();
   spec.relu_upper_limit = getReluLimit().convertToDouble();
-  spec.rshift_A = rshift_v[0];
-  spec.rshift_B = rshift_v[1];
-  spec.scale_A = multi_v[0];
-  spec.scale_B = multi_v[1];
+  auto m_v = module::getI64Array(getMultipliers(), 2, 1);
+  auto r_v = module::getI64Array(getRshifts(), 2, 0);
+  spec.rshift_A = r_v->at(0);
+  spec.rshift_B = r_v->at(1);
+  spec.scale_A = m_v->at(0);
+  spec.scale_B = m_v->at(1);
+
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }

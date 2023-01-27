@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
 
-BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv"]
+BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK"]
 BM1684_Failed_Cases = [
     "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul", "BroadcastAdd",
     "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat", "Concat2", "Conv1d",
@@ -32,13 +32,13 @@ BM1684_Failed_Cases = [
     "Min", "MulConst", "Neg", "Pad0", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
     "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum",
     "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale",
-    "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Where", "TorchHardSwish",
+    "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "TopK", "Where", "TorchHardSwish",
     "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM",
     "TorchMaskedFill", "TorchWhere", "TorchStd"
 ]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
-    "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TorchGelu", "TorchGRU", "TorchLayerNorm",
+    "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu", "TorchGRU", "TorchLayerNorm",
     "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
 ]
 
@@ -137,7 +137,7 @@ class ONNX_IR_TESTER(object):
             "Tanh": self.test_Tanh,
             "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
-            #"TopK": self.test_TopK,
+            "TopK": self.test_TopK,
             "Where": self.test_Where,
             #############################
             # Torch Test Case, Alphabetically
@@ -282,7 +282,8 @@ class ONNX_IR_TESTER(object):
         else:
             quant_input = False
             quant_output = False
-        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, self.dynamic, quant_input, quant_output)
+        mlir_to_model(tpu_mlir + ".mlir", bmodel, tpu_final, self.dynamic, quant_input,
+                      quant_output)
         return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
@@ -2592,8 +2593,8 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_TopK(self, case_name):
-        shape = [100, 2000]
-        const = 1000
+        shape = [10, 1000]
+        const = 500
         X = helper.make_tensor_value_info('X', TensorProto.FLOAT, shape)
         K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([const]).astype(np.int64))
         o_shape = list(shape)
