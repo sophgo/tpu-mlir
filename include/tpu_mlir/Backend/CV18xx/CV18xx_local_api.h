@@ -136,5 +136,41 @@ void cvi_backend_bf16_tl_conv(
     uint32_t pad_h_top, uint32_t pad_h_bottom, uint32_t pad_w_left,
     uint32_t pad_w_right, uint32_t stride_h, uint32_t stride_w,
     uint32_t insert_h, uint32_t insert_w, bool with_bias, bool do_relu);
+
+void cvi_backend_tl_eltwise(uint32_t layer_id, laddr_t *la_input,
+                            laddr_t la_output, laddr_t la_working, int input_n,
+                            int input_c, int input_h, int input_w,
+                            int input_size, int op, int8_t rshift,
+                            const int8_t *m_i8, bool use_default_coeff,
+                            bool do_relu, float relu_slope, const int *coeffs,
+                            const int i32Multiplier, bool do_early_stride,
+                            int stride_h, int stride_w);
+
+void cvi_backend_bf16_tl_eltwise(uint32_t layer_id, laddr_t *la_input,
+                                 laddr_t la_output, int input_n, int input_c,
+                                 int input_h, int input_w, int input_size,
+                                 int op, bool use_default_coeff, bool do_relu,
+                                 float relu_slope, const float *coeffs,
+                                 bool do_early_stride, int stride_h,
+                                 int stride_w);
+
+void cvi_backend_tl_pooling(uint32_t layer_id, laddr_t ifmap_laddr,
+                            laddr_t ofmap_laddr, int input_n, int input_c,
+                            int input_h, int input_w, int output_n,
+                            int output_c, int output_h, int output_w,
+                            uint32_t kh, uint32_t kw, uint32_t stride_h,
+                            uint32_t stride_w, uint32_t pad_h_top,
+                            uint32_t pad_h_bottom, uint32_t pad_w_left,
+                            uint32_t pad_w_right, bool is_avg_pooling,
+                            int8_t rshift, int8_t m_i8);
+
+void cvi_backend_tl_bf16_pooling(uint32_t layer_id, laddr_t ifmap_laddr,
+                                 laddr_t ofmap_laddr, int input_n, int input_c,
+                                 int input_h, int input_w, int output_n,
+                                 int output_c, int output_h, int output_w,
+                                 uint32_t kh, uint32_t kw, uint32_t stride_h,
+                                 uint32_t stride_w, uint32_t pad_h_top,
+                                 uint32_t pad_h_bottom, uint32_t pad_w_left,
+                                 uint32_t pad_w_right, bool is_avg_pooling);
 } // namespace backend
 } // namespace tpu_mlir

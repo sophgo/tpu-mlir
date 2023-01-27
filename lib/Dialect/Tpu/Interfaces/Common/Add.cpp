@@ -171,9 +171,6 @@ LogicalResult tpu::AddOp::LocalGenSupport() {
   // The same n_slice and h_slice value will propagate to each inputs.
   // Thus, the local layer is only safe when we do not need to slice n and h
   // dimensions.
-  if (module::isCV18xx()) {
-    return failure();
-  }
   auto out_shape = module::getShape(getOutput());
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
