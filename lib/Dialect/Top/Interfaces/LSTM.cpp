@@ -15,7 +15,18 @@
 
 
 
-int64_t top::LSTMOp::getFLOPs() { return 0; }
+int64_t top::LSTMOp::getFLOPs() {
+  // flops: 4 * (4 * hidden_size * input_size + 4 * hidden_size * hidden_size)
+  auto in_shape = module::getShape(getInput());
+  assert(in_shape.size() == 3);
+  int64_t batch_size = in_shape[0];
+  int64_t seq_len = in_shape[1];
+  int64_t input_size = in_shape[2];
+  int64_t hidden_size = getHiddenSize();
+  int64_t num_direction = getBidirectional() ? 2 : 1;
+  int64_t flops = 4 * (4 * hidden_size * input_size + 4 * hidden_size * hidden_size);
+  return flops * batch_size * seq_len * num_direction;
+}
 
 lstm_attr_t top::LSTMOp::parseParam() {
   lstm_attr_t attr = {0};
