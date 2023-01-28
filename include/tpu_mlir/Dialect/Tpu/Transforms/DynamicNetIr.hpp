@@ -32,7 +32,11 @@ typedef struct stage_param{
 
 class SubnetIr {
   public:
-    explicit SubnetIr(StringRef chip_name, int version) : chip(chip_name), dynamic_version(version) {fw_ir_length = 0;}
+    explicit SubnetIr(StringRef chip_name, int version) :
+                                    chip(chip_name),
+                                    dynamic_version(version),
+                                    fw_ir_length(0) {}
+
     virtual ~SubnetIr () {clear_all();}
     void generate_compiler_ir(ModuleOp &module, func::CallOp &call,
                               std::function<void(Operation *, SubnetIr*)> task);
@@ -79,7 +83,7 @@ class SubnetIr {
     void get_fw_input_tensor_info(
                                   LgInfo & group_ops,
                                   int hsecs,
-                                  map<int, dynamic_tensor_info_t>& tensor_to_dynamic_info);
+                                  map<Value, dynamic_tensor_info_t, value_cmp>& tensor_to_dynamic_info);
 
     bool strip_back_judge(Value v, const LgInfo &lg_info,
                       const std::multiset<Operation *> &op_set,
@@ -88,12 +92,20 @@ class SubnetIr {
                     LgInfo & group_ops,
                     Value tensor,
                     list<Value>& tensor_branchs,
-                    map<int, dynamic_tensor_info_t>& tensor_to_dynamic_info,
+                    map<Value, dynamic_tensor_info_t, value_cmp>& tensor_to_dynamic_info,
                     std::multiset<Operation *>& layer_set, const set<Value, value_cmp>& out_tensor_set);
 
     void get_neuron_timestep_consumer(map<int, int>& tensor_to_consumer_num, shared_ptr<BasicTimeStep> time_step);
     void insert_produced_tensors(map<int, int>& tensor_to_consumer_num,
                                     int tensor_id) ;
+    int get_group_global_pooling_kh(const LgInfo& layer_group,
+            Value target_tensor_id, int global_kh, int global_up_pad_h, int global_down_pad_h);
+    int get_forward_output_height(Operation *op, int in_height);
+    bool is_eltwise_op(Operation *op);
+    bool tensor_allow_slice_diff(const LgInfo& layer_group,
+                                 Value& tensor,
+                                 int& hslice_diff_flag);
+    bool check_output_order_swap(const vector<Value> &sub_out);
     //=========================
     //IR information
     //=========================

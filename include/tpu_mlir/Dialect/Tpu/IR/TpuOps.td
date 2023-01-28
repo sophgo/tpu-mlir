@@ -238,7 +238,7 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     !listconcat(traits, [SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
     DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport", "assign_sec_info"]>,
-    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>])> {
+    DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>])> {
   let summary = "convolution operator";
 
   let description = [{
@@ -302,7 +302,7 @@ def Tpu_Conv3DOp : Tpu_ConvOp<"Conv3D",[
 class Tpu_PoolOp <string mnemonic> : Tpu_Op<mnemonic,
   [SupportFuseRelu,
    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport","BackwardH","assign_sec_info"]>,
-   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH"]>]> {
+   DeclareOpInterfaceMethods<DynLocalGenInterface, ["DynBackwardH", "DynBackwardKh", "DynBackwardStrideH", "DynBackwardUpPadH", "DynBackwardDownPadH", "DynForwardHeight"]>]> {
   let summary = "pool operator";
 
   let description = [{

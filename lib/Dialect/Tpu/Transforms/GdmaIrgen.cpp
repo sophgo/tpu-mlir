@@ -147,6 +147,21 @@ int static_ld_neuron_irgen_ctrl(
 
     fw_gdma_ld_itm_extend_neuron.store_mode = STORE_MODE_1N;
     fw_gdma_ld_itm_extend_neuron.consumer_num = consumer_num;
+    if (auto cast_op = dyn_cast<tpu::LoadOp>(*op)) {
+      int64_t use_3ic = cast_op.getUse_3icOptimize();
+      if (use_3ic < 4 && use_3ic > 0) {
+        auto use_op = *cast_op.getOutput().getUsers().begin();
+        auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
+        auto kernel = module::getI64Array(conv_op.getKernelShape());
+        int64_t to_ic =
+          use_3ic == 1
+              ? kernel->at(0)
+              : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
+        //reuse the store_mode/concat_c
+        fw_gdma_ld_itm_extend_neuron.store_mode = STORE_3IC;
+        fw_gdma_ld_itm_extend_neuron.concat_c = to_ic;
+      }
+    }
     ir_tensor_gdma_info.fw_tensor_gdma_param_u.fw_gdma_ld_itm_extend_neuron = fw_gdma_ld_itm_extend_neuron;
     fw_ir_length += sizeof(fw_gdma_ld_itm_extend_neuron_t);
   } else {
@@ -165,6 +180,21 @@ int static_ld_neuron_irgen_ctrl(
 
     fw_gdma_ld_in_neuron.store_mode = STORE_MODE_1N;
     fw_gdma_ld_in_neuron.consumer_num = consumer_num;
+    if (auto cast_op = dyn_cast<tpu::LoadOp>(*op)) {
+      int64_t use_3ic = cast_op.getUse_3icOptimize();
+      if (use_3ic < 4 && use_3ic > 0) {
+        auto use_op = *cast_op.getOutput().getUsers().begin();
+        auto conv_op = dyn_cast<tpu::Conv2DOp>(use_op);
+        auto kernel = module::getI64Array(conv_op.getKernelShape());
+        int64_t to_ic =
+          use_3ic == 1
+              ? kernel->at(0)
+              : (use_3ic == 2 ? kernel->at(1) : kernel->at(0) * kernel->at(1));
+        //reuse the store_mode/concat_c
+        fw_gdma_ld_in_neuron.store_mode = STORE_3IC;
+        fw_gdma_ld_in_neuron.concat_c = to_ic;
+      }
+    }
     ir_tensor_gdma_info.fw_tensor_gdma_param_u.fw_gdma_ld_in_neuron = fw_gdma_ld_in_neuron;
     fw_ir_length += sizeof(fw_gdma_ld_in_neuron_t);
   }

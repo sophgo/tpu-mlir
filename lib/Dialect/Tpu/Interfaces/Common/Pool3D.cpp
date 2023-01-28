@@ -191,3 +191,8 @@ LogicalResult tpu::Pool3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
   in_down_pad_h = out_down_pad_h * attr.sh + attr.pad_h_after;
   return success();
 }
+
+int64_t tpu::Pool3DOp::DynForwardHeight(int64_t in_height) {
+  //Todo
+  return in_height;
+}

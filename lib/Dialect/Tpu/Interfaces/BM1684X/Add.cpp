@@ -98,7 +98,7 @@ void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // dynamic codegen
 int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(bcbinary_local_spec_t);
+    return sizeof(bcbinary_local_param_t);
   auto gi = getGroupInfo(0, 0);
   std::vector<int64_t> multi_v(2, 1);
   std::vector<int64_t> rshift_v(2, 0);
@@ -110,18 +110,20 @@ int64_t tpu::AddOp::dyn_codegen_local_bm1684x(void *buffer) {
     rshift_v = *r_v.get();
   }
 
-  bcbinary_local_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
-  spec.common.binary_type = BINARY_ADD;
-  spec.common.if_relu = getDoRelu();
-  spec.common.relu_upper_limit = getReluLimit().convertToDouble();
-  spec.common.rshift_A = rshift_v[0];
-  spec.common.rshift_B = rshift_v[1];
-  spec.common.scale_A = multi_v[0];
-  spec.common.scale_B = multi_v[1];
-  spec.buffer_addr = gi.buffer_addr;
+  bcbinary_local_param_t param;
+  memset(&param, 0, sizeof(param));
+  param.spec.common.binary_type = BINARY_ADD;
+  param.spec.common.if_relu = getDoRelu();
+  param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.spec.common.rshift_A = rshift_v[0];
+  param.spec.common.rshift_B = rshift_v[1];
+  param.spec.common.scale_A = multi_v[0];
+  param.spec.common.scale_B = multi_v[1];
+  param.spec.buffer_addr = gi.buffer_addr;
+  param.A_is_coeff = false;
+  param.B_is_coeff = false;
 
-  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================

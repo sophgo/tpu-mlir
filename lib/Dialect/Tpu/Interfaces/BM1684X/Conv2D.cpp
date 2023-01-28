@@ -485,10 +485,9 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 // dynamic codegen
 int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer)
-    return sizeof(conv_local_spec_t);
-  conv_local_spec_t spec;
-  memset(&spec, 0, sizeof(spec));
+  if (!buffer) return sizeof(conv_local_param_t);
+  conv_local_param_t param;
+  memset(&param, 0, sizeof(param));
   auto attr = parseParam();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
@@ -496,8 +495,8 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto gi = getGroupInfo(0, 0);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
 
-  spec.buffer_local_addr = gi.buffer_addr;
-  auto &common = spec.common;
+  param.spec.buffer_local_addr = gi.buffer_addr;
+  auto &common = param.spec.common;
   common.input_c = attr.ic;
   common.output_c = attr.oc;
   common.if_relu = attr.do_relu;
@@ -523,17 +522,18 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     if (getCoeffMerged()) {
-      spec.merge_coeff = 2;
+      param.spec.merge_coeff = 2;
+      param.spec.with_requant = 1;
       auto out_etype = module::getStorageType(getOutput());
-      common.if_relu = out_etype.isUnsignedInteger();
+      common.if_relu = out_etype.isUnsignedInteger(8);
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
   }
 
-  spec.reference_id = get_tensor_id(op->getResult(0));
-  spec.concat_c = attr.oc;
-  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  param.spec.reference_id = get_tensor_id(op->getResult(0));
+  param.spec.concat_c = attr.oc;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================

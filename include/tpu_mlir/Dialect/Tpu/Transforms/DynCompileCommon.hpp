@@ -160,6 +160,11 @@ typedef enum fw_layer_type {
   FW_BMNET_MASKED_FILL    = 127,
   FW_BMNET_GLU            = 128,
   FW_BMNET_DEFORM_GATHER  = 129,
+  FW_BMNET_SCATTERND      = 130,
+  FW_BMNET_LAYER_NORM     = 131,
+  FW_BMNET_REQUANT_FP32   = 132,
+  FW_BMNET_REQUANT_INT    = 133,
+  FW_BMNET_DEQUANT_FP32   = 134,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
@@ -1311,9 +1316,9 @@ typedef struct fw_gdma_ld_in_neuron {
   u32 ic_and_tensor_id;
   u32 c_idx_and_reference_id;  // for local concat use, reference_id is the true
                               // tensor id
-  u32 concat_c;  // full c for tensor_id
+  u32 concat_c;  // full c for tensor_id, to_ic if store_mode is STORE_3IC
   dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N, 3: STORE_3IC
   u32 consumer_num;
 } fw_gdma_ld_in_neuron_t;
 
@@ -1423,9 +1428,9 @@ typedef struct fw_gdma_ld_itm_extend_neuron {
   u32 tensor_id;
   u32 c_idx;
   u32 reference_id;  // for local concat use, reference_id is the true tensor
-  u32 concat_c;      // full c for tensor_id
+  u32 concat_c;      // full c for tensor_id, to_ic if store_mode is STORE_3IC
   dtype_and_dsize
-  u8 store_mode;     // 0: 1N, 1: 2N, 2: 4N
+  u8 store_mode;     // 0: 1N, 1: 2N, 2: 4N, 3: STORE_3IC
   u32 consumer_num;
 } fw_gdma_ld_itm_extend_neuron_t;
 
