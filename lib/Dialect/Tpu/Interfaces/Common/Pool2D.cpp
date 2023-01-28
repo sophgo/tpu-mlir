@@ -134,6 +134,9 @@ LogicalResult tpu::Pool2DOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::Pool2DOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    return success();
+  }
   auto attr = parseParam();
   auto stride = module::getI64Array(getStrides());
   if ((stride->at(0) > 15 || stride->at(1) > 15)) {

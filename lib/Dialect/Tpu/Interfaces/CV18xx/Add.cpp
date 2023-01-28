@@ -10,11 +10,9 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -117,10 +115,67 @@ int64_t tpu::AddOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
                                          int64_t in_nslice, int64_t in_hslice,
                                          int64_t out_nslice,
                                          int64_t out_hslice) {
-  llvm_unreachable("Not supported now");
-  return 0;
+  if (module::isUniformQuantized(getOutput())) {
+    return out_lmem_bytes;
+  } else {
+    return 0;
+  }
 }
 
-void tpu::AddOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+void tpu::AddOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t layer_id) {
+  assert(getInputs().size() == 2);
+  int64_t n, c, h, w;
+  auto shape = module::getShape(getInputs()[0]);
+  module::getNCHW(shape, n, c, h, w);
+
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in0_gi = LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
+  auto in1_gi = LocalGenInterface::getGroupInfo(getInputs()[1], n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  std::vector<laddr_t> la_input(2);
+  la_input[0] = in0_gi.out_addr;
+  la_input[1] = in1_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+  laddr_t la_working = gi.buffer_addr;
+
+  n = in0_gi.n_slice;
+  h = in0_gi.h_slice;
+
+  // todo supoort early stride
+  bool do_early_stride = false;
+  int32_t early_stride_h = 0;
+  int32_t early_stride_w = 0;
+
+  // op code PROD = 0; SUM = 1; MAX = 2;
+  int op_code = 1;
+  int64_t input_num = getInputs().size();
+  if (module::isUniformQuantized(getOutput())) {
+    auto multiplier_v = module::getI64Array(getMultipliers(), input_num, 1);
+    auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+    int8_t rshift_int = static_cast<int32_t>(rshift_v->at(0));
+    std::vector<int8_t> multiplier_int;
+    for (int i = 0; i < input_num; ++i) {
+      multiplier_int.emplace_back(multiplier_v->at(i));
+    }
+    const int coeffs[2] = {1, 1};
+
+    cvi_backend_tl_eltwise(
+        layer_id, /*u32 layer_id,*/
+        la_input.data(), la_output, la_working, n, c, h, w, input_num, op_code,
+        rshift_int, multiplier_int.data(), true, /*use_default_coeff,*/
+        getDoRelu(), 0,                          /*relu_slope,*/
+        coeffs, 0, do_early_stride, early_stride_h, early_stride_w);
+  } else {
+    std::vector<float> coeffs;
+    auto coeffs_ = module::getF64Array(getCoeff(), 2, 1);
+    coeffs.assign(coeffs_->begin(), coeffs_->end());
+    cvi_backend_bf16_tl_eltwise(layer_id, /*u32 layer_id,*/
+                                la_input.data(), la_output, n, c, h, w,
+                                input_num, op_code, true, /*use_default_coeff,*/
+                                getDoRelu(), 0,           /*relu_slope,*/
+                                coeffs.data(), do_early_stride, early_stride_h,
+                                early_stride_w);
+  }
+  return;
 }
