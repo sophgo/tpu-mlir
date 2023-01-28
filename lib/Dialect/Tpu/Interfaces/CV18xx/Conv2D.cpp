@@ -197,7 +197,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   if (attr.dh > 15 || attr.dw > 15) {
-    // TODO do dilation here, ins in top/tpu_common interpreter
+    // TODO ins in top/tpu_common interpreter
     llvm_unreachable("Not supported now");
   }
   transposeConvolutionFilter(filter_i8, filter_shape);

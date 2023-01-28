@@ -1082,7 +1082,7 @@ def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
 
 def Tpu_UpsampleOp: Tpu_Op<"Upsample", [
     SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Upsample operation";
   let description = [{

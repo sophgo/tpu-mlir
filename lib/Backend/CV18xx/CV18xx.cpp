@@ -560,6 +560,18 @@ void CV18xx::tiling_packing(std::vector<tiling_info_t> &tiling_result, int n,
   }
 }
 
+int64_t CV18xx::lmem_woring_size(std::vector<int64_t> shape, int count,
+                                 bool eu_align, cvk_fmt_t fmt) {
+  assert(shape.size() == 4);
+  if (eu_align) {
+    return count * shape[0] * ceiling_func(shape[1], NPU_NUM) *
+           ALIGN(shape[2] * shape[3], EU_BYTES) * bytesize_of_fmt(fmt);
+  } else {
+    return count * shape[0] * ceiling_func(shape[1], NPU_NUM) * shape[2] *
+           shape[3] * bytesize_of_fmt(fmt);
+  }
+}
+
 void CV18xx::assert_support_fmt(cvk_fmt_t fmt) {
   assert((fmt == CVK_FMT_I8 || fmt == CVK_FMT_U8 || fmt == CVK_FMT_BF16) &&
          "others not supported");

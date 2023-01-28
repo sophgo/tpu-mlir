@@ -1495,6 +1495,12 @@ public:
                              cvk_tg_shape_t shape, cvk_fmt_t fmt,
                              int blob_num = 1, uint32_t reserved_lmem = 0,
                              tiling_mode_t mode = TilingNCHW);
+  //
+  // Local working mem size
+  //
+
+  static int64_t lmem_woring_size(std::vector<int64_t> shape, int count,
+                                  bool eu_align, cvk_fmt_t fmt);
 
   //
   // Hardware feature

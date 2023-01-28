@@ -8,10 +8,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-// #include "tpu_mlir/Backend/BM168x/cv18xx.h"
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
@@ -51,10 +51,44 @@ void tpu::LeakyReluOp::codegen_global_cv18xx(int64_t layer_id) {
 int64_t tpu::LeakyReluOp::getBufferSize_cv18xx(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  llvm_unreachable("Not supported now");
-  return 0;
+  if (module::isUniformQuantized(getOutput())) {
+    return 0;
+  }
+  int64_t n, c, h, w;
+  auto vIn = getInput();
+  module::getNCHW(getInput(), n, c, h, w);
+  n = in_nslice;
+  h = in_hslice;
+  auto fmt = CV18xx::getDataType(vIn);
+  return CV18xx::lmem_woring_size({n, c, h, w}, 1, true, fmt);
 }
 
-void tpu::LeakyReluOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+void tpu::LeakyReluOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                            int64_t layer_id) {
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  n = out_gi.n_slice;
+  h = out_gi.h_slice;
+
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+  laddr_t la_working = gi.buffer_addr;
+
+  if (module::isUniformQuantized(getOutput())) {
+    int8_t pos_rshift = getRshift().value();
+    int8_t pos_m_i8 = getMultiplier().value();
+    int8_t neg_rshift = getRshiftNeg().value();
+    int8_t neg_m_i8 = getMultiplierNeg().value();
+    cvi_backend_tl_leaky_relu(layer_id, // layer_id,
+                              la_input, la_output, n, c, h, w, pos_rshift,
+                              neg_rshift, pos_m_i8, neg_m_i8);
+  } else {
+    float neg_slope = static_cast<float>(getAlpha().value().convertToDouble());
+    cvi_backend_bf16_tl_leaky_relu(layer_id, // layer_id,
+                                   la_input, la_output, la_working, n, c, h, w,
+                                   neg_slope);
+  }
 }

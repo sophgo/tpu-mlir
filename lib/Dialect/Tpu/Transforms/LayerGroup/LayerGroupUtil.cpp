@@ -519,6 +519,11 @@ bool is_eu_align(Value opd) {
     if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
     }
+    if (isa<tpu::ConcatOp>(op) && opd.hasOneUse()) {
+      if (module::isCV18xx()) {
+        return true;
+      }
+    }
     if (module::isBM1686()) {
       if (isa<tpu::RequantIntAxisOp>(op) && (opd == op->getOperand(1))) {
         return false;

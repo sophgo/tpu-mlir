@@ -116,6 +116,12 @@ void cvi_backend_bf16_tl_lut_slope_method(uint32_t layer_id, laddr_t la_input,
                                           laddr_t la_slope_table,
                                           int thresh_min, int thresh_max, int n,
                                           int c, int h, int w);
+
+void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c, int input_size,
+                           int *output_dim, laddr_t *la_input,
+                           laddr_t la_output, bool do_relu, int32_t *r_i8,
+                           int32_t *m_i8, cvk_fmt_t fmt);
+
 void cvi_backend_tl_conv(
     uint32_t layer_id, laddr_t la_ifmap, laddr_t la_ofmap, laddr_t la_weight,
     laddr_t la_working, laddr_t la_perchannel, int input_n, int input_c,
@@ -154,6 +160,18 @@ void cvi_backend_bf16_tl_eltwise(uint32_t layer_id, laddr_t *la_input,
                                  bool do_early_stride, int stride_h,
                                  int stride_w);
 
+void cvi_backend_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
+                               laddr_t output_laddr, int input_n, int input_c,
+                               int input_h, int input_w,
+                               int GT_right_shift_width,
+                               int LE_right_shift_width, int GT_scale,
+                               int LE_scale);
+
+void cvi_backend_bf16_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
+                                    laddr_t output_laddr, laddr_t work_addr,
+                                    int input_n, int input_c, int input_h,
+                                    int input_w, float neg_slope);
+
 void cvi_backend_tl_pooling(uint32_t layer_id, laddr_t ifmap_laddr,
                             laddr_t ofmap_laddr, int input_n, int input_c,
                             int input_h, int input_w, int output_n,
@@ -172,5 +190,10 @@ void cvi_backend_tl_bf16_pooling(uint32_t layer_id, laddr_t ifmap_laddr,
                                  uint32_t stride_w, uint32_t pad_h_top,
                                  uint32_t pad_h_bottom, uint32_t pad_w_left,
                                  uint32_t pad_w_right, bool is_avg_pooling);
+
+void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
+                             laddr_t output_laddr, int input_n, int input_c,
+                             int input_h, int input_w, int scale_h,
+                             int scale_w, cvk_fmt_t fmt);
 } // namespace backend
 } // namespace tpu_mlir
