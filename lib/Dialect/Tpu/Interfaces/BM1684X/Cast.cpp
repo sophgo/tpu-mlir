@@ -31,6 +31,7 @@ typedef struct {
   int input_dtype;
   int output_dtype;
   int mode;
+  int round_mode;
 } requant_fp_param_t;
 
 typedef struct {
@@ -67,6 +68,30 @@ typedef struct cast_local_param {
   cast_local_spec_t spec;
 } cast_local_param_t;
 
+typedef struct {
+    bool is_perchannel;
+    float scale_value;
+    int offset_value;
+    int output_dtype;  // for fp16/bfp16 output, default(0) fp32 output
+} dyn_dequant_fp_param_t;
+
+typedef struct {
+  bool is_perchannel;
+  float scale_value;
+  float offset_value;
+  int output_dtype;
+  int mode;
+  int round_mode;
+} dyn_requant_fp_common_param_t;
+
+typedef struct {
+  dyn_requant_fp_common_param_t common;
+  uint32_t buffer_local_addr;
+} dyn_requant_fp_local_param_t;
+
+typedef struct {
+  dyn_requant_fp_common_param_t common;
+} dyn_requant_fp_global_param_t;
 #ifdef __cplusplus
 }
 #endif
@@ -214,20 +239,46 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 // dynamic codegen
 int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
-  bool qInput = module::isUniformQuantized(getInput());
+    bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
   if (!qInput && !qOutput) {
-    if (!buffer)
-      return sizeof(cast_local_spec_t);
-    cast_local_spec_t spec;
-    memset(&spec, 0, sizeof(spec));
-    spec.common.src_dtype = BM168x::getDataType(getInput());
-    spec.common.dst_dtype = BM168x::getDataType(getOutput());
-    spec.common.round_mode = ROUND_INF;
-    spec.buffer_addr = -1;
-    return BM168x::dynamic_spec_to_buffer(buffer, spec);
+    if (!buffer) return sizeof(cast_local_param_t);
+    cast_local_param_t param;
+    memset(&param, 0, sizeof(param));
+    param.spec.common.src_dtype = BM168x::getDataType(getInput());
+    param.spec.common.dst_dtype = BM168x::getDataType(getOutput());
+    param.spec.common.round_mode = ROUND_INF;
+    param.spec.buffer_addr = -1;
+    return BM168x::dynamic_spec_to_buffer(buffer, param);
   } else {
-    llvm_unreachable("Not Implemented");
+    if (!qInput && qOutput) {
+      if (!buffer) return sizeof(dyn_requant_fp_local_param_t);
+      auto qtype = module::getUniformQuantizedType(getOutput());
+      uint32_t buffer_addr =
+          getInput().hasOneUse() ? in_gi.out_addr : gi.buffer_addr;
+      dyn_requant_fp_local_param_t param = {0};
+      param.buffer_local_addr = buffer_addr;
+      param.common.is_perchannel = false;
+      param.common.scale_value = 1 / qtype.getScale();
+      param.common.offset_value = qtype.getZeroPoint();
+      param.common.output_dtype = BM168x::getDataType(getOutput());
+      param.common.mode = ROUND_INF; //ToDo: need further check
+      param.common.round_mode = ROUND_INF;
+      return BM168x::dynamic_spec_to_buffer(buffer, param);
+    } else {
+      if (!buffer) return sizeof(dyn_dequant_fp_param_t);
+      auto qtype = module::getUniformQuantizedType(getInput());
+      dyn_dequant_fp_param_t param = {0};
+      param.is_perchannel = false;
+      param.scale_value = qtype.getScale();
+      param.offset_value = qtype.getZeroPoint();
+      param.output_dtype = BM168x::getDataType(getOutput());
+      return BM168x::dynamic_spec_to_buffer(buffer, param);
+    }
   }
 }
 
@@ -237,9 +288,10 @@ int64_t tpu::CastOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::CastOp::dyn_codegen_global_bm1684x(void *buffer) {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
+  int64_t n, c, h, w;
+  module::getNCHW(getInput(), n, c, h, w);
   if (!qInput && !qOutput) {
-    if (!buffer)
-      return sizeof(cast_global_spec_t);
+    if (!buffer) return sizeof(cast_global_spec_t);
     cast_global_spec_t spec;
     memset(&spec, 0, sizeof(spec));
     spec.common.src_dtype = BM168x::getDataType(getInput());
@@ -247,6 +299,26 @@ int64_t tpu::CastOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.common.round_mode = ROUND_INF;
     return BM168x::dynamic_spec_to_buffer(buffer, spec);
   } else {
-    llvm_unreachable("Not Implemented");
+    if (!qInput && qOutput) {
+      if (!buffer) return sizeof(dyn_requant_fp_global_param_t);
+      auto qtype = module::getUniformQuantizedType(getOutput());
+      dyn_requant_fp_global_param_t param = {0};
+      param.common.is_perchannel = false;
+      param.common.scale_value = 1.0 / qtype.getScale();
+      param.common.offset_value = qtype.getZeroPoint();
+      param.common.output_dtype = BM168x::getDataType(getOutput());
+      param.common.mode = 0; //ToDo: need further check
+      param.common.round_mode = ROUND_INF;
+      return BM168x::dynamic_spec_to_buffer(buffer, param);
+    } else {
+      if (!buffer) return sizeof(dyn_dequant_fp_param_t);
+      auto qtype = module::getUniformQuantizedType(getInput());
+      dyn_dequant_fp_param_t param = {0};
+      param.is_perchannel = false;
+      param.scale_value = qtype.getScale();
+      param.offset_value = qtype.getZeroPoint();
+      param.output_dtype = BM168x::getDataType(getOutput());
+      return BM168x::dynamic_spec_to_buffer(buffer, param);
+    }
   }
 }

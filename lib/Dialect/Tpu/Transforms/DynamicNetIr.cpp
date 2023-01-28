@@ -58,11 +58,77 @@ bool SubnetIr::loadOp_and_load_from_weightop(Operation *op){
            && isa_and_nonnull<top::WeightOp>(op->getOperand(0).getDefiningOp()));
 }
 
+bool SubnetIr::is_eltwise_op(Operation *op) {
+  bool res = false;
+  //Todo
+  if (isa<tpu::AddOp>(op)
+      || isa<tpu::MulOp>(op)
+      || isa<tpu::SubOp>(op)
+      || isa<tpu::MaxOp>(op)
+      || isa<tpu::MinOp>(op)) {
+    int input_nums = op->getNumOperands();
+    vector<llvm::ArrayRef<int64_t>> shapes;
+    int dims = module::getShape(op->getOperand(0)).size();
+    for (int i = 0; i < input_nums; i++) {
+      shapes.emplace_back(module::getShape(op->getOperand(i)));
+    }
+
+    for (int i = 0; i < input_nums-1; i++) {
+      for (int j = 0; j < dims; j++) {
+        if (shapes[i][j] != shapes[i+1][j]) {
+          return false;
+        }
+      }
+    }
+
+    res = true;
+  }
+  return res;
+}
+
+bool SubnetIr::tensor_allow_slice_diff(const LgInfo& layer_group, Value& tensor,
+                                       int& hslice_diff_flag) {
+  //=============================
+  //1st, find the number of layer that tensor pointing to which is not allowed h split conflict
+  //     also find if pointed to layers that allow h split conflict
+  //     Now layers that allow h split conflict contains: CONCAT
+  bool allow = false;
+  vector<Operation*> to_layers;
+  for (auto user: tensor.getUsers()) {
+    to_layers.push_back(user);
+  }
+
+  int non_split_num = 0;
+  bool point_to_split_allow = false;
+  for (auto& to_layer : to_layers) {
+    if (std::find(layer_group.group_ops.begin(), layer_group.group_ops.end(), to_layer) !=
+         layer_group.group_ops.end()) {
+      if(isa<tpu::ConcatOp>(to_layer) &&
+         to_layer == layer_group.group_ops[layer_group.group_ops.size() - 1]) {
+        point_to_split_allow = true;
+      } else {
+        non_split_num++;
+      }
+    } else if (is_eltwise_op(to_layer)) {
+      return false;
+    }
+  }
+
+  //============================
+  //2nd, tensor point out of group
+
+  if (non_split_num <= 1){
+    allow = point_to_split_allow;
+  }
+
+  return allow;
+}
+
 void SubnetIr::layer_data_back_dynamic_info(
     LgInfo & group_ops,
     Value tensor,
     list<Value>& tensor_branchs,
-    map<int, dynamic_tensor_info_t>& tensor_to_dynamic_info,
+    map<Value, dynamic_tensor_info_t, value_cmp>& tensor_to_dynamic_info,
     std::multiset<Operation *>& layer_set, const set<Value, value_cmp>& out_tensor_set)
 {
   auto src_op = tensor.getDefiningOp();
@@ -74,7 +140,8 @@ void SubnetIr::layer_data_back_dynamic_info(
   vector<Value> back_tensors;
 
   for (auto in : src_op->getOperands()) {
-    if (!module::isWeight(in) && !load_from_weightop(in))
+    if (!module::isWeight(in) && !load_from_weightop(in)
+        && !isa_and_nonnull<top::NoneOp>(in.getDefiningOp()))
       back_tensors.push_back(in);
   }
 
@@ -83,7 +150,7 @@ void SubnetIr::layer_data_back_dynamic_info(
   int64_t global_kh, global_stride_h, global_up_pad_h, global_down_pad_h;
   int64_t out_global_kh, out_global_stride_h, out_global_up_pad_h, out_global_down_pad_h;
 
-  map<int, dynamic_tensor_info_t>::iterator it = tensor_to_dynamic_info.find(get_tensor_id(tensor));
+  map<Value, dynamic_tensor_info_t, value_cmp>::iterator it = tensor_to_dynamic_info.find(tensor);
   dynamic_tensor_info_t out_tensor_dynamic_info;
   if(it != tensor_to_dynamic_info.end()) {
     out_tensor_dynamic_info = it->second;
@@ -100,54 +167,134 @@ void SubnetIr::layer_data_back_dynamic_info(
 
   for(uint32_t i = 0; i < back_tensors.size(); ++i) {
     bool set_value = false;
-    if (!module::isWeight(back_tensors[i])) {
-      it = tensor_to_dynamic_info.find(get_tensor_id(back_tensors[i]));
-      cur_h_slice = it->second.max_hslice;
+    it = tensor_to_dynamic_info.find(back_tensors[i]);
+    cur_h_slice = it->second.max_hslice;
 
-      auto lg_op = cast<DynLocalGenInterface>(src_op);
-      lg_op.DynBackwardH(h_in_idx, h_slice, 0, out_h_slice);
-      lg_op.DynBackwardKh(global_kh, out_global_kh);
-      lg_op.DynBackwardStrideH(global_stride_h, out_global_stride_h);
-      lg_op.DynBackwardUpPadH(global_up_pad_h, out_global_up_pad_h);
-      lg_op.DynBackwardDownPadH(global_down_pad_h, out_global_down_pad_h);
+    auto lg_op = cast<DynLocalGenInterface>(src_op);
+    lg_op.DynBackwardH(h_in_idx, h_slice, 0, out_h_slice);
+    lg_op.DynBackwardKh(global_kh, out_global_kh);
+    lg_op.DynBackwardStrideH(global_stride_h, out_global_stride_h);
+    lg_op.DynBackwardUpPadH(global_up_pad_h, out_global_up_pad_h);
+    lg_op.DynBackwardDownPadH(global_down_pad_h, out_global_down_pad_h);
 
-      //int hslice_diff_flag = 0;
-      if(cur_h_slice != 0) {
-        if(cur_h_slice != h_slice) {
-          if (false) {
-            set_value = h_slice > cur_h_slice;
-          } else if (isa<tpu::StridedSliceOp>(src_op)) {
-            set_value = h_slice > cur_h_slice;
-          } else {
-             llvm::errs() <<
-                "dynamic tensor information is conflicted\n";
-            exit(-1);
-          }
+    int hslice_diff_flag = 0;
+    if(cur_h_slice != 0) {
+      if(cur_h_slice != h_slice) {
+        if (tensor_allow_slice_diff(group_ops, back_tensors[i],
+                                      hslice_diff_flag)) {
+          set_value = h_slice > cur_h_slice;
+        } else if (isa<tpu::StridedSliceOp>(src_op)) {
+          set_value = h_slice > cur_h_slice;
+        } else {
+            llvm::errs() <<
+              "dynamic tensor information is conflicted\n";
+          exit(-1);
         }
-      } else {
-        set_value = true;
       }
+    } else {
+      set_value = true;
+    }
 
-      if(set_value) {
-        it->second.max_hslice = h_slice;
-        it->second.global_kh = global_kh;
-        it->second.global_stride_h = global_stride_h;
-        it->second.global_up_pad_h = global_up_pad_h;
-        it->second.global_down_pad_h = global_down_pad_h;
-      }
+    if(set_value) {
+      it->second.max_hslice = h_slice;
+      it->second.global_kh = global_kh;
+      it->second.global_stride_h = global_stride_h;
+      it->second.global_up_pad_h = global_up_pad_h;
+      it->second.global_down_pad_h = global_down_pad_h;
+    }
 
-      if(strip_back_judge(back_tensors[i],
-             group_ops, layer_set, out_tensor_set)) {
-        tensor_branchs.push_back(back_tensors[i]);
-      }
+    if(strip_back_judge(back_tensors[i],
+            group_ops, layer_set, out_tensor_set)) {
+      tensor_branchs.push_back(back_tensors[i]);
     }
   }
+}
+
+int SubnetIr::get_forward_output_height(
+    Operation *op, int in_height)
+{
+  int out_height = 0;
+  auto lg_op = cast<DynLocalGenInterface>(op);
+  out_height = lg_op.DynForwardHeight(in_height);
+  return out_height;
+}
+
+int SubnetIr::get_group_global_pooling_kh(const LgInfo& layer_group,
+    Value target_v, int global_kh, int global_up_pad_h, int global_down_pad_h)
+{
+  Value tensor;
+  Operation *op;
+  list<Value> tensor_branchs;
+
+  int left_global_kh = 1;
+  int right_global_kh = global_kh - global_up_pad_h - global_down_pad_h;
+  if (right_global_kh <= 0) {
+    return global_kh;
+  }
+  int cur_global_kh = (right_global_kh + 1) / 2;
+  int valid_global_pooling_kh = right_global_kh;
+
+  map<Value, int, value_cmp> tensor_to_height;
+
+  bool valid;
+
+  while(cur_global_kh != left_global_kh && cur_global_kh != right_global_kh) {
+    tensor_branchs.clear();
+    tensor_branchs.push_back(target_v);
+
+    tensor_to_height.clear();
+    tensor_to_height.insert(make_pair(target_v, cur_global_kh));
+
+    valid = true;
+    while(!tensor_branchs.empty()) {
+      tensor = tensor_branchs.front();
+      tensor_branchs.pop_front();
+      int tensor_height = tensor_to_height[tensor];
+      int out_tensor_height = 0;
+      vector<Operation *> to_layers;
+      for (auto user: tensor.getUsers()) {
+        to_layers.push_back(user);
+      }
+      for(u32 i = 0; i < to_layers.size(); ++i) {
+        op = to_layers[i];
+        if(find(layer_group.group_ops.begin(), layer_group.group_ops.end(), op) == layer_group.group_ops.end()) continue;
+
+        out_tensor_height = get_forward_output_height(op, tensor_height);
+
+        if(out_tensor_height == 0) {
+          valid = false;
+          break;
+        }
+
+        vector<Value> out_tensors = get_output_values(op);
+        for(u32 j = 0; j < out_tensors.size(); ++j) {
+          if(tensor_to_height.find(out_tensors[j]) == tensor_to_height.end()) {
+            tensor_branchs.push_back(out_tensors[j]);
+            tensor_to_height.insert(make_pair(out_tensors[j], out_tensor_height));
+          }
+        }
+      }
+
+      if(!valid) break;
+    }
+
+    if(valid) {
+      valid_global_pooling_kh = cur_global_kh;
+      right_global_kh = cur_global_kh;
+      cur_global_kh = (left_global_kh + right_global_kh) / 2;
+    } else {
+      left_global_kh = cur_global_kh;
+      cur_global_kh = (left_global_kh + right_global_kh + 1) / 2;
+    }
+  }
+
+  return (valid_global_pooling_kh + global_up_pad_h + global_down_pad_h);
 }
 
 void SubnetIr::get_fw_input_tensor_info(
     LgInfo & group_ops,
     int hsecs,
-    map<int, dynamic_tensor_info_t>& tensor_to_dynamic_info
+    map<Value, dynamic_tensor_info_t, value_cmp>& tensor_to_dynamic_info
   )
 {
   //reset tensor_to_info
@@ -158,13 +305,14 @@ void SubnetIr::get_fw_input_tensor_info(
       for (int i = 0; i < it->getNumOperands(); i++) {
         auto opd = it->getOperand(i);
         if (!module::isWeight(opd) && !load_from_weightop(opd)
-          && tensor_to_dynamic_info.find(get_tensor_id(opd)) == tensor_to_dynamic_info.end()) {
-          tensor_to_dynamic_info[get_tensor_id(opd)] = tensor_info_tmp;
+          && !isa_and_nonnull<top::NoneOp>(opd.getDefiningOp())
+          && tensor_to_dynamic_info.find(opd) == tensor_to_dynamic_info.end()) {
+          tensor_to_dynamic_info[opd] = tensor_info_tmp;
         }
       }
 
       for (int i = 0; i < it->getNumResults(); i++) {
-        tensor_to_dynamic_info[get_tensor_id(it->getResult(i))] = tensor_info_tmp;
+        tensor_to_dynamic_info[it->getResult(i)] = tensor_info_tmp;
       }
     }
   }
@@ -182,7 +330,7 @@ void SubnetIr::get_fw_input_tensor_info(
     int64_t n, c, height, width;
     module::getNCHW(it, n, c, height, width);
     h_slice = (height + hsecs - 1) / hsecs;
-    tensor_to_dynamic_info[get_tensor_id(it)].max_hslice = (uint32_t)h_slice;
+    tensor_to_dynamic_info[it].max_hslice = (uint32_t)h_slice;
 
     out_tensor_set.insert(it);
     if(strip_back_judge(it,
@@ -270,7 +418,9 @@ void SubnetIr::get_neuron_timestep_consumer(map<int, int>& tensor_to_consumer_nu
           in_tensors.push_back(in);
         }
         for(auto& in_tensor : in_tensors) {
-          if(!module::isWeight(in_tensor)) {
+          if(!module::isWeight(in_tensor)
+             && !load_from_weightop(in_tensor)
+              && !isa_and_nonnull<top::NoneOp>(in_tensor.getDefiningOp())) {
             tensor_to_consumer_num[get_tensor_id(in_tensor)] += 1;
           }
         }
@@ -440,7 +590,7 @@ void SubnetIr::generate_group_time_step_ir(
 
     //get and push fw_input_tensor_info_t for each input tensor
     vector<fw_input_tensor_info_t> input_tensor_info_v;
-    map<int, dynamic_tensor_info_t> tensor_to_dynamic_info;
+    map<Value, dynamic_tensor_info_t, value_cmp> tensor_to_dynamic_info;
     if(hsecs == 1) {
       for(int i = 0; i < sub_group.group_ins.size(); i++) {
         fw_input_tensor_info_t  input_tensor_info = {
@@ -460,7 +610,7 @@ void SubnetIr::generate_group_time_step_ir(
       get_fw_input_tensor_info(sub_group, hsecs, tensor_to_dynamic_info);
 
       for(int i = 0; i < sub_group.group_ins.size(); i++) {
-        dynamic_tensor_info_t dynamic_tensor_info = tensor_to_dynamic_info[get_tensor_id(sub_group.group_ins[i])];
+        dynamic_tensor_info_t dynamic_tensor_info = tensor_to_dynamic_info[sub_group.group_ins[i]];
         uint32_t max_hslice        = dynamic_tensor_info.max_hslice;
         uint32_t global_stride_h   = dynamic_tensor_info.global_stride_h;
         uint32_t global_kh         = dynamic_tensor_info.global_kh;
@@ -471,7 +621,8 @@ void SubnetIr::generate_group_time_step_ir(
           tensor_id_and_max_hslice : ((uint32_t)(get_tensor_id(sub_group.group_ins[i])) << 16) | (max_hslice & 0xffff),
           stride_h_and_kh          : (global_stride_h << 16)  | (global_kh & 0xffff),
           pad_h_top_and_bottom     : (global_up_pad_h << 16)  | (global_down_pad_h & 0xffff),
-          min_pool_kh              : 0
+          min_pool_kh              : (u32)get_group_global_pooling_kh(sub_group, sub_group.group_ins[i],
+                                         global_kh, global_up_pad_h, global_down_pad_h)
         };
 
         input_tensor_info_v.push_back(input_tensor_info);
@@ -488,6 +639,7 @@ void SubnetIr::generate_group_time_step_ir(
         maybe not right */
     for (auto v: op->getResults())
       group_outs.push_back(v);
+
     for(int i = 0; i < sub_group.group_outs.size(); i++) {
       //just for double check
       u32 group_consumer_num         = get_tensor_group_consumer_num(sub_group.group_outs[i]);
@@ -629,6 +781,27 @@ void SubnetIr::generate_group_time_step_ir(
   }
 }
 
+/* note: if subnet's output order is the reverse order of module's,
+   the final output's order is the reverse order of model. if static codegen,
+   do L2S firstly, then S2S(to the target addr), so it have no error.
+   but at dyn runtime, if it is the output tensor, it will L2S to the target addr
+   according to the tensor id, it will meet error. so it will check if
+   need to swap the order*/
+bool SubnetIr::check_output_order_swap(const vector<Value> &sub_out) {
+  const vector<Value>& net_output = get_net_output();
+  bool reoder_flag = (sub_out.size() == net_output.size());
+  if (sub_out.size() == net_output.size()) {
+    //need to check if the net's output order is the same as subnet's
+    for (int32_t i = 0; i < sub_out.size(); i++) {
+      if (module::getName(net_output[i]).str() != module::getName(sub_out[net_output.size() - 1 -i]).str()) {
+        reoder_flag = false;
+        break;
+      }
+    }
+  }
+  return reoder_flag;
+}
+
 void SubnetIr::generate_compiler_ir(ModuleOp &module, func::CallOp &call,
                                              std::function<void(Operation *, SubnetIr*)> task)
 {
@@ -645,7 +818,9 @@ void SubnetIr::generate_compiler_ir(ModuleOp &module, func::CallOp &call,
     fw_ir_length += sizeof(uint32_t);
   }
 
-  for(auto& v : outputs) {
+  bool reverse_flag = check_output_order_swap(outputs);
+  for (int32_t i = 0; i < outputs.size(); i++) {
+    Value v = reverse_flag ? outputs[outputs.size() - 1 - i] : outputs[i];
     net_output_tensor_id.push_back(get_tensor_id(v));
     fw_ir_length += sizeof(uint32_t);
   }
