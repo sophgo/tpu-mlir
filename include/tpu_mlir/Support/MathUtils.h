@@ -154,6 +154,13 @@ int StopForAxis(const int *stop_indices, const int *strides, const int mask,
                 const int shrink_mask, const int *shape, const int axis,
                 int start_for_axis);
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
+bool permute_reorder(const std::vector<int64_t> &shape,
+                     const std::vector<int64_t> &order,
+                     std::vector<int64_t> &to_shape,
+                     std::vector<int64_t> &to_order, int to_dim);
+template <typename T>
+void function_permute(T *from, T *to, const std::vector<int64_t> &shape_5,
+                      const std::vector<int64_t> &order_5);
 
 // compare
 bool compare(float lhs, float rhs, llvm::StringRef mode);

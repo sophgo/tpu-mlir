@@ -934,6 +934,123 @@ std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
   return shape_v;
 }
 
+template <typename T> static int remove_value(std::vector<T> &v, int value) {
+  int idx = 0;
+  for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
+    if (*iter == value) {
+      v.erase(iter);
+      return idx;
+    }
+  }
+  return -1;
+}
+
+static void refresh(std::vector<int64_t> &order, int idx) {
+  for (auto &v : order) {
+    if (v > idx) {
+      v--;
+    }
+  }
+}
+
+bool permute_reorder(const std::vector<int64_t> &shape,
+                     const std::vector<int64_t> &order,
+                     std::vector<int64_t> &to_shape,
+                     std::vector<int64_t> &to_order, int to_dim) {
+  to_order.assign(order.begin(), order.end());
+  to_shape.assign(shape.begin(), shape.end());
+  int num_dims = shape.size();
+  if (num_dims == to_dim) {
+    return true;
+  }
+  if (num_dims > to_dim) {
+    // remove dims = 1
+    while (num_dims > to_dim) {
+      int idx = remove_value(to_shape, 1);
+      if (idx < 0) {
+        break;
+      }
+      remove_value(to_order, idx);
+      refresh(to_order, idx);
+      num_dims--;
+    }
+    // remove continous order
+    while (num_dims > to_dim) {
+      bool done = false;
+      for (int i = 0; i < num_dims - 1; i++) {
+        if (order[i] + 1 == order[i + 1]) {
+          int idx = order[i];
+          to_shape[idx] *= to_shape[idx + 1];
+          to_shape.erase(to_shape.begin() + idx + 1);
+          to_order.erase(to_order.begin() + i + 1);
+          refresh(to_order, idx + 1);
+          num_dims--;
+          done = true;
+          break;
+        }
+      }
+      if (done == false) {
+        break;
+      }
+    }
+    if (num_dims > to_dim) {
+      return false;
+    }
+  } else if (num_dims < to_dim) {
+    // reshape to  to_dims
+    int inserted_dims = to_dim - num_dims;
+    for (int i = 0; i < inserted_dims; i++) {
+      to_shape.insert(to_shape.begin(), 1);
+      to_order.insert(to_order.begin(), i);
+    }
+
+    for (int i = inserted_dims; i < to_dim; i++) {
+      to_order[i] += inserted_dims;
+    }
+  }
+  return true;
+}
+
+template <typename T>
+void function_permute(T *from, T *to, const std::vector<int64_t> &shape_5,
+                      const std::vector<int64_t> &order_5) {
+  int64_t in = shape_5[0];
+  int64_t ic = shape_5[1];
+  int64_t id = shape_5[2];
+  int64_t ih = shape_5[3];
+  int64_t iw = shape_5[4];
+  int64_t o0 = order_5[0];
+  int64_t o1 = order_5[1];
+  int64_t o2 = order_5[2];
+  int64_t o3 = order_5[3];
+  int64_t o4 = order_5[4];
+  // clang-format on
+  for (int n = 0; n < in; n++) {
+    for (int c = 0; c < ic; c++) {
+      for (int d = 0; d < id; d++) {
+        for (int h = 0; h < ih; h++) {
+          for (int w = 0; w < iw; w++) {
+            int cur[5] = {n, c, d, h, w};
+            int in_idx = w + h * iw + d * iw * ih + c * id * ih * iw +
+                         n * ic * id * ih * iw;
+            int out_idx =
+                cur[o4] + cur[o3] * shape_5[o4] +
+                cur[o2] * shape_5[o4] * shape_5[o3] +
+                cur[o1] * shape_5[o4] * shape_5[o3] * shape_5[o2] +
+                cur[o0] * shape_5[o4] * shape_5[o3] * shape_5[o2] * shape_5[o1];
+            to[out_idx] = from[in_idx];
+          }
+        }
+      }
+    }
+  }
+  // clang-format off
+}
+
+template
+void function_permute(float *from, float *to, const std::vector<int64_t> &shape_5,
+                      const std::vector<int64_t> &order_5);
+
 bool compare(float a, float b, llvm::StringRef mode) {
   if (mode == "Equal") {
     return a == b;

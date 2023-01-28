@@ -20,6 +20,7 @@ from enum import IntEnum
 from .tensor_compare import TensorCompare, TensorCompareStats
 import threading
 import multiprocessing
+from tqdm import tqdm
 
 
 def parse_args(args_list):
@@ -190,16 +191,20 @@ def npz_compare(args_list):
     stats = TensorCompareStats()
 
     names_list = list(names)  # deep copy
-    #process_number = multiprocessing.cpu_count()
-    process_number = 1
+    process_number = multiprocessing.cpu_count()
+    if args.per_axis_compare >= 0:
+        process_number = 1
 
+    pbar = tqdm(names, total=len(names), position=0, leave=True)
     while (len(names_list) > 0):
-        # take process number names
-        # take name which will do compare
         compare_process_name_list = names_list[:process_number]
         names_list = names_list[process_number:]  # remove done name
+        # take process number names
+        # take name which will do compare
         processes = []
         for name in compare_process_name_list:
+            pbar.set_description("compare: {}".format(name))
+            pbar.update(1)
             p = multiprocessing.Process(target=compare_one_array,
                                         args=(tc, npz1, npz2, name , args.verbose, lock,
                                               dic, int8_tensor_close, args.per_axis_compare))
