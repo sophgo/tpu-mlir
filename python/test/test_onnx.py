@@ -32,14 +32,14 @@ BM1684_Failed_Cases = [
     "Min", "MulConst", "Neg", "Pad0", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
     "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum",
     "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale",
-    "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "TopK", "Where", "TorchHardSwish",
-    "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM",
-    "TorchMaskedFill", "TorchWhere", "TorchStd"
+    "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK", "Where",
+    "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm",
+    "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd"
 ]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
     "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu", "TorchGRU", "TorchLayerNorm",
-    "TorchLogSoftmax", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
+    "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
 ]
 
 
@@ -137,6 +137,7 @@ class ONNX_IR_TESTER(object):
             "Tanh": self.test_Tanh,
             "Tile": self.test_Tile,
             "Transpose": self.test_Transpose,
+            "Transpose2": self.test_Transpose2,
             "TopK": self.test_TopK,
             "Where": self.test_Where,
             #############################
@@ -1003,6 +1004,19 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, i), [input],
                                           [output])
             self.onnx_and_test(graph_def)
+
+    def test_Transpose2(self, case_name):
+        in_shape = [529, 49, 3, 3, 32]
+        out_shape = [3, 529, 3, 49, 32]
+        order = [2, 0, 3, 1, 4]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, in_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape)
+        transpose_def = helper.make_node("Transpose",
+                                         inputs=['input'],
+                                         outputs=['output'],
+                                         perm=order)
+        graph_def = helper.make_graph([transpose_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
 
     def test_Where(self, case_name):
         # real case
