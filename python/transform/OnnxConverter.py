@@ -586,6 +586,11 @@ class OnnxConverter(BaseConverter):
         operands = list()
         weight_data = None
         for x in onnx_node.inputs:
+            x_shape = self.getShape(x)
+            num_elem = np.prod(x_shape)
+            if num_elem == 0:
+                print("WARNING:{}'s shape is strange {}".format(x, x_shape))
+                continue
             if self.isWeight(x):
                 data = self.getWeight(x)
                 if weight_data is not None:
@@ -794,6 +799,9 @@ class OnnxConverter(BaseConverter):
             pads = set_auto_pad(auto_pad, input_shape, kernel_shape, strides)
         if len(pads) == 0:
             pads = onnx_node.attrs.get("pads", dim * 2 * [0])
+        if np.prod(kernel_shape) == 1 and np.sum(pads) == 0 and np.prod(strides) == 1:
+            self.addOperand(onnx_node.name, op)
+            return
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'kernel_shape': kernel_shape,
