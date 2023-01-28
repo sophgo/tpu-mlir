@@ -247,8 +247,8 @@ class TFLITE_IR_TESTER(object):
         need_transpose = False
     ):
       """Generic function to generate and compare TFLite and Tpu-Mlir output"""
-      import tflite
-      tflite_model = tflite.Model.GetRootAsModel(tflite_model_quant, 0)
+      from transform.tflite.Model import Model
+      tflite_model = Model.GetRootAsModel(tflite_model_quant, 0)
       subgraph = tflite_model.Subgraphs(0)
       model_input = subgraph.InputsAsNumpy()
       in_node = [subgraph.Tensors(input).Name().decode("utf-8") for input in model_input]

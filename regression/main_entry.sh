@@ -86,7 +86,7 @@ run_all() {
   echo "" >fail.log
   echo "" >result.log
   echo "run_onnx_op" >cmd.txt
-  #  echo "run_tflite_op" >cmd.txt
+  echo "run_tflite_op" >cmd.txt
   echo "run_script_test" >>cmd.txt
   cat cmd.txt
   ERR=0
