@@ -166,15 +166,15 @@ typedef enum {
 } lstm_batch_t;
 
 typedef struct {
-  unsigned long long x_global_addr;
-  unsigned long long h0_global_addr;
-  unsigned long long c0_global_addr;
-  unsigned long long y_global_addr;
-  unsigned long long hn_global_addr;
-  unsigned long long cn_global_addr;
-  unsigned long long w_global_addr;
-  unsigned long long b_global_addr;
-  unsigned long long z_global_addr;
+  uint64_t x_global_addr;
+  uint64_t h0_global_addr;
+  uint64_t c0_global_addr;
+  uint64_t y_global_addr;
+  uint64_t hn_global_addr;
+  uint64_t cn_global_addr;
+  uint64_t w_global_addr;
+  uint64_t b_global_addr;
+  uint64_t z_global_addr;
   bool bias;
   bool output_y;
   bool output_yh;
