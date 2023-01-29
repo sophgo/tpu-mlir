@@ -19,8 +19,8 @@ extern "C" {
 #endif
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long *output_addr;
+  uint64_t input_addr;
+  uint64_t *output_addr;
   int shape[MAX_SHAPE_DIMS];
   int shape_dim;
   int split_axis;
@@ -47,7 +47,7 @@ void tpu::SplitOp::codegen_global_bm1684x() {
   std::vector<int64_t> input_shape = module::getShape(getInput());
   split_global_param_t param = {0};
   param.input_addr = module::getAddress(getInput());
-  std::vector<unsigned long long> output_addr;
+  std::vector<uint64_t> output_addr;
   for (int i = 0; i < getNum(); ++i) {
     output_addr.push_back(module::getAddress(getOutputs()[i]));
   }

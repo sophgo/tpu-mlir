@@ -20,8 +20,8 @@ using namespace tpu_mlir::backend;
 extern "C" {
 #endif
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long output_addr;
+  uint64_t input_addr;
+  uint64_t output_addr;
   unsigned int buffer_addr; // only used for local layer
   int input_n;
   int input_c;

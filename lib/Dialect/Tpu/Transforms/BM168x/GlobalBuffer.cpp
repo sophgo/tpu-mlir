@@ -16,8 +16,7 @@
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 using namespace llvm;
-
-
+using namespace tpu_mlir::backend;
 
 namespace tpu_mlir {
 
@@ -80,49 +79,28 @@ public:
     if (attr.simplified == false) {
       llvm_unreachable("Not Implemented");
     }
-
     auto type = module::getStorageType(reduceOp.getInput());
-    // add buffer
-    /* if reduce n or c, need imm buffer. if reduce h/w, don't need imm buffer
-       if reduce c/h, c/w, n/w, will split it to 2 step at fronted, it will not
-       go here. if reduce c/h/w, n/h/w, need imm buffer . Note: reduce max/mean
-       and n/h, don't support it now (transpose need imm buffer) */
-    auto axis_num = 1;
-    bool is_reduce[4] = {false, false, true, false};
-    std::vector<int64_t> in_tensor = {attr.outer_n, attr.outer_c,
-                                      attr.axis_dims, attr.inner_dims};
+    auto input_spec = BM168x::get_input_spec(reduceOp);
+    auto output_spec = BM168x::get_output_spec(reduceOp);
 
-    /* reducemax/mean and reduce n/w,c/h,c/w, will use max/avg pool to implement
-     * it.*/
-    if ((axis_num == 1 && (is_reduce[0] || is_reduce[1])) ||
-        (axis_num == 3 && (is_reduce[0] || is_reduce[1])) ||
-        (axis_num >= 4 && axis_num == in_tensor.size())) {
-      // calculate the actual imm buffer size according to nodechip_reduce
-      int imm_buffer_size = 0;
-      if (axis_num >= 4 && axis_num == in_tensor.size()) {
-        for (int i = in_tensor.size() - 3; i >= 0; i--) {
-          imm_buffer_size *= in_tensor[i];
-        }
-        imm_buffer_size *= sizeof(float_t);
-      } else if (axis_num == 1 && (is_reduce[0] || is_reduce[1])) {
-        for (int i = in_tensor.size() - 1; i >= 0; i--) {
-          imm_buffer_size *= in_tensor[i];
-        }
-        imm_buffer_size *= sizeof(float_t) * 2;
-      } else if (axis_num == 3 && (is_reduce[0] || is_reduce[1])) {
-        int tmp_val = sizeof(float_t);
-        for (int i = in_tensor.size() - 3; i >= 0; i--) {
-          tmp_val *= in_tensor[i];
-        }
-        imm_buffer_size += tmp_val;
-        tmp_val = sizeof(float_t) * 2;
-        for (int i = in_tensor.size() - 1; i >= 0; i--) {
-          tmp_val *= in_tensor[i];
-        }
-        imm_buffer_size += tmp_val;
-      }
-
-      std::vector<int64_t> buffer_shape = {1, imm_buffer_size};
+    std::vector<int32_t> in_shape = {(int)attr.outer_n, (int)attr.outer_c,
+                                     (int)attr.axis_dims, (int)attr.inner_dims};
+    std::vector<int32_t> out_shape = {(int)attr.outer_n, (int)attr.outer_c, 1,
+                                      (int)attr.inner_dims};
+    BM168x::fix_shape(input_spec->at(0), in_shape);
+    BM168x::fix_shape(output_spec->at(0), out_shape);
+    reduce_full_global_param_t param = {0};
+    param.spec.common.axis_num = 1;
+    param.spec.common.axis[0] = 2;
+    param.spec.common.method = get_reduce_type(reduceOp.getMode());
+    param.if_getting_buffer_size = true;
+    uint64_t buffer_size = 0;
+    param.buffer_size_ptr = &buffer_size;
+    BM168x::call_global_func("backend_api_reduce_full_global", &param,
+                             sizeof(param), input_spec->data(),
+                             output_spec->data());
+    if (buffer_size > 0) {
+      std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
       auto buffer_type = RankedTensorType::get(buffer_shape, type);
       auto buffer = tpu::BufferOp::create(reduceOp, buffer_type);
       reduceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
@@ -138,56 +116,28 @@ class PermuteGlobalBuffer : public OpRewritePattern<tpu::PermuteOp> {
 public:
   using OpRewritePattern<tpu::PermuteOp>::OpRewritePattern;
 
-  typedef struct tranpose_spec {
-    uint64_t buffer_global_addr;
-    uint32_t order[MAX_SHAPE_DIMS];
-    uint32_t is_dynamic;
-  } transpose_spec_t;
-
-  typedef struct transpose_param {
-    transpose_spec_t spec;
-
-    int32_t if_getting_buffer_size;
-    uint64_t buffer_size_ptr;
-  } transpose_param_t;
-
   LogicalResult matchAndRewrite(tpu::PermuteOp permuteOp,
                                 PatternRewriter &rewriter) const override {
     if (!module::isNone(permuteOp.getBuffer())) {
       return failure();
     }
     transpose_param_t param = {0};
-    param.if_getting_buffer_size = 0;
-    param.spec.buffer_global_addr = 0;
-
+    param.if_getting_buffer_size = 1;
     auto order = module::getI64Array(permuteOp.getOrder());
     for (int i = 0, n = order->size(); i < n; ++i) {
       param.spec.order[i] = order->at(i);
     }
-    int64_t buffer_size = 0;
-    param.buffer_size_ptr = (uint64_t)&buffer_size;
-
-    auto value_to_spec = [](mlir::Value v) -> tensor_spec_t {
-      tensor_spec_t spec;
-      memset(&spec, 0, sizeof(spec));
-      spec.dtype = backend::BM168x::getDataType(v);
-      auto shape = module::getShape(v);
-      spec.dims = shape.size();
-      for (int i = 0; i < spec.dims; i++) {
-        spec.shape[i] = shape[i];
-      }
-      spec.elem_num = 0;
-      return spec;
-    };
-
-    auto input_sepc = value_to_spec(permuteOp.getInput());
-    auto output_sepc = value_to_spec(permuteOp.getOutput());
-    backend::BM168x::call_global_func("backend_api_transpose_global", &param,
-                                      sizeof(param), &input_sepc, &output_sepc);
+    uint64_t buffer_size = 0;
+    param.buffer_size_ptr = &buffer_size;
+    auto input_spec = BM168x::get_input_spec(permuteOp);
+    auto output_spec = BM168x::get_output_spec(permuteOp);
+    BM168x::call_global_func("backend_api_transpose_global", &param,
+                             sizeof(param), input_spec->data(),
+                             output_spec->data());
     auto type = module::getStorageType(permuteOp.getInput());
     // add buffer
     if (buffer_size > 0) {
-      auto buffer_type = RankedTensorType::get({buffer_size}, type);
+      auto buffer_type = RankedTensorType::get({(int64_t)buffer_size}, type);
       auto buffer = tpu::BufferOp::create(permuteOp, buffer_type);
       permuteOp.setOperand(1, buffer);
       return success();
