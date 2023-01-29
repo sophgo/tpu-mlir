@@ -226,6 +226,9 @@ LogicalResult tpu::Conv2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
 LogicalResult tpu::Conv2DOp::LocalGenSupport() {
   if (module::isCV18xx()) {
     auto attr = parseParam();
+    if (attr.ic > MAX_TIU_CHL || attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
+      return failure();
+    }
     if (attr.groups > 1 && false == attr.is_dw) {
       // for group conv
       // if oc / g > 32, then we will have two bias at one lane without

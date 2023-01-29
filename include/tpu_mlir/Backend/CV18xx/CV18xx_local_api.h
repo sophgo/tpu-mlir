@@ -53,6 +53,14 @@ void cvi_backend_tl_load_compressed(uint32_t layer_id, gaddr_t ga_src,
                                     bool isNeuron, cvk_fmt_t from, cvk_fmt_t to,
                                     int h_step, int step_size, int c_step);
 
+void cvi_backend_tl_load_stride_broadcast(uint32_t layer_id, gaddr_t ga_src,
+                                          laddr_t la_dst, int Local_N,
+                                          int Local_C, int Local_H, int Local_W,
+                                          int Global_C, int Global_H,
+                                          int Global_W, bool DoAligned,
+                                          bool isNeuron, cvk_fmt_t from,
+                                          cvk_fmt_t to, bool DoDecompress);
+
 void cvi_backend_tl_store_stride(uint32_t layer_id, gaddr_t ga_dst,
                                  laddr_t la_src, int Local_N, int Local_C,
                                  int Local_H, int Local_W, int Global_C,
@@ -195,5 +203,33 @@ void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
                              laddr_t output_laddr, int input_n, int input_c,
                              int input_h, int input_w, int scale_h,
                              int scale_w, cvk_fmt_t fmt);
+void cvi_backend_tl_deconv(uint32_t layer_id, laddr_t la_ifmap,
+                           laddr_t la_ofmap, laddr_t la_weight,
+                           laddr_t la_perchannel, int input_n, int input_c,
+                           int input_h, int input_w, int group, int output_c,
+                           int output_h, int output_w, int kh, int kw, int dh,
+                           int dw, int ins_h, int ins_last_h, int ins_w,
+                           int ins_last_w, int pad_h_top, int pad_h_bottom,
+                           int pad_w_left, int pad_w_right, int stride_h,
+                           int stride_w, bool do_bias, bool do_relu, int rshift,
+                           int rshift_len, bool do_ic_alignment);
+
+void cvi_backend_tl_bf16_deconv(
+    uint32_t layer_id, laddr_t la_ifmap, laddr_t la_ofmap, laddr_t la_weight,
+    laddr_t la_bias, int input_n, int input_c, int input_h, int input_w,
+    int group, int output_c, int output_h, int output_w, int kh, int kw, int dh,
+    int dw, int ins_h, int ins_last_h, int ins_w, int ins_last_w, int pad_h_top,
+    int pad_h_bottom, int pad_w_left, int pad_w_right, int stride_h,
+    int stride_w, bool do_bias, bool do_relu);
+
+void cvi_backend_int8_tl_lut(uint32_t layer_id, laddr_t la_input,
+                             laddr_t la_output, laddr_t la_y_table, int n,
+                             int c, int h, int w);
+
+void cvi_backend_bf16_tl_lut(uint32_t layer_id, laddr_t la_input,
+                             laddr_t la_output, laddr_t la_working,
+                             laddr_t la_y_table, laddr_t la_slope_table,
+                             int thresh_min, int thresh_max, int n, int c,
+                             int h, int w, int method);
 } // namespace backend
 } // namespace tpu_mlir

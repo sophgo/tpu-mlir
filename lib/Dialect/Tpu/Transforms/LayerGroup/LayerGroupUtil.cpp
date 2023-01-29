@@ -124,6 +124,7 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
       }
       if (auto src_op = dyn_cast_or_null<top::WeightOp>(in.getDefiningOp())) {
         ti.eu_align = is_eu_align(in);
+        ti.need_bcast = need_bcast(in);
         module::getNCHW(in, n, c, h, w);
         ti.slice_info.n.clear();
         ti.slice_info.h.clear();
@@ -494,43 +495,95 @@ void delete_fake_global_addr(Operation *op) {
   }
 }
 
-bool is_eu_align(Value opd) {
-  // Eu align rule may be different in different platforms
+bool is_eu_align_cv18xx(Value opd) {
   auto op = *opd.getUsers().begin();
   if (module::isWeight(opd)) {
-    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op) &&
-        (opd == op->getOperand(1) || opd == op->getOperand(2))) {
-      if (module::isCV18xx()) {
-        if (auto castOp = dyn_cast<tpu::Conv2DOp>(op)) {
-          auto attr = castOp.parseParam();
-          if (opd == op->getOperand(1) && attr.is_dw) {
-            // if is dw conv, filter need to align.
-            return true;
-          }
-          if (module::isUniformQuantized(castOp.getOutput()) &&
-              opd == op->getOperand(2) && !attr.is_dw && attr.groups > 1) {
-            // if is int8 group conv, bias need to align.
-            return true;
-          }
-        }
-      }
-      return false;
-    }
-    if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
-      return false;
-    }
-    if (isa<tpu::ConcatOp>(op) && opd.hasOneUse()) {
-      if (module::isCV18xx()) {
-        return true;
-      }
-    }
-    if (module::isBM1686()) {
-      if (isa<tpu::RequantIntAxisOp>(op) && (opd == op->getOperand(1))) {
+    if (isa<tpu::LutOp>(op)) {
+      if (opd == op->getOperand(1)) {
         return false;
       }
+    } else if (isa<tpu::LutBF16Op>(op)) {
+      if (opd == op->getOperand(1) || opd == op->getOperand(2)) {
+        return false;
+      }
+    } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
+      return false;
+    } else if (auto castOp = dyn_cast<tpu::Conv2DOp>(op)) {
+      auto attr = castOp.parseParam();
+      if (opd == op->getOperand(1) && attr.is_dw) {
+        // if is dw conv, filter need to align.
+        return true;
+      }
+      if (module::isUniformQuantized(castOp.getOutput()) &&
+          opd == op->getOperand(2) && !attr.is_dw && attr.groups > 1) {
+        // if is int8 group conv, bias need to align.
+        return true;
+      }
+      return false;
+    } else if (auto castOp = dyn_cast<tpu::DeconvOp>(op)) {
+      auto attr = castOp.parseParam();
+      if (opd == op->getOperand(1) && attr.is_dw) {
+        // if is dw conv, filter need to align.
+        return true;
+      }
+      if (module::isUniformQuantized(castOp.getOutput()) &&
+          opd == op->getOperand(2) && !attr.is_dw && attr.g > 1) {
+        // if is int8 group conv, bias need to align.
+        return true;
+      }
+      return false;
+    } else {
+      return true;
     }
   }
   return true;
+}
+
+bool is_eu_align_bm1686(Value opd) {
+  auto op = *opd.getUsers().begin();
+  if (module::isWeight(opd)) {
+    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
+      if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
+        return false;
+      }
+    } else if (isa<tpu::RequantIntAxisOp>(op)) {
+      if ((opd == op->getOperand(1))) {
+        return false;
+      }
+    } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  return true;
+}
+
+bool is_eu_align_common(Value opd) {
+  auto op = *opd.getUsers().begin();
+  if (module::isWeight(opd)) {
+    if (isa<tpu::Conv1DOp, tpu::Conv2DOp, tpu::Conv3DOp, tpu::DeconvOp>(op)) {
+      if ((opd == op->getOperand(1) || opd == op->getOperand(2))) {
+        return false;
+      }
+    } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  return true;
+}
+
+bool is_eu_align(Value opd) {
+  // Eu align rule may be different in different platforms
+  if (module::isBM1686()) {
+    return is_eu_align_bm1686(opd);
+  } else if (module::isCV18xx()) {
+    return is_eu_align_cv18xx(opd);
+  } else {
+    return is_eu_align_common(opd);
+  }
 }
 
 bool need_bcast(Value opd) {
@@ -540,6 +593,9 @@ bool need_bcast(Value opd) {
   auto use_op = *opd.getUsers().begin();
   if (auto cast_op = dyn_cast<tpu::LutOp>(use_op)) {
     return opd == cast_op.getTable();
+  }
+  if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {
+    return opd == cast_op.getTable() || opd == cast_op.getMantissa();
   }
   return false;
 }
