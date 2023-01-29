@@ -10,15 +10,10 @@
 
 from __future__ import division
 import numpy as np
-import os
 import sys
 import argparse
 import struct
-import csv
-from math import fabs
-from enum import IntEnum
 from .tensor_compare import TensorCompare, TensorCompareStats
-import threading
 import multiprocessing
 from tqdm import tqdm
 
@@ -122,7 +117,8 @@ def dequantize(d1, threshold):
     return d1
 
 
-def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close, per_axis_compare):
+def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_close,
+                      per_axis_compare):
     lock.acquire()
     d1 = npz1[name]
     d2 = npz2[name]
@@ -191,7 +187,7 @@ def npz_compare(args_list):
     stats = TensorCompareStats()
 
     names_list = list(names)  # deep copy
-    process_number = multiprocessing.cpu_count()
+    process_number = multiprocessing.cpu_count() // 2 + 1
     if args.per_axis_compare >= 0:
         process_number = 1
 
@@ -203,11 +199,11 @@ def npz_compare(args_list):
         # take name which will do compare
         processes = []
         for name in compare_process_name_list:
-            pbar.set_description("compare: {}".format(name))
+            pbar.set_description("compare {}".format(name))
             pbar.update(1)
             p = multiprocessing.Process(target=compare_one_array,
-                                        args=(tc, npz1, npz2, name , args.verbose, lock,
-                                              dic, int8_tensor_close, args.per_axis_compare))
+                                        args=(tc, npz1, npz2, name, args.verbose, lock, dic,
+                                              int8_tensor_close, args.per_axis_compare))
             processes.append(p)
             p.start()
 

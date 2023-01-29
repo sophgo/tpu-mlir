@@ -8,14 +8,27 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-
-
 
 int64_t top::PadOp::getFLOPs() { return 0; }
 
+struct pad_info {
+  std::vector<int64_t> shape_4;
+  std::vector<int64_t> pads_4;
+};
+
 LogicalResult top::PadOp::init(InferenceParameter &p) {
+  auto info = new pad_info();
+  std::vector<int64_t> in_shape = module::getShape(getInput());
+  i64_array_t pads = module::getI64Array(getPaddings());
+  auto ret = pad_reset(in_shape, *pads, info->shape_4, info->pads_4);
+  if (ret == false) {
+    dump();
+    llvm_unreachable("Not Implemented");
+  }
+  p.handle = (void *)info;
+  // set pads
   float *dst = p.outputs[0];
   auto total_num = module::getNumElements(getOutput());
   if (getMode() == 0) {
@@ -24,23 +37,25 @@ LogicalResult top::PadOp::init(InferenceParameter &p) {
       dst[i] = val_;
     }
   }
+
   return success();
 }
-void top::PadOp::deinit(InferenceParameter &p) {}
+void top::PadOp::deinit(InferenceParameter &p) {
+  if (p.handle != nullptr) {
+    auto info = (pad_info *)p.handle;
+    delete info;
+    p.handle = nullptr;
+  }
+}
 
 LogicalResult top::PadOp::inference(InferenceParameter &p) {
-  auto in_shape = module::getShape(getInput());
-  int64_t in = in_shape[0];
-  int64_t ic = in_shape[1];
-  int64_t ih = in_shape[2];
-  int64_t iw = in_shape[3];
-  auto pads_ = module::getI64Array(getPaddings());
+  auto p_info = (pad_info *)p.handle;
   auto pad_mode = getMode();
-  int num_dims = in_shape.size();
-  std::vector<int> pads;
-  for (int i = 0; i < num_dims * 2; i++) {
-    pads.emplace_back(pads_->at(i));
-  }
+  std::vector<int> pads(p_info->pads_4.begin(), p_info->pads_4.end());
+  int64_t in = p_info->shape_4[0];
+  int64_t ic = p_info->shape_4[1];
+  int64_t ih = p_info->shape_4[2];
+  int64_t iw = p_info->shape_4[3];
   int64_t oc = pads[1] + pads[5] + ic;
   int64_t oh = pads[2] + pads[6] + ih;
   int64_t ow = pads[3] + pads[7] + iw;

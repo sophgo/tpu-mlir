@@ -92,7 +92,7 @@ public:
     reduce_full_global_param_t param = {0};
     param.spec.common.axis_num = 1;
     param.spec.common.axis[0] = 2;
-    param.spec.common.method = get_reduce_type(reduceOp.getMode());
+    param.spec.common.method = BM168x::get_reduce_type(reduceOp.getMode());
     param.if_getting_buffer_size = true;
     uint64_t buffer_size = 0;
     param.buffer_size_ptr = &buffer_size;

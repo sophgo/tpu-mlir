@@ -22,7 +22,7 @@ LogicalResult tpu::PermuteOp::init(InferenceParameter &p) {
   auto info = new order_info();
   std::vector<int64_t> in_shape = module::getShape(getInput());
   i64_array_t in_order = module::getI64Array(getOrder());
-  auto ret = permute_reorder(in_shape, *in_order, info->shape, info->order, 5);
+  auto ret = permute_reset(in_shape, *in_order, info->shape, info->order, 5);
   if (ret == false) {
     dump();
     llvm_unreachable("Not Implemented");

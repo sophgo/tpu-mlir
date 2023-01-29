@@ -953,10 +953,53 @@ static void refresh(std::vector<int64_t> &order, int idx) {
   }
 }
 
-bool permute_reorder(const std::vector<int64_t> &shape,
-                     const std::vector<int64_t> &order,
-                     std::vector<int64_t> &to_shape,
-                     std::vector<int64_t> &to_order, int to_dim) {
+bool pad_reset(const std::vector<int64_t> &shape,
+               const std::vector<int64_t> &pads, std::vector<int64_t> &shape_4,
+               std::vector<int64_t> &pads_4) {
+  pads_4.assign(pads.begin(), pads.end());
+  shape_4.assign(shape.begin(), shape.end());
+  if (shape_4.size() == 4) {
+    return true;
+  }
+  int num_dims = shape_4.size();
+  assert(pads_4.size() == 2 * num_dims);
+  if (num_dims < 4) {
+    int insert_dim = 4 - num_dims;
+    for (int i = 0; i < insert_dim; i++) {
+      shape_4.insert(shape_4.begin(), 1);
+      pads_4.insert(pads_4.begin(), 0);
+      pads_4.insert(pads_4.end() - num_dims, 0);
+    }
+    return true;
+  }
+  while (num_dims > 4) {
+    bool done = false;
+    for (int i = 0; i < num_dims - 1; i++) {
+      if (pads_4[i] == 0 && pads_4[i + 1] == 0 && pads_4[i + num_dims] == 0 &&
+          pads_4[i + num_dims + 1] == 0) {
+        shape_4[i] *= shape_4[i + 1];
+        shape_4.erase(shape_4.begin() + i + 1);
+        pads_4.erase(pads_4.begin() + i + num_dims + 1);
+        pads_4.erase(pads_4.begin() + i + 1);
+        num_dims--;
+        done = true;
+        break;
+      }
+    }
+    if (done == false) {
+      break;
+    }
+  }
+  if (num_dims != 4) {
+    return false;
+  }
+  return true;
+}
+
+bool permute_reset(const std::vector<int64_t> &shape,
+                   const std::vector<int64_t> &order,
+                   std::vector<int64_t> &to_shape,
+                   std::vector<int64_t> &to_order, int to_dim) {
   to_order.assign(order.begin(), order.end());
   to_shape.assign(shape.begin(), shape.end());
   int num_dims = shape.size();

@@ -214,6 +214,26 @@ stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
   return s;
 }
 
+int BM168x::get_reduce_type(llvm::StringRef mode) {
+  if (mode == "ReduceMean") {
+    return SG_REDUCE_MEAN;
+  } else if (mode == "ReduceSum") {
+    return SG_REDUCE_SUM;
+  } else if (mode == "ReduceMax") {
+    return SG_REDUCE_MAX;
+  } else if (mode == "ReduceMin") {
+    return SG_REDUCE_MIN;
+  } else if (mode == "ReduceProd") {
+    return SG_REDUCE_PROD;
+  } else if (mode == "ReduceL2") {
+    return SG_REDUCE_L2;
+  } else if (mode == "ReduceL1") {
+    return SG_REDUCE_L1;
+  } else {
+    llvm_unreachable("unsupport reduce mode.");
+  }
+}
+
 typedef int (*backend_api_t)(void *params, int param_size, void *pid_node);
 void BM168x::call_global_func(const char *symbolName, void *params,
                               int param_size) {

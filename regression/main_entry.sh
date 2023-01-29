@@ -51,8 +51,6 @@ run_onnx_op() {
   return 0
 }
 
-export -f run_onnx_op
-
 run_tflite_op() {
   echo "======= test_tflite.py ====="
   test_tflite.py --chip bm1684x >test_tflite_bm1684x.log 2>&1 | true
@@ -85,15 +83,16 @@ export -f run_script_test
 run_all() {
   echo "" >fail.log
   echo "" >result.log
-  echo "run_onnx_op" >cmd.txt
-  #echo "run_tflite_op" >>cmd.txt
-  echo "run_script_test" >>cmd.txt
-  cat cmd.txt
   ERR=0
-  parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
+  run_onnx_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
   fi
+  #echo "run_tflite_op" >>cmd.txt
+  run_script_test
+  if [[ "$?" -ne 0 ]]; then
+      ERR=1
+    fi
   for chip in ${chip_support[@]}; do
     echo "" >cmd.txt
     declare -n list="${chip}_model_list_${test_type}"
