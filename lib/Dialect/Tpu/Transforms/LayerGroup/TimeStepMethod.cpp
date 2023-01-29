@@ -275,8 +275,8 @@ void TimeStepMethod::get_timestep_cycle_slack(
     std::vector<int64_t> &timestep_cycle_slack) {
   int64_t timestep_num = time_step->get_timestep_num();
   auto &tensor_infos = time_step->get_tensor_infos();
-  //  time_step->clear_gdma_cycle();
-  //  time_step->clear_layer_cycle();
+  time_step->clear_gdma_cycle();
+  time_step->clear_layer_cycle();
   int64_t tensor_cycle = 0;
   int64_t buffer_size = 0;
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
@@ -285,6 +285,7 @@ void TimeStepMethod::get_timestep_cycle_slack(
       int64_t cycle_slack =
           cycle_calculator_->getLocalLayerCycle(op, tensor_infos, true);
       timestep_cycle_slack[ts] += cycle_slack;
+      time_step->set_layer_cycle(op, cycle_slack);
     }
 
     std::list<GdmaElt> list_tensors;
@@ -298,6 +299,7 @@ void TimeStepMethod::get_timestep_cycle_slack(
       tensor_to_bufsize[v] = buffer_size;
       list_tensors.push_back(tensor);
       timestep_cycle_slack[ts] -= tensor_cycle;
+      time_step->set_gdma_cycle(tensor.first, tensor_cycle);
     }
     tensor_timesteps.push_back(std::move(list_tensors));
   }

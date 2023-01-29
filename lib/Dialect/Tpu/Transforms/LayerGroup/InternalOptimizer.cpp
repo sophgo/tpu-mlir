@@ -2,6 +2,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepCombine.h"
 
 // static bool use_partial_coeff_reload = true;
 
@@ -36,9 +37,7 @@ void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm,
   // }
 
   // Time step combination if it is opened
-  // if (timestep_combine_optimize) {
-  //   pm->add_pass(CreateTimeStepCombinePass());
-  // }
+  pm->add_pass(CreateTimeStepCombinePass());
 }
 
 void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,

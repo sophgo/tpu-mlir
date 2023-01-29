@@ -475,5 +475,163 @@ void BasicTimeStep::cancel_tensor_hold_in_lmem(Value v) {
   this->hold_coeff_.erase(iter);
 }
 
+void BasicTimeStep::reset_timestep(std::vector<TpuTsField> &ts_layers_v,
+                                   std::vector<GdmaTsField> &ts_tensors_v,
+                                   MemBuff &mem_buffer) {
+  timestep_table_.clear();
+  assert(ts_layers_v.size() == ts_tensors_v.size());
+  for (size_t ts = 0; ts < ts_layers_v.size(); ++ts) {
+    TimestepRow row;
+    row.tpu0_ts_field = ts_layers_v[ts];
+    row.gdma0_ts_field = ts_tensors_v[ts];
+    timestep_table_.push_back(row);
+  }
+
+  lmem_buffer_ = mem_buffer;
+  for (auto iter = lmem_buffer_.begin(); iter != lmem_buffer_.end(); iter++) {
+    if (iter->first.type != LMEM_OPERATION) {
+      if (hold_coeff_.find(iter->first.value) != hold_coeff_.end()) {
+        hold_coeff_[iter->first.value] = iter->second.start_ts;
+      }
+      if (canceled_hold_coeff_.find(iter->first.value) !=
+          canceled_hold_coeff_.end()) {
+        canceled_hold_coeff_[iter->first.value] = iter->second.start_ts;
+      }
+    }
+  }
+}
+
+bool BasicTimeStep::tensor_can_move(GdmaElt &ts_tensor, int64_t src_ts,
+                                    int64_t dst_ts) {
+  int64_t ts_num = timestep_table_.size();
+  if (src_ts < 0 || src_ts >= ts_num || dst_ts < 0 || dst_ts >= ts_num) {
+    return false;
+  }
+
+  int64_t start_ts = -1, end_ts = -1;
+  MemBuff::iterator iter;
+  for (iter = lmem_buffer_.begin(); iter != lmem_buffer_.end(); iter++) {
+    if (iter->first.type != LMEM_OPERATION &&
+        iter->first.value == ts_tensor.first) {
+      start_ts = iter->second.start_ts;
+      end_ts = iter->second.end_ts;
+      break;
+    }
+  }
+
+  // tensor loaded may be used not only one timestep
+  // tensor can be stored between (begin timestep ,end timestep]
+  auto dst_layers = ts_tensor.first.getUsers();
+  if (is_timestep_load(ts_tensor.second.mode)) {
+    assert(iter != lmem_buffer_.end());
+    std::vector<Operation *> execute_layers;
+    int64_t tmp = src_ts;
+    while (tmp != dst_ts) {
+      tmp += (src_ts > dst_ts ? -1 : 1);
+      execute_layers.insert(execute_layers.end(),
+                            timestep_table_[tmp].tpu0_ts_field.begin(),
+                            timestep_table_[tmp].tpu0_ts_field.end());
+    }
+    for (auto op : dst_layers) {
+      if (std::find(execute_layers.begin(), execute_layers.end(), op) !=
+          execute_layers.end()) {
+        return false;
+      }
+    }
+  } else if (ts_tensor.second.mode == TIMESTEP_STORE) {
+    assert(iter != lmem_buffer_.end());
+    if (start_ts < end_ts && dst_ts <= start_ts) {
+      return false;
+    }
+    if (start_ts > end_ts && src_ts > start_ts && dst_ts <= start_ts) {
+      return false;
+    }
+    if (start_ts > end_ts && src_ts < start_ts && dst_ts >= start_ts) {
+      return false;
+    }
+    auto src_layer = ts_tensor.first.getDefiningOp();
+    int64_t ts = 0;
+    for (ts = 0; ts < ts_num; ++ts) {
+      if (std::find(timestep_table_[ts].tpu0_ts_field.begin(),
+                    timestep_table_[ts].tpu0_ts_field.end(),
+                    src_layer) != timestep_table_[ts].tpu0_ts_field.end()) {
+        break;
+      }
+    }
+    if (ts != ts_num && ts != start_ts && start_ts < end_ts && dst_ts <= ts) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool BasicTimeStep::layer_can_merge_backward(int64_t ts,
+                                             bool consider_hold_in_coeff) {
+  int64_t timestep_num = get_timestep_num();
+  if (ts > timestep_num - 2) {
+    return false;
+  }
+
+  const TpuTsField &ts_layers = timestep_table_[ts].tpu0_ts_field;
+  const TpuTsField &next_ts_layers = timestep_table_[ts + 1].tpu0_ts_field;
+  for (auto &tensor : timestep_table_[ts].gdma0_ts_field) {
+    if (is_timestep_load(tensor.second.mode)) {
+      auto dst_layers = tensor.first.getUsers();
+      for (auto op : dst_layers) {
+        // if there is hold coeff tensor, we regard this is valid to be merged
+        // with back layer
+        if ((ts == 0 || consider_hold_in_coeff ||
+             !is_tensor_hold_in_lmem(tensor.first)) &&
+            std::find(next_ts_layers.begin(), next_ts_layers.end(), op) !=
+                next_ts_layers.end()) {
+          return false;
+        }
+      }
+    } else if (tensor.second.mode == TIMESTEP_STORE) {
+      auto src_layer = tensor.first.getDefiningOp();
+      if (std::find(next_ts_layers.begin(), next_ts_layers.end(), src_layer) !=
+          next_ts_layers.end()) {
+        return false;
+      }
+    }
+  }
+
+  for (auto &tensor : timestep_table_[ts + 1].gdma0_ts_field) {
+    if (tensor.second.mode == TIMESTEP_STORE) {
+      auto src_layer = tensor.first.getDefiningOp();
+      if (std::find(ts_layers.begin(), ts_layers.end(), src_layer) !=
+          ts_layers.end()) {
+        return false;
+      }
+    } else if (is_timestep_load(tensor.second.mode)) {
+      auto dst_layers = tensor.first.getUsers();
+      for (auto op : dst_layers) {
+        if (std::find(ts_layers.begin(), ts_layers.end(), op) !=
+            ts_layers.end()) {
+          return false;
+        }
+      }
+    }
+  }
+
+  // if cur_tensor end_ts == ts_idx+1, do not merge to avoid inplace alloc_lmem
+  ValueSet end_ts_tensors; // tensors that end_ts == ts + 1
+  for (auto &elt : lmem_buffer_) {
+    if (elt.first.type != LMEM_OPERATION && elt.second.end_ts == ts + 1) {
+      end_ts_tensors.insert(elt.first.value);
+    }
+  }
+  for (auto op : ts_layers) {
+    auto inputs = get_input_values(op);
+    for (auto in : inputs) {
+      if (end_ts_tensors.count(in) != 0) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 } // namespace tpu
 } // namespace tpu_mlir
