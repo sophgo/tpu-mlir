@@ -2,7 +2,9 @@
 
 2023-01-12:
 build from nntoolchain 83368ef6494731dc164beac123e382dd6e629db9
-build from TPU1686     407e1f1ca2b82e061884b76f70bcc36bf2d33d6b
+
+2023-01-29
+build from TPU1686     6c27151e1d0f8f24b7b1d9ab8457200e0f775a0d
 
 1684
 2023-01-12:

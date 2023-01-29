@@ -365,9 +365,9 @@ typedef struct {
 } dequant_int_param_t;
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long slope_addr;
-  unsigned long long output_addr;
+  uint64_t input_addr;
+  uint64_t slope_addr;
+  uint64_t output_addr;
   int input_n;
   int input_c;
   int input_h;
@@ -408,12 +408,12 @@ typedef struct {
 } softmax_tflite_fix8b_param_t;
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long weight_addr;
-  unsigned long long bias_addr;
-  unsigned long long output_addr;
-  unsigned long long mean_addr;
-  unsigned long long rstd_addr;
+  uint64_t input_addr;
+  uint64_t weight_addr;
+  uint64_t bias_addr;
+  uint64_t output_addr;
+  uint64_t mean_addr;
+  uint64_t rstd_addr;
   int shape[MAX_SHAPE_DIMS];
   int dims;
   int axis;
@@ -444,10 +444,73 @@ typedef struct {
   int dtype;
 } layer_norm_local_param_t;
 
+typedef struct tranpose_spec {
+  uint64_t buffer_global_addr;
+  uint32_t order[MAX_SHAPE_DIMS];
+  uint32_t is_dynamic;
+} transpose_spec_t;
+
+typedef struct transpose_param {
+  transpose_spec_t spec;
+  int32_t if_getting_buffer_size;
+  uint64_t * buffer_size_ptr;
+} transpose_param_t;
+
 typedef struct reshape_spec {
   int32_t dims;
   int32_t shape[MAX_SHAPE_DIMS];
 } reshape_spec_t;
+
+typedef enum {
+  SG_REDUCE_MEAN = 0,
+  SG_REDUCE_SUM = 1,
+  SG_REDUCE_MAX = 2,
+  SG_REDUCE_MIN = 3,
+  SG_REDUCE_PROD = 4,
+  SG_REDUCE_L2 = 5,
+  SG_REDUCE_L1 = 6,
+} sg_reduce_method_t;
+
+static int get_reduce_type(llvm::StringRef mode) {
+  if (mode == "ReduceMean") {
+    return SG_REDUCE_MEAN;
+  } else if (mode == "ReduceSum") {
+    return SG_REDUCE_SUM;
+  } else if (mode == "ReduceMax") {
+    return SG_REDUCE_MAX;
+  } else if (mode == "ReduceMin") {
+    return SG_REDUCE_MIN;
+  } else if (mode == "ReduceProd") {
+    return SG_REDUCE_PROD;
+  } else if (mode == "ReduceL2") {
+    return SG_REDUCE_L2;
+  } else if (mode == "ReduceL1") {
+    return SG_REDUCE_L1;
+  } else {
+    llvm_unreachable("unsupport reduce mode.");
+  }
+}
+
+typedef struct reduce_full_common_spec {
+  int axis[MAX_SHAPE_DIMS];
+  int axis_num;
+  int method;
+  float input_scale;
+  float output_scale;
+  int keep_dims; // used for dynamic compile
+} reduce_full_common_spec_t;
+
+typedef struct reduce_full_global_spec {
+  reduce_full_common_spec_t common;
+  uint64_t buffer_addr;
+} reduce_full_global_spec_t;
+
+typedef struct reduce_full_global_param {
+  reduce_full_global_spec_t spec;
+  int if_getting_buffer_size;
+  uint64_t *buffer_size_ptr;
+} reduce_full_global_param_t;
+
 #ifdef __cplusplus
 }
 #endif

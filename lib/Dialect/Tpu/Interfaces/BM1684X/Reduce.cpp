@@ -17,68 +17,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifndef MAX_SHAPE_DIMS
-#define MAX_SHAPE_DIMS 8
-#endif
-
-typedef enum {
-  SG_REDUCE_MEAN = 0,
-  SG_REDUCE_SUM = 1,
-  SG_REDUCE_MAX = 2,
-  SG_REDUCE_MIN = 3,
-  SG_REDUCE_PROD = 4,
-  SG_REDUCE_L2 = 5,
-  SG_REDUCE_L1 = 6,
-} sg_reduce_method_t;
-
-static int get_reduce_type(llvm::StringRef mode) {
-  if (mode == "ReduceMean") {
-    return SG_REDUCE_MEAN;
-  } else if (mode == "ReduceSum") {
-    return SG_REDUCE_SUM;
-  } else if (mode == "ReduceMax") {
-    return SG_REDUCE_MAX;
-  } else if (mode == "ReduceMin") {
-    return SG_REDUCE_MIN;
-  } else if (mode == "ReduceProd") {
-    return SG_REDUCE_PROD;
-  } else if (mode == "ReduceL2") {
-    return SG_REDUCE_L2;
-  } else if (mode == "ReduceL1") {
-    return SG_REDUCE_L1;
-  } else {
-    llvm_unreachable("unsupport reduce mode.");
-  }
-}
-
-typedef struct reduce_full_common_spec {
-  int axis[MAX_SHAPE_DIMS];
-  int axis_num;
-  int method;
-  float input_scale;
-  float output_scale;
-  int keep_dims; // used for dynamic compile
-} reduce_full_common_spec_t;
-
-typedef struct reduce_full_global_spec {
-  reduce_full_common_spec_t common;
-  unsigned long long buffer_addr;
-} reduce_full_global_spec_t;
-
-typedef struct reduce_full_global_param {
-  reduce_full_global_spec_t spec;
-  int if_getting_buffer_size;
-  unsigned long long *buffer_size_ptr;
-} reduce_full_global_param_t;
-
-#ifdef __cplusplus
-}
-#endif
-
 void tpu::ReduceOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto attr = parseParam();
