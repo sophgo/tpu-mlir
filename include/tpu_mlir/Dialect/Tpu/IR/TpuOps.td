@@ -677,7 +677,7 @@ def Tpu_LutOp: Tpu_Op<"Lut",
 }
 
 def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
-    [DeclareOpInterfaceMethods<LocalGenInterface>,
+    [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>,
     InOutSameShape]>{
   let summary = "LutBF16 operator";
@@ -1235,7 +1235,7 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
 def Tpu_DeconvOp: Tpu_Op<"Deconv",[
     SupportFuseRelu,
     DeclareOpInterfaceMethods<TypeInterface>,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "deconvolution operator";
 

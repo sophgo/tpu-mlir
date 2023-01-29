@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include <iostream>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
-#include <iostream>
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 
 #define DEBUG_TYPE "tl_tdma"
 
@@ -140,6 +140,55 @@ void cvi_backend_tl_load_stride(uint32_t layer_id, gaddr_t ga_src,
       CV18xx::tg_default_stride({(uint32_t)Local_N, (uint32_t)Global_C,
                                  (uint32_t)Global_H, (uint32_t)Global_W},
                                 from);
+  CV18xx::tdma_load_stride(&tl_data, ga_src, ga_stride, false, DoDecompress);
+}
+
+void cvi_backend_tl_load_stride_broadcast(uint32_t layer_id, gaddr_t ga_src,
+                                          laddr_t la_dst, int Local_N,
+                                          int Local_C, int Local_H, int Local_W,
+                                          int Global_C, int Global_H,
+                                          int Global_W, bool DoAligned,
+                                          bool isNeuron, cvk_fmt_t from,
+                                          cvk_fmt_t to, bool DoDecompress) {
+  LLVM_DEBUG(llvm::errs() << llvm::format(
+                 "cvi_backend_tl_load_stride:\n"
+                 "    layer_id %d\n"
+                 "    src (, %d, %d, %d), dst (%d, %d, %d, %d)\n"
+                 "    src 0x%lx, dst 0x%lx\n"
+                 "    DoAligned %d, isNeuron %d\n"
+                 "    from %d to %d, DoDeCompress %d\n",
+                 layer_id, Global_C, Global_H, Global_W, Local_N, Local_C,
+                 Local_H, Local_W, ga_src, la_dst, DoAligned, isNeuron, from,
+                 to, DoDecompress));
+  Local_C = Local_C == 1 ? CV18xx::NPU_NUM : Local_C;
+  Global_C = Global_C == 1 ? CV18xx::NPU_NUM : Global_C;
+  // tensor in local memory
+  cvk_tl_shape_t tl_shape;
+  tl_shape.n = Local_N;
+  tl_shape.c = Local_C;
+  tl_shape.h = Local_H;
+  tl_shape.w = Local_W;
+
+  if (DoDecompress) {
+    assert(((from == CVK_FMT_I8 && to == CVK_FMT_I8) ||
+            (from == CVK_FMT_BF16 && to == CVK_FMT_BF16)) &&
+           "Only support i8/bf16 now");
+  }
+
+  cvk_tl_t tl_data;
+  tl_data.start_address = la_dst;
+  tl_data.fmt = from;
+  tl_data.shape = tl_shape;
+  tl_data.stride =
+      CV18xx::tl_default_stride(tl_shape, tl_data.fmt, DoAligned ? 1 : 0);
+
+  // Global shape used for stride calculation
+  cvk_tg_stride_t ga_stride =
+      CV18xx::tg_default_stride({(uint32_t)Local_N, (uint32_t)Global_C,
+                                 (uint32_t)Global_H, (uint32_t)Global_W},
+                                from);
+  ga_stride.c = 0;
+  ga_stride.n = 0;
   CV18xx::tdma_load_stride(&tl_data, ga_src, ga_stride, false, DoDecompress);
 }
 
