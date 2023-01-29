@@ -39,6 +39,8 @@ public:
   void add_tpu0_gdma0_ts_field(const TpuTsField &tpu_field,
                                const GdmaTsField &gdma_field);
   void update_gdma0_ts_field(int64_t ts, const GdmaTsField &field);
+  std::vector<TimestepRow> &get_timestep_table() { return timestep_table_; }
+  size_t get_timestep_num() { return timestep_table_.size(); }
 
   int64_t get_tensor_life_time(Value v);
 
@@ -51,7 +53,6 @@ public:
   void software_pipeline();
 
   // getter
-  size_t get_timestep_num() { return timestep_table_.size(); }
   const TpuTsField &getLayers(int64_t ts) {
     return timestep_table_[ts].tpu0_ts_field;
   }
@@ -85,17 +86,44 @@ public:
   void show_timestep();
   void show_lmem_buffer();
 
+  bool layer_can_merge_backward(int64_t ts, bool consider_hold_in_coeff);
+
+  //==============================================
+  // functions for timestep combine
+  //==============================================
+  void reset_timestep(std::vector<TpuTsField> &ts_layers_v,
+                      std::vector<GdmaTsField> &ts_tensors_v,
+                      MemBuff &mem_buffer);
+  void clear_gdma_cycle() { gdma_cycle_count_.clear(); }
+  void clear_layer_cycle() { layer_cycle_count_.clear(); }
+  void set_gdma_cycle(Value value, int64_t cycle_count) {
+    gdma_cycle_count_[value] = cycle_count;
+  }
+  void set_layer_cycle(Operation *op, int64_t cycle_count) {
+    layer_cycle_count_[op] = cycle_count;
+  }
+  ValueIntMap& get_gdma_cycle() { return gdma_cycle_count_; }
+  std::map<Operation *, int64_t>& get_layer_cycle() {
+    return layer_cycle_count_;
+  }
+  bool tensor_can_move(GdmaElt &tensor, int64_t src_ts, int64_t dst_ts);
+
 protected:
   std::shared_ptr<TimeStepMethod> timestep_method_;
   std::shared_ptr<SoftwarePipeline> swpipl_;
   std::vector<TimestepRow> timestep_table_;
 
-  std::map<Value, int64_t, value_compare> hold_coeff_;
+  ValueIntMap hold_coeff_;
+  ValueIntMap canceled_hold_coeff_;
   TensorInfo tensor_infos_;
   int64_t swpipl_stage_num_;
 
   int64_t lmem_occupy_;
   MemBuff lmem_buffer_;
+
+  // members for timestep combine
+  ValueIntMap gdma_cycle_count_;
+  std::map<Operation*, int64_t> layer_cycle_count_;
 };
 
 using BasicTimeStepPtr = std::shared_ptr<BasicTimeStep>;
