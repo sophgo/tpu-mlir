@@ -21,9 +21,9 @@ extern "C" {
 #endif
 
 typedef struct {
-  unsigned long long input_addr;
-  unsigned long long table_addr;
-  unsigned long long output_addr;
+  uint64_t input_addr;
+  uint64_t table_addr;
+  uint64_t output_addr;
   unsigned int buffer_addr; // used only for local layer
   int shape[MAX_SHAPE_DIMS];
   int shape_dim;

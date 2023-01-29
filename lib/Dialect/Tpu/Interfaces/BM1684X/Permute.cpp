@@ -9,34 +9,12 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 
 
 using namespace tpu_mlir::backend;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct tranpose_spec {
-    uint64_t buffer_global_addr;
-    uint32_t order[MAX_SHAPE_DIMS];
-    uint32_t is_dynamic;
-} transpose_spec_t;
-
-typedef struct transpose_param {
-    transpose_spec_t spec;
-
-    int32_t if_getting_buffer_size;
-    uint64_t buffer_size_ptr;
-} transpose_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

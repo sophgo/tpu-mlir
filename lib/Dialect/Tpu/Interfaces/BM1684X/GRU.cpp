@@ -154,13 +154,13 @@ typedef enum {
 } gru_batch_t;
 
 typedef struct {
-  unsigned long long xGlobalAddr;
-  unsigned long long h0GlobalAddr;
-  unsigned long long yGlobalAddr;
-  unsigned long long hnGlobalAddr;
-  unsigned long long wGlobalAddr;
-  unsigned long long bGlobalAddr;
-  unsigned long long zGlobalAddr;
+  uint64_t xGlobalAddr;
+  uint64_t h0GlobalAddr;
+  uint64_t yGlobalAddr;
+  uint64_t hnGlobalAddr;
+  uint64_t wGlobalAddr;
+  uint64_t bGlobalAddr;
+  uint64_t zGlobalAddr;
   bool bias;
   bool outputY;
   bool outputYh;

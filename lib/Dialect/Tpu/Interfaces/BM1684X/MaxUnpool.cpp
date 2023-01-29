@@ -21,9 +21,9 @@ extern "C" {
 #endif
 
 typedef struct {
-  unsigned long long bottom_global_offset;
-  unsigned long long bottom_mask_global_offset;
-  unsigned long long top_global_offset;
+  uint64_t bottom_global_offset;
+  uint64_t bottom_mask_global_offset;
+  uint64_t top_global_offset;
   int bottom_global_N;
   int bottom_c;
   int bottom_h;

@@ -178,10 +178,10 @@ extern "C" {
 #endif
 typedef struct {
   /* common param */
-  unsigned long long input_global_addr;
-  unsigned long long weight_global_addr;
-  unsigned long long bias_global_addr;
-  unsigned long long output_global_addr;
+  uint64_t input_global_addr;
+  uint64_t weight_global_addr;
+  uint64_t bias_global_addr;
+  uint64_t output_global_addr;
   int input_shape[4];
   int groups;
   int output_c;
@@ -201,8 +201,8 @@ typedef struct {
   /* param for quant */
   bool is_asym;
   unsigned char rshift;
-  unsigned long long kzp_global_addr;
-  unsigned long long pad_insert_global_addr;
+  uint64_t kzp_global_addr;
+  uint64_t pad_insert_global_addr;
   bool kzp_is_const;
   bool pad_insert_is_const;
   int kzp_val;

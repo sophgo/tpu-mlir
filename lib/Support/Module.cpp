@@ -80,7 +80,6 @@ top::NoneOp getNoneOp(Operation *op) {
   return NoneOp;
 }
 
-
 Value getOriValue(Value v) {
   if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
     int idx = block_arg.getArgNumber();
@@ -118,7 +117,7 @@ Value getOriValue(Value v) {
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
-Operation* getNextOp(Operation *op) {
+Operation *getNextOp(Operation *op) {
   Operation *nextOp = nullptr;
   if (op->getResult(0).hasOneUse()) {
     for (auto &use : op->getResult(0).getUses()) {
@@ -235,21 +234,19 @@ int64_t getAddress(Value v) {
     return 0;
   }
   auto attr = v.getType().cast<RankedTensorType>().getEncoding();
-  if (!attr) {
-    if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
-      int index = block_arg.getArgNumber();
-      auto parent_op = v.getParentBlock()->getParentOp();
-      auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
-      if (funcOp) {
-        func::CallOp callee = getCallOp(funcOp);
-        return getAddress(callee.getOperand(index));
-      }
-    }
-  } else {
+  if (attr) {
     assert(attr.isa<IntegerAttr>());
     return attr.cast<IntegerAttr>().getInt();
   }
-  llvm_unreachable("can't get address");
+  if (auto block_arg = v.dyn_cast_or_null<BlockArgument>()) {
+    int index = block_arg.getArgNumber();
+    auto parent_op = v.getParentBlock()->getParentOp();
+    auto funcOp = dyn_cast_or_null<FuncOp>(parent_op);
+    if (funcOp) {
+      func::CallOp callee = getCallOp(funcOp);
+      return getAddress(callee.getOperand(index));
+    }
+  }
   return 0;
 }
 
@@ -529,9 +526,7 @@ bool isWeight(Value v) {
   return false;
 }
 
-bool isNone(Value v) {
-  return v.getType().isa<mlir::NoneType>();
-}
+bool isNone(Value v) { return v.getType().isa<mlir::NoneType>(); }
 
 llvm::StringRef getModuleName() {
   return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
