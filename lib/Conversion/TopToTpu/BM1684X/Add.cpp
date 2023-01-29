@@ -15,7 +15,7 @@ namespace bm1684x {
 void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp addOp,
                                bool asymmetric) const {
   if (asymmetric) {
-    LoweringF16(rewriter, addOp);
+    LoweringF32(rewriter, addOp);
     return;
   }
   auto op = addOp.getOperation();
