@@ -21,6 +21,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import onnxruntime
+import multiprocessing
 
 BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK"]
 BM1684_Failed_Cases = [
@@ -29,7 +30,7 @@ BM1684_Failed_Cases = [
     "Conv3d", "ConvStride", "ConvTranspose", "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf",
     "Exp", "Expand", "Expand2", "Gather", "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3",
     "LeakyRelu", "Log", "LogSoftmax", "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul",
-    "Min", "MulConst", "Neg", "Pad0", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
+    "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
     "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum",
     "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale",
     "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK", "Where",
@@ -104,7 +105,7 @@ class ONNX_IR_TESTER(object):
             "Min": self.test_Min,
             "MulConst": self.test_MulConst,
             "Neg": self.test_Neg,
-            "Pad0": self.test_Pad0,  # zero pad
+            "Pad": self.test_Pad,  # zero pad
             "Pad1": self.test_Pad1,  # pad val
             # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
             "PadReflect": self.test_PadReflect,
@@ -170,7 +171,6 @@ class ONNX_IR_TESTER(object):
         elif self.chip == "bm1684":
             self.support_quant_modes = ["f32", "int8"]
             self.support_asym = [False]
-
         self.mode = mode.lower()
         if self.mode == "" or self.mode == "all":
             self.quant_modes = self.support_quant_modes
@@ -198,22 +198,6 @@ class ONNX_IR_TESTER(object):
             if case in BM1684_Failed_Cases:
                 return False
         return True
-
-    def test_all(self):
-        error_cases = []
-        for case in self.test_function:
-            if self.check_support(case):
-                try:
-                    self.test_single(case)
-                except:
-                    error_cases.append(case)
-        if error_cases:
-            print("====== test_onnx.py TEST Failed ======")
-            for case in error_cases:
-                print(case)
-            raise RuntimeError("Error: {} Cases Filed".format(len(error_cases)))
-        else:
-            print("====== test_onnx.py TEST Success ======")
 
     def create_random_input(self, graph_def: onnx.GraphProto):
         inputs = {}
@@ -1437,21 +1421,26 @@ class ONNX_IR_TESTER(object):
         )
         self.onnx_and_test(graph_def)
 
-    def test_Pad0(self, case_name):
-        input_shape = [3, 8, 32, 32]
-        output_shape = [3, 8, 44, 46]
-        pads = np.array([0, 0, 5, 6, 0, 0, 7, 8]).astype(np.int64)
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-        pad_val = helper.make_tensor(name='pads',
-                                     data_type=onnx.TensorProto.INT64,
-                                     dims=pads.shape,
-                                     vals=pads.flatten())
-        pad_def = helper.make_node("Pad", ['input', 'pads'], outputs=['output'], mode='constant')
-        graph_def = helper.make_graph([pad_def],
-                                      case_name, [input], [output],
-                                      initializer=[pad_val])
-        self.onnx_and_test(graph_def)
+    def test_Pad(self, case_name):
+        case0 = [[3, 8, 32, 32], [3, 8, 44, 46], [0, 0, 5, 6, 0, 0, 7, 8]]
+        case1 = [[4, 8, 10], [4, 9, 11], [0, 1, 0, 0, 0, 1]]
+        case2 = [[1, 1, 160, 160, 96], [1, 1, 161, 161, 96], [0, 0, 0, 0, 0, 0, 0, 1, 1, 0]]
+        cases = (case0, case1, case2)
+        for idx, case in enumerate(cases):
+            pads = np.array(case[2]).astype(np.int64)
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, case[0])
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, case[1])
+            pad_val = helper.make_tensor(name='pads',
+                                         data_type=onnx.TensorProto.INT64,
+                                         dims=pads.shape,
+                                         vals=pads.flatten())
+            pad_def = helper.make_node("Pad", ['input', 'pads'],
+                                       outputs=['output'],
+                                       mode='constant')
+            graph_def = helper.make_graph([pad_def],
+                                          "{}_{}".format(case_name, idx), [input], [output],
+                                          initializer=[pad_val])
+            self.onnx_and_test(graph_def)
 
     def test_Pad1(self, case_name):
         input_shape = [3, 8, 32, 32]
@@ -2747,6 +2736,44 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def, qdq=True)
 
 
+def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
+    try:
+        tester.test_single(case)
+    except:
+        error_cases.append(case)
+        return
+    success_cases.append(case)
+
+
+def test_all(tester: ONNX_IR_TESTER):
+    process_number = multiprocessing.cpu_count() // 2 + 1
+    processes = []
+    error_cases = multiprocessing.Manager().list()
+    success_cases = multiprocessing.Manager().list()
+    for case in tester.test_function:
+        if tester.check_support(case):
+            p = multiprocessing.Process(target=test_one_case_in_all,
+                                        args=(tester, case, error_cases, success_cases))
+            processes.append(p)
+        if len(processes) == process_number:
+            for p in processes:
+                p.start()
+            for j in processes:
+                j.join()
+            processes = []
+    if processes:
+        for p in processes:
+            p.start()
+        for j in processes:
+            j.join()
+    print("Success: {}".format(success_cases))
+    print("Failure: {}".format(error_cases))
+    if error_cases:
+        print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
+    else:
+        print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
@@ -2770,6 +2797,6 @@ if __name__ == "__main__":
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":
-        tester.test_all()
+        test_all(tester)
     else:
         tester.test_single(args.case)

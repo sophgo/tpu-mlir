@@ -453,7 +453,7 @@ typedef struct tranpose_spec {
 typedef struct transpose_param {
   transpose_spec_t spec;
   int32_t if_getting_buffer_size;
-  uint64_t * buffer_size_ptr;
+  uint64_t *buffer_size_ptr;
 } transpose_param_t;
 
 typedef struct reshape_spec {
@@ -471,25 +471,11 @@ typedef enum {
   SG_REDUCE_L1 = 6,
 } sg_reduce_method_t;
 
-static int get_reduce_type(llvm::StringRef mode) {
-  if (mode == "ReduceMean") {
-    return SG_REDUCE_MEAN;
-  } else if (mode == "ReduceSum") {
-    return SG_REDUCE_SUM;
-  } else if (mode == "ReduceMax") {
-    return SG_REDUCE_MAX;
-  } else if (mode == "ReduceMin") {
-    return SG_REDUCE_MIN;
-  } else if (mode == "ReduceProd") {
-    return SG_REDUCE_PROD;
-  } else if (mode == "ReduceL2") {
-    return SG_REDUCE_L2;
-  } else if (mode == "ReduceL1") {
-    return SG_REDUCE_L1;
-  } else {
-    llvm_unreachable("unsupport reduce mode.");
-  }
-}
+typedef struct {
+  int pad[4][2];
+  int type;
+  float constant;
+} pad_param_t;
 
 typedef struct reduce_full_common_spec {
   int axis[MAX_SHAPE_DIMS];
@@ -613,6 +599,7 @@ public:
     p += sizeof(spec);
     return p - static_cast<char *>(buffer);
   }
+  static int get_reduce_type(llvm::StringRef mode);
 
   // -------------------------------------------------------------------
   // global chip config
