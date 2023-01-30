@@ -5,7 +5,7 @@
 配置系统环境
 ~~~~~~~~~~~~
 
-如果是首次使用Docker, 那么请使用 :ref:`首次使用Docker <docker configuration>` 中的方法安装
+如果是首次使用Docker, 那么请使用 :ref:`开发环境配置 <docker configuration>` 中的方法安装
 并配置Docker。同时, 本章中会使用到 ``git-lfs`` , 如果首次使用 ``git-lfs`` 可执行下述命
 令进行安装和配置(仅首次执行, 同时该配置是在用户自己系统中, 并非Docker container中):
 
