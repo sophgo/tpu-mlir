@@ -79,7 +79,18 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
-// LogicalResult tpu::MaxPoolWithMaskOp::LocalGenSupport() {
-//   if (getAxis() == 1) return success();
-//   return failure();
-// }
+LogicalResult tpu::LayerNormOp::LocalGenSupport() {
+  if (getAxis() != 0) return success();
+  return failure();
+}
+
+LogicalResult tpu::LayerNormOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+                                          int64_t out_idx, int64_t out_slice) {
+  // It is not allowed to split on h-axis
+  if (out_idx) {
+    return failure();
+  }
+  in_idx = out_idx;
+  in_slice = out_slice;
+  return success();
+}

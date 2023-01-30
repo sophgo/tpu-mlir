@@ -407,42 +407,22 @@ typedef struct {
   softmax_common_param_t common;
 } softmax_tflite_fix8b_param_t;
 
-typedef struct {
-  uint64_t input_addr;
-  uint64_t weight_addr;
-  uint64_t bias_addr;
-  uint64_t output_addr;
-  uint64_t mean_addr;
-  uint64_t rstd_addr;
-  int shape[MAX_SHAPE_DIMS];
-  int dims;
-  int axis;
-  float eps;
-  int affine; // 0: no weight and bias, 1: weight, 2: bias, 3: both
-  int need_mean;
-  int need_rstd;
-  int dtype;
-} layer_norm_global_param_t;
+typedef struct layer_norm_common_spec {
+    int    axis;
+    float  eps;
+    int    affine;
+    int    need_mean;
+    int    need_rstd;
+} layer_norm_common_spec_t;
 
-typedef struct {
-  unsigned int input_addr;
-  unsigned int weight_addr;
-  unsigned int bias_addr;
-  unsigned int output_addr;
-  unsigned int mean_addr;
-  unsigned int rstd_addr;
-  unsigned int buffer_addr;
-  int input_n;
-  int input_c;
-  int input_h;
-  int input_w;
-  int depth;
-  float eps;
-  int affine;
-  int need_mean;
-  int need_rstd;
-  int dtype;
-} layer_norm_local_param_t;
+typedef struct layer_norm_global_spec {
+    layer_norm_common_spec_t common;
+} layer_norm_global_spec_t;
+
+typedef struct layer_norm_local_spec {
+    layer_norm_common_spec_t common;
+    uint32_t buffer_addr;
+} layer_norm_local_spec_t;
 
 typedef struct tranpose_spec {
   uint64_t buffer_global_addr;
