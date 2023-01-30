@@ -324,10 +324,32 @@ void tpu::DeconvOp::codegen_global_cv18xx(int64_t layer_id) {
 int64_t tpu::DeconvOp::getBufferSize_cv18xx(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  llvm_unreachable("Not supported now");
   return 0;
 }
 
 void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  /*
+  auto attr = parseParam();
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  auto w_gi = LocalGenInterface::getGroupInfo(getFilter());
+  auto b_gi = LocalGenInterface::getGroupInfo(getBias());
+
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+  laddr_t la_weight = w_gi.out_addr;
+  laddr_t la_bias = b_gi.out_addr;
+
+  laddr_t la_working = gi.buffer_addr;
+  bool do_ic_alignment = false;
+
+  int n = in_gi.n_slice;
+  int ih = in_gi.h_slice;
+  int oh = out_gi.h_slice;
+  int ins_h = attr.ins_h;
+  int ins_w = attr.ins_w;
+  */
+
+  return;
 }

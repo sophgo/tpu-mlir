@@ -11,6 +11,7 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -174,4 +175,15 @@ LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 
 mlir::Type tpu::DeconvOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);
+}
+
+LogicalResult tpu::DeconvOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    return failure();
+    auto attr = parseParam();
+    if (attr.ic > MAX_TIU_CHL || attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
+      return failure();
+    }
+  }
+  return success();
 }
