@@ -1161,7 +1161,8 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_SliceOp: Tpu_Op<"Slice"> {
+def Tpu_SliceOp: Tpu_Op<"Slice", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>]> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.

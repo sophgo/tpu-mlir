@@ -130,6 +130,10 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c, int input_size,
                            laddr_t la_output, bool do_relu, int32_t *r_i8,
                            int32_t *m_i8, cvk_fmt_t fmt);
 
+void cvi_backend_tl_crop(uint32_t layer_id, int64_t *input_dim,
+                         int64_t *output_dim, laddr_t la_input,
+                         laddr_t la_output, int *offsets, cvk_fmt_t fmt);
+
 void cvi_backend_tl_conv(
     uint32_t layer_id, laddr_t la_ifmap, laddr_t la_ofmap, laddr_t la_weight,
     laddr_t la_working, laddr_t la_perchannel, int input_n, int input_c,
@@ -179,6 +183,15 @@ void cvi_backend_bf16_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
                                     laddr_t output_laddr, laddr_t work_addr,
                                     int input_n, int input_c, int input_h,
                                     int input_w, float neg_slope);
+
+void cvi_backend_tl_prelu(uint32_t layer_id, laddr_t la_input,
+                          laddr_t la_output, laddr_t la_slope, int input_n,
+                          int input_c, int input_h, int input_w,
+                          int8_t r_i8_pos, int8_t m_i8_pos, int8_t r_i8_neg);
+
+void cvi_backend_tl_bf16_prelu(uint32_t layer_id, laddr_t la_input,
+                               laddr_t la_output, laddr_t la_slope, int n,
+                               int c, int h, int w);
 
 void cvi_backend_tl_pooling(uint32_t layer_id, laddr_t ifmap_laddr,
                             laddr_t ofmap_laddr, int input_n, int input_c,
