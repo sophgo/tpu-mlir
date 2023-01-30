@@ -100,6 +100,7 @@ class ONNX_IR_TESTER(object):
             "MaxPool2d": self.test_MaxPool2d,
             # "MaxPool3d": self.test_MaxPool3d,
             "MatMul": self.test_MatMul,
+            "MatMul2": self.test_MatMul2,
             "Max": self.test_Max,
             "Mul": self.test_Mul,
             "Min": self.test_Min,
@@ -1160,6 +1161,27 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([gemm_def],
                                       case_name, [input], [output],
                                       initializer=[weight])
+        self.onnx_and_test(graph_def)
+
+    def test_MatMul2(self, case_name):
+        M = 50
+        K = 100
+        N = 25
+        input_shape = [4, 10, M, K]
+        weight_shape = [K, N]
+        bias_shape = [N]
+        output_shape = [4, 10, M, N]
+        weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        bias_data = np.random.randn(*bias_shape).astype(np.float32)
+        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, weight_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
+        gemm_def = helper.make_node("MatMul", inputs=["input", "weight"], outputs=["x1"])
+        add_def = helper.make_node("Add", inputs=["x1", "bias"], outputs=["output"])
+        graph_def = helper.make_graph([gemm_def, add_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_Scale(self, case_name):
