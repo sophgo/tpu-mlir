@@ -7,12 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 #include "tpu_mlir/Support/Module.h"
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -69,13 +67,27 @@ void tpu::SliceOp::codegen_global_bm1684x() {
     param.strides[i] = steps_v->at(i);
   }
   BM168x::call_global_func("backend_api_strideslice_global", &param,
-                                       sizeof(param), input_spec->data(),
-                                       output_spec->data());
+                           sizeof(param), input_spec->data(),
+                           output_spec->data());
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+
+int64_t tpu::SliceOp::getBufferSize_bm1684x(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  llvm_unreachable("Not support.");
+  return 0;
+}
+
+void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                         local_sec_info_t &sec_info) {
+  llvm_unreachable("Not support.");
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

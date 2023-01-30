@@ -7,17 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include <valarray>
 
+using namespace tpu_mlir::backend;
 
-
-template <typename T>
-static int remove_value(std::vector<T> &v, T value) {
+template <typename T> static int remove_value(std::vector<T> &v, T value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
     if (*iter == value) {
@@ -146,4 +145,37 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
   }
 
   return success();
+}
+
+LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+                                      int64_t out_idx, int64_t out_slice) {
+  auto crop_offset = module::getI64Array(getOffset());
+  // add offset to idx here then set offset->at(2) to zero in local_gen
+  in_idx = out_idx + crop_offset->at(2);
+  in_slice = out_slice;
+  return success();
+}
+
+LogicalResult tpu::SliceOp::LocalGenSupport() {
+  auto shape = module::getShape(getInput());
+  int num_dims = shape.size();
+  if (num_dims != 3 && num_dims != 4) {
+    return failure();
+  }
+  if (module::isCV18xx()) {
+    std::vector<int64_t> i_s;
+    std::vector<int64_t> o_s;
+    std::vector<int> offset_4;
+    std::vector<int> step_4;
+    bool fusible;
+    parseParam(i_s, o_s, offset_4, step_4, fusible);
+    int total_steps = std::accumulate(step_4.begin(), step_4.end(), 1,
+                                      std::multiplies<int32_t>());
+    if (total_steps != 1 || fusible == true || i_s[0] != o_s[0]) {
+      return failure();
+    }
+    return (offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
+  } else {
+    return failure();
+  }
 }

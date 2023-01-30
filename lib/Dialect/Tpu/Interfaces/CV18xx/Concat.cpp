@@ -84,7 +84,6 @@ int64_t tpu::ConcatOp::getBufferSize_cv18xx(
 
 void tpu::ConcatOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                          int64_t layer_id) {
-  auto gi = getGroupInfo(n_step, h_step);
   int axis = getAxis();
   auto nInputs = getNumOperands();
   std::vector<int32_t> axis_dims;

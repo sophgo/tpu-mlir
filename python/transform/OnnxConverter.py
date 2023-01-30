@@ -1640,6 +1640,7 @@ class OnnxConverter(BaseConverter):
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         in_op = self.getOperand(lhs)
+        output_shape = self.getShape(onnx_node.name)
         if self.isScalar(rhs):
             p['alpha'] = self.getScalar(rhs)
             new_op = self.mlir.create_leaky_relu_op([in_op], output_shape, **p)
@@ -1654,7 +1655,6 @@ class OnnxConverter(BaseConverter):
         else:
             slope_shape[0] = num_slope
         slope = self.getWeightOp(rhs, slope_shape)
-        output_shape = self.getShape(onnx_node.name)
         prelu_op = self.mlir.create_prelu_op([in_op, slope], output_shape, **p)
         self.addOperand(onnx_node.name, prelu_op)
 

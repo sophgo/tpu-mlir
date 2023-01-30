@@ -13,10 +13,26 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::SliceOp::codegen_global_bm1684() {
   llvm_unreachable("Not Implemented");
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+
+int64_t tpu::SliceOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
+                                           int64_t out_lmem_bytes,
+                                           int64_t in_nslice, int64_t in_hslice,
+                                           int64_t out_nslice,
+                                           int64_t out_hslice) {
+  llvm_unreachable("Not Implemented.");
+  return 0;
+}
+
+void tpu::SliceOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                        local_sec_info_t &sec_info) {
+  llvm_unreachable("Not Implemented.");
 }

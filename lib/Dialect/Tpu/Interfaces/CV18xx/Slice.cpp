@@ -10,17 +10,13 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
-
-void tpu::SliceOp::codegen_global_cv18xx( int64_t layer_id) {
-
+void tpu::SliceOp::codegen_global_cv18xx(int64_t layer_id) {
 
   // prepare data
   std::vector<int64_t> i_s;
@@ -39,6 +35,43 @@ void tpu::SliceOp::codegen_global_cv18xx( int64_t layer_id) {
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
   if (fusible == false) {
-    cvi_backend_tg_crop_kernel( layer_id, ga_input, ga_output, i_s, o_s, offset_4, step_4, fmt);
+    cvi_backend_tg_crop_kernel(layer_id, ga_input, ga_output, i_s, o_s,
+                               offset_4, step_4, fmt);
   }
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+
+int64_t tpu::SliceOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
+                                           int64_t out_lmem_bytes,
+                                           int64_t in_nslice, int64_t in_hslice,
+                                           int64_t out_nslice,
+                                           int64_t out_hslice) {
+  return 0;
+}
+
+void tpu::SliceOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                        int64_t layer_id) {
+  int64_t in, ic, ih, iw, on, oc, oh, ow;
+  module::getNCHW(getOutput(), on, oc, oh, ow);
+  module::getNCHW(getInput(), in, ic, ih, iw);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  auto crop_offset = module::getI64Array(getOffset());
+  crop_offset->at(2) = 0; // offset added in BackwardH
+
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+
+  std::vector<int64_t> input_shape = {in_gi.n_slice, ic, in_gi.h_slice, iw};
+  std::vector<int64_t> output_shape = {out_gi.n_slice, oc, out_gi.h_slice, ow};
+  std::vector<int32_t> crop_offset_v;
+  crop_offset_v.assign(crop_offset->begin(), crop_offset->end());
+  auto fmt = CV18xx::getDataType(getOutput());
+
+  cvi_backend_tl_crop(layer_id, input_shape.data(),
+                      output_shape.data(), la_input, la_output,
+                      crop_offset_v.data(), fmt);
 }
