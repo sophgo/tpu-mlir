@@ -9,12 +9,12 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
-
-
-int64_t top::SigmoidOp::getFLOPs() { return 0; }
+int64_t top::SigmoidOp::getFLOPs() {
+  return module::getNumElements(getInput()) * 4;
+}
 
 LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
 void top::SigmoidOp::deinit(InferenceParameter &p) {}
