@@ -10,12 +10,33 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
+int64_t top::GRUOp::getFLOPs() {
+  // flops： 2 * (3 * hidden_size * input_size + 3 * hidden_size * hidden_size)
+  auto in_shape = module::getShape(getInput());
+  assert(in_shape.size() == 3);
 
+  int64_t batch_size;
+  int64_t seq_len;
 
-int64_t top::GRUOp::getFLOPs() { return 0; }
+  if (getBatchFirst()) {
+    batch_size = in_shape[0];
+    seq_len = in_shape[1];
+  } else {
+    batch_size = in_shape[1];
+    seq_len = in_shape[0];
+  }
+
+  int64_t input_size = in_shape[2];
+  int64_t hidden_size = getHiddenSize();
+  int64_t num_direction = getBidirectional() ? 2 : 1;
+  int64_t flops =
+      2 * (3 * hidden_size * input_size + 3 * hidden_size * hidden_size);
+
+  return flops * batch_size * seq_len * num_direction;
+}
 
 gru_attr_t top::GRUOp::parseParam() {
   gru_attr_t attr = {0};
