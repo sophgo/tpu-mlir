@@ -214,7 +214,13 @@ void interp_core(
 }
 
 int64_t top::InterpOp::getFLOPs() {
-  return module::getNumElements(getOutput()) * 1;
+    // flops:
+    // 1. bilinear: 2 * output_h * output_w * input_h * input_w
+    // 2. nearest: 1 * output_h * output_w * input_h * input_w
+    if (getMode() == "nearest")
+        return module::getNumElements(getOutput()) * 1;
+    else
+        return module::getNumElements(getOutput()) * 2;
 }
 
 LogicalResult top::InterpOp::init(InferenceParameter &p) { return success(); }
