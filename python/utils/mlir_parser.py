@@ -184,6 +184,12 @@ class MlirParser:
                 count += 1
         return count
 
+    def get_use_count_by_op_name(self, op_name):
+        count = 0
+        for op in self.ops:
+            count += op.opds.count(op_name)
+        return count
+
     def get_outputs_by_op_name(self, op_name):
         for op in self.ops:
             if op.name == op_name:
