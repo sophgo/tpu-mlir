@@ -846,7 +846,7 @@ class OnnxConverter(BaseConverter):
         lhs = onnx_node.inputs[0]
         rhs = onnx_node.inputs[1]
         if self.isWeight(lhs) and not self.isWeight(rhs):
-            lhs, rhs = rhs, lhs
+            onnx_node.inputs[0], onnx_node.inputs[1] = rhs, lhs
             self.convert_mul_op(onnx_node)
             return
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)

@@ -173,7 +173,7 @@ class SimpleTuner:
     def load_net_input(self):
         self.dq_activations = {}
         self.ref_activations = {}
-        count = self.parser.get_user_count_by_op_name(self.ppa_list[0].input_name)
+        count = self.parser.get_use_count_by_op_name(self.ppa_list[0].input_name)
         batched_inputs = self.input_num * ['']
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
@@ -184,7 +184,7 @@ class SimpleTuner:
                 for input in self.module.input_names:
                     assert (input in x)
                     #maybe have more than two input tensors, and have different user_count
-                    count = self.parser.get_user_count_by_op_name(input)
+                    count = self.parser.get_use_count_by_op_name(input)
                     self.dq_activations[tune_idx][input] = [x[input], count]
                     self.ref_activations[tune_idx][input] = [x[input], count]
             elif self.ds.all_image:
@@ -288,7 +288,7 @@ class SimpleTuner:
                 self.layer_cos_sim[input_tensor_of_evaled_op] += cos_sim
             else:
                 self.layer_cos_sim[input_tensor_of_evaled_op] = cos_sim
-            count = self.parser.get_user_count_by_op_name(input_tensor_of_evaled_op)
+            count = self.parser.get_use_count_by_op_name(input_tensor_of_evaled_op)
             self.dq_activations[i][input_tensor_of_evaled_op] = [value, count]
             if i == 0:
                 tmp += '\nrun it, refcount:{}, cos:{}\n'.format(count, cos_sim)
@@ -319,7 +319,7 @@ class SimpleTuner:
             self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
-            count = self.parser.get_user_count_by_op_name(op_name)
+            count = self.parser.get_use_count_by_op_name(op_name)
             self.ref_activations[i][op_name] = [value, count]
             if i == 0:
                 tmp += '\ninvoke_at:{}, refcount:{}'.format(op_name, count)
@@ -583,7 +583,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
     def load_net_input(self):
         self.dq_activations = {}
         self.ref_activations = {}
-        count = self.parser.get_user_count_by_op_name(self.ppa_list[0].input_name)
+        count = self.parser.get_use_count_by_op_name(self.ppa_list[0].input_name)
         batched_inputs = self.input_num * ['']
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
@@ -651,14 +651,14 @@ class ActivationCalibrator2(BaseKldCalibrator):
             self.module.set_tensor(input_op, data)
         if len(input_ops) > 0:
             value = self.module.invoke_at(op_name)
-            count = self.parser.get_user_count_by_op_name(op_name)
+            count = self.parser.get_use_count_by_op_name(op_name)
             self.ref_activations[i][op_name] = [value, count]
             outputs = self.parser.get_outputs_by_op_name(op_name)
             if outputs is not None:
                 for output in outputs:
                     if output == op_name:
                         continue
-                    count = self.parser.get_user_count_by_op_name(output)
+                    count = self.parser.get_use_count_by_op_name(output)
                     if count > 0:
                         self.ref_activations[i][output] = [self.module.get_tensor(output), count]
 
