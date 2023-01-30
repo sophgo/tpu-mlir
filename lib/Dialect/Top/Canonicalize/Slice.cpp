@@ -15,7 +15,7 @@
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-struct MergeSliceOp : public OpRewritePattern<SliceOp> {
+struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(SliceOp op,
@@ -53,7 +53,28 @@ struct MergeSliceOp : public OpRewritePattern<SliceOp> {
   }
 };
 
+struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SliceOp op,
+                                PatternRewriter &rewriter) const override {
+
+    auto in_shape = module::getShape(op.getInput());
+    auto out_shape = module::getShape(op.getOutput());
+    if (in_shape.size() != out_shape.size()) {
+      return failure();
+    }
+    for(auto it: llvm::zip(in_shape, out_shape)) {
+      if (std::get<0>(it) != std::get<1>(it)) {
+        return failure();
+      }
+    }
+    op.getOutput().replaceAllUsesWith(op.getInput());
+    return success();
+  }
+};
+
 void SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<MergeSliceOp>(context);
+  results.insert<NoUseSlicePattern, MergeSlicePattern>(context);
 }
