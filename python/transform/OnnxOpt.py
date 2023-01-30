@@ -548,10 +548,27 @@ def TorchLayerNormPattern(patterns: list):
     mul_tensor = OuterNode(is_tensor=True)
     add_1_tensor = OuterNode(is_tensor=True)
 
-    _reducemean_0 = PatternNode("ReduceMean", [reducemean_input], ["axes"])
+    def is_last_dims(x):
+        if len(x) == 0:
+            return False
+        if len(x) == 1:
+            return x[0] == -1 or x[0] == 3
+        y = np.diff(x)
+        return (y == y[0]).all() and (x[-1] == -1 or x[-1] == 3)
+
+    _reducemean_0 = PatternNode(
+        "ReduceMean",
+        [reducemean_input],
+        ["axes"],
+        attrcheck=AttrCheck(attrs=["axes"], func=is_last_dims),
+    )
     _sub = PatternNode("Sub", [reducemean_input, _reducemean_0])
     _pow = PatternNode("Pow", [_sub, pow_tensor])
-    _reducemean_1 = PatternNode("ReduceMean", [_pow])
+    _reducemean_1 = PatternNode(
+        "ReduceMean",
+        [_pow],
+        attrcheck=AttrCheck(attrs=["axes"], func=is_last_dims),
+    )
     _add_0 = PatternNode("Add", [_reducemean_1, add_0_tensor])
     _sqrt = PatternNode("Sqrt", [_add_0])
     _div = PatternNode("Div", [_sub, _sqrt])
