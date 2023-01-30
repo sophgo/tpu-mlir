@@ -261,4 +261,8 @@ uint8_t to_uint4(T value,
   return v > 15 ? 15 : v < 0 ? 0 : v;
 }
 
+void swap_dim_data(float *input, float *output,
+                   std::vector<int64_t> &ishape,
+                   std::vector<int64_t> &offsets);
+
 } // namespace tpu_mlir

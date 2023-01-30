@@ -1737,4 +1737,20 @@ def TPU_SwapChannelOp: Tpu_Op<"SwapChannel" ,[
   let results = (outs AnyTensor:$output);
 }
 
+def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  InOutSameShape]> {
+  let summary = "SwapDimInner operator.";
+
+  let description = [{
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$offset
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 #endif // TPU_OPS

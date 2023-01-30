@@ -12,9 +12,62 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
+
+// A --slice--> A0 | A1 --concat--> A1 | A0
+// ==> SwapDimInner
+// test by `test_onnx.py --case SwapDimInner`
+struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConcatOp concat_op,
+                                PatternRewriter &rewriter) const override {
+    int num_inputs = concat_op.getInputs().size();
+    if (num_inputs != 2) {
+      return failure();
+    }
+
+    auto in0_op = concat_op.getInputs()[0].getDefiningOp();
+    auto in1_op = concat_op.getInputs()[1].getDefiningOp();
+    auto slice0_op = dyn_cast<SliceOp>(in0_op);
+    auto slice1_op = dyn_cast<SliceOp>(in1_op);
+    if (!slice0_op || !slice1_op) {
+      return failure();
+    }
+    auto from = slice0_op.getInput();
+    if (from != slice1_op.getInput()) {
+      return failure();
+    }
+    auto steps0 = module::getI64Array(slice0_op.getSteps());
+    auto steps1 = module::getI64Array(slice1_op.getSteps());
+    for (int i = 0; i < steps0->size(); ++i) {
+      if (steps0->at(i) != 1 || steps0->at(i) != steps1->at(i)) {
+        return failure();
+      }
+    }
+    auto offset0 = module::getI64Array(slice0_op.getOffset());
+    auto offset1 = module::getI64Array(slice1_op.getOffset());
+    // auto oshape0 = module::getShape(slice0_op.getOutput());
+    auto oshape1 = module::getShape(slice1_op.getOutput());
+    auto ishape = module::getShape(slice0_op.getInput());
+
+    int axis = concat_op.getAxis();
+    if (offset0->at(axis) != oshape1[axis] || offset1->at(axis) != 0) {
+      return failure();
+    }
+
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(*offset0)));
+    // concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
+        // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
+    rewriter.replaceOpWithNewOp<SwapDimInnerOp>(
+        concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
+
+    return success();
+  }
+};
 
 // concat slices to Depth2Space.
 // test by yolov5s
@@ -126,8 +179,8 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
     attrs.push_back(
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
     // change name of new op to avoid wrong comparison
-    concat_op->setLoc(NameLoc::get(
-        rewriter.getStringAttr(module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
+    concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
+        module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
     rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
         concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
     return success();
@@ -189,5 +242,5 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
 void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
-                 ConcatToDepth2SpaceOp>(context);
+                 ConcatToDepth2SpaceOp, ConcatToSwapDimInner>(context);
 }

@@ -14,9 +14,9 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "llvm/Support/Debug.h"
 #include <algorithm>
-#include <queue>
 #include <map>
 #include <numeric>
+#include <queue>
 
 #define DEBUG_TYPE "math_utils"
 namespace tpu_mlir {
@@ -1187,6 +1187,34 @@ int32_t exp_on_negative_values(int input, int int_bits) {
 #undef EXP_BARREL_SHIFTER
 
   return result;
+}
+
+void swap_dim_data(float *input, float *output,
+                   std::vector<int64_t> &ishape,
+                   std::vector<int64_t> &offsets) {
+  int axis = offsets.size();
+  int64_t outer_size = 1, inner_size = 1;
+  for (int i = 0; i < offsets.size(); ++i) {
+    if (axis == offsets.size() && offsets[i] != 0) {
+      axis = i;
+    } else if (i < axis) {
+      outer_size *= ishape[i];
+    } else if (i > axis) {
+      inner_size *= ishape[i];
+    }
+  }
+
+  int first_part = offsets[axis] * inner_size;
+  int second_part = (ishape[axis] - offsets[axis]) * inner_size;
+  offsets[axis] = 0;
+  for (int64_t i = 0; i < outer_size; ++i) {
+    float *p_out = output + i * ishape[axis] * inner_size;
+    float *p_in = input + i * ishape[axis] * inner_size;
+    memcpy((void *)(p_out + second_part), (void *)p_in,
+           first_part * sizeof(float));
+    memcpy((void *)p_out, (void *)(p_in + first_part),
+           second_part * sizeof(float));
+  }
 }
 
 } // namespace tpu_mlir
