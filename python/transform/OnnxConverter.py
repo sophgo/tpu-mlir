@@ -134,6 +134,7 @@ class OnnxConverter(BaseConverter):
             "Equal": lambda node: self.convert_cmp_op(node),
             "Flatten": lambda node: self.convert_flatten_op(node),
             "Gather": lambda node: self.convert_gather_op(node),
+            "GELU": lambda node: self.convert_gelu_op(node),
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
@@ -1797,6 +1798,16 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_hswish_op([operand], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_gelu_op(self, onnx_node):
+        # 0.5 * val * (1.0 + std::erf(val / std::sqrt(2.0)));
+        assert (onnx_node.op_type == "GELU")
+        assert (len(onnx_node.inputs) == 1)
+        operand = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
+        new_op = self.mlir.create_gelu_op([operand], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_qlinear_op(self, onnx_node):

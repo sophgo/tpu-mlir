@@ -15,8 +15,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-
-
 static mlir::Type t;
 
 LogicalResult tpu::ActiveOp::init(InferenceParameter &p) { return success(); }
@@ -24,6 +22,10 @@ void tpu::ActiveOp::deinit(InferenceParameter &p) {}
 
 static inline double hsigmoid(double x, double alpha, double beta) {
   return std::max(0.0, std::min(1.0, alpha * x + beta));
+}
+
+static inline double gelu(double x) {
+  return 0.5 * x * (1.0 + std::erf(x / std::sqrt(2.0)));
 }
 
 static inline double hswish(double x) {
@@ -85,6 +87,11 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::TANH:
     active_func(p, num_element, [](double val) { return std::tanh(val); });
     break;
+  case ActiveMode::GELU:
+    active_func(p, num_element, [](double val) { return gelu(val); });
+    break;
+  default:
+    llvm_unreachable("Not Implemented");
   }
   if (t.isBF16()) {
     BF16(p.outputs[0], p.outputs[0], num_element);

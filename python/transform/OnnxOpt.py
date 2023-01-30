@@ -13,8 +13,10 @@ onnx_attr_translator = {
 
 optional_attr_getter = OnnxOpOptionalAttrGetter()
 
+
 def translate_onnx(key, val):
     return onnx_attr_translator.get(key, lambda x: x)(val)
+
 
 def convert_onnx_attribute_proto(attr_proto):
     if attr_proto.HasField('f'):
@@ -38,22 +40,25 @@ def convert_onnx_attribute_proto(attr_proto):
     else:
         raise ValueError("Unsupported ONNX attribute: {}".format(attr_proto))
 
+
 def dump_model(model, name="opt.onnx"):
     data = model.SerializeToString()
     with open(name, "wb") as file:
         file.write(data)
 
+
 def get_node_attrs(node) -> dict:
-    attrs = dict((attr.name,
-                    translate_onnx(attr.name, convert_onnx_attribute_proto(attr)))
-                    for attr in node.attribute)
+    attrs = dict((attr.name, translate_onnx(attr.name, convert_onnx_attribute_proto(attr)))
+                 for attr in node.attribute)
     attrs_full = optional_attr_getter.get(node.op_type)
     for k, v in attrs_full.items():
         if k not in attrs:
             attrs[k] = v
     return attrs
 
+
 class OuterNode(object):
+
     def __init__(self, is_tensor=False, tensor_value=None, attr_name=None):
         '''out of pattern chain. eg. pattern[0]'s input / tensor'''
         self.output = []  # when do input match we get name direct from onnx_node
@@ -78,22 +83,34 @@ class OuterNode(object):
             attr_value = float(attr_value)
         return {self.attr_name: translate_onnx(self.attr_name, attr_value)}
 
+
 class AttrCheck(object):
-    def __init__(self, attrs:list=[], func=(lambda x:x)):
+
+    def __init__(self, attrs: list = [], func=(lambda x: x)):
         self.attrs = attrs
         self.func = func
 
+
 class AttrFunctor(object):
-    def __init__(self, inputs:list=[], attrs:list=[], func=(lambda x:x)):
-        assert(len(inputs)==len(attrs))
+
+    def __init__(self, inputs: list = [], attrs: list = [], func=(lambda x: x)):
+        assert (len(inputs) == len(attrs))
         self.inputs = inputs
         self.attrs = attrs
         self.func = func
 
+
 class PatternNode(object):
-    def __init__(self, op_type, input=[], cur_attr_name=[],
-                 new_attr_name=[], new_attr={}, attrmap={},
-                 constraint='', attrcheck=None):
+
+    def __init__(self,
+                 op_type,
+                 input=[],
+                 cur_attr_name=[],
+                 new_attr_name=[],
+                 new_attr={},
+                 attrmap={},
+                 constraint='',
+                 attrcheck=None):
         self.op_type = op_type
         self.input = input
         self.output = []
@@ -108,17 +125,17 @@ class PatternNode(object):
         self.constraint = constraint
         # check attr, should be AttrFunctor or None
         self.attrcheck = attrcheck
-        assert(isinstance(self.input, list))
-        assert(isinstance(self.attr, dict))
-        assert(isinstance(self.cur_attr_name, list))
-        assert(isinstance(self.new_attr_name, list))
-        assert(isinstance(self.constraint, str))
+        assert (isinstance(self.input, list))
+        assert (isinstance(self.attr, dict))
+        assert (isinstance(self.cur_attr_name, list))
+        assert (isinstance(self.new_attr_name, list))
+        assert (isinstance(self.constraint, str))
 
         if cur_attr_name and len(new_attr_name) == 0:
             # if cur_attr_name and new_attr_name are all the same leave new_attr_name blank is ok
             # otherwise you should explicit assign all the key in both cur_attr_name and new_attr_name
             self.new_attr_name = cur_attr_name
-        assert(len(self.cur_attr_name) == len(self.new_attr_name))
+        assert (len(self.cur_attr_name) == len(self.new_attr_name))
 
     def update(self, output, attr_value):
         # attr: from both inp / node / new, output
@@ -129,14 +146,16 @@ class PatternNode(object):
 
     def get_attr(self):
         for new_attr, attr_func in self.attrmap.items():
-            args = [t.get_attr()[old_attr]
-                    for t, old_attr in zip(attr_func.inputs, attr_func.attrs)]
+            args = [
+                t.get_attr()[old_attr] for t, old_attr in zip(attr_func.inputs, attr_func.attrs)
+            ]
             self.attr.update({new_attr: attr_func.func(*args)})
         return self.attr
 
 
 class ReformInfo(object):
-    def __init__(self, name:str, src_nodes, dst_nodes):
+
+    def __init__(self, name: str, src_nodes, dst_nodes):
         self.name = name
         self.src_nodes = src_nodes
         self.dst_nodes = dst_nodes
@@ -153,8 +172,10 @@ class ReForm(object):
         # store node shape
         self.shape_info = [info for info in model.graph.value_info]
         self.shape_info.extend(model.graph.output)
-        self.shape_info = {info.name: [i.dim_value for i in info.type.tensor_type.shape.dim if i.dim_value > 0]
-                            for info in self.shape_info}
+        self.shape_info = {
+            info.name: [i.dim_value for i in info.type.tensor_type.shape.dim if i.dim_value > 0]
+            for info in self.shape_info
+        }
         self.weight_tensor = [x.name for x in self.weight]
         self.node_tensor = [node.output[0] for node in self.nodes if node.op_type == "Constant"]
         # stores output node name mapping from src to dst of replace subgraphs
@@ -204,7 +225,7 @@ class ReForm(object):
             raise ValueError("constrain mode: {} not support now.".format(mode))
         return False
 
-    def check_attrs(self, node, attrcheck:AttrCheck):
+    def check_attrs(self, node, attrcheck: AttrCheck):
         attrs = get_node_attrs(node)
         args = tuple(attrs[key] for key in attrcheck.attrs)
         return attrcheck.func(*args)
@@ -220,7 +241,7 @@ class ReForm(object):
             key = "None"
             if op_type == "Clip":
                 if i == 1:
-                    key =  "min"
+                    key = "min"
                 elif i == 2:
                     key = "max"
             # add other op here
@@ -234,7 +255,7 @@ class ReForm(object):
         tensor_value = []
         if nofdiff == 0:
             return tensor_value
-        flag = True # this mean maybe tensor in pinp is onnx node's attr
+        flag = True  # this mean maybe tensor in pinp is onnx node's attr
         start_idx = len(pninp) - nofdiff
         for pnode in pninp[start_idx:]:
             if not pnode.is_tensor:
@@ -294,8 +315,8 @@ class ReForm(object):
     def match_node(self, node, pnode):
         matched = self.match_input(node, node.input, pnode.input)
         if not matched and (node.op_type == 'Mul' or node.op_type == 'Add'):
-           # naive method, need to be discussed
-           matched = self.match_input(node, node.input[::-1], pnode.input)
+            # naive method, need to be discussed
+            matched = self.match_input(node, node.input[::-1], pnode.input)
         if matched:
             # process constraint and check attrs
             if pnode.constraint:
@@ -377,17 +398,23 @@ class ReForm(object):
                             raise ValueError("New tensor node must with tensor_value.")
                         tensor_value = np.array(inode.tensor_value)
                         tensor_name = _output[0] + "_in_{}".format(j)
-                        new_onnx_node = onnx.helper.make_node("Constant", name=tensor_name,
-                                inputs=[], outputs=[tensor_name],
-                                value=onnx.helper.make_tensor("value", onnx.TensorProto.FLOAT,
-                                                                tensor_value.shape, tensor_value))
+                        new_onnx_node = onnx.helper.make_node("Constant",
+                                                              name=tensor_name,
+                                                              inputs=[],
+                                                              outputs=[tensor_name],
+                                                              value=onnx.helper.make_tensor(
+                                                                  "value", onnx.TensorProto.FLOAT,
+                                                                  tensor_value.shape, tensor_value))
                         self.nodes.insert(insert_idx, new_onnx_node)
                         insert_idx += 1
                         inode.output.extend(new_onnx_node.output)
                     _input.append(inode.output[0])
                 # insert new pattern node
-                new_node = onnx.helper.make_node(new_node.op_type, name=_output[0], inputs=_input,
-                                                outputs=_output, **new_node.get_attr())
+                new_node = onnx.helper.make_node(new_node.op_type,
+                                                 name=_output[0],
+                                                 inputs=_input,
+                                                 outputs=_output,
+                                                 **new_node.get_attr())
                 self.nodes.insert(insert_idx, new_node)
                 insert_idx += 1
             node_name = _output[0]
@@ -427,14 +454,14 @@ class ReForm(object):
 
     def remove_duplicate(self):
         # same op_type and inputs different output_name
-        nodes_info ={}
+        nodes_info = {}
         duplicate_op = {}
         kept_info = {}
         oname_map = {}
         rm_node = []
         # find duplicate node's {op_type: str(inputs)}
         for node in self.nodes:
-            if len(node.attribute) > 0: # FIXME consider node's attr
+            if len(node.attribute) > 0:  # FIXME consider node's attr
                 continue
             if node.op_type not in nodes_info:
                 nodes_info[node.op_type] = []
@@ -456,7 +483,7 @@ class ReForm(object):
                 else:
                     okept = kept_info[tinp]
                     oremove = node.output
-                    assert(len(okept) == len(oremove))
+                    assert (len(okept) == len(oremove))
                     for i in range(len(okept)):
                         oname_map[oremove[i]] = okept[i]
                     rm_node.append(node)
@@ -509,10 +536,12 @@ class ReForm(object):
         self.graph_opt()
         return self.node_name_mapping, self.nodes, self.weight
 
+
 ###====================== Declare your patterns here ======================###
 
+
 ############ torch.LayerNorm ############
-def TorchLayerNormPattern():
+def TorchLayerNormPattern(patterns: list):
     reducemean_input = OuterNode()
     pow_tensor = OuterNode(tensor_value=2)
     add_0_tensor = OuterNode(attr_name="eps")
@@ -532,62 +561,98 @@ def TorchLayerNormPattern():
     epsilon_attrfunc = AttrFunctor([add_0_tensor], ["eps"])
     axis_attrfunc = AttrFunctor([_reducemean_0], ["axes"], lambda x: x[0])
 
-    patterns = []
     # affine (have both weight and bias)
     layernorm_aff = PatternNode("LayerNormalization", [reducemean_input, mul_tensor, add_1_tensor],
-                                attrmap={"epsilon": epsilon_attrfunc,
-                                         "axis": axis_attrfunc})
-    patterns.append(ReformInfo(name="layernorm_aff",
-                               src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1,
-                                         _add_0, _sqrt, _div, mul, _add_1],
-                               dst_nodes=[layernorm_aff]))
+                                attrmap={
+                                    "epsilon": epsilon_attrfunc,
+                                    "axis": axis_attrfunc
+                                })
+    patterns.append(
+        ReformInfo(
+            name="layernorm_aff",
+            src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div, mul, _add_1],
+            dst_nodes=[layernorm_aff]))
     # without affine (do not have both weight and bias)
     layernorm = PatternNode("LayerNormalization", [reducemean_input],
-                            attrmap={"epsilon": epsilon_attrfunc,
-                                     "axis": axis_attrfunc})
-    patterns.append(ReformInfo(name="layernorm",
-                               src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1,
-                                         _add_0, _sqrt, _div],
-                               dst_nodes=[layernorm]))
-    return patterns
+                            attrmap={
+                                "epsilon": epsilon_attrfunc,
+                                "axis": axis_attrfunc
+                            })
+    patterns.append(
+        ReformInfo(name="layernorm",
+                   src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div],
+                   dst_nodes=[layernorm]))
+
+
+############ torch.GELU ############
+def TorchGELUPattern(patterns: list):
+    gelu_input = OuterNode()
+    div_tensor = OuterNode(is_tensor=True)
+    add_tensor = OuterNode(tensor_value=1)
+    mul_tensor = OuterNode(tensor_value=0.5)
+
+    _div = PatternNode("Div", [gelu_input, div_tensor])
+    _erf = PatternNode("Erf", [_div])
+    _add = PatternNode("Add", [_erf, add_tensor])
+    _mu_0 = PatternNode("Mul", [gelu_input, _add])
+    _mul_1 = PatternNode("Mul", [_mu_0, mul_tensor])
+    gelu = PatternNode("GELU", [gelu_input])
+    patterns.append(
+        ReformInfo(name="GELU", src_nodes=[_div, _erf, _add, _mu_0, _mul_1], dst_nodes=[gelu]))
+
+
+def TorchGELUPattern2(patterns: list):
+    gelu_input = OuterNode()
+    add_tensor = OuterNode(tensor_value=1)
+    mul_tensor = OuterNode(tensor_value=0.5)
+    power_tensor = OuterNode(tensor_value=3)
+    add_tensor = OuterNode(tensor_value=1)
+    mul_tensor_1 = OuterNode(is_tensor=True)
+    mul_tensor_2 = OuterNode(is_tensor=True)
+    _mul_0 = PatternNode("Mul", [gelu_input, mul_tensor])
+    _power_1 = PatternNode("Pow", [gelu_input, power_tensor])
+    _mul_2 = PatternNode("Mul", [_power_1, mul_tensor_1])
+    _add_3 = PatternNode("Add", [gelu_input, _mul_2])
+    _mul_4 = PatternNode("Mul", [_add_3, mul_tensor_2])
+    _tanh_5 = PatternNode("Tanh", [_mul_4])
+    _add_6 = PatternNode("Add", [_tanh_5, add_tensor])
+    _mul_7 = PatternNode("Mul", [_mul_0, _add_6])
+    gelu = PatternNode("GELU", [gelu_input])
+    patterns.append(
+        ReformInfo(name="GELU",
+                   src_nodes=[_mul_0, _power_1, _mul_2, _add_3, _mul_4, _tanh_5, _add_6, _mul_7],
+                   dst_nodes=[gelu]))
+
 
 ############ torch.HardSigmodid ############
-def TorchHardSigmoidPattern():
+def TorchHardSigmoidPattern(patterns: list):
     # nomal case
     add_input = OuterNode()
     add_tensor = OuterNode(tensor_value=3)
     clip_min = OuterNode(tensor_value=0)
     clip_max = OuterNode(tensor_value=6)
     div_tensor = OuterNode(tensor_value=6)
-
     add = PatternNode("Add", [add_input, add_tensor])
     clip = PatternNode("Clip", [add, clip_min, clip_max])
     div = PatternNode("Div", [clip, div_tensor])
     hard_sigmoid = PatternNode("HardSigmoid", [add_input])
+    patterns.append(
+        ReformInfo(name="HardSigmoid", src_nodes=[add, clip, div], dst_nodes=[hard_sigmoid]))
 
-    patterns = []
-    patterns.append(ReformInfo(name="HardSigmoid",
-                               src_nodes=[add, clip, div],
-                               dst_nodes=[hard_sigmoid]))
-    return patterns
 
 ############ torch.HardSwish ############
-def TorchHardSwishPattern():
+def TorchHardSwishPattern(patterns: list):
     input = OuterNode()
     attrcheck = AttrCheck(attrs=['alpha', 'beta'],
-                          func=lambda x,y: x == 0.1666666716337204 and y == 0.5)
-    hard_sigmoid = PatternNode("HardSigmoid", [input],
-                               attrcheck=attrcheck)
+                          func=lambda x, y: x == 0.1666666716337204 and y == 0.5)
+    hard_sigmoid = PatternNode("HardSigmoid", [input], attrcheck=attrcheck)
     mul = PatternNode("Mul", [input, hard_sigmoid])
     hard_swish = PatternNode("HardSwish", [input])
+    patterns.append(
+        ReformInfo(name="hardswish", src_nodes=[hard_sigmoid, mul], dst_nodes=[hard_swish]))
 
-    patterns = []
-    patterns.append(ReformInfo(name="hardswish",
-                               src_nodes=[hard_sigmoid, mul],
-                               dst_nodes=[hard_swish]))
-    return patterns
 
-def TorchHardSwishPattern2():
+def TorchHardSwishPattern2(patterns: list):
     add_input = OuterNode()
     add_tensor = OuterNode(tensor_value=3)
     clip_min = OuterNode(tensor_value=0)
@@ -599,11 +664,9 @@ def TorchHardSwishPattern2():
     mul = PatternNode("Mul", [add_input, clip])
     div = PatternNode("Div", [mul, div_tensor])
     hard_swish = PatternNode("HardSwish", [add_input])
-    patterns = []
-    patterns.append(ReformInfo(name="hardswish",
-                               src_nodes=[add, clip, mul, div],
-                               dst_nodes=[hard_swish]))
-    return patterns
+    patterns.append(
+        ReformInfo(name="hardswish", src_nodes=[add, clip, mul, div], dst_nodes=[hard_swish]))
+
 
 def remove_tensor_from_input(model):
     tensor_names = [x.name for x in model.graph.initializer]
@@ -616,6 +679,7 @@ def remove_tensor_from_input(model):
     for t in tensors:
         model.graph.input.remove(t)
 
+
 def onnx_opt(model, dump=False, rigorous=True):
     remove_tensor_from_input(model)
     # add your patterns here if you expect that your patterns actually works
@@ -624,12 +688,13 @@ def onnx_opt(model, dump=False, rigorous=True):
         TorchHardSigmoidPattern,
         TorchHardSwishPattern,
         TorchHardSwishPattern2,
+        TorchGELUPattern,
+        TorchGELUPattern2,
     ]
 
     patterns = []
     for pf in pattern_functions:
-        some_patterns = pf()
-        patterns.extend(some_patterns)
+        pf(patterns)
 
     reform = ReForm(model, rigorous)
     node_name_mapping, _, _ = reform(patterns)
