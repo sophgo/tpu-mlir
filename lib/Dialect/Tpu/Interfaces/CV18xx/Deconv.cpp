@@ -11,14 +11,13 @@
 #include "tpu_mlir/Support/Dnnl/Deconv.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/CV18xx/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/TPUCompressUtil.h"
-
-
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::cv18xx;
@@ -98,7 +97,7 @@ packWeight(i32_array_t &bias, i64_array_t &rshift, i64_array_t &multiplier,
   assert(multiplier->size() == (size_t)oc);
 
   int64_t isz = bias ? 9 : 5;
-  shape = std::vector<int64_t>{oc, 1, isz};
+  shape = std::vector<int64_t>{1, oc, 1, isz};
 
   auto packed = std::make_unique<std::vector<uint8_t>>(oc * isz);
 
@@ -184,8 +183,14 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   }
   rotateConvolutionFilter(filter_i8, filter_shape);
   transposeConvolutionFilter(filter_i8, filter_shape);
+  // rewrite weightOp shape (oc, ic/g, kh, kw) -> (1, oc, kh*kw, ic/g)
+  std::vector<int64_t> new_filter_shape = {1, attr.oc, attr.kh * attr.kw,
+                                           attr.ic / attr.g};
+  if (attr.is_dw) {
+    new_filter_shape = {1, attr.oc, attr.kh, attr.kw};
+  }
   auto elem_type = module::getStorageType(op.getFilter());
-  auto filter_type = RankedTensorType::get(filter_shape, elem_type);
+  auto filter_type = RankedTensorType::get(new_filter_shape, elem_type);
   auto weight_op =
       top::WeightOp::create(op, "filter_reordered", *filter_i8, filter_type);
   op->setOperand(1, weight_op);
@@ -229,9 +234,14 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
   }
   rotateConvolutionFilter(filter_u16, filter_shape);
   transposeConvolutionFilter(filter_u16, filter_shape);
-  // rewrite weightOp
+  // rewrite weightOp shape (oc, ic/g, kh, kw) -> (1, oc, kh*kw, ic/g)
+  std::vector<int64_t> new_filter_shape = {1, attr.oc, attr.kh * attr.kw,
+                                           attr.ic / attr.g};
+  if (attr.is_dw) {
+    new_filter_shape = {1, attr.oc, attr.kh, attr.kw};
+  }
   auto filter_type =
-      RankedTensorType::get(filter_shape, rewriter.getBF16Type());
+      RankedTensorType::get(new_filter_shape, rewriter.getBF16Type());
   auto weight_op =
       top::WeightOp::create(op, "filter_reordered", *filter_u16, filter_type);
   op->setOperand(1, weight_op);
@@ -242,8 +252,10 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
     std::vector<uint32_t> bias_new(bias_f32->size());
     transposeBiasFp32(bias_f32, bias_new);
     // rewrite biasOp
-    auto new_bias_type = RankedTensorType::get(module::getShape(op.getBias()),
-                                               rewriter.getIntegerType(32));
+    // rewrite weightOp shape (oc) f32 -> (2, oc, 1, 1) uint16
+    std::vector<int64_t> new_bias_shape = {2, attr.oc, 1, 1};
+    auto new_bias_type = RankedTensorType::get(
+        new_bias_shape, rewriter.getIntegerType(16, false));
     auto lbias_op =
         top::WeightOp::create(op, "bias_reordered", bias_new, new_bias_type);
     op->setOperand(2, lbias_op);
@@ -327,8 +339,8 @@ int64_t tpu::DeconvOp::getBufferSize_cv18xx(
   return 0;
 }
 
-void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  /*
+void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t layer_id) {
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
@@ -341,15 +353,93 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t
   laddr_t la_weight = w_gi.out_addr;
   laddr_t la_bias = b_gi.out_addr;
 
-  laddr_t la_working = gi.buffer_addr;
   bool do_ic_alignment = false;
 
   int n = in_gi.n_slice;
   int ih = in_gi.h_slice;
   int oh = out_gi.h_slice;
-  int ins_h = attr.ins_h;
-  int ins_w = attr.ins_w;
-  */
+
+  int real_h_idx, real_h_slice;
+  int pad_h_top, pad_h_bottom;
+  int pad_w_left, pad_w_right;
+
+  pad_h_top = attr.pad_h;
+  pad_h_bottom = attr.pad_h_after;
+  pad_w_left = attr.pad_w;
+  pad_w_right = attr.pad_w_after;
+
+  real_h_idx = (out_gi.h_idx > 0) ? out_gi.h_idx : 0;
+  real_h_slice = oh;
+
+  int kh_ext = (attr.kh - 1) * attr.dh + 1;
+  int kw_ext = (attr.kw - 1) * attr.dw + 1;
+  int ins_last_w = (attr.ow + pad_w_left + pad_w_right - kw_ext) % attr.sw;
+  int height_insert0 = (ih - 1) * attr.sh + 1;
+  pad_h_top = kh_ext - pad_h_top - 1;
+  pad_h_bottom = kh_ext - pad_h_bottom - 1;
+  int o_ht = real_h_idx;
+  int o_hb = real_h_idx + real_h_slice;
+  int if_pad_h_t = o_ht;
+  int if_pad_h_b = o_hb + kh_ext - 1;
+  int if_insert_h_t = 0;
+  int pad_h_t = 0;
+  if (if_pad_h_t < pad_h_top) {
+    pad_h_t = pad_h_top - if_pad_h_t;
+  } else {
+    if_insert_h_t = if_pad_h_t - pad_h_top;
+  }
+  int if_insert_h_b = height_insert0;
+  int pad_h_b = 0;
+  if ((if_pad_h_b - pad_h_bottom) < height_insert0) {
+    if_insert_h_b = if_pad_h_b - pad_h_bottom;
+  } else {
+    pad_h_b = if_pad_h_b - height_insert0 - pad_h_bottom;
+  }
+  int hinsert0_t =
+      if_insert_h_t % attr.sh == 0 ? 0 : (attr.sh - if_insert_h_t % attr.sh);
+  int hinsert0_b = (if_insert_h_b + attr.sh - 1) % attr.sh;
+
+  pad_h_top = pad_h_t + hinsert0_t;
+  pad_h_bottom = pad_h_b + hinsert0_b;
+  pad_w_left = kw_ext - pad_w_left - 1;
+  pad_w_right = kw_ext - pad_w_right - 1 + ins_last_w;
+  int ins_h = attr.sh - 1;
+  int ins_last_h = 0;
+  int ins_w = attr.sw - 1;
+
+  // hw limitation once set ins_w / ins_h that input w/h should > 1
+  if (ins_h && ih == 1) {
+    ins_last_h += ins_h;
+    ins_h = 0;
+    if (pad_h_top) {
+      ins_last_h = 0; // included in pad_h_top
+    }
+  }
+  if (ins_w && attr.iw == 1) {
+    ins_last_w += ins_w;
+    ins_w = 0;
+    if (pad_w_left) {
+      // TODO: need to verify
+      ins_last_w = 0; // included in pad_w_left
+    }
+  }
+  if (module::isUniformQuantized(getOutput())) {
+    cvi_backend_tl_deconv(
+        layer_id, la_input, la_output, la_weight, la_bias, n, attr.ic, ih,
+        attr.iw, attr.g, attr.oc, oh, attr.ow, attr.kh, attr.kw, attr.dh,
+        attr.dw, ins_h, ins_last_h, ins_w, ins_last_w, pad_h_top, pad_h_bottom,
+        pad_w_left, pad_w_right, attr.sh, attr.sw, attr.with_bias,
+        getDoRelu(), // do_activation,
+        0,           // right_shift_width,
+        attr.oc,     // right_shift_array_len
+        do_ic_alignment);
+  } else {
+    cvi_backend_tl_bf16_deconv(
+        layer_id, la_input, la_output, la_weight, la_bias, n, attr.ic, ih,
+        attr.iw, attr.g, attr.oc, oh, attr.ow, attr.kh, attr.kw, attr.dh,
+        attr.dw, ins_h, ins_last_h, ins_w, ins_last_w, pad_h_top, pad_h_bottom,
+        pad_w_left, pad_w_right, attr.sh, attr.sw, attr.with_bias, getDoRelu());
+  }
 
   return;
 }

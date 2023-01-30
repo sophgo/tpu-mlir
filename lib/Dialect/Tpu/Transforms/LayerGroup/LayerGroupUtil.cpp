@@ -506,6 +506,10 @@ bool is_eu_align_cv18xx(Value opd) {
       if (opd == op->getOperand(1) || opd == op->getOperand(2)) {
         return false;
       }
+    } else if (isa<tpu::ScaleLutOp>(op)) {
+      if (opd == op->getOperand(1)) {
+        return false;
+      }
     } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
       return false;
     } else if (auto castOp = dyn_cast<tpu::Conv2DOp>(op)) {
@@ -593,11 +597,11 @@ bool need_bcast(Value opd) {
   auto use_op = *opd.getUsers().begin();
   if (auto cast_op = dyn_cast<tpu::LutOp>(use_op)) {
     return opd == cast_op.getTable();
-  }
-  if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {
+  } else if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {
     return opd == cast_op.getTable() || opd == cast_op.getMantissa();
+  } else {
+    return false;
   }
-  return false;
 }
 
 int64_t use_3ic(Value opd) {
