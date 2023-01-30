@@ -591,6 +591,7 @@ def Top_MatMulOp: Top_Op<"MatMul", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     matmul_attr_t parseParam();
   }];
