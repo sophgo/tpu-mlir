@@ -1,9 +1,8 @@
 ## nntoolchain
 
 #### 1684x/1686
-
-2023-02-02
-build from TPU1686     3b041179d83dfe399314c62bc3c926e918e46f6f
+2023-02-02:
+build from TPU1686     19c3d3f73c63dce10ea6039784e50b6b6192b28a
 
 #### 1684
 2023-01-12:

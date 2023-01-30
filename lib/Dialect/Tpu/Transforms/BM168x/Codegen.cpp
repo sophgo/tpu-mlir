@@ -7,17 +7,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/IR/BlockAndValueMapping.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Builder/BM168x/bmodel.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 
 #include <fstream>
 #include <set>
@@ -307,7 +307,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         ginfo = lgOp.getGroupInfo(tensor_step->nstep, tensor_step->hstep);
 
         // add prefix to each cmd in profile.txt
-        std::string prefix = module::getName(group_ops[id]).str();
+        std::string prefix = group_ops[id]->getName().getStringRef().str();
         if (ginfo.overstepped == false) {
           auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
           if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
@@ -350,6 +350,9 @@ void CodegenPass::codegen(Operation *op) {
   } else if (module::isOpInGroup(op)) {
     return;
   } else if (auto castOp = dyn_cast<GlobalGenInterface>(op)) {
+    std::string prefix = op->getName().getStringRef().str();
+    auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
+    BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
     castOp.codegen_global_bm168x();
   }
 }

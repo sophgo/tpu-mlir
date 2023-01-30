@@ -1603,4 +1603,20 @@ def Top_SwapChannelOp: Top_Op<"SwapChannel", [InOutSameShape]> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Top_SwapDimInnerOp: Top_Op<"SwapDimInner", [InOutSameShape]> {
+  let summary = "if offset is not 0, split there and swap first part and second part of it";
+
+  let description = [{
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64ArrayAttr:$offset
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 #endif // Top_OPS
