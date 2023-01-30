@@ -785,6 +785,7 @@ def Tpu_CastOp:Tpu_Op<"Cast", [
   }];
   let arguments = (ins
     AnyTensor:$input,
+    OptionalAttr<BoolAttr>:$extra_input,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);

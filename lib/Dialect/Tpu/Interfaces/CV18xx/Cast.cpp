@@ -8,13 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
-
-
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
@@ -58,10 +56,55 @@ int64_t tpu::CastOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
                                           int64_t in_nslice, int64_t in_hslice,
                                           int64_t out_nslice,
                                           int64_t out_hslice) {
-  llvm_unreachable("Not supported now");
+  auto in_type = module::getStorageType(getInput());
+  if (in_type.isBF16() && !getOperation()->hasOneUse()) {
+    // to avoid quant input been override
+    // check if quant's input has multi-usage
+    int64_t n, c, h, w;
+    auto vIn = getInput();
+    auto fmt = CV18xx::getDataType(vIn);
+    module::getNCHW(vIn, n, c, h, w);
+    n = in_nslice;
+    h = in_hslice;
+    auto op = getOperation();
+    OpBuilder builder(op->getContext());
+    getOperation()->setAttr("extra_input", builder.getBoolAttr(true));
+    return CV18xx::lmem_woring_size({n, c, h, w}, 1, true, fmt);
+  }
   return 0;
 }
 
-void tpu::CastOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+void tpu::CastOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                       int64_t layer_id) {
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+
+  n = out_gi.n_slice;
+  h = out_gi.h_slice;
+
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+  laddr_t la_working = gi.buffer_addr;
+  bool bExtraInput = false;
+  if (getExtraInput().has_value() && getExtraInput().value()) {
+    bExtraInput = true;
+  }
+  auto ifmt = CV18xx::getDataType(getInput());
+  auto ofmt = CV18xx::getDataType(getOutput());
+
+  float_t scale = 1.;
+  if (module::isUniformQuantized(getInput())) {
+    auto qtype = module::getUniformQuantizedType(getInput());
+    scale = qtype.getScale();
+  } else {
+    auto qtype = module::getUniformQuantizedType(getOutput());
+    scale = 1. / qtype.getScale();
+  }
+
+  // FIXME: support F16 -> U8
+  cvi_backend_tl_quant(layer_id, la_input, la_output, la_working, ifmt, ofmt,
+                       scale, n, c, h, w, bExtraInput);
 }

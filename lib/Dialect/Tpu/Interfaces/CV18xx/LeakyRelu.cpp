@@ -56,7 +56,7 @@ int64_t tpu::LeakyReluOp::getBufferSize_cv18xx(
   }
   int64_t n, c, h, w;
   auto vIn = getInput();
-  module::getNCHW(getInput(), n, c, h, w);
+  module::getNCHW(vIn, n, c, h, w);
   n = in_nslice;
   h = in_hslice;
   auto fmt = CV18xx::getDataType(vIn);
