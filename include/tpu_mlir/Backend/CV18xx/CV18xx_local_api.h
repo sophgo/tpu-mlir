@@ -206,8 +206,8 @@ void cvi_backend_tl_quant(uint32_t layer_id, laddr_t la_input,
 
 void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
                              laddr_t output_laddr, int input_n, int input_c,
-                             int input_h, int input_w, int scale_h,
-                             int scale_w, cvk_fmt_t fmt);
+                             int input_h, int input_w, int scale_h, int scale_w,
+                             cvk_fmt_t fmt);
 
 void cvi_backend_tl_deconv(uint32_t layer_id, laddr_t la_ifmap,
                            laddr_t la_ofmap, laddr_t la_weight,
@@ -237,5 +237,16 @@ void cvi_backend_bf16_tl_lut(uint32_t layer_id, laddr_t la_input,
                              laddr_t la_y_table, laddr_t la_slope_table,
                              int thresh_min, int thresh_max, int n, int c,
                              int h, int w, int method);
+
+void cvi_backend_tl_scale_lut(uint32_t layer_id, laddr_t ifmap_laddr,
+                              laddr_t ofmap_laddr, laddr_t table_laddr,
+                              int input_n, int input_c, int input_h,
+                              int input_w);
+
+void cvi_backend_tl_relu(uint32_t layer_id, int n, int c, int h, int w,
+                         laddr_t la_input, laddr_t la_output);
+
+void cvi_backend_tl_bf16_relu(uint32_t layer_id, int n, int c, int h, int w,
+                              laddr_t la_input, laddr_t la_output);
 } // namespace backend
 } // namespace tpu_mlir

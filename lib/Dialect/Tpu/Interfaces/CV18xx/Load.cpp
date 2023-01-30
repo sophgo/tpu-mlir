@@ -48,6 +48,12 @@ void tpu::LoadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   }
 
   if (isNeuron) {
+    if (ifmt == CVK_FMT_U8) {
+      ifmt = CVK_FMT_I8;
+    }
+    if (ofmt == CVK_FMT_U8) {
+      ofmt = CVK_FMT_I8;
+    }
     assert((ifmt == CVK_FMT_BF16 || ifmt == CVK_FMT_I8) &&
            (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8) &&
            "current load neuron only support int8/bf16");

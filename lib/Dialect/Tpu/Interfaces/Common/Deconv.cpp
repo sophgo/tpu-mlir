@@ -179,7 +179,6 @@ mlir::Type tpu::DeconvOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 
 LogicalResult tpu::DeconvOp::LocalGenSupport() {
   if (module::isCV18xx()) {
-    return failure();
     auto attr = parseParam();
     if (attr.ic > MAX_TIU_CHL || attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
       return failure();
