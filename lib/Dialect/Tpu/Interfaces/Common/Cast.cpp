@@ -10,9 +10,8 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 float requant(const float &data, const quant::UniformQuantizedType &qtype) {
   auto stype = qtype.getExpressedType();
@@ -180,14 +179,14 @@ mlir::Type tpu::CastOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::CastOp::LocalGenSupport() {
-  // BackwardH and BackwardN can not handle more than one input right now.
-  // The same n_slice and h_slice value will propagate to each inputs.
-  // Thus, the local layer is only safe when we do not need to slice n and h
-  // dimensions.
   if (module::isCV18xx()) {
-    // if (module::getStorageType(getOutput()).isBF16()) {
-    //   return success();
-    // }
+    auto in_type = module::getStorageType(getInput());
+    auto out_type = module::getStorageType(getOutput());
+    // type.isSignedInteger()
+    if ((in_type.getIntOrFloatBitWidth() == 8 && out_type.isBF16()) ||
+        (in_type.isBF16() && out_type.isSignedInteger())) {
+      return success();
+    }
     return failure();
   }
   return success();

@@ -199,10 +199,16 @@ void cvi_backend_tl_bf16_pooling(uint32_t layer_id, laddr_t ifmap_laddr,
                                  uint32_t pad_h_bottom, uint32_t pad_w_left,
                                  uint32_t pad_w_right, bool is_avg_pooling);
 
+void cvi_backend_tl_quant(uint32_t layer_id, laddr_t la_input,
+                          laddr_t la_output, laddr_t la_working, cvk_fmt_t from,
+                          cvk_fmt_t to, float const_scale, int n, int c, int h,
+                          int w, bool bExtraInput);
+
 void cvi_backend_tl_upsample(uint32_t layer_id, laddr_t input_laddr,
                              laddr_t output_laddr, int input_n, int input_c,
                              int input_h, int input_w, int scale_h,
                              int scale_w, cvk_fmt_t fmt);
+
 void cvi_backend_tl_deconv(uint32_t layer_id, laddr_t la_ifmap,
                            laddr_t la_ofmap, laddr_t la_weight,
                            laddr_t la_perchannel, int input_n, int input_c,
