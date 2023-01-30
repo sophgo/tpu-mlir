@@ -172,6 +172,7 @@ class OnnxConverter(BaseConverter):
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
+            "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
@@ -1887,3 +1888,18 @@ class OnnxConverter(BaseConverter):
         for idx, need in enumerate(out_needs):
             if not need: continue
             self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_scatternd_op(self, onnx_node):
+        assert (onnx_node.op_type == "ScatterND")
+        assert(len(onnx_node.inputs) == 3)
+        data = self.getOperand(onnx_node.inputs[0])
+        indices =self.getOperand(onnx_node.inputs[1])
+        updates = self.getOperand(onnx_node.inputs[2])
+        output_shape = self.getShape(onnx_node.name)
+        reduction = onnx_node.attrs.get("reduction", None)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "reduction": reduction
+        }
+        scatternd_op = self.mlir.create_scatternd_op([data, indices, updates], output_shape, **p)
+        self.addOperand(onnx_node.name, scatternd_op)
