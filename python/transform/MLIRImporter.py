@@ -28,6 +28,7 @@ class Top:
     ErfOp = 'top.Erf'
     ExpOp = 'top.Exp'
     GatherOp = 'top.Gather'
+    GELUOp = 'top.GELU'
     GRUOp = 'top.GRU'
     HardSigmoidOp = 'top.HardSigmoid'
     HardSwishOp = 'top.HardSwish'
@@ -819,6 +820,12 @@ class MLIRImporter(object):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         param = {'name': kargs['name']}
         return self.buildOp(Top.HardSwishOp, operands, [output_type], **param)
+
+    def create_gelu_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.GELUOp, operands, [output_type], **param)
 
     def create_priorbox_op(self, operands, output_shape, **kargs):
         # get_value_type

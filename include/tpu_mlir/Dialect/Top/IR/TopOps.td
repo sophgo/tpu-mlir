@@ -716,6 +716,18 @@ def Top_SiLUOp : Top_Op<"SiLU", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_GELUOp : Top_Op<"GELU", [InOutSameShape]> {
+  let summary = " GELU operator,  0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))";
+  let description = [{
+     Y = 0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))
+  }];
+  let arguments = (
+    ins AnyTensor:$input
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_SplitOp: Top_Op<"Split"> {
   let summary = "Split operator";
 

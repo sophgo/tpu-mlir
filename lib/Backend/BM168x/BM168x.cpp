@@ -306,7 +306,9 @@ BM168x::~BM168x() {}
 void BM168x::start_env() {
   load_library();
   load_functions();
-  dl_cmodel_init(0, CMODEL_GMEM_SIZE);
+  if (0 != dl_cmodel_init(0, CMODEL_GMEM_SIZE)) {
+    llvm_unreachable("cmodel init failed");
+  }
   cmdid_node = dl_create_cmd_id_node();
   bdc_node = dl_create_cmd_id_node();
   gdma_node = dl_create_cmd_id_node();
