@@ -48,31 +48,29 @@ void tpu::LoadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   }
 
   if (isNeuron) {
-    assert((ifmt == CVK_FMT_BF16 || ifmt == CVK_FMT_I8)
-            && (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8)
-            && "current load neuron only support int8/bf16");
+    assert((ifmt == CVK_FMT_BF16 || ifmt == CVK_FMT_I8) &&
+           (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8) &&
+           "current load neuron only support int8/bf16");
   } else {
-    assert((ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8 || ofmt == CVK_FMT_U16)
-            && "current load weight only support int8/uint16/bf16");
+    assert(
+        (ofmt == CVK_FMT_BF16 || ofmt == CVK_FMT_I8 || ofmt == CVK_FMT_U16) &&
+        "current load weight only support int8/uint16/bf16");
     if (ofmt == CVK_FMT_U16) {
       ofmt = CVK_FMT_BF16;
     }
     ifmt = ofmt;
   }
 
-  if (getDoBcast() == true) {
-    llvm_unreachable("Not support now");
-    // g_c = CV18xx::NPU_NUM;
-    // g_stride.N = 0;
-    // g_stride.C = 0;
-    // g_stride.H = 0;
-  }
-
-  int64_t g_offset =
-      (gi.n_idx * g_stride.n + gi.h_idx * g_stride.h);
+  int64_t g_offset = (gi.n_idx * g_stride.n + gi.h_idx * g_stride.h);
   gaddr_t src_gaddr = module::getAddress(getInput()) + g_offset;
 
-  cvi_backend_tl_load_stride(layer_id, src_gaddr, gi.out_addr, gi.n_slice, g_c,
-                             gi.h_slice, g_w, g_c, g_h, g_w, transpose,
-                             gi.eu_align, isNeuron, ifmt, ofmt, bcompressed);
+  if (getDoBcast() == true) {
+    cvi_backend_tl_load_stride_broadcast(
+        layer_id, src_gaddr, gi.out_addr, gi.n_slice, g_c, gi.h_slice, g_w, g_c,
+        g_h, g_w, gi.eu_align, isNeuron, ifmt, ofmt, bcompressed);
+  } else {
+    cvi_backend_tl_load_stride(layer_id, src_gaddr, gi.out_addr, gi.n_slice,
+                               g_c, gi.h_slice, g_w, g_c, g_h, g_w, transpose,
+                               gi.eu_align, isNeuron, ifmt, ofmt, bcompressed);
+  }
 }

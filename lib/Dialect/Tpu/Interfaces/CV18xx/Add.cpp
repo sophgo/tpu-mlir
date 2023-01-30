@@ -115,16 +115,22 @@ int64_t tpu::AddOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
                                          int64_t in_nslice, int64_t in_hslice,
                                          int64_t out_nslice,
                                          int64_t out_hslice) {
-  if (module::isUniformQuantized(getOutput())) {
-    return out_lmem_bytes;
-  } else {
+  if (!module::isUniformQuantized(getOutput())) {
     return 0;
   }
+  int64_t n, c, h, w;
+  auto vIn = getInputs()[0];
+  module::getNCHW(vIn, n, c, h, w);
+  n = in_nslice;
+  h = in_hslice;
+  auto fmt = CV18xx::getDataType(vIn);
+  return CV18xx::lmem_woring_size({n, c, h, w}, 1, true, fmt);
 }
 
 void tpu::AddOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                       int64_t layer_id) {
-  assert(getInputs().size() == 2);
+  int64_t input_num = getInputs().size();
+  assert(input_num == 2);
   int64_t n, c, h, w;
   auto shape = module::getShape(getInputs()[0]);
   module::getNCHW(shape, n, c, h, w);
@@ -149,7 +155,6 @@ void tpu::AddOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
 
   // op code PROD = 0; SUM = 1; MAX = 2;
   int op_code = 1;
-  int64_t input_num = getInputs().size();
   if (module::isUniformQuantized(getOutput())) {
     auto multiplier_v = module::getI64Array(getMultipliers(), input_num, 1);
     auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
