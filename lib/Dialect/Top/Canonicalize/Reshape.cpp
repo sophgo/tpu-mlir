@@ -20,7 +20,12 @@ struct TopFuseReshape : public OpRewritePattern<ReshapeOp> {
 
   LogicalResult matchAndRewrite(ReshapeOp op,
                                 PatternRewriter &rewriter) const override {
-    // TODO: support to convert batchnorm to scale
+    auto in_op = op.getInput().getDefiningOp();
+    if (in_op->hasOneUse() && isa<ReshapeOp>(in_op)) {
+      op->setOperand(0, in_op->getOperand(0));
+      in_op->erase();
+      return success();
+    }
     return failure();
   }
 };
