@@ -240,10 +240,17 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
   bm168x->dl_reset_cmd_id(pid_node);
   auto data_type = BM168x::getDataType(v);
-  auto gdma_format = BM168x::getGdmaFormat(data_type);
-  auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
+  int gdma_format;
   module::getNCHW(v, N, C, H, W);
+  if(data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
+    gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
+    data_type  = DTYPE_INT8;
+    W >>= 1;
+  }
+
+  gdma_format = BM168x::getGdmaFormat(data_type);
+  auto fmt_bytes = BM168x::getFmtBytes(data_type);
 
   auto g_stride = bm168x->getGlobalStride(N, C, H, W);
   if (need_bcast) {

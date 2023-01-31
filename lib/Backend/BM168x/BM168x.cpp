@@ -65,6 +65,8 @@ DATA_TYPE_T BM168x::getDataType(mlir::Type type) {
   auto bits = type.getIntOrFloatBitWidth();
   if (type.isUnsignedInteger()) {
     switch (bits) {
+    case 4:
+      return DTYPE_UINT4;
     case 8:
       return DTYPE_UINT8;
     case 16:
@@ -76,6 +78,8 @@ DATA_TYPE_T BM168x::getDataType(mlir::Type type) {
     }
   } else if (type.isSignedInteger() || type.isSignlessInteger()) {
     switch (bits) {
+    case 4:
+      return DTYPE_INT4;
     case 8:
       return DTYPE_INT8;
     case 16:
@@ -102,6 +106,9 @@ int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
   case DTYPE_INT8:
   case DTYPE_UINT8:
     return GDMA_VALUE_FORMAT_INT8;
+  /*case DTYPE_INT4:   // for SG2260
+  case DTYPE_UINT4:
+    return GDMA_VALUE_FORMAT_INT4;*/
   case DTYPE_INT16:
   case DTYPE_UINT16:
   case DTYPE_FP16:
@@ -113,8 +120,8 @@ int BM168x::getGdmaFormat(DATA_TYPE_T data_type) {
   return 0;
 }
 
-int BM168x::getFmtBytes(DATA_TYPE_T data_type) {
-  int data_byte_size = 0;
+double BM168x::getFmtBytes(DATA_TYPE_T data_type) {
+  double data_byte_size = 0;
   switch (data_type) {
   case DTYPE_FP32:
     data_byte_size = 4;
@@ -129,11 +136,15 @@ int BM168x::getFmtBytes(DATA_TYPE_T data_type) {
   case DTYPE_UINT8:
     data_byte_size = 1;
     break;
+  case DTYPE_INT4:
+  case DTYPE_UINT4:
+    data_byte_size = 0.5;
+    break;
   default:
     data_byte_size = 4;
     break;
   }
-  return data_byte_size;
+  return (double)data_byte_size;
 }
 
 tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
@@ -201,7 +212,7 @@ stride_4D_t BM168x::getGlobalStride(int64_t N, int64_t C, int64_t H,
 }
 
 stride_4D_t BM168x::getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
-                                   int fmtBytes, bool eu_align) {
+                                   double fmtBytes, bool eu_align) {
   stride_4D_t s;
   s.W = 1;
   s.H = W;

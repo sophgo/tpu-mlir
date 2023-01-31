@@ -130,7 +130,7 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
 void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
              int64_t &w, bool left_align = true);
 void getShapeVec(Value v, std::vector<int64_t> &vec_shape);
-int getDtypeSize(Value v);
+double getDtypeSize(Value v);
 size_t getBytes(Value v);
 int64_t getNumElements(Value v);
 Type getStorageType(Value v); // storage type

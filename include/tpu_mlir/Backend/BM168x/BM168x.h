@@ -63,6 +63,8 @@ typedef enum {
   DTYPE_INT32 = 6,
   DTYPE_UINT32 = 7,
   DTYPE_BFP16 = 8,
+  DTYPE_INT4 = 9,
+  DTYPE_UINT4 = 10,
   DTYPE_UNKNOWN = -1,
 } DATA_TYPE_T;
 
@@ -579,7 +581,7 @@ public:
   static DATA_TYPE_T getDataType(Type type);
   static DATA_TYPE_T getDataType(Value v);
   static int getGdmaFormat(DATA_TYPE_T data_type);
-  static int getFmtBytes(DATA_TYPE_T data_type);
+  static double getFmtBytes(DATA_TYPE_T data_type);
   static tensor_spec_t value_to_spec(Value v);
   static std::shared_ptr<std::vector<tensor_spec_t>>
   get_input_spec(Operation *op);
@@ -595,7 +597,7 @@ public:
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
                                      int64_t W);
   static stride_4D_t getLocalStride(int64_t N, int64_t C, int64_t H, int64_t W,
-                                    int fmtBytes, bool eu_align = true);
+                                    double fmtBytes, bool eu_align = true);
   template <typename T>
   static int64_t dynamic_spec_to_buffer(void *buffer, const T &spec) {
     auto p = static_cast<char *>(buffer);

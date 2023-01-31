@@ -23,17 +23,18 @@ template <typename T>
 static void
 reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
                                     std::vector<int64_t> &shape,
-                                    bool align = false) {
+                                    bool align = false,
+                                    bool isINT4Conv = false) {
   int64_t n, c, h, w, eu_num;
   module::getNCHW(shape, n, c, h, w);
+
   if (n != 1 || h != 1 || c <= BM168x::NPU_NUM) {
     return;
   }
-  eu_num = BM168x::eu_num(sizeof(T));
+  eu_num = BM168x::eu_num(isINT4Conv ? 0.5 : sizeof(T));
   auto old_w_align = align_up(w, eu_num);
-
-  // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
   int64_t new_c = BM168x::NPU_NUM;
+  // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
   auto c2w = ceiling_func(c, new_c);
   int64_t new_w = (align ? old_w_align : w) * (c2w - 1) + w;
   auto coeff_new = std::make_shared<std::vector<T>>(new_w * new_c, 0);
@@ -49,20 +50,22 @@ reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
       }
     }
   }
+
+  coeff = coeff_new;
   assert(shape.size() > 2);
   shape.assign(shape.size(), 1);
   shape[1] = new_c;
   shape.back() = new_w;
-  coeff = coeff_new;
 }
 
 template <typename T>
 static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
-                           std::vector<int64_t> &shape) {
+                           std::vector<int64_t> &shape,
+                           bool isINT4Conv = false) {
   int64_t oc, ic, kh, kw;
   module::getNCHW(shape, oc, ic, kh, kw);
   auto type_bytes = sizeof(T);
-  int64_t IC_PARALLEL = BM168x::ic_num(type_bytes);
+  int64_t IC_PARALLEL = BM168x::ic_num(isINT4Conv ? 0.5 : type_bytes);
   auto kernel_hw = kh * kw;
   int64_t new_ic = ceiling_func(ic, IC_PARALLEL);
   int64_t new_hw = kernel_hw * IC_PARALLEL;
@@ -82,8 +85,8 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
       }
     }
   }
-  filter = filter_new;
   assert(shape.size() > 2);
+  filter = filter_new;
   shape.assign(shape.size(), 1);
   shape[1] = oc;
   shape.back() = new_ic * new_hw;
@@ -92,7 +95,8 @@ static void filter_reorder(std::shared_ptr<std::vector<T>> &filter,
 template <typename T>
 static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
                                   std::vector<int64_t> &shape,
-                                  int64_t use_3ic_optimize) {
+                                  int64_t use_3ic_optimize,
+                                  bool isINT4Conv = false) {
   int64_t oc, ic, kh, kw;
   module::getNCHW(shape, oc, ic, kh, kw);
   use_3ic_optimize = use_3ic_optimize & 0x3;
@@ -136,7 +140,31 @@ static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
   shape[0] = oc;
   shape[1] = new_ic;
   shape.back() = new_kernel;
-  filter_reorder(weight, shape);
+  filter_reorder(weight, shape, isINT4Conv);
+}
+
+static void compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
+                                  std::vector<int64_t> &shape) {
+  int64_t N, C, H, W;
+  // shape : (1, oc, 1, DIV_UP(ic, nIC) * w * nIC) --> (1, oc, 1,  DIV_UP(oc, nIC) * w * nIC/2  )
+  module::getNCHW(shape, N, C, H, W);
+  auto  new_w = align_up(W, (int64_t)2) / 2;
+  auto filter_new = std::make_shared<std::vector<int8_t>>(new_w * C, 0);
+  for( uint i = 0; i < C; i++ ){
+    for( uint j = 0; j < W; j++) {
+      if ((j & 1) == 0) {
+        filter_new->at((i * W + j) >> 1) = (weight_nIC->at(i * W + j) & 0x0f);
+      } else {
+        filter_new->at((i * W + j) >> 1) &= 0x0f;
+        filter_new->at((i * W + j) >> 1) |= (weight_nIC->at(i * W + j) << 4);
+      }
+    }
+  }
+  assert(shape.size() > 2);
+  shape.assign(shape.size(), 1);
+  shape[1] = C;
+  shape.back() = new_w;
+  weight_nIC = filter_new;
 }
 
 #ifdef __cplusplus

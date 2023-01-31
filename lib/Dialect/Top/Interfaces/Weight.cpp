@@ -116,7 +116,7 @@ std::shared_ptr<std::vector<int32_t>> WeightOp::read_as_int32() {
 
 std::shared_ptr<std::vector<uint8_t>> WeightOp::read_as_byte() {
   auto dtype = module::getStorageType(getOutput());
-  if (dtype.isInteger(8)) {
+  if (dtype.isInteger(8) || dtype.isInteger(4)) {
     return read<uint8_t>();
   } else if (dtype.isF32()) {
     auto data_f32 = read<float>();

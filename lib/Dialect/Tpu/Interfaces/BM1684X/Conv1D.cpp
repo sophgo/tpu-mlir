@@ -288,8 +288,8 @@ int64_t tpu::Conv1DOp::getBufferSize_bm1684x(
   int64_t sz = 0;
   auto in_type = BM168x::getDataType(getInput());
   auto out_type = BM168x::getDataType(getOutput());
-  int in_type_len = BM168x::getFmtBytes(in_type);
-  int out_type_len = BM168x::getFmtBytes(out_type);
+  auto in_type_len = BM168x::getFmtBytes(in_type);
+  auto out_type_len = BM168x::getFmtBytes(out_type);
 
   auto eu_num = BM168x::eu_num(in_type_len);
 

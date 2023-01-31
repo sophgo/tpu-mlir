@@ -13,7 +13,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "mlir/Dialect/Quant/FakeQuantSupport.h"
-
+#include "tpu_mlir/Support/MathUtils.h"
 #include <map>
 
 namespace tpu_mlir {
@@ -268,14 +268,14 @@ size_t getBytes(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   auto elm_count = type.getNumElements();
   auto etype = getStorageType(v);
-  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
-  return elm_count * elm_bytes;
+  int elm_bits = etype.getIntOrFloatBitWidth();
+  return align_up(elm_count * elm_bits, (int64_t)8) / 8;
 }
 
-int getDtypeSize(Value v) {
+double getDtypeSize(Value v) {
   auto type = v.getType().cast<RankedTensorType>();
   auto etype = getStorageType(v);
-  int elm_bytes = etype.getIntOrFloatBitWidth() / 8;
+  double elm_bytes = (double)etype.getIntOrFloatBitWidth() / 8;
   return elm_bytes;
 }
 
