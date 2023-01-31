@@ -9,6 +9,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
@@ -135,4 +136,45 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
   } else {
     llvm_unreachable("Unsupport pad type.");
   }
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+
+int64_t tpu::PadOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
+                                         int64_t out_lmem_bytes,
+                                         int64_t in_nslice, int64_t in_hslice,
+                                         int64_t out_nslice,
+                                         int64_t out_hslice) {
+  return 0;
+}
+
+void tpu::PadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                      int64_t layer_id) {
+  std::vector<int64_t> i_s;
+  std::vector<int64_t> o_s;
+  std::vector<int> pads;
+  parsePadParam(getOperation(), i_s, o_s, pads);
+
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+
+  pads[2] = (in_gi.h_idx == 0 ? pads[2] : 0);
+  pads[6] = (in_gi.h_idx + in_gi.h_slice == i_s[2] ? pads[6] : 0);
+
+  i_s[0] = in_gi.n_slice;
+  i_s[2] = in_gi.h_slice;
+
+  o_s[0] = out_gi.n_slice;
+  o_s[2] = out_gi.h_slice;
+
+  float const_val = getVal().convertToDouble();
+  cvi_backend_tl_pad(layer_id, // layer_id,
+                     i_s.data(), o_s.data(), la_input,
+                     la_output, const_val, pads.data());
+  return;
 }

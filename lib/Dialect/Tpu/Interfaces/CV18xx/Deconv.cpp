@@ -139,7 +139,7 @@ packWeight(i32_array_t &bias, i64_array_t &rshift, i64_array_t &multiplier,
 // for bf16 bias
 static void
 transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
-                  std::vector<uint32_t> &bias_u32) {
+                  std::vector<uint16_t> &bias_u16) {
   // Split into high/low part
   std::vector<uint16_t> bias_fp32_high;
   std::vector<uint16_t> bias_fp32_low;
@@ -157,8 +157,8 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
   bias_reshape_fp32.insert(bias_reshape_fp32.end(), bias_fp32_low.begin(),
                            bias_fp32_low.end());
   // then copy into uint32_t
-  assert(bias_u32.size() == bias_f32->size());
-  memcpy(bias_u32.data(), bias_reshape_fp32.data(), size * sizeof(uint32_t));
+  assert(bias_u16.size() == 2 * bias_f32->size());
+  memcpy(bias_u16.data(), bias_reshape_fp32.data(), size * sizeof(uint32_t));
 }
 
 // ======================================
@@ -249,7 +249,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
   if (attr.with_bias) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     auto bias_f32 = biasOp.read<float>();
-    std::vector<uint32_t> bias_new(bias_f32->size());
+    std::vector<uint16_t> bias_new(bias_f32->size() * 2);
     transposeBiasFp32(bias_f32, bias_new);
     // rewrite biasOp
     // rewrite weightOp shape (oc) f32 -> (2, oc, 1, 1) uint16
@@ -359,54 +359,25 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   int ih = in_gi.h_slice;
   int oh = out_gi.h_slice;
 
-  int real_h_idx, real_h_slice;
   int pad_h_top, pad_h_bottom;
   int pad_w_left, pad_w_right;
-
-  pad_h_top = attr.pad_h;
-  pad_h_bottom = attr.pad_h_after;
-  pad_w_left = attr.pad_w;
-  pad_w_right = attr.pad_w_after;
-
-  real_h_idx = (out_gi.h_idx > 0) ? out_gi.h_idx : 0;
-  real_h_slice = oh;
-
   int kh_ext = (attr.kh - 1) * attr.dh + 1;
   int kw_ext = (attr.kw - 1) * attr.dw + 1;
-  int ins_last_w = (attr.ow + pad_w_left + pad_w_right - kw_ext) % attr.sw;
-  int height_insert0 = (ih - 1) * attr.sh + 1;
-  pad_h_top = kh_ext - pad_h_top - 1;
-  pad_h_bottom = kh_ext - pad_h_bottom - 1;
-  int o_ht = real_h_idx;
-  int o_hb = real_h_idx + real_h_slice;
-  int if_pad_h_t = o_ht;
-  int if_pad_h_b = o_hb + kh_ext - 1;
-  int if_insert_h_t = 0;
-  int pad_h_t = 0;
-  if (if_pad_h_t < pad_h_top) {
-    pad_h_t = pad_h_top - if_pad_h_t;
-  } else {
-    if_insert_h_t = if_pad_h_t - pad_h_top;
-  }
-  int if_insert_h_b = height_insert0;
-  int pad_h_b = 0;
-  if ((if_pad_h_b - pad_h_bottom) < height_insert0) {
-    if_insert_h_b = if_pad_h_b - pad_h_bottom;
-  } else {
-    pad_h_b = if_pad_h_b - height_insert0 - pad_h_bottom;
-  }
-  int hinsert0_t =
-      if_insert_h_t % attr.sh == 0 ? 0 : (attr.sh - if_insert_h_t % attr.sh);
-  int hinsert0_b = (if_insert_h_b + attr.sh - 1) % attr.sh;
-
-  pad_h_top = pad_h_t + hinsert0_t;
-  pad_h_bottom = pad_h_b + hinsert0_b;
-  pad_w_left = kw_ext - pad_w_left - 1;
-  pad_w_right = kw_ext - pad_w_right - 1 + ins_last_w;
-  int ins_h = attr.sh - 1;
   int ins_last_h = 0;
+  int ins_last_w = (attr.ow + attr.pad_w + attr.pad_w_after - kw_ext) % attr.sw;
+  int ins_h = attr.sh - 1;
   int ins_w = attr.sw - 1;
+  if (auto deconv_in_slice =
+          DeconvSlice(gi.h_idx, gi.h_slice, attr.sh, kh_ext, attr.pad_h)) {
+    pad_h_top = deconv_in_slice.value()[0];
+    pad_h_bottom = deconv_in_slice.value()[1];
 
+  } else {
+    pad_h_top = attr.kh - attr.pad_h - 1;
+    pad_h_bottom = attr.kh - attr.pad_h_after - 1;
+  }
+  pad_w_left = attr.kw - attr.pad_w - 1;
+  pad_w_right = attr.kw - attr.pad_w_after - 1;
   // hw limitation once set ins_w / ins_h that input w/h should > 1
   if (ins_h && ih == 1) {
     ins_last_h += ins_h;
@@ -423,6 +394,8 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
       ins_last_w = 0; // included in pad_w_left
     }
   }
+  assert(ins_last_h < 16 && ins_last_w < 16);
+  assert(pad_h_top < 16 && pad_h_bottom < 16 && pad_w_left < 16 && pad_w_right < 16);
   if (module::isUniformQuantized(getOutput())) {
     cvi_backend_tl_deconv(
         layer_id, la_input, la_output, la_weight, la_bias, n, attr.ic, ih,
@@ -440,6 +413,5 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
         attr.dw, ins_h, ins_last_h, ins_w, ins_last_w, pad_h_top, pad_h_bottom,
         pad_w_left, pad_w_right, attr.sh, attr.sw, attr.with_bias, getDoRelu());
   }
-
   return;
 }

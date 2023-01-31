@@ -42,5 +42,6 @@ LogicalResult tpu::SwapChannelOp::LocalGenSupport() {
   if (!module::isCV18xx()) {
     return failure();
   }
+  // return success();
   return failure();
 }

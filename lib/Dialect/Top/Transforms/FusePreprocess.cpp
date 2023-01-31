@@ -66,6 +66,9 @@ struct FoldSwapAxisOpPattern : public RewritePattern {
       return failure();
     }
     auto convOp = dyn_cast_or_null<top::ConvOp>(nextOp);
+    if (!convOp) {
+      return failure();
+    }
     if (convOp.getGroup() != 1 || convOp.getKernelShape().size() != 2) {
       return failure();
     }
