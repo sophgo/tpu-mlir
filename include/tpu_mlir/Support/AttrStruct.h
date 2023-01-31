@@ -154,4 +154,10 @@ typedef struct {
   bool simplified;
 } reduce_attr_t;
 
+typedef struct {
+  std::vector<int64_t> in_shape_fix;
+  std::vector<int64_t> out_shape_fix;
+  std::vector<int64_t> order_fix;
+} permute_attr_t;
+
 } // namespace tpu_mlir
