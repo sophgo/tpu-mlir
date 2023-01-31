@@ -163,7 +163,15 @@ class ONNX_IR_TESTER(object):
             #############################
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
+            "Div2Mul" : self.test_Div2Mul,
             "GatherToSlice": self.test_GatherToSlice,
+            "Mul2Scale": self.test_Mul2Scale,
+            # "PadConv1d": self.test_PadConv1d,
+            "PadConv2d": self.test_PadConv2d,
+            # "PadConv3d": self.test_PadConv3d,
+            # "PadPool1d": self.test_PadPool1d,
+            "PadPool2d": self.test_PadPool2d,
+            # "PadPool3d": self.test_PadPool3d,
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
         }
@@ -2868,6 +2876,100 @@ class ONNX_IR_TESTER(object):
     #                                   initializer=[weight, bias])
     #     self.onnx_and_test(graph_def)
 
+    def BinaryWeightBase(self, case_name, input_shape, weight_shape, binary_name, reverse=False):
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        if binary_name == "Div":
+            weight_data_ = np.random.uniform(0.5, 2, tuple(weight_shape)).astype(np.float32)
+            weight_data = np.multiply(weight_data_, np.random.choice(np.array([-1, 1]), weight_shape))
+        else:
+            weight_data = np.random.randn(*weight_shape).astype(np.float32)
+        if binary_name in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
+            output_dtype = TensorProto.BOOL
+        else:
+            output_dtype = TensorProto.FLOAT
+        weight = helper.make_tensor('weight1', TensorProto.FLOAT, weight_shape, weight_data)
+        output = helper.make_tensor_value_info("output", output_dtype, input_shape)
+        binary_def = helper.make_node(binary_name, inputs=['input', 'weight1'], outputs=["output"])
+        graph_def = helper.make_graph([binary_def], case_name, [input], [output], initializer=[weight])
+        self.onnx_and_test(graph_def)
+
+    def test_Div2Mul(self, case_name):
+        self.BinaryWeightBase(case_name, [1, 16, 32, 32], [1, 16, 32, 32], "Div")
+
+    def test_Mul2Scale(self, case_name):
+        self.BinaryWeightBase(case_name, [1, 32, 32, 32], [1, 32, 1, 1], "Mul")
+
+    #conv_param: [out_shape, filter_shape, conv_pads]
+    def PadConvBase(self, case_name, input_shape, pad_param, conv_param_list):
+        add_in_shape = {"input1": input_shape, "input2": input_shape}
+        pad_val = np.array(pad_param).astype(np.int64)
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in add_in_shape.items()
+        ]
+        paddings = helper.make_tensor(name='paddings',
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pad_val.shape,
+                                     vals=pad_val.flatten())
+        add1 = helper.make_tensor_value_info("add1", TensorProto.FLOAT, input_shape)
+        f_data1 = np.random.randn(*conv_param_list[0][1]).astype(np.float32)
+        f_data2 = np.random.randn(*conv_param_list[1][1]).astype(np.float32)
+        filter1 = helper.make_tensor('filter1', TensorProto.FLOAT, conv_param_list[0][1], f_data1)
+        filter2 = helper.make_tensor('filter2', TensorProto.FLOAT, conv_param_list[1][1], f_data2)
+        output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, conv_param_list[0][0])
+        output2 = helper.make_tensor_value_info("output2", TensorProto.FLOAT, conv_param_list[1][0])
+
+        add_def = helper.make_node("Add", inputs=list(add_in_shape.keys()), outputs=["add1"])
+        pad_def = helper.make_node("Pad", inputs=['add1', 'paddings'], outputs=['pad2'], mode='constant',)
+        conv1_def = helper.make_node("Conv", inputs=['pad2', 'filter1'], outputs=['output1'], kernel_shape=conv_param_list[0][1][2:], pads=conv_param_list[0][2])
+        conv2_def = helper.make_node("Conv", inputs=['pad2', 'filter2'], outputs=['output2'], kernel_shape=conv_param_list[1][1][2:], pads=conv_param_list[1][2])
+        graph_def = helper.make_graph([add_def, pad_def, conv1_def, conv2_def], case_name, inputs, [add1, output1, output2], initializer = [paddings, filter1, filter2])
+        self.onnx_and_test(graph_def)
+
+    def test_PadConv1d(self, case_name):
+        self.PadConvBase(case_name, [1, 2, 8], [0, 0, 1, 0, 0, 1], \
+                        [[[1, 2, 10], [2, 2, 3], [1, 1]], [[1, 2, 8], [2, 2, 3], [0, 0]]])
+
+    def test_PadConv2d(self, case_name):
+        self.PadConvBase(case_name, [1, 3, 8, 8], [0, 0, 1, 1, 0, 0, 3, 1], \
+                        [[[1, 16, 14, 10], [16, 3, 3, 3], [2, 1, 2, 1]], [[1, 16, 10, 8], [16, 3, 3, 3], [0, 0, 0 ,0]]])
+
+    def test_PadConv3d(self, case_name):
+        self.PadConvBase(case_name, [1, 3, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 3, 1, 2], \
+                        [[[1, 16, 36, 35, 35], [16, 3, 3, 3, 3], [1, 2, 1, 2, 1, 0]], [[1, 16, 33, 32, 34], [16, 3, 3, 3, 3], [0, 0, 0, 0, 0 ,0]]])
+
+    #pool_param: [out_shape, kernel_shape, pool_pads]
+    def PadPoolBase(self, case_name, input_shape, pad_param, pool_param_list):
+        add_in_shape = {"input1": input_shape, "input2": input_shape}
+        pad_val = np.array(pad_param).astype(np.int64)
+        inputs = [
+            helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in add_in_shape.items()
+        ]
+        paddings = helper.make_tensor(name='paddings',
+                                     data_type=onnx.TensorProto.INT64,
+                                     dims=pad_val.shape,
+                                     vals=pad_val.flatten())
+        add1 = helper.make_tensor_value_info("add1", TensorProto.FLOAT, input_shape)
+        output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, pool_param_list[0][0])
+        output2 = helper.make_tensor_value_info("output2", TensorProto.FLOAT, pool_param_list[1][0])
+
+        add_def = helper.make_node("Add", inputs=list(add_in_shape.keys()), outputs=["add1"])
+        pad_def = helper.make_node("Pad", inputs=['add1', 'paddings'], outputs=['pad2'], mode='constant')
+        pool1_def = helper.make_node('AveragePool', inputs=['pad2'], outputs=['output1'], kernel_shape=pool_param_list[0][1], pads=pool_param_list[0][2], strides=pool_param_list[0][3], count_include_pad=1)
+        pool2_def = helper.make_node('AveragePool', inputs=['pad2'], outputs=['output2'], kernel_shape=pool_param_list[1][1], pads=pool_param_list[1][2], strides=pool_param_list[1][3], count_include_pad=1)
+        graph_def = helper.make_graph([add_def, pad_def, pool1_def, pool2_def], case_name, inputs, [add1, output1, output2], initializer = [paddings])
+        self.onnx_and_test(graph_def)
+
+    def test_PadPool1d(self, case_name):
+        self.PadPoolBase(case_name, [1, 3, 256], [0, 0, 2, 0, 0, 2], \
+                [[[1, 3, 65], [4], [0, 0], [4]], [[1, 3, 34], [8], [6, 6], [8]]])
+
+    def test_PadPool2d(self, case_name):
+        self.PadPoolBase(case_name, [1, 32, 12, 12], [0, 0, 1, 2, 0, 0, 1, 2], \
+                [[[1, 32, 6, 7], [4, 4], [0, 0, 0, 0], [2, 2]], [[1, 32, 4, 4], [4, 4], [1, 0, 1, 0], [4, 4]]])
+
+    def test_PadPool3d(self, case_name):
+        self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
+                [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

@@ -8,9 +8,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace mlir;
 using namespace tpu_mlir::top;
@@ -21,38 +21,82 @@ struct TopFusePad : public OpRewritePattern<PadOp> {
   LogicalResult matchAndRewrite(PadOp op,
                                 PatternRewriter &rewriter) const override {
 
-    if (!op->hasOneUse())
+    if (op.getInput().getType().dyn_cast<TensorType>().getShape().size() < 3)
       return failure();
 
-    if (op->getOperands()[0]
-            .getType()
-            .dyn_cast<TensorType>()
-            .getShape()
-            .size() != 4)
+    auto paddings = module::getI64Array(op.getPaddings());
+    // without batch or channel padding
+    int tensor_dim = paddings.get()->size() / 2;
+    for (int i = 0; i < 2; ++i) {
+      if (paddings.get()->at(i) != 0 || paddings.get()->at(i + tensor_dim) != 0)
+        return failure();
+    }
+    int pad_dim = tensor_dim - 2;
+
+    // only const pad
+    auto pad_mode = op->getAttr("mode").cast<IntegerAttr>().getInt();
+    if (pad_mode != 0)
       return failure();
 
-    auto nextOp = *op->getUsers().begin();
-    auto paddings = op->getAttr("paddings").dyn_cast<ArrayAttr>();
+    // check next op, pad_value and pad algo
+    double pad_value = op->getAttr("val").cast<FloatAttr>().getValueAsDouble();
+    for (auto nextOp_iter = op->getUsers().begin();
+         nextOp_iter != op->getUsers().end(); nextOp_iter++) {
+      auto nextOp = *nextOp_iter;
+      auto op_name = nextOp->getName().getStringRef();
+      if (isa<ConvOp>(nextOp)) {
+        if (pad_value != 0)
+          return failure();
+      } else if (isa<MaxPoolOp, AvgPoolOp>(nextOp)) {
+        auto nextOp_pad_value =
+            nextOp->getAttr("pad_value").cast<IntegerAttr>().getInt();
+        if (pad_value != double(nextOp_pad_value))
+          return failure();
+        auto nextOp_count_include_pad =
+            nextOp->getAttr("count_include_pad").cast<BoolAttr>().getValue();
+        if (!nextOp_count_include_pad)
+          return failure();
+      } else
+        return failure();
+    }
 
-    if (isa<ConvOp, MaxPoolOp, AvgPoolOp>(nextOp)) {
+    // remove batch padding and channel padding
+    std::vector<int64_t> paddings_(pad_dim * 2, 0);
+    for (int i = 0; i < 2; ++i) {
+      for (int j = 0; j < pad_dim; ++j) {
+        paddings_[i * pad_dim + j] = paddings.get()->at(i * tensor_dim + j + 2);
+      }
+    }
 
-      for (auto &pad : llvm::make_range(
-               paddings.begin(),
-               paddings.begin() +
-                   4 /*the leading padding is batch*2 and channel*2*/)) {
-        if (pad.cast<IntegerAttr>().getInt() != 0)
+    // check tensor dims and paddings after merged
+    for (auto nextOp_iter = op->getUsers().begin();
+         nextOp_iter != op->getUsers().end(); nextOp_iter++) {
+      auto nextOp = *nextOp_iter;
+      auto kernel_shape = nextOp->getAttr("kernel_shape").dyn_cast<ArrayAttr>();
+      if (kernel_shape.size() != pad_dim)
+        return failure();
+      auto next_paddings =
+          module::getI64Array(nextOp->getAttr("pads").dyn_cast<ArrayAttr>());
+      for (int i = 0; i < pad_dim * 2; ++i) {
+        // chip limit
+        if (next_paddings.get()->at(i) + paddings_[i] > 15)
           return failure();
       }
+    }
 
-      for (auto &pad : nextOp->getAttr("pads").dyn_cast<ArrayAttr>()) {
-        if (pad.cast<IntegerAttr>().getInt() != 0)
-          return failure();
+    // merge paddings
+    for (auto nextOp_iter = op->getUsers().begin();
+         nextOp_iter != op->getUsers().end(); nextOp_iter++) {
+      std::vector<int64_t> new_paddings(pad_dim * 2, 0);
+      auto nextOp = *nextOp_iter;
+      auto next_paddings =
+          module::getI64Array(nextOp->getAttr("pads").dyn_cast<ArrayAttr>());
+      for (int i = 0; i < pad_dim * 2; ++i) {
+        new_paddings[i] = next_paddings.get()->at(i) + paddings_[i];
       }
-    } else
-      return failure();
+      nextOp->setAttr("pads", rewriter.getI64ArrayAttr(new_paddings));
+    }
 
-    nextOp->setAttr(
-        "pads", rewriter.getArrayAttr({paddings.begin() + 4, paddings.end()}));
     // remove the pad Op
     rewriter.replaceOp(op, {op.getInput()});
     return success();
