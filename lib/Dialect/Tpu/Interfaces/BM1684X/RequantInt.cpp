@@ -105,12 +105,47 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 //dynamic codegen
 int64_t tpu::RequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
+  if (!buffer) return sizeof(dyn_requant_int_local_param_t);
+  auto gi = getGroupInfo(0, 0);
+  auto oqtype = module::getUniformQuantizedType(getOutput());
+
+  dyn_requant_int_local_param_t param = {0};
+  param.buffer_local_addr = (uint32_t)gi.buffer_addr;
+  param.common.mul_value = getMultiplier();
+  param.common.shift_value = -getRshift();
+  param.common.offset_value = oqtype.getZeroPoint();
+
+  if (module::isUniformQuantized(getInput())) {
+    auto iqtype = module::getUniformQuantizedType(getInput());
+    param.common.zx_value = iqtype.getZeroPoint();
+  }
+
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.mode = static_cast<int>(getQuantMode());
+  param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::RequantIntOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(dyn_requant_int_global_param_t);
+  dyn_requant_int_global_param_t param = {0};
+  auto oqtype = module::getUniformQuantizedType(getOutput());
+  param.common.mul_value = getMultiplier();
+  param.common.shift_value = -getRshift();
+  param.common.offset_value = oqtype.getZeroPoint();
+  if (module::isUniformQuantized(getInput())) {
+    auto iqtype = module::getUniformQuantizedType(getInput());
+    param.common.zx_value = iqtype.getZeroPoint();
+  }
+  param.common.mode = static_cast<int>(getQuantMode());
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

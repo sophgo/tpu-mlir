@@ -176,3 +176,8 @@ LogicalResult tpu::Conv3DOp::DynBackwardDownPadH(int64_t &in_down_pad_h, int64_t
   in_down_pad_h = out_down_pad_h * attr.sh + attr.phb;
   return success();
 }
+
+int64_t tpu::Conv3DOp::DynForwardHeight(int64_t in_height) {
+  //Todo
+  return in_height;
+}

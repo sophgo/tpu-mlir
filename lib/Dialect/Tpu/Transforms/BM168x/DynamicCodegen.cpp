@@ -236,7 +236,6 @@ Offset<bmodel::SubNet> DynCodegenPass::CreateSubNet(func::CallOp call, SubnetIr*
   module::getInputsOutputs(call, inputs, outputs);
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
-
   std::function<void(Operation *, SubnetIr*)> task = std::bind(&DynCodegenPass::codegen, this,
                       std::placeholders::_1, std::placeholders::_2);
   subnet_ir_->generate_compiler_ir(module, call, task);

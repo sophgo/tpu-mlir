@@ -113,6 +113,16 @@ def DynLocalGenInterface : OpInterface<"DynLocalGenInterface"> {
       >,
       InterfaceMethod<
         /*desc=*/[{}],
+        /*retType=*/"::int64_t",
+        /*methodName=*/"DynForwardHeight",
+        /*args=*/(ins "int64_t":$in_height),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
+          return in_height;
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
         /*retType=*/"tpu_mlir::group_info_t",
         /*methodName=*/"DynGetGroupInfo",
         /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step),

@@ -247,3 +247,14 @@ LogicalResult tpu::Conv2DOp::LocalGenSupport() {
   return success();
 }
 
+int64_t tpu::Conv2DOp::DynForwardHeight(int64_t in_height) {
+  auto &attr = getConv2DParam(*this);
+  int out_height = 0;
+  int kh_with_dh = (attr.kh - 1) * attr.dh + 1;
+  if ((in_height + attr.pht + attr.phb) >= kh_with_dh) {
+    out_height = (in_height + attr.pht + attr.phb - kh_with_dh) / attr.sh + 1;
+  } else {
+    out_height = 0;
+  }
+  return out_height;
+}
