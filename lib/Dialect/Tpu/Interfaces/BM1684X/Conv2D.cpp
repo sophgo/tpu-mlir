@@ -525,7 +525,7 @@ int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
       param.spec.merge_coeff = 2;
       param.spec.with_requant = 1;
       auto out_etype = module::getStorageType(getOutput());
-      common.if_relu = out_etype.isUnsignedInteger(8);
+      common.if_relu = out_etype.isUnsignedInteger();
     }
     common.is_asym = true;
     common.ipad_value = in_qtype.getZeroPoint();
