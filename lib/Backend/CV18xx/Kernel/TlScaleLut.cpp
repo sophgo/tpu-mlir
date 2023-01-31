@@ -15,10 +15,6 @@
 
 #define DEBUG_TYPE "tl_scale_lut"
 
-#define METHOD_MANTISSA 0
-#define METHOD_LOG 1
-#define METHOD_SLOPE 2
-
 namespace tpu_mlir {
 namespace backend {
 void cvi_backend_tl_scale_lut(uint32_t layer_id,

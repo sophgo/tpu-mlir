@@ -1120,7 +1120,8 @@ def Tpu_MaxUnpoolOp: Tpu_Op<"MaxUnpool", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_PadOp:Tpu_Op<"Pad"> {
+def Tpu_PadOp:Tpu_Op<"Pad", [
+    DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>]> {
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.

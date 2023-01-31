@@ -261,5 +261,18 @@ void cvi_backend_tl_relu(uint32_t layer_id, int n, int c, int h, int w,
 
 void cvi_backend_tl_bf16_relu(uint32_t layer_id, int n, int c, int h, int w,
                               laddr_t la_input, laddr_t la_output);
+
+void cvi_backend_tl_swap_channel(uint32_t layer_id, laddr_t la_input,
+                                 laddr_t la_output, int n, int c, int h, int w,
+                                 int *order, cvk_fmt_t fmt);
+
+void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
+                        int64_t *output_dim, laddr_t la_input,
+                        laddr_t la_output, float const_val, int32_t *pads);
+
+void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
+                             int64_t *output_dim, laddr_t la_input,
+                             laddr_t la_output, float const_val,
+                             int32_t *pads);
 } // namespace backend
 } // namespace tpu_mlir

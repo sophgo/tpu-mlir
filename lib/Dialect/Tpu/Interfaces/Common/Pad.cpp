@@ -8,8 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 struct pad_info {
   std::vector<int64_t> shape_4;
@@ -197,4 +197,40 @@ LogicalResult tpu::PadOp::inference(InferenceParameter &p) {
   }
 
   return success();
+}
+
+LogicalResult tpu::PadOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+                                    int64_t out_idx, int64_t out_slice) {
+  i64_array_t pads = module::getI64Array(getPaddings());
+  auto out_shape = module::getShape(getOutput());
+  in_idx = out_idx ? out_idx - pads->at(2) : 0;
+  if (out_idx == 0) {
+    if (out_slice == out_shape[2]) {
+      in_slice = out_slice - pads->at(2) - pads->at(6);
+    } else {
+      in_slice = out_slice - pads->at(2);
+    }
+  } else if (out_idx + out_slice == out_shape[2]) {
+    in_slice = out_slice - pads->at(6);
+  } else {
+    in_slice = out_slice;
+  }
+  if (in_slice <= 0 || in_idx < 0) {
+    return failure();
+  }
+  return success();
+}
+
+LogicalResult tpu::PadOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    if (getMode() != 0 || module::getShape(getInput()).size() != 4) {
+      return failure();
+    }
+    i64_array_t pads = module::getI64Array(getPaddings());
+    if (pads->at(0) != 0 || pads->at(4) != 0) {
+      return failure();
+    }
+    return success();
+  }
+  return failure();
 }
