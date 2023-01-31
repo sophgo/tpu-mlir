@@ -123,14 +123,20 @@ public:
     }
     transpose_param_t param = {0};
     param.if_getting_buffer_size = 1;
-    auto order = module::getI64Array(permuteOp.getOrder());
-    for (int i = 0, n = order->size(); i < n; ++i) {
-      param.spec.order[i] = order->at(i);
+    auto attr = permuteOp.parseParam();
+    for (int i = 0, n = attr.order_fix.size(); i < n; ++i) {
+      param.spec.order[i] = attr.order_fix[i];
     }
     uint64_t buffer_size = 0;
     param.buffer_size_ptr = &buffer_size;
+    std::vector<int> in_shape(attr.in_shape_fix.begin(),
+                              attr.in_shape_fix.end());
+    std::vector<int> out_shape(attr.out_shape_fix.begin(),
+                               attr.out_shape_fix.end());
     auto input_spec = BM168x::get_input_spec(permuteOp);
     auto output_spec = BM168x::get_output_spec(permuteOp);
+    BM168x::fix_shape(input_spec->at(0), in_shape);
+    BM168x::fix_shape(output_spec->at(0), out_shape);
     BM168x::call_global_func("backend_api_transpose_global", &param,
                              sizeof(param), input_spec->data(),
                              output_spec->data());
