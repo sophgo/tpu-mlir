@@ -20,17 +20,13 @@ using namespace tpu_mlir::backend;
 void tpu::PermuteOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto attr = parseParam();
-  std::vector<int> in_shape(attr.in_shape_fix.begin(), attr.in_shape_fix.end());
-  std::vector<int> out_shape(attr.out_shape_fix.begin(),
-                             attr.out_shape_fix.end());
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-  BM168x::fix_shape(input_spec->at(0), in_shape);
-  BM168x::fix_shape(output_spec->at(0), out_shape);
+  BM168x::fix_shape(input_spec->at(0), attr.in_shape_fix);
+  BM168x::fix_shape(output_spec->at(0), attr.out_shape_fix);
   transpose_param_t param = {0};
-  int dims = in_shape.size();
   param.spec.buffer_global_addr = module::getAddress(getBuffer());
-  for (int i = 0; i < dims; i++) {
+  for (int i = 0; i < attr.order_fix.size(); i++) {
     param.spec.order[i] = attr.order_fix[i];
   }
   param.buffer_size_ptr = 0;

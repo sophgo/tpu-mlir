@@ -51,7 +51,7 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     func.walk([&](Operation *op) {
       ops_loc[op] = loc;
       ++loc;
-      if (isa<FuncOp, top::NoneOp, top::WeightOp, func::CallOp> (op) ||
+      if (isa<FuncOp, top::NoneOp, top::WeightOp, func::CallOp>(op) ||
           module::isOpInGroup(op)) {
         return;
       }
@@ -299,20 +299,16 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
     auto operand = module::getOperand(op, 0);
     module::setAddress(reshapeOp.getOutput(), module::getAddress(operand));
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-    std::vector<int64_t> i_s;
-    std::vector<int64_t> o_s;
-    std::vector<int> offset_4;
-    std::vector<int> step_4;
-    bool fusible = false;
-    sliceOp.parseParam(i_s, o_s, offset_4, step_4, fusible);
+    auto p = sliceOp.parseParam();
     int axis;
-    for (axis = 0; offset_4[axis] == 0 && axis < 4; axis++)
+    for (axis = 0; p.offset_4[axis] == 0 && axis < 4; axis++)
       ;
     size_t offset_bytes = 0;
     if (axis != 4) {
-      offset_bytes = offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
+      offset_bytes =
+          p.offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
       for (int i = axis + 1; i < 4; ++i) {
-        offset_bytes *= i_s[i];
+        offset_bytes *= p.is_4[i];
       }
     }
     auto operand = module::getOperand(op, 0);
@@ -326,22 +322,13 @@ void CVAddressAssign::updateAddressOfInPlaceOp(
 bool CVAddressAssign::isInPlaceOp(Operation *op) {
   if (isa<tpu::ReshapeOp>(op)) {
     return true;
-  } else if (isa<tpu::ConcatOp>(op)) {
-    auto concat_op = dyn_cast<tpu::ConcatOp>(op);
+  } else if (auto concat_op = dyn_cast<tpu::ConcatOp>(op)) {
     if (concat_op.getOnlyMerge()) {
       return true;
     }
-  } else if (isa<tpu::SliceOp>(op)) {
-    auto slice_op = dyn_cast<tpu::SliceOp>(op);
-    std::vector<int64_t> i_s;
-    std::vector<int64_t> o_s;
-    std::vector<int> offset_4;
-    std::vector<int> step_4;
-    bool fusible = false;
-    slice_op.parseParam(i_s, o_s, offset_4, step_4, fusible);
-    if (fusible) {
-      return true;
-    }
+  } else if (auto slice_op = dyn_cast<tpu::SliceOp>(op)) {
+    auto p = slice_op.parseParam();
+    return p.fusible;
   } else {
     return false;
   }

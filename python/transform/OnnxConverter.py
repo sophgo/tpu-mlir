@@ -1483,23 +1483,34 @@ class OnnxConverter(BaseConverter):
 
     def convert_gather_op(self, onnx_node):
         assert (onnx_node.op_type == "Gather")
-
-        def getOp(name):
-            if name in self.operands:
-                return self.getOperand(name)
-            if name in self.tensors:
-                return self.getWeightOp(name)
-            raise Exception(KeyError(f"unregistered varivale: {name}"))
-
-        in0 = getOp(onnx_node.inputs[0])
-        indices = getOp(onnx_node.inputs[1])
-        output_shape = self.getShape(onnx_node.name)
-        axis = onnx_node.attrs.get('axis')
-        if axis is None:
-            axis = 0
-        p = {'name': '{}_{}'.format(onnx_node.name, onnx_node.op_type), 'axis': axis}
-
-        new_op = self.mlir.create_gather_op([in0, indices], output_shape, **p)
+        in0 = self.getOp(onnx_node.inputs[0])
+        in0_shape = self.getShape(onnx_node.inputs[0])
+        out_shape = self.getShape(onnx_node.name)
+        axis = onnx_node.attrs.get('axis', 0)
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        if  self.isScalar(onnx_node.inputs[1]):
+            offset = self.getScalar(onnx_node.inputs[1])
+            if offset < 0:
+                offset = in0_shape[axis] + offset
+            slice_offset = [0] * len(in0_shape)
+            slice_steps = [1] * len(in0_shape)
+            slice_offset[axis] = offset
+            p = {
+                'name': name,
+                'offset': list(slice_offset),
+                'steps': list(slice_steps)
+            }
+            if axis == 0:
+                new_op = self.mlir.create_slice_op([in0], out_shape, **p)
+            else:
+                p['name'] = "{}_Slice".format(onnx_node.name)
+                slice_shape = list(np.take(np.ones(in0_shape), np.array([offset]), axis=axis))
+                slice_op = self.mlir.create_slice_op([in0], slice_shape, **p)
+                new_op = self.mlir.create_reshape_op([slice_op], out_shape, name=name)
+        else:
+            indices = self.getOp(onnx_node.inputs[1])
+            p = {'name': name, 'axis': axis}
+            new_op = self.mlir.create_gather_op([in0, indices], out_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_expand_op(self, onnx_node):

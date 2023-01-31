@@ -17,26 +17,18 @@
 using namespace tpu_mlir::backend;
 
 void tpu::SliceOp::codegen_global_cv18xx(int64_t layer_id) {
-
-  // prepare data
-  std::vector<int64_t> i_s;
-  std::vector<int64_t> o_s;
-  std::vector<int> offset_4;
-  std::vector<int> step_4;
-  bool fusible;
-  parseParam(i_s, o_s, offset_4, step_4, fusible);
+  auto p = parseParam();
   CVIKERNEL_FMT_E fmt;
   if (module::isUniformQuantized(getOutput())) {
     fmt = CVK_FMT_I8;
   } else {
     fmt = CVK_FMT_BF16;
   }
-
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
-  if (fusible == false) {
-    cvi_backend_tg_crop_kernel(layer_id, ga_input, ga_output, i_s, o_s,
-                               offset_4, step_4, fmt);
+  if (p.fusible == false) {
+    cvi_backend_tg_crop_kernel(layer_id, ga_input, ga_output, p.is_4, p.os_4,
+                               p.offset_4, p.step_4, fmt);
   }
 }
 
@@ -71,7 +63,6 @@ void tpu::SliceOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   crop_offset_v.assign(crop_offset->begin(), crop_offset->end());
   auto fmt = CV18xx::getDataType(getOutput());
 
-  cvi_backend_tl_crop(layer_id, input_shape.data(),
-                      output_shape.data(), la_input, la_output,
-                      crop_offset_v.data(), fmt);
+  cvi_backend_tl_crop(layer_id, input_shape.data(), output_shape.data(),
+                      la_input, la_output, crop_offset_v.data(), fmt);
 }

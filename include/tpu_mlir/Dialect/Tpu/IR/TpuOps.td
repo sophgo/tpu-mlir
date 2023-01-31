@@ -1175,11 +1175,7 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
   );
   let results = (outs AnyTensor:$output);
   let extraClassDeclaration = [{
-    void parseParam(std::vector<int64_t> &is_4,
-                    std::vector<int64_t> &os_4,
-                    std::vector<int> &offset_4,
-                    std::vector<int> &step_4,
-                    bool &fusible);
+    slice_attr_t parseParam();
   }];
 }
 

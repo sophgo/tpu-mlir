@@ -27,8 +27,8 @@ void tpu::PadOp::codegen_global_bm1684x() {
     dump();
     llvm_unreachable("Not Implemented");
   }
-  std::vector<int32_t> in_shape(shape_4.begin(), shape_4.end());
-  std::vector<int32_t> out_shape(shape_4.begin(), shape_4.end());
+  std::vector<int64_t> in_shape(shape_4.begin(), shape_4.end());
+  std::vector<int64_t> out_shape(shape_4.begin(), shape_4.end());
   pad_param_t param = {0};
   for (int i = 0; i < 4; i++) {
     param.pad[i][0] = pads_4[i];

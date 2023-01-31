@@ -287,8 +287,8 @@ void cvi_backend_tg_concat_kernel(uint32_t layer_id, int input_num,
 void cvi_backend_tg_crop_kernel(uint32_t layer_id, gaddr_t ga_input,
                                 gaddr_t ga_output, std::vector<int64_t> is_4,
                                 std::vector<int64_t> os_4,
-                                std::vector<int> offsets,
-                                std::vector<int> steps, cvk_fmt_t fmt);
+                                std::vector<int64_t> offsets,
+                                std::vector<int64_t> steps, cvk_fmt_t fmt);
 
 void cvi_backend_tg_pad_kernel(uint32_t layer_id, gaddr_t ga_ifmap,
                                gaddr_t ga_ofmap, int input_n, int input_c,

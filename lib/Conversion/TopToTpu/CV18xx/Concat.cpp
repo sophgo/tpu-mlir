@@ -12,17 +12,6 @@
 namespace tpu_mlir {
 namespace cv18xx {
 
-template <typename T>
-static bool slice_fusible(T op) {
-  std::vector<int64_t> i_s;
-  std::vector<int64_t> o_s;
-  std::vector<int> offset_4;
-  std::vector<int> step_4;
-  bool fusible = false;
-  op.parseParam(i_s, o_s, offset_4, step_4, fusible);
-  return fusible;
-}
-
 static bool is_fusible_op(Operation *op) {
   if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
     return !concatOp.getOnlyMerge();
@@ -31,7 +20,8 @@ static bool is_fusible_op(Operation *op) {
     return false;
   }
   if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-    return slice_fusible<tpu::SliceOp>(sliceOp);
+    auto p = sliceOp.parseParam();
+    return p.fusible;
   }
   if (auto sliceOp = dyn_cast<top::SliceOp>(op)) {
     return false;

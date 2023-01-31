@@ -82,13 +82,10 @@ public:
     auto type = module::getStorageType(reduceOp.getInput());
     auto input_spec = BM168x::get_input_spec(reduceOp);
     auto output_spec = BM168x::get_output_spec(reduceOp);
-
-    std::vector<int32_t> in_shape = {(int)attr.outer_n, (int)attr.outer_c,
-                                     (int)attr.axis_dims, (int)attr.inner_dims};
-    std::vector<int32_t> out_shape = {(int)attr.outer_n, (int)attr.outer_c, 1,
-                                      (int)attr.inner_dims};
-    BM168x::fix_shape(input_spec->at(0), in_shape);
-    BM168x::fix_shape(output_spec->at(0), out_shape);
+    BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
+                                          attr.axis_dims, attr.inner_dims});
+    BM168x::fix_shape(output_spec->at(0),
+                      {attr.outer_n, attr.outer_c, 1, attr.inner_dims});
     reduce_full_global_param_t param = {0};
     param.spec.common.axis_num = 1;
     param.spec.common.axis[0] = 2;
@@ -129,14 +126,10 @@ public:
     }
     uint64_t buffer_size = 0;
     param.buffer_size_ptr = &buffer_size;
-    std::vector<int> in_shape(attr.in_shape_fix.begin(),
-                              attr.in_shape_fix.end());
-    std::vector<int> out_shape(attr.out_shape_fix.begin(),
-                               attr.out_shape_fix.end());
     auto input_spec = BM168x::get_input_spec(permuteOp);
     auto output_spec = BM168x::get_output_spec(permuteOp);
-    BM168x::fix_shape(input_spec->at(0), in_shape);
-    BM168x::fix_shape(output_spec->at(0), out_shape);
+    BM168x::fix_shape(input_spec->at(0), attr.in_shape_fix);
+    BM168x::fix_shape(output_spec->at(0), attr.out_shape_fix);
     BM168x::call_global_func("backend_api_transpose_global", &param,
                              sizeof(param), input_spec->data(),
                              output_spec->data());

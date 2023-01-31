@@ -588,7 +588,7 @@ public:
   static std::shared_ptr<std::vector<tensor_spec_t>>
   get_spec(ValueRange values);
   static void fix_shape(tensor_spec_t &spec,
-                        const std::vector<int32_t> &new_shape);
+                        const std::vector<int64_t> &new_shape);
   static int compare_mode(StringRef mode);
   static int64_t ic_num(double dbytes) { return IC_PARALLEL / dbytes; }
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,
