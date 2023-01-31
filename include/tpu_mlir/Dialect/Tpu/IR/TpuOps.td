@@ -1062,6 +1062,9 @@ def Tpu_PermuteOp: Tpu_Op<"Permute"> {
   );
 
   let results = (outs AnyTensor:$output);
+  let extraClassDeclaration = [{
+    permute_attr_t parseParam();
+  }];
 }
 
 def Tpu_ShuffleChannelOp: Tpu_Op<"ShuffleChannel"> {
