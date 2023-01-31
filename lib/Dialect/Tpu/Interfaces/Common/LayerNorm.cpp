@@ -14,9 +14,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
 
-
-
-LogicalResult tpu::LayerNormOp::init(InferenceParameter &p) { return success(); }
+LogicalResult tpu::LayerNormOp::init(InferenceParameter &p) {
+  return success();
+}
 void tpu::LayerNormOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
@@ -38,12 +38,12 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
   const bool need_mean = !getMean().getType().isa<NoneType>();
   const bool need_rstd = !getRstd().getType().isa<NoneType>();
 
-  const float* input_data = p.inputs[0];
-  const float* weight_data = p.inputs[1];
-  const float* bias_data = have_bias ? p.inputs[2] : nullptr;
-  float* output_data = p.outputs[0];
-  float* mean_data = need_mean ? p.outputs[1] : nullptr;
-  float* rstd_data = need_rstd ? p.outputs[2] : nullptr;
+  const float *input_data = p.inputs[0];
+  const float *weight_data = p.inputs[1];
+  const float *bias_data = have_bias ? p.inputs[2] : nullptr;
+  float *output_data = p.outputs[0];
+  float *mean_data = need_mean ? p.outputs[1] : nullptr;
+  float *rstd_data = need_rstd ? p.outputs[2] : nullptr;
 
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
@@ -68,7 +68,8 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
       rstd_data[i] = rstd_arr[i];
     }
     for (int j = 0; j < inner_dim; ++j) {
-      output_data[i * inner_dim + j] = input_data[i * inner_dim + j] - mean_arr[i];
+      output_data[i * inner_dim + j] =
+          input_data[i * inner_dim + j] - mean_arr[i];
       output_data[i * inner_dim + j] *= weight_data[j];
       output_data[i * inner_dim + j] *= rstd_arr[i];
       if (have_bias) {
@@ -80,14 +81,17 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LayerNormOp::LocalGenSupport() {
-  if (getAxis() != 0) return success();
+  if (getAxis() != 0)
+    return success();
   return failure();
 }
 
 LogicalResult tpu::LayerNormOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                           int64_t out_idx, int64_t out_slice) {
   // It is not allowed to split on h-axis
-  if (out_idx) {
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  if (out_idx != 0 || out_slice != h) {
     return failure();
   }
   in_idx = out_idx;

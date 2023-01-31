@@ -38,7 +38,7 @@ input_ids.1 254.0000000 0.0000000 254.0000000
 /encoder/layer.0/intermediate/Erf_output_0_Erf 1.0000000 -1.0000000 1.0000000
 /encoder/layer.0/intermediate/Add_output_0_Add 2.0000000 0.0000000 2.0000000
 /encoder/layer.0/intermediate/Mul_output_0_Mul 13.1215489 -0.3399424 14.9950094
-/encoder/layer.0/intermediate/Mul_1_output_0_Mul 6.9354665 -0.1699712 7.4975047
+/encoder/layer.0/intermediate/Mul_1_output_0_GELU 6.9354665 -0.1699712 7.4975047
 /encoder/layer.0/output/dense/MatMul_output_0_MatMul 7.5865760 -7.5865760 2.2003403
 /encoder/layer.0/output/dense/Add_output_0_Add 8.0266924 -8.0266924 2.2292356
 /encoder/layer.0/output/Add_output_0_Add 15.6989784 -15.6989784 10.3681602
@@ -72,7 +72,7 @@ input_ids.1 254.0000000 0.0000000 254.0000000
 /encoder/layer.1/intermediate/Erf_output_0_Erf 1.0000000 -1.0000000 0.9999994
 /encoder/layer.1/intermediate/Add_output_0_Add 1.9999994 0.0000000 1.9999994
 /encoder/layer.1/intermediate/Mul_output_0_Mul 10.0013046 -0.3399424 10.0013046
-/encoder/layer.1/intermediate/Mul_1_output_0_Mul 4.9382357 -0.1699712 5.0006523
+/encoder/layer.1/intermediate/Mul_1_output_0_GELU 4.9382357 -0.1699712 5.0006523
 /encoder/layer.1/output/dense/MatMul_output_0_MatMul 1.4631312 -1.3871814 1.4631312
 /encoder/layer.1/output/dense/Add_output_0_Add 1.4243616 -1.3392271 1.4243616
 /encoder/layer.1/output/Add_output_0_Add 5.2421408 -5.2421408 4.8966599

@@ -115,28 +115,14 @@ public:
             }
 
             auto name = module::getName(value).str();
-            cali_info info;
+            cali_info info = {0};
             if (calibration_map.find(name) != calibration_map.end()) {
               info = calibration_map[name];
+            } else if (calibration_map_int4.find(name) !=
+                       calibration_map_int4.end()) {
+              info = calibration_map_int4[name];
             } else {
-              if (isa<top::ConvOp, top::MatMulOp>(op)) {
-                if (calibration_map_int4.find(name) !=
-                    calibration_map_int4.end()) {
-                  info = calibration_map_int4[name];
-                } else {
-                  llvm::errs() << "not find " << name << "\n";
-                  llvm_unreachable("ConvOp and MatMulOp cali_info not exist\n");
-                }
-              } else {
-                if (calibration_map.find(name) != calibration_map.end()) {
-                  info = calibration_map[name];
-                } else {
-                  if (calibration_map_int4.find(name) !=
-                      calibration_map_int4.end()) {
-                    info = calibration_map_int4[name];
-                  }
-                }
-              }
+              continue;
             }
 
             getMinMax(op, info, min, max);
