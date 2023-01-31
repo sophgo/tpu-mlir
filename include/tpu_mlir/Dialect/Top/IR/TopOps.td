@@ -421,6 +421,7 @@ def Top_AddOp: Top_Op<"Add", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_SubOp: Top_Op<"Sub", [SupportFuseRelu]> {
@@ -602,9 +603,9 @@ def Top_PadOp:Top_Op<"Pad"> {
   let summary = "Pad operation";
   let description = [{
     This operation pads a tensor according to the paddings you specify.
-    paddings is an integer tensor with shape [n, 2], where n is the rank of tensor.
-    For each dimension D of input, paddings[D, 0] indicates how many values to add
-    before the contents of tensor in that dimension, and paddings[D, 1] indicates
+    paddings is an integer tensor with shape [2, n], where n is the rank of tensor.
+    For each dimension D of input, paddings[0, D] indicates how many values to add
+    before the contents of tensor in that dimension, and paddings[1, D] indicates
     how many values to add after the contents of tensor in that dimension.
   }];
   let arguments = (ins
@@ -951,7 +952,7 @@ def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
   );
 
   let results = (outs AnyTensor:$output);
-  // let hasCanonicalizer = 1;
+  let hasCanonicalizer = 1;
 }
 
 def Top_SqueezeOp: Top_Op<"Squeeze"> {
@@ -1240,6 +1241,7 @@ def Top_CompareOp : Top_Op<"Compare"> {
     CompareModeAttr:$mode
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_CompareConstOp : Top_Op<"CompareConst"> {
