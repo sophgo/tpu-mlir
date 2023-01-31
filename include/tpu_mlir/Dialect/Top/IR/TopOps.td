@@ -628,9 +628,11 @@ def Top_PermuteOp: Top_Op<"Permute"> {
     ins AnyTensor:$input,
     I64ArrayAttr:$order
   );
-
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+  let extraClassDeclaration = [{
+    permute_attr_t parseParam();
+  }];
 }
 
 def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
