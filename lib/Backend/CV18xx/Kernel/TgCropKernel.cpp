@@ -16,8 +16,8 @@ namespace backend {
 static void tg_crop_with_w_step(uint32_t layer_id, gaddr_t ga_input,
                                 gaddr_t ga_output, std::vector<int64_t> is_4,
                                 std::vector<int64_t> os_4,
-                                std::vector<int> offsets,
-                                std::vector<int> steps, cvk_fmt_t fmt) {
+                                std::vector<int64_t> offsets,
+                                std::vector<int64_t> steps, cvk_fmt_t fmt) {
   CV18xx::set_layer_id(layer_id);
   auto i_gstride = CV18xx::tg_default_stride(is_4[1], is_4[2], is_4[3], fmt);
   auto i_gstride2 = i_gstride;
@@ -58,8 +58,8 @@ static void tg_crop_with_w_step(uint32_t layer_id, gaddr_t ga_input,
 void cvi_backend_tg_crop_kernel(uint32_t layer_id, gaddr_t ga_input,
                                 gaddr_t ga_output, std::vector<int64_t> is_4,
                                 std::vector<int64_t> os_4,
-                                std::vector<int> offsets,
-                                std::vector<int> steps, cvk_fmt_t fmt) {
+                                std::vector<int64_t> offsets,
+                                std::vector<int64_t> steps, cvk_fmt_t fmt) {
   if (steps[3] != 1) {
     tg_crop_with_w_step(layer_id, ga_input, ga_output, is_4, os_4, offsets,
                         steps, fmt);

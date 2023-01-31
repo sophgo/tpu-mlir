@@ -119,6 +119,23 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op.op)) {
       auto addr = module::getAddress(reshapeOp.getInput());
       module::setAddress(reshapeOp.getOutput(), addr);
+    } else if (auto sliceOp = dyn_cast<tpu::SliceOp>((Operation *)op.op)) {
+      auto p = sliceOp.parseParam();
+      int axis;
+      for (axis = 0; p.offset_4[axis] == 0 && axis < 4; axis++)
+        ;
+      size_t offset_bytes = 0;
+      if (axis != 4) {
+        offset_bytes =
+            p.offset_4[axis] * module::getDtypeSize(sliceOp.getOutput());
+        for (int i = axis + 1; i < 4; ++i) {
+          offset_bytes *= p.is_4[i];
+        }
+      }
+      module::setAddress(sliceOp.getOutput(),
+                         module::getAddress(sliceOp.getInput()) + offset_bytes);
+    } else {
+      llvm_unreachable("set address of undefined inplace op!");
     }
   }
   module::setNeuronAddr(start_addr);
@@ -198,9 +215,11 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 }
 
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
-  // TODO crop op
   if (isa<tpu::ReshapeOp>(op)) {
     return true;
+  } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
+    auto p = sliceOp.parseParam();
+    return p.fusible;
   }
   return false;
 }

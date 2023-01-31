@@ -24,12 +24,14 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
   auto out_num_elem = module::getNumElements(getOutput());
   auto offset_v = module::getI64Array(getOffset());
   auto steps_v = module::getI64Array(getSteps());
-  auto out_shape = module::getShape(getOutput());
-  auto in_shape = module::getShape(getInput());
+  std::vector<int64_t> out_shape = module::getShape(getOutput());
+  std::vector<int64_t> in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
-  // just support the dims of input & input is equal.
-  assert(in_dims == out_dims);
+  while(out_dims < in_dims) {
+    out_shape.insert(out_shape.begin(), 1);
+    out_dims++;
+  }
   // slice[range] -> (offset + stride)
   std::valarray<int64_t> in_stride_v(1, in_dims);
   std::valarray<int64_t> out_stride_v(1, out_dims);

@@ -12,25 +12,18 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::ReduceOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto attr = parseParam();
   assert(attr.simplified);
-
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-
-  std::vector<int32_t> in_shape = {(int)attr.outer_n, (int)attr.outer_c,
-                                   (int)attr.axis_dims, (int)attr.inner_dims};
-  std::vector<int32_t> out_shape = {(int)attr.outer_n, (int)attr.outer_c, 1,
-                                    (int)attr.inner_dims};
-  BM168x::fix_shape(input_spec->at(0), in_shape);
-  BM168x::fix_shape(output_spec->at(0), out_shape);
+  BM168x::fix_shape(input_spec->at(0), {attr.outer_n, attr.outer_c,
+                                        attr.axis_dims, attr.inner_dims});
+  BM168x::fix_shape(output_spec->at(0),
+                    {attr.outer_n, attr.outer_c, 1, attr.inner_dims});
 
   reduce_full_global_param_t param = {0};
   param.spec.common.axis_num = 1;
@@ -49,6 +42,4 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ReduceOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::ReduceOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

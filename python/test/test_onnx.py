@@ -161,6 +161,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #############################
             "ConcatToSpace": self.test_ConcatToSpace,
+            "GatherToSlice": self.test_GatherToSlice,
             "SwapDimInner": self.test_SwapDimInner,
         }
         # no quantization when quant_mode == "f32"
@@ -1997,14 +1998,32 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, x):
-                a = x[:,::2,::2,:]
-                b = x[:,::2,1::2,:]
-                c = x[:,1::2,::2,:]
-                d = x[:,1::2,1::2,:]
-                y = torch.cat([a,c,b,d], 3)
+                a = x[:, ::2, ::2, :]
+                b = x[:, ::2, 1::2, :]
+                c = x[:, 1::2, ::2, :]
+                d = x[:, 1::2, 1::2, :]
+                y = torch.cat([a, c, b, d], 3)
                 return y
 
         x = torch.randn(1, 40, 40, 384).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_GatherToSlice(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                a = x[0]
+                b = x[1]
+                c = x[2]
+                d = torch.matmul(a * 0.3, b.transpose(2,3))
+                e = torch.matmul(torch.softmax(d, 3), c)
+                return e
+
+        x = torch.randn(3, 36, 12, 49, 32).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_SwapDimInner(self, case_name):
@@ -2015,8 +2034,8 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, x):
-                y = torch.cat([x[:,39:,:,:], x[:,:39,:,:]], 1)
-                z = torch.cat([y[:,:,39:,:], y[:,:,:39,:]], 2)
+                y = torch.cat([x[:, 39:, :, :], x[:, :39, :, :]], 1)
+                z = torch.cat([y[:, :, 39:, :], y[:, :, :39, :]], 2)
                 return z
 
         x = torch.randn(1, 42, 42, 384).float()
@@ -2459,25 +2478,6 @@ class ONNX_IR_TESTER(object):
                                       initializer=[shape_def])
         self.onnx_and_test(graph_def)
 
-    def test_GatherToSlice(self, case_name):
-        input_shape = {"input": [1, 32, 27, 27], "indices": [5]}
-        output_shape = [1, 5, 27, 27]
-
-        input = helper.make_tensor_value_info("input", TensorProto.FLOAT, input_shape['input'])
-        indices = helper.make_tensor("indices", TensorProto.INT64, input_shape['indices'],
-                                     np.arange(2, 15, 3).astype(np.int64))
-        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, output_shape)
-
-        gather_def = helper.make_node("Gather",
-                                      inputs=list(input_shape.keys()),
-                                      outputs=["output"],
-                                      axis=1)
-
-        graph_def = helper.make_graph([gather_def],
-                                      case_name, [input], [output],
-                                      initializer=[indices])
-        self.onnx_and_test(graph_def)
-
     def test_Max(self, case_name):
         input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
         output_shape = [1, 85, 32, 8]
@@ -2823,6 +2823,7 @@ class ONNX_IR_TESTER(object):
     #                                   [input], [output, mean, rstd],
     #                                   initializer=[weight, bias])
     #     self.onnx_and_test(graph_def)
+
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

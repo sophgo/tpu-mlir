@@ -160,4 +160,12 @@ typedef struct {
   std::vector<int64_t> order_fix;
 } permute_attr_t;
 
+typedef struct {
+  std::vector<int64_t> is_4;
+  std::vector<int64_t> os_4;
+  std::vector<int64_t> offset_4;
+  std::vector<int64_t> step_4;
+  bool fusible;
+} slice_attr_t;
+
 } // namespace tpu_mlir

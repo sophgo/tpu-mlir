@@ -177,7 +177,7 @@ BM168x::get_spec(ValueRange values) {
 }
 
 void BM168x::fix_shape(tensor_spec_t &spec,
-                       const std::vector<int32_t> &new_shape) {
+                       const std::vector<int64_t> &new_shape) {
   assert(new_shape.size() <= MAX_SHAPE_DIMS);
   auto &old_shape = spec.shape;
   int64_t new_num = std::accumulate(new_shape.begin(), new_shape.end(), 1,

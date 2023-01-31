@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include <valarray>
 
+
 using namespace tpu_mlir::backend;
 
 template <typename T> static int remove_value(std::vector<T> &v, T value) {
@@ -27,19 +28,21 @@ template <typename T> static int remove_value(std::vector<T> &v, T value) {
   return -1;
 }
 
-void tpu::SliceOp::parseParam(std::vector<int64_t> &is_4,
-                              std::vector<int64_t> &os_4,
-                              std::vector<int> &offset_4,
-                              std::vector<int> &step_4, bool &fusible) {
-  auto is = getInput().getType().cast<RankedTensorType>().getShape().vec();
-  auto os = getOutput().getType().cast<RankedTensorType>().getShape().vec();
+slice_attr_t tpu::SliceOp::parseParam() {
+  slice_attr_t attr;
+  std::vector<int64_t> is = module::getShape(getInput());
+  std::vector<int64_t> os = module::getShape(getOutput());
   int num_dims = is.size();
   auto crop_offset = module::getI64Array(getOffset());
   auto crop_steps = module::getI64Array(getSteps());
 
   assert(crop_offset->size() == crop_steps->size());
   assert(is.size() == crop_steps->size());
-  assert(is.size() == os.size());
+  if (is.size() > os.size()) {
+    for (int out_dims = os.size(); out_dims < num_dims; out_dims++) {
+      os.insert(os.begin(), 1);
+    }
+  }
 
   if (num_dims > 4) {
     // remove dims = 1
@@ -77,33 +80,34 @@ void tpu::SliceOp::parseParam(std::vector<int64_t> &is_4,
       llvm_unreachable("permute shape not support");
     }
   }
-  is_4 = {1, 1, 1, 1};
-  os_4 = {1, 1, 1, 1};
-  step_4 = {1, 1, 1, 1};
-  offset_4 = {0, 0, 0, 0};
+  attr.is_4 = {1, 1, 1, 1};
+  attr.os_4 = {1, 1, 1, 1};
+  attr.step_4 = {1, 1, 1, 1};
+  attr.offset_4 = {0, 0, 0, 0};
   std::vector<int> real_axes;
   bool no_step = true;
   for (int idx = 0; idx < num_dims; idx++) {
-    is_4[idx] = is[idx];
-    os_4[idx] = os[idx];
-    step_4[idx] = crop_steps->at(idx);
-    offset_4[idx] = crop_offset->at(idx);
+    attr.is_4[idx] = is[idx];
+    attr.os_4[idx] = os[idx];
+    attr.step_4[idx] = crop_steps->at(idx);
+    attr.offset_4[idx] = crop_offset->at(idx);
     if (no_step && crop_steps->at(idx) != 1) {
       no_step = false;
     }
-    if (is_4[idx] != os_4[idx]) {
+    if (attr.is_4[idx] != attr.os_4[idx]) {
       real_axes.push_back(idx);
     }
   }
-  fusible = false;
+  attr.fusible = false;
   if (no_step && real_axes.size() == 1) {
     int axis = real_axes[0];
-    int outer_dim = std::accumulate(is_4.begin(), is_4.begin() + axis, 1,
+    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis, 1,
                                     std::multiplies<int64_t>());
     if (outer_dim == 1) {
-      fusible = true;
+      attr.fusible = true;
     }
   }
+  return attr;
 }
 
 LogicalResult tpu::SliceOp::init(InferenceParameter &p) { return success(); }
@@ -113,12 +117,15 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
   auto out_num_elem = module::getNumElements(getOutput());
   auto offset_v = module::getI64Array(getOffset());
   auto steps_v = module::getI64Array(getSteps());
-  auto out_shape = module::getShape(getOutput());
-  auto in_shape = module::getShape(getInput());
+  std::vector<int64_t> out_shape = module::getShape(getOutput());
+  std::vector<int64_t> in_shape = module::getShape(getInput());
   auto in_dims = in_shape.size();
   auto out_dims = out_shape.size();
   // just support the dims of input & input is equal.
-  assert(in_dims == out_dims);
+  while (out_dims < in_dims) {
+    out_shape.insert(out_shape.begin(), 1);
+    out_dims++;
+  }
 
   // slice[range] -> (offset + stride)
   std::valarray<int64_t> in_stride_v(1, in_dims);
@@ -163,18 +170,13 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
     return failure();
   }
   if (module::isCV18xx()) {
-    std::vector<int64_t> i_s;
-    std::vector<int64_t> o_s;
-    std::vector<int> offset_4;
-    std::vector<int> step_4;
-    bool fusible;
-    parseParam(i_s, o_s, offset_4, step_4, fusible);
-    int total_steps = std::accumulate(step_4.begin(), step_4.end(), 1,
-                                      std::multiplies<int32_t>());
-    if (total_steps != 1 || fusible == true || i_s[0] != o_s[0]) {
+    auto p = parseParam();
+    int total_steps = std::accumulate(p.step_4.begin(), p.step_4.end(), 1,
+                                      std::multiplies<int64_t>());
+    if (total_steps != 1 || p.fusible == true || p.is_4[0] != p.os_4[0]) {
       return failure();
     }
-    return (offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
+    return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
   } else {
     return failure();
   }

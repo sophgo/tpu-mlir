@@ -74,13 +74,13 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     return failure();
   i32_array_t bias_quant;
   if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
-    bias_quant = cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
+    bias_quant =
+        cast<top::WeightOp>(op.getBias().getDefiningOp()).read<int32_t>();
     for (size_t i = 0; i < p.N; ++i) {
       bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
   } else {
-    bias_quant =
-        i32_array_t(new std::vector<int32_t>(p.N, 0));
+    bias_quant = i32_array_t(new std::vector<int32_t>(p.N, 0));
     for (size_t i = 0; i < p.N; ++i) {
       bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
@@ -100,17 +100,14 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
   if (p.batch != 1) {
-    BM168x::fix_shape(input_spec->at(0),
-                      {(int32_t)p.batch, (int32_t)p.M, (int32_t)p.K});
-    BM168x::fix_shape(input_spec->at(1),
-                      {(int32_t)p.batch, (int32_t)p.K, (int32_t)p.N});
-    BM168x::fix_shape(output_spec->at(0),
-                      {(int32_t)p.batch, (int32_t)p.M, (int32_t)p.N});
+    BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
+    BM168x::fix_shape(input_spec->at(1), {p.batch, p.K, p.N});
+    BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
     spec.L_trans = false;
     spec.R_trans = p.right_transpose;
-    spec.has_bias =p.with_bias;
+    spec.has_bias = p.with_bias;
     spec.hdim_is_batch = false;
     spec.requant_mode = -1;
     if (module::isUniformQuantized(getInput())) {
@@ -135,9 +132,9 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
                              output_spec->data());
     return;
   }
-  BM168x::fix_shape(input_spec->at(0), {(int32_t)p.M, (int32_t)p.K});
-  BM168x::fix_shape(input_spec->at(1), {(int32_t)p.K, (int32_t)p.N});
-  BM168x::fix_shape(output_spec->at(0), {(int32_t)p.M, (int32_t)p.N});
+  BM168x::fix_shape(input_spec->at(0), {p.M, p.K});
+  BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
+  BM168x::fix_shape(output_spec->at(0), {p.M, p.N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.if_relu = p.do_relu;
@@ -171,6 +168,4 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
