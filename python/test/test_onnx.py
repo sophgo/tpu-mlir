@@ -166,6 +166,7 @@ class ONNX_IR_TESTER(object):
             "GatherToSlice": self.test_GatherToSlice,
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
+            "ReduceTranspose": self.test_ReduceTranspose,
         }
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -2839,6 +2840,43 @@ class ONNX_IR_TESTER(object):
                                       initializer=[y_scale, y_zero_point, x_scale, x_zero_point])
 
         self.onnx_and_test(graph_def, qdq=True)
+
+    def test_ReduceTranspose(self, case_name):
+        input_shape = [8, 16, 32, 64]
+        transpose_order = [1, 0, 2, 3]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        transpose_output_shape = [input_shape[transpose_order[i]] for i in range(len(transpose_order))]
+        transpose_output = helper.make_tensor_value_info('transpose_output', TensorProto.FLOAT, transpose_output_shape)
+        transpose_def = helper.make_node("Transpose",
+                                         inputs=['input'],
+                                         outputs=['transpose_output'],
+                                         perm=transpose_order)
+        reduce_keepdims = False
+        reduce_axes=[1]
+        reduce_output_shape = []
+        if len(reduce_axes) == len(transpose_output_shape):
+            reduce_output_shape = []
+        else:
+            for i in range(len(transpose_output_shape)):
+                keep_sign = True
+                for j in range(len(reduce_axes)):
+                    if i == reduce_axes[j]:
+                        keep_sign = False
+                        break
+                if keep_sign:
+                    reduce_output_shape.append(transpose_output_shape[i])
+        reduce_output = helper.make_tensor_value_info('output', TensorProto.FLOAT, reduce_output_shape)
+        reduce_mean_def = helper.make_node(
+            'ReduceMean',
+            ['transpose_output'],
+            ['output'],
+            keepdims=reduce_keepdims,
+            axes=reduce_axes,
+        )
+        graph_def = helper.make_graph([transpose_def, reduce_mean_def],
+                                          case_name, [input],
+                                          [reduce_output])
+        self.onnx_and_test(graph_def)
 
     # def test_LayerNorm(self, case_name):
     #     axis = 2
