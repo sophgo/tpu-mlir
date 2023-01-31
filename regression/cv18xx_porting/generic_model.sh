@@ -6,14 +6,48 @@
 ###############################################################
 
 
-set -ex
+# set -ex
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-if [ x$1 == x ]; then
-  echo "Error: $0 NET"
+function usage {
+    echo ""
+    echo "usage: ./generic_model.sh -n model_name \\ "
+    echo "                          [-m model_zoo_path=/data/mlir-models] \\ "
+    echo "                          [-d dataset_path=/data/dataset] \\ "
+    echo -e "                          -f \t\t#FusePreprocess \\ "
+    echo -e "                          -p pixel_format \t#Set pixel_format \\ "
+}
+
+# getopts
+while getopts ":m:d:n:fp:" opt
+do
+  case $opt in
+  m)
+    m=$OPTARG
+    echo "set model path: $m";;
+  d)
+    d=$OPTARG
+    echo "set dataset path: $d";;
+  n)
+    n=$OPTARG
+    echo "set model name: $n";;
+  f)
+    f=1
+    echo "set fuse preprocess: $f";;
+  p)
+    p=$OPTARG
+    echo "set pixel format: $p";;
+  ?)
+    usage
+    exit 1;;
+  esac
+done
+
+if [ x$n == x ]; then
+  usage
   exit 1
 fi
-NET=$1
+NET=$n
 CHIP_NAME=${SET_CHIP_NAME:-cv183x}
 cfg_file=$REGRESSION_PATH/cv18xx_porting/config/model_config_18xx.sh
 
@@ -22,8 +56,8 @@ if [ ! -f $cfg_file ]; then
   exit 1
 fi
 
-if [ x$2 != x ]; then
-  MODEL_PATH=$2
+if [ x$m != x ]; then
+  MODEL_PATH=$m
 fi
 MODEL_PATH=${MODEL_PATH:-/data/mlir-models}
 if [ ! -d $MODEL_PATH ]; then
@@ -31,8 +65,8 @@ if [ ! -d $MODEL_PATH ]; then
   exit 1
 fi
 
-if [ x$3 != x ]; then
-  DATA_SET=$3
+if [ x$d != x ]; then
+  DATA_SET=$d
 fi
 DATA_SET=${DATA_SET:-/data/dataset}
 if [ ! -d $DATA_SET ]; then
@@ -46,8 +80,6 @@ export DATA_SET=${DATA_SET}
 source ${cfg_file}
 
 NET_DIR=$REGRESSION_PATH/cv18xx_porting/regression_out/${NET}_${CHIP_NAME}
-mkdir -p $NET_DIR
-pushd $NET_DIR
 
 model_def_opt=
 if [ x$MODEL_DEF != x ] && [ -f $MODEL_DEF ]; then
@@ -67,6 +99,9 @@ if echo ${MODEL_DEF} | grep -q -E '\.prototxt$'; then
     exit 1
   fi
 fi
+
+mkdir -p $NET_DIR
+pushd $NET_DIR
 
 excepts_opt=
 if [ x${EXCEPTS} != x ]; then
@@ -161,15 +196,23 @@ if [ x${TOLERANCE_BF16} != x ]; then
   tolerance_bf16_opt="--tolerance ${TOLERANCE_BF16}"
 fi
 if [ ${do_bf16} == 1 ]; then
-model_deploy.py \
-  --mlir ${NET}.mlir \
-  --quantize BF16 \
-  --chip ${CHIP_NAME} \
-  ${test_innpz_opt} \
-  ${test_reference_opt} \
-  ${excepts_opt} \
-  --tolerance 0.95,0.85 \
-  --model ${NET}_${CHIP_NAME}_bf16.cvimodel
+  cmd="model_deploy.py \
+    --mlir ${NET}.mlir \
+    --quantize BF16 \
+    --chip ${CHIP_NAME} "
+  if [ x${f} != x ];then
+    cmd=$cmd"--image=${IMAGE_PATH} \
+            --fuse_preprocess "
+  fi
+  if [ x${p} != x ];then
+    cmd=$cmd"--customization_format=${p} "
+  fi
+  cmd=$cmd"${test_innpz_opt} \
+    ${test_reference_opt} \
+    ${excepts_opt} \
+    --tolerance 0.95,0.85 \
+    --model ${NET}_${CHIP_NAME}_bf16.cvimodel"
+  eval $cmd
 fi
 #########################
 # deploy to int8 cvimodel
@@ -204,17 +247,28 @@ tolerance_sym_opt=
 if [ x${TOLERANCE_INT8} != x ]; then
   tolerance_sym_opt="--tolerance ${TOLERANCE_INT8}"
 fi
-model_deploy.py \
+
+cmd="model_deploy.py \
   --mlir ${NET}.mlir \
   --quantize INT8 \
   ${cali_opt} \
   ${mix_opt} \
-  --chip ${CHIP_NAME} \
-  ${test_innpz_opt} \
+  --chip ${CHIP_NAME} "
+# fuse preprocess
+if [ x${f} != x ];then
+  cmd=$cmd"--image=${IMAGE_PATH} \
+          --fuse_preprocess "
+fi
+# pixel format
+if [ x${p} != x ];then
+  cmd=$cmd"--customization_format=${p} "
+fi
+cmd=$cmd"${test_innpz_opt} \
   ${test_reference_opt} \
   ${tolerance_sym_opt} \
   ${excepts_opt} \
   --quant_input \
-  --model ${NET}_${CHIP_NAME}_int8_sym.cvimodel
+  --model ${NET}_${CHIP_NAME}_int8_sym.cvimodel"
+eval $cmd
 popd
 
