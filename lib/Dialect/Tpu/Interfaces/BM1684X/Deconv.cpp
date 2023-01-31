@@ -311,7 +311,7 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
   auto &attr = getDeconvParam(*this);
 
   auto idtype = BM168x::getDataType(getInput());
-  int type_len = BM168x::getFmtBytes(idtype);
+  auto type_len = BM168x::getFmtBytes(idtype);
   int64_t eu_num = BM168x::eu_num(type_len);
 
   int ic_per_npu = ceiling_func(attr.ic / attr.g, BM168x::NPU_NUM);

@@ -25,7 +25,7 @@ LogicalResult tpu::ScatterNDOp::inference(InferenceParameter &p) {
   auto data_shape = module::getShape(getInputData());
   auto indices_shape = module::getShape(getIndices());
   auto updates_shape = module::getShape(getUpdates());
-  int dtype_size = module::getDtypeSize(getInputData());
+  auto dtype_size = module::getDtypeSize(getInputData());
   int r = data_shape.size();
   int q = indices_shape.size();
   int k = indices_shape[q - 1];

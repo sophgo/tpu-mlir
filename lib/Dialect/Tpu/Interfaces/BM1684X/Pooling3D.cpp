@@ -149,7 +149,7 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
       buffer_size = (1 + attr.od) * align_up(out_hslice * attr.ow, eu_num) *
                     c_per_npu * dtype_bytes;
     } else {
-      int64_t dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
+      auto dtype_bytes = BM168x::getFmtBytes(BM168x::getDataType(getOutput()));
       int64_t eu_num = BM168x::eu_num(dtype_bytes);
       buffer_size =
           align_up(out_hslice * attr.ow, eu_num) * c_per_npu * dtype_bytes;

@@ -68,6 +68,7 @@ size_t Arch::get_gmem_bytes(Value v) {
   std::vector<int64_t> shape = module::getShape(v);
   auto stype = module::getStorageType(v);
   int elm_bytes = stype.getIntOrFloatBitWidth() / 8;
+  assert(elm_bytes);
   shape[0] = ceiling_func(shape[0], (int64_t)4 / elm_bytes);
   return 4 * std::accumulate(shape.begin(), shape.end(), 1,
                              std::multiplies<int64_t>());
@@ -84,18 +85,22 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
     h = slice_h;
   }
   auto type = module::getStorageType(v);
-  int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
+  int type_bits = type.getIntOrFloatBitWidth();
+  double dbytes = (double)type_bits / 8;
   if (ALIGN_4N) {
     int64_t eu_num = Arch::eu_num(4);
     int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
-    int64_t n_aligned = ceiling_func(n, 4 / dbytes);
+    int64_t n_aligned = ceiling_func(n, 4 / (int64_t)dbytes);
     int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
     return n_aligned * c_per_npu * eu_aligned * 4;
   } else {
     int64_t eu_num = Arch::eu_num(dbytes);
     int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
     int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
-    return n * c_per_npu * eu_aligned * dbytes;
+    if(type_bits == 4) {
+      return align_up((int64_t)(n * c_per_npu * eu_aligned) , (int64_t)2) * dbytes;
+    }
+    return (int64_t)n * c_per_npu * eu_aligned * dbytes;
   }
 }
 
@@ -103,11 +108,14 @@ int64_t Arch::get_weight_lmem_bytes(Value v, bool eu_align) {
   int64_t n, c, h, w;
   module::getNCHW(v, n, c, h, w);
   auto type = module::getStorageType(v);
-  int64_t dbytes = type.getIntOrFloatBitWidth() / 8;
+  int type_bits = type.getIntOrFloatBitWidth();
+  double dbytes = (double)type_bits / 8;
   int64_t eu_num = Arch::eu_num(dbytes);
   int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
   int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
-  return n * c_per_npu * eu_aligned * dbytes;
+  if(type_bits == 4)
+    return align_up((int64_t)(n * c_per_npu * eu_aligned) , (int64_t)2) * dbytes;
+  return (int64_t)n * c_per_npu * eu_aligned * dbytes;
 }
 
 Arch::~Arch() {}

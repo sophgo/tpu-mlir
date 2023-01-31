@@ -173,6 +173,7 @@ class ONNX_IR_TESTER(object):
         }
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
+        #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
         self.support_asym = [True, False]
         self.model_file = ".bmodel"
         self.is_cv18xx = False
@@ -256,7 +257,7 @@ class ONNX_IR_TESTER(object):
         table_name = None
         top_mlir = "{}.mlir".format(model_name)
         tpu_mlir = "{}_{}".format(model_name, quant_mode)
-        if quant_mode == "int8":
+        if quant_mode == "int8" or quant_mode == "int4":
             table_name = "{}_cali_table".format(model_name)
             self.make_test_calibration_table(top_mlir_outs, table_name)
             tpu_mlir += "_asym" if isAsym else "_sym"
@@ -298,6 +299,8 @@ class ONNX_IR_TESTER(object):
         # tpu mlir inference and compare
         if quant_mode == "int8" or quant_mode == "qdq":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
+        elif quant_mode == "int4":
+            ref_tpu_tolerance = "0.90,0.60"
         elif quant_mode == "bf16":
             ref_tpu_tolerance = "0.95,0.85"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
@@ -320,7 +323,7 @@ class ONNX_IR_TESTER(object):
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
 
         msg = quant_mode.upper()
-        if quant_mode == "int8":
+        if quant_mode == "int8" or quant_mode == "int4":
             msg += ", Asymmetric: {}".format(isAsym)
 
         print("[Success] test {} {}".format(model_name, msg))
@@ -428,7 +431,7 @@ class ONNX_IR_TESTER(object):
                                        model_name)
             return
         for quant_mode in self.quant_modes:
-            if quant_mode == "int8":
+            if quant_mode == "int8" or quant_mode == "int4":
                 for isAsym in self.support_asym:
                     tpu_mlir, bmodel = self.bmodel_generate(model_name, top_mlir_outs, quant_mode,
                                                             isAsym)
@@ -3262,7 +3265,7 @@ if __name__ == "__main__":
                         choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x', 'cv180x'],
                         help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
-    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4'],
                         help="chip platform name")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--show_all", action="store_true", help='show all cases')

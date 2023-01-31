@@ -192,7 +192,7 @@ public:
   /// if the name is not found, return failure()
   /// type is provided for checking, return failure() if type does not match
   template <typename T>
-  LogicalResult readTensor(llvm::StringRef name, T *data, size_t count) {
+  LogicalResult readTensor(llvm::StringRef name, T *data, size_t count, bool isINT4) {
     auto it = map.find(name.str());
     if (it == map.end()) {
       llvm::errs() << "failed to find tensor " << name.str() << " to read\n";
@@ -209,18 +209,24 @@ public:
       llvm::MutableArrayRef<char> data_holder((char *)data,
                                               (char *)(data + arr.num_vals));
       colMajorToRowMajor(data_holder, arr);
-    } else
-      memcpy(data, arr.data_holder->data(), arr.num_bytes());
+    } else {
+      int cpy_bytes = isINT4 ? (count+1)/2 : arr.num_bytes();
+      memcpy(data, arr.data_holder->data(), cpy_bytes);
+    }
     return success();
   }
 
   template <typename T>
   std::unique_ptr<std::vector<T>> readTensor(llvm::StringRef name,
                                              RankedTensorType &type) {
-    assert(check_type<T>(type.getElementType()) == true);
     auto count = type.getNumElements();
-    auto data = std::make_unique<std::vector<T>>(count);
-    auto ret = readTensor(name, (T *)data.get()->data(), count);
+    bool isINT4 = type.getElementType().isInteger(4);
+    if(!isINT4) {
+      assert(check_type<T>(type.getElementType()) == true);
+    }
+
+    auto data = std::make_unique<std::vector<T>>(isINT4 ? ((count + 1) / 2) : count);
+    auto ret = readTensor(name, (T *)data.get()->data(), count, isINT4);
     assert(succeeded(ret));
     return data;
   }

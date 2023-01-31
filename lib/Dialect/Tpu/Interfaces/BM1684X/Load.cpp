@@ -32,11 +32,20 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
-  auto data_type = BM168x::getDataType(getOutput());
-  auto gdma_format = BM168x::getGdmaFormat(data_type);
-  auto fmt_bytes = BM168x::getFmtBytes(data_type);
+
   int64_t N, C, H, W;
+  int gdma_format;
   module::getNCHW(getOutput(), N, C, H, W);
+  auto data_type = BM168x::getDataType(getOutput());
+
+  if(data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
+    gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
+    data_type  = DTYPE_INT8;
+    W >>= 1;
+  }
+  gdma_format = BM168x::getGdmaFormat(data_type);
+  auto fmt_bytes = BM168x::getFmtBytes(data_type);
+
   auto g_stride = BM168x::getGlobalStride(N, C, H, W);
 
   if (getDoBcast() == true) {

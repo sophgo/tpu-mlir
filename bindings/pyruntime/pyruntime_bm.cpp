@@ -51,6 +51,14 @@ private:
       pytype = py::dtype("uint8");
       dtype = "u8";
       break;
+    case BM_INT4:
+      pytype = py::dtype("int8");
+      dtype = "i4";
+      break;
+    case BM_UINT4:
+      pytype = py::dtype("uint8");
+      dtype = "u4";
+      break;
     case BM_INT16:
       pytype = py::dtype("int16");
       dtype = "i16";
@@ -77,6 +85,7 @@ private:
       dtype = "f16";
       break;
     default:
+      printf("error, bm_data_type_t : %d\n", fmt);
       assert(0);
     }
   }

@@ -12,3 +12,4 @@ regression_out/
 tags
 .vscode/
 .VSCodeCounter/
+onnx_test_bm1686/
