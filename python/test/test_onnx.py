@@ -156,7 +156,12 @@ class ONNX_IR_TESTER(object):
             "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
             "TorchWhere": self.test_TorchWhere,
-            "TorchStd": self.test_TorchStd
+            "TorchStd": self.test_TorchStd,
+            #############################
+            # Special Pass test case, Alphabetically
+            #############################
+            "ConcatToSpace": self.test_ConcatToSpace,
+            "SwapDimInner": self.test_SwapDimInner,
         }
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -1982,6 +1987,39 @@ class ONNX_IR_TESTER(object):
                 return torch.std(x, -1)
 
         x = torch.randn(1, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_ConcatToSpace(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                a = x[:,::2,::2,:]
+                b = x[:,::2,1::2,:]
+                c = x[:,1::2,::2,:]
+                d = x[:,1::2,1::2,:]
+                y = torch.cat([a,c,b,d], 3)
+                return y
+
+        x = torch.randn(1, 40, 40, 384).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_SwapDimInner(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                y = torch.cat([x[:,39:,:,:], x[:,:39,:,:]], 1)
+                z = torch.cat([y[:,:,39:,:], y[:,:,:39,:]], 2)
+                return z
+
+        x = torch.randn(1, 42, 42, 384).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_TorchWhere(self, case_name):
