@@ -233,3 +233,19 @@ LogicalResult tpu::Pool2DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
   in_down_pad_h = out_down_pad_h * attr.sh + attr.pad_h_after;
   return success();
 }
+
+int64_t tpu::Pool2DOp::DynForwardHeight(int64_t in_height) {
+  auto &attr = getPool2DParam(*this);
+  int out_height = 0;
+  if((in_height + attr.pad_h + attr.pad_h_after) >= attr.kh) {
+    out_height = (in_height + attr.pad_h + attr.pad_h_after - attr.kh) / attr.sh + 1;
+  } else {
+    out_height = 0;
+  }
+  if ((in_height + attr.pad_h + attr.pad_h_after) >= attr.kh
+     && ((in_height + attr.pad_h + attr.pad_h_after - attr.kh) % attr.sh != 0)
+      && (out_height * attr.sh < (in_height + attr.pad_h))) {
+    out_height++;
+  }
+  return out_height;
+}

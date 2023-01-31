@@ -197,3 +197,8 @@ LogicalResult tpu::Conv1DOp::DynBackwardDownPadH(int64_t &in_down_pad_h,
 LogicalResult tpu::Conv1DOp::LocalGenSupport() {
   return success();
 }
+
+int64_t tpu::Conv1DOp::DynForwardHeight(int64_t in_height) {
+  //Todo
+  return in_height;
+}

@@ -34,6 +34,11 @@ typedef struct {
   int is_local_layer;
 } lut_param_t;
 
+typedef struct {
+    unsigned int buffer_addr; // used only for local layer
+    int output_dtype;
+    int is_local_layer;
+} dyn_lut_param_t;
 #ifdef __cplusplus
 }
 #endif
@@ -101,7 +106,11 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 //dynamic codegen
 int64_t tpu::LutOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
+  if (!buffer) return sizeof(dyn_lut_param_t);
+  dyn_lut_param_t param = {0};
+  param.output_dtype = BM168x::getDataType(getOutput());
+  param.is_local_layer = 1;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================

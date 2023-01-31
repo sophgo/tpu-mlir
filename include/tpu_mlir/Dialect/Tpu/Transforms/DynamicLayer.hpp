@@ -19,9 +19,9 @@ struct value_cmp {
 extern void DynCodegenInit();
 extern void SetNetIO(vector<Value> &inputs, vector<Value> &outputs);
 extern int get_tensor_id(Value v);
-extern int get_layer_id(Operation *op);
 extern bool is_net_input(Value v);
 extern bool is_net_output(Value v);
+extern vector<Value>& get_net_output();
 extern FW_LAYER_TYPE_T get_layer_type(Operation *op);
 enum DynamicTensorType
 {

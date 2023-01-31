@@ -35,6 +35,8 @@ typedef enum {
   STORE_MODE_1N = 0,
   STORE_MODE_2N = 1,
   STORE_MODE_4N = 2,
+  STORE_3IC     = 3,
+  //if need to support more store mode, pls add below
 } STORE_MODE_T;
 
 #define SUBNET_MODE_TPU 0
@@ -343,6 +345,27 @@ typedef struct {
   int zx_value;
   int round_mode;
 } requant_int_param_t;
+
+typedef struct {
+  bool is_perchannel;
+  int mul_value;
+  int shift_value;
+  int offset_value;
+  int output_dtype;
+  int mode;
+  int reshaped_coeff;
+  int zx_value;
+  int round_mode;
+} dyn_requant_int_common_param_t;
+
+typedef struct {
+  dyn_requant_int_common_param_t common;
+  uint32_t buffer_local_addr;
+} dyn_requant_int_local_param_t;
+
+typedef struct {
+  dyn_requant_int_common_param_t common;
+} dyn_requant_int_global_param_t;
 
 typedef struct {
   uint64_t input_addr;

@@ -206,6 +206,12 @@ model_transform.py \
   ${excepts_opt} \
   --mlir ${model_name}.mlir
 
+dyn_test_reference_opt=
+static_top_result=${model_name}_static_top_outputs.npz
+if [ $do_dynamic == 1 ]; then
+  cp ${top_result} ${static_top_result}
+  dyn_test_reference_opt="--test_reference=${static_top_result}"
+fi
 #########################
 # deploy to float bmodel
 #########################
@@ -370,7 +376,7 @@ if [ $do_dynamic == 1 ]; then
       --chip ${chip_name} \
       --dynamic \
       ${test_innpz_opt} \
-      ${test_reference_opt} \
+      ${dyn_test_reference_opt} \
       ${excepts_opt} \
       --tolerance 0.99,0.99 \
       --model ${dynamic_model}
@@ -392,7 +398,7 @@ if [ $do_dynamic == 1 ]; then
   #     --chip ${chip_name} \
   #     --dynamic \
   #     ${test_innpz_opt} \
-  #     ${test_reference_opt} \
+  #     ${dyn_test_reference_opt} \
   #     ${excepts_opt} \
   #     --tolerance 0.95,0.85 \
   #     --model ${model_name}_${chip_name}_f16.${model_type}
@@ -405,7 +411,7 @@ if [ $do_dynamic == 1 ]; then
   #     --chip ${chip_name} \
   #     --dynamic \
   #     ${test_innpz_opt} \
-  #     ${test_reference_opt} \
+  #     ${dyn_test_reference_opt} \
   #     ${excepts_opt} \
   #     --tolerance 0.95,0.85 \
   #     --model ${model_name}_${chip_name}_bf16.${model_type}

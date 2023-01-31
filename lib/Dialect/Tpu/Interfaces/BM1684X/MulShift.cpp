@@ -35,6 +35,22 @@ typedef struct {
   ROUND_MODE_T round_mode;
 } mulshift_param_t;
 
+typedef struct {
+    int scale_val;
+    int rshift_num;
+    DATA_TYPE_T  scale_dtype;
+    DATA_TYPE_T  output_dtype;
+    ROUND_MODE_T round_mode;
+} dyn_mulshift_common_param_t;
+
+typedef struct {
+    dyn_mulshift_common_param_t common;
+    unsigned int buffer_addr;
+} dyn_mulshift_local_param_t;
+
+typedef struct {
+    dyn_mulshift_common_param_t common;
+} dyn_mulshift_global_param_t;
 #ifdef __cplusplus
 }
 #endif
@@ -155,7 +171,16 @@ void tpu::MulShiftOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 //dynamic codegen
 int64_t tpu::MulShiftOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
+  if (!buffer) return sizeof(dyn_mulshift_local_param_t);
+  dyn_mulshift_local_param_t param = {0};
+  auto gi = getGroupInfo(0, 0);
+  param.buffer_addr = gi.buffer_addr;
+  param.common.scale_val = getMultiplier();
+  param.common.rshift_num = getRshift();
+  param.common.scale_dtype = param.common.scale_val < 0 ? DTYPE_INT8 : DTYPE_UINT8;
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.round_mode = ROUND_UP;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================

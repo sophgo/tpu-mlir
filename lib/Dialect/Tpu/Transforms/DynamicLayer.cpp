@@ -19,20 +19,14 @@ using namespace std;
 namespace tpu_mlir {
 namespace tpu {
 //global information for multisubnet
-int g_layer_id = 0;
 int g_tensor_id = 0;
-set<Value, value_cmp> net_input_tensors;
-set<Value, value_cmp> net_output_tensors;
-
-map<Operation *, int> layer_ID;
+vector<Value> net_input_tensors;
+vector<Value> net_output_tensors;
 map<Value, int, value_cmp> tensor_ID;
-//llvm::DenseMap<Operation *, int> layer_ID;
 //llvm::DenseMap<Value, int> tensor_ID;
 
 void DynCodegenInit() {
-    g_layer_id = 0;
     g_tensor_id = 0;
-    layer_ID.clear();
     tensor_ID.clear();
     net_input_tensors.clear();
     net_output_tensors.clear();
@@ -40,11 +34,14 @@ void DynCodegenInit() {
 
 void SetNetIO(vector<Value> &inputs, vector<Value> &outputs) {
     for (auto v: inputs)
-        net_input_tensors.insert(v);
+        net_input_tensors.emplace_back(v);
     for (auto v: outputs)
-        net_output_tensors.insert(v);
+        net_output_tensors.emplace_back(v);
 }
 
+vector<Value>& get_net_output() {
+    return net_output_tensors;
+}
 bool is_net_input(Value v) {
     return v.isa<BlockArgument>();
 }
@@ -53,6 +50,24 @@ bool is_net_output(Value v) {
     for (auto user : v.getUsers()) {
         if (isa<ReturnOp>(user)) {
           return true;
+        } else if (auto yield_op = dyn_cast<tpu::YieldOp>(user)) {
+          //check if the storeOp's output is output tensor(returnOp)
+          for (auto out: yield_op->getOperands()) {
+              if (out == v) {
+                auto parent = yield_op->getParentOp();
+                if (parent != nullptr && isa<tpu::GroupOp>(parent)) {
+                    for (auto val: parent->getResults()) {
+                        if (module::getName(val).str() == module::getName(out).str()) {
+                            for (auto dst_op: val.getUsers()) {
+                                if (isa<ReturnOp>(dst_op)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+              }
+          }
         }
     }
     return false;
@@ -67,15 +82,6 @@ int get_tensor_id(Value v) {
     return tensor_ID[v];
   }
 }
-
-int get_layer_id(Operation *op) {
-  if (layer_ID.count(op))
-    return layer_ID[op];
-  else {
-    layer_ID[op] = g_layer_id++;
-    return layer_ID[op];
-  }
-}
 #else
 int get_tensor_id(Value v) {
   if (tensor_ID.find(v) != tensor_ID.end())
@@ -83,15 +89,6 @@ int get_tensor_id(Value v) {
   else {
     tensor_ID[v] = llvm::hash_value(v.getAsOpaquePointer());
     return tensor_ID[v];
-  }
-}
-
-int get_layer_id(Operation *op) {
-  if (layer_ID.count(op))
-    return layer_ID[op];
-  else {
-    layer_ID[op] = g_layer_id++;
-    return layer_ID[op];
   }
 }
 #endif
@@ -114,12 +111,27 @@ FW_LAYER_TYPE_T get_layer_type(Operation *op) {
     return FW_BMNET_RESHAPE;
   } else if (isa<tpu::AddOp>(op)) {
     return FW_BMNET_BROADCAST_BINARY;
-  } else if (isa<tpu::CastOp>(op)) {
-    return FW_BMNET_DTYPE_CONVERT;
   } else if (isa<tpu::TopKOp>(op)) {
     return FW_BMNET_TOPK;
+  } else if (isa<tpu::CastOp>(op)) {
+    auto castop = dyn_cast<tpu::CastOp>(*op);
+    bool qInput = module::isUniformQuantized(castop.getInput());
+    bool qOutput = module::isUniformQuantized(castop.getOutput());
+    if (!qInput && !qOutput)
+        return FW_BMNET_DTYPE_CONVERT;
+    else {
+        if (!qInput && qOutput)
+            return FW_BMNET_REQUANT_FP32;
+        else
+            return FW_BMNET_DEQUANT_FP32;
+    }
+  } else if (isa<tpu::RequantIntOp>(op)) {
+    return FW_BMNET_REQUANT_INT;
+  } else if (isa<tpu::LutOp>(op)) {
+    return FW_BMNET_LUT;
+  } else if (isa<tpu::MulShiftOp>(op)) {
+    return FW_BMNET_MULSHIFT;
   } else
-    llvm_unreachable("Not Implemented");
     return FW_LAYER_UNKNOWN;
 }
 
