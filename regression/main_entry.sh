@@ -78,8 +78,6 @@ run_script_test() {
   fi
 }
 
-export -f run_script_test
-
 run_all() {
   echo "" >fail.log
   echo "" >result.log
@@ -88,11 +86,16 @@ run_all() {
   if [[ "$?" -ne 0 ]]; then
     ERR=1
   fi
-  #echo "run_tflite_op" >>cmd.txt
-  run_script_test
-  if [[ "$?" -ne 0 ]]; then
+  if [ x${test_type} == xall ]; then
+    run_tflite_op
+    if [[ "$?" -ne 0 ]]; then
       ERR=1
     fi
+  fi
+  run_script_test
+  if [[ "$?" -ne 0 ]]; then
+    ERR=1
+  fi
   for chip in ${chip_support[@]}; do
     echo "" >cmd.txt
     declare -n list="${chip}_model_list_${test_type}"

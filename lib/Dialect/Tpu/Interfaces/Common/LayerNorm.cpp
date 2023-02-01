@@ -81,8 +81,8 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LayerNormOp::LocalGenSupport() {
-  if (getAxis() != 0)
-    return success();
+  // if (getAxis() != 0)
+  //   return success();
   return failure();
 }
 

@@ -98,8 +98,8 @@ void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step,
   param.common.need_rstd = need_rstd;
   const auto& gi = getGroupInfo(n_step, h_step);
   param.buffer_addr = gi.buffer_addr;
-  BM168x::call_local_func("backend_api_layer_norm_local", &param,
-                          sizeof(param));
+  BM168x::call_local_func("backend_api_layer_norm_local", &param, sizeof(param),
+                          &sec_info, input_spec->data(), output_spec->data());
 }
 
 

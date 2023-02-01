@@ -214,7 +214,7 @@ class ONNX_IR_TESTER(object):
             assert (i.type.tensor_type.elem_type == onnx.TensorProto.FLOAT)
             name = i.name
             shape = [s.dim_value for s in i.type.tensor_type.shape.dim]
-            inputs[name] = np.clip(-10, 10, np.random.randn(*shape).astype(np.float32))
+            inputs[name] = np.clip( np.random.randn(*shape).astype(np.float32), -10, 10)
         return inputs
 
     def onnx_convert(self, input_data: dict, graph_def, model_name: str):

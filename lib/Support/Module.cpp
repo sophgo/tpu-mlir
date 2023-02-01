@@ -485,26 +485,6 @@ func::CallOp getCallOp(FuncOp func) {
   return call;
 }
 
-StringRef getName(Operation *op, int index) {
-  if (auto module = dyn_cast<ModuleOp>(op)) {
-    return getName(module);
-  }
-  if (auto loc = op->getLoc().dyn_cast<NameLoc>()) {
-    return loc.getName();
-  }
-  if (auto loc = op->getLoc().dyn_cast<FusedLoc>()) {
-    auto locs = loc.getLocations();
-    assert(index < locs.size());
-    if (auto name_loc = locs[index].dyn_cast<NameLoc>()) {
-      return name_loc.getName();
-    }
-  }
-  op->print(llvm::errs(), OpPrintingFlags().useLocalScope().enableDebugInfo());
-  llvm::errs() << "\n";
-  llvm_unreachable("op has no name location!!!");
-  return "";
-}
-
 FuncOp getMainFuncOp() { return getFuncOp("main"); }
 
 bool isSign(Value v) {
@@ -634,21 +614,48 @@ double getThreshold(Value v) {
   return type.getMax();
 }
 
-StringRef getName(Value v) {
+NameLoc getLoc(Value v) {
   if (auto loc = v.getLoc().dyn_cast<NameLoc>()) {
-    return loc.getName();
+    return loc;
   } else if (auto op = v.getDefiningOp()) {
-    if (op->getNumResults() == 1) {
-      return getName(op);
-    } else {
+    auto loc = op->getLoc();
+    if (auto name_loc = loc.dyn_cast<NameLoc>()) {
+      return name_loc;
+    }
+    if (auto fuse_loc = loc.dyn_cast<FusedLoc>()) {
       auto r = v.cast<OpResult>();
-      return getName(op, r.getResultNumber());
+      auto locs = fuse_loc.getLocations();
+      if (auto name_loc = locs[r.getResultNumber()].dyn_cast<NameLoc>()) {
+        return name_loc;
+      }
     }
   }
   v.dump();
-  llvm_unreachable("No name info");
+  llvm_unreachable("Not Implemented");
+  return nullptr;
+}
+
+StringRef getName(Operation *op, int index) {
+  if (auto module = dyn_cast<ModuleOp>(op)) {
+    return getName(module);
+  }
+  if (auto loc = op->getLoc().dyn_cast<NameLoc>()) {
+    return loc.getName();
+  }
+  if (auto loc = op->getLoc().dyn_cast<FusedLoc>()) {
+    auto locs = loc.getLocations();
+    assert(index < locs.size());
+    if (auto name_loc = locs[index].dyn_cast<NameLoc>()) {
+      return name_loc.getName();
+    }
+  }
+  op->print(llvm::errs(), OpPrintingFlags().useLocalScope().enableDebugInfo());
+  llvm::errs() << "\n";
+  llvm_unreachable("op has no name location!!!");
   return "";
 }
+
+StringRef getName(Value v) { return getLoc(v).getName(); }
 
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
   auto main_func = getMainFuncOp();

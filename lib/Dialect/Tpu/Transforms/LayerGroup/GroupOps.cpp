@@ -102,13 +102,13 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   int64_t hsecs = shape_secs.hsecs;
   for (auto in : lg_info.group_ins) {
     in_types.push_back(in.getType());
-    in_locs.push_back(in.getLoc());
+    in_locs.push_back(module::getLoc(in));
     operands.push_back(in);
   }
   llvm::SmallVector<Location, 8> locs;
   for (auto out : lg_info.group_outs) {
     ret_types.push_back(out.getType());
-    locs.push_back(out.getLoc());
+    locs.push_back(module::getLoc(out));
     outputs.push_back(out);
   }
   auto group_loc = builder.getFusedLoc(locs);
@@ -164,7 +164,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   llvm::SmallVector<Value, 8> new_stores;
   for (auto &loc : locs) {
     for (auto &s : stores) {
-      if (s.getLoc() == loc) {
+      if (module::getLoc(s) == loc) {
         new_stores.push_back(s);
         break;
       }
