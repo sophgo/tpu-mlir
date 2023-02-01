@@ -23,7 +23,7 @@ import torch.nn.functional as F
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK", "ReshapeFuse"]
+BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK"]
 BM1684_Failed_Cases = [
     "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul", "BroadcastAdd",
     "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat", "Concat2", "Conv1d",
