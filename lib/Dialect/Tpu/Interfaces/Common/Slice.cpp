@@ -14,7 +14,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include <valarray>
 
-
 using namespace tpu_mlir::backend;
 
 template <typename T> static int remove_value(std::vector<T> &v, T value) {
@@ -101,8 +100,8 @@ slice_attr_t tpu::SliceOp::parseParam() {
   attr.fusible = false;
   if (no_step && real_axes.size() == 1) {
     int axis = real_axes[0];
-    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis, 1,
-                                    std::multiplies<int64_t>());
+    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis,
+                                    1, std::multiplies<int64_t>());
     if (outer_dim == 1) {
       attr.fusible = true;
     }
