@@ -30,17 +30,18 @@ BM1684_Failed_Cases = [
     "Conv3d", "ConvStride", "ConvTranspose", "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf",
     "Exp", "Expand", "Expand2", "Gather", "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3",
     "LeakyRelu", "Log", "LogSoftmax", "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul",
-    "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ","ReshapeFuse",
-    "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum",
-    "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale",
-    "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK", "Where",
-    "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm",
-    "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd"
+    "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
+    "ReshapeFuse", "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean",
+    "ReduceSum", "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split",
+    "Scale", "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK",
+    "Where", "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm",
+    "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd", "Conv3dTo2d"
 ]
 CV18XX_Failed_Cases = [
-    "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape","ReshapeFuse",
-    "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu", "TorchGRU", "TorchLayerNorm",
-    "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
+    "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
+    "ReshapeFuse", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu", "TorchGRU",
+    "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd",
+    "QDQ", "QDQConv", "Conv3dTo2d"
 ]
 
 
@@ -161,6 +162,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #############################
             "ConcatToSpace": self.test_ConcatToSpace,
+            "Conv3dTo2d": self.test_Conv3dTo2d,
             "GatherToSlice": self.test_GatherToSlice,
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
@@ -2012,6 +2014,21 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(1, 40, 40, 384).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_Conv3dTo2d(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv3d = nn.Conv3d(3, 96, [10, 4, 4], [10, 4, 4], [0,0,0])
+
+            def forward(self, x):
+                y = self.conv3d(x)
+                return y
+
+        x = torch.randn(1, 3, 10, 640, 640).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_GatherToSlice(self, case_name):

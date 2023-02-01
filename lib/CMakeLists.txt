@@ -18,8 +18,5 @@ add_mlir_library(TPUMLIRInitAll
   MLIRFuncDialect
   MLIRQuantDialect
   MLIRInferenceInterface
-  TPUMLIRTop
-  TPUMLIRTpu
   TPUMLIRTopToTpu
-  TPUMLIRSupport
 )

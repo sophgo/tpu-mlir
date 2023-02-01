@@ -326,6 +326,7 @@ def Top_ConvOp: Top_Op<"Conv", [SupportFuseRelu]> {
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
   let extraClassDeclaration = [{
     conv_attr_t parseParam();
   }];
