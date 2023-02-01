@@ -1021,8 +1021,8 @@ bool permute_reset(const std::vector<int64_t> &shape,
     while (num_dims > to_dim) {
       bool done = false;
       for (int i = 0; i < num_dims - 1; i++) {
-        if (order[i] + 1 == order[i + 1]) {
-          int idx = order[i];
+        if (to_order[i] + 1 == to_order[i + 1]) {
+          int idx = to_order[i];
           to_shape[idx] *= to_shape[idx + 1];
           to_shape.erase(to_shape.begin() + idx + 1);
           to_order.erase(to_order.begin() + i + 1);

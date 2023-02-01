@@ -30,8 +30,6 @@ extern "C" {
 
 // int8
 void tpu::SubConstOp::codegen_global_bm1684x() {
-  int64_t n, c, h, w;
-  module::getNCHW(getOutput(), n, c, h, w);
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);

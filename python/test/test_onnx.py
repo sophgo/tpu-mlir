@@ -23,14 +23,14 @@ import torch.nn.functional as F
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK"]
+BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK", "ReshapeFuse"]
 BM1684_Failed_Cases = [
     "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul", "BroadcastAdd",
     "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat", "Concat2", "Conv1d",
     "Conv3d", "ConvStride", "ConvTranspose", "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf",
     "Exp", "Expand", "Expand2", "Gather", "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3",
     "LeakyRelu", "Log", "LogSoftmax", "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul",
-    "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
+    "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ","ReshapeFuse",
     "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean", "ReduceSum",
     "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split", "Scale",
     "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK", "Where",
@@ -38,7 +38,7 @@ BM1684_Failed_Cases = [
     "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd"
 ]
 CV18XX_Failed_Cases = [
-    "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
+    "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape","ReshapeFuse",
     "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu", "TorchGRU", "TorchLayerNorm",
     "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd", "QDQ", "QDQConv"
 ]
@@ -162,6 +162,7 @@ class ONNX_IR_TESTER(object):
             #############################
             "ConcatToSpace": self.test_ConcatToSpace,
             "GatherToSlice": self.test_GatherToSlice,
+            "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
         }
         # no quantization when quant_mode == "f32"
@@ -214,7 +215,7 @@ class ONNX_IR_TESTER(object):
             assert (i.type.tensor_type.elem_type == onnx.TensorProto.FLOAT)
             name = i.name
             shape = [s.dim_value for s in i.type.tensor_type.shape.dim]
-            inputs[name] = np.clip( np.random.randn(*shape).astype(np.float32), -10, 10)
+            inputs[name] = np.clip(np.random.randn(*shape).astype(np.float32), -10, 10)
         return inputs
 
     def onnx_convert(self, input_data: dict, graph_def, model_name: str):
@@ -998,17 +999,22 @@ class ONNX_IR_TESTER(object):
             self.onnx_and_test(graph_def)
 
     def test_Transpose2(self, case_name):
-        in_shape = [529, 49, 3, 3, 32]
-        out_shape = [3, 529, 3, 49, 32]
-        order = [2, 0, 3, 1, 4]
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, in_shape)
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, out_shape)
-        transpose_def = helper.make_node("Transpose",
-                                         inputs=['input'],
-                                         outputs=['output'],
-                                         perm=order)
-        graph_def = helper.make_graph([transpose_def], case_name, [input], [output])
-        self.onnx_and_test(graph_def)
+        cases = [
+            #case 0, input shape,output shape, order
+            [[529, 49, 3, 3, 32], [3, 529, 3, 49, 32], [2, 0, 3, 1, 4]],
+            #case 1, input shape,output shape, order
+            [[1, 1, 1, 23, 7, 23, 7, 96], [1, 1, 23, 23, 1, 7, 7, 96], [0, 1, 3, 5, 2, 4, 6, 7]]
+        ]
+        for idx, shapes in enumerate(cases):
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, shapes[0])
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, shapes[1])
+            transpose_def = helper.make_node("Transpose",
+                                             inputs=['input'],
+                                             outputs=['output'],
+                                             perm=shapes[2])
+            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, idx), [input],
+                                          [output])
+            self.onnx_and_test(graph_def)
 
     def test_Where(self, case_name):
         # real case
@@ -2019,11 +2025,32 @@ class ONNX_IR_TESTER(object):
                 a = x[0]
                 b = x[1]
                 c = x[2]
-                d = torch.matmul(a * 0.3, b.transpose(2,3))
+                d = torch.matmul(a * 0.3, b.transpose(2, 3))
                 e = torch.matmul(torch.softmax(d, 3), c)
                 return e
 
         x = torch.randn(3, 36, 12, 49, 32).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_ReshapeFuse(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.w0 = torch.randn(1, 3, 49, 49).float()
+                self.w1 = torch.randn(1, 529, 1, 49, 49).float()
+                self.w2 = torch.randn(1, 3, 49, 49).float()
+
+            def forward(self, x):
+                a = x + self.w0
+                b = torch.reshape(a, [1, 529, 3, 49, 49])
+                c = b + self.w1
+                d = torch.reshape(c, [529, 3, 49, 49])
+                e = d + self.w2
+                return e
+
+        x = torch.randn(529, 3, 49, 49).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_SwapDimInner(self, case_name):

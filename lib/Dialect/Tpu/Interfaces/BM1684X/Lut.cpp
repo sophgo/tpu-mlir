@@ -59,7 +59,7 @@ void tpu::LutOp::codegen_global_bm1684x() {
   p.is_local_layer = 0;
   p.shape_dim = 4;
   int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
+  BM168x::getBetterNCHW(getInput(), n, c, h, w);
   p.shape[0] = n;
   p.shape[1] = c;
   p.shape[2] = h;
