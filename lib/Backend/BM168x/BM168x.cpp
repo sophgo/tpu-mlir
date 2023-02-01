@@ -353,6 +353,53 @@ int BM168x::compare_mode(StringRef mode) {
   llvm_unreachable("Not Implemented");
 }
 
+static void size_to_2dim(int64_t size, int64_t &small, int64_t &big) {
+  int64_t div = std::sqrt(size);
+  for (small = div; small >= 1; small--) {
+    if (size % small == 0) {
+      big = size / small;
+      break;
+    }
+  }
+}
+
+// TODO: nodechip should be optimized, not here.
+// because 1684x nodechip should slice by num element, but by n,c,h,w;
+// it would be not efficient
+void BM168x::getBetterNCHW(Value v, int64_t &n, int64_t &c, int64_t &h,
+                           int64_t &w) {
+  auto num = module::getNumElements(v);
+  n = 1;
+  c = 1;
+  h = 1;
+  w = 1;
+  if (num % NPU_NUM == 0) {
+    c = NPU_NUM;
+    size_to_2dim(num / c, h, w);
+    return;
+  }
+  auto bytes = module::getDtypeSize(v);
+  auto EU = eu_num(bytes);
+  if (num % EU == 0) {
+    h = EU;
+    size_to_2dim(num / EU, w, c);
+    return;
+  }
+  int64_t a[3];
+  size_to_2dim(num, a[0], a[1]);
+  size_to_2dim(a[1], a[2], a[1]);
+  // most similar to NPU_NUM
+  int64_t b = a[0] % NPU_NUM;
+  int max_idx = 0;
+  for (int idx = 1; idx < 3; idx++) {
+    if (a[idx] > b) {
+      max_idx = idx;
+    }
+  }
+  c = a[max_idx];
+  size_to_2dim(num / c, w, h);
+}
+
 void BM168x::before_codegen() {
   // set_command_issue_flag(true);
   dl_sg_set_profile_dump(true);

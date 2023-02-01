@@ -57,7 +57,7 @@ typedef struct {
 
 void tpu::MulShiftOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
+  BM168x::getBetterNCHW(getInput(), n, c, h, w);
   if (module::isUniformQuantized(getInput())) {
     auto in_qtype = module::getUniformQuantizedType(getInput());
     auto out_qtype = module::getUniformQuantizedType(getOutput());
