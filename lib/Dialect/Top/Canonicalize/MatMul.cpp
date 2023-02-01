@@ -32,7 +32,7 @@ struct MatMulWithBias : public OpRewritePattern<MatMulOp> {
     }
     auto user = *op->getUsers().begin();
     auto add_op = dyn_cast<AddOp>(user);
-    if (!user) {
+    if (!add_op) {
       return failure();
     }
     if (add_op.getNumOperands() != 2) {

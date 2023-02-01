@@ -653,11 +653,7 @@ class OnnxConverter(BaseConverter):
 
         operands = list()
         operands.append(op)
-        try:
-            filter_op = self.getWeightOp(onnx_node.inputs[1])
-        except:
-            filter_op = self.getOperand(
-                onnx_node.inputs[1])  # We may get a quantized weight in qdq onnx format.
+        filter_op = self.getOp(onnx_node.inputs[1])
         operands.append(filter_op)
         if len(onnx_node.inputs) > 2:
             bias_op = self.getWeightOp(onnx_node.inputs[2])

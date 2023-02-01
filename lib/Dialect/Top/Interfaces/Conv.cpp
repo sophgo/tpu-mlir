@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 
 
-
-
 conv_attr_t top::ConvOp::parseParam() {
   conv_attr_t p = {0};
   auto i_s = getInput().getType().cast<RankedTensorType>().getShape();
