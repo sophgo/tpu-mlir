@@ -33,9 +33,10 @@ BM1684_Failed_Cases = [
     "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
     "ReshapeFuse", "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean",
     "ReduceSum", "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split",
-    "Scale", "Sqrt", "Sub", "Sub2", "SubConst", "SubConst2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK",
-    "Where", "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm",
-    "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd", "Conv3dTo2d"
+    "Scale", "Sqrt", "Sub", "Sub2", "SubConst", "SubConst2", "Sum", "Tanh", "Tile", "Transpose",
+    "Transpose2", "TopK", "Where", "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU",
+    "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd",
+    "Conv3dTo2d"
 ]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
@@ -165,7 +166,8 @@ class ONNX_IR_TESTER(object):
             #############################
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
-            "Div2Mul" : self.test_Div2Mul,
+            "Div2Mul": self.test_Div2Mul,
+            "PermuteFuse": self.test_PermuteFuse,
             "GatherToSlice": self.test_GatherToSlice,
             "Mul2Scale": self.test_Mul2Scale,
             # "PadConv1d": self.test_PadConv1d,
@@ -2033,7 +2035,7 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Net, self).__init__()
-                self.conv3d = nn.Conv3d(3, 96, [10, 4, 4], [10, 4, 4], [0,0,0])
+                self.conv3d = nn.Conv3d(3, 96, [10, 4, 4], [10, 4, 4], [0, 0, 0])
 
             def forward(self, x):
                 y = self.conv3d(x)
@@ -2058,6 +2060,24 @@ class ONNX_IR_TESTER(object):
                 return e
 
         x = torch.randn(3, 36, 12, 49, 32).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_PermuteFuse(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.bias = torch.randn(96).float()
+
+            def forward(self, x):
+                a = torch.transpose(x, 1, 2)
+                b = torch.reshape(a, [1, 96, 1, 160, 160])
+                c = torch.permute(b, [0, 2, 3, 4, 1])
+                d = c + self.bias
+                return d
+
+        x = torch.randn(1, 25600, 96).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_ReshapeFuse(self, case_name):
@@ -2511,13 +2531,9 @@ class ONNX_IR_TESTER(object):
             ['output'],  # outputs
         )
 
-        graph_def = helper.make_graph(
-            [sub_def],
-            case_name,
-            [input0],
-            [output],
-            initializer=[w_value]
-        )
+        graph_def = helper.make_graph([sub_def],
+                                      case_name, [input0], [output],
+                                      initializer=[w_value])
         self.onnx_and_test(graph_def)
 
     def test_SubConst2(self, case_name):
@@ -2541,13 +2557,9 @@ class ONNX_IR_TESTER(object):
             ['output'],  # outputs
         )
 
-        graph_def = helper.make_graph(
-            [sub_def],
-            case_name,
-            [input1],
-            [output],
-            initializer=[w_value]
-        )
+        graph_def = helper.make_graph([sub_def],
+                                      case_name, [input1], [output],
+                                      initializer=[w_value])
         self.onnx_and_test(graph_def)
 
     def test_Expand(self, case_name):
@@ -2914,14 +2926,17 @@ class ONNX_IR_TESTER(object):
         input_shape = [8, 16, 32, 64]
         transpose_order = [1, 0, 2, 3]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        transpose_output_shape = [input_shape[transpose_order[i]] for i in range(len(transpose_order))]
-        transpose_output = helper.make_tensor_value_info('transpose_output', TensorProto.FLOAT, transpose_output_shape)
+        transpose_output_shape = [
+            input_shape[transpose_order[i]] for i in range(len(transpose_order))
+        ]
+        transpose_output = helper.make_tensor_value_info('transpose_output', TensorProto.FLOAT,
+                                                         transpose_output_shape)
         transpose_def = helper.make_node("Transpose",
                                          inputs=['input'],
                                          outputs=['transpose_output'],
                                          perm=transpose_order)
         reduce_keepdims = False
-        reduce_axes=[1]
+        reduce_axes = [1]
         reduce_output_shape = []
         if len(reduce_axes) == len(transpose_output_shape):
             reduce_output_shape = []
@@ -2934,7 +2949,8 @@ class ONNX_IR_TESTER(object):
                         break
                 if keep_sign:
                     reduce_output_shape.append(transpose_output_shape[i])
-        reduce_output = helper.make_tensor_value_info('output', TensorProto.FLOAT, reduce_output_shape)
+        reduce_output = helper.make_tensor_value_info('output', TensorProto.FLOAT,
+                                                      reduce_output_shape)
         reduce_mean_def = helper.make_node(
             'ReduceMean',
             ['transpose_output'],
@@ -2942,9 +2958,8 @@ class ONNX_IR_TESTER(object):
             keepdims=reduce_keepdims,
             axes=reduce_axes,
         )
-        graph_def = helper.make_graph([transpose_def, reduce_mean_def],
-                                          case_name, [input],
-                                          [reduce_output])
+        graph_def = helper.make_graph([transpose_def, reduce_mean_def], case_name, [input],
+                                      [reduce_output])
         self.onnx_and_test(graph_def)
 
     # def test_LayerNorm(self, case_name):
@@ -2979,7 +2994,8 @@ class ONNX_IR_TESTER(object):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         if binary_name == "Div":
             weight_data_ = np.random.uniform(0.5, 2, tuple(weight_shape)).astype(np.float32)
-            weight_data = np.multiply(weight_data_, np.random.choice(np.array([-1, 1]), weight_shape))
+            weight_data = np.multiply(weight_data_, np.random.choice(np.array([-1, 1]),
+                                                                     weight_shape))
         else:
             weight_data = np.random.randn(*weight_shape).astype(np.float32)
         if binary_name in ("Greater", "GreaterOrEqual", "Less", "LessOrEqual"):
@@ -2989,7 +3005,9 @@ class ONNX_IR_TESTER(object):
         weight = helper.make_tensor('weight1', TensorProto.FLOAT, weight_shape, weight_data)
         output = helper.make_tensor_value_info("output", output_dtype, input_shape)
         binary_def = helper.make_node(binary_name, inputs=['input', 'weight1'], outputs=["output"])
-        graph_def = helper.make_graph([binary_def], case_name, [input], [output], initializer=[weight])
+        graph_def = helper.make_graph([binary_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight])
         self.onnx_and_test(graph_def)
 
     def test_Div2Mul(self, case_name):
@@ -3006,9 +3024,9 @@ class ONNX_IR_TESTER(object):
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in add_in_shape.items()
         ]
         paddings = helper.make_tensor(name='paddings',
-                                     data_type=onnx.TensorProto.INT64,
-                                     dims=pad_val.shape,
-                                     vals=pad_val.flatten())
+                                      data_type=onnx.TensorProto.INT64,
+                                      dims=pad_val.shape,
+                                      vals=pad_val.flatten())
         add1 = helper.make_tensor_value_info("add1", TensorProto.FLOAT, input_shape)
         f_data1 = np.random.randn(*conv_param_list[0][1]).astype(np.float32)
         f_data2 = np.random.randn(*conv_param_list[1][1]).astype(np.float32)
@@ -3018,10 +3036,26 @@ class ONNX_IR_TESTER(object):
         output2 = helper.make_tensor_value_info("output2", TensorProto.FLOAT, conv_param_list[1][0])
 
         add_def = helper.make_node("Add", inputs=list(add_in_shape.keys()), outputs=["add1"])
-        pad_def = helper.make_node("Pad", inputs=['add1', 'paddings'], outputs=['pad2'], mode='constant',)
-        conv1_def = helper.make_node("Conv", inputs=['pad2', 'filter1'], outputs=['output1'], kernel_shape=conv_param_list[0][1][2:], pads=conv_param_list[0][2])
-        conv2_def = helper.make_node("Conv", inputs=['pad2', 'filter2'], outputs=['output2'], kernel_shape=conv_param_list[1][1][2:], pads=conv_param_list[1][2])
-        graph_def = helper.make_graph([add_def, pad_def, conv1_def, conv2_def], case_name, inputs, [add1, output1, output2], initializer = [paddings, filter1, filter2])
+        pad_def = helper.make_node(
+            "Pad",
+            inputs=['add1', 'paddings'],
+            outputs=['pad2'],
+            mode='constant',
+        )
+        conv1_def = helper.make_node("Conv",
+                                     inputs=['pad2', 'filter1'],
+                                     outputs=['output1'],
+                                     kernel_shape=conv_param_list[0][1][2:],
+                                     pads=conv_param_list[0][2])
+        conv2_def = helper.make_node("Conv",
+                                     inputs=['pad2', 'filter2'],
+                                     outputs=['output2'],
+                                     kernel_shape=conv_param_list[1][1][2:],
+                                     pads=conv_param_list[1][2])
+        graph_def = helper.make_graph([add_def, pad_def, conv1_def, conv2_def],
+                                      case_name,
+                                      inputs, [add1, output1, output2],
+                                      initializer=[paddings, filter1, filter2])
         self.onnx_and_test(graph_def)
 
     def test_PadConv1d(self, case_name):
@@ -3044,18 +3078,36 @@ class ONNX_IR_TESTER(object):
             helper.make_tensor_value_info(k, TensorProto.FLOAT, x) for k, x in add_in_shape.items()
         ]
         paddings = helper.make_tensor(name='paddings',
-                                     data_type=onnx.TensorProto.INT64,
-                                     dims=pad_val.shape,
-                                     vals=pad_val.flatten())
+                                      data_type=onnx.TensorProto.INT64,
+                                      dims=pad_val.shape,
+                                      vals=pad_val.flatten())
         add1 = helper.make_tensor_value_info("add1", TensorProto.FLOAT, input_shape)
         output1 = helper.make_tensor_value_info("output1", TensorProto.FLOAT, pool_param_list[0][0])
         output2 = helper.make_tensor_value_info("output2", TensorProto.FLOAT, pool_param_list[1][0])
 
         add_def = helper.make_node("Add", inputs=list(add_in_shape.keys()), outputs=["add1"])
-        pad_def = helper.make_node("Pad", inputs=['add1', 'paddings'], outputs=['pad2'], mode='constant')
-        pool1_def = helper.make_node('AveragePool', inputs=['pad2'], outputs=['output1'], kernel_shape=pool_param_list[0][1], pads=pool_param_list[0][2], strides=pool_param_list[0][3], count_include_pad=1)
-        pool2_def = helper.make_node('AveragePool', inputs=['pad2'], outputs=['output2'], kernel_shape=pool_param_list[1][1], pads=pool_param_list[1][2], strides=pool_param_list[1][3], count_include_pad=1)
-        graph_def = helper.make_graph([add_def, pad_def, pool1_def, pool2_def], case_name, inputs, [add1, output1, output2], initializer = [paddings])
+        pad_def = helper.make_node("Pad",
+                                   inputs=['add1', 'paddings'],
+                                   outputs=['pad2'],
+                                   mode='constant')
+        pool1_def = helper.make_node('AveragePool',
+                                     inputs=['pad2'],
+                                     outputs=['output1'],
+                                     kernel_shape=pool_param_list[0][1],
+                                     pads=pool_param_list[0][2],
+                                     strides=pool_param_list[0][3],
+                                     count_include_pad=1)
+        pool2_def = helper.make_node('AveragePool',
+                                     inputs=['pad2'],
+                                     outputs=['output2'],
+                                     kernel_shape=pool_param_list[1][1],
+                                     pads=pool_param_list[1][2],
+                                     strides=pool_param_list[1][3],
+                                     count_include_pad=1)
+        graph_def = helper.make_graph([add_def, pad_def, pool1_def, pool2_def],
+                                      case_name,
+                                      inputs, [add1, output1, output2],
+                                      initializer=[paddings])
         self.onnx_and_test(graph_def)
 
     def test_PadPool1d(self, case_name):
@@ -3069,6 +3121,7 @@ class ONNX_IR_TESTER(object):
     def test_PadPool3d(self, case_name):
         self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
+
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:
