@@ -179,6 +179,13 @@ void cvi_backend_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
                                int LE_right_shift_width, int GT_scale,
                                int LE_scale);
 
+void cvi_backend_tl_bf16_layernorm(uint32_t layer_id, laddr_t la_input,
+                                   laddr_t la_output, laddr_t la_table,
+                                   laddr_t la_mantissa_table, laddr_t la_scale,
+                                   laddr_t la_bias, laddr_t la_working,
+                                   bool affine, float eps, int n, int c, int h,
+                                   int w);
+
 void cvi_backend_bf16_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
                                     laddr_t output_laddr, laddr_t work_addr,
                                     int input_n, int input_c, int input_h,

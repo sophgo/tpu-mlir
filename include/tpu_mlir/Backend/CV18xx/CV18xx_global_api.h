@@ -205,6 +205,14 @@ void cvi_backend_tg_bf16_fc_kernel(
     bool ostride = false, bool do_quant_bf16 = 0, gaddr_t ga_scale = 0,
     gaddr_t ga_zeropoint = 0);
 
+void cvi_backend_tg_bf16_layernorm_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                          gaddr_t ga_table,
+                                          gaddr_t ga_mantissa_table,
+                                          gaddr_t ga_scale, gaddr_t ga_bias,
+                                          gaddr_t ga_output, int batch_size,
+                                          int normalized_size, float eps,
+                                          bool affine = false);
+
 // bf16 leakyrelu
 void cvi_backend_tg_bf16_leakyrelu_kernel(uint32_t layer_id, gaddr_t ga_input,
                                           gaddr_t ga_output,
@@ -384,13 +392,15 @@ void cvi_backend_tg_swap_channel_kernel(uint32_t layer_id, gaddr_t input_gaddr,
 void cvi_backend_tg_copy_kernel(gaddr_t ga_input, gaddr_t ga_output,
                                 const std::vector<int> &shape,
                                 const std::vector<int> &i_stride,
-                                const std::vector<int> &o_stride, cvk_fmt_t fmt);
+                                const std::vector<int> &o_stride,
+                                cvk_fmt_t fmt);
 
 void cvi_backend_tg_yuv420_csc_kernel(uint32_t layer_id, gaddr_t ga_input,
                                       gaddr_t ga_output, int n, int c, int h,
                                       int w, const std::vector<int> &order,
-                                      cvk_fmt_t fmt, int32_t pixel_type, int32_t y_align,
-                                      int32_t w_align, int32_t channel_align);
+                                      cvk_fmt_t fmt, int32_t pixel_type,
+                                      int32_t y_align, int32_t w_align,
+                                      int32_t channel_align);
 
 } // namespace backend
 } // namespace tpu_mlir

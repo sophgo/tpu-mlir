@@ -14,6 +14,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include <valarray>
 
+
 using namespace tpu_mlir::backend;
 
 template <typename T> static int remove_value(std::vector<T> &v, T value) {
@@ -84,24 +85,24 @@ slice_attr_t tpu::SliceOp::parseParam() {
   attr.step_4 = {1, 1, 1, 1};
   attr.offset_4 = {0, 0, 0, 0};
   std::vector<int> real_axes;
-  bool no_step = true;
+  attr.no_step = true;
   for (int idx = 0; idx < num_dims; idx++) {
     attr.is_4[idx] = is[idx];
     attr.os_4[idx] = os[idx];
     attr.step_4[idx] = crop_steps->at(idx);
     attr.offset_4[idx] = crop_offset->at(idx);
-    if (no_step && crop_steps->at(idx) != 1) {
-      no_step = false;
+    if (attr.no_step && crop_steps->at(idx) != 1) {
+      attr.no_step = false;
     }
     if (attr.is_4[idx] != attr.os_4[idx]) {
       real_axes.push_back(idx);
     }
   }
   attr.fusible = false;
-  if (no_step && real_axes.size() == 1) {
+  if (attr.no_step && real_axes.size() == 1) {
     int axis = real_axes[0];
-    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis,
-                                    1, std::multiplies<int64_t>());
+    int outer_dim = std::accumulate(attr.is_4.begin(), attr.is_4.begin() + axis, 1,
+                                    std::multiplies<int64_t>());
     if (outer_dim == 1) {
       attr.fusible = true;
     }
@@ -153,12 +154,25 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
   return success();
 }
 
+LogicalResult tpu::SliceOp::BackwardN(int64_t &in_idx, int64_t &in_slice,
+                                      int64_t out_idx, int64_t out_slice) {
+  auto &p = getSliceParam(*this);
+  auto crop_offset = module::getI64Array(getOffset());
+  in_idx = out_idx;
+  in_slice = out_slice + crop_offset->at(2);
+  bool is_last = (out_idx + out_slice == p.os_4[0]);
+  LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[0], is_last);
+  return success();
+}
+
 LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
+  auto &p = getSliceParam(*this);
   auto crop_offset = module::getI64Array(getOffset());
-  // add offset to idx here then set offset->at(2) to zero in local_gen
-  in_idx = out_idx + crop_offset->at(2);
-  in_slice = out_slice;
+  in_idx = out_idx;
+  in_slice = out_slice + crop_offset->at(2);
+  bool is_last = (out_idx + out_slice == p.os_4[2]);
+  LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[2], is_last);
   return success();
 }
 
@@ -170,9 +184,7 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
   }
   if (module::isCV18xx()) {
     auto p = parseParam();
-    int total_steps = std::accumulate(p.step_4.begin(), p.step_4.end(), 1,
-                                      std::multiplies<int64_t>());
-    if (total_steps != 1 || p.fusible == true || p.is_4[0] != p.os_4[0]) {
+    if (!p.no_step || p.fusible == true) {
       return failure();
     }
     return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();

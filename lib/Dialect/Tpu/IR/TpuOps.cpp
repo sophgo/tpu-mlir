@@ -51,6 +51,7 @@ namespace tpu_mlir {
 static std::map<Operation *, conv_attr_t> group_conv_attrs;
 static std::map<Operation *, pool_attr_t> group_pool_attrs;
 static std::map<Operation *, deconv_attr_t> group_deconv_attrs;
+static std::map<Operation *, slice_attr_t> group_slice_attrs;
 
 template <typename OpTy, typename AttrTy>
 const AttrTy &getOpParam(OpTy &op, std::map<Operation *, AttrTy> &map) {
@@ -73,5 +74,9 @@ const deconv_attr_t &getDeconvParam(tpu::DeconvOp &op) {
 
 const pool_attr_t &getPool2DParam(tpu::Pool2DOp &op) {
   return getOpParam<tpu::Pool2DOp, pool_attr_t>(op, group_pool_attrs);
+}
+
+const slice_attr_t &getSliceParam(tpu::SliceOp &op) {
+  return getOpParam<tpu::SliceOp, slice_attr_t>(op, group_slice_attrs);
 }
 } // namespace tpu_mlir

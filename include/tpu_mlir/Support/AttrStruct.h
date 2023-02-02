@@ -165,6 +165,7 @@ typedef struct {
   std::vector<int64_t> os_4;
   std::vector<int64_t> offset_4;
   std::vector<int64_t> step_4;
+  bool no_step;
   bool fusible;
 } slice_attr_t;
 
