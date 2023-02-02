@@ -9,12 +9,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
-
 
 using namespace tpu_mlir::backend;
 
@@ -173,8 +171,14 @@ void tpu::PadOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   o_s[2] = out_gi.h_slice;
 
   float const_val = getVal().convertToDouble();
-  cvi_backend_tl_pad(layer_id, // layer_id,
-                     i_s.data(), o_s.data(), la_input,
-                     la_output, const_val, pads.data());
+  if (module::isUniformQuantized(getOutput())) {
+    cvi_backend_tl_pad(layer_id, // layer_id,
+                       i_s.data(), o_s.data(), la_input, la_output, const_val,
+                       pads.data());
+  } else {
+    cvi_backend_tl_bf16_pad(layer_id, // layer_id,
+                            i_s.data(), o_s.data(), la_input, la_output,
+                            const_val, pads.data());
+  }
   return;
 }
