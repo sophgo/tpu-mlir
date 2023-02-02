@@ -639,6 +639,27 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     module::getShapeVec(getOutput(), frcn_param.output.shape);
     FrcnDetctionFunc frcn_func(frcn_param);
     frcn_func.invoke();
+  } else if (func_name == "retinaface_detection") {
+    RetinaFaceDetectionParam retina_param;
+    mlir::DictionaryAttr param = this->getParam().value();
+    retina_param.keep_topk = param.get("keep_topk").cast<IntegerAttr>().getInt();
+    retina_param.confidence_threshold = param.get("confidence_threshold").cast<FloatAttr>().getValueAsDouble();
+    retina_param.nms_threshold = param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
+    RetinaFaceDetectionFunc func;
+    std::vector<tensor_list_t> inputs;
+    for (size_t i = 0; i < getInputs().size(); i++) {
+      tensor_list_t tensor;
+      tensor.ptr = p.inputs[i];
+      tensor.size = module::getNumElements(getInputs()[i]);
+      module::getShapeVec(getInputs()[i], tensor.shape);
+      inputs.emplace_back(std::move(tensor));
+    }
+    tensor_list_t output;
+    output.ptr = p.outputs[0];
+    output.size = module::getNumElements(getOutput());
+    module::getShapeVec(getOutput(), output.shape);
+    func.setup(inputs, output, retina_param);
+    func.invoke();
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }

@@ -16,10 +16,11 @@ function usage {
     echo "                          [-d dataset_path=/data/dataset] \\ "
     echo -e "                          -f \t\t#FusePreprocess \\ "
     echo -e "                          -p pixel_format \t#Set pixel_format \\ "
+    echo -e "                          -a \t\t#AlignedInput"
 }
 
 # getopts
-while getopts ":m:d:n:fp:" opt
+while getopts ":m:d:n:f:p:a:" opt
 do
   case $opt in
   m)
@@ -37,6 +38,9 @@ do
   p)
     p=$OPTARG
     echo "set pixel format: $p";;
+  a)
+    a=1
+    echo "set algined input: $a";;
   ?)
     usage
     exit 1;;
@@ -170,6 +174,11 @@ if [ x${IMAGE_PATH} != x ]; then
   test_reference_opt="--test_reference=${top_result}"
 fi
 
+#fuse_preprocess use image as input.
+if [ x${f} != x ];then
+  test_innpz_opt="--test_input=${IMAGE_PATH}"
+fi
+
 model_transform.py \
   --model_name ${NET} \
   ${model_def_opt} \
@@ -187,7 +196,23 @@ model_transform.py \
   ${tolerance_top_opt} \
   ${excepts_opt} \
   --mlir ${NET}.mlir
-
+echo model_transform.py \
+  --model_name ${NET} \
+  ${model_def_opt} \
+  ${model_data_opt} \
+  ${output_names_opt} \
+  ${input_shapes_opt} \
+  ${resize_dims_opt} \
+  ${keep_aspect_ratio_opt} \
+  ${mean_opt} \
+  ${scale_opt} \
+  ${pixel_format_opt} \
+  ${channel_format_opt} \
+  ${test_input_opt} \
+  ${test_result_opt} \
+  ${tolerance_top_opt} \
+  ${excepts_opt} \
+  --mlir ${NET}.mlir
 #########################
 # deploy to bf16 cvimodel
 #########################
@@ -201,17 +226,20 @@ if [ ${do_bf16} == 1 ]; then
     --quantize BF16 \
     --chip ${CHIP_NAME} "
   if [ x${f} != x ];then
-    cmd=$cmd"--image=${IMAGE_PATH} \
-            --fuse_preprocess "
+    cmd=$cmd"--fuse_preprocess "
   fi
   if [ x${p} != x ];then
     cmd=$cmd"--customization_format=${p} "
   fi
+  if [ x${a} != x ];then
+    cmd=$cmd"--aligned_input "
+  fi
   cmd=$cmd"${test_innpz_opt} \
     ${test_reference_opt} \
     ${excepts_opt} \
-    --tolerance 0.95,0.85 \
+    ${tolerance_bf16_opt} \
     --model ${NET}_${CHIP_NAME}_bf16.cvimodel"
+  echo $cmd
   eval $cmd
 fi
 #########################
@@ -256,12 +284,14 @@ cmd="model_deploy.py \
   --chip ${CHIP_NAME} "
 # fuse preprocess
 if [ x${f} != x ];then
-  cmd=$cmd"--image=${IMAGE_PATH} \
-          --fuse_preprocess "
+  cmd=$cmd"--fuse_preprocess "
 fi
 # pixel format
 if [ x${p} != x ];then
   cmd=$cmd"--customization_format=${p} "
+fi
+if [ x${a} != x ];then
+  cmd=$cmd"--aligned_input "
 fi
 cmd=$cmd"${test_innpz_opt} \
   ${test_reference_opt} \
@@ -269,6 +299,7 @@ cmd=$cmd"${test_innpz_opt} \
   ${excepts_opt} \
   --quant_input \
   --model ${NET}_${CHIP_NAME}_int8_sym.cvimodel"
+echo $cmd
 eval $cmd
 popd
 

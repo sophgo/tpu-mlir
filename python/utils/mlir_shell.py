@@ -44,7 +44,8 @@ def mlir_lowering(top_mlir: str,
                   quantize_table: str = None,
                   qdq: bool = False,
                   customization_format: str = None,
-                  fuse_preprocess: bool = False):
+                  fuse_preprocess: bool = False,
+                  aligned_input: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--init"]
     qdq = mode.upper() == 'QDQ'
     if qdq:
@@ -60,6 +61,9 @@ def mlir_lowering(top_mlir: str,
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
             mode.upper(), customization_format)
         cmd.extend([fuse_pre_param])
+    if aligned_input:
+        aligned_param = "--align-input=\"chip={} customization_format={}\"".format(chip.lower(), customization_format)
+        cmd.extend([aligned_param])
     qtable = ""
     if quantize_table:
         qtable = "qtable={}".format(quantize_table)
@@ -104,6 +108,7 @@ def mlir_to_model(tpu_mlir: str,
         "--subnet-divide",
         lg_param,
         "--address-assign",
+        #"--address-assign=\"reuse_addr=false\"",
         "--save-weight",
         "--mlir-print-debuginfo",
         "-o",

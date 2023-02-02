@@ -18,6 +18,12 @@ struct PythonTensor {
       shape.push_back(tensor->shape.dim[i]);
     }
     fixDtype(tensor->fmt);
+    aligned = tensor->aligned;
+    size = tensor->mem_size / dsize;
+    if (aligned) {
+      //for model_runner reference
+      shape = {1, 1, 1, size};
+    }
     data = py::array(pytype, shape, (void *)CVI_NN_TensorPtr(tensor),
                      py::cast(*this));
   }
@@ -26,6 +32,9 @@ struct PythonTensor {
   std::string dtype; // f32/f16/bf16/i8/i16/i32/u8/u16/u32
   float qscale;
   int zpoint;
+  bool aligned = false;
+  size_t size;
+  size_t dsize;
   py::array data;
 
 private:
@@ -35,35 +44,43 @@ private:
     case CVI_FMT_FP32:
       pytype = py::dtype("single");
       dtype = "f32";
+      dsize = 4;
       break;
     case CVI_FMT_INT8:
       pytype = py::dtype("int8");
       dtype = "i8";
+      dsize = 1;
       break;
     case CVI_FMT_UINT8:
       pytype = py::dtype("uint8");
       dtype = "u8";
+      dsize = 1;
       break;
     case CVI_FMT_INT16:
       pytype = py::dtype("int16");
       dtype = "i16";
+      dsize = 2;
       break;
     case CVI_FMT_UINT16:
       pytype = py::dtype("uint16");
       dtype = "u16";
+      dsize = 2;
       break;
     case CVI_FMT_INT32:
       pytype = py::dtype("int32");
       dtype = "i32";
+      dsize = 4;
       break;
     case CVI_FMT_UINT32:
       pytype = py::dtype("uint32");
       dtype = "u32";
+      dsize = 4;
       break;
     case CVI_FMT_BF16:
       // numpy has no bf16 type, use uint16 instread of bf16.
       pytype = py::dtype("uint16");
       dtype = "bf16";
+      dsize = 2;
       break;
     default:
       assert(0);
@@ -138,6 +155,8 @@ PYBIND11_MODULE(pyruntime_cvi, m) {
       .def_readonly("qscale", &PythonTensor::qscale)
       .def_readonly("qzero_point", &PythonTensor::zpoint)
       .def_readonly("dtype", &PythonTensor::dtype)
+      .def_readonly("aligned", &PythonTensor::aligned)
+      .def_readonly("size", &PythonTensor::size)
       .def_readwrite("data", &PythonTensor::data);
 
   py::class_<PythonCviModel>(m, "Model")

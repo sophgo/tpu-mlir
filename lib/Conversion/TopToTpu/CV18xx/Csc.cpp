@@ -19,13 +19,25 @@ static inline int align_up(int x, int n) {
   return ((x + n - 1) / n) * n;
 }
 
+static void resetCaliType(PatternRewriter &rewriter, top::CscOp op) {
+  std::vector<int64_t> shape;
+  module::getShapeVec(op.getResult(), shape);
+  quant::CalibratedQuantizedType qtype = quant::CalibratedQuantizedType::get(rewriter.getF32Type(), 0, 255);
+  RankedTensorType newType = RankedTensorType::get(shape, qtype);
+  op.getResult().setType(newType);
+}
+
 void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
                                 bool asymmetric) const {
   //lowering_common_int8<tpu::CscOp>(rewriter, op, asymmetric);
-  auto stype = module::getStorageType(op.getOutput());
-  assert (stype.isInteger(8) || stype.isUnsignedInteger(8));
+  // auto stype = module::getStorageType(op.getOutput());
+  // assert (stype.isInteger(8) || stype.isUnsignedInteger(8));
   std::vector<Value> operands;
   Value input_val = op.getInput();
+  if (module::isUniformQuantized(input_val)) {
+    //fuse preprocess has done before.all_int_process() changes the threshold, should reset.
+    resetCaliType(rewriter, op);
+  }
   operands.emplace_back(input_val);
   auto name = module::getName(op.getOutput());
 
@@ -77,8 +89,9 @@ void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
     copy_shape[0] = on;
     attrs.emplace_back(rewriter.getNamedAttr("shape", rewriter.getI64ArrayAttr(copy_shape)));
     attrs.emplace_back(rewriter.getNamedAttr("input_stride", rewriter.getI64ArrayAttr(i_stride)));
-    attrs.emplace_back(rewriter.getNamedAttr("o_stride", rewriter.getI64ArrayAttr(o_stride)));
-    auto newType = module::getCalibratedType(op.getOutput());
+    attrs.emplace_back(rewriter.getNamedAttr("output_stride", rewriter.getI64ArrayAttr(o_stride)));
+    auto caliType = module::getCalibratedType(op.getOutput());
+    auto newType = RankedTensorType::get({on, oc, oh, ow}, caliType);
     rewriter.replaceOpWithNewOp<top::CopyOp>(op, newType, operands, attrs);
   } else {
     rewriter.setInsertionPointAfterValue(input_val);
@@ -101,7 +114,8 @@ void CscLowering::LoweringINT8(PatternRewriter &rewriter, top::CscOp op,
     attrs.clear();
     std::vector<Value> reshape_operands;
     reshape_operands.emplace_back(slice_out);
-    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, caliType, reshape_operands, attrs);
+    auto reshape_type = RankedTensorType::get({on, oc, oh, ow}, caliType);
+    rewriter.replaceOpWithNewOp<top::ReshapeOp>(op, reshape_type, reshape_operands, attrs);
   }
 }
 

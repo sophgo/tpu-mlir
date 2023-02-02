@@ -1163,7 +1163,25 @@ class CaffeConverter(BaseConverter):
 
     def convert_retinaface_detection_op(self, layer):
         assert (self.layerType(layer) == 'RetinaFaceDetection')
-        raise RuntimeError("not implemented")
+        input_shape = self.getShape(layer.bottom[0])
+        operands = list()
+        #op = self.getOperand(layer.bottom[0])
+        for bottom in layer.bottom:
+            op = self.getOperand(bottom)
+            operands.append(op)
+        p = layer.retinaface_detection_param
+        nms_threshold = p.nms_threshold
+        confidence_threshold = p.confidence_threshold
+        keep_topk = p.keep_topk
+        output_shape = [input_shape[0], 1, keep_topk, 15]
+        param = {
+            'name': self.get_loc(layer.top[0]),
+            'nms_threshold': nms_threshold,
+            'confidence_threshold': confidence_threshold,
+            'keep_topk': keep_topk,
+        }
+        new_op = self.mlir.create_retinaface_detection_op(operands, output_shape, **param)
+        self.addOperand(layer.top[0], new_op)
 
     def convert_roipooling_op(self, layer):
         assert (self.layerType(layer) == 'ROIPooling')

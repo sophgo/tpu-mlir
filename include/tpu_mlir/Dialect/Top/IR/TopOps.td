@@ -148,7 +148,10 @@ def Top_InputOp: Top_BaseOp<"Input"> {
     OptionalAttr<I64Attr>:$pad_value,
     OptionalAttr<PadModeAttr>:$pad_type,
     OptionalAttr<F64ArrayAttr>:$scale,
-    OptionalAttr<F64ArrayAttr>:$mean
+    OptionalAttr<F64ArrayAttr>:$mean,
+    //for cv18xx fusepreprocess
+    OptionalAttr<StrAttr>:$customization_format,
+    OptionalAttr<BoolAttr>:$aligned
   );
 
   let results = (outs AnyTensor:$output);
@@ -1644,4 +1647,43 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
   let results = (outs AnyTenor:$output);
 }
 
+def Top_PreprocessOp: Top_Op<"Preprocess"> {
+  let summary = "FusePreprcess for cv18xx chip, it's just a placeholder op.";
+  let description = [{
+    It may be divided to permute + slice + scale/scale_lut ops.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    StrAttr:$quant_mode,
+    StrAttr:$customization_format,
+    StrAttr:$channel_order,
+    I64ArrayAttr:$resize_dims,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$mean
+  );
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_RetinaFaceDetectionOp : Top_Op<"RetinaFaceDetection"> {
+  let summary = "RetinaFaceDetection operator";
+  let description = [{
+    Perform retinaface detection on feature map
+
+    Inputs:
+      `inputs`                  : required, input tensors
+      `nms_threshold`           : required, nms threshold
+      `confidence_threshold`    : required, classification confidence threshold
+      `keep_topk`               : required, after nms, keep bbox num
+
+    Result:
+      `output`          : result tensor.
+  }];
+  let arguments = (
+    ins Variadic<AnyTensor>:$inputs,
+    F64Attr:$nms_threshold,
+    F64Attr:$confidence_threshold,
+    I64Attr:$keep_topk
+  );
+  let results = (outs AnyTensor:$output);
+}
 #endif // Top_OPS

@@ -93,6 +93,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         assert i.name in inputs
         input = inputs[i.name]
         overflow = np.prod(i.data.shape) - np.prod(input.shape)
+        if is_cv18xx and i.aligned:
+            overflow = i.size - np.prod(input.shape)
         if is_dynamic:
             assert(len(i.data.shape) == len(input.shape))
             for max,dim in zip(i.data.shape, input.shape):

@@ -20,6 +20,17 @@ void CopyLowering::LoweringINT8(PatternRewriter &rewriter, top::CopyOp op,
 
 void CopyLowering::LoweringBF16(PatternRewriter &rewriter,
                                    top::CopyOp op) const {
+  auto out = op.getOutput();
+  if (module::isCalibratedType(out)) {
+    //For align-input(CscOp sometimes maybe convert to CopyOp) use, it should be lowered to uint8.
+    auto qtype = module::getCalibratedType(out);
+    auto max = qtype.getMax();
+    auto min = qtype.getMin();
+    if (min == 0 && max == 255) {
+      lowering_common_int8<tpu::CopyOp>(rewriter, op, false);
+      return;
+    }
+  }
   lowering_common_bf16<tpu::CopyOp>(rewriter, op);
 }
 

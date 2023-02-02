@@ -84,6 +84,7 @@ class Top:
     Proposal = 'top.Proposal'
     ROIPooling = 'top.ROIPooling'
     FrcnDetection = 'top.FrcnDetection'
+    RetinaFaceDetection = 'top.RetinaFaceDetection'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -939,6 +940,15 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.FrcnDetection, operands, [output_type], **param)
 
+    def create_retinaface_detection_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'keep_topk': IntegerAttr.get(self.mlir_type['INT64'], kargs['keep_topk']),
+            'confidence_threshold': FloatAttr.get_f64(kargs['confidence_threshold']),
+            'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
+        }
+        return self.buildOp(Top.RetinaFaceDetection, operands, [output_type], **param)
     def create_qlinear_op(self, operands, output_shape, axis=1, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['SINT8'])

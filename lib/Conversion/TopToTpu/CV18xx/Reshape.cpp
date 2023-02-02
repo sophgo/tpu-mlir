@@ -21,6 +21,17 @@ void ReshapeLowering::LoweringINT8(PatternRewriter &rewriter, top::ReshapeOp op,
 
 void ReshapeLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ReshapeOp op) const {
+  auto out = op.getOutput();
+  if (module::isCalibratedType(out)) {
+    //For align-input(CscOp sometimes maybe convert to ReshapeOp) use, it should be lowered to uint8.
+    auto qtype = module::getCalibratedType(out);
+    auto max = qtype.getMax();
+    auto min = qtype.getMin();
+    if (min == 0 && max == 255) {
+      lowering_common_int8<tpu::ReshapeOp>(rewriter, op, false);
+      return;
+    }
+  }
   lowering_common_bf16<tpu::ReshapeOp>(rewriter, op);
 }
 

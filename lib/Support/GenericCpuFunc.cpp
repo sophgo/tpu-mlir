@@ -1221,4 +1221,127 @@ void FrcnDetctionFunc::invoke() {
   }
 }
 
+void RetinaFaceDetectionFunc::setup(std::vector<tensor_list_t> &inputs,
+            tensor_list_t &output, RetinaFaceDetectionParam &param) {
+  // sort inputs by neuron shape size
+  std::sort(inputs.begin(), inputs.end(),
+   [](const tensor_list_t &a, const tensor_list_t &b) {
+    if (a.shape[3] < b.shape[3]) {
+      return true;
+    } else if (a.shape[3] == b.shape[3]) {
+      return a.shape[1] < b.shape[1];
+    } else {
+      return false;
+    }
+  });
+  _bottoms = inputs;
+  _tops = output;
+  _nms_threshold = param.nms_threshold;
+  _confidence_threshold = param.confidence_threshold;
+  _keep_topk = param.keep_topk;
+}
+
+void RetinaFaceDetectionFunc::invoke() {
+  auto top_data = _tops.ptr;
+  memset(top_data, 0, _tops.size);
+
+  size_t bottom_count = _bottoms.size();
+  assert(bottom_count == 9);
+
+  auto batch = _tops.shape[0];
+
+  for (int b = 0; b < batch; ++b) {
+    std::vector<FaceInfo> infos;
+    for (size_t i = 0; i < _feature_stride_fpn.size(); ++i) {
+      int stride = _feature_stride_fpn[i];
+
+      size_t offset0 = b * _bottoms[3*i].shape[1] * _bottoms[3*i].shape[2] * _bottoms[3*i].shape[3];
+      size_t count0 = _bottoms[3*i].shape[0] * _bottoms[3*i].shape[1] * _bottoms[3*i].shape[2] * _bottoms[3*i].shape[3];
+      auto score_data = _bottoms[3*i].ptr + offset0;
+      size_t score_count = count0 / batch;
+
+      size_t offset1 = b * _bottoms[3*i+1].shape[1] * _bottoms[3*i+1].shape[2] * _bottoms[3*i+1].shape[3];
+      size_t count1 = _bottoms[3*i+1].shape[0] * _bottoms[3*i+1].shape[1] * _bottoms[3*i+1].shape[2] * _bottoms[3*i+1].shape[3];
+      auto bbox_data = _bottoms[3*i+1].ptr + offset1;
+      size_t bbox_count = count1 / batch;
+
+      size_t offset2 = b * _bottoms[3*i+2].shape[1] * _bottoms[3*i+2].shape[2] * _bottoms[3*i+2].shape[3];
+      size_t count2 = _bottoms[3*i+2].shape[0] * _bottoms[3*i+2].shape[1] * _bottoms[3*i+2].shape[2] * _bottoms[3*i+2].shape[3];
+      auto landmark_data = _bottoms[3*i+2].ptr + offset2;
+      size_t landmark_count = count2 / batch;
+
+      auto shape = _bottoms[3*i].shape;
+      size_t height = shape[2];
+      size_t width = shape[3];
+
+      std::vector<float> score(score_data + score_count / 2, score_data + score_count);
+      std::vector<float> bbox(bbox_data, bbox_data + bbox_count);
+      std::vector<float> landmark(landmark_data, landmark_data + landmark_count);
+
+      int count = height * width;
+      std::string key = "stride" + std::to_string(stride);
+      auto anchors_fpn = _anchors_fpn[key];
+      auto num_anchors = _num_anchors[key];
+
+      std::vector<AnchorBox> anchors = anchors_plane(height, width, stride, anchors_fpn);
+
+      for (int num = 0; num < num_anchors; ++num) {
+        for (int j = 0; j < count; ++j) {
+          float confidence = score[j + count * num];
+          if (confidence <= _confidence_threshold)
+            continue;
+
+          float dx = bbox[j + count * (0 + num * 4)];
+          float dy = bbox[j + count * (1 + num * 4)];
+          float dw = bbox[j + count * (2 + num * 4)];
+          float dh = bbox[j + count * (3 + num * 4)];
+          std::vector<float> bbox_deltas{dx, dy, dw, dh};
+          auto bbox = bbox_pred(anchors[j + count * num], bbox_deltas);
+
+          std::vector<float> landmark_deltas(10, 0);
+          for (size_t k = 0; k < 5; ++k) {
+            landmark_deltas[k] = landmark[j + count * (num * 10 + k * 2)];
+            landmark_deltas[k + 5] = landmark[j + count * (num * 10 + k * 2 + 1)];
+          }
+
+          auto pts = landmark_pred(anchors[j + count * num], landmark_deltas);
+
+          FaceInfo info;
+          info.x1 = bbox[0];
+          info.y1 = bbox[1];
+          info.x2 = bbox[2];
+          info.y2 = bbox[3];
+          info.score = confidence;
+          for (int idx = 0; idx < 5; ++idx) {
+            info.x[idx] = pts[idx];
+            info.y[idx] = pts[idx + 5];
+          }
+
+          infos.push_back(info);
+        }
+      }
+    }
+
+    auto preds = nms(infos, _nms_threshold);
+    auto keep_topk = _keep_topk;
+    if (keep_topk > (int)preds.size())
+      keep_topk = (int)preds.size();
+
+    long long count = 0;
+    size_t top_offset = b * _tops.shape[1] * _tops.shape[2] * _tops.shape[3];
+    auto batch_top_data = top_data + top_offset;
+    for (int i = 0; i < keep_topk; ++i) {
+      batch_top_data[count++] = preds[i].x1;
+      batch_top_data[count++] = preds[i].y1;
+      batch_top_data[count++] = preds[i].x2;
+      batch_top_data[count++] = preds[i].y2;
+      batch_top_data[count++] = preds[i].score;
+      for (int j = 0; j < 5; ++j) {
+        batch_top_data[count++] = preds[i].x[j];
+        batch_top_data[count++] = preds[i].y[j];
+      }
+    }
+  }
+}
+
 } // namespace tpu_mlir
