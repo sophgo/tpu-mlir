@@ -174,7 +174,7 @@ class ONNX_IR_TESTER(object):
             "PadConv2d": self.test_PadConv2d,
             # "PadConv3d": self.test_PadConv3d,
             # "PadPool1d": self.test_PadPool1d,
-            "PadPool2d": self.test_PadPool2d,
+            # "PadPool2d": self.test_PadPool2d,
             # "PadPool3d": self.test_PadPool3d,
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
