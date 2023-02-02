@@ -33,7 +33,7 @@ BM1684_Failed_Cases = [
     "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
     "ReshapeFuse", "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean",
     "ReduceSum", "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split",
-    "Scale", "Sqrt", "Sub", "Sub2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK",
+    "Scale", "Sqrt", "Sub", "Sub2", "SubConst", "SubConst2", "Sum", "Tanh", "Tile", "Transpose", "Transpose2", "TopK",
     "Where", "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU", "TorchLayerNorm",
     "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd", "Conv3dTo2d"
 ]
@@ -137,6 +137,8 @@ class ONNX_IR_TESTER(object):
             "Sqrt": self.test_Sqrt,
             "Sub": self.test_Sub,
             "Sub2": self.test_Sub2,
+            "SubConst": self.test_SubConst,
+            "SubConst2": self.test_SubConst2,
             "Sum": self.test_Sum,
             "Tanh": self.test_Tanh,
             "Tile": self.test_Tile,
@@ -2486,6 +2488,65 @@ class ONNX_IR_TESTER(object):
             case_name,
             [input1, input2],
             [output],
+        )
+        self.onnx_and_test(graph_def)
+
+    def test_SubConst(self, case_name):
+        input_shape = [4, 3, 27, 27]
+        output_shape = [4, 3, 27, 27]
+
+        input0 = helper.make_tensor_value_info('input0', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        w_data = np.random.rand(*input_shape).astype(np.float32)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+
+        sub_def = helper.make_node(
+            'Sub',  # node name
+            ['input0', 'w'],  # inputs
+            ['output'],  # outputs
+        )
+
+        graph_def = helper.make_graph(
+            [sub_def],
+            case_name,
+            [input0],
+            [output],
+            initializer=[w_value]
+        )
+        self.onnx_and_test(graph_def)
+
+    def test_SubConst2(self, case_name):
+        input1_shape = [4, 3, 27, 27]
+        w_shape = [4, 3, 1, 27]
+        output_shape = [4, 3, 27, 27]
+
+        input1 = helper.make_tensor_value_info('input1', TensorProto.FLOAT, input1_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        w_data = np.random.rand(*w_shape).astype(np.float32)
+        w_value = helper.make_tensor(
+            name='w',
+            data_type=onnx.TensorProto.FLOAT,
+            dims=w_data.shape,
+            vals=w_data.flatten(),
+        )
+
+        sub_def = helper.make_node(
+            'Sub',  # node name
+            ['input1', 'w'],  # inputs
+            ['output'],  # outputs
+        )
+
+        graph_def = helper.make_graph(
+            [sub_def],
+            case_name,
+            [input1],
+            [output],
+            initializer=[w_value]
         )
         self.onnx_and_test(graph_def)
 
