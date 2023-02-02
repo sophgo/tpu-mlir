@@ -55,10 +55,16 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
         rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(true)));
     attrs.push_back(
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(false)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "block_h", rewriter.getI64IntegerAttr(upscale_factor)));
-    attrs.push_back(rewriter.getNamedAttr(
-        "block_w", rewriter.getI64IntegerAttr(upscale_factor)));
+    attrs.push_back(
+        rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(upscale_factor)));
+    attrs.push_back(
+        rewriter.getNamedAttr("block_w", rewriter.getI64IntegerAttr(upscale_factor)));
+    attrs.push_back(
+        rewriter.getNamedAttr("in_is_NCHW", rewriter.getBoolAttr(true)));
+    attrs.push_back(
+        rewriter.getNamedAttr("out_is_NCHW", rewriter.getBoolAttr(true)));
+    attrs.push_back(
+        rewriter.getNamedAttr("swap_cr", rewriter.getBoolAttr(false)));
     rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
         reshape_after, reshape_after.getResult().getType(),
         ValueRange{reshape_before.getInput()}, attrs);

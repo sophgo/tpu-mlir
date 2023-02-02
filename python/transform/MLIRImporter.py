@@ -372,6 +372,9 @@ class MLIRImporter(object):
             "block_w": IntegerAttr.get(self.mlir_type['INT64'], kargs['block_w']),
             "is_CRD": BoolAttr.get(kargs['is_CRD']),
             "is_inversed": BoolAttr.get(kargs['is_inversed']),
+            "in_is_NCHW": BoolAttr.get(True),
+            "out_is_NCHW": BoolAttr.get(True),
+            "swap_cr": BoolAttr.get(False),
         }
         return self.buildOp(Top.Depth2SpaceOp, operands, [output_type], **p)
 

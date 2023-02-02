@@ -395,6 +395,8 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
 
     if DCR(depth-column-row), channel ordered by block_h * block_w * c;
     else CRD(column-row-depth), channel ordered by c * block_h * block_w;
+
+    The format of input or output is NCHW or NHWC.
   }];
 
   let arguments = (
@@ -402,7 +404,10 @@ def Top_Depth2SpaceOp: Top_Op<"Depth2Space"> {
     I64Attr:$block_h,
     I64Attr:$block_w,
     BoolAttr:$is_CRD,
-    BoolAttr:$is_inversed
+    BoolAttr:$is_inversed,
+    DefaultValuedAttr<BoolAttr, "true">:$in_is_NCHW,
+    DefaultValuedAttr<BoolAttr, "true">:$out_is_NCHW,
+    DefaultValuedAttr<BoolAttr, "false">:$swap_cr
   );
 
   let results = (outs AnyTensor:$output);

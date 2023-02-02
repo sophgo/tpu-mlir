@@ -15,6 +15,40 @@
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
+struct SplitSlicePattern : public OpRewritePattern<SliceOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SliceOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op->hasOneUse()) {
+      return failure();
+    }
+    const auto users = op->getUsers();
+    for (const auto user: users) {
+      if (!isa<SliceOp>(user)) {
+        return failure();
+      }
+    }
+    const auto& opd = op->getOperand(0);
+    const auto& res = op.getResult();
+    const auto& offset = op->getAttr("offset");
+    const auto& steps = op->getAttr("steps");
+    rewriter.setInsertionPointAfterValue(opd);
+    for (const auto user: users) {
+      const std::string name_slice = module::getName(user->getOperand(0)).str() + "_slice";
+      const auto& loc_slice = NameLoc::get(rewriter.getStringAttr(name_slice));
+      std::vector<NamedAttribute> attrs;
+      attrs.push_back(rewriter.getNamedAttr("offset", offset));
+      attrs.push_back(rewriter.getNamedAttr("steps", steps));
+      auto slice_op = rewriter.create<SliceOp>(loc_slice, res.getType(), ValueRange(opd), attrs);
+      auto slice_result_var = slice_op.getResult();
+      user->eraseOperand(0);
+      user->insertOperands(0, slice_result_var);
+    }
+    return success();
+  }
+};
+
 struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
   using OpRewritePattern::OpRewritePattern;
 
@@ -110,6 +144,8 @@ struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
 
 void SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<NoUseSlicePattern, MergeSlicePattern, TopSliceToReverse>(
-      context);
+  results.insert<NoUseSlicePattern,
+                 SplitSlicePattern,
+                 MergeSlicePattern,
+                 TopSliceToReverse>(context);
 }
