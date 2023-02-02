@@ -36,6 +36,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       HardSigmoidLowering,
       HardSwishLowering,
       InterpLowering,
+      LayerNormLowering,
       LeakyReluLowering,
       LogLowering,
       LRNLowering,

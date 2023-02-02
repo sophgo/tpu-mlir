@@ -510,7 +510,7 @@ bool is_eu_align_cv18xx(Value opd) {
       if (opd == op->getOperand(1)) {
         return false;
       }
-    } else if (isa<tpu::PReluOp, tpu::ScaleOp>(op)) {
+    } else if (isa<tpu::ScaleOp>(op)) {
       return false;
     } else if (auto castOp = dyn_cast<tpu::Conv2DOp>(op)) {
       auto attr = castOp.parseParam();
@@ -536,8 +536,10 @@ bool is_eu_align_cv18xx(Value opd) {
         return true;
       }
       return false;
+    } else if(isa<tpu::LayerNormOp>(op)) {
+        return false;
     } else {
-      return true;
+      return true; // prelu concat
     }
   }
   return true;
@@ -599,6 +601,8 @@ bool need_bcast(Value opd) {
     return opd == cast_op.getTable();
   } else if (auto cast_op = dyn_cast<tpu::LutBF16Op>(use_op)) {
     return opd == cast_op.getTable() || opd == cast_op.getMantissa();
+  } else if (auto cast_op = dyn_cast<tpu::LayerNormOp>(use_op)) {
+    return opd == cast_op.getTable() || opd == cast_op.getMantissaTable();
   } else {
     return false;
   }

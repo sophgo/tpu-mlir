@@ -88,7 +88,7 @@ def mlir_to_model(tpu_mlir: str,
     convert_relu_limit = ""
     if model.endswith(".cvimodel"):
         # TODO: cv18xx support later
-        lg_param = ''
+        lg_param = '--layer-group="opt=1"'
         convert_relu_limit = "--convert-relu-limit"
     cmd = [
         "tpuc-opt",

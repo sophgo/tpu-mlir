@@ -1163,7 +1163,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
 }
 
 def Tpu_SliceOp: Tpu_Op<"Slice", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>]> {
+  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardN", "BackwardH", "LocalGenSupport"]>]> {
   let summary = "Slice operator";
   let description = [{
     Slice Operation on input.
@@ -1609,8 +1609,10 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$weight,
+    AnyTensorOrNone:$weight,
     AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$table,
+    AnyTensorOrNone:$mantissa_table,
     I64Attr:$axis,
     F64Attr:$eps
   );

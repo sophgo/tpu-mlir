@@ -32,6 +32,10 @@ static void LoweringLayerNorm(PatternRewriter &rewriter, top::LayerNormOp op, Ty
       opds.push_back(opd);
     }
   }
+  auto none = module::getNoneOp(op);
+  opds.push_back(none);
+  opds.push_back(none);
+
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);

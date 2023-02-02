@@ -20,8 +20,9 @@ static bool is_fusible_op(Operation *op) {
     return false;
   }
   if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
-    auto p = sliceOp.parseParam();
-    return p.fusible;
+    // auto p = sliceOp.parseParam();
+    // return p.fusible;
+    return false;
   }
   if (auto sliceOp = dyn_cast<top::SliceOp>(op)) {
     return false;

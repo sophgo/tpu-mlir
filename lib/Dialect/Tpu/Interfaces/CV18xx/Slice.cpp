@@ -52,8 +52,6 @@ void tpu::SliceOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
   auto crop_offset = module::getI64Array(getOffset());
-  crop_offset->at(2) = 0; // offset added in BackwardH
-
   laddr_t la_input = in_gi.out_addr;
   laddr_t la_output = out_gi.out_addr;
 
