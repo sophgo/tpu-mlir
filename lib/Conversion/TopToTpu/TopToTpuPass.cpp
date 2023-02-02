@@ -390,10 +390,6 @@ protected:
           }
           auto out_qtype = module::getCalibratedType(value);
           if (out_qtype.getMin() != -out_qtype.getMax()) {
-            if (out_qtype.getMin() == 0 && out_qtype.getMax() == 255) {
-              //uint8 output
-              continue;
-            }
             auto max = out_qtype.getMax();
             auto quant_type = quant::CalibratedQuantizedType::get(
                 out_qtype.getExpressedType(), -max, max);

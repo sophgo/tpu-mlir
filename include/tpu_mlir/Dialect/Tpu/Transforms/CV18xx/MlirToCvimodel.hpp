@@ -52,6 +52,10 @@ struct op_info_t {
   int64_t offset;
   DType dtype;
   bool overwrite;
+  bool aligned = false;
+  std::string customization_format;
+  std::vector<float> scale;
+  std::vector<float> bias;
 };
 
 class CviRoutine {

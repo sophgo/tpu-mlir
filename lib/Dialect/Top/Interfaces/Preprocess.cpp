@@ -13,17 +13,17 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-int64_t top::CscOp::getFLOPs() {
+int64_t top::PreprocessOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
 
-LogicalResult top::CscOp::init(InferenceParameter &p) {
+LogicalResult top::PreprocessOp::init(InferenceParameter &p) {
   return success();
 }
-void top::CscOp::deinit(InferenceParameter &p) {}
+void top::PreprocessOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::CscOp::inference(InferenceParameter &p) {
-  //top::CscOp no need to inference
-  llvm_unreachable("top::CscOp no need to inference");
+LogicalResult top::PreprocessOp::inference(InferenceParameter &p) {
+  //top::PreprocessOp no need to inference
+  llvm_unreachable("top::PreprocessOp no need to inference");
   return failure();
 }

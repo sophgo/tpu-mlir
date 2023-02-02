@@ -1704,6 +1704,8 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
   let arguments = (
     ins AnyTensor:$input,
     AnyTensor:$table,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$bias,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);

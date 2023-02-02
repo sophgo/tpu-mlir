@@ -71,6 +71,12 @@ def FusePreprocess : Pass<"fuse-preprocess", "ModuleOp"> {
 def AlignInput : Pass<"align-input", "ModuleOp"> {
   let summary = "Fuse align-input in cvimodels";
   let constructor = "createAlignInputPass()";
+  let options = [
+    Option<"chip", "chip", "std::string", /*default=*/"",
+           "chip: cv181x/cv182x/cv183x">,
+    Option<"customization_format", "customization_format", "std::string", /*default=*/"",
+           "cv18xx pixel_format">,
+  ];
   let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
 }
 #endif
