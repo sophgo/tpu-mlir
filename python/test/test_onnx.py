@@ -166,6 +166,7 @@ class ONNX_IR_TESTER(object):
             "ChannelNorm": self.test_ChannelNorm,
             "ConcatFuse": self.test_ConcatFuse,
             "ConcatToSpace": self.test_ConcatToSpace,
+            "ConcatToSpace2": self.test_ConcatToSpace2,
             "Conv3dTo2d": self.test_Conv3dTo2d,
             "Div2Mul": self.test_Div2Mul,
             "PermuteFuse": self.test_PermuteFuse,
@@ -2093,6 +2094,26 @@ class ONNX_IR_TESTER(object):
                 c = x[:, 1::2, ::2, :]
                 d = x[:, 1::2, 1::2, :]
                 y = torch.cat([a, c, b, d], 3)
+                return y
+
+        x = torch.randn(1, 40, 40, 384).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_ConcatToSpace2(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv = nn.Conv2d(160, 8, 3, 1, 1)
+
+            def forward(self, x):
+                a = x[:, :, ::2, ::2]
+                b = x[:, :, ::2, 1::2]
+                c = x[:, :, 1::2, ::2]
+                d = x[:, :, 1::2, 1::2]
+                y = torch.cat([a, c, b, d], 1)
+                y = self.conv(y)
                 return y
 
         x = torch.randn(1, 40, 40, 384).float()

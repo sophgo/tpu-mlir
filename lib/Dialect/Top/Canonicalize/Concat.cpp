@@ -69,68 +69,109 @@ struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
   }
 };
 
+
+static LogicalResult find_slice_order(ConcatOp concat_op, bool is_NCHW,
+  std::vector<int64_t>& order, Value& from, int64_t& bh, int64_t& bw) {
+  // idx of n,c,h,w
+  int ni = 0, ci, hi, wi;
+  if (is_NCHW) {
+    ci = 1; hi = 2; wi = 3;
+  } else {
+    hi = 1; wi = 2; ci = 3;
+  }
+  bh = 0, bw = 0;
+  const auto& inputs = concat_op.getInputs();
+  int num_inputs = inputs.size();
+  order.clear();
+  order.reserve(num_inputs);
+  for (int i = 0; i < num_inputs; i++) {
+    auto in_op = inputs[i].getDefiningOp();
+    if (!isa<SliceOp>(in_op)) {
+      return failure();
+    }
+    auto slice_op = dyn_cast<SliceOp>(in_op);
+    auto offset = module::getI64Array(slice_op.getOffset());
+    if (offset->at(ni) != 0 || offset->at(ci) != 0) {
+      return failure();
+    }
+    auto steps = module::getI64Array(slice_op.getSteps());
+    if (steps->at(ni) != 1 || steps->at(ci) != 1) {
+      return failure();
+    }
+    if (i == 0) {
+      bh = steps->at(hi);
+      bw = steps->at(wi);
+      if (bh * bw != num_inputs) {
+        return failure();
+      }
+      from = slice_op.getInput();
+    } else {
+      if (bh != steps->at(hi) || bw != steps->at(wi)) {
+        return failure();
+      }
+      if (from != slice_op.getInput()) {
+        return failure();
+      }
+    }
+    int64_t begin_order = offset->at(hi) * bw + offset->at(wi);
+    if (std::find(order.begin(), order.end(), begin_order) != order.end()) {
+      return failure();
+    }
+    order.push_back(begin_order);
+  }
+  return success();
+}
+
+static void replaceOpWithDepth2SpaceOp(PatternRewriter& rewriter, ConcatOp& op,
+  ValueRange&& args, int64_t bh, int64_t bw, bool is_CRD, bool is_inversed,
+  bool in_is_NCHW, bool out_is_NCHW, bool swap_cr) {
+  std::vector<NamedAttribute> attrs;
+  attrs.push_back(
+      rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(bh)));
+  attrs.push_back(
+      rewriter.getNamedAttr("block_w", rewriter.getI64IntegerAttr(bw)));
+  attrs.push_back(
+      rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(is_CRD)));
+  attrs.push_back(
+      rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(is_inversed)));
+  attrs.push_back(
+      rewriter.getNamedAttr("in_is_NCHW", rewriter.getBoolAttr(in_is_NCHW)));
+  attrs.push_back(
+      rewriter.getNamedAttr("out_is_NCHW", rewriter.getBoolAttr(out_is_NCHW)));
+  attrs.push_back(
+      rewriter.getNamedAttr("swap_cr", rewriter.getBoolAttr(swap_cr)));
+  rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
+      op, op.getResult().getType(), args, attrs);
+}
+
 // concat slices to Depth2Space.
 // test by yolov5s
-struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
+struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
-    if (concat_op.getAxis() != 1) {
-      return failure();
-    }
     auto shape = module::getShape(concat_op.getOutput());
     if (shape.size() != 4) {
+      return failure();
+    }
+    if (concat_op.getAxis() != 1) {
       return failure();
     }
     if (concat_op->hasOneUse() == false) {
       return failure();
     }
     auto use_op = *concat_op->getUsers().begin();
-    auto conv_op = dyn_cast<ConvOp>(use_op);
-    if (!conv_op) {
+    if (!isa<ConvOp>(use_op)) {
       return failure();
     }
-    int64_t bh = 0, bw = 0;
-    Value from;
+    Value from; int64_t bh; int64_t bw;
     std::vector<int64_t> order;
+    LogicalResult ret = find_slice_order(concat_op, true, order, from, bh, bw);
+    if (ret.failed()) return failure();
     bool need_reorder = false;
-    int num_inputs = concat_op.getInputs().size();
-    for (int i = 0; i < num_inputs; i++) {
-      auto in_op = concat_op.getInputs()[i].getDefiningOp();
-      auto slice_op = dyn_cast<SliceOp>(in_op);
-      if (!slice_op) {
-        return failure();
-      }
-      auto offset = module::getI64Array(slice_op.getOffset());
-      if (offset->at(0) != 0 || offset->at(1) != 0) {
-        return failure();
-      }
-      auto steps = module::getI64Array(slice_op.getSteps());
-      if (steps->at(0) != 1 || steps->at(1) != 1) {
-        return failure();
-      }
-      if (i == 0) {
-        bh = steps->at(2);
-        bw = steps->at(3);
-        if (bh * bw != num_inputs) {
-          return failure();
-        }
-        from = slice_op.getInput();
-      } else {
-        if (bh != steps->at(2) || bw != steps->at(3)) {
-          return failure();
-        }
-        if (from != slice_op.getInput()) {
-          return failure();
-        }
-      }
-      int64_t begin_order = offset->at(2) * bw + offset->at(3);
-      if (std::find(order.begin(), order.end(), begin_order) != order.end()) {
-        return failure();
-      }
-      order.push_back(begin_order);
-      if (begin_order != i && false == need_reorder) {
+    for (size_t i = 0; i < order.size(); ++i) {
+      if (order[i] != i && false == need_reorder) {
         need_reorder = true;
       }
     }
@@ -139,10 +180,10 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
         return failure();
       }
       auto use_op = *concat_op->getUsers().begin();
-      auto conv_op = dyn_cast<ConvOp>(use_op);
-      if (!conv_op) {
+      if (!isa<ConvOp>(use_op)) {
         return failure();
       }
+      auto conv_op = dyn_cast<ConvOp>(use_op);
       if (conv_op.getGroup() != 1) {
         return failure();
       }
@@ -169,20 +210,61 @@ struct ConcatToDepth2SpaceOp : public OpRewritePattern<ConcatOp> {
           WeightOp::create(use_op, "filter_S2D", *filter_new, new_type);
       use_op->setOperand(1, new_filter_op);
     }
-    std::vector<NamedAttribute> attrs;
-    attrs.push_back(
-        rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(bh)));
-    attrs.push_back(
-        rewriter.getNamedAttr("block_w", rewriter.getI64IntegerAttr(bw)));
-    attrs.push_back(
-        rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(false)));
-    attrs.push_back(
-        rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(true)));
     // change name of new op to avoid wrong comparison
     concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
         module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
-    rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
-        concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
+    replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from),
+      bh, bw, false, true, true, true, false);
+    return success();
+  }
+};
+
+struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConcatOp concat_op,
+                                PatternRewriter &rewriter) const override {
+    const auto& shape = module::getShape(concat_op.getOutput());
+    if (shape.size() != 4) {
+      return failure();
+    }
+    if (concat_op.getAxis() != 1 && concat_op.getAxis() != 3) {
+      return failure();
+    }
+    if (concat_op->hasOneUse()) {
+      auto use_op = *concat_op->getUsers().begin();
+      if (isa<ConvOp>(use_op)) {
+        return failure();
+      }
+    }
+    bool in_is_NCHW = concat_op.getAxis() == 1;
+    bool out_is_NCHW = in_is_NCHW;
+    Value from; int64_t bh; int64_t bw;
+    std::vector<int64_t> order;
+    LogicalResult ret = find_slice_order(concat_op, in_is_NCHW, order, from, bh, bw);
+    if (ret.failed()) return failure();
+    bool flag0 = true; bool flag1 = true;
+    for (int64_t i = 0; i < bh * bw; ++i) {
+      if (order[i] != i) {
+        flag0 = false;
+        break;
+      }
+    }
+    if (!flag0) {
+      for (int64_t i = 0; i < bw; ++i) {
+        for (int64_t j = 0; j < bh; ++j) {
+          if (order[j * bw + i] != i * bh + j) {
+            flag1 = false;
+            break;
+          }
+        }
+      }
+    }
+    if (!flag0 && !flag1)
+      return failure();
+    bool swap_cr = flag1;
+    replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from),
+      bh, bw, false, true, in_is_NCHW, out_is_NCHW, swap_cr);
     return success();
   }
 };
@@ -242,5 +324,6 @@ struct ConvertLoadWeightConcatToLoadWeightPattern
 void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
-                 ConcatToDepth2SpaceOp, ConcatToSwapDimInner>(context);
+                 ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
+                 ConcatToSwapDimInner>(context);
 }

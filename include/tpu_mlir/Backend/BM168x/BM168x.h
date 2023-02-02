@@ -502,6 +502,20 @@ typedef struct reduce_full_global_param {
   uint64_t *buffer_size_ptr;
 } reduce_full_global_param_t;
 
+typedef struct {
+    int block_sizes[2];
+    int in_is_nchw;
+    int out_is_nchw;
+    int is_inversed;
+    int is_crd_mode;
+    int swap_cr;
+} depth2space_common_spec_t;
+
+typedef struct {
+    depth2space_common_spec_t common;
+} depth2space_global_spec_t;
+
+
 #ifdef __cplusplus
 }
 #endif

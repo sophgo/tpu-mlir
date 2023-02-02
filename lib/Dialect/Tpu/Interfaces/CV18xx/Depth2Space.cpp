@@ -18,6 +18,7 @@
 using namespace tpu_mlir::backend;
 
 void tpu::Depth2SpaceOp::codegen_global_cv18xx(int64_t layer_id) {
+  assert(getInIs_NCHW() && getOutIs_NCHW() && !getSwapCr());
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
   int64_t n, c, h, w;

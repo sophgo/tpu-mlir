@@ -9,7 +9,6 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-
 #include "tpu_mlir/Support/Module.h"
 
 
@@ -20,41 +19,24 @@ using namespace tpu_mlir::backend;
 extern "C" {
 #endif
 
-typedef struct {
-  uint64_t input_global_mem_addr;
-  uint64_t output_global_mem_addr;
-  int input_shape[MAX_SHAPE_DIMS];
-  int dims;
-  int block_sizes[2];
-  int in_is_nchw;
-  int out_is_nchw;
-  int is_inversed;
-  int is_crd_mode;
-  int dtype;
-} depth2space_param_t;
-
 #ifdef __cplusplus
 }
 #endif
 
 void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
-  depth2space_param_t param = {0};
-  param.input_global_mem_addr = module::getAddress(getInput());
-  param.output_global_mem_addr = module::getAddress(getOutput());
-  param.dtype = BM168x::getDataType(getOutput());
-  auto in_shape = module::getShape(getInput());
-  param.dims = in_shape.size();
-  for (int i = 0; i < param.dims; i++) {
-    param.input_shape[i] = in_shape[i];
-  }
-  param.block_sizes[0] = getBlockH();
-  param.block_sizes[1] = getBlockW();
-  param.in_is_nchw = 1;
-  param.is_inversed = getIsInversed();
-  param.out_is_nchw = 1;
-  param.is_crd_mode = getIs_CRD();
-  BM168x::call_global_func("backend_api_depth2space_global", &param,
-                           sizeof(param));
+  depth2space_global_spec_t spec = {0};
+  spec.common.block_sizes[0] = getBlockH();
+  spec.common.block_sizes[1] = getBlockW();
+  spec.common.in_is_nchw = getInIs_NCHW();
+  spec.common.out_is_nchw = getOutIs_NCHW();
+  spec.common.is_inversed = getIsInversed();
+  spec.common.is_crd_mode = getIs_CRD();
+  spec.common.swap_cr = getSwapCr();
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  BM168x::call_global_func("backend_api_depth2space_global", &spec, sizeof(spec),
+                           input_spec->data(), output_spec->data());
 }
 
 // ======================================
