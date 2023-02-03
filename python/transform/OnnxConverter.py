@@ -1901,14 +1901,14 @@ class OnnxConverter(BaseConverter):
     def convert_scatternd_op(self, onnx_node):
         assert (onnx_node.op_type == "ScatterND")
         assert(len(onnx_node.inputs) == 3)
-        data = self.getOperand(onnx_node.inputs[0])
-        indices =self.getOperand(onnx_node.inputs[1])
-        updates = self.getOperand(onnx_node.inputs[2])
+        input_data = self.getOp(onnx_node.inputs[0])
+        indices =self.getOp(onnx_node.inputs[1])
+        updates = self.getOp(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)
         reduction = onnx_node.attrs.get("reduction", None)
         p = {
             "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
             "reduction": reduction
         }
-        scatternd_op = self.mlir.create_scatternd_op([data, indices, updates], output_shape, **p)
+        scatternd_op = self.mlir.create_scatternd_op([input_data, indices, updates], output_shape, **p)
         self.addOperand(onnx_node.name, scatternd_op)

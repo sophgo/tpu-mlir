@@ -115,6 +115,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             i.data[:] = input.astype(np.float16)
         elif i.dtype == "bf16" and input.dtype == np.float32:
             i.data[:] = fp32_to_bf16(input)
+        elif i.dtype == "i32" and input.dtype == np.float32:
+            i.data[:] = input.astype(np.int32)
         else:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
     if not is_dynamic:

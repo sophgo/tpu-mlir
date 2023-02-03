@@ -177,6 +177,8 @@ class MLIRImporter(object):
             return self.mlir_type['INT8']
         elif _type == "ui8":
             return self.mlir_type['UINT8']
+        elif _type == "i32":
+            return self.mlir_type['INT32']
         else:
             raise RuntimeError("No support {}".format(_type))
 
@@ -975,21 +977,14 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.LayerNormOp, operands, out_types, **param)
 
-    def create_scatternd_op(self, operands, output_shapes, **kargs):
+    def create_scatternd_op(self, operands, output_shape, **kargs):
         # get_value_type
-        out_types = list()
-        for s in output_shapes:
-            if len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
-                out_types.append(t)
-        param = {
-            'name': kargs['name'],
-            'reduction':  kargs['reduction']
-        }        
-        return self.buildOp(Top.ScatterNDOp, operands, out_types, **param)
-    
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        param = {'name': kargs['name']}
+        if kargs['reduction'] != None:
+            param['reduction'] = kargs['reduction']
+        return self.buildOp(Top.ScatterNDOp, operands, [output_type], **param)
+
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
         return mlir_format

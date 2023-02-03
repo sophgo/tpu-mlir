@@ -1753,4 +1753,30 @@ def TPU_SwapDimInnerOp: Tpu_Op<"SwapDimInner" ,[
   let results = (outs AnyTensor:$output);
 }
 
+def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
+  DeclareOpInterfaceMethods<TypeInterface>]>  {
+  let summary = "ScatterND operator";
+  let description = [{
+    The output of the operation is produced by creating a copy of the input data,
+    and then updating its value to values specified by updates at
+    specific index positions specified by indices.
+
+    Inputs:
+      `input_data`           : Tensor of rank r >= 1.
+      `indices`      : Tensor of rank q >= 1.
+      `updates`     : Tensor of rank q + r - indices_shape[-1] - 1.
+
+    Outputs:
+      `output`       : Tensor of rank r >= 1.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input_data,
+    AnyTensor:$indices,
+    AnyTensor:$updates
+  );
+
+  let results = (outs AnyTenor:$output);
+}
+
 #endif // TPU_OPS
