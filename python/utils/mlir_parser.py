@@ -38,7 +38,7 @@ class Operation:
         if loc == "loc(unknown)":
             return None
         # loc(fused["pool1", "pool1_mask"]) => pool1
-        return re.search(r'\"(\S+?)\"', str(loc)).group(1)
+        return re.search(r'\"(.+?)\"', str(loc)).group(1)
 
     @staticmethod
     def outputs(op):
