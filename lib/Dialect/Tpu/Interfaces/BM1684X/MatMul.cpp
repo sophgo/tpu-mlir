@@ -101,7 +101,11 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   auto output_spec = BM168x::get_output_spec(op);
   if (p.batch != 1) {
     BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
-    BM168x::fix_shape(input_spec->at(1), {p.batch, p.K, p.N});
+    if (p.right_transpose == false) {
+      BM168x::fix_shape(input_spec->at(1), {p.batch, p.K, p.N});
+    } else {
+      BM168x::fix_shape(input_spec->at(1), {p.batch, p.N, p.K});
+    }
     BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
     batch_matmul_common_spec_t spec{0};
     spec.Y_dtype = output_spec->at(0).dtype;
@@ -133,7 +137,11 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
     return;
   }
   BM168x::fix_shape(input_spec->at(0), {p.M, p.K});
-  BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
+  if (p.right_transpose == false) {
+    BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
+  } else {
+    BM168x::fix_shape(input_spec->at(1), {p.N, p.K});
+  }
   BM168x::fix_shape(output_spec->at(0), {p.M, p.N});
   fc_global_spec_t spec;
   memset(&spec, 0, sizeof(spec));
