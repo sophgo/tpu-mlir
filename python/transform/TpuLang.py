@@ -5,7 +5,7 @@
 #
 # ==============================================================================
 
-from typing import List
+from typing import List, Union
 from .MLIRImporter import Top
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator
 
@@ -30,48 +30,6 @@ class TpuLang:
   def insert_op(op_name:str, inputs:List[Tensor], outputs:List[Tensor], params:dict={}):
     op = Operator(op_name, params=params, inputs=inputs, outputs=outputs)
     TpuLang.graph.operators.append(op)
-
-def ArrayAttr(data: list, data_type: str = 'int64'):
-    return [data, data_type, False]
-
-  # data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool"]
-def Attr(data, data_type: str = 'int64'):
-    assert data_type.find("int") >= 0 or data_type in ["float32", "float64", "bool"]
-    return [data, data_type, True]
-
-def conv_v2(input: Tensor, weight: Tensor, bias:Tensor=None, stride=None,
-            dilation=None, pad=None, group=1, input_zp=None, weight_zp=None,
-            out_dtype=None, out_name=None):
-    dilation = [1,1] if dilation is None else dilation
-    stride = [1,1] if stride is None else stride
-    pad = [0,0,0,0] if pad is None else pad
-    def _shape_inference():
-      kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
-      kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
-      oh = (input.shape[2] + pad[0] + pad[1] - kh_ext) // stride[0] + 1
-      ow = (input.shape[3] + pad[2] + pad[3] - kw_ext) // stride[1] + 1
-      return [input.shape[0], weight.shape[0], oh, ow]
-    attr = {
-        "kernel_shape": ArrayAttr(weight.shape[2:]),
-        "strides": ArrayAttr(stride),
-        "dilations": ArrayAttr(dilation),
-        "pads": ArrayAttr(pad),
-        "do_relu": Attr(False, "bool"),
-        "group": Attr(group)
-    }
-    input.quantization(zero_point=input_zp)
-    weight.quantization(zero_point=weight_zp)
-    output = Tensor(_shape_inference(), dtype=out_dtype, name=out_name)
-    inputs = [input, weight, bias]
-    TpuLang.insert_op(Top.ConvOp, inputs=inputs, outputs=[output], params=attr)
-    return output
-
-def requant_fp_to_int(tensor_i: Tensor, scale, offset, requant_mode, out_dtype, out_name=None,
-                      round_mode='half_away_from_zero'):
-    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype)
-    output.quantization(scale=scale, zero_point=offset)
-    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
-    return output
 
 def compile(name: str,
             inputs: List[Tensor],
@@ -117,13 +75,71 @@ def model_validate(model_name, refs: dict):
       ref_outputs[tensor.name] = refs[tensor.name]
     ref_npz = model_name + '_ref_outputs.npz'
     np.savez(ref_npz, **ref_outputs)
-
+    res_npz = model_name + '_top_outputs.npz'
     # compare all blobs layer by layers
     f32_blobs_compare(res_npz, ref_npz, '0.99,0.99')
-
 
 def init(device: str, assist=False, outdir=''):
   TpuLang(device=device)
 
 def deinit():
-  pass
+  TpuLang.graph = None
+  TpuLang.device = None
+
+def ArrayAttr(data: list, data_type: str = 'int64'):
+    return [data, data_type, False]
+
+  # data_type must be in ["float32", "float16", "int64" "int32", "int16". "int8", "uint8", "bool"]
+def Attr(data, data_type: str = 'int64'):
+    assert data_type.find("int") >= 0 or data_type in ["float32", "float64", "bool"]
+    return [data, data_type, True]
+
+'''
+  def operand(in_tensor, **params):
+    def _shape_inference():
+      ...
+      return output_shape
+    attr = {
+      param_name : ArrayAttr(param, dtype) or Attr(param, dtype)
+      ...
+    }
+    output = Tensor(_shape_inference(), dtype, name)
+    TpuLang.insert_op(op_type, inputs=[in_tensor], outputs=[output], params=attr)
+    return output
+'''
+def conv_v2(input: Tensor, weight: Tensor, bias:Tensor=None, stride:List[int]=None,
+            dilation:List[int]=None, pad:List[int]=None, group=1,
+            input_zp:Union[int, List[int]]=None, weight_zp:Union[int, List[int]]=None,
+            out_dtype:str=None, out_name:str=None):
+    dilation = [1,1] if dilation is None else dilation
+    stride = [1,1] if stride is None else stride
+    pad = [0,0,0,0] if pad is None else pad
+    def _shape_inference():
+      kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
+      kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
+      oh = (input.shape[2] + pad[0] + pad[1] - kh_ext) // stride[0] + 1
+      ow = (input.shape[3] + pad[2] + pad[3] - kw_ext) // stride[1] + 1
+      return [input.shape[0], weight.shape[0], oh, ow]
+    attr = {
+        "kernel_shape": ArrayAttr(weight.shape[2:]),
+        "strides": ArrayAttr(stride),
+        "dilations": ArrayAttr(dilation),
+        "pads": ArrayAttr(pad),
+        "do_relu": Attr(False, "bool"),
+        "group": Attr(group)
+    }
+    input.quantization(zero_point=input_zp)
+    weight.quantization(zero_point=weight_zp)
+    output = Tensor(_shape_inference(), dtype=out_dtype, name=out_name)
+    inputs = [input, weight, bias]
+    TpuLang.insert_op(Top.ConvOp, inputs=inputs, outputs=[output], params=attr)
+    return output
+
+def requant_fp_to_int(tensor_i: Tensor, scale, offset, requant_mode, out_dtype, out_name=None,
+                      round_mode='half_away_from_zero'):
+    output = Tensor(tensor_i.shape, name=out_name, dtype=out_dtype)
+    output.quantization(scale=scale, zero_point=offset)
+    TpuLang.insert_op("top.Cast", inputs=[tensor_i], outputs=[output])
+    return output
+
+
