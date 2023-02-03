@@ -37,10 +37,6 @@ struct TopFuseReshape2 : public OpRewritePattern<ReshapeOp> {
 
   LogicalResult matchAndRewrite(ReshapeOp op,
                                 PatternRewriter &rewriter) const override {
-    auto in_op = op.getInput().getDefiningOp();
-    if (!in_op->hasOneUse()) {
-      return failure();
-    }
     auto shape0 = module::getShape(op.getOutput());
     auto shape1 = module::getShape(op.getInput());
     if (shape0 != shape1) {

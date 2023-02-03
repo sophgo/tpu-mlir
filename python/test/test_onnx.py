@@ -170,6 +170,7 @@ class ONNX_IR_TESTER(object):
             "PermuteFuse": self.test_PermuteFuse,
             "GatherToSlice": self.test_GatherToSlice,
             "Mul2Scale": self.test_Mul2Scale,
+            "MatMulTranspose": self.test_MatMulTranspose,
             # "PadConv1d": self.test_PadConv1d,
             "PadConv2d": self.test_PadConv2d,
             # "PadConv3d": self.test_PadConv3d,
@@ -2079,6 +2080,23 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(1, 25600, 96).float()
         self.torch_and_test(x, Net(), case_name)
+
+    def test_MatMulTranspose(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.bias = torch.randn(96).float()
+
+            def forward(self, x, y):
+                a = torch.transpose(y, 2, 3)
+                b = torch.matmul(x, a)
+                return b
+
+        x = torch.randn(10, 10, 49, 32).float()
+        y = torch.randn(10, 10, 49, 32).float()
+        self.torch_and_test((x,y), Net(), case_name)
 
     def test_ReshapeFuse(self, case_name):
 
