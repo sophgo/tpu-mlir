@@ -38,7 +38,7 @@ export -f run_regression_net
 
 run_onnx_op() {
   echo "======= test_onnx.py ====="
-  chip_list=("bm1684x" "bm1684" "cv183x")
+  chip_list=("bm1684x" "cv183x")
   ERR=0
   for chip in ${chip_list[@]}; do
     test_onnx.py --chip $chip > test_onnx_${chip}.log

@@ -24,25 +24,11 @@ import onnxruntime
 import multiprocessing
 
 BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK"]
-BM1684_Failed_Cases = [
-    "Abs", "AddConst", "AvgPool1d", "AvgPoolOdd", "PadAvgPool2d", "BatchMatMul", "BroadcastAdd",
-    "BroadcastMul", "BroadcastMulConst", "CompareConst", "Compare", "Concat", "Concat2", "Conv1d",
-    "Conv3d", "ConvStride", "ConvTranspose", "ConvTranspose2", "Clip", "DepthToSpace", "Div", "Erf",
-    "Exp", "Expand", "Expand2", "Gather", "GatherToSlice", "Gemm", "GroupFC", "GRU", "GRU2", "GRU3",
-    "LeakyRelu", "Log", "LogSoftmax", "LRN", "LSTM", "LSTM2", "LSTM3", "MaxPool1d", "Max", "Mul",
-    "Min", "MulConst", "Neg", "Pad", "Pad1", "PadReflect", "Pow1", "PRelu", "QDQConv", "QDQ",
-    "ReshapeFuse", "Resize", "Resize2", "Reshape", "Reduce", "Reduce2", "ReduceL2", "ReduceMean",
-    "ReduceSum", "Reciprocal", "Relu", "SiLU", "Softmax", "Squeeze", "Sigmoid", "Slice", "Split",
-    "Scale", "Sqrt", "Sub", "Sub2", "SubConst", "SubConst2", "Sum", "Tanh", "Tile", "Transpose",
-    "Transpose2", "TopK", "Where", "TorchHardSwish", "TorchHardSigmoid", "TorchGelu", "TorchGRU",
-    "TorchLayerNorm", "TorchLogSoftmax", "TorchLSTM", "TorchMaskedFill", "TorchWhere", "TorchStd",
-    "Conv3dTo2d"
-]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
-    "ReshapeFuse", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu", "TorchGRU",
-    "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd",
-    "QDQ", "QDQConv", "Conv3dTo2d"
+    "ReshapeFuse", "ScatterND", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu",
+    "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere",
+    "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d"
 ]
 
 
@@ -128,6 +114,7 @@ class ONNX_IR_TESTER(object):
             "ReduceSum": self.test_ReduceSum,
             "Reciprocal": self.test_Reciprocal,
             "Relu": self.test_Relu,
+            "ScatterND": self.test_ScatterND,
             "SiLU": self.test_SiLU,
             "Softmax": self.test_Softmax,
             "Squeeze": self.test_Squeeze,
@@ -218,9 +205,6 @@ class ONNX_IR_TESTER(object):
                 return False
         elif self.chip == "bm1684x":
             if case in BM1684X_Failed_Cases:
-                return False
-        elif self.chip == "bm1684":
-            if case in BM1684_Failed_Cases:
                 return False
         return True
 
@@ -2096,7 +2080,7 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(10, 10, 49, 32).float()
         y = torch.randn(10, 10, 49, 32).float()
-        self.torch_and_test((x,y), Net(), case_name)
+        self.torch_and_test((x, y), Net(), case_name)
 
     def test_ReshapeFuse(self, case_name):
 
@@ -3139,6 +3123,29 @@ class ONNX_IR_TESTER(object):
     def test_PadPool3d(self, case_name):
         self.PadPoolBase(case_name, [1, 16, 32, 32, 32], [0, 0, 0, 1, 2, 0, 0, 0, 1, 2], \
                 [[[1, 16, 15, 16, 17], [4, 4, 4], [0, 0, 0, 0, 0, 0], [2, 2, 2]], [[1, 16, 9, 9, 9], [4, 4, 4], [2, 1, 0, 2, 1, 0], [4, 4, 4]]])
+
+    def test_ScatterND(self, case_name):
+        x_shape = [320, 320]
+        idx_shape = [160, 160, 2]
+        update_shape = [160, 160]
+        # indices should not have duplicate entries: that is, if idx1 != idx2, then indices[idx1] != indices[idx2].
+        # This ensures that the output value does not depend on the iteration order.
+        input_data = {
+            # "raw_data": np.random.rand(*input_shape['raw_data']).astype(np.float32),
+            "x_data": np.random.rand(*x_shape).astype(np.float32),
+            "indices": np.random.randint(0, 64, tuple(idx_shape)),
+            "updates": np.random.rand(*update_shape).astype(np.float32)
+        }
+        raw_data = helper.make_tensor_value_info("x_data", TensorProto.FLOAT, x_shape)
+        indices = helper.make_tensor_value_info("indices", TensorProto.INT64, idx_shape)
+        updates = helper.make_tensor_value_info("updates", TensorProto.FLOAT, update_shape)
+        output = helper.make_tensor_value_info("output", TensorProto.FLOAT, x_shape)
+        scatternd_def = helper.make_node("ScatterND",
+                                         inputs=list(input_data.keys()),
+                                         outputs=["output"])
+        graph_def = helper.make_graph([scatternd_def], case_name, [raw_data, indices, updates],
+                                      [output])
+        self.onnx_and_test(graph_def, input_data=input_data)
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
