@@ -7,7 +7,9 @@
 # ==============================================================================
 
 import numpy as np
-import transform.TpuLang as bml
+import os, sys
+import transform.TpuLang as tpul
+from typing import List
 
 def rand_data(shape, dtype):
     if dtype == 'float32':
@@ -16,69 +18,148 @@ def rand_data(shape, dtype):
         return np.random.randint(0, 256, size=shape).astype(dtype)
     raise Exception("Not supported data type: {}!".format(dtype))
 
-def coeff_tensor(shape, dtype, scale=1.0):
-    data = rand_data(shape, dtype)
-    data = data * scale if dtype == 'float32' else data
-    return bml.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
+def tpulang(func):
+    def wrapper(*args, **kwargs):
+        tpul.init("BM1684X", True)
+        func(*args, **kwargs)
+        tpul.deinit()
+    return wrapper
 
-def conv_op(x, kshape, stride, pad, zp, dtype):
-    oc = kshape[0]
-    weight = coeff_tensor(kshape, dtype)
-    out_dtype =  dtype if dtype == 'float32' else 'int32'
-    bias = coeff_tensor(oc, out_dtype)
-    conv = bml.conv_v2(x, weight, bias=bias, stride=stride, pad=pad, \
-                       input_zp=zp[0], weight_zp=zp[1], out_dtype=out_dtype)
-    return conv
+Failed_Cases = []
 
-def model_def(x):
-    rq0 = bml.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
-    conv1 = conv_op(rq0, [64,1,7,7],[2,2], None, [0,0], 'int8')
-    rq2 = bml.requant_int(conv1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
-    relu3 = bml.relu(rq2)
-    conv4 = conv_op(relu3, [96,64,3,3], [2,2], None, [0,0], 'int8')
-    rq5 = bml.requant_int(conv4, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
-    relu6 = bml.relu(rq5)
-    dq7 = bml.dequant_int_to_fp(relu6, 0.25, 0)
-    coeff8 = coeff_tensor([1,96,1,1], 'float32', 10.0)
-    bml.constdata(coeff8)
-    mul9 = bml.mul(dq7, coeff8)
-    coeff10 = coeff_tensor([1,96,1,1], 'float32', -2.0)
-    bml.constdata(coeff10)
-    add11 = bml.add(mul9, coeff10)
-    relu12 = bml.relu(add11)
-    rq13 = bml.requant_fp_to_int(relu12, 4.0, 0, 0, 'int8')
-    conv14 = conv_op(rq13, [96,96,3,3], [1,1], [1,1,1,1], [0,0], 'int8')
-    rq15 = bml.requant_int(conv14, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
-    relu16 = bml.relu(rq15)
-    conv17 = conv_op(relu16, [96,96,3,3], [1,1], [1,1,1,1], [0,0], 'int8')
-    rq18 = bml.requant_int(conv17, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
-    dq19 = bml.dequant_int_to_fp(rq18, 0.0625, 0)
-    add20 = bml.add(dq19, dq7)
-    coeff21 = coeff_tensor([1,96,1,1], 'float32', 2.0)
-    bml.constdata(coeff21)
-    mul22 = bml.mul(add20, coeff21)
-    coeff23 = coeff_tensor([1,96,1,1], 'float32', -2.0)
-    bml.constdata(coeff23)
-    add24 = bml.add(mul22, coeff23)
-    relu25 = bml.relu(add24)
-    rq26 = bml.requant_fp_to_int(relu25, 8.0, 0, 0, 'int8')
-    conv27 = conv_op(rq26, [96,96,3,3], [1,1], [1,1,1,1], [0,0], 'int8')
-    rq28 = bml.requant_int(conv27, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
-    dq29 = bml.dequant_int_to_fp(rq28, 0.0625, 0)
-    return dq29
+class TPULANG_IR_TESTER(object):
+    # This class is built for testing single operator transform.
+    def __init__(self):
+        self.test_function = {
+            #############################
+            # TpuLang Test Case, Alphabetically
+            #############################
+            "Conv2d": self.test_Conv2d,
+            "HikModel": self.test_Model,
+        }
+        # no quantization when quant_mode == "f32"
+        self.quant_modes = ["int8"]
+        self.chip = self.get_chip_name()
 
-def model_def1(x):
-    conv1 = conv_op(x, [64,1,7,7],[2,2], None, [None,None], 'float32')
-    return conv1
+    def get_chip_name(self):
+        runchip = os.environ.get('SET_CHIP_NAME', None)
+        if not runchip:
+            print("no found SET_CHIP_NAME environment value, set bm1684x as default")
+            runchip = "bm1684x"
+        return runchip.lower()
 
-def hik_demo():
-    in_shape = [1,3,173,141]
-    x_data = (rand_data(in_shape, 'float32') - 0.5) * 256
-    x = bml.Tensor(dtype='float32', shape=in_shape, data=x_data)
-    out = model_def1(x)
-    bml.compile("model_def", [x], [out], False, 2)
+    def test_single(self, case: str):
+        if case in self.test_function:
+            print("Test: {}".format(case))
+            self.test_function[case](case)
+            print("====== TEST {} Success ======".format(case))
+        else:
+            self.list()
 
-if __name__ == '__main__':
-    bml.init("BM1684X", True)
-    hik_demo()
-    bml.deinit()
+    def test_all(self):
+        for case in self.test_function:
+            if case not in Failed_Cases:
+                self.test_single(case)
+        print("====== ALL TEST Success ======".format(case))
+
+    def list(self):
+        print("====== All Support Ops ======")
+        for case in self.test_function:
+            if case not in Failed_Cases:
+                print(case)
+        print("====== Error Ops ======")
+        for case in self.test_function:
+            if case in Failed_Cases:
+                print(case)
+
+    def coeff_tensor(self, shape, dtype, scale=1.0):
+        data = rand_data(shape, dtype)
+        data = data * scale if dtype == 'float32' else data
+        return tpul.Tensor(dtype=dtype, shape=shape, data=data, is_const=True)
+
+    #######################################################################
+    # Convolution
+    # ------------
+    def test_Conv2d(self, case_name):
+        """Conv 2D"""
+        @tpulang
+        def _test_convolution(
+            input_shape:List[int], kernel_shape:List[int], stride:List[int]=[1,1],
+            dilation:List[int]=[1,1], pad:List[int]=[0,0,0,0], group=1, dtype="float32"
+        ):
+            x_data = rand_data(input_shape, dtype)
+            x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
+            oc = kernel_shape[0]
+            weight = self.coeff_tensor(kernel_shape, dtype)
+            out_dtype = dtype if dtype == 'float32' else 'int32'
+            bias = self.coeff_tensor(oc, out_dtype)
+            conv = tpul.conv_v2(x, weight, bias=bias, stride=stride, pad=pad,
+                                dilation=dilation, group=group, out_dtype=out_dtype)
+            tpul.compile(case_name, [x], [conv], False, 2)
+
+        _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
+        _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2,2], pad=[1,1,1,1])
+
+    def test_Model(self, case_name):
+        def conv_op(x, kshape, stride, pad, zp, dtype):
+            oc = kshape[0]
+            weight = self.coeff_tensor(kshape, dtype)
+            out_dtype =  dtype if dtype == 'float32' else 'int32'
+            bias = self.coeff_tensor(oc, out_dtype)
+            conv = tpul.conv_v2(x, weight, bias=bias, stride=stride, pad=pad, \
+                            input_zp=zp[0], weight_zp=zp[1], out_dtype=out_dtype)
+            return conv
+        def model_def(x):
+            rq0 = tpul.requant_fp_to_int(x, 1.0, 0, 0, 'int8')
+            conv1 = conv_op(rq0, [64,1,7,7],[2,2], None, [0,0], 'int8')
+            # rq2 = tpul.requant_int(conv1, 2030043136, -13, 0, 0, 'int8', round_mode='half_away_from_zero')
+            # relu3 = tpul.relu(rq2)
+            # conv4 = conv_op(relu3, [96,64,3,3], [2,2], None, [0,0], 'int8')
+            # rq5 = tpul.requant_int(conv4, 1748893696, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            # relu6 = tpul.relu(rq5)
+            # dq7 = tpul.dequant_int_to_fp(relu6, 0.25, 0)
+            # coeff8 = coeff_tensor([1,96,1,1], 'float32', 10.0)
+            # tpul.constdata(coeff8)
+            # mul9 = tpul.mul(dq7, coeff8)
+            # coeff10 = coeff_tensor([1,96,1,1], 'float32', -2.0)
+            # tpul.constdata(coeff10)
+            # add11 = tpul.add(mul9, coeff10)
+            # relu12 = tpul.relu(add11)
+            # rq13 = tpul.requant_fp_to_int(relu12, 4.0, 0, 0, 'int8')
+            # conv14 = conv_op(rq13, [96,96,3,3], [1,1], [1,1,1,1], [0,0], 'int8')
+            # rq15 = tpul.requant_int(conv14, 1623457792, -8, 0, 0, 'int8', round_mode='half_away_from_zero')
+            # relu16 = tpul.relu(rq15)
+            # conv17 = conv_op(relu16, [96,96,3,3], [1,1], [1,1,1,1], [0,0], 'int8')
+            # rq18 = tpul.requant_int(conv17, 1623457792, -10, 0, 0, 'int8', round_mode='half_away_from_zero')
+            # dq19 = tpul.dequant_int_to_fp(rq18, 0.0625, 0)
+            # add20 = tpul.add(dq19, dq7)
+            # coeff21 = coeff_tensor([1,96,1,1], 'float32', 2.0)
+            # tpul.constdata(coeff21)
+            # mul22 = tpul.mul(add20, coeff21)
+            # coeff23 = coeff_tensor([1,96,1,1], 'float32', -2.0)
+            # tpul.constdata(coeff23)
+            # add24 = tpul.add(mul22, coeff23)
+            # relu25 = tpul.relu(add24)
+            # rq26 = tpul.requant_fp_to_int(relu25, 8.0, 0, 0, 'int8')
+            # conv27 = conv_op(rq26, [96,96,3,3], [1,1], [1,1,1,1], [0,0], 'int8')
+            # rq28 = tpul.requant_int(conv27, 1712717824, -7, 0, 0, 'int8', round_mode='half_away_from_zero')
+            # dq29 = tpul.dequant_int_to_fp(rq28, 0.0625, 0)
+            return conv1
+
+        @tpulang
+        def _test_model_def(in_shape):
+            x_data = (rand_data(in_shape, 'float32') - 0.5) * 256
+            x = tpul.Tensor(dtype='float32', shape=in_shape, data=x_data)
+            out = model_def(x=x)
+            tpul.compile(case_name, [x], [out], False, 2)
+
+        _test_model_def([1, 3, 28, 28])
+
+if __name__ == "__main__":
+    tester = TPULANG_IR_TESTER()
+    os.makedirs("tpulang_test", exist_ok=True)
+    os.chdir("tpulang_test")
+    if len(sys.argv) == 2:
+        tester.test_single(sys.argv[1])
+    else:
+        tester.test_all()

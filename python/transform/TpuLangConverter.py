@@ -27,7 +27,7 @@ def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
 
 class Tensor:
   ID = 0
-  def __init__(self, shape, name=None, ttype="neuron", data=None, dtype="float32", is_const=False):
+  def __init__(self, shape, name:str=None, ttype="neuron", data=None, dtype:str="float32", is_const=False):
     self.id = int(Tensor.ID)
     self.shape = shape if isinstance(shape, list) else [shape]
     self.name = "BMTensor" + str(self.id) if name is None else name
@@ -41,7 +41,7 @@ class Tensor:
     self.quantization()
     Tensor.ID += 1
 
-  def quantization(self, scale=None, zero_point=None):
+  def quantization(self, scale:Union[float, List[float]]=None, zero_point:Union[int, List[int]]=None):
     if self.is_quantized is False:
       self.is_quantized = scale is not None or zero_point is not None
       self.scale = scale
