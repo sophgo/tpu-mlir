@@ -227,6 +227,9 @@ class ReForm(object):
 
     def check_attrs(self, node, attrcheck: AttrCheck):
         attrs = get_node_attrs(node)
+        for key in attrcheck.attrs:
+            if key not in attrs:
+                return False
         args = tuple(attrs[key] for key in attrcheck.attrs)
         return attrcheck.func(*args)
 
@@ -323,6 +326,8 @@ class ReForm(object):
                 matched = self.constraint(node, pnode.constraint)
             if matched and pnode.attrcheck:
                 matched = self.check_attrs(node, pnode.attrcheck)
+                if not matched:
+                    return matched
             # update output and needed attr
             attr_value = []
             if pnode.cur_attr_name:
