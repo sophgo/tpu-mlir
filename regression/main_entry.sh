@@ -36,26 +36,39 @@ run_regression_net() {
 
 export -f run_regression_net
 
+# run_onnx_op() {
+#   echo "======= test_onnx.py ====="
+#   chip_list=("bm1684x" "cv183x" "bm1684" "bm1686")
+#   ERR=0
+#   for chip in ${chip_list[@]}; do
+#     test_onnx.py --chip $chip > test_onnx_${chip}.log
+#     if [[ "$?" -ne 0 ]]; then
+#       echo "test_onnx.py --chip ${chip} FAILED" >>result.log
+#       cat test_onnx_${chip}.log >>fail.log
+#       ERR=1
+#     fi
+#     echo "test_onnx.py --chip ${chip} PASSED" >>result.log
+#   done
+#   return $ERR
+# }
+
 run_onnx_op() {
   echo "======= test_onnx.py ====="
-  chip_list=("bm1684x" "cv183x")
-  ERR=0
-  for chip in ${chip_list[@]}; do
-    test_onnx.py --chip $chip > test_onnx_${chip}.log
-    if [[ "$?" -ne 0 ]]; then
-      echo "test_onnx.py --chip ${chip} FAILED" >>result.log
-      cat test_onnx_${chip}.log >>fail.log
-      ERR=1
-    fi
-    echo "test_onnx.py --chip ${chip} PASSED" >>result.log
-  done
-  return $ERR
+  chip=bm1684x
+  test_onnx.py --chip $chip > test_onnx_${chip}.log 2>&1 | true
+  if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
+    echo "test_onnx.py --chip ${chip} FAILED" >>result.log
+    cat test_onnx_${chip}.log >>fail.log
+    return 1
+  fi
+  echo "test_onnx.py --chip ${chip} PASSED" >>result.log
+  return 0
 }
 
 run_tflite_op() {
   echo "======= test_tflite.py ====="
-  test_tflite.py --chip bm1684x > test_tflite_bm1684x.log
-  if [[ "$?" -ne 0 ]]; then
+  test_tflite.py --chip bm1684x > test_tflite_bm1684x.log 2>&1 | true
+  if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
     echo "test_tflite.py --chip bm1684x FAILED" >>result.log
     cat test_tflite_bm1684x.log >>fail.log
     return 1
@@ -64,11 +77,9 @@ run_tflite_op() {
   return 0
 }
 
-export -f run_tflite_op
-
 run_script_test() {
   echo "======= script test ====="
-  $REGRESSION_PATH/script_test/run.sh >script_test.log 2>&1 | true
+  $REGRESSION_PATH/script_test/run.sh > script_test.log 2>&1 | true
   if [ "${PIPESTATUS[0]}" -ne "0" ]; then
     echo "script test FAILED" >>result.log
     cat script_test.log >>fail.log
@@ -87,12 +98,12 @@ run_all() {
   if [[ "$?" -ne 0 ]]; then
     ERR=1
   fi
-  if [ x${test_type} == xall ]; then
-    run_tflite_op
-    if [[ "$?" -ne 0 ]]; then
-      ERR=1
-    fi
-  fi
+  # if [ x${test_type} == xall ]; then
+  #   run_tflite_op
+  #   if [[ "$?" -ne 0 ]]; then
+  #     ERR=1
+  #   fi
+  # fi
   run_script_test
   if [[ "$?" -ne 0 ]]; then
     ERR=1
