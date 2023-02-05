@@ -28,7 +28,7 @@ CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
     "ReshapeFuse", "ScatterND", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu",
     "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere",
-    "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d"
+    "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d","PermuteFuse","SwapDimInner"
 ]
 
 

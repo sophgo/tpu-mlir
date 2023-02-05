@@ -141,15 +141,12 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::LayerNormOp::LocalGenSupport() {
-  if (module::isCV18xx) {
-    int num_dims = module::getShape(getInput()).size();
-    if (getAxis() == 2 && (num_dims == 3 || num_dims == 4)) {
-      return success();
-    }
-  } else {
-    // if (getAxis() != 0) {
-    //   return success();
-    // }
+  if (module::isCV18xx() == false) {
+    return failure();
+  }
+  int num_dims = module::getShape(getInput()).size();
+  if (getAxis() == 2 && (num_dims == 3 || num_dims == 4)) {
+    return success();
   }
   return failure();
 }

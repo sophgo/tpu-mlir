@@ -54,6 +54,9 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
     if (op.getInputs().size() != 2) {
       return failure();
     }
+    if (module::isUniformQuantized(op.getOutput())) {
+      return failure();
+    }
     auto multiplier = op.getMultiplier();
     if (multiplier != 1)
       return failure();
@@ -61,17 +64,11 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
     if (rshift != 0)
       return failure();
 
-    auto left_shape =
-        op.getInputs()[0].getType().dyn_cast<TensorType>().getShape();
-    auto right_shape =
-        op.getInputs()[1].getType().dyn_cast<TensorType>().getShape();
-    int left_elt_num = 1, right_elt_num = 1;
-    for (int i = 0; i < left_shape.size(); ++i)
-      left_elt_num *= left_shape[i];
-    for (int i = 0; i < right_shape.size(); ++i)
-      right_elt_num *= right_shape[i];
-    if (left_elt_num > 1 && right_elt_num > 1)
+    int left_elt_num = module::getNumElements(op.getInputs()[0]);
+    int right_elt_num = module::getNumElements(op.getInputs()[1]);
+    if (left_elt_num > 1 && right_elt_num > 1) {
       return failure();
+    }
 
     Value new_input;
     std::shared_ptr<std::vector<float>> const_val;
