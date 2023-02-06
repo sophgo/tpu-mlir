@@ -9,6 +9,7 @@ from typing import Union, Iterable, List
 from .MLIRImporter import MLIRImporter, Top, State
 from .BaseConverter import BaseConverter
 from mlir.ir import *
+import mlir.dialects.quant as quant
 from utils.mlir_shell import *
 import numpy as np
 
@@ -37,7 +38,7 @@ class Tensor:
     self.dtype = dtype.lower()
     self.buffer = data
     self.is_const = is_const
-    self.is_quantized = False
+    self.is_quantized:bool = False
     self.quantization()
     Tensor.ID += 1
 
@@ -137,6 +138,17 @@ class TpuLangConverter(BaseConverter):
     self.weight_file = self.mlir.weight_file
     self.constant = {}
     self.type_to_mlir = self.__type2mlir(self.mlir.ctx)
+    for tensor in self.model.inputs:
+      if tensor.is_quantized:
+        self.input_types.append(self.get_quantized_type(tensor))
+      else:
+        self.input_types.append(self.MLIRImporterTypeStr[tensor.dtype])
+    for tensor in self.model.outputs:
+      if tensor.is_quantized:
+        self.output_types.append(self.get_quantized_type(tensor))
+      else:
+        self.output_types.append(self.MLIRImporterTypeStr[tensor.dtype])
+    self.mlir.declare_func(self.input_types, self.output_types)
 
   def __del__(self):
     if self.mlir != None:
@@ -149,17 +161,9 @@ class TpuLangConverter(BaseConverter):
     for tensor in self.model.inputs:
       self.input_names.append(tensor.name)
       self.addShape(tensor.name, tensor.shape)
-      if tensor.is_quantized:
-        self.input_types.append(self.get_quantized_type(tensor))
-      else:
-        self.input_types.append(self.MLIRImporterTypeStr[tensor.dtype])
     for tensor in self.model.outputs:
       self.output_names.append(tensor.name)
       self.addShape(tensor.name, tensor.shape)
-      if tensor.is_quantized:
-        self.output_types.append(self.get_quantized_type(tensor))
-      else:
-        self.output_types.append(self.MLIRImporterTypeStr[tensor.dtype])
 
   def init_MLIRImporter(self):
     input_shapes = list()
@@ -171,8 +175,6 @@ class TpuLangConverter(BaseConverter):
     # init importer
     self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name,
                              state=State.TOP_F32, do_declare=False)
-    self.mlir.declare_func(self.input_types, self.output_types)
-
 
   def __create_weight_op(self, tensor:Tensor):
     # constant variable/op
@@ -211,13 +213,51 @@ class TpuLangConverter(BaseConverter):
         "bool": IntegerType.get_signless(1, mlir_ctx),
     }
 
-  def get_quantized_type(self, tensor):
-    # TODO
-    return
+  def get_quantized_type(self, tensor: Tensor):
+    if tensor.is_quantized is False:
+      raise ValueError("do not have quantized type")
+    storage_type = self.type_to_mlir[tensor.dtype]
+    # is_constant = tensor.buffer is not None
+    is_signed = tensor.dtype == "int8" or tensor.dtype == "int16" or tensor.dtype == "int32"
+    storage_min = (
+        quant.QuantizedType.default_minimum_for_integer(  # type: ignore
+            is_signed, storage_type.width
+        )
+    )
+    storage_max = quant.QuantizedType.default_maximum_for_integer(  # type: ignore
+        is_signed, storage_type.width
+    )
+    flags = 1 if is_signed else 0
+    scale = tensor.scale if tensor.scale is not None else 1.0
+    zero_point = tensor.zero_point if tensor.zero_point is not None else 0
+    is_perchannel = isinstance(scale, List) or isinstance(zero_point, List)
+    if is_perchannel:
+      length = len(scale) if isinstance(scale, List) else len(zero_point)
+      return quant.UniformQuantizedPerAxisType.get(  # type: ignore
+          flags,
+          storage_type,
+          self.type_to_mlir["float32"],
+          scale if isinstance(scale, List) else [scale] * length,
+          zero_point if isinstance(zero_point, List) else [zero_point] * length,
+          1,
+          storage_min,
+          storage_max
+      )
+    else:
+      return quant.UniformQuantizedType.get(  # type: ignore
+          flags,
+          storage_type,
+          self.type_to_mlir["float32"],
+          scale,
+          zero_point,
+          storage_min,
+          storage_max
+      )
 
   def __get_tensor_type(self, tensor: Tensor):
-    # TODO
     elem_type = self.type_to_mlir[tensor.dtype]
+    if tensor.is_quantized:
+      elem_type = self.get_quantized_type(tensor)
     if tensor.shape is not None:
       return RankedTensorType.get(tensor.shape, elem_type)
     return UnrankedTensorType.get(elem_type)

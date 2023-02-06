@@ -8,7 +8,7 @@
 from typing import List, Union
 from .MLIRImporter import Top
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator
-
+from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
 
 import numpy as np
@@ -45,8 +45,8 @@ def compile(name: str,
     converter = TpuLangConverter(name=name, graph=TpuLang.graph)
     model_transform(name, converter)
     model_inference(model_name=name, inputs=inputs)
-    # if cmp:
-      # model_validate(model_name=name, refs=refs)
+    if cmp and refs is not None:
+      model_validate(model_name=name, refs=refs)
 
 def model_transform(model_name, converter: TpuLangConverter):
     mlir_file = model_name + '.mlir'
@@ -100,7 +100,7 @@ def Attr(data, data_type: str = 'int64'):
       ...
       return output_shape
     attr = {
-      param_name : ArrayAttr(param, dtype) or Attr(param, dtype)
+      param_name : ArrayAttr(param, param_dtype) or Attr(param, param_dtype)
       ...
     }
     output = Tensor(_shape_inference(), dtype, name)
@@ -114,6 +114,11 @@ def conv_v2(input: Tensor, weight: Tensor, bias:Tensor=None, stride:List[int]=No
     dilation = [1,1] if dilation is None else dilation
     stride = [1,1] if stride is None else stride
     pad = [0,0,0,0] if pad is None else pad
+    o_dtype = "int32"
+    if out_dtype is not None:
+      o_dtype = out_dtype
+    elif input.dtype == "float32" or input.dtype == "float16":
+      o_dtype = input.dtype
     def _shape_inference():
       kh_ext = dilation[0] * (weight.shape[2] - 1) + 1
       kw_ext = dilation[1] * (weight.shape[3] - 1) + 1
@@ -130,10 +135,16 @@ def conv_v2(input: Tensor, weight: Tensor, bias:Tensor=None, stride:List[int]=No
     }
     input.quantization(zero_point=input_zp)
     weight.quantization(zero_point=weight_zp)
-    output = Tensor(_shape_inference(), dtype=out_dtype, name=out_name)
+    output = Tensor(_shape_inference(), dtype=o_dtype, name=out_name)
     inputs = [input, weight, bias]
     TpuLang.insert_op(Top.ConvOp, inputs=inputs, outputs=[output], params=attr)
     return output
+
+@deprecated(version=1.0, reason="This function will be removed soon")
+def conv(input: Tensor, weight:Tensor, bias:Tensor=None, kernel=None, dilation:List[int]=None,
+         pad:List[int]=None, stride:List[int]=None, group:int=1, out_name:str=None):
+    return conv_v2(input=input, weight=weight, bias=bias, stride=stride, dilation=dilation,
+                   pad=pad, group=group, out_dtype=input.dtype, out_name=out_name)
 
 def requant_fp_to_int(tensor_i: Tensor, scale, offset, requant_mode, out_dtype, out_name=None,
                       round_mode='half_away_from_zero'):
