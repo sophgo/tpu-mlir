@@ -50,12 +50,14 @@ class DeployTool:
         self.module = MlirParser(args.mlir)
         self.module_name = self.module.module_name
         self.state = self.module.module_state
+        self.disable_layer_group = args.disable_layer_group
         self.correctness = "0.99,0.90"
         if self.quantize_table:
             self.correctness = "0.99,0.85"
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.in_f32_pre_npz = self.module_name + "_in_f32_pre.npz"
-        self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
+        self.prefix = "{}_{}_{}".format(
+            self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
         if self.quantize == "int8":
             if self.asymmetric:
@@ -90,16 +92,17 @@ class DeployTool:
                 data = np.load(infile)
                 self.inputs[op.name] = data
         if self.fuse_preprocess:
-            #fuse_preprocess should input origin image format
+            # fuse_preprocess should input origin image format
             assert (self.image[0].endswith(('.jpg', '.jpeg', '.png')))
-            #module_parsered = MlirParser(self.mlir_file)
+            # module_parsered = MlirParser(self.mlir_file)
             ppa = preprocess()
             input_shapes = []
             for i in range(0, len(self.image)):
-                print("Load config from {}, get the following preprocess args:".format(self.mlir_file))
+                print("Load config from {}, get the following preprocess args:".format(
+                    self.mlir_file))
                 input_op = self.module.inputs[i].op
                 if i == 0:
-                    #use the first input_op's shape as input_shapes
+                    # use the first input_op's shape as input_shapes
                     input_shapes.append(Operation.shape(input_op))
                 ppa.load_config(input_op)
                 config = {
@@ -115,7 +118,8 @@ class DeployTool:
                 print("Add preprocess, set the following params:")
                 ppb = preprocess()
                 ppb.config(**config)
-                self.pre_inputs[self.module.inputs[i].name + "_raw"] = ppb.run(self.image[i])
+                self.pre_inputs[self.module.inputs[i].name +
+                                "_raw"] = ppb.run(self.image[i])
             np.savez(self.in_f32_pre_npz, **self.pre_inputs)
         np.savez(self.in_f32_npz, **self.inputs)
         if len(self.ref_npz) == 0:
@@ -134,7 +138,8 @@ class DeployTool:
             tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
-        f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
+        f32_blobs_compare(self.tpu_npz, self.ref_npz,
+                          self.tolerance, self.excepts)
 
     def build_model(self):
         mlir_to_model(
@@ -144,6 +149,7 @@ class DeployTool:
             self.dynamic,
             self.quant_input,
             self.quant_output,
+            self.disable_layer_group,
         )
         if self.do_validate:
             tool.validate_model()
@@ -158,25 +164,32 @@ class DeployTool:
             model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts)
+            f32_blobs_compare(self.model_npz, self.ref_npz,
+                              self.correctness, self.excepts)
         else:
-            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts)
+            f32_blobs_compare(self.model_npz, self.tpu_npz,
+                              self.correctness, self.excepts)
 
 
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
     parser = argparse.ArgumentParser()
     # yapf: disable
-    parser.add_argument("--mlir", required=True, help="optimized mlir fp32 model")
-    parser.add_argument("--calibration_table", help="calibration table for int8 quantization")
-    parser.add_argument("--quantize_table", help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8','QDQ'],
+    parser.add_argument("--mlir", required=True,
+                        help="optimized mlir fp32 model")
+    parser.add_argument("--calibration_table",
+                        help="calibration table for int8 quantization")
+    parser.add_argument("--quantize_table",
+                        help="table of OPs that quantized to specific mode")
+    parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8', 'QDQ'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
-    parser.add_argument("--asymmetric", action='store_true', help="do INT8 asymmetric quantization")
+    parser.add_argument("--asymmetric", action='store_true',
+                        help="do INT8 asymmetric quantization")
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--chip", required=True, type=str,
-                        choices=['bm1686', 'bm1684x', 'bm1684', 'cv183x', 'cv182x', 'cv181x'],
+                        choices=['bm1686', 'bm1684x', 'bm1684',
+                                 'cv183x', 'cv182x', 'cv181x'],
                         help="chip platform name")
     parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz file for inference, "
@@ -189,7 +202,8 @@ if __name__ == '__main__':
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
 
-    parser.add_argument("--dynamic", action='store_true',  help="do compile dynamic")
+    parser.add_argument("--dynamic", action='store_true',
+                        help="do compile dynamic")
     parser.add_argument("--customization_format", default=None, type=str,
                         choices=supported_customization_format,
                         help="pixel format of input frame to the cvimodel")
@@ -200,6 +214,8 @@ if __name__ == '__main__':
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of cvimodel")
     parser.add_argument("--aligned_input", action='store_true', default=False,
                         help='if the input frame is width/channel aligned')
+    parser.add_argument("--disable_layer_group", action="store_true", default=False,
+                        help="Decide whether to enable layer group pass")
 
     # yapf: enable
     args = parser.parse_args()
@@ -207,9 +223,9 @@ if __name__ == '__main__':
     if args.aligned_input:
         args.fuse_preprocess = True
     if args.fuse_preprocess:
-        assert(args.chip.find("cv18") >= 0)
-        assert(args.image is not None)
-        assert(args.customization_format is not None)
+        assert (args.chip.find("cv18") >= 0)
+        assert (args.image is not None)
+        assert (args.customization_format is not None)
     # lowering to tpu
     tool.lowering()
     # generate model
