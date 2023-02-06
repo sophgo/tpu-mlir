@@ -40,6 +40,7 @@ public:
   void invoke(bool express_type = true);
   void fake_quant_weight();
   std::shared_ptr<std::vector<float>> invoke_at(std::string name);
+  void invoke_from(const std::string op_name);
   void setTensor(const std::string &name, const void *data, size_t size,
                  bool is_integer = false);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);

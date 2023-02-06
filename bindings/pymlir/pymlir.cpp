@@ -163,6 +163,10 @@ public:
     return getPythonArray(tensor.get(), shape);
   }
 
+  void invoke_from(const std::string name) {
+    interpreter_->invoke_from(name);
+  }
+
 public:
   py::list all_tensor_names;
   py::list input_names;
@@ -196,6 +200,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def("invoke", &py_module::invoke)
       .def("fake_quant_weight", &py_module::fake_quant_weight)
       .def("invoke_at", &py_module::invoke_at, "invote at specified layer")
+      .def("invoke_from", &py_module::invoke_from, "invote from specified layer to the end")
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
