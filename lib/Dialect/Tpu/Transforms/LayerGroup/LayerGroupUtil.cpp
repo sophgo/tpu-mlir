@@ -257,11 +257,15 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     in_si.n.emplace_back(slice_pair_t(idx, slice));
   }
 
-  for (auto &s : out_si.h) {
+  int64_t pre_end_idx = 0;
+  for (int i = 0; i < out_si.h.size(); i++) {
+    auto &s = out_si.h[i];
     auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
-    if (failed(ret) || slice == 0) {
+    bool end_reached = idx + slice == pre_end_idx;
+    if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
       return false;
     }
+    pre_end_idx = idx + slice;
     in_si.h.emplace_back(slice_pair_t(idx, slice));
   }
 
@@ -536,8 +540,8 @@ bool is_eu_align_cv18xx(Value opd) {
         return true;
       }
       return false;
-    } else if(isa<tpu::LayerNormOp>(op)) {
-        return false;
+    } else if (isa<tpu::LayerNormOp>(op)) {
+      return false;
     } else {
       return true; // prelu concat
     }
