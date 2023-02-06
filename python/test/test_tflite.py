@@ -525,7 +525,7 @@ class TFLITE_IR_TESTER(object):
     # Convolution
     # ------------
     def test_Conv2d(self, case_name):
-      """Max Pooling 2D"""
+      """Conv 2D"""
       def _test_convolution(
           input_shape, kernel_shape, filters, padding="valid", data_format="NHWC", int_quant_dtype=tf.int8
       ):
@@ -556,7 +556,7 @@ class TFLITE_IR_TESTER(object):
     # Depthwise Convolution
     # ------------
     def test_Depthwise_Conv2d(self, case_name):
-      """Max Pooling 2D"""
+      """Depthwise 2D"""
       def _test_depthwise_conv2d(
           input_shape, kernel_shape, filters=1, padding="valid", data_format="NHWC", int_quant_dtype=tf.int8
       ):
@@ -587,7 +587,7 @@ class TFLITE_IR_TESTER(object):
     # Average Pooling 2D
     # ------------
     def test_Average_Pool2d(self, case_name):
-      """Max Pooling 2D"""
+      """Average Pooling 2D"""
       def _test_average_pool2d(
           input_shape, pool_size, strides=None, padding="valid", data_format="NHWC", int_quant_dtype=tf.int8
       ):
