@@ -43,10 +43,14 @@ class Operation:
     @staticmethod
     def outputs(op):
         loc = op.location
+        if loc == "loc(unknown)":
+            return None
         loc = str(loc)
         if 'loc(fused[' in loc:
             loc = eval(loc[9:-1])
-            return loc
+        else:
+            loc = [re.search(r'\"(\S+?)\"', loc).group(1)]
+        return loc
 
     @staticmethod
     def type(op):
@@ -107,7 +111,7 @@ class Operation:
 
     @staticmethod
     def shape(op):
-        shape_type = mlir.ir.ShapedType(op.operands[0].type)
+        shape_type = mlir.ir.ShapedType(op.results[0].type)
         shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
         return shape
 
@@ -177,6 +181,14 @@ class MlirParser:
                         op_input_tensor.append(opd)
         return op_input_tensor
 
+    def get_next_op_by_op_name(self, op_name):
+        op_output_tensor = []
+        for op in self.ops:
+            if op_name in op.opds:
+                if op.name in self.get_op_name_list():
+                    op_output_tensor.append(op.name)
+        return op_output_tensor
+
     def get_user_count_by_op_name(self, op_name):
         count = 0
         for op in self.ops:
@@ -199,7 +211,7 @@ class MlirParser:
     def get_op_by_op_name(self, op_name):
         for op in self.ops:
             if op.name == op_name:
-                return op.op
+                return op
         return None
 
     def get_opds_by_op_name(self, op_name):

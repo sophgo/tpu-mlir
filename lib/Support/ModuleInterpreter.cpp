@@ -122,6 +122,7 @@ void ModuleInterpreter::allocate_resources() {
 }
 
 void ModuleInterpreter::fake_quant_weight() {
+  module::init(module);
   llvm::errs() << "start fake_quant_weight\n";
   std::vector<std::string> not_quant_weight_names;
   for (auto func : module.getOps<FuncOp>()) {
@@ -152,6 +153,7 @@ void ModuleInterpreter::fake_quant_weight() {
 }
 
 void ModuleInterpreter::invoke(bool express_type) {
+  module::init(module);
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
       auto name = module::getName(infer_op.getOperation()).str();
@@ -177,9 +179,7 @@ void ModuleInterpreter::invoke(bool express_type) {
 
 std::shared_ptr<std::vector<float>>
 ModuleInterpreter::invoke_at(const std::string op_name) {
-  if (!module::isState(module::State::TOP_F32)) {
-    llvm_unreachable("invoke_at failed!!");
-  }
+  module::init(module);
   if (value_map.find(op_name) == value_map.end()) {
     llvm::errs() << "Can't find op:" << op_name << "\n";
     llvm_unreachable("invoke_at op_name error");
@@ -199,8 +199,25 @@ ModuleInterpreter::invoke_at(const std::string op_name) {
   return getTensor(op_name);
 }
 
+void ModuleInterpreter::invoke_from(const std::string op_name) {
+  module::init(module);
+  bool start_run = false;
+  for (auto func : module.getOps<FuncOp>()) {
+    func.walk([&](InferenceInterface infer_op) {
+      auto name = module::getName(infer_op.getOperation()).str();
+      if (name == op_name) {
+        start_run = true;
+      }
+      if (start_run && failed(infer_op.inference(*inference_map[name]))) {
+        infer_op.dump();
+        llvm_unreachable("invoke failed!!");
+      }
+    });
+  }
+}
 void ModuleInterpreter::setTensor(const std::string &name, const void *data,
                                   size_t size, bool is_integer) {
+  module::init(module);
   auto it = mem_map.find(name);
   if (it == mem_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";

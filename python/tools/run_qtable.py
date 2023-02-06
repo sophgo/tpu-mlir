@@ -12,7 +12,7 @@ import argparse
 import pymlir
 import numpy as np
 from pathlib import Path
-from calibration.mix_precision import MixPrecSearcher
+from calibration.mix_precision import MixPrecSearcher, MixPrecSearcher2
 
 if __name__ == '__main__':
     print("SOPHGO Toolchain {}".format(pymlir.module().version))
@@ -32,7 +32,12 @@ if __name__ == '__main__':
                         help="output all loss of layers if each layer is quantized to f16")
     parser.add_argument('-o', '--quantize_table', required=True,
                         help='output searched bf16 layer table')
+    parser.add_argument('--debug_cmd', type=str, default='', help='debug cmd')
+
     # yapf: enable
     args = parser.parse_args()
-    searcher = MixPrecSearcher(args)
+    if 'use_old_mix' in args.debug_cmd:
+        searcher = MixPrecSearcher(args)
+    else:
+        searcher = MixPrecSearcher2(args)
     searcher.run()
