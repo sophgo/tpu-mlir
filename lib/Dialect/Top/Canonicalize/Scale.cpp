@@ -16,7 +16,6 @@
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
 
-
 struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
   using OpRewritePattern::OpRewritePattern;
   TopMultiScaleMergeToOne(MLIRContext *context, PatternBenefit benefit = 10)
@@ -30,8 +29,10 @@ struct TopMultiScaleMergeToOne : public OpRewritePattern<ScaleOp> {
     }
 
     auto next_scale_op = cast<ScaleOp>(nextOp);
-    auto next_scale = dyn_cast<WeightOp>(next_scale_op.getScale().getDefiningOp());
-    auto next_bias = dyn_cast<WeightOp>(next_scale_op.getBias().getDefiningOp());
+    auto next_scale =
+        dyn_cast<WeightOp>(next_scale_op.getScale().getDefiningOp());
+    auto next_bias =
+        dyn_cast<WeightOp>(next_scale_op.getBias().getDefiningOp());
     auto next_scale_f32 = next_scale.read<float>();
     auto next_bias_f32 = next_bias.read<float>();
 
@@ -83,7 +84,8 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
     auto cur_scale_f32 = cur_scale_op.read<float>();
     auto cur_bias_f32 = cur_bias_op.read<float>();
 
-    auto conv_weight_op = dyn_cast<WeightOp>(conv_op.getFilter().getDefiningOp());
+    auto conv_weight_op =
+        dyn_cast<WeightOp>(conv_op.getFilter().getDefiningOp());
     auto conv_bias_op = dyn_cast<WeightOp>(conv_op.getBias().getDefiningOp());
 
     int64_t oc, ic, kh, kw;
@@ -134,6 +136,62 @@ struct TopScaleMergeToConv : public OpRewritePattern<ScaleOp> {
   }
 };
 
+struct ConstbinaryMergeToTopScale : public OpRewritePattern<ScaleOp> {
+  using OpRewritePattern::OpRewritePattern;
+  ConstbinaryMergeToTopScale(MLIRContext *context, PatternBenefit benefit = 6)
+      : OpRewritePattern<ScaleOp>(context, benefit) {}
+
+  LogicalResult matchAndRewrite(ScaleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto formerOp = op->getOperand(0).getDefiningOp();
+
+    if (!isa<MulConstOp, AddConstOp>(formerOp)) {
+      return failure();
+    }
+
+    auto scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
+    auto bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
+    auto scale_f32 = scale.read<float>();
+    auto bias_f32 = bias.read<float>();
+
+    int elem_num = scale.getType().cast<RankedTensorType>().getNumElements();
+    std::vector<float> scale_v(elem_num);
+    std::vector<float> bias_v(elem_num);
+
+    if (isa<MulConstOp>(formerOp)) {
+      auto mul_const_op = cast<MulConstOp>(formerOp);
+      float value = mul_const_op.getConstVal().convertToFloat();
+      for (int i = 0; i < elem_num; ++i) {
+        scale_v[i] = scale_f32->at(i) * value;
+      }
+      auto scale_type =
+          RankedTensorType::get({elem_num}, rewriter.getF32Type());
+      auto new_scale = WeightOp::create(op, "constbinary_merged_to_scale",
+                                        scale_v, scale_type);
+      op->setOperand(1, new_scale);
+      op->setOperand(2, bias);
+      rewriter.replaceOp(mul_const_op, {op});
+      return success();
+    }
+
+    if (isa<AddConstOp>(formerOp)) {
+      auto add_const_op = cast<AddConstOp>(formerOp);
+      float value = add_const_op.getConstVal().convertToFloat();
+      for (int i = 0; i < elem_num; ++i) {
+        bias_v[i] += scale_f32->at(i) * value;
+      }
+      auto bias_type = RankedTensorType::get({elem_num}, rewriter.getF32Type());
+      auto new_bias =
+          WeightOp::create(op, "constbinary_merged_to_bias", bias_v, bias_type);
+      op->setOperand(1, scale);
+      op->setOperand(2, new_bias);
+      rewriter.replaceOp(add_const_op, {op});
+      return success();
+    }
+    return failure();
+  }
+};
+
 struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
   using OpRewritePattern::OpRewritePattern;
   TopScaleMergeToBatchNorm(MLIRContext *context, PatternBenefit benefit = 9)
@@ -156,7 +214,8 @@ struct TopScaleMergeToBatchNorm : public OpRewritePattern<ScaleOp> {
     auto cur_bias_f32 = cur_bias_op.read<float>();
 
     auto bn_mean_op = dyn_cast<WeightOp>(bn_op.getMean().getDefiningOp());
-    auto bn_variance_op = dyn_cast<WeightOp>(bn_op.getVariance().getDefiningOp());
+    auto bn_variance_op =
+        dyn_cast<WeightOp>(bn_op.getVariance().getDefiningOp());
     auto bn_mean_f32 = bn_mean_op.read<float>();
     auto bn_variance_f32 = bn_variance_op.read<float>();
 
@@ -285,5 +344,6 @@ struct ScaleShapeAlign : public OpRewritePattern<ScaleOp> {
 void ScaleOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
   results.insert<TopScaleToDwConv, TopScaleMergeToConv, TopMultiScaleMergeToOne,
-                 TopScaleMergeToBatchNorm, ScaleShapeAlign>(context);
+                 TopScaleMergeToBatchNorm, ScaleShapeAlign,
+                 ConstbinaryMergeToTopScale>(context);
 }
