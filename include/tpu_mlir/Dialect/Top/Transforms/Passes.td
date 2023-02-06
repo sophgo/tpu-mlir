@@ -49,6 +49,10 @@ def MarkFLOPs : Pass<"mark-FLOPs", "ModuleOp"> {
 def SaveWeight : Pass<"save-weight", "ModuleOp"> {
   let summary = "save weight by tpuc-opt";
   let constructor = "createSaveWeightPass()";
+  let options = [
+    Option<"file_name", "file", "std::string", /*default=*/"",
+           "specified weight file path">,
+  ];
   let dependentDialects = ["TopDialect"];
 }
 

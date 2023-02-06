@@ -42,8 +42,12 @@ public:
         }
       });
     }
-    bool same_name;
-    auto file_name = module::genWeightFileName(same_name);
+    bool same_name = true;
+    std::string file_name;
+    if (this->file_name == "")
+      file_name = module::genWeightFileName(same_name);
+    else
+      file_name = this->file_name;
     // weight remove unused in npz
     auto dialect = mOp->getContext()->getLoadedDialect("top");
     auto top_dialect = llvm::cast<top::TopDialect>(dialect);
