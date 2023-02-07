@@ -122,14 +122,16 @@ def cosine_sim(x, y):
 
 
 class SimpleTuner:
-    def __init__(self, args, ds: DataSelector, ppa_list):
+    def __init__(self, args, ds: DataSelector, ppa_list, abs_max_dict):
         self.args = copy.deepcopy(args)
         self.start_time = time.time()
+        self.abs_max_dict = abs_max_dict
         self.args.tune_num = min(len(ds.data_list), args.tune_num)
         self.tuned_op_list = []
         self.data_list = ds.data_list[:self.args.tune_num]
         self.ppa_list = ppa_list
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
+        print('debug_cmd:',self.debug_cmd)
         if 'input_calibration_table' in self.debug_cmd:
             self.threshold_table = CalibrationTable(self.debug_cmd['input_calibration_table'] +
                                                     ".1")
@@ -356,13 +358,17 @@ class SimpleTuner:
     def find_better_threshold(self, evaled_op, tuned_op, node_label):
         prev_distance = -1
         threshold = self.initial_threshold[tuned_op][0]
-        abs_max = max(map(abs, self.initial_threshold[tuned_op][1:]))
+        # abs_max = max(map(abs, self.initial_threshold[tuned_op][1:]))
+        abs_max = self.abs_max_dict[tuned_op]
         op_no = self.module.all_tensor_names.index(tuned_op)
         self.print_dbg('>>>tuned_op_idx:', op_no, ', tuned_op:', tuned_op, ', threshold:',
                        threshold, 'abs_max:', abs_max, ', evaled_op:', evaled_op)
         if threshold > abs_max:
             self.print_dbg('waring, threshold > abs_max, do not tune the threshold')
-        cur_threshold = threshold
+        th_min = threshold
+        if 'find_lower_th' in self.debug_cmd:
+            th_min = threshold/3
+        #print(f'tuned_op:{tuned_op}, th_min:{th_min}, abs_max:{abs_max}')
         best_threshold = threshold
         best_cos_sim = 0
         init_cos_sim = 0
@@ -376,45 +382,49 @@ class SimpleTuner:
         min_tuned_diff = 0.01
         if 'min_tuned_diff' in self.debug_cmd:
             min_tuned_diff = self.debug_cmd['min_tuned_diff']
-        diff = abs(abs_max - cur_threshold)
-        step = (abs_max - cur_threshold) / self.tune_steps
+        diff = abs(abs_max - th_min)
+        step = (abs_max - th_min) / self.tune_steps
+        ranges = range(self.tune_steps + 1)
         if step > 0 and diff > min_tuned_diff:
-            for i in range(self.tune_steps + 1):
-                cur_threshold = threshold + step * i
-                cur_distance, cur_cos_sim = self.calc_distance(evaled_op, cur_threshold)
-                if cur_distance is None and cur_cos_sim is None:
-                    return False
-                if prev_distance == -1:
-                    self.print_dbg("### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, threshold:"
-                                   "{:5f}, distance: {}".format(i, op_no, tuned_op, cur_threshold,
-                                                                cur_distance))
-                    prev_distance = cur_distance
-                    prev_threshold = cur_threshold
-                    init_cos_sim = cur_cos_sim
-                    continue
-                elif cur_distance < prev_distance:
-                    self.print_dbg(
-                        "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
-                        "{:5f} -> {:5f}, distance: {} -> {}".format(i, op_no, tuned_op,
-                                                                    prev_threshold, cur_threshold,
-                                                                    prev_distance, cur_distance))
-                    best_threshold = cur_threshold
-                else:
-                    self.print_dbg(
-                        "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, not a better threshold:"
-                        "{:5f} -> {:5f}, distance: {} -> {}".format(i, op_no, tuned_op,
-                                                                    prev_threshold, cur_threshold,
-                                                                    prev_distance, cur_distance))
-                if cur_cos_sim > best_cos_sim:
-                    best_cos_sim = cur_cos_sim
-                prev_distance = cur_distance
-                prev_threshold = cur_threshold
+            for n in range(2):
+                if n == 1 and 'find_lower_th' in self.debug_cmd:
+                    th_min = best_threshold - step
+                    th_max = best_threshold + step
+                    diff = abs(th_max - th_min)
+                    times = self.tune_steps//2
+                    step = (th_max - th_min) / times
+                    ranges = range(times+1)[1:-1]
+                    #print(f'find_lower_th enable,tuned_op:{tuned_op},best_threshold:{best_threshold},step:{step},th_min:{th_min},th_max:{th_max}, times:{times}')
+                for i in ranges:
+                    cur_threshold = th_min + step * i
+                    cur_distance, cur_cos_sim = self.calc_distance(evaled_op, cur_threshold)
+                    if cur_distance is None and cur_cos_sim is None:
+                        return False
+                    if prev_distance == -1:
+                        self.print_dbg("### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, threshold:"
+                                    "{:5f}, distance: {}".format(i, op_no, tuned_op, cur_threshold,
+                                                                    cur_distance))
+                        prev_distance = cur_distance
+                        init_cos_sim = cur_cos_sim
+                        continue
+                    elif cur_distance < prev_distance: # and cur_cos_sim > best_cos_sim:
+                        # self.print_dbg(
+                        #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, find a better threshold:"
+                        #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
+                        prev_distance = cur_distance
+                        best_threshold = cur_threshold
+                        # print(f'tuned_op:{tuned_op}, find best_threshold:{best_threshold}')
+                        best_cos_sim = cur_cos_sim
+                    # else:
+                        # self.print_dbg(
+                        #     "### tuning i:{}, tuned_op_idx:{}, tuned_op:{}, not a better threshold:"
+                        #     "{:5f}".format(i, op_no, tuned_op,cur_threshold))
 
         for idx in range(self.args.tune_num):
             if 'not_use_fp32_tensor_as_ref' in self.debug_cmd:
                 self.clear_input_tensor(idx, tuned_op, node_label)
         if step > 0:
-            if threshold < best_threshold:
+            if threshold != best_threshold:
                 node_label[
                     0] += '\ntune, find:{} th:{:.4f}->{:.4f}, abs_max:{:.4f}, cos_sim:{:.3f}->{:.3f}'.format(
                         tuned_op, threshold, best_threshold, abs_max, init_cos_sim, best_cos_sim)
@@ -501,8 +511,9 @@ class SimpleTuner:
             if self.dot is not None:
                 self.dot.node(evaled_op, node_label[0], shape='box')
         pbar.close()
+        print('auto tune end, run time:{}'.format(time.time() - self.start_time))
 
-        if self.dot is not None and 'print_debug_info' in self.debug_cmd:
+        if 'print_debug_info' in self.debug_cmd:
             index_list = []
             cos_tensor = []
             for i, layer in enumerate(self.layer_cos_sim):
@@ -511,7 +522,7 @@ class SimpleTuner:
             index_list = np.array(index_list)
             cos_tensor = np.array(cos_tensor)
             save_tensor_subplot(cos_tensor, index_list, 'layer_cos_sim', 'layer_cos_sim')
-            print('auto tune end, run time:{}'.format(time.time() - self.start_time))
+        if self.dot is not None:
             self.dot.render(filename='auto_tune_result', directory='./', view=False)
             os.system('dot -Tsvg ./auto_tune_result -o ./auto_tune_result.svg')
         tuned_th_dict = {
@@ -679,6 +690,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         histogram_width_map = {}
         self.activations_statistics = {}
         all_tensors = self.module.all_tensor_names
+        step = (99.999999 - 99.99) / len(all_tensors)
         pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
         for i, evaled_op in enumerate(all_tensors):
             pbar.set_description("activation_collect_and_calc_th for op: {}".format(evaled_op))
@@ -689,6 +701,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             min_value = inf
             max_value = -inf
             abs_value = None
+            all_data = []
             for idx in range(self.args.input_num):
                 activation = self.get_ref_tensor(idx, evaled_op)
                 if 'use_torch_observer_for_cali' in self.debug_cmd:
@@ -698,6 +711,16 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     min_value = min(np.min(activation), min_value)
                     max_value = max(np.max(activation), max_value)
                     abs_value = max(abs(min_value), abs(max_value))
+                    if 'use_percetile9999' in self.debug_cmd:
+                        all_data.extend(activation.flatten().tolist())
+            if 'use_percetile9999' in self.debug_cmd:
+                #t0 = time.time()
+                all_data = np.abs(np.array(all_data))
+                abs_value2 = np.percentile(all_data, 99.99+i*step)
+                #print('percentile calc:', time.time() - t0, ",rete:", 99.99+i*step)
+                #if abs_value2 < abs_value:
+                #    print(f'percetile9999 valid, rate:{abs_value2/abs_value}')
+                abs_value = abs_value2
             self.activations_statistics[evaled_op] = (min_value, max_value, abs_value)
 
             if 'use_torch_observer_for_cali' not in self.debug_cmd:
@@ -772,7 +795,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
             return
 
         # setp 4: tune to get better threshold of each layers.
-        self.tunner = SimpleTuner(self.args, self.ds, self.ppa_list)
+        self.tunner = SimpleTuner(self.args, self.ds, self.ppa_list, thresholds_map['abs_max'])
         thresholds = self.tunner.run()
 
         # step 5: dump threshold table after tuning
