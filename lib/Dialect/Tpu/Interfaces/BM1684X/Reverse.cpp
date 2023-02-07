@@ -7,26 +7,41 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 using namespace tpu_mlir::backend;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+  int dims;
+  int axis;
+} reverse_global_param_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 // =========================================
 // GlobalGenInterface
 // =========================================
 
 void tpu::ReverseOp::codegen_global_bm1684x() {
-  llvm_unreachable("Not Implemented");
+  auto op = getOperation();
+  reverse_global_param_t param{0};
+  param.dims = module::getShape(getInput()).size();
+  param.axis = getAxis();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  BM168x::call_global_func("backend_api_reverse_global", &param, sizeof(param),
+                           input_spec->data(), output_spec->data());
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ReverseOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::ReverseOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

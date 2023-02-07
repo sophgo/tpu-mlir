@@ -167,6 +167,7 @@ class ONNX_IR_TESTER(object):
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
             "ReduceTranspose": self.test_ReduceTranspose,
+            "SliceToReverse": self.test_SliceToReverse,
         }
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -3147,6 +3148,28 @@ class ONNX_IR_TESTER(object):
                                       [output])
         self.onnx_and_test(graph_def, input_data=input_data)
 
+    def test_SliceToReverse(self, case_name):
+        input_shape = [100, 1, 3]
+        output_shape = [100, 1, 3]
+        starts_data = np.array([-1], dtype=np.int64)
+        ends_data = np.array([-4], dtype=np.int64)
+        axes_data = np.array([2], dtype=np.int64)
+        steps_data = np.array([-1], dtype=np.int64)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        starts = helper.make_tensor('starts', TensorProto.INT64, [1], starts_data)
+        ends = helper.make_tensor('ends', TensorProto.INT64, [1], ends_data)
+        axes = helper.make_tensor('axes', TensorProto.INT64, [1], axes_data)
+        steps = helper.make_tensor('steps', TensorProto.INT64, [1], steps_data)
+        slice_def = helper.make_node(
+            'Slice',
+            inputs=['input', 'starts', 'ends', 'axes', 'steps'],
+            outputs=['output'],
+        )
+        graph_def = helper.make_graph([slice_def],
+                                      case_name, [input], [output],
+                                      initializer=[starts, ends, axes, steps])
+        self.onnx_and_test(graph_def)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:
