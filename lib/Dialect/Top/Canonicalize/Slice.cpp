@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -35,15 +35,15 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
 
     std::vector<int64_t> new_offset(num_dims, 0);
     std::vector<int64_t> new_steps(num_dims, 1);
-    for (int i =0; i < num_dims; i++) {
-        auto cur_off = cur_offset->at(i);
-        auto cur_s = cur_steps->at(i);
-        assert(cur_s > 0);
-        auto in_off = in_offset->at(i);
-        auto in_s = in_steps->at(i);
-        assert(in_s > 0);
-        new_offset[i] = in_off + cur_off * in_s;
-        new_steps[i] = in_s * cur_s;
+    for (int i = 0; i < num_dims; i++) {
+      auto cur_off = cur_offset->at(i);
+      auto cur_s = cur_steps->at(i);
+      assert(cur_s > 0);
+      auto in_off = in_offset->at(i);
+      auto in_s = in_steps->at(i);
+      assert(in_s > 0);
+      new_offset[i] = in_off + cur_off * in_s;
+      new_steps[i] = in_s * cur_s;
     }
     op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
     op->setAttr("steps", rewriter.getI64ArrayAttr(new_steps));
@@ -61,10 +61,15 @@ struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
 
     auto in_shape = module::getShape(op.getInput());
     auto out_shape = module::getShape(op.getOutput());
+    auto steps = module::getI64Array(op.getSteps());
+    for (int i = 0; i < in_shape.size(); ++i) {
+      if (steps->at(i) == -1)
+        return failure();
+    }
     if (in_shape.size() != out_shape.size()) {
       return failure();
     }
-    for(auto it: llvm::zip(in_shape, out_shape)) {
+    for (auto it : llvm::zip(in_shape, out_shape)) {
       if (std::get<0>(it) != std::get<1>(it)) {
         return failure();
       }
@@ -74,7 +79,37 @@ struct NoUseSlicePattern : public OpRewritePattern<SliceOp> {
   }
 };
 
+struct TopSliceToReverse : public OpRewritePattern<SliceOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(SliceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto in_shape = module::getShape(op.getInput());
+    auto output_shape = module::getShape(op.getOutput());
+    auto in_dims = in_shape.size();
+    auto Steps = op.getSteps();
+    int reverse_count = 0;
+    int reverse_dim = 0;
+    auto steps = module::getI64Array(op.getSteps());
+    for (int i = 0; i < in_dims; i++) {
+      if (steps->at(i) == -1 && in_shape[i] == output_shape[i]) {
+        reverse_count++;
+        reverse_dim = i;
+      }
+    }
+    if (reverse_count != 1)
+      return failure();
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(reverse_dim)));
+    rewriter.replaceOpWithNewOp<ReverseOp>(op, op.getResult().getType(),
+                                           op.getInput(), attrs);
+    return success();
+  }
+};
+
 void SliceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                           MLIRContext *context) {
-  results.insert<NoUseSlicePattern, MergeSlicePattern>(context);
+  results.insert<NoUseSlicePattern, MergeSlicePattern, TopSliceToReverse>(
+      context);
 }

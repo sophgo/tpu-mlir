@@ -1026,7 +1026,6 @@ class OnnxConverter(BaseConverter):
             steps = [1] * len(axes)
         assert (len(starts) == len(ends))
         assert (len(axes) == len(ends))
-
         if self.isWeight(onnx_node.inputs[0]):
             tensor_data = self.getWeight(onnx_node.inputs[0])
             for start, end, axis, step in zip(starts, ends, axes, steps):
@@ -1043,16 +1042,17 @@ class OnnxConverter(BaseConverter):
         slice_step = [1] * num_dims
         for start, end, axis, step in zip(starts, ends, axes, steps):
             start, end, axis, step = int(start), int(end), int(axis), int(step)
-            assert (step > 0)
             if axis < 0:
                 axis = axis + num_dims
             if end < 0:
                 end = end + input_shape[axis]
             if start < 0:
                 start = start + input_shape[axis]
-            if end > input_shape[axis] or end < 0:
+            if end > input_shape[axis]:
                 end = input_shape[axis]
-            slice_shape[axis] = (end - start + step - 1) // step
+            elif end < 0:
+                end = -1
+            slice_shape[axis] = (abs(end - start) + abs(step) - 1) // abs(step)
             slice_offset[axis] = start
             slice_step[axis] = step
         assert (slice_shape == output_shape)
