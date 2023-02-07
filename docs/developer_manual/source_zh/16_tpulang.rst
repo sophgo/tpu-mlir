@@ -5,7 +5,7 @@ TpuLang接口
 
 主要工作
 -----------
-TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组建用户自己的网络，将模型转换为 Top 层(芯片无关层)mlir 模型
+TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组建用户自己的网络，将模型转换为 Top 层(芯片无关层) mlir 模型
 (不包含 Canonicalize 部分, 因此生成的文件名为“\*_origin.mlir”)。这个过程会根据输入的接口函数逐
 一创建并添加算子(Op), 最终生成 mlir 文件与保存权重的 npz 文件。
 
@@ -26,7 +26,7 @@ TpuLang提供了mlir对外的接口函数。用户通过Tpulang可以直接组�
 
 3. 设置模型的输入输出tensor。得到全部模型信息。
 
-4. 初始化TpuLangConverter(load_onnx_model + initMLIRImporter)
+4. 初始化TpuLangConverter(initMLIRImporter)
 
 5. generate_mlir
 
@@ -45,6 +45,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
 .. _tpulang_convert:
 .. figure:: ../assets/tpulang_convert.png
+   :align: center
 
    TpuLang转换流程
 
@@ -52,19 +53,19 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 补充说明:
   * op 接口需要:
 
-     1. op的输入tensor(即前一个算子的输出tensor或graph输入tensor，coeff)；
+     - op的输入tensor(即前一个算子的输出tensor或graph输入tensor，coeff)；
 
-     2. 根据接口提取的参数，推理获取 output_shape(即需要进行shape_inference)；
+     - 根据接口提取的参数，推理获取 output_shape(即需要进行shape_inference)；
 
-     3. 从接口中提取的 attrs。Attrs 会通过 MLIRImporter 设定为与 TopOps.td 定义一一对应的属性
+     - 从接口中提取的 attrs。Attrs 会通过 MLIRImporter 设定为与 TopOps.td 定义一一对应的属性
 
-     4. 如果接口中包括量化参数(scale，zero_point)，则该参数对应的tensor需要设置(或检查)量化参数.
+     - 如果接口中包括量化参数(scale，zero_point)，则该参数对应的tensor需要设置(或检查)量化参数.
 
-     5. 返回该op的输出tensor(tensors)
+     - 返回该op的输出tensor(tensors)
 
   * 在所有算子都插入graph，并设置graph的input/output tensors之后，才会启动转换到 mlir 文本的工作。该部分由TpuLangConverter来实现。
 
-  * TpuLangConverter转换流程与onnx前端转换流程相同，具体参考(:doc:`../05_frontend`).
+  * TpuLang Converter转换流程与onnx前端转换流程相同，具体参考(:doc:`../05_frontend`).
 
 
 算子转换样例
@@ -113,7 +114,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
    * groups：int型，表示卷积层的组数。若ic=oc=groups时，则卷积为depthwise conv
    * input_zp：List[int]型或int型，表示输入偏移。取None则表示0，取List时要求长度为ic。
    * weight_zp：List[int]型或int型，表示卷积核偏移。取None则表示0，取List时要求长度为ic，其中ic表示输入的Channel数。
-   * out_dtype：string类型或None，表示输入Tensor的类型，取None表示为int32。取值范围：‘/'int32'/'uint32
+   * out_dtype：string类型或None，表示输出Tensor的类型。输入tensor类型为float16/float32时，取None表示输出tensor类型与输入一致，否则取None表示为int32。取值范围：/int32/uint32/float32/float16
    * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 
@@ -151,6 +152,17 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
       - attributes，将输入参数打包成 (:ref:`convop_def`) 定义的attributes
 
+         .. code-block:: python
+
+            attr = {
+               "kernel_shape": ArrayAttr(weight.shape[2:]),
+               "strides": ArrayAttr(stride),
+               "dilations": ArrayAttr(dilation),
+               "pads": ArrayAttr(pad),
+               "do_relu": Attr(False, "bool"),
+               "group": Attr(group)
+            }
+
       - 插入conv op，将Top.ConvOp插入到Graph中。
 
       - 返回输出tensor
@@ -174,11 +186,11 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
    * 调用Operation.create 来创建 Top.ConvOp, 而 create 函数需要的参数有:
 
-      1) 输入 op: 从接口定义可知, Conv 算子的 inputs 一共包含了 input, weight 与 bias, inputOp 已被创建好, weight 与 bias 的 op 则通过 getWeightOp()创建。
+      - 输入 op: 从接口定义可知, Conv 算子的 inputs 一共包含了 input, weight 与 bias, inputOp 已被创建好, weight 与 bias 的 op 则通过 getWeightOp()创建。
 
-      2) output_shape: 利用 Operator 中存储的输出 tensor 中获取其 shape。
+      - output_shape: 利用 Operator 中存储的输出 tensor 中获取其 shape。
 
-      3) Attributes: 从 Operator 中获取 attributes，并将attributes转换为MLIRImporter识别的Attributes
+      - Attributes: 从 Operator 中获取 attributes，并将attributes转换为MLIRImporter识别的Attributes
 
       Top.ConvOp 创建后会被插入到 mlir 文本中
 
