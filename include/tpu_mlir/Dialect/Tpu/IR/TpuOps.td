@@ -429,6 +429,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
   );
 
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizeMethod = 1;
 }
 
 def Tpu_SubOp: Tpu_Op<"Sub",
