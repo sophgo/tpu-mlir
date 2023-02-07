@@ -1,10 +1,9 @@
 //===----------------------------------------------------------------------===//
 //
-// Copyright (c) 2020-2030 by Sophgo Technologies Inc. All rights reserved.
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
 //
-// Licensed under the Apache License v2.0.
-// See http://www.apache.org/licenses/LICENSE-2.0 for license information.
-// SPDX-License-Identifier: Apache-2.0
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
 //
 //===----------------------------------------------------------------------===//
 
@@ -106,4 +105,3 @@ void tpu::PermuteOp::codegen_global_cv18xx( int64_t layer_id) {
           order_4[0], order_4[1], order_4[2], order_4[3], CVK_FMT_BF16);
   }
 }
-
