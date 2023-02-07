@@ -62,3 +62,12 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
+                                            PatternRewriter &rewriter) {
+  if (std::abs(op.getConstVal().convertToDouble()) < 1e-7) {
+    op.getResult().replaceAllUsesWith(op.getInput());
+    return success();
+  }
+  return failure();
+};
