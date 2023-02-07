@@ -2,6 +2,8 @@
 
 # TPU-MLIR
 
+For Chinese version: [README_cn.md](https://github.com/sophgo/tpu-mlir/blob/master/README_cn.md).
+
 TPU-MLIR is an open-source machine-learning compiler based on MLIR for TPU. This project provides a complete toolchain, which can convert pre-trained neural networks from different frameworks into binary files `bmodel` that can be efficiently operated on TPUs.
 
 TPU-MLIR is originally developed by SOPHGO. This company is committed to becoming the world's leading general computing power provider. SOPHGO has inherited the technology, patents, products and customers of BITMAIN in the AI field for many years and focused on the R&D, promotion and application of artificial intelligence chips and related products. It has two major brands: SOPHON and CVITEK. With the self-developed chips as the core, SOPHGO has created a matrix of computing power products, which covers the whole scene of "cloud, edge and terminal" and provides computing power products and overall solutions for urban brains, intelligent computing centers, intelligent security, intelligent transportation, safety production, industrial quality inspection, intelligent terminals and others.
@@ -63,7 +65,7 @@ Introduce the usage of `TPU-MLIR` by a simple example of compiling `yolov5s.onnx
 
 The model comes from the official website of yolov5: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>.
 
-It has been placed in project path `model/yolov5s.onnx`.
+It has been placed in project path `regression/model/yolov5s.onnx`.
 
 ## Preparation
 
