@@ -57,7 +57,8 @@ def mlir_lowering(top_mlir: str,
             cali_table, asymmetric)
         cmd.extend([cali_param])
     if fuse_preprocess:
-        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(mode.upper() ,customization_format)
+        fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
+            mode.upper(), customization_format)
         cmd.extend([fuse_pre_param])
     qtable = ""
     if quantize_table:
@@ -80,7 +81,8 @@ def mlir_to_model(tpu_mlir: str,
                   final_mlir: str,
                   dynamic: bool = False,
                   quant_input: bool = False,
-                  quant_output: bool = False):
+                  quant_output: bool = False,
+                  disable_layer_group: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
@@ -90,6 +92,8 @@ def mlir_to_model(tpu_mlir: str,
         # TODO: cv18xx support later
         lg_param = '--layer-group="opt=1"'
         convert_relu_limit = "--convert-relu-limit"
+    if disable_layer_group:
+        lg_param = ''
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -126,7 +130,8 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     try:
-        _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+        _os_system(["mv compiler_profile_0.txt",
+                   model + ".compiler_profile_0.txt"])
     except RuntimeError:
         pass
 
