@@ -1,3 +1,12 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/InternalOptimizer.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupMethod.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
@@ -5,7 +14,6 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepCombine.h"
 
 // static bool use_partial_coeff_reload = true;
-
 
 namespace tpu_mlir {
 namespace tpu {
