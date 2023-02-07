@@ -70,7 +70,7 @@ popd
 
 该模型来在yolov5的官网: <https://github.com/ultralytics/yolov5/releases/download/v6.0/yolov5s.onnx>。
 
-在本工程已经放在`model/yolov5s.onnx`。
+在本工程已经放在`regression/model/yolov5s.onnx`。
 
 ## 准备模型和数据
 
