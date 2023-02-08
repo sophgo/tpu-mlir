@@ -20,6 +20,48 @@ using namespace mlir;
 using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
+
+class ConcatFusePattern : public OpRewritePattern<tpu::ConcatOp> {
+public:
+  using OpRewritePattern<tpu::ConcatOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::ConcatOp op,
+                                PatternRewriter &rewriter) const override {
+    if (op.getOnlyMerge()) {
+      return failure();
+    }
+    if (op.getDoRelu()) {
+      return failure();
+    }
+    auto shape = module::getShape(op.getOutput());
+    int outer_dim = std::accumulate(shape.begin(), shape.begin() + op.getAxis(),
+                                    1, std::multiplies<int64_t>());
+    if (outer_dim != 1) {
+      return failure();
+    }
+    for (auto in : op.getInputs()) {
+      if (module::isWeight(in)) {
+        return failure();
+      }
+      if (in.hasOneUse() == false) {
+        return failure();
+      }
+      auto in_op = in.getDefiningOp();
+      if (isa<tpu::ReshapeOp, tpu::ConcatOp>(in_op)) {
+        return failure();
+      }
+      if (auto sliceOp = dyn_cast<tpu::SliceOp>(in_op)) {
+        auto p = sliceOp.parseParam();
+        if (p.fusible) {
+          return failure();
+        }
+      }
+    }
+    op.setOnlyMerge(true);
+    return success();
+  }
+};
+
 class AddressAssignPass : public AddressAssignBase<AddressAssignPass> {
 public:
   AddressAssignPass() {}
@@ -35,6 +77,7 @@ public:
     } else {
       RewritePatternSet patterns(mOp.getContext());
       bm168x::populateGlobalBufferPatterns(&patterns);
+      patterns.add<ConcatFusePattern>(patterns.getContext());
       applyPatternsAndFoldGreedily(mOp, std::move(patterns));
       BMAddressAssign addr_assign;
       addr_assign.assign(mOp, reuse_addr);
