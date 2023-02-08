@@ -103,11 +103,19 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   for (auto v_info : inplace_ops) {
     Operation *op = (Operation *)v_info.op;
     if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
-      auto addr = module::getAddress(concatOp.getInputs()[0]);
+      auto in0 = concatOp.getInputs()[0];
+      if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
+        in0 = rop.getInput();
+      }
+      int64_t addr = module::getAddress(in0);
       module::setAddress(concatOp.getOutput(), addr);
-      int64_t offset = module::getBytes(concatOp.getInputs()[0]);
+      int64_t offset = module::getBytes(in0);
       for (uint32_t i = 1; i < concatOp.getInputs().size(); i++) {
         auto input = concatOp.getInputs()[i];
+        if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
+          module::setAddress(input, addr + offset);
+          input = rop.getInput();
+        }
         module::setAddress(input, addr + offset);
         offset += module::getBytes(input);
       }
@@ -201,6 +209,13 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       for (int i = 0; i < op->getNumOperands(); ++i) {
         auto opd = module::getOperand(op, i);
         auto preOp = opd.getDefiningOp();
+        if (auto rop = dyn_cast<tpu::ReshapeOp>(preOp)) {
+          ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
+          liveRange[pre_v].end = liveRange[v].end;
+          liveRange[pre_v].tensor_size = 0;
+          opd = rop.getInput();
+          preOp = opd.getDefiningOp();
+        }
         ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
         liveRange[pre_v].end = liveRange[v].end;
         if (i == 0) {
