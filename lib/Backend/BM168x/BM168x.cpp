@@ -147,7 +147,7 @@ double BM168x::getFmtBytes(DATA_TYPE_T data_type) {
   return (double)data_byte_size;
 }
 
-tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
+tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   tensor_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   if (module::isOpInGroup(v.getDefiningOp())) {
@@ -158,31 +158,44 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v) {
   }
   spec.dtype = getDataType(v);
   auto shape = module::getShape(v);
-  spec.dims = shape.size();
-  for (int i = 0; i < spec.dims; i++) {
-    spec.shape[i] = shape[i];
+  if (group_type == GROUP_NORMAL) {
+    spec.dims = shape.size();
+    for (int i = 0; i < spec.dims; i++) {
+      spec.shape[i] = shape[i];
+    }
+  } else if (group_type == GROUP_SMALL_C) {
+    int64_t n, c, h, w;
+    module::getNCHW(v, n, c, h, w, group_type);
+    spec.dims = 4;
+    if (v.hasOneUse() && isa<tpu::MatMulOp>(*v.getUsers().begin())) {
+      spec.dims = 3;
+    }
+    spec.shape[0] = n;
+    spec.shape[1] = c;
+    spec.shape[2] = h;
+    spec.shape[3] = w;
   }
   spec.elem_num = 0;
   return spec;
 }
 std::shared_ptr<std::vector<tensor_spec_t>>
-BM168x::get_input_spec(Operation *op) {
-  return get_spec(op->getOperands());
+BM168x::get_input_spec(Operation *op, group_type_t group_type) {
+  return get_spec(op->getOperands(), group_type);
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
-BM168x::get_output_spec(Operation *op) {
-  return get_spec(op->getResults());
+BM168x::get_output_spec(Operation *op, group_type_t group_type) {
+  return get_spec(op->getResults(), group_type);
 }
 
 std::shared_ptr<std::vector<tensor_spec_t>>
-BM168x::get_spec(ValueRange values) {
+BM168x::get_spec(ValueRange values, group_type_t group_type) {
   auto specs = std::make_shared<std::vector<tensor_spec_t>>();
   for (auto v : values) {
     if (module::isNone(v)) {
       continue;
     }
-    specs->push_back(value_to_spec(v));
+    specs->push_back(value_to_spec(v, group_type));
   }
   return std::move(specs);
 }

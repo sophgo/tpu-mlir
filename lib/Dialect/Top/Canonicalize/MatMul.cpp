@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
+#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::top;
 
@@ -111,6 +111,73 @@ struct MatMulWithRightTranspose : public OpRewritePattern<MatMulOp> {
       return success();
     }
     return failure();
+  }
+};
+
+// merge n and c if c is small and n is large
+struct OptMatMulSmallCdim : public OpRewritePattern<MatMulOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(MatMulOp op,
+                                PatternRewriter &rewriter) const override {
+    auto left = op.getInput();
+    auto right = op.getRight();
+    auto out = op.getResult();
+
+    auto mul_op = dyn_cast<MulConstOp>(left.getDefiningOp());
+    if (!(mul_op && mul_op->hasOneUse())) {
+      return failure();
+    }
+    auto mul_in = mul_op.getInput();
+    auto mul_shape = module::getShape(mul_in);
+    if (!mul_in.hasOneUse() || mul_shape.size() != 4 ||
+        (mul_shape[1] >= mul_shape[2])) {
+      return failure();
+    }
+
+    // 1. add ReshapeOp before MulConst
+    rewriter.setInsertionPoint(mul_op);
+    std::vector<int64_t> new_lshape(
+        {mul_shape[0] * mul_shape[1], mul_shape[2], mul_shape[3]});
+    auto type0 = RankedTensorType::get(new_lshape, rewriter.getF32Type());
+    std::string in_name = module::getName(mul_in).str();
+    std::string reshape0_name = in_name + "_reshape_left";
+    auto loc0 = NameLoc::get(rewriter.getStringAttr(reshape0_name));
+    auto reshape0_op =
+        rewriter.create<ReshapeOp>(loc0, type0, ValueRange{mul_in});
+    // mul_op->setOperand(0, reshape0_op);
+    left.setType(type0);
+    mul_in.replaceAllUsesExcept(reshape0_op.getOutput(), reshape0_op);
+
+    // 2. add ReshapeOp before Right_in
+    rewriter.setInsertionPoint(reshape0_op);
+    auto rshape = module::getShape(right);
+    std::vector<int64_t> new_rshape(
+        {rshape[0] * rshape[1], rshape[2], rshape[3]});
+    auto type1 = RankedTensorType::get(new_rshape, rewriter.getF32Type());
+    std::string right_in_name = module::getName(right).str();
+    std::string reshape1_name = right_in_name + "_reshape_right";
+    auto loc1 = NameLoc::get(rewriter.getStringAttr(reshape1_name));
+    auto reshape1_op =
+        rewriter.create<ReshapeOp>(loc1, type1, ValueRange{right});
+    // op->setOperand(1, reshape1_op);
+    right.replaceAllUsesExcept(reshape1_op.getOutput(), reshape1_op);
+
+    // 3. add ReshapeOp after MatMul out
+    rewriter.setInsertionPointAfterValue(out);
+    auto oshape = module::getShape(out);
+    std::vector<int64_t> new_oshape(
+        {oshape[0] * oshape[1], oshape[2], oshape[3]});
+    auto type2 = RankedTensorType::get(new_oshape, rewriter.getF32Type());
+    std::string out_name = module::getName(right).str();
+    std::string reshape2_name = out_name + "_reshape_matmul";
+    auto loc2 = NameLoc::get(rewriter.getStringAttr(reshape2_name));
+    auto reshape2_op =
+        rewriter.create<ReshapeOp>(loc2, out.getType(), ValueRange{out});
+    out.setType(type2);
+    out.replaceAllUsesExcept(reshape2_op.getOutput(), reshape2_op);
+
+    return success();
   }
 };
 

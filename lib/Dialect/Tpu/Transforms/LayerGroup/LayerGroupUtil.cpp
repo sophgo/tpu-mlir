@@ -18,21 +18,27 @@ namespace tpu_mlir {
 namespace tpu {
 
 shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
-  int64_t batch_size = module::getShape(lg_info.group_ops[0]->getOperand(0))[0];
-  int64_t max_nsecs = batch_size;
-  int64_t max_hsecs = llvm::maxIntN(64);
   int64_t n, c, h, w;
+  module::getNCHW(lg_info.group_ops[0]->getOperand(0), n, c, h, w,
+                  lg_info.type);
+  int64_t max_nsecs = n;
+  int64_t max_hsecs = llvm::maxIntN(64);
   // Need consider n_align if backend is BM1684
   int64_t n_align = 1;
   for (auto op : lg_info.group_ops) {
+    auto lgOp = cast<LocalGenInterface>(op);
     for (auto v : get_output_values(op)) {
-      module::getNCHW(v, n, c, h, w);
+      module::getNCHW(v, n, c, h, w, lg_info.type);
       if (Arch::ALIGN_4N) {
         auto stype = module::getStorageType(v);
         n_align = 32 / stype.getIntOrFloatBitWidth();
       }
       max_nsecs = std::min(max_nsecs, ceiling_func(n, n_align));
-      max_hsecs = std::min(max_hsecs, h);
+      if (succeeded(lgOp.AllowDataSplit(2, lg_info.type))) {
+        max_hsecs = std::min(max_hsecs, h);
+      } else {
+        max_hsecs = 1;
+      }
     }
   }
 
@@ -50,31 +56,32 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
   // module::getShape(lg_info.group_ops[0]->getOperand(0))[0];
   int64_t in_n, in_c, in_h, in_w;
   int64_t out_n, out_c, out_h, out_w;
-  int64_t total_secs = max_shape_secs.nsecs * max_shape_secs.hsecs;
   for (auto op : lg_info.group_ops) {
-    auto ins = op->getOperands();
+    auto ins = get_input_values(op);
     auto outs = get_output_values(op);
-    int64_t total_size = 0;
-    for (auto in : ins) {
-      if (in.getType().isa<NoneType>()) {
-        continue;
-      }
-      total_size += Arch::get_tensor_lmem_bytes(in, -1, -1);
-    }
-    for (auto out : outs) {
-      total_size += Arch::get_tensor_lmem_bytes(out, -1, -1);
-    }
-    module::getNCHW(ins[0], in_n, in_c, in_h, in_w);
-    module::getNCHW(outs[0], out_n, out_c, out_h, out_w);
-    // Need consider different backends
-    auto lg_op = cast<LocalGenInterface>(op);
-    total_size +=
-        lg_op.getBufferSize(Arch::get_tensor_lmem_bytes(ins[0], in_n, in_h),
-                            Arch::get_tensor_lmem_bytes(outs[0], out_n, out_h),
-                            in_n, in_h, out_n, out_h);
-    total_secs =
-        std::min(total_secs, ceiling_func(total_size, Arch::LMEM_BYTES));
+    module::getNCHW(ins[0], in_n, in_c, in_h, in_w, lg_info.type);
+    module::getNCHW(outs[0], out_n, out_c, out_h, out_w, lg_info.type);
+    int64_t in0_lmem_bytes =
+        Arch::get_tensor_lmem_bytes(ins[0], in_n, in_c, in_h, in_w);
+    int64_t out0_lmem_bytes =
+        Arch::get_tensor_lmem_bytes(outs[0], out_n, out_c, out_h, out_w);
 
+    int64_t total_size = in0_lmem_bytes + out0_lmem_bytes;
+    auto lg_op = cast<LocalGenInterface>(op);
+    total_size += lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n,
+                                      in_h, out_n, out_h, lg_info.type);
+    for (size_t i = 1; i < ins.size(); ++i) {
+      module::getNCHW(ins[i], in_n, in_c, in_h, in_w, lg_info.type);
+      total_size += Arch::get_tensor_lmem_bytes(ins[i], in_n, in_c, in_h, in_w);
+    }
+    for (size_t i = 1; i < outs.size(); ++i) {
+      module::getNCHW(outs[i], out_n, out_c, out_h, out_w, lg_info.type);
+      total_size +=
+          Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_h, out_w);
+    }
+
+    // Need consider different backends
+    int64_t total_secs = ceiling_func(total_size, Arch::LMEM_BYTES);
     shape_secs.nsecs =
         std::max(std::min(total_secs, max_shape_secs.nsecs), shape_secs.nsecs);
     total_secs = ceiling_func(total_secs, shape_secs.nsecs);
@@ -127,14 +134,12 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
   tensor_info_t ti(TIMESTEP_LOAD);
   int64_t n, c, h, w;
   for (auto op : lg_info.group_ops) {
-    for (auto in : op->getOperands()) {
-      if (in.getType().isa<NoneType>()) {
-        continue;
-      }
+    auto ins = get_input_values(op);
+    for (auto in : ins) {
       if (auto src_op = dyn_cast_or_null<top::WeightOp>(in.getDefiningOp())) {
         ti.eu_align = is_eu_align(in);
         ti.need_bcast = need_bcast(in);
-        module::getNCHW(in, n, c, h, w);
+        module::getNCHW(in, n, c, h, w, lg_info.type);
         ti.slice_info.n.clear();
         ti.slice_info.h.clear();
         ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
@@ -229,8 +234,8 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
   return true;
 }
 
-slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
-                                int64_t n, int64_t h) {
+slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
+                                int64_t h) {
   slice_info_t slice_info;
   int64_t secs, idx, slice, step;
   // n slice info
@@ -256,35 +261,49 @@ slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
 }
 
 bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
-                             Operation *op) {
+                             Operation *op, Value in,
+                             const shape_secs_t &shape_secs,
+                             group_type_t group_type) {
+  int64_t n, c, h, w;
+  module::getNCHW(in, n, c, h, w, group_type);
+
   auto lg_op = cast<LocalGenInterface>(op);
   int64_t idx = 0, slice = 0;
-  for (auto &s : out_si.n) {
-    auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
-    if (failed(ret) || slice == 0) {
-      return false;
+  if (shape_secs.nsecs == 1) {
+    in_si.n.emplace_back(slice_pair_t(0, n));
+  } else {
+    for (auto &s : out_si.n) {
+      auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
+      if (failed(ret) || slice == 0) {
+        return false;
+      }
+      in_si.n.emplace_back(slice_pair_t(idx, slice));
     }
-    in_si.n.emplace_back(slice_pair_t(idx, slice));
   }
 
   int64_t pre_end_idx = 0;
-  for (int i = 0; i < out_si.h.size(); i++) {
-    auto &s = out_si.h[i];
-    auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
-    bool end_reached = idx + slice == pre_end_idx;
-    if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
-      return false;
+  idx = slice = 0;
+  if (shape_secs.hsecs == 1) {
+    in_si.h.emplace_back(slice_pair_t(0, h));
+  } else {
+    for (int i = 0; i < out_si.h.size(); i++) {
+      auto &s = out_si.h[i];
+      auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
+      bool end_reached = idx + slice == pre_end_idx;
+      if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
+        return false;
+      }
+      pre_end_idx = idx + slice;
+      in_si.h.emplace_back(slice_pair_t(idx, slice));
     }
-    pre_end_idx = idx + slice;
-    in_si.h.emplace_back(slice_pair_t(idx, slice));
   }
   return true;
 }
 
-bool check_hsecs(Value value, slice_info_t &si) {
+bool check_hsecs(Value value, slice_info_t &si, group_type_t group_type) {
   assert(si.h.size() > 0);
   int64_t n, c, h, w;
-  module::getNCHW(value, n, c, h, w);
+  module::getNCHW(value, n, c, h, w, group_type);
   int64_t total_h = 0;
   for (auto &it : si.h) {
     total_h += it.second;
@@ -295,15 +314,17 @@ bool check_hsecs(Value value, slice_info_t &si) {
   return true;
 }
 
-static bool backward_update_slice(
-    const LgInfo &lg_info, Value out, std::list<Value> &tensor_branchs,
-    TensorInfo &tensor_infos, std::multiset<Operation *> &op_set,
-    const std::set<Value, value_compare> &out_tensor_set) {
+static bool
+backward_update_slice(const LgInfo &lg_info, const shape_secs_t &shape_secs,
+                      Value out, std::list<Value> &tensor_branchs,
+                      TensorInfo &tensor_infos,
+                      std::multiset<Operation *> &op_set,
+                      const std::set<Value, value_compare> &out_tensor_set) {
 
   // Don't backward when this out tensor is the input of the group
   if (std::find(lg_info.group_ins.begin(), lg_info.group_ins.end(), out) !=
       lg_info.group_ins.end()) {
-    return check_hsecs(out, tensor_infos[out].slice_info);
+    return check_hsecs(out, tensor_infos[out].slice_info, lg_info.type);
   }
   auto op = out.getDefiningOp();
   op_set.insert(op);
@@ -316,7 +337,8 @@ static bool backward_update_slice(
       continue;
     }
     slice_info_t si;
-    auto ret = get_backward_slice_info(si, out_si, op);
+    auto ret =
+        get_backward_slice_info(si, out_si, op, in, shape_secs, lg_info.type);
     if (ret == false) {
       return false;
     }
@@ -350,7 +372,7 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   std::set<Value, value_compare> out_tensor_set;
   slice_info_t si;
   for (auto out : lg_info.group_outs) {
-    module::getNCHW(out, n, c, h, w);
+    module::getNCHW(out, n, c, h, w, lg_info.type);
     max_nslice = std::max(max_nslice, ceiling_func(n, shape_secs.nsecs));
     if (Arch::ALIGN_4N) {
       auto stype = module::getStorageType(out);
@@ -374,7 +396,7 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   while (!tensor_branchs.empty()) {
     auto out_tensor = tensor_branchs.front();
     tensor_branchs.pop_front();
-    ret = backward_update_slice(lg_info, out_tensor, tensor_branchs,
+    ret = backward_update_slice(lg_info, shape_secs, out_tensor, tensor_branchs,
                                 tensor_infos, op_set, out_tensor_set);
     if (!ret) {
       return false;
@@ -401,7 +423,7 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   std::multiset<Operation *> op_set;
   std::set<Value, value_compare> out_tensor_set;
   for (auto out : lg_info.group_outs) {
-    module::getNCHW(out, n, c, h, w);
+    module::getNCHW(out, n, c, h, w, lg_info.type);
     auto si = get_out_slice_info(shape_secs, n, h);
 
     tensor_infos[out] = tensor_info_t(si);
@@ -415,7 +437,7 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   while (!tensor_branchs.empty()) {
     auto out_tensor = tensor_branchs.front();
     tensor_branchs.pop_front();
-    ret = backward_update_slice(lg_info, out_tensor, tensor_branchs,
+    ret = backward_update_slice(lg_info, shape_secs, out_tensor, tensor_branchs,
                                 tensor_infos, op_set, out_tensor_set);
     if (!ret) {
       return false;
@@ -437,17 +459,23 @@ void get_max_slice_nh(const slice_info_t &slice_info, int64_t &max_nslice,
   }
 }
 
-int64_t get_buffer_size(const GdmaElt &tensor) {
-  auto v = tensor.first;
-  auto &ti = tensor.second;
+int64_t get_buffer_size(Value v, const tensor_info_t &ti,
+                        group_type_t group_type) {
   int64_t buf_size = 0;
+  int64_t n, c, h, w;
+  module::getNCHW(v, n, c, h, w, group_type);
   if (module::isWeight(v)) {
-    buf_size = Arch::get_weight_lmem_bytes(v, ti.eu_align);
+    if (group_type == GROUP_SMALL_C) {
+      buf_size = Arch::get_tensor_lmem_bytes(v, n, c, h, w, ti.eu_align);
+    } else {
+      buf_size = Arch::get_weight_lmem_bytes(v, ti.eu_align);
+    }
   } else {
     int64_t nslice, hslice;
     auto &si = ti.slice_info;
     get_max_slice_nh(si, nslice, hslice);
-    buf_size = Arch::get_tensor_lmem_bytes(v, nslice, hslice, ti.eu_align);
+    buf_size =
+        Arch::get_tensor_lmem_bytes(v, nslice, c, hslice, w, ti.eu_align);
   }
   return buf_size;
 }
@@ -471,14 +499,13 @@ void delete_fake_local_layer_param(Operation *op) {
 void generate_fake_global_addr(Operation *op) {
   int64_t offset = Arch::LMEM_BANK_BYTES;
   int64_t i = 0;
-  for (auto in : op->getOperands()) {
-    if (in.getType().isa<NoneType>()) {
-      continue;
-    }
+  auto ins = get_input_values(op);
+  auto outs = get_output_values(op);
+  for (auto in : ins) {
     module::setAddress(in, offset * i);
     ++i;
   }
-  for (auto out : get_output_values(op)) {
+  for (auto out : outs) {
     module::setAddress(out, offset * i);
     ++i;
   }
@@ -486,17 +513,16 @@ void generate_fake_global_addr(Operation *op) {
 
 void delete_fake_global_addr(Operation *op) {
 
-  for (auto in : op->getOperands()) {
-    if (in.getType().isa<NoneType>()) {
-      continue;
-    }
+  auto ins = get_input_values(op);
+  auto outs = get_output_values(op);
+  for (auto in : ins) {
     auto type = in.getType().cast<RankedTensorType>();
     Builder builder(in.getContext());
     auto new_type =
         RankedTensorType::get(type.getShape(), type.getElementType());
     in.setType(new_type);
   }
-  for (auto out : get_output_values(op)) {
+  for (auto out : outs) {
     auto type = out.getType().cast<RankedTensorType>();
     Builder builder(out.getContext());
     auto new_type =

@@ -286,21 +286,13 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
   }
   auto &tensor_infos = tensor_infos_;
 
-  int64_t nslice, hslice;
   for (auto iter = lmem_buffer_.begin(); iter != lmem_buffer_.end(); ++iter) {
     if (iter->first.type == LMEM_OPERATION) {
       continue;
     }
     auto v = iter->first.value;
     auto &tensor_info = tensor_infos[v];
-    auto &si = tensor_info.slice_info;
-    if (iter->first.type == LMEM_ACTIVATION) {
-      get_max_slice_nh(si, nslice, hslice);
-      iter->second.size =
-          Arch::get_tensor_lmem_bytes(v, nslice, hslice, tensor_info.eu_align);
-    } else if (iter->first.type == LMEM_WEIGHT) {
-      iter->second.size = Arch::get_weight_lmem_bytes(v, tensor_info.eu_align);
-    }
+    iter->second.size = get_buffer_size(v, tensor_info, lg_info.type);
   }
 
   mem_buffer_key_t buffer_key0;
@@ -324,7 +316,7 @@ void BasicTimeStep::update_all_mem_buffer_size(const LgInfo &lg_info) {
       auto lg_op = cast<LocalGenInterface>(op);
       iter->second.size = lg_op.getBufferSize(
           lmem_buffer_[buffer_key0].size, lmem_buffer_[buffer_key1].size,
-          in_nslice, in_hslice, out_nslice, out_hslice);
+          in_nslice, in_hslice, out_nslice, out_hslice, lg_info.type);
     }
   }
 

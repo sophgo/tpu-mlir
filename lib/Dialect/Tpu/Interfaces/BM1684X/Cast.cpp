@@ -81,7 +81,8 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                            int64_t out_lmem_bytes,
                                            int64_t in_nslice, int64_t in_hslice,
                                            int64_t out_nslice,
-                                           int64_t out_hslice) {
+                                           int64_t out_hslice,
+                                           group_type_t group_type) {
   if (getInput().hasOneUse()) {
     return 0;
   }
@@ -92,9 +93,10 @@ int64_t tpu::CastOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
 }
 
 void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                        group_type_t group_type,
                                         local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
-  module::getNCHW(getOutput(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w, group_type);
   auto op = getOperation();
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
@@ -107,8 +109,8 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     spec.common.dst_dtype = BM168x::getDataType(getOutput());
     spec.common.round_mode = ROUND_INF;
 
-    auto input_spec = BM168x::get_input_spec(op);
-    auto output_spec = BM168x::get_output_spec(op);
+    auto input_spec = BM168x::get_input_spec(op, group_type);
+    auto output_spec = BM168x::get_output_spec(op, group_type);
     BM168x::call_local_func("backend_api_cast_local", &spec, sizeof(spec),
                             &sec_info, input_spec->data(), output_spec->data());
   } else {
@@ -124,7 +126,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       param.n = sec_info.out_n_slice;
       param.c = c;
       param.h = sec_info.out_h_slice;
-      param.w = w;
+      param.w = sec_info.out_w_slice;
       param.is_perchannel = false;
       param.scale_value = 1 / qtype.getScale();
       param.offset_value = qtype.getZeroPoint();
@@ -142,7 +144,7 @@ void tpu::CastOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       param.n = sec_info.out_n_slice;
       param.c = c;
       param.h = sec_info.out_h_slice;
-      param.w = w;
+      param.w = sec_info.out_w_slice;
       param.is_perchannel = false;
       param.scale_value = qtype.getScale();
       param.offset_value = qtype.getZeroPoint();

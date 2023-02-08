@@ -222,7 +222,8 @@ void tpu::Conv3DOp::codegen_global_bm1684x() {
 
 int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
   auto attr = parseParam();
   int64_t sz = 0;
   int64_t npu_num = BM168x::NPU_NUM;
@@ -259,18 +260,20 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
 }
 
 void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
   auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op);
-  auto output_spec = BM168x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
 
   conv3d_local_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.input_local_addr = in_gi.out_addr;
-  spec.weight_local_addr = LocalGenInterface::getGroupInfo(getFilter()).out_addr;
+  spec.weight_local_addr =
+      LocalGenInterface::getGroupInfo(getFilter()).out_addr;
   if (attr.has_bias) {
     spec.has_bias = true;
     spec.bias_local_addr = LocalGenInterface::getGroupInfo(getBias()).out_addr;
@@ -319,14 +322,10 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                           sizeof(conv3d_local_spec_t));
 }
 
-//dynamic codegen
-int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
-}
+// dynamic codegen
+int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

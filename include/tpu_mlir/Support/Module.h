@@ -9,8 +9,8 @@
 
 #pragma once
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/IR/OpDefinition.h"
 #include "mlir/Dialect/Quant/QuantTypes.h"
+#include "mlir/IR/OpDefinition.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/AttrStruct.h"
 #include "tpu_mlir/Support/ModuleEnum.h.inc"
@@ -20,6 +20,20 @@ using namespace mlir::func;
 using namespace tpu_mlir;
 
 namespace tpu_mlir {
+
+typedef enum {
+  /* 3D group if this group has CONV3D/DECONV3D/POOL3D
+   * for 1684 float32, data in local memory storage as {d * n, c, h, w}
+   * for 1684 int8, data in local memory storage as {n, d * c, h, w}
+   * for 1684X, data in local memory storage as {d * n, c, h, w}
+   * data in global memory always storage as {n, c, d, h, w}
+   * group_type < 8, because 1684 dynamic compile reserved `3bit` for group_type
+   */
+  GROUP_NORMAL = 0,
+  GROUP_3D = 1,
+  GROUP_SMALL_C = 2,
+} group_type_t;
+
 
 //-----------------------------------------------------------------
 // Types
@@ -85,6 +99,10 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
              bool left_align = true);
 void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
              int64_t &w, bool left_align = true);
+void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
+             int64_t &w, group_type_t group_type);
+void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
+             group_type_t group_type);
 double getDtypeSize(Value v);
 size_t getBytes(Value v);
 int64_t getNumElements(Value v);

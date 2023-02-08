@@ -50,7 +50,7 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
     }
     for (auto &tensor : ts_tensors) {
       const tensor_info_t &tensor_info = tensor_infos[tensor.first];
-      cycle_cost = cycle_calculator->getGdmaCycle(tensor.first, tensor_info);
+      cycle_cost = cycle_calculator->getGdmaCycle(tensor.first, tensor_info, GROUP_NORMAL);
       if (time_step->is_tensor_hold_in_lmem(tensor.first)) {
         life_time = time_step->get_tensor_life_time(tensor.first);
         coeff_cost_t cost = {life_time, cycle_cost};
@@ -65,7 +65,7 @@ void coeff_reload_open(BasicTimeStepPtr &time_step, TensorInfo &tensor_infos) {
 
     const TpuTsField &ts_layers = time_step->getLayers(ts);
     for (auto op : ts_layers) {
-      cycle_cost = cycle_calculator->getLocalLayerCycle(op, tensor_infos, true);
+      cycle_cost = cycle_calculator->getLocalLayerCycle(op, tensor_infos, GROUP_NORMAL, true);
       slack += cycle_cost;
     }
     if (slack < 0) {

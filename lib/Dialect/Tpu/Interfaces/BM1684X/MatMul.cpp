@@ -9,10 +9,11 @@
 #include "ConvUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -145,6 +146,141 @@ void tpu::MatMulOp::codegen_global_bm1684x() {
   }
   BM168x::call_global_func("backend_api_fc_global", &spec, sizeof(spec),
                            input_spec->data(), output_spec->data());
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+int64_t tpu::MatMulOp::getBufferSize_bm1684x(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
+  auto p = parseParam();
+  int64_t n0, c0, h0, w0, n1, c1, h1, w1;
+  module::getNCHW(getInput(), n0, c0, h0, w0, group_type);
+  module::getNCHW(getRight(), n1, c1, h1, w1, group_type);
+  // batch dim is 1
+  int64_t oshape[4] = {1, 1, 1, 1};
+  if (!p.left_transpose && !p.right_transpose) {
+    oshape[1] = c0;
+    if (p.hdim_is_batch) {
+      oshape[3] = w1;
+    } else {
+      oshape[2] = h1;
+    }
+  } else if (!p.left_transpose && p.right_transpose) {
+    oshape[1] = c0;
+    if (p.hdim_is_batch) {
+      oshape[3] = c1;
+    } else {
+      oshape[2] = c1;
+    }
+  } else if (p.left_transpose) {
+    oshape[1] = c1;
+    if (p.hdim_is_batch) {
+      oshape[3] = w0;
+    } else {
+      oshape[2] = h0;
+    }
+  }
+
+  int64_t buffer_size = 0;
+  // loop for Y_row to decrase local memory buffer
+  auto in_type = BM168x::getDataType(getInput());
+  auto out_type = BM168x::getDataType(getOutput());
+  int in_type_len = BM168x::getFmtBytes(in_type);
+  int out_type_len = BM168x::getFmtBytes(out_type);
+  if (p.hdim_is_batch && h0 != 1) {
+    /// if use buffer optimize, L_row_slice == NPU_NUM
+    bool buffer_optimize =
+        (ceiling_func(p.left_transpose ? c0 : w0, BM168x::eu_num(in_type_len)) *
+         ceiling_func(oshape[3], (int64_t)4)) > 200;
+    // arrange left
+    int64_t shape[4] = {1, c0, 1, w0};
+    if (w0 % 64 != 0 ||
+        (c0 > BM168x::NPU_NUM && (p.left_transpose || !buffer_optimize))) {
+      buffer_size += in_type_len * ceiling_func(shape[1], BM168x::NPU_NUM) *
+                     align_up(shape[3], BM168x::eu_num(in_type_len));
+    }
+    // arrange right
+    shape[1] = c1;
+    shape[3] = w1;
+    if (w1 % 64 != 0 ||
+        (c1 > BM168x::NPU_NUM && (!p.left_transpose || !buffer_optimize))) {
+      buffer_size += in_type_len * ceiling_func(shape[1], BM168x::NPU_NUM) *
+                     align_up(shape[3], BM168x::eu_num(in_type_len));
+    }
+
+    oshape[1] =
+        buffer_optimize ? std::min(oshape[1], BM168x::NPU_NUM) : oshape[1];
+    if (in_type_len == 1 && out_type_len != 4) {
+      // store mm2 output as int32
+      buffer_size += sizeof(int32_t) *
+                     ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                     align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
+    } else if (oshape[1] > BM168x::NPU_NUM ||
+               (((oshape[3] * out_type_len) & 63) != 0)) {
+      // store output
+      buffer_size += out_type_len * ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                     align_up(oshape[3], BM168x::eu_num(out_type_len));
+    }
+  } else if (in_type_len == 1 && out_type_len != 4) {
+    bool buffer_optimize =
+        (ceiling_func(p.left_transpose ? c0 : h0 * w0,
+                      BM168x::eu_num(in_type_len)) *
+         ceiling_func(oshape[2] * oshape[3], (int64_t)4)) > 200;
+    oshape[1] =
+        buffer_optimize ? std::min(oshape[1], BM168x::NPU_NUM) : oshape[1];
+    // store mm2 output as int32
+    buffer_size += sizeof(int32_t) * ceiling_func(oshape[1], BM168x::NPU_NUM) *
+                   align_up(oshape[3], BM168x::eu_num(sizeof(int32_t)));
+  }
+  if (p.input_zp != 0) {
+    buffer_size +=
+        align_up(w1, BM168x::eu_num(sizeof(int32_t))) * sizeof(int32_t);
+  }
+
+  return buffer_size;
+}
+
+void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          group_type_t group_type,
+                                          local_sec_info_t &sec_info) {
+  auto p = parseParam();
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  // const auto &gi = getGroupInfo(n_step, h_step);
+
+  batch_matmul_local_spec_t param{0};
+  auto &common = param.common;
+  common.Y_dtype = output_spec->at(0).dtype;
+  common.L_trans = getLeftTranspose();
+  common.R_trans = p.right_transpose;
+  common.has_bias = p.with_bias;
+  common.hdim_is_batch =
+      false; // group_type == GROUP_SMALL_C ? true : getHdimIsBatch();
+  common.requant_mode = -1;
+  if (module::isUniformQuantized(getInput())) {
+    common.R_zp_is_const = true;
+    common.R_zp_const_val = p.right_zp;
+    common.izp_const_val = p.input_zp;
+    if (module::isUniformQuantized(getOutput())) {
+      common.requant_mode = static_cast<int>(getQuantMode());
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
+      assert(rshift_v->size() == 1);
+      assert(multiplier_v->size() == 1);
+      common.mul_val = multiplier_v->at(0);
+      common.shift_val = -rshift_v->at(0);
+      auto output_type = module::getUniformQuantizedType(getOutput());
+      common.offset_val = output_type.getZeroPoint();
+    }
+  }
+
+  BM168x::call_local_func("backend_api_batch_matmul_local", &param,
+                          sizeof(param), &sec_info, input_spec->data(),
+                          output_spec->data());
 }
 
 // ======================================

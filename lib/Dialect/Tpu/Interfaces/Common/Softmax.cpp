@@ -130,7 +130,7 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
       F16(p.outputs[0], p.outputs[0], num_elem);
     }
   } else if (module::isUniformQuantized(getInput(),
-                                       getOutput())) { // for quant softmax
+                                        getOutput())) { // for quant softmax
     assert(has_table == true);
     auto exp_table = p.inputs[1];
     auto o_qtype = module::getUniformQuantizedType(getOutput());
@@ -148,20 +148,20 @@ LogicalResult tpu::SoftmaxOp::inference(InferenceParameter &p) {
         }
         float sum = 0.f;
         for (int c = 0; c < channel; ++c) {
-          auto offset = to_uint8(
-              max_val - p.inputs[0][out_offset + c * inner_dim + j]);
+          auto offset =
+              to_uint8(max_val - p.inputs[0][out_offset + c * inner_dim + j]);
           sum += exp_table[offset];
         }
         for (int c = 0; c < channel; ++c) {
-          auto offset = to_uint8(
-              max_val - p.inputs[0][out_offset + c * inner_dim + j]);
+          auto offset =
+              to_uint8(max_val - p.inputs[0][out_offset + c * inner_dim + j]);
           float prob_rescaled = exp_table[offset];
           prob_rescaled = prob_rescaled / (sum * scale);
           if (out_type.isSignedInteger(8)) {
             int prob_rnd = static_cast<int32_t>(std::round(prob_rescaled));
             p.outputs[0][out_offset + c * inner_dim + j] =
                 to_int8(prob_rnd + zp);
-          } else if(out_type.isUnsignedInteger(8)) {
+          } else if (out_type.isUnsignedInteger(8)) {
             int prob_rnd = static_cast<int32_t>(prob_rescaled + 0.5);
             p.outputs[0][out_offset + c * inner_dim + j] =
                 to_uint8(prob_rnd + zp);
@@ -190,4 +190,19 @@ mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
     }
   }
   return type_verify_case_same(op, opd_idx, mode);
+}
+
+LogicalResult tpu::SoftmaxOp::LocalGenSupport() {
+  int axis = getAxis();
+  auto shape = module::getShape(getOutput());
+  if (shape.size() == 4 && (axis == 2 || axis == 3)) {
+    return success();
+  }
+  return failure();
+}
+
+LogicalResult tpu::SoftmaxOp::AllowDataSplit(int64_t axis,
+                                             group_type_t group_type) {
+  int64_t ax = getAxis();
+  return axis < ax ? success() : failure();
 }

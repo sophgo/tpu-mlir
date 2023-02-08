@@ -6,17 +6,17 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Backend/BM168x/BM1686.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
+#include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Backend/BM168x/BM1686.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
-#include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Interfaces/LocalGenInterface.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "llvm/Support/raw_ostream.h"
+#include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace tpu_mlir::backend;
 
@@ -74,16 +74,8 @@ size_t Arch::get_gmem_bytes(Value v) {
                              std::multiplies<int64_t>());
 }
 
-int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
-                                    bool eu_align) {
-  int64_t n, c, h, w;
-  module::getNCHW(v, n, c, h, w);
-  if (slice_n > 0) {
-    n = slice_n;
-  }
-  if (slice_h > 0) {
-    h = slice_h;
-  }
+int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t h,
+                                    int64_t w, bool eu_align) {
   auto type = module::getStorageType(v);
   int type_bits = type.getIntOrFloatBitWidth();
   double dbytes = (double)type_bits / 8;
@@ -103,6 +95,19 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
     }
     return (int64_t)n * c_per_npu * eu_aligned * dbytes;
   }
+}
+
+int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
+                                    bool eu_align) {
+  int64_t n, c, h, w;
+  module::getNCHW(v, n, c, h, w);
+  if (slice_n > 0) {
+    n = slice_n;
+  }
+  if (slice_h > 0) {
+    h = slice_h;
+  }
+  return get_tensor_lmem_bytes(v, n, c, h, w, eu_align);
 }
 
 int64_t Arch::get_weight_lmem_bytes(Value v, bool eu_align) {

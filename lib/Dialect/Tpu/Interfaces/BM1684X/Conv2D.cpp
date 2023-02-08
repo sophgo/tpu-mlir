@@ -72,7 +72,6 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (out_stype.isInteger(32)) {
     merge = false;
   }
-
   bool isINT4Conv = false;
   auto in_stype = module::getStorageType(op.getInput());
   isINT4Conv = (in_stype.isInteger(4) && !attr.is_dw);
@@ -660,7 +659,8 @@ void tpu::Conv2DOp::codegen_global_bm1684x() {
 
 int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
   if (module::isBM1686() && getCoeffMerged()) {
     return 0;
   }
@@ -710,6 +710,7 @@ int64_t tpu::Conv2DOp::getBufferSize_bm1684x(
 }
 
 void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
   auto op = getOperation();

@@ -45,12 +45,16 @@ int64_t tpu::LutOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                           int64_t out_lmem_bytes,
                                           int64_t in_nslice, int64_t in_hslice,
                                           int64_t out_nslice,
-                                          int64_t out_hslice) {
+                                          int64_t out_hslice,
+                                          group_type_t group_type) {
   return 0;
 }
 
 void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                       group_type_t group_type,
                                        local_sec_info_t &sec_info) {
+  int64_t n, c, h, w;
+  module::getNCHW(getInput(), n, c, h, w, group_type);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto table_gi = LocalGenInterface::getGroupInfo(getTable(), n_step, h_step);
@@ -65,18 +69,17 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   p.table_length = 256;
   p.is_local_layer = 1;
   p.shape_dim = 4;
-  int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
   p.shape[0] = sec_info.out_n_slice;
   p.shape[1] = c;
   p.shape[2] = sec_info.out_h_slice;
-  p.shape[3] = w;
+  p.shape[3] = sec_info.out_w_slice;
   BM168x::call_local_func("backend_api_lut", &p, sizeof(p));
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::LutOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_lut_param_t);
+  if (!buffer)
+    return sizeof(dyn_lut_param_t);
   dyn_lut_param_t param = {0};
   param.output_dtype = BM168x::getDataType(getOutput());
   param.is_local_layer = 1;
@@ -86,6 +89,4 @@ int64_t tpu::LutOp::dyn_codegen_local_bm1684x(void *buffer) {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::LutOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::LutOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

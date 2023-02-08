@@ -226,7 +226,7 @@ void tpu::DeconvOp::codegen_global_bm1684x() {
 
 int64_t tpu::DeconvOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice, group_type_t group_type) {
   int64_t sz = out_lmem_bytes * sizeof(int32_t);
   auto &attr = getDeconvParam(*this);
 
@@ -252,6 +252,7 @@ int64_t tpu::DeconvOp::getBufferSize_bm1684x(
 }
 
 void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);
@@ -278,8 +279,8 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.dilation[0] = attr.dh;
   param.dilation[1] = attr.dw;
   int kh_ext = (attr.kh - 1) * attr.dh + 1;
-  if (auto deconv_in_slice =
-          DeconvSlice(gi.h_idx, gi.h_slice, attr.sh, kh_ext, attr.ih, attr.pad_h)) {
+  if (auto deconv_in_slice = DeconvSlice(gi.h_idx, gi.h_slice, attr.sh, kh_ext,
+                                         attr.ih, attr.pad_h)) {
     param.pad[0] = deconv_in_slice.value()[0];
     param.pad[1] = deconv_in_slice.value()[1];
   } else {
@@ -314,14 +315,10 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   BM168x::call_local_func("backend_api_deconv_local", &param, sizeof(param));
 }
 
-//dynamic codegen
-int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
-}
+// dynamic codegen
+int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

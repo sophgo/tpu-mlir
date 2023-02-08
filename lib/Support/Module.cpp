@@ -13,8 +13,8 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 #include "float.h"
-#include "mlir/IR/PatternMatch.h"
 #include "mlir/Dialect/Quant/FakeQuantSupport.h"
+#include "mlir/IR/PatternMatch.h"
 #include <map>
 
 #include "tpu_mlir/Support/ModuleEnum.cpp.inc"
@@ -436,6 +436,42 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
              bool left_align) {
   auto shape = v.getType().cast<RankedTensorType>().getShape();
   getNCHW(shape, n, c, h, w, left_align);
+}
+
+void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
+             int64_t &w, group_type_t group_type) {
+  if (group_type == GROUP_NORMAL) {
+    module::getNCHW(shape, n, c, h, w, true);
+  } else if (group_type == GROUP_SMALL_C) {
+    auto shape_vec = shape.vec();
+    shape_vec.resize(4);
+    // shape.size() == 2/1 is for MatMul weight and bias
+    if (shape.size() == 2) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[1];
+      shape_vec[1] = shape[0];
+      shape_vec[0] = 1;
+    } else if (shape.size() == 1) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[0];
+      shape_vec[1] = 1;
+      shape_vec[0] = 1;
+    } else if (shape.size() == 5) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[4];
+      shape_vec[1] = shape[3];
+      shape_vec[0] = shape[2] * shape[1] * shape[0];
+    }
+    module::getNCHW(shape_vec, n, c, h, w, false);
+  } else {
+    llvm_unreachable("GROUP_3D is not implemented");
+  }
+}
+
+void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
+             group_type_t group_type) {
+  auto shape = v.getType().cast<RankedTensorType>().getShape();
+  getNCHW(shape, n, c, h, w, group_type);
 }
 
 bool isOpInGroup(Operation *Op) {

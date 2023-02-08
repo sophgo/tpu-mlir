@@ -150,8 +150,7 @@ bool TimeStepMethod::process(BasicTimeStep *time_step, TensorInfo &tensor_infos,
 
 void TimeStepMethod::bubble_tensor_to_best_ts(
     std::list<GdmaElt>::iterator sel_list_iter, int64_t cur_ts, int64_t best_ts,
-    BasicTimeStep *time_step,
-    ValueIntMap &tensor_to_cycle,
+    BasicTimeStep *time_step, ValueIntMap &tensor_to_cycle,
     ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
     std::vector<int64_t> &timestep_cycle_slack) {
@@ -278,8 +277,7 @@ void TimeStepMethod::memory_aware_timestep_assignment(BasicTimeStep *time_step,
 
 void TimeStepMethod::get_timestep_cycle_slack(
     BasicTimeStep *time_step, const LgInfo &lg_info,
-    ValueIntMap &tensor_to_cycle,
-    ValueIntMap &tensor_to_bufsize,
+    ValueIntMap &tensor_to_cycle, ValueIntMap &tensor_to_bufsize,
     std::vector<std::list<GdmaElt>> &tensor_timesteps,
     std::vector<int64_t> &timestep_cycle_slack) {
   int64_t timestep_num = time_step->get_timestep_num();
@@ -291,8 +289,8 @@ void TimeStepMethod::get_timestep_cycle_slack(
   for (int64_t ts = 0; ts < timestep_num; ++ts) {
     const auto &ts_layers = time_step->getLayers(ts);
     for (auto op : ts_layers) {
-      int64_t cycle_slack =
-          cycle_calculator_->getLocalLayerCycle(op, tensor_infos, true);
+      int64_t cycle_slack = cycle_calculator_->getLocalLayerCycle(
+          op, tensor_infos, lg_info.type, true);
       timestep_cycle_slack[ts] += cycle_slack;
       time_step->set_layer_cycle(op, cycle_slack);
     }
@@ -302,8 +300,8 @@ void TimeStepMethod::get_timestep_cycle_slack(
     for (auto &tensor : ts_tensors) {
       auto v = tensor.first;
       auto &ti = tensor.second;
-      tensor_cycle = cycle_calculator_->getGdmaCycle(v, ti);
-      buffer_size = get_buffer_size(tensor);
+      tensor_cycle = cycle_calculator_->getGdmaCycle(v, ti, lg_info.type);
+      buffer_size = get_buffer_size(v, ti, lg_info.type);
       tensor_to_cycle[v] = tensor_cycle;
       tensor_to_bufsize[v] = buffer_size;
       list_tensors.push_back(tensor);
@@ -328,13 +326,13 @@ int64_t TimeStepMethod::get_to_ts(bool &is_valid, int64_t cur_ts,
   return to_ts;
 }
 
-int64_t TimeStepMethod::get_best_ts(
-    BasicTimeStep *time_step, const LgInfo &lg_info, int64_t cur_ts,
-    ValueIntMap &tensor_to_cycle,
-    ValueIntMap &tensor_to_bufsize,
-    std::vector<std::list<GdmaElt>> &tensor_timesteps,
-    std::vector<int64_t> &timestep_cycle_slack,
-    std::list<GdmaElt>::iterator &sel_list_iter) {
+int64_t
+TimeStepMethod::get_best_ts(BasicTimeStep *time_step, const LgInfo &lg_info,
+                            int64_t cur_ts, ValueIntMap &tensor_to_cycle,
+                            ValueIntMap &tensor_to_bufsize,
+                            std::vector<std::list<GdmaElt>> &tensor_timesteps,
+                            std::vector<int64_t> &timestep_cycle_slack,
+                            std::list<GdmaElt>::iterator &sel_list_iter) {
   int64_t src_profit = 0, dst_cost = 0;
   int64_t cur_slack = timestep_cycle_slack[cur_ts];
   int64_t cur_profit = 0, max_profit = 0;

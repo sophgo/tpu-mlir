@@ -52,22 +52,22 @@ int64_t tpu::AddOp::getBufferSize_bm1684x(int64_t in_lmem_bytes,
                                           int64_t out_lmem_bytes,
                                           int64_t in_nslice, int64_t in_hslice,
                                           int64_t out_nslice,
-                                          int64_t out_hslice) {
+                                          int64_t out_hslice,
+                                          group_type_t group_type) {
   auto out_type = module::getStorageType(getOutput());
   if (out_type.isInteger(8)) {
     // INT16 as middle result
     return 2 * out_lmem_bytes * sizeof(int16_t);
-  } else if (out_type.isBF16() || out_type.isF16()) {
-    return out_lmem_bytes;
   }
   return 0;
 }
 
 void tpu::AddOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                       group_type_t group_type,
                                        local_sec_info_t &sec_info) {
   auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op);
-  auto output_spec = BM168x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
   auto gi = getGroupInfo(n_step, h_step);
 
   std::vector<int64_t> multi_v(2, 1);

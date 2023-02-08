@@ -118,6 +118,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       builder.getNamedAttr("hsecs", builder.getI64IntegerAttr(hsecs)));
   attrs.push_back(
       builder.getNamedAttr("swpipl_stage_num", builder.getI64IntegerAttr(3)));
+  attrs.push_back(
+      builder.getNamedAttr("group_type", builder.getI64IntegerAttr((int64_t)lg_info.type)));
   builder.setInsertionPointAfter(ops.back());
   auto groupOp =
       builder.create<tpu::GroupOp>(group_loc, ret_types, operands, attrs);

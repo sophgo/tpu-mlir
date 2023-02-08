@@ -114,8 +114,10 @@ LogicalResult tpu::MaxPoolWithMaskOp::BackwardH(int64_t &in_idx,
 }
 
 void tpu::MaxPoolWithMaskOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                             group_type_t group_type,
                                              local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
+  sec_info.group_type = group_type;
 
   auto attr = parseParam();
   auto gi = getGroupInfo(n_step, h_step);

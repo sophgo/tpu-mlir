@@ -53,7 +53,8 @@ void tpu::RequantIntOp::codegen_global_bm1684x() {
 
 int64_t tpu::RequantIntOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
   int64_t buffer_size = 0;
   auto input_dtype = BM168x::getDataType(getInput());
   if (input_dtype == DTYPE_INT8 || input_dtype == DTYPE_UINT8) {
@@ -67,9 +68,10 @@ int64_t tpu::RequantIntOp::getBufferSize_bm1684x(
 }
 
 void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                              group_type_t group_type,
                                               local_sec_info_t &sec_info) {
   int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w, group_type);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto oqtype = module::getUniformQuantizedType(getOutput());
@@ -100,9 +102,10 @@ void tpu::RequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                           sizeof(param));
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::RequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_requant_int_local_param_t);
+  if (!buffer)
+    return sizeof(dyn_requant_int_local_param_t);
   auto gi = getGroupInfo(0, 0);
   auto oqtype = module::getUniformQuantizedType(getOutput());
 
@@ -120,8 +123,8 @@ int64_t tpu::RequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
   param.common.output_dtype = BM168x::getDataType(getOutput());
   param.common.mode = static_cast<int>(getQuantMode());
   param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
-                         ? ROUNDING_HALF_UP
-                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+                                ? ROUNDING_HALF_UP
+                                : ROUNDING_HALF_AWAY_FROM_ZERO;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
@@ -129,7 +132,8 @@ int64_t tpu::RequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::RequantIntOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_requant_int_global_param_t);
+  if (!buffer)
+    return sizeof(dyn_requant_int_global_param_t);
   dyn_requant_int_global_param_t param = {0};
   auto oqtype = module::getUniformQuantizedType(getOutput());
   param.common.mul_value = getMultiplier();
@@ -142,7 +146,7 @@ int64_t tpu::RequantIntOp::dyn_codegen_global_bm1684x(void *buffer) {
   param.common.mode = static_cast<int>(getQuantMode());
   param.common.output_dtype = BM168x::getDataType(getOutput());
   param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
-                         ? ROUNDING_HALF_UP
-                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+                                ? ROUNDING_HALF_UP
+                                : ROUNDING_HALF_AWAY_FROM_ZERO;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

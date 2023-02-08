@@ -138,11 +138,13 @@ LogicalResult tpu::Pool3DOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 }
 
 void tpu::Pool3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
+                                    group_type_t group_type,
                                     local_sec_info_t &sec_info) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
+  sec_info.group_type = group_type;
 
   int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w, group_type);
   auto gi = getGroupInfo(n_step, h_step);
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   sec_info.n_slice = in_gi.n_slice;
