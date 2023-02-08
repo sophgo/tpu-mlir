@@ -28,7 +28,7 @@ CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
     "ReshapeFuse", "ScatterND", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu",
     "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere",
-    "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d","PermuteFuse","SwapDimInner"
+    "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d", "PermuteFuse", "SwapDimInner", "ChannelNorm"
 ]
 
 
@@ -151,6 +151,7 @@ class ONNX_IR_TESTER(object):
             #############################
             # Special Pass test case, Alphabetically
             #############################
+            "ChannelNorm": self.test_ChannelNorm,
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
             "Div2Mul": self.test_Div2Mul,
@@ -1997,6 +1998,26 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 3, 100, 100).float()
         self.torch_and_test(x, Net(), case_name)
 
+    def test_ChannelNorm(self, case_name):
+        N, C, H, W = 4, 8, 32, 32
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.scale = torch.randn(1, C, 1, 1).float()
+                self.bias = torch.randn(1, C, 1, 1).float()
+
+            def forward(self, x):
+                m = x.mean(1, keepdim=True)
+                var = (x - m).pow(2).mean(1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+        x = torch.randn(N, C, H, W).float()
+        self.torch_and_test(x, Net(), case_name)
+
     def test_ConcatToSpace(self, case_name):
 
         class Net(torch.nn.Module):
@@ -3170,6 +3191,7 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
+
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:
