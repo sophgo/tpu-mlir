@@ -65,7 +65,12 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::AddConstOp::canonicalize(AddConstOp op,
                                             PatternRewriter &rewriter) {
-  if (std::abs(op.getConstVal().convertToDouble()) < 1e-7) {
+  bool is_type_match = module::getStorageType(op.getInput()) ==
+                       module::getStorageType(op.getResult());
+  bool is_identity = std::abs(op.getConstVal().convertToDouble()) < 1e-7 &&
+                     op.getMultiplier() == 1 && op.getRshift() == 0;
+
+  if (is_type_match && is_identity) {
     op.getResult().replaceAllUsesWith(op.getInput());
     return success();
   }
