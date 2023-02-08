@@ -303,6 +303,7 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
   auto swpipl_stage_num = gOp.getSwpiplStageNum();
   auto &body = gOp.getBody().front();
   auto flow = module::getI64Array(gOp.getFlow());
+  auto group_type = static_cast<group_type_t>(gOp.getGroupType());
   // 1. restore timestep_table from flow
   std::vector<std::vector<int64_t>> timestep_table;
   std::vector<int64_t> ts_row;
@@ -365,9 +366,9 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
           }
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
           lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
-                               sec_info);
+                               group_type, sec_info);
           lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
-                                    sec_info);
+                                    group_type, sec_info);
         }
       } // ops, include Load/Store op
 

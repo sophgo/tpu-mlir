@@ -38,6 +38,54 @@ namespace tpu {
     }                                                                          \
   }
 
+static void set_group_type(LgInfo &lg_info) {
+  lg_info.type = GROUP_NORMAL;
+  if (lg_info.group_ops.size() == 1) {
+    return;
+  }
+
+  // set GROUP_3D if there is 3DOp
+  for (auto op : lg_info.group_ops) {
+    if (isa<Conv3DOp, Pool3DOp>(op)) {
+      lg_info.type = GROUP_3D;
+      return;
+    }
+  }
+
+  // set GROUP_NORMAL if not all ops should meet the conditions
+  // 1. shape is 5-dim
+  // 2. op is eltwise-op or only the last dim cannot split
+  // 3. shape[1] is too small to fully utilize NPU and shape[3] is better
+  // GROUP_SMALL_C: (n, c, d, h, w) --> (n*c*d, h, w, 1)
+  lg_info.type = GROUP_SMALL_C;
+  for (auto op : lg_info.group_ops) {
+    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MatMulOp>(op)) {
+      lg_info.type = GROUP_NORMAL;
+      return;
+    }
+    if (auto op_ = dyn_cast<LayerNormOp>(op)) {
+      if (op_.getAxis() != 4) {
+        lg_info.type = GROUP_NORMAL;
+        return;
+      }
+    } else if (isa<AddOp>(op)) {
+      auto shapeA = module::getShape(op->getOperand(0));
+      auto shapeB = module::getShape(op->getOperand(1));
+      if (shapeA != shapeB) {
+        lg_info.type = GROUP_NORMAL;
+        return;
+      }
+    }
+    auto opd0 = op->getOperand(0);
+    auto shape = module::getShape(opd0);
+    if (!(shape.size() == 5 && shape[1] < Arch::NPU_NUM &&
+          shape[3] > shape[1])) {
+      lg_info.type = GROUP_NORMAL;
+      return;
+    }
+  }
+}
+
 static void get_layer_group(LgInfo &lg_info,
                             const std::vector<Operation *> &base_group,
                             int64_t left, int64_t right) {
@@ -46,6 +94,7 @@ static void get_layer_group(LgInfo &lg_info,
     lg_info.group_ops.push_back(base_group[idx]);
   }
   lg_info.update_group_io();
+  set_group_type(lg_info);
 }
 
 GroupMethod::GroupMethod(int64_t opt) {
@@ -144,7 +193,8 @@ bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
   if (calc_cost) {
 // remove it after pid_node is extractedb
 #pragma omp critical(get_cycle)
-    *group_cost = cycle_calculator_->getGroupCycle(time_step, shape_secs);
+    *group_cost =
+        cycle_calculator_->getGroupCycle(time_step, shape_secs, lg_info.type);
   }
   // llvm::errs() << "nsecs = " << shape_secs.nsecs
   //              << ", hsecs = " << shape_secs.hsecs << "\n";
@@ -396,8 +446,8 @@ bool GroupMethod::update_sequence_group_cost(
         valid = false;
         break;
       }
-      group_costs[i] =
-          cycle_calculator_->getGroupCycle(time_steps[i], shape_secs[i]);
+      group_costs[i] = cycle_calculator_->getGroupCycle(
+          time_steps[i], shape_secs[i], groups[i]->type);
     }
   }
   if (!valid) {
@@ -421,8 +471,8 @@ bool GroupMethod::update_sequence_group_cost(
       break;
     }
     *left_first = !(*left_first);
-    group_costs[i] =
-        cycle_calculator_->getGroupCycle(time_steps[i], shape_secs[i]);
+    group_costs[i] = cycle_calculator_->getGroupCycle(
+        time_steps[i], shape_secs[i], groups[i]->type);
   }
   if (!valid) {
     return false;
@@ -567,7 +617,7 @@ void GroupMethod::simple_layer_group(
       } else {
         start_idx++;
         if (start_idx == end_idx) {
-          cut_result.insert(cut_result.begin(), start_idx-1);
+          cut_result.insert(cut_result.begin(), start_idx - 1);
           end_idx = start_idx - 1;
           start_idx = 0;
         }

@@ -37,15 +37,18 @@ void tpu::UpsampleOp::codegen_global_bm1684x() {
 
 int64_t tpu::UpsampleOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
   return 0;
 }
 
-void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
+void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                            group_type_t group_type,
+                                            local_sec_info_t &sec_info) {
   assert(getScaleH() == getScaleW());
   auto op = getOperation();
-  auto input_spec = BM168x::get_input_spec(op);
-  auto output_spec = BM168x::get_output_spec(op);
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
 
   upsample_spec_t spec = {0};
   spec.size = getScaleH();
@@ -55,9 +58,10 @@ void tpu::UpsampleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step, loca
                           &sec_info, input_spec->data(), output_spec->data());
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::UpsampleOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(upsample_spec_t);
+  if (!buffer)
+    return sizeof(upsample_spec_t);
   upsample_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.size = getScaleH();
@@ -70,7 +74,8 @@ int64_t tpu::UpsampleOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::UpsampleOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(upsample_spec_t);
+  if (!buffer)
+    return sizeof(upsample_spec_t);
   upsample_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   spec.size = getScaleH();

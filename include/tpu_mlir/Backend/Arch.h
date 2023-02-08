@@ -37,6 +37,8 @@ public:
     return ALIGN_4N ? (4 / dtype_bytes) : 1;
   }
   static size_t get_gmem_bytes(Value v);
+  static int64_t get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t h,
+                                       int64_t w, bool eu_align = true);
   static int64_t get_tensor_lmem_bytes(Value v, int64_t slice_n,
                                        int64_t slice_h, bool eu_align = true);
   static int64_t get_weight_lmem_bytes(Value v, bool eu_align = true);

@@ -29,17 +29,28 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
       >,
       InterfaceMethod<
         /*desc=*/[{}],
+        /*retType=*/"::mlir::LogicalResult",
+        /*methodName=*/"AllowDataSplit",
+        /*args=*/(ins "int64_t":$axis, "group_type_t":$group_type),
+        /*methodBody=*/"",
+        /*defaultImplementation=*/[{
+          return mlir::success();
+        }]
+      >,
+      InterfaceMethod<
+        /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"assign_sec_info",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info),
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info),
         [{}],
         [{
             memset(&sec_info, 0, sizeof(local_sec_info_t));
+            sec_info.group_type = group_type;
             int64_t n, c, h, w, on, oc, oh, ow;
             auto input = $_op->getOperand(0);
             auto output = $_op->getResult(0);
-            module::getNCHW(input, n, c, h, w);
-            module::getNCHW(output, on, oc, oh, ow);
+            module::getNCHW(input, n, c, h, w, group_type);
+            module::getNCHW(output, on, oc, oh, ow, group_type);
             auto gi = getGroupInfo(n_step, h_step);
             auto in_gi = LocalGenInterface::getGroupInfo(input, n_step, h_step);
             sec_info.n_slice = in_gi.n_slice;
@@ -64,17 +75,17 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"codegen_local_bm1684x",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info)
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
         /*retType=*/"void",
         /*methodName=*/"codegen_local_bm168x",
-        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "local_sec_info_t &":$sec_info),
+        /*args=*/(ins "int64_t":$n_step, "int64_t":$h_step, "group_type_t":$group_type, "local_sec_info_t &":$sec_info),
         [{}],
         [{
           if (module::isBM1684XFamily()) {
-            $_op.codegen_local_bm1684x(n_step, h_step, sec_info);
+            $_op.codegen_local_bm1684x(n_step, h_step, group_type, sec_info);
           } else if (module::isBM1684Family()) {
             $_op.codegen_local_bm1684(n_step, h_step, sec_info);
           }
@@ -134,7 +145,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*methodName=*/"getBufferSize_bm1684x",
         /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes,
                       "int64_t":$in_nslice, "int64_t":$in_hslice,
-                      "int64_t":$out_nslice, "int64_t":$out_hslice)
+                      "int64_t":$out_nslice, "int64_t":$out_hslice,
+                      "group_type_t":$group_type)
       >,
       InterfaceMethod<
         /*desc=*/[{}],
@@ -150,7 +162,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         /*methodName=*/"getBufferSize",
         /*args=*/(ins "int64_t":$in_lmem_bytes, "int64_t":$out_lmem_bytes,
                       "int64_t":$in_nslice, "int64_t":$in_hslice,
-                      "int64_t":$out_nslice, "int64_t":$out_hslice),
+                      "int64_t":$out_nslice, "int64_t":$out_hslice,
+                      "group_type_t":$group_type),
         [{}],
         [{
           if (module::isBM1684Family()) {
@@ -158,7 +171,8 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
                                              in_nslice, in_hslice, out_nslice, out_hslice);
           } else if (module::isBM1684XFamily()) {
             return $_op.getBufferSize_bm1684x(in_lmem_bytes, out_lmem_bytes,
-                                              in_nslice, in_hslice, out_nslice, out_hslice);
+                                              in_nslice, in_hslice, out_nslice, out_hslice,
+                                              group_type);
           } else if (module::isCV18xx()) {
             return $_op.getBufferSize_cv18xx(in_lmem_bytes, out_lmem_bytes,
                                               in_nslice, in_hslice, out_nslice, out_hslice);

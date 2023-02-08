@@ -12,6 +12,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
 // clang-format off
@@ -153,4 +154,40 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
   }
 
   return success();
+}
+
+LogicalResult tpu::MatMulOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    return failure();
+  }
+
+  auto ins = getOperands();
+  if (backend::BM168x::getDataType(ins[0]) == DTYPE_FP32) {
+    return failure();
+  }
+
+  int left_num_dims = module::getShape(ins[0]).size();
+  int right_num_dims = module::getShape(ins[1]).size();
+  if (left_num_dims == 5 && right_num_dims == 2) {
+    return success();
+  } else if (left_num_dims == 3 && right_num_dims == 2) {
+    return success();
+  } else if (left_num_dims == 4 && right_num_dims == 4 && getHdimIsBatch()) {
+    return success();
+  }
+  return failure();
+}
+
+LogicalResult tpu::MatMulOp::AllowDataSplit(int64_t axis,
+                                            group_type_t group_type) {
+  if (axis == 0) {
+    return success();
+  }
+
+  auto lshape = module::getShape(getInput());
+  if (lshape.size() == 4 && axis == 2 && getHdimIsBatch()) {
+    return success();
+  }
+
+  return failure();
 }

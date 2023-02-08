@@ -750,7 +750,9 @@ def Tpu_LutBF16Op: Tpu_Op<"LutBF16",
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
+def Tpu_MatMulOp: Tpu_Op<"MatMul", [
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+    SupportFuseRelu]> {
   let summary = "matmul operator";
 
   let description = [{
@@ -763,7 +765,9 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [SupportFuseRelu]> {
     AnyTensor:$input,
     AnyTensor:$right,
     AnyTensorOrNone:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$left_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
+    DefaultValuedAttr<BoolAttr, "false">:$hdim_is_batch,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
@@ -995,6 +999,7 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
     I64Attr:$nsecs,
     I64Attr:$hsecs,
     I64Attr:$swpipl_stage_num,
+    I64Attr:$group_type,
     DefaultValuedAttr<I64ArrayAttr, "{0}">:$flow
   );
   let results = (outs Variadic<AnyTensor>:$outputs);
@@ -1016,6 +1021,7 @@ def Tpu_YieldOp : Tpu_BaseOp<"Yield", [Terminator, HasParent<"GroupOp">]> {
 }
 
 def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
+    DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
     DeclareOpInterfaceMethods<TypeInterface>,
     InOutSameShape]> {
   let summary = "softmax operator";
@@ -1676,7 +1682,7 @@ def Tpu_CompareConstOp: Tpu_Op<"CompareConst", [
 }
 
 def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["BackwardH", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "LayerNorm operation";

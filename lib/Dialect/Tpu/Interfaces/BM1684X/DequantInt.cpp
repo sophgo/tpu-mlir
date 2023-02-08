@@ -51,7 +51,8 @@ void tpu::DequantIntOp::codegen_global_bm1684x() {
 
 int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
   if (getQuantMode() == DequantMode::TFLite) {
     return out_lmem_bytes;
   }
@@ -59,10 +60,11 @@ int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
 }
 
 void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                              group_type_t group_type,
                                               local_sec_info_t &sec_info) {
-  dequant_int_param_t param = {0};
   int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w, group_type);
+  dequant_int_param_t param = {0};
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   param.input_addr = (uint32_t)in_gi.out_addr;
@@ -71,7 +73,7 @@ void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.n = sec_info.out_n_slice;
   param.c = c;
   param.h = sec_info.out_h_slice;
-  param.w = w;
+  param.w = sec_info.out_w_slice;
 
   auto qtype = module::getUniformQuantizedType(getInput());
   param.scale_val = getMultiplier();
@@ -90,10 +92,8 @@ void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                           sizeof(param));
 }
 
-//dynamic codegen
-int64_t tpu::DequantIntOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
-}
+// dynamic codegen
+int64_t tpu::DequantIntOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
 
 // ======================================
 // Dynamic GlobalGenInterface

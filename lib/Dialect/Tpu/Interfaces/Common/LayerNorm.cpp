@@ -149,22 +149,15 @@ LogicalResult tpu::LayerNormOp::LocalGenSupport() {
     else
       return failure();
   }
-  int num_dims = module::getShape(getInput()).size();
-  if (getAxis() == 2 && (num_dims == 3 || num_dims == 4)) {
-    return success();
-  }
   return failure();
 }
 
-LogicalResult tpu::LayerNormOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
-                                          int64_t out_idx, int64_t out_slice) {
-  // It is not allowed to split on h-axis
-  int64_t n, c, h, w;
-  module::getNCHW(getOutput(), n, c, h, w);
-  if (out_idx != 0 || out_slice != h) {
-    return failure();
+LogicalResult tpu::LayerNormOp::AllowDataSplit(int64_t axis,
+                                               group_type_t group_type) {
+  int64_t ax = getAxis();
+  if (group_type == GROUP_SMALL_C) {
+    assert(ax == 4);
+    ax = 2;
   }
-  in_idx = out_idx;
-  in_slice = out_slice;
-  return success();
+  return axis < ax ? success() : failure();
 }

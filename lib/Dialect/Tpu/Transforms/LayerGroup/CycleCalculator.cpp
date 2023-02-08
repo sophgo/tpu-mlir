@@ -33,7 +33,8 @@ struct gdma_cycle_info_t {
 
 void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
                                          Operation *op,
-                                         TensorInfo &tensor_infos) {
+                                         TensorInfo &tensor_infos,
+                                         group_type_t group_type) {
   memset(&sec_info, 0, sizeof(local_sec_info_t));
 
   // Note: WhereOp, MaskedFillOp may need to be processed differently.
@@ -42,7 +43,7 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
   Value in = op->getOperand(0);
   auto iter = tensor_infos.find(in);
   if (iter != tensor_infos.end()) {
-    module::getNCHW(in, N, C, H, W);
+    module::getNCHW(in, N, C, H, W, group_type);
     auto &si = iter->second.slice_info;
     sec_info.n_slice = si.n[0].second;
     sec_info.h_slice = si.h[0].second;
@@ -53,7 +54,7 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
   Value out = op->getResult(0);
   iter = tensor_infos.find(in);
   if (iter != tensor_infos.end()) {
-    module::getNCHW(out, N, C, H, W);
+    module::getNCHW(out, N, C, H, W, group_type);
     auto &si = iter->second.slice_info;
     sec_info.out_n_slice = si.n[0].second;
     sec_info.out_h_slice = si.h[0].second;
@@ -67,7 +68,8 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
 }
 
 int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
-                                       shape_secs_t &shape_secs) {
+                                       shape_secs_t &shape_secs,
+                                       group_type_t group_type) {
   int64_t loop_num = shape_secs.nsecs * shape_secs.hsecs;
   std::vector<layer_cycle_info_t> layer_cycle;
   std::vector<gdma_cycle_info_t> gdma_cycle;
@@ -87,12 +89,13 @@ int64_t CycleCalculator::getGroupCycle(BasicTimeStepPtr &time_step,
     // record cycle count for all layers and tensors here
     for (auto op : timestep_layers) {
       int64_t stage = time_step->get_layer_swpipl_stage(op);
-      int64_t cycle = this->getLocalLayerCycle(op, tensor_infos, false);
+      int64_t cycle =
+          this->getLocalLayerCycle(op, tensor_infos, group_type, false);
       layer_cycle.push_back(layer_cycle_info_t(stage, cycle));
     }
     for (auto tensor : timestep_tensors) {
       int64_t stage = time_step->get_tensor_swpipl_stage(tensor.first);
-      int64_t cycle = this->getGdmaCycle(tensor.first, tensor.second);
+      int64_t cycle = this->getGdmaCycle(tensor.first, tensor.second, group_type);
       int64_t hold_in_lmem =
           time_step->is_tensor_hold_in_lmem(tensor.first) ? 1 : 0;
       gdma_cycle.push_back(gdma_cycle_info_t(stage, cycle, hold_in_lmem));
@@ -181,12 +184,13 @@ int64_t Bm168xCycleCalculator::getGlobalLayerCycle(Operation *op) {
 }
 
 int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
-                                            TensorInfo &tensor_infos,
-                                            bool calc_bdc_slack) {
+                                                  TensorInfo &tensor_infos,
+                                                  group_type_t group_type,
+                                                  bool calc_bdc_slack) {
   auto bm168x = BM168x::instance();
   int64_t cycle = 0;
   local_sec_info_t sec_info;
-  set_local_sec_info(sec_info, op, tensor_infos);
+  set_local_sec_info(sec_info, op, tensor_infos, group_type);
   auto lgOp = dyn_cast<LocalGenInterface>(op);
   // #pragma omp critical
   {
@@ -194,7 +198,7 @@ int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
     bm168x->reset_cmd_id_node();
 
     // set_local_layer_io_addr(op);
-    lgOp.codegen_local_bm168x(0, 0, sec_info);
+    lgOp.codegen_local_bm168x(0, 0, group_type, sec_info);
 
     int64_t bdc_cycle = bm168x->get_bdc_cycle();
     int64_t gdma_cycle = bm168x->get_gdma_cycle();
@@ -209,7 +213,8 @@ int64_t Bm168xCycleCalculator::getLocalLayerCycle(Operation *op,
 }
 
 int64_t Bm168xCycleCalculator::getGdmaCycle(Value v,
-                                      const tensor_info_t &tensor_info) {
+                                            const tensor_info_t &tensor_info,
+                                            group_type_t group_type) {
   auto bm168x = BM168x::instance();
   bm168x->set_command_issue_flag(false);
   bm168x->reset_cmd_id_node();
@@ -217,16 +222,17 @@ int64_t Bm168xCycleCalculator::getGdmaCycle(Value v,
   // because LoadOp/StoreOp are not created during LayerGroup
   int64_t cycle = 0;
   if (tensor_info.mode == TIMESTEP_LOAD) {
-    cycle = getLoadCycle(v, tensor_info);
+    cycle = getLoadCycle(v, tensor_info, group_type);
   } else {
-    cycle = getStoreCycle(v, tensor_info);
+    cycle = getStoreCycle(v, tensor_info, group_type);
   }
   bm168x->dl_sg_stas_reset();
   return cycle;
 }
 
 int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
-                                      const tensor_info_t &tensor_info) {
+                                            const tensor_info_t &tensor_info,
+                                            group_type_t group_type) {
   // need_info:
   // - n_slice, h_slice, eu_align, g_addr, l_addr
   // - need_bcast, use_3ic
@@ -242,10 +248,10 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   auto data_type = BM168x::getDataType(v);
   int64_t N, C, H, W;
   int gdma_format;
-  module::getNCHW(v, N, C, H, W);
-  if(data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
+  module::getNCHW(v, N, C, H, W, group_type);
+  if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
-    data_type  = DTYPE_INT8;
+    data_type = DTYPE_INT8;
     W >>= 1;
   }
 
@@ -289,7 +295,8 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
 }
 
 int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
-                                       const tensor_info_t &tensor_info) {
+                                             const tensor_info_t &tensor_info,
+                                             group_type_t group_type) {
   // need_info:
   // - n_slice, h_slice, eu_align, g_addr, l_addr
   auto bm168x = BM168x::instance();
@@ -303,7 +310,7 @@ int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
   auto gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t N, C, H, W;
-  module::getNCHW(v, N, C, H, W);
+  module::getNCHW(v, N, C, H, W, group_type);
   auto g_stride = bm168x->getGlobalStride(N, C, H, W);
   auto l_stride =
       bm168x->getLocalStride(n_slice, C, h_slice, W, fmt_bytes, eu_align);
@@ -320,28 +327,30 @@ int64_t Bm168xCycleCalculator::getStoreCycle(Value v,
   return gdma_cycle;
 }
 
-int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) {
-  return 0;
-}
+int64_t Cv18xxCycleCalculator::getGlobalLayerCycle(Operation *op) { return 0; }
 
 int64_t Cv18xxCycleCalculator::getLocalLayerCycle(Operation *op,
-                                            TensorInfo &tensor_infos,
-                                            bool calc_bdc_slack) {
+                                                  TensorInfo &tensor_infos,
+                                                  group_type_t group_type,
+                                                  bool calc_bdc_slack) {
   return 0;
 }
 
 int64_t Cv18xxCycleCalculator::getGdmaCycle(Value v,
-                                      const tensor_info_t &tensor_info) {
+                                            const tensor_info_t &tensor_info,
+                                            group_type_t group_type) {
   return 0;
 }
 
 int64_t Cv18xxCycleCalculator::getLoadCycle(Value v,
-                                      const tensor_info_t &tensor_info) {
+                                            const tensor_info_t &tensor_info,
+                                            group_type_t group_type) {
   return 0;
 }
 
 int64_t Cv18xxCycleCalculator::getStoreCycle(Value v,
-                                       const tensor_info_t &tensor_info) {
+                                             const tensor_info_t &tensor_info,
+                                             group_type_t group_type) {
   return 0;
 }
 

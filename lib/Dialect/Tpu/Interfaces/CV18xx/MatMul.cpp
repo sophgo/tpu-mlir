@@ -14,8 +14,6 @@
 
 #include "tpu_mlir/Support/TPUCompressUtil.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 // for bf16
@@ -158,4 +156,18 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
                                     false, false, false);
     }
   }
+}
+
+// =========================================
+// LocalGenInterface
+// =========================================
+int64_t tpu::MatMulOp::getBufferSize_cv18xx(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+  return 0;
+}
+
+void tpu::MatMulOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
+                                         int64_t layer_id) {
+  llvm_unreachable("Not supported now");
 }

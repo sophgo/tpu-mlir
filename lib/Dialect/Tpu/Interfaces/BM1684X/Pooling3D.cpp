@@ -75,15 +75,18 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
       bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
       spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
       // if (spec.avg_pooling_quant_mode == 0) {
-      //   spec.multiplier = getMultiplier().has_value() ? getMultiplier().value() :
-      //   1; spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
+      //   spec.multiplier = getMultiplier().has_value() ?
+      //   getMultiplier().value() : 1; spec.rshiftbits =
+      //   getRshift().has_value() ? getRshift().value() : 0;
       // }
       if (spec.avg_pooling_quant_mode == 2) {
         spec.merge_requant = true;
-        spec.rq_scale =
-            getScale().has_value() ? (getScale().value().convertToDouble()) : 1.;
-        spec.rq_offset =
-            getOffset().has_value() ? (getOffset().value().convertToDouble()) : 0.;
+        spec.rq_scale = getScale().has_value()
+                            ? (getScale().value().convertToDouble())
+                            : 1.;
+        spec.rq_offset = getOffset().has_value()
+                             ? (getOffset().value().convertToDouble())
+                             : 0.;
       }
     }
   }
@@ -98,7 +101,8 @@ void tpu::Pool3DOp::codegen_global_bm1684x() {
 
 int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
-    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
   int64_t buffer_size = 0;
   auto out_dtype = getOutput().getType();
   auto attr = parseParam();
@@ -130,6 +134,7 @@ int64_t tpu::Pool3DOp::getBufferSize_bm1684x(
 }
 
 void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                          group_type_t group_type,
                                           local_sec_info_t &sec_info) {
   // auto op = getOperation();
   auto gi = getGroupInfo(n_step, h_step);
@@ -177,15 +182,18 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
       spec.avg_pooling_quant_mode = with_pad ? 1 : 2;
 
       // if (spec.avg_pooling_quant_mode == 0) {
-      //   spec.multiplier = getMultiplier().has_value() ? getMultiplier().value() :
-      //   1; spec.rshiftbits = getRshift().has_value() ? getRshift().value() : 0;
+      //   spec.multiplier = getMultiplier().has_value() ?
+      //   getMultiplier().value() : 1; spec.rshiftbits =
+      //   getRshift().has_value() ? getRshift().value() : 0;
       // }
       if (spec.avg_pooling_quant_mode == 2) {
         spec.merge_requant = true;
-        spec.rq_scale =
-            getScale().has_value() ? (getScale().value().convertToDouble()) : 1.;
-        spec.rq_offset =
-            getOffset().has_value() ? (getOffset().value().convertToDouble()) : 0.;
+        spec.rq_scale = getScale().has_value()
+                            ? (getScale().value().convertToDouble())
+                            : 1.;
+        spec.rq_offset = getOffset().has_value()
+                             ? (getOffset().value().convertToDouble())
+                             : 0.;
       }
     }
   }
@@ -197,14 +205,10 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                           sizeof(pooling3d_spec_t));
 }
 
-//dynamic codegen
-int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
-}
+// dynamic codegen
+int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }

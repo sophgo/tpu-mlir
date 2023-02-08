@@ -14,6 +14,7 @@ import sys
 
 if __name__ == "__main__":
     client = SOCClient("http://172.28.9.198:8000/")
+    # client = SOCClient("http://172.28.3.138:8000/")
     args = sys.argv[1:]
     file = None
     if "--bmodel" in args:

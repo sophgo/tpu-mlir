@@ -135,18 +135,6 @@ typedef enum {
 } active_type_t;
 
 typedef enum {
-  /* 3D group if this group has CONV3D/DECONV3D/POOL3D
-   * for 1684 float32, data in local memory storage as {d * n, c, h, w}
-   * for 1684 int8, data in local memory storage as {n, d * c, h, w}
-   * for 1684X, data in local memory storage as {d * n, c, h, w}
-   * data in global memory always storage as {n, c, d, h, w}
-   * group_type < 8, because 1684 dynamic compile reserved `3bit` for group_type
-   */
-  GROUP_NORMAL = 0,
-  GROUP_3D = 1,
-} group_type_t;
-
-typedef enum {
   BINARY_ADD = 0,
   BINARY_SUB = 1,
   BINARY_MUL = 2,
@@ -952,6 +940,19 @@ typedef struct batch_matmul_common_spec {
   int offset_val;
   // int round_mode;
 } batch_matmul_common_spec_t;
+
+typedef struct batch_matmul_global_spec {
+  batch_matmul_common_spec_t common;
+} batch_matmul_global_spec_t;
+
+typedef struct batch_matmul_local_spec {
+  batch_matmul_common_spec_t common;
+  unsigned int buffer_addr;
+} batch_matmul_local_spec_t;
+
+typedef struct batch_matmul_local_param {
+  batch_matmul_local_spec_t spec;
+} batch_matmul_local_param_t;
 
 typedef struct {
   int block_sizes[2];

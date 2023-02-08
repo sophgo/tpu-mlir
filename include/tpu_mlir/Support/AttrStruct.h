@@ -85,7 +85,9 @@ typedef struct {
   bool with_bias;
   bool do_relu;
   double relu_limit;
+  bool left_transpose;
   bool right_transpose;
+  bool hdim_is_batch;
   int64_t input_zp;
   int64_t right_zp;
 } matmul_attr_t;
