@@ -99,27 +99,23 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
     }
   }
 
-  // 2.set group op address
-  for (auto &op_value : group_ops) {
-    auto op = static_cast<Operation *>(op_value.op);
-    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
-      auto &last_op = gOp.getBody().back().back();
-      auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
-      assert(yield_op);
-      int idx = 0;
-      for (auto opd : yield_op.getOperands()) {
-        auto addr = module::getAddress(gOp.getResult(idx));
-        module::setAddress(opd, addr);
-        idx++;
+  // 2.set inplace_ops address
+  for (auto v_info : inplace_ops) {
+    Operation *op = (Operation *)v_info.op;
+    if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
+      auto addr = module::getAddress(concatOp.getInputs()[0]);
+      module::setAddress(concatOp.getOutput(), addr);
+      int64_t offset = module::getBytes(concatOp.getInputs()[0]);
+      for (uint32_t i = 1; i < concatOp.getInputs().size(); i++) {
+        auto input = concatOp.getInputs()[i];
+        module::setAddress(input, addr + offset);
+        offset += module::getBytes(input);
       }
-    }
-  }
-  // 3.set inplace_ops address
-  for (auto op : inplace_ops) {
-    if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>((Operation *)op.op)) {
+    } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       auto addr = module::getAddress(reshapeOp.getInput());
       module::setAddress(reshapeOp.getOutput(), addr);
-    } else if (auto sliceOp = dyn_cast<tpu::SliceOp>((Operation *)op.op)) {
+    } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
+      auto addr = module::getAddress(sliceOp.getInput());
       auto p = sliceOp.parseParam();
       int axis;
       for (axis = 0; p.offset_4[axis] == 0 && axis < 4; axis++)
@@ -132,10 +128,25 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
           offset_bytes *= p.is_4[i];
         }
       }
-      module::setAddress(sliceOp.getOutput(),
-                         module::getAddress(sliceOp.getInput()) + offset_bytes);
+      module::setAddress(sliceOp.getOutput(), addr + offset_bytes);
     } else {
       llvm_unreachable("set address of undefined inplace op!");
+    }
+  }
+
+  // 3.set group op address
+  for (auto &op_value : group_ops) {
+    auto op = static_cast<Operation *>(op_value.op);
+    if (auto gOp = dyn_cast<tpu::GroupOp>(op)) {
+      auto &last_op = gOp.getBody().back().back();
+      auto yield_op = dyn_cast<tpu::YieldOp>(last_op);
+      assert(yield_op);
+      int idx = 0;
+      for (auto opd : yield_op.getOperands()) {
+        auto addr = module::getAddress(gOp.getResult(idx));
+        module::setAddress(opd, addr);
+        idx++;
+      }
     }
   }
   module::setNeuronAddr(start_addr);
@@ -183,10 +194,28 @@ void BMAddressAssign::updateLiveRangeofBMOps(
              module::isOpInGroup(op)) {
     updateOperandsLiveRange(op, endPosition);
   } else if (isInPlaceOp(op)) {
-    uint32_t maxPosition = endPosition;
-    findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
-    updateOperandsLiveRange(op, maxPosition);
-    inplace_ops.emplace_back(v);
+    if (isa<tpu::ConcatOp>(op)) {
+      uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
+      liveRange[v] = TensorLive(index, loc, 0xFFFFFFFF, 0);
+      updateOperandsLiveRange(op, endPosition);
+      for (int i = 0; i < op->getNumOperands(); ++i) {
+        auto opd = module::getOperand(op, i);
+        auto preOp = opd.getDefiningOp();
+        ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
+        liveRange[pre_v].end = liveRange[v].end;
+        if (i == 0) {
+          liveRange[pre_v].tensor_size = tensor_size;
+        } else {
+          liveRange[pre_v].tensor_size = 0;
+        }
+      }
+      inplace_ops.emplace_back(v);
+    } else {
+      uint32_t maxPosition = endPosition;
+      findInPlaceOpMaxUsePosition(op, maxPosition, ops_loc);
+      updateOperandsLiveRange(op, maxPosition);
+      inplace_ops.emplace_back(v);
+    }
   } else if (op->getDialect()->getNamespace() == "tpu") {
     uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
     assert(liveRange.count(v) == 0);
@@ -220,6 +249,8 @@ bool BMAddressAssign::isInPlaceOp(Operation *op) {
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     auto p = sliceOp.parseParam();
     return p.fusible;
+  } else if (auto concatOp = dyn_cast<tpu::ConcatOp>(op)) {
+    return concatOp.getOnlyMerge();
   }
   return false;
 }

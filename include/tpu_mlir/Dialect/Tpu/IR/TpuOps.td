@@ -1016,13 +1016,14 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     I64Attr:$axis,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    DefaultValuedAttr<BoolAttr, "false">:$only_merge,
     // param for cv18xx
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,
-    DefaultValuedAttr<BoolAttr, "false">:$only_merge,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
-    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    // for group
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
 }

@@ -46,6 +46,9 @@ typedef struct concat_local_param {
 
 void tpu::ConcatOp::codegen_global_bm1684x() {
   auto op = getOperation();
+  if (getOnlyMerge()) {
+    return;
+  }
   int num_input = getInputs().size();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -86,23 +89,23 @@ void tpu::ConcatOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                           &sec_info, input_spec->data(), output_spec->data());
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::ConcatOp::dyn_codegen_local_bm1684x(void *buffer) {
   int input_num = getInputs().size();
   if (buffer) {
-      concat_common_spec_t common;
-      memset(&common, 0, sizeof(common));
-      common.input_num = input_num;
-      common.concat_axis = getAxis();
-      auto p = static_cast<char *>(buffer);
-      memcpy(p, &common, sizeof(common));
-      p += sizeof(common);
-      int size = p - static_cast<char *>(buffer);
-      buffer = (char*)buffer + size;
-      SmallVector<int> is_st_concat_way(input_num, 0);
-      p = static_cast<char *>(buffer);
-      memcpy(p,is_st_concat_way.data(), sizeof(is_st_concat_way[0]) * input_num);
-      p += sizeof(is_st_concat_way[0]) * input_num;
+    concat_common_spec_t common;
+    memset(&common, 0, sizeof(common));
+    common.input_num = input_num;
+    common.concat_axis = getAxis();
+    auto p = static_cast<char *>(buffer);
+    memcpy(p, &common, sizeof(common));
+    p += sizeof(common);
+    int size = p - static_cast<char *>(buffer);
+    buffer = (char *)buffer + size;
+    SmallVector<int> is_st_concat_way(input_num, 0);
+    p = static_cast<char *>(buffer);
+    memcpy(p, is_st_concat_way.data(), sizeof(is_st_concat_way[0]) * input_num);
+    p += sizeof(is_st_concat_way[0]) * input_num;
   }
   return sizeof(concat_common_spec_t) + input_num * sizeof(int);
 }
@@ -113,19 +116,19 @@ int64_t tpu::ConcatOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::ConcatOp::dyn_codegen_global_bm1684x(void *buffer) {
   int input_num = getInputs().size();
   if (buffer) {
-      concat_common_spec_t common;
-      memset(&common, 0, sizeof(common));
-      common.input_num = input_num;
-      common.concat_axis = getAxis();
-      auto p = static_cast<char *>(buffer);
-      memcpy(p, &common, sizeof(common));
-      p += sizeof(common);
-      int size = p - static_cast<char *>(buffer);
-      buffer = (char*)buffer + size;
-      SmallVector<int> is_st_concat_way(input_num, 0);
-      p = static_cast<char *>(buffer);
-      memcpy(p,is_st_concat_way.data(), sizeof(is_st_concat_way[0]) * input_num);
-      p += sizeof(is_st_concat_way[0]) * input_num;
+    concat_common_spec_t common;
+    memset(&common, 0, sizeof(common));
+    common.input_num = input_num;
+    common.concat_axis = getAxis();
+    auto p = static_cast<char *>(buffer);
+    memcpy(p, &common, sizeof(common));
+    p += sizeof(common);
+    int size = p - static_cast<char *>(buffer);
+    buffer = (char *)buffer + size;
+    SmallVector<int> is_st_concat_way(input_num, 0);
+    p = static_cast<char *>(buffer);
+    memcpy(p, is_st_concat_way.data(), sizeof(is_st_concat_way[0]) * input_num);
+    p += sizeof(is_st_concat_way[0]) * input_num;
   }
   return sizeof(concat_common_spec_t) + input_num * sizeof(int);
 }

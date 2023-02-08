@@ -1048,10 +1048,8 @@ class OnnxConverter(BaseConverter):
                 end = end + input_shape[axis]
             if start < 0:
                 start = start + input_shape[axis]
-            if end > input_shape[axis]:
+            if end > input_shape[axis] or end < -1:
                 end = input_shape[axis]
-            elif end < 0:
-                end = -1
             slice_shape[axis] = (abs(end - start) + abs(step) - 1) // abs(step)
             slice_offset[axis] = start
             slice_step[axis] = step

@@ -152,6 +152,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #############################
             "ChannelNorm": self.test_ChannelNorm,
+            "ConcatFuse": self.test_ConcatFuse,
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
             "Div2Mul": self.test_Div2Mul,
@@ -2034,6 +2035,28 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(1, 40, 40, 384).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_ConcatFuse(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv1 = nn.Conv2d(4, 4, 3, 1, 1)
+                self.conv2 = nn.Conv2d(4, 4, 3, 1, 1)
+                self.conv3 = nn.Conv2d(4, 4, 3, 1, 1)
+                self.bias = torch.randn(1, 4, 32, 32)
+
+            def forward(self, x):
+                a = self.conv1(x)
+                b = self.conv2(x)
+                c = self.conv3(x)
+                d = torch.cat((a, b, c), 0)
+                e = d + self.bias
+                return e
+
+        x = torch.randn(1, 4, 32, 32).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_Conv3dTo2d(self, case_name):

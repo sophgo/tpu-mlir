@@ -30,7 +30,6 @@ protected:
                               int alignment);
   void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition,
                                    std::map<Operation *, uint32_t> &ops_loc);
-
   bool isInPlaceOp(Operation *op);
   int getOutIndex(Operation *op, Value &out);
   uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
