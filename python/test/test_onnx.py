@@ -1392,7 +1392,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Softmax(self, case_name):
-        input_shapes = [[3, 100, 32], [3, 100, 32, 1]]
+        input_shapes = [[3, 100, 1, 1],[3, 100, 32], [3, 100, 32, 1]]
         axiss = [1, 2]
         for input_shape in input_shapes:
             for axis in axiss:
