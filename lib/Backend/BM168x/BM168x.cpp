@@ -369,20 +369,27 @@ static void size_to_2dim(int64_t size, int64_t &small, int64_t &big) {
 void BM168x::getBetterNCHW(Value v, int64_t &n, int64_t &c, int64_t &h,
                            int64_t &w) {
   auto num = module::getNumElements(v);
+  auto bytes = module::getDtypeSize(v);
+  auto EU = eu_num(bytes);
   n = 1;
   c = 1;
   h = 1;
   w = 1;
+  int64_t left;
   if (num % NPU_NUM == 0) {
     c = NPU_NUM;
-    size_to_2dim(num / c, h, w);
+    left = num / c;
+    if (left % EU == 0) {
+      w = EU;
+      h = left / w;
+    } else {
+      size_to_2dim(num / c, w, h);
+    }
     return;
   }
-  auto bytes = module::getDtypeSize(v);
-  auto EU = eu_num(bytes);
   if (num % EU == 0) {
-    h = EU;
-    size_to_2dim(num / EU, w, c);
+    w = EU;
+    size_to_2dim(num / EU, h, c);
     return;
   }
   int64_t a[3];

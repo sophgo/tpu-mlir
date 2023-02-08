@@ -47,28 +47,31 @@ def mlir_lowering(top_mlir: str,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
     cmd = ["tpuc-opt", top_mlir, "--init"]
-    qdq = mode.upper() == 'QDQ'
-    if qdq:
+    mode = mode.upper()
+    if mode == 'QDQ':
         assert cali_table == None, "qdq cannot work with cali_table"
         assert quantize_table == None, "qdq cannot work with quantize_table"
         cmd.extend(["--convert-qdq-to-calibrated-dialect"])
-        mode = 'int8'
+        mode = 'INT8'
+    if mode != 'INT8':
+        asymmetric = True
     if cali_table != None:
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
         cmd.extend([cali_param])
     if fuse_preprocess:
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
-            mode.upper(), customization_format)
+            mode, customization_format)
         cmd.extend([fuse_pre_param])
     if aligned_input:
-        aligned_param = "--align-input=\"chip={} customization_format={}\"".format(chip.lower(), customization_format)
+        aligned_param = "--align-input=\"chip={} customization_format={}\"".format(
+            chip.lower(), customization_format)
         cmd.extend([aligned_param])
     qtable = ""
     if quantize_table:
         qtable = "qtable={}".format(quantize_table)
     lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} chip={}\"".format(
-        mode.upper(), qtable, asymmetric, chip.lower())
+        mode, qtable, asymmetric, chip.lower())
     cmd.extend([
         lower_param,
         "--canonicalize",
@@ -135,8 +138,7 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     try:
-        _os_system(["mv compiler_profile_0.txt",
-                   model + ".compiler_profile_0.txt"])
+        _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
     except RuntimeError:
         pass
 
