@@ -2045,14 +2045,15 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
                 self.conv1 = nn.Conv2d(4, 4, 3, 1, 1)
                 self.conv2 = nn.Conv2d(4, 4, 3, 1, 1)
-                self.conv3 = nn.Conv2d(4, 4, 3, 1, 1)
+                self.conv3 = nn.Conv2d(4, 16, 3, 2, 1)
                 self.bias = torch.randn(1, 4, 32, 32)
 
             def forward(self, x):
                 a = self.conv1(x)
                 b = self.conv2(x)
                 c = self.conv3(x)
-                d = torch.cat((a, b, c), 0)
+                c2 = torch.reshape(c, (1, 4, 32, 32))
+                d = torch.cat((a, b, c2), 0)
                 e = d + self.bias
                 return e
 
