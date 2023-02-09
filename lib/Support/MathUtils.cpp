@@ -899,13 +899,16 @@ void topk_indices(std::vector<std::pair<int, float>> &result,
                   const float *items, int num_elem, int k, bool largest) {
   using pair_t = std::pair<int, float>;
   auto cmp_large = [](pair_t const &item1, pair_t const &item2) {
-    return item1.second > item2.second;
+    return (item1.second > item2.second)
+          || (item1.second == item2.second && item1.first < item2.first);
   };
   auto cmp_small = [](pair_t const &item1, pair_t const &item2) {
-    return item1.second < item2.second;
+    return (item1.second < item2.second)
+          || (item1.second == item2.second && item1.first > item2.first);
   };
   auto cmp = largest ? cmp_large : cmp_small;
-
+#if 0
+  //heap_sort is a unstable sort
   std::priority_queue<pair_t, std::vector<pair_t>, decltype(cmp)> topk(cmp);
   for (int i = 0; i < num_elem; ++i) {
     if (topk.size() < k) {
@@ -923,6 +926,12 @@ void topk_indices(std::vector<std::pair<int, float>> &result,
     result.insert(result.begin(), pair_t(topk.top().first, topk.top().second));
     topk.pop();
   }
+#endif
+  std::vector<pair_t> topk;
+  for (int i = 0; i < num_elem; i++)
+    topk.emplace_back(i, items[i]);
+  result.resize(k);
+  std::partial_sort_copy(topk.begin(), topk.end(), result.begin(), result.end(), cmp);
 }
 
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
