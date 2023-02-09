@@ -21,9 +21,15 @@ int64_t top::MulOp::getFLOPs() {
 
 LogicalResult top::MulOp::init(InferenceParameter &p) {
   auto binary = new Binary();
+  auto lhs_shape =  module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
+  auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
+  auto input0_shape = shape_expand_dim(lhs_shape, max_ndim);
+  auto input1_shape = shape_expand_dim(rhs_shape, max_ndim);
+
   (*binary)
-      .lhs(p.inputs[0], module::getShape(getInputs()[0]))
-      .rhs(p.inputs[1], module::getShape(getInputs()[1]))
+      .lhs(p.inputs[0], input0_shape)
+      .rhs(p.inputs[1], input1_shape)
       .dst(p.outputs[0], module::getShape(getOutput()))
       .do_relu(getDoRelu())
       .relu_limit(getReluLimit().convertToDouble())
