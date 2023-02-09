@@ -37,7 +37,7 @@ struct TopReduceTranspose : public OpRewritePattern<ReduceOp> {
     if (input_dim == reduce_axes->size()) {
       op->setOperand(0, permuteOp.getInput());
       if (permuteOp.getOutput().getUsers().empty()) {
-        permuteOp.erase();
+        rewriter.eraseOp(permuteOp);
       }
       return success();
     }
@@ -81,7 +81,7 @@ struct TopReduceTranspose : public OpRewritePattern<ReduceOp> {
     op->setAttr("axes", rewriter.getI64ArrayAttr(new_axis));
     op->setOperand(0, permuteOp.getInput());
     if (permuteOp.getOutput().getUsers().empty()) {
-      permuteOp.erase();
+      rewriter.eraseOp(permuteOp);
     }
     return success();
   }

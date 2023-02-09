@@ -48,7 +48,7 @@ struct MergeSlicePattern : public OpRewritePattern<SliceOp> {
     op->setAttr("offset", rewriter.getI64ArrayAttr(new_offset));
     op->setAttr("steps", rewriter.getI64ArrayAttr(new_steps));
     op->setOperand(0, in_slice.getInput());
-    in_op->erase();
+    rewriter.eraseOp(in_op);
     return success();
   }
 };

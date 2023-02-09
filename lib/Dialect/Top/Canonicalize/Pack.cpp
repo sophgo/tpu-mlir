@@ -74,7 +74,7 @@ struct PackMatmulPattern : public OpRewritePattern<PackOp> {
         op.getLoc(), op.getOutput().getType(),
         ValueRange{l_split.getInput(), r_split.getInput(), none}, attrs);
     op.replaceAllUsesWith(batchMatMul.getOperation());
-    op.erase();
+    rewriter.eraseOp(op);
     return success();
   }
 };

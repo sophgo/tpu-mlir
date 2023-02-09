@@ -784,6 +784,9 @@ bool isCalibratedType(Type type) {
 bool isCalibratedType(Value v) { return isCalibratedType(v.getType()); }
 
 bool isUniformQuantized(Type type) {
+  if (type.isa<RankedTensorType>() == false) {
+    return false;
+  }
   return type.cast<RankedTensorType>()
       .getElementType()
       .isa<quant::UniformQuantizedType>();

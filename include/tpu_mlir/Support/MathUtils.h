@@ -136,6 +136,11 @@ void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
 int dnnl_mm(float *input, float *weight, float *bias, float *output, int m,
             int k, int n, bool transpose);
 
+std::shared_ptr<std::vector<float>>
+binary_add(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
+           const llvm::ArrayRef<int64_t> &b_shape,
+           std::vector<int64_t> &o_shape);
+
 int8_t quantizeFilterRShift(float w, float threshold_y, float threshold_x,
                             uint32_t rshift);
 
@@ -261,8 +266,7 @@ uint8_t to_uint4(T value,
   return v > 15 ? 15 : v < 0 ? 0 : v;
 }
 
-void swap_dim_data(float *input, float *output,
-                   std::vector<int64_t> &ishape,
+void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
                    std::vector<int64_t> &offsets);
 
 } // namespace tpu_mlir

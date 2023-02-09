@@ -24,7 +24,7 @@ struct TopFuseReshape : public OpRewritePattern<ReshapeOp> {
     auto in_op = op.getInput().getDefiningOp();
     if (in_op->hasOneUse() && isa<ReshapeOp>(in_op)) {
       op->setOperand(0, in_op->getOperand(0));
-      in_op->erase();
+      rewriter.eraseOp(in_op);
       return success();
     }
     return failure();
@@ -43,7 +43,7 @@ struct TopFuseReshape2 : public OpRewritePattern<ReshapeOp> {
       return failure();
     }
     op.getOutput().replaceAllUsesWith(op.getInput());
-    op->erase();
+    rewriter.eraseOp(op);
     return success();
   }
 };
