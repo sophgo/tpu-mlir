@@ -230,25 +230,26 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
 }
 
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs,
-                                int64_t max_nslice, int64_t max_hslice,
                                 int64_t n, int64_t h) {
   slice_info_t slice_info;
-  int64_t cur_idx, cur_slice;
+  int64_t secs, idx, slice, step;
   // n slice info
-  int64_t offset = 0;
-  for (int64_t i = 0; i < shape_secs.nsecs; ++i) {
-    cur_idx = offset;
-    cur_slice = std::min(max_nslice, n - offset);
-    slice_info.n.emplace_back(slice_pair_t(cur_idx, cur_slice));
-    offset += cur_slice;
+  secs = shape_secs.nsecs;
+  for (int64_t i = 0; i < secs; ++i) {
+    step = n / secs + (n % secs > i);
+    idx = n / secs * i + (n % secs > i ? i : n % secs);
+    slice = (n - idx) > step ? step : (n - idx);
+    // assert(idx < n);
+    slice_info.n.emplace_back(slice_pair_t(idx, slice));
   }
   // h slice_info
-  offset = 0;
-  for (int64_t i = 0; i < shape_secs.hsecs; ++i) {
-    cur_idx = offset;
-    cur_slice = std::min(max_hslice, h - offset);
-    slice_info.h.emplace_back(slice_pair_t(cur_idx, cur_slice));
-    offset += cur_slice;
+  secs = shape_secs.hsecs;
+  for (int64_t i = 0; i < secs; ++i) {
+    step = h / secs + (h % secs > i);
+    idx = h / secs * i + (h % secs > i ? i : h % secs);
+    slice = (h - idx) > step ? step : (h - idx);
+    // assert(idx < h);
+    slice_info.h.emplace_back(slice_pair_t(idx, slice));
   }
 
   return slice_info;
@@ -277,7 +278,6 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     pre_end_idx = idx + slice;
     in_si.h.emplace_back(slice_pair_t(idx, slice));
   }
-
   return true;
 }
 
@@ -397,15 +397,12 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   tensor_infos.clear();
 
   int64_t n, c, h, w;
-  int64_t max_nslice = 0, max_hslice = 0;
   std::list<Value> tensor_branchs;
   std::multiset<Operation *> op_set;
   std::set<Value, value_compare> out_tensor_set;
   for (auto out : lg_info.group_outs) {
     module::getNCHW(out, n, c, h, w);
-    max_nslice = std::max(max_nslice, ceiling_func(n, shape_secs.nsecs));
-    max_hslice = (h + shape_secs.hsecs - 1) / shape_secs.hsecs;
-    auto si = get_out_slice_info(shape_secs, max_nslice, max_hslice, n, h);
+    auto si = get_out_slice_info(shape_secs, n, h);
 
     tensor_infos[out] = tensor_info_t(si);
     out_tensor_set.insert(out);

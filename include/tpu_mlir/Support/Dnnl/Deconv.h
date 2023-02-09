@@ -51,5 +51,5 @@ private:
 
 llvm::Optional<llvm::SmallVector<float, 4>>
 DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride, int64_t filter,
-            int64_t pad);
+            int64_t ih, int64_t pad);
 } // namespace tpu_mlir
