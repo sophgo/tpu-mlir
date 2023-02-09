@@ -177,7 +177,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, int8_t>::matchAndRewrite(
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   if (attr.dh > 1 || attr.dw > 1) {
-    // TODO do dilation here, ins in top/tpu_common interpreter
+    // TODO do ins in top/tpu_common interpreter
     llvm_unreachable("Not supported now");
   }
   rotateConvolutionFilter(filter_i8, filter_shape);
@@ -227,7 +227,7 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.g, attr.kh,
                                        attr.kw};
   auto filter_u16 = filterOp.read<uint16_t>();
-  if (attr.dh > 1 || attr.dw > 1) {
+  if (attr.dh > 15 || attr.dw > 15) {
     // TODO do dilation here, ins in top/tpu_common interpreter
     llvm_unreachable("dilation is not supported now");
   }
@@ -252,7 +252,10 @@ LogicalResult WeightReorder<tpu::DeconvOp, BFloat16Type>::matchAndRewrite(
     transposeBiasFp32(bias_f32, bias_new);
     // rewrite biasOp
     // rewrite weightOp shape (oc) f32 -> (2, oc, 1, 1) uint16
-    std::vector<int64_t> new_bias_shape = {2, attr.oc, 1, 1};
+    std::vector<int64_t> new_bias_shape = {attr.g * 2, attr.oc / attr.g, 1, 1};
+    if (attr.is_dw) {
+      new_bias_shape = {2, attr.oc, 1, 1};
+    }
     auto new_bias_type = RankedTensorType::get(
         new_bias_shape, rewriter.getIntegerType(16, false));
     auto lbias_op =
@@ -367,7 +370,7 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   int ins_h = attr.sh - 1;
   int ins_w = attr.sw - 1;
   if (auto deconv_in_slice =
-          DeconvSlice(gi.h_idx, gi.h_slice, attr.sh, kh_ext, attr.pad_h)) {
+          DeconvSlice(gi.h_idx, gi.h_slice, attr.sh, kh_ext, attr.ih, attr.pad_h)) {
     pad_h_top = deconv_in_slice.value()[0];
     pad_h_bottom = deconv_in_slice.value()[1];
 
@@ -394,7 +397,8 @@ void tpu::DeconvOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
     }
   }
   assert(ins_last_h < 16 && ins_last_w < 16);
-  assert(pad_h_top < 16 && pad_h_bottom < 16 && pad_w_left < 16 && pad_w_right < 16);
+  assert(pad_h_top < 16 && pad_h_bottom < 16 && pad_w_left < 16 &&
+         pad_w_right < 16);
   if (module::isUniformQuantized(getOutput())) {
     cvi_backend_tl_deconv(
         layer_id, la_input, la_output, la_weight, la_bias, n, attr.ic, ih,

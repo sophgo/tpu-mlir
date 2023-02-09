@@ -59,7 +59,7 @@ static void normlize_bf16(const float *input_data, float *output_data,
     rstd_data += BF16(std::pow(dij, 2)) * avg_const;
   }
   rstd_data = BF16(BF16(rstd_data) + BF16(eps_));
-  if (module::isCV18xx) {
+  if (module::isCV18xx()) {
     bf16_lut_mantissa(&rstd_data, &rstd_data, 1, table, mantissa_table,
                       "mantissa");
   } else {

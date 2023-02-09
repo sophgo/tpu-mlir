@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 
 #include "tpu_mlir/Support/MathUtils.h"
 
@@ -116,50 +116,36 @@ LogicalResult tpu::DeconvOp::inference(InferenceParameter &p) {
 
 Optional<SmallVector<float, 4>>
 tpu_mlir::DeconvSlice(int64_t out_idx, int64_t out_slice, int64_t stride,
-                      int64_t filter, int64_t pad) {
-  // Define y as the output space, x as the input space.
-  // y should satisfy the constrain:
-  // y \in {x | Union [x_i * stride, x_i * stride + filter)}
-  // define: x_l, x_u: the lower and upper bound of x space.
-  //         x_range = x_u - x_l + 1
-  //         x_start = x_l
-  //  x \in [x_l, x_u]
+                      int64_t filter, int64_t ih, int64_t pad) {
+  // pad top with (kh_ext - pad_h - 1), ins with (stride - 1)
+  // all cal here assume input is expanded(pad && ins)
+  float max_real_in_idx = ih - 1;
+  int pad_th = filter - pad - 1;
+  int in_idx = out_idx;
+  float real_in_idx = (in_idx - pad_th <= 0)
+                          ? 0
+                          : std::ceil((float)(in_idx - pad_th) / stride);
 
-  // x_l * stride <= y < x_u * stride + filter
-  // x_u * stride <= y_max
-  // assert (x_l - 1) * stride + filter <= y_min
-  // assert x_l * stride + filter > y_min
-  // assert (x_u + 1) * stride > y_max
+  int in_end_idx = out_idx + out_slice + filter - 2;
+  float real_in_end_idx =
+      (in_end_idx - pad_th <= 0)
+          ? 0
+          : std::floor((float)(in_end_idx - pad_th) / stride);
+  real_in_idx = std::min(real_in_idx, max_real_in_idx);
+  real_in_end_idx = std::min(real_in_end_idx, max_real_in_idx);
 
-  // The solution to those inequations is the valid space of x and y.
-
-  float pad_f, pad_e, x_l, x_u;
-  float y_min = out_idx + pad, y_max = y_min + out_slice - 1; // closed interval
-
-  x_l = std::floor(y_min / stride);
-  x_l = std::min(std::floor(std::max(y_min - filter, float(0)) / stride) + 1,
-                 x_l);
-  if (x_l * stride + filter <= y_min)
-    return {};
-
-  x_u = std::floor(y_max / stride);
-  x_u = std::max(std::ceil((y_max - filter) / stride), x_u);
-  if ((x_u + 1) * stride <= y_max)
-    return {};
-
-  pad_f = std::max(x_l * stride + filter - y_min - 1, float(0));
-  pad_e = std::max(y_max - x_u * stride, float(0));
-
-  assert(pad_f < filter);
-  assert(pad_e < filter);
-  return Optional<SmallVector<float, 4>>({pad_f, pad_e, x_l, x_u - x_l + 1});
+  float pad_t = (pad_th + real_in_idx * stride - in_idx);
+  float pad_b = (in_end_idx - (pad_th + real_in_end_idx * stride));
+  assert(pad_t >= 0 && pad_b >= 0 && pad_t < filter && pad_b < filter);
+  return Optional<SmallVector<float, 4>>(
+      {pad_t, pad_b, real_in_idx, real_in_end_idx - real_in_idx + 1});
 }
 
 LogicalResult tpu::DeconvOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                        int64_t out_idx, int64_t out_slice) {
   auto &attr = getDeconvParam(*this);
   int kh_ext = (attr.kh - 1) * attr.dh + 1;
-  if (auto ret = DeconvSlice(out_idx, out_slice, attr.sh, kh_ext, attr.pad_h)) {
+  if (auto ret = DeconvSlice(out_idx, out_slice, attr.sh, kh_ext, attr.ih, attr.pad_h)) {
     in_idx = ret.value()[2];
     in_slice = ret.value()[3];
   } else {
@@ -178,9 +164,15 @@ mlir::Type tpu::DeconvOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::DeconvOp::LocalGenSupport() {
+  auto attr = parseParam();
+  int kh_ext = (attr.kh - 1) * attr.dh + 1;
+  if (kh_ext < attr.sh) {
+    return failure();
+  }
+
   if (module::isCV18xx()) {
-    auto attr = parseParam();
-    if (attr.ic > MAX_TIU_CHL || attr.iw > MAX_TIU_CHL || attr.ow > MAX_TIU_CHL) {
+    if (attr.ic > MAX_TIU_CHL || attr.iw > MAX_TIU_CHL ||
+        attr.ow > MAX_TIU_CHL) {
       return failure();
     }
   }
