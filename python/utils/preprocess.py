@@ -197,7 +197,7 @@ class preprocess(object):
                self.VPSS_W_ALIGN = 64
                self.VPSS_Y_ALIGN = 64
                self.VPSS_CHANNEL_ALIGN = 64
-               if self.pixel_format == "YUV420_PLANAR":
+               if self.customization_format == "YUV420_PLANAR":
                    self.VPSS_Y_ALIGN = self.VPSS_W_ALIGN * 2
 
         info_str = \
