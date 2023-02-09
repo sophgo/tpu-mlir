@@ -35,6 +35,7 @@ FLOAT_MAP = {
     "cv183x": "BF16",
     "cv182x": "BF16",
     "cv181x": "BF16",
+    "cv180x": "BF16"
 }
 
 def find_all_pre_layers(out_layers, op_name, parser, ref_activations_keys):

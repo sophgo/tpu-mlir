@@ -16,11 +16,12 @@ function usage {
     echo "                          [-d dataset_path=/data/dataset] \\ "
     echo -e "                          -f \t\t#FusePreprocess \\ "
     echo -e "                          -p pixel_format \t#Set pixel_format \\ "
-    echo -e "                          -a \t\t#AlignedInput"
+    echo -e "                          -a \t\t#AlignedInput \\"
+    echo -e "                          -c \t\t#Set chip name \\"
 }
 
 # getopts
-while getopts ":m:d:n:f:p:a:" opt
+while getopts ":c:m:d:n:f:p:a:" opt
 do
   case $opt in
   m)
@@ -41,6 +42,9 @@ do
   a)
     a=1
     echo "set algined input: $a";;
+  c)
+    c=$OPTARG
+    echo "set chip name: $c";;
   ?)
     usage
     exit 1;;
@@ -53,6 +57,9 @@ if [ x$n == x ]; then
 fi
 NET=$n
 CHIP_NAME=${SET_CHIP_NAME:-cv183x}
+if [ x$c != x ]; then
+  CHIP_NAME=$c
+fi
 cfg_file=$REGRESSION_PATH/cv18xx_porting/config/model_config_18xx.sh
 
 if [ ! -f $cfg_file ]; then

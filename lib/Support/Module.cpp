@@ -42,6 +42,8 @@ constexpr llvm::StringRef State::TPU_ADDRESSED;
 constexpr llvm::StringRef Chip::ALL;
 constexpr llvm::StringRef Chip::BM1684;
 constexpr llvm::StringRef Chip::BM1684X;
+constexpr llvm::StringRef Chip::CV180x;
+constexpr llvm::StringRef Chip::CV181x;
 constexpr llvm::StringRef Chip::CV182x;
 constexpr llvm::StringRef Chip::CV183x;
 constexpr llvm::StringRef Chip::BM1686;
@@ -594,7 +596,7 @@ bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
 }
 
-bool isCV18xx() { return (chip == Chip::CV183x || chip == Chip::CV182x); }
+bool isCV18xx() { return (chip == Chip::CV183x || chip == Chip::CV182x || chip == Chip::CV181x || chip == Chip::CV180x); }
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1686);

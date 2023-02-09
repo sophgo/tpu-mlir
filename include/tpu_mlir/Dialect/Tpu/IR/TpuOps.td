@@ -574,7 +574,7 @@ def Tpu_ActiveOp: Tpu_Op<"Active",
 }
 
 def Tpu_ClipOp: Tpu_Op<"Clip",
-  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
    DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Clip operator";
   let description = [{

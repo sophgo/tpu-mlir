@@ -146,7 +146,7 @@ export INPUT_SCALE=0.017,0.017,0.017
 export INPUT=input
 #export OUTPUTS=fc7
 export TOLERANCE_INT8=0.96,0.73
-export TOLERANCE_BF16=0.99,0.92
+export TOLERANCE_BF16=0.98,0.85 #for yuv format, before is (0.99,0.92)
 export EXCEPTS=prob
 export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
 fi
@@ -1191,7 +1191,7 @@ export INPUT=input
 export EXCEPTS=relu_17.tmp_0_Relu  # almost all zeros
 export MODEL_CHANNEL_ORDER="rgb"
 export TOLERANCE_INT8=0.62,0.04 #0.78,0.29
-export TOLERANCE_BF16=0.99,0.93
+export TOLERANCE_BF16=0.98,0.82 #set for yuv format, before is 0.99,0.93
 export TOLERANCE_BF16_CMDBUF=0.99,0.98
 export CALI_IMAGES=$DATA_SET/coco/val2017
 fi

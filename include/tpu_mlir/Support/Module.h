@@ -63,6 +63,8 @@ struct Chip {
   static constexpr llvm::StringRef ALL = "ALL";
   static constexpr llvm::StringRef BM1684 = "BM1684";
   static constexpr llvm::StringRef BM1684X = "BM1684X";
+  static constexpr llvm::StringRef CV180x = "CV180X";
+  static constexpr llvm::StringRef CV181x = "CV181X";
   static constexpr llvm::StringRef CV182x = "CV182X";
   static constexpr llvm::StringRef CV183x = "CV183X";
   static constexpr llvm::StringRef BM1686 = "BM1686";

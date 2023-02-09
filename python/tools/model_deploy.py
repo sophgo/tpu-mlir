@@ -39,7 +39,7 @@ def getCustomFormat(pixel_format, channel_format):
             custom_format = "BGR_PACKED"
     elif pixel_format == "gary":
         custom_format = "GRAYSCALE"
-    elif pixel_format == "grba":
+    elif pixel_format == "rgba":
         custom_format == "RGBA_PLANAR"
     else:
         print("pixel_format of {} no supported!".format(pixel_format))
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--chip", required=True, type=str,
                         choices=['bm1686', 'bm1684x', 'bm1684',
-                                 'cv183x', 'cv182x', 'cv181x'],
+                                 'cv183x', 'cv182x', 'cv181x', 'cv180x'],
                         help="chip platform name")
     parser.add_argument("--test_input", default="", type=str2list,
                         help="input npy/npz/image file for inference, image is for cv18xx fuse preprocess"
