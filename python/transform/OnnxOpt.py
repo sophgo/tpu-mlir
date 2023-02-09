@@ -517,10 +517,10 @@ class ReForm(object):
             if node.op_type == "Constant":
                 continue
             if flush_input:
-                flush_input = False
                 for i in range(len(node.input)):
                     if cast_ops[-1].output[0] == node.input[i]:
                         self.nodes[idx].input[i] = cast_ops[-1].input[0]
+                        flush_input = False
         for op in cast_ops:
             self.nodes.remove(op)
 
