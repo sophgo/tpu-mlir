@@ -65,7 +65,7 @@ struct MatMulWithBias : public OpRewritePattern<MatMulOp> {
     op->setOperand(2, bias);
     op->setLoc(add_op.getLoc());
     add_op.replaceAllUsesWith(op.getOperation());
-    add_op.erase();
+    rewriter.eraseOp(add_op);
     return success();
   }
 };
@@ -107,7 +107,7 @@ struct MatMulWithRightTranspose : public OpRewritePattern<MatMulOp> {
       // bingo !
       op.setOperand(1, trans_op.getInput());
       op.setRightTranspose(true);
-      trans_op.erase();
+      rewriter.eraseOp(trans_op);
       return success();
     }
     return failure();
