@@ -61,7 +61,6 @@ class DeployTool:
         self.quant_output = args.quant_output
         self.quantize_table = args.quantize_table
         self.model = args.model
-        self.test_input = args.test_input
         self.ref_npz = args.test_reference
         self.customization_format = args.customization_format
         self.fuse_preprocess = args.fuse_preprocess
