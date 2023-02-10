@@ -31,12 +31,14 @@ static void normlize_f32(const float *input_data, float *output_data,
   rstd_data /= inner_dim;
   rstd_data += eps_;
   rstd_data = std::sqrt(rstd_data);
-  rstd_data = 1 / rstd_data;
+  rstd_data = 1.0f / rstd_data;
 
   for (int j = 0; j < inner_dim; ++j) {
     output_data[j] = input_data[j] - mean_data;
-    output_data[j] *= weight_data[j];
     output_data[j] *= rstd_data;
+    if (weight_data) {
+      output_data[j] *= weight_data[j];
+    }
     if (bias_data) {
       output_data[j] += bias_data[j];
     }
@@ -64,7 +66,7 @@ static void normlize_bf16(const float *input_data, float *output_data,
                       "mantissa");
   } else {
     rstd_data = std::sqrt(rstd_data);
-    rstd_data = 1. / rstd_data;
+    rstd_data = 1.0f / rstd_data;
   }
 
   for (int j = 0; j < inner_dim; ++j) {
@@ -72,9 +74,9 @@ static void normlize_bf16(const float *input_data, float *output_data,
     output_data[j] = BF16(output_data[j] * rstd_data);
     if (weight_data) {
       output_data[j] = BF16(output_data[j] * weight_data[j]);
-      if (bias_data) {
-        output_data[j] = BF16(output_data[j] + bias_data[j]);
-      }
+    }
+    if (bias_data) {
+      output_data[j] = BF16(output_data[j] + bias_data[j]);
     }
   }
 }
@@ -142,7 +144,10 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::LayerNormOp::LocalGenSupport() {
   if (module::isCV18xx() == false) {
-    return failure();
+    if (getAxis() != 0)
+      return success();
+    else
+      return failure();
   }
   int num_dims = module::getShape(getInput()).size();
   if (getAxis() == 2 && (num_dims == 3 || num_dims == 4)) {

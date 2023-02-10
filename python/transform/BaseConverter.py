@@ -81,6 +81,13 @@ class BaseConverter(object):
         w = self.getWeight(name)
         return np.all(w == w.flatten()[0])
 
+    def isScalar_(self, name, x):
+        assert(isinstance(x, (int, float)))
+        if not self.isWeight(name): return False
+        if np.prod(self.getShape(name)) == 1: return True
+        w = self.getWeight(name)
+        return np.all(w == x)
+
     def getScalar(self, name):
         if not self.isScalar(name):
             raise RuntimeError("Not Scalar")

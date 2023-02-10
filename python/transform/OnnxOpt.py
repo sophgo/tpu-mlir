@@ -547,19 +547,15 @@ class ReForm(object):
 
 ############ torch.LayerNorm ############
 def TorchLayerNormPattern(patterns: list):
+    def is_last_dims(x: list):
+        return np.all(np.diff(x) == 1) and x[-1] == -1
+
     reducemean_input = OuterNode()
+
     pow_tensor = OuterNode(tensor_value=2)
     add_0_tensor = OuterNode(attr_name="eps")
     mul_tensor = OuterNode(is_tensor=True)
     add_1_tensor = OuterNode(is_tensor=True)
-
-    def is_last_dims(x):
-        if len(x) == 0:
-            return False
-        if len(x) == 1:
-            return x[0] == -1 or x[0] == 3
-        y = np.diff(x)
-        return (y == y[0]).all() and (x[-1] == -1 or x[-1] == 3)
 
     _reducemean_0 = PatternNode(
         "ReduceMean",

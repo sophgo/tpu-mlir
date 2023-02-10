@@ -153,6 +153,7 @@ class ONNX_IR_TESTER(object):
             "TorchGRU": self.test_TorchGRU,
             "TorchLayerGroup": self.test_TorchLayerGroup,
             "TorchLayerNorm": self.test_TorchLayerNorm,
+            "TorchLayerNorm2": self.test_TorchLayerNorm2,
             "TorchLogSoftmax": self.test_TorchLogSoftmax,
             "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
@@ -2038,6 +2039,24 @@ class ONNX_IR_TESTER(object):
                 return x
 
         input_shape = [14, 25] + normalize_shape
+        input_data = torch.randn(input_shape)
+        self.torch_and_test(input_data, Net(), case_name)
+
+    def test_TorchLayerNorm2(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.layer_norm = nn.LayerNorm([25, 25])
+                self.conv = nn.Conv2d(32, 32, 3, 1, 1)
+
+            def forward(self, x):
+                x = self.layer_norm(x)
+                y = self.conv(x)
+                return y
+
+        input_shape = [4, 32, 25, 25]
         input_data = torch.randn(input_shape)
         self.torch_and_test(input_data, Net(), case_name)
 

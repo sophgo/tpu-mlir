@@ -1402,7 +1402,7 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    AnyTensor:$weight,
+    AnyTensorOrNone:$weight,
     AnyTensorOrNone:$bias,
     I64Attr:$axis,
     F64Attr:$eps
