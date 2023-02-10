@@ -141,6 +141,11 @@ class preprocess(object):
             input_shapes = str2shape(input_shapes)
         self.batch_size = input_shapes[0][0]
         self.net_input_dims = input_shapes[0][-2:]
+        if channel_format == 'nhwc':
+            if len(input_shapes[0]) >= 4:
+                self.net_input_dims = input_shapes[0][-3:-1]
+            else:
+                self.net_input_dims = input_shapes[0][:-1]
         if resize_dims:
             if isinstance(resize_dims, str):
                 self.resize_dims = [int(s) for s in resize_dims.split(',')]
