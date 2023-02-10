@@ -17,61 +17,44 @@ using namespace tpu_mlir::backend;
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct {
-  uint64_t input_addr;
-  uint64_t *output_addr;
-  int shape[MAX_SHAPE_DIMS];
-  int shape_dim;
-  int split_axis;
+#define MAX_SPLIT_OUTPUT_NUM 8
+typedef struct split_spec {
+  int axis;
+  int split_size[MAX_SPLIT_OUTPUT_NUM];
   int split_num;
-  int *split_size;
-  int dtype;
-} split_global_param_t;
-
-typedef struct {
-  unsigned int input_addr;
-  unsigned int *output_addr;
-  int shape[4];
-  int split_axis;
-  int split_num;
-  int *split_size;
-  int dtype;
-} split_local_param_t;
+  uint64_t buffer_addr;
+  int input_num; // =2 means split_size is dynamic
+} split_spec_t;
 
 #ifdef __cplusplus
 }
 #endif
 
 void tpu::SplitOp::codegen_global_bm1684x() {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
   std::vector<int64_t> input_shape = module::getShape(getInput());
-  split_global_param_t param = {0};
-  param.input_addr = module::getAddress(getInput());
+  split_spec_t param = {0};
+  param.input_num = 1;
   std::vector<uint64_t> output_addr;
   for (int i = 0; i < getNum(); ++i) {
     output_addr.push_back(module::getAddress(getOutputs()[i]));
   }
-  param.output_addr = output_addr.data();
-  param.shape_dim = input_shape.size();
-  param.split_axis = getAxis();
+  param.axis = getAxis();
   param.split_num = getNum();
-  for (int i = 0; i < param.shape_dim; ++i) {
-    param.shape[i] = input_shape[i];
-  }
   int max_split_num = (input_shape[getAxis()] + getNum() - 1) / getNum();
   std::vector<int> split_size;
   for (int i = 0; i < getNum() - 1; ++i) {
-    split_size.push_back(max_split_num);
+    param.split_size[i] = max_split_num;
   }
-  split_size.push_back(input_shape[getAxis()] - max_split_num * (getNum() - 1));
-  param.split_size = split_size.data();
-  param.dtype = BM168x::getDataType(getInput());
-  BM168x::call_global_func("backend_api_split_global", &param, sizeof(param));
+  param.split_size[getNum() - 1] =
+      input_shape[getAxis()] - max_split_num * (getNum() - 1);
+  BM168x::call_global_func("backend_api_split_tf_global", &param, sizeof(param),
+                           input_spec->data(), output_spec->data());
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::SplitOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
-}
+int64_t tpu::SplitOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
