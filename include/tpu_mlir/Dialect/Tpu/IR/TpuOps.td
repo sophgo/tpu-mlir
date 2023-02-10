@@ -555,7 +555,7 @@ def Tpu_MinOp: Tpu_Op<"Min", [
 }
 
 def Tpu_ActiveOp: Tpu_Op<"Active",
-  [DeclareOpInterfaceMethods<LocalGenInterface>,
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
   let summary = "Active operator";
 

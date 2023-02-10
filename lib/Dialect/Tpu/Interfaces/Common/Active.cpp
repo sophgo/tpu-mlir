@@ -100,3 +100,14 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+LogicalResult tpu::ActiveOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    if (getMode() == ActiveMode::ABSVAL) {
+      return success();
+    } else {
+      return failure();
+    }
+  }
+  return success();
+}
