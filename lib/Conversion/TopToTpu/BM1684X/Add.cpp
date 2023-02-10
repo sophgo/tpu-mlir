@@ -174,6 +174,9 @@ void AddLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::string suffix = "_add";
   std::string new_name = module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
   auto newType = RankedTensorType::get(module::getShape(addOp.getOutput()),
                                        rewriter.getI32Type());
   // auto add_quant = lowering_common<tpu::AddOp>(op, newType);
