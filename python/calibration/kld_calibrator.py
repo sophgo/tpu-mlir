@@ -131,7 +131,8 @@ class SimpleTuner:
         self.data_list = ds.data_list[:self.args.tune_num]
         self.ppa_list = ppa_list
         self.debug_cmd = parse_debug_cmd(args.debug_cmd)
-        print('debug_cmd:',self.debug_cmd)
+        if self.debug_cmd:
+            print('debug_cmd:',self.debug_cmd)
         if 'input_calibration_table' in self.debug_cmd:
             self.threshold_table = CalibrationTable(self.debug_cmd['input_calibration_table'] +
                                                     ".1")
