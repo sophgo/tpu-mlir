@@ -1414,6 +1414,22 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   );
 }
 
+def Top_PixelNormOp : Top_Op<"PixelNorm"> {
+  let summary = "PixelNorm operation";
+  let description = [{
+    pixel normalization (normalize along c-axis)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output
+  );
+}
+
 def Top_ProposalOp: Top_Op<"Proposal"> {
   let summary = "Proposal operator";
 

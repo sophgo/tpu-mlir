@@ -165,7 +165,7 @@ class ONNX_IR_TESTER(object):
             #############################
             # Special Pass test case, Alphabetically
             #############################
-            "ChannelNorm": self.test_ChannelNorm,
+            "PixelNorm": self.test_PixelNorm,
             "ConcatFuse": self.test_ConcatFuse,
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
@@ -2090,7 +2090,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 3, 100, 100).float()
         self.torch_and_test(x, Net(), case_name)
 
-    def test_ChannelNorm(self, case_name):
+    def test_PixelNorm(self, case_name):
         N, C, H, W = 4, 8, 32, 32
 
         class Net(torch.nn.Module):

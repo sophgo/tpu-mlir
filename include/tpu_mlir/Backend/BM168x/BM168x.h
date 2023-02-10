@@ -515,6 +515,19 @@ typedef struct {
     depth2space_common_spec_t common;
 } depth2space_global_spec_t;
 
+typedef struct pixel_norm_common_spec {
+    float  eps;
+    int    affine;
+} pixel_norm_common_spec_t;
+
+typedef struct pixel_norm_global_spec {
+    pixel_norm_common_spec_t common;
+} pixel_norm_global_spec_t;
+
+typedef struct pixel_norm_local_spec {
+    pixel_norm_common_spec_t common;
+    uint32_t buffer_addr;
+} pixel_norm_local_spec_t;
 
 #ifdef __cplusplus
 }
