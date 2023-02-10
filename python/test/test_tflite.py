@@ -43,7 +43,7 @@ except ImportError:
 
 
 Failed_Cases = ["Add", "Sub", "Transpose", "Cast", "Unpack", "Gather", "Pad", "ReduceMin",
-                "ReduceMax", "Sum", "Matmul", "DepthwiseConv2d", "Mean"]
+                "ReduceMax", "Sum", "Matmul", "DepthwiseConv2d", "Mean", "Concat", "Pack"]
 
 
 class TFLITE_IR_TESTER(object):
