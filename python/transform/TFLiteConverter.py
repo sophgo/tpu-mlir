@@ -13,7 +13,6 @@ import mlir.dialects.quant as quant
 import numpy as np
 from .tflite.TensorType import TensorType
 
-
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
     if sOrIt_ is None:
@@ -235,6 +234,7 @@ class TFLiteConverter(BaseConverter):
         TensorType.UINT32: None,
         TensorType.UINT64: None,
     }
+    ID = 0
 
     def __init__(self, model_name: str, tflite_file: str, input_shapes=None,
                  output_names: list=[], preprocess_args = None):
@@ -243,9 +243,9 @@ class TFLiteConverter(BaseConverter):
         self.tflite_file = tflite_file
         self.tflie = TFLiteReader(tflite_file)
         self.graph = next(self.tflie.subgraph)
-        self.shape_infer = self.__shape_infer(input_shapes)
         self.preprocess_args = preprocess_args
         self.need_transpose = preprocess_args['model_format'] == 'image'
+        self.shape_infer = self.__shape_infer(input_shapes)
 
         for x in self.graph.inputs:
             self.__nhwc2nchw(x)
@@ -287,12 +287,12 @@ class TFLiteConverter(BaseConverter):
             "FULLY_CONNECTED": self.fully_connected_op,
             "MAX_POOL_2D": self.maxpool_op,
             "AVERAGE_POOL_2D": self.avgpool_op,
-            "DEQUANTIZE": lambda _: ("top.Cast", {}),
-            "QUANTIZE": lambda _: ("top.Cast", {}),
-            "CAST": lambda _: ("top.Cast", {}),
-            "RESHAPE": lambda _: ("top.Reshape", {}),
+            "DEQUANTIZE": lambda _: ("top.Cast", {}, False),
+            "QUANTIZE": lambda _: ("top.Cast", {}, False),
+            "CAST": lambda _: ("top.Cast", {}, False),
+            "RESHAPE": lambda _: ("top.Reshape", {}, False),
             "CONCATENATION": self.concat_op,
-            "LOGISTIC": lambda _: ("top.Sigmoid", {}),
+            "LOGISTIC": lambda _: ("top.Sigmoid", {}, False),
             "MUL": self.mul_op,
             "RESIZE_NEAREST_NEIGHBOR": self.resize_nearest_op,
             "STRIDED_SLICE": self.stride_slice_op,
@@ -388,7 +388,7 @@ class TFLiteConverter(BaseConverter):
                 storage_max,
             )
 
-    def __get_tensor_type(self, tensor):
+    def __get_tensor_type(self, tensor, shape=None):
         def getCalibratedQuantizedType(tensor):
             quantParam = tensor.quantization
             raw_elem_type = self.type_to_mlir[tensor.type]
@@ -405,12 +405,14 @@ class TFLiteConverter(BaseConverter):
         # should return calibrated quantized type.
         if is_intermediate and quantParam is not None:
             elem_type = getCalibratedQuantizedType(tensor)
+        if shape is not None:
+            return RankedTensorType.get(shape, elem_type)
         if tensor.shape is not None:
             return RankedTensorType.get(tensor.shape, elem_type)
         return UnrankedTensorType.get(elem_type)
 
-    def __nhwc2nchw(self, tensor):
-        if not self.need_transpose:
+    def __nhwc2nchw(self, tensor, need=False):
+        if not self.need_transpose and need is False:
             return tensor
         # "layout" is a marker to ensure process each tensor once.
         if hasattr(tensor, "layout"):
@@ -436,7 +438,7 @@ class TFLiteConverter(BaseConverter):
             return None
         input_shapes_ = input_shapes.copy()
         for index, shape in enumerate(input_shapes_):
-            if len(shape) == 4:
+            if len(shape) == 4 and self.need_transpose is True:
                 n, c, h, w = shape
                 input_shapes_[index] = (n, h, w, c)
 
@@ -460,6 +462,39 @@ class TFLiteConverter(BaseConverter):
         self.constant[tensor.name] = tensor.buffer
         return op.results[0]
 
+    def __shape_transpose(self, shape: List[int], order: List[int]):
+        if len(shape) != 4 or len(order) != 4:
+            return shape
+        shape_ = []
+        for i in range(len(order)):
+            shape_.append(shape[order[i]])
+        return shape_
+
+    def __do_transpose(self, tensor, operand, order, name_loc, same=True):
+        shape = self.__shape_transpose(tensor.shape, order)
+        if shape == tensor.shape:
+            return operand
+        tensor_type = self.__get_tensor_type(tensor, shape if same else None)
+        # name_loc = Location.name(name)
+        attr = {
+            "order": self.mlir.ArrayAttr(order),
+        }
+        op = Operation.create(
+            Top.PermuteOp,
+            results=[tensor_type],
+            operands=[operand],
+            attributes=attr,
+            loc=name_loc,
+        )
+        self.mlir.insert_point.insert(op)
+        return op.results[0]
+
+    def __get_new_name(self):
+        id = int(TFLiteConverter.ID)
+        TFLiteConverter.ID += 1
+        name = "tpumlir_tensor_" + str(id)
+        return name
+
     def pad_op(self, op):
         paddings = op.inputs[1].buffer
         if paddings.shape[0] == 4:
@@ -471,7 +506,7 @@ class TFLiteConverter(BaseConverter):
         op.inputs = [op.inputs[0]]  # remove ins[1]
         attr = {"paddings": self.mlir.ArrayAttr(paddings.flatten()),
                 "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val)}
-        return "top.Pad", attr
+        return "top.Pad", attr, True
 
     def add_op(self, op):
         from .tflite.AddOptions import AddOptions
@@ -485,7 +520,7 @@ class TFLiteConverter(BaseConverter):
                 "Not supported ActivationFunctionType: {}!".format(fused_active)
             )
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
-        return Top.AddOp, attr
+        return Top.AddOp, attr, False
 
     def sub_op(self, op):
         from .tflite.SubOptions import SubOptions
@@ -499,7 +534,7 @@ class TFLiteConverter(BaseConverter):
                 "Not supported ActivationFunctionType: {}!".format(fused_active)
             )
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
-        return Top.SubOp, attr
+        return Top.SubOp, attr, False
 
     def mul_op(self, op):
         from .tflite.AddOptions import AddOptions
@@ -511,7 +546,7 @@ class TFLiteConverter(BaseConverter):
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
-        return Top.MulOp, attr
+        return Top.MulOp, attr, False
 
     def pool_attr(self, op):
         from .tflite.Pool2DOptions import Pool2DOptions
@@ -534,10 +569,10 @@ class TFLiteConverter(BaseConverter):
         return attr
 
     def maxpool_op(self, op):
-        return Top.MaxPoolOp, self.pool_attr(op)
+        return Top.MaxPoolOp, self.pool_attr(op), True
 
     def avgpool_op(self, op):
-        return Top.AvgPoolOp, self.pool_attr(op)
+        return Top.AvgPoolOp, self.pool_attr(op), True
 
     def conv_2d_op(self, op):
         from .tflite.Conv2DOptions import Conv2DOptions
@@ -587,7 +622,7 @@ class TFLiteConverter(BaseConverter):
             "pads": self.mlir.ArrayAttr(padding),
             "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),     # relu6 to relu
         }
-        return Top.ConvOp, attr
+        return Top.ConvOp, attr, True
 
     def depthwise_2d_op(self, op):
         from .tflite.DepthwiseConv2DOptions import DepthwiseConv2DOptions
@@ -620,7 +655,7 @@ class TFLiteConverter(BaseConverter):
             "group": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
                                      in_shape[3] // kernel_shape[0]),
         }
-        return Top.ConvOp, attr
+        return Top.ConvOp, attr, True
 
     def fully_connected_op(self, op):
         from .tflite.FullyConnectedOptions import FullyConnectedOptions
@@ -644,7 +679,7 @@ class TFLiteConverter(BaseConverter):
             op.inputs[1].layout = "NCHW"
         else:
             attr["right_transpose"] = BoolAttr.get(True)
-        return Top.MatMulOp, attr
+        return Top.MatMulOp, attr, False
 
     def mean_op(self, op):
         args = op.inputs[1].buffer
@@ -656,9 +691,37 @@ class TFLiteConverter(BaseConverter):
                 "strides": self.mlir.ArrayAttr([1, 1]),
                 "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
             }
-            return Top.AvgPoolOp, attr
+            return Top.AvgPoolOp, attr, True
         else:
             raise ValueError("Only support reduction in H and W dimensions.")
+
+    # def reduce_op(self, op, mode):
+    #     from .tflite.ReducerOptions import ReducerOptions
+    #     op_options = op.builtin_options
+    #     param = ReducerOptions()
+    #     param.Init(op_options.Bytes, op_options.Pos)
+
+    #     args = op.inputs[1].buffer
+    #     op.inputs = [op.inputs[0]]
+    #     axes = [_axis_transpose(op, i) for i in args]
+    #     attr = {
+    #         "axes": self.mlir.ArrayAttr(axes),
+    #         "keepdims": BoolAttr.get(param.KeepDims()),
+    #         "mode": StringAttr.get(mode),
+    #     }
+    #     return Top.ReduceOp, attr, True
+
+    # def mean_op(self, op):
+    #     return self.reduce_op(op, "ReduceMean")
+
+    # def sum_op(self, op):
+    #     return self.reduce_op(op, "ReduceSum")
+
+    # def min_op(self, op):
+    #     return self.reduce_op(op, "ReduceMin")
+
+    # def max_op(self, op):
+    #     return self.reduce_op(op, "ReduceMax")
 
     def softmax_op(self, op):
         from .tflite.SoftmaxOptions import SoftmaxOptions
@@ -667,10 +730,11 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         beta = param.Beta()
         axis = 1 if self.need_transpose else len(op.inputs[0].shape) - 1
+        # axis = _axis_transpose(op, len(op.inputs[0].shape) - 1)
         return "top.Softmax", {
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
-        }
+        }, True
 
     def concat_op(self, op):
         from .tflite.ConcatenationOptions import ConcatenationOptions
@@ -684,7 +748,7 @@ class TFLiteConverter(BaseConverter):
         return "top.Concat", {
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
             "do_relu": BoolAttr.get(fused_active == 1),
-        }
+        }, False
 
     def resize_nearest_op(self, op):
         from .tflite.ResizeNearestNeighborOptions import ResizeNearestNeighborOptions
@@ -712,7 +776,7 @@ class TFLiteConverter(BaseConverter):
             "mode": StringAttr.get("nearest"),
             "scale_h": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[0]),
             "scale_w": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[1]),
-        }
+        }, False
 
     def stride_slice_op(self, op):
         from .tflite.StridedSliceOptions import StridedSliceOptions
@@ -730,7 +794,7 @@ class TFLiteConverter(BaseConverter):
             "ellipsis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], ellipsis_mask),
             "new_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], new_axis_mask),
             "shrink_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], shrink_axis_mask),
-        }
+        }, False
 
     def split_op(self, op):
         from .tflite.SplitOptions import SplitOptions
@@ -744,7 +808,7 @@ class TFLiteConverter(BaseConverter):
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
             "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.NumSplits()),
         }
-        return Top.SplitOp, attr
+        return Top.SplitOp, attr, False
 
     def pack_op(self, op):
         from .tflite.PackOptions import PackOptions
@@ -755,7 +819,7 @@ class TFLiteConverter(BaseConverter):
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
             "values_count": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.ValuesCount()),
         }
-        return Top.PackOp, attr
+        return Top.PackOp, attr, False
 
     def unpack_op(self, op):
         from .tflite.UnpackOptions import UnpackOptions
@@ -766,7 +830,7 @@ class TFLiteConverter(BaseConverter):
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
             "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Num()),
         }
-        return Top.UnpackOp, attr
+        return Top.UnpackOp, attr, False
 
     def gather_op(self, op):
         from .tflite.GatherOptions import GatherOptions
@@ -777,7 +841,7 @@ class TFLiteConverter(BaseConverter):
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
-        return Top.GatherOp, attr
+        return Top.GatherOp, attr, False
 
     def transpose_op(self, op):
         assert op.inputs[1].buffer is not None
@@ -787,7 +851,7 @@ class TFLiteConverter(BaseConverter):
             "order": self.mlir.ArrayAttr(perm),
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
-        return Top.PermuteOp, attr
+        return Top.PermuteOp, attr, False
 
     def convert_subgraph(self, subgraph):
         class symbolTable:
@@ -829,21 +893,40 @@ class TFLiteConverter(BaseConverter):
             symbol_table.update({input.id: input_op})
 
         def add_operation(operation):
-            op_type, attributes = self.BuiltinOptionsToAttributes[operation.type](
+            op_type, attributes, channel_last = self.BuiltinOptionsToAttributes[operation.type](
                 operation
             )
 
-            if operation.type is 'RESHAPE':
-                operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
-            else:
+            trans_suffix = ""
+            if channel_last and self.need_transpose is False:
+                # do transpose (NCHW to NCHW)
                 operands = []
-                for x in operation.inputs:
-                    operands.append(symbol_table[self.__nhwc2nchw(x)] if x is not None else self.mlir.none_op)
-            rst_type = [
-                self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
-            ]
+                for idx, x in enumerate(operation.inputs):
+                    # name = operation.outputs[0].name + "_bm_trans" + str(idx)
+                    if x is None:
+                        operands.append(self.mlir.none_op)
+                    elif x.id not in symbol_table.symbol_table.keys():
+                        operands.append(symbol_table[self.__nhwc2nchw(x, True)])
+                    else:
+                        operands.append(self.__do_transpose(x, symbol_table[x], [0,3,1,2], self.__get_new_name()))
+                        if len(x.shape) == 4:
+                            trans_suffix = "_bm_trans"
+                rst_type = [
+                    self.__get_tensor_type(x, self.__shape_transpose(x.shape,[0,3,1,2])) for x in operation.outputs
+                ]
+            else :
+                if operation.type is 'RESHAPE':
+                    operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
+                else:
+                    operands = []
+                    for x in operation.inputs:
+                        operands.append(symbol_table[self.__nhwc2nchw(x)] if x is not None else self.mlir.none_op)
+                rst_type = [
+                    self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
+                ]
+
             name_loc = Location.fused(
-                [Location.name(x.name) for x in operation.outputs]
+                [Location.name(x.name + trans_suffix) for x in operation.outputs]
             )
             op = Operation.create(
                 op_type,
@@ -853,7 +936,14 @@ class TFLiteConverter(BaseConverter):
                 loc=name_loc,
             )
             self.mlir.insert_point.insert(op)
-            symbol_table.update(dict(zip((x.id for x in operation.outputs), op.results)))  # type: ignore
+            if channel_last and self.need_transpose is False:
+                # do transpose (NCHW to NHWC)
+                res = []
+                for idx, x in enumerate(operation.outputs):
+                    res.append(self.__do_transpose(x, op.results[idx], [0,2,3,1], x.name, False))
+            else:
+                res = op.results
+            symbol_table.update(dict(zip((x.id for x in operation.outputs), res)))  # type: ignore
 
         return_op = []
         for op in subgraph.operators:
