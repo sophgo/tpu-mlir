@@ -98,12 +98,10 @@ run_all() {
   if [[ "$?" -ne 0 ]]; then
     ERR=1
   fi
-  # if [ x${test_type} == xall ]; then
-  #   run_tflite_op
-  #   if [[ "$?" -ne 0 ]]; then
-  #     ERR=1
-  #   fi
-  # fi
+  run_tflite_op
+  if [[ "$?" -ne 0 ]]; then
+    ERR=1
+  fi
   run_script_test
   if [[ "$?" -ne 0 ]]; then
     ERR=1
