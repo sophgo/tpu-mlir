@@ -162,7 +162,9 @@ void MulLowering::LoweringQuantized(PatternRewriter &rewriter,
   QuantizeMultiplier(scale_mul, &multiplier, &shift);
 
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("do_relu", op.getDoReluAttr()));
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
   std::string suffix = "_mul";
   std::string new_name = name + suffix;
   auto name_loc = NameLoc::get(rewriter.getStringAttr(new_name));

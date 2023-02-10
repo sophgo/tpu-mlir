@@ -22,8 +22,8 @@ LogicalResult tpu::SubOp::init(InferenceParameter &p) {
   auto input1_shape = shape_expand_dim(in1_shape, dims);
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], in0_shape)
-      .rhs(p.inputs[1], in1_shape)
+      .lhs(p.inputs[0], input0_shape)
+      .rhs(p.inputs[1], input1_shape)
       .dst(p.outputs[0], module::getShape(getOutput()))
       .do_relu(getDoRelu())
       .relu_limit(getReluLimit().convertToDouble())
@@ -170,12 +170,14 @@ LogicalResult tpu::SubOp::LocalGenSupport() {
   case 2:
     if (lhs_shape[0] != rhs_shape[0])
       return failure();
+    break;
   case 3:
   case 4:
     if (lhs_shape[0] != rhs_shape[0])
       return failure();
     if (lhs_shape[2] != rhs_shape[2])
       return failure();
+    break;
   default:
     success();
   }

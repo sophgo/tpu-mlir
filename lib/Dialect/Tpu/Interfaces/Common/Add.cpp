@@ -182,12 +182,14 @@ LogicalResult tpu::AddOp::LocalGenSupport() {
   case 2:
     if (lhs_shape[0] != rhs_shape[0])
       return failure();
+    break;
   case 3:
   case 4:
     if (lhs_shape[0] != rhs_shape[0])
       return failure();
     if (lhs_shape[2] != rhs_shape[2])
       return failure();
+    break;
   default:
     success();
   }
