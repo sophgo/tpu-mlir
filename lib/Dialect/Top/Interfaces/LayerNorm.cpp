@@ -16,9 +16,10 @@
 
 
 int64_t top::LayerNormOp::getFLOPs() {
-  const bool have_bias = getBias().getType().isa<NoneType>();
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
   const int64_t num_elem = module::getNumElements(getOutput());
-  return num_elem * (10 + !!have_bias);
+  return num_elem * (10 + have_weight + have_bias);
 }
 
 LogicalResult top::LayerNormOp::init(InferenceParameter &p) { return success(); }
@@ -39,12 +40,13 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
     inner_dim *= input_shape[i];
   }
 
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
   const bool need_mean = !getMean().getType().isa<NoneType>();
   const bool need_rstd = !getRstd().getType().isa<NoneType>();
 
   const float* input_data = p.inputs[0];
-  const float* weight_data = p.inputs[1];
+  const float* weight_data = have_weight ? p.inputs[1] : nullptr;
   const float* bias_data = have_bias ? p.inputs[2] : nullptr;
   float* output_data = p.outputs[0];
   float* mean_data = need_mean ? p.outputs[1] : nullptr;
@@ -53,6 +55,7 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
 
+  #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
     for (int j = 0; j < inner_dim; ++j) {
       mean_arr[i] += input_data[i * inner_dim + j];
@@ -68,14 +71,16 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
     rstd_arr[i] /= inner_dim;
     rstd_arr[i] += eps_;
     rstd_arr[i] = std::sqrt(rstd_arr[i]);
-    rstd_arr[i] = 1 / rstd_arr[i];
+    rstd_arr[i] = 1.0f / rstd_arr[i];
     if (need_rstd) {
       rstd_data[i] = rstd_arr[i];
     }
     for (int j = 0; j < inner_dim; ++j) {
       output_data[i * inner_dim + j] = input_data[i * inner_dim + j] - mean_arr[i];
-      output_data[i * inner_dim + j] *= weight_data[j];
       output_data[i * inner_dim + j] *= rstd_arr[i];
+      if (have_weight) {
+        output_data[i * inner_dim + j] *= weight_data[j];
+      }
       if (have_bias) {
         output_data[i * inner_dim + j] += bias_data[j];
       }

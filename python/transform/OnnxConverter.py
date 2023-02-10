@@ -1916,12 +1916,16 @@ class OnnxConverter(BaseConverter):
             "axis": axis,
             "eps": eps
         }
+        wb_shape = [1 if i < axis else input_shape[i] for i in range(num_dims)]
         input_opd = self.getOperand(onnx_node.inputs[0])
-        scale_opd = self.getWeightOp(onnx_node.inputs[1])
+        scale_opd = self.mlir.none_op
+        bias_opd = self.mlir.none_op
+        if len(onnx_node.inputs) > 1:
+            if not self.isScalar_(onnx_node.inputs[1], 1):
+                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
         if len(onnx_node.inputs) > 2:
-            bias_opd = self.getWeightOp(onnx_node.inputs[2])
-        else:
-            bias_opd = self.mlir.none_op
+            if not self.isScalar_(onnx_node.inputs[2], 0):
+                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
         out_shapes = [[], [], []]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
