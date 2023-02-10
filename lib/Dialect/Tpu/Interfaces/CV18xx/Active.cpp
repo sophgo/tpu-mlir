@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
@@ -65,9 +66,50 @@ void tpu::ActiveOp::codegen_global_cv18xx(int64_t layer_id) {
 int64_t tpu::ActiveOp::getBufferSize_cv18xx(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  llvm_unreachable("Not supported now");
+  return 0;
 }
 
 void tpu::ActiveOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  if (getMode() != ActiveMode::ABSVAL) {
+    return;
+  }
+  int64_t n, c, h, w;
+  auto shape = module::getShape(getInput());
+  module::getNCHW(shape, n, c, h, w);
+
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  std::vector<laddr_t> la_input(1);
+  la_input[0] = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+  n = in_gi.n_slice;
+  h = in_gi.h_slice;
+  int op_code = 3; // abs
+  int nInputs = 1;
+  if (module::isUniformQuantized(getOutput())) {
+    cvi_backend_tl_eltwise(layer_id, la_input.data(), la_output,
+                            -1, /*la_working*/
+                            n, c, h, w, nInputs,
+                            op_code,
+                            0 /*rshift*/,
+                            0 /*m_i8_input*/,
+                            0 /*use_default_coeff*/,
+                            0 /*do_relu*/,
+                            0 /*relu_slope*/,
+                            NULL /*coeffs*/,
+                            0,
+                            0, 0, 0 /*do_early_stride, early_stride_h, early_stride_w*/);
+  } else {
+    cvi_backend_bf16_tl_eltwise(layer_id, la_input.data(), la_output,
+                            n, c, h, w, nInputs,
+                            op_code,
+                            0 /*use_default_coeff*/,
+                            0 /*do_relu*/,
+                            0 /*relu_slope*/,
+                            NULL /*coeffs*/,
+                            0 /*do_early_stride*/,
+                            0, 0 /*early_stride_h, early_stride_w*/);
+  }
+  //llvm_unreachable("Not supported now");
 }

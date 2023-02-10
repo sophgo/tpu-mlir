@@ -45,7 +45,7 @@ int aligned_image_size(int n, int c, int h, int w, std::string &pixel_format,
     int n_stride = align_up(uv + h / 2 * uv_w_aligned, channel_align);
     return n * n_stride;
   } else if ("RGB_PLANAR" == pixel_format || "BGR_PLANAR" == pixel_format ||
-             "ARGB_PLANAR" == pixel_format) {
+             "RGBA_PLANAR" == pixel_format) {
     int aligned_w = align_up(w, w_align);
     int n_stride = align_up(aligned_w * h, channel_align) * c;
     return n * n_stride;
