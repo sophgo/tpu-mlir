@@ -601,6 +601,54 @@ def TorchLayerNormPattern(patterns: list):
                    src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div],
                    dst_nodes=[layernorm]))
 
+############ torch.PixelNorm ############
+def TorchPixelNormPattern(patterns: list):
+    def is_c_dim(x: list):
+        return len(x) == 1 and x[0] == 1
+
+    reducemean_input = OuterNode()
+
+    pow_tensor = OuterNode(tensor_value=2)
+    add_0_tensor = OuterNode(attr_name="eps")
+    mul_tensor = OuterNode(is_tensor=True)
+    add_1_tensor = OuterNode(is_tensor=True)
+
+    _reducemean_0 = PatternNode(
+        "ReduceMean",
+        [reducemean_input],
+        ["axes"],
+        attrcheck=AttrCheck(attrs=["axes"], func=is_c_dim),
+    )
+    _sub = PatternNode("Sub", [reducemean_input, _reducemean_0])
+    _pow = PatternNode("Pow", [_sub, pow_tensor])
+    _reducemean_1 = PatternNode(
+        "ReduceMean",
+        [_pow],
+        attrcheck=AttrCheck(attrs=["axes"], func=is_c_dim),
+    )
+    _add_0 = PatternNode("Add", [_reducemean_1, add_0_tensor])
+    _sqrt = PatternNode("Sqrt", [_add_0])
+    _div = PatternNode("Div", [_sub, _sqrt])
+    mul = PatternNode("Mul", [_div, mul_tensor])
+    _add_1 = PatternNode("Add", [mul, add_1_tensor])
+
+    epsilon_attrfunc = AttrFunctor([add_0_tensor], ["eps"])
+
+    # affine (have both weight and bias)
+    layernorm_aff = PatternNode("PixelNormalization", [reducemean_input, mul_tensor, add_1_tensor],
+                                attrmap={"epsilon": epsilon_attrfunc})
+    patterns.append(
+        ReformInfo(
+            name="pixelnorm_aff",
+            src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div, mul, _add_1],
+            dst_nodes=[layernorm_aff]))
+    # without affine (do not have both weight and bias)
+    layernorm = PatternNode("PixelNormalization", [reducemean_input],
+                            attrmap={"epsilon": epsilon_attrfunc})
+    patterns.append(
+        ReformInfo(name="pixelnorm",
+                   src_nodes=[_reducemean_0, _sub, _pow, _reducemean_1, _add_0, _sqrt, _div],
+                   dst_nodes=[layernorm]))
 
 ############ torch.GELU ############
 def TorchGELUPattern(patterns: list):
@@ -703,6 +751,7 @@ def onnx_opt(model, dump=False, rigorous=True):
     # add your patterns here if you expect that your patterns actually works
     pattern_functions = [
         TorchLayerNormPattern,
+        TorchPixelNormPattern,
         TorchHardSigmoidPattern,
         TorchHardSwishPattern,
         TorchHardSwishPattern2,

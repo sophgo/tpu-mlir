@@ -159,6 +159,7 @@ class OnnxConverter(BaseConverter):
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
+            "PixelNormalization": lambda node: self.convert_pixel_norm_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
             "Pow": lambda node: self.convert_pow_op(node),
             "QuantizeLinear": lambda node: self.convert_qlinear_op(node),
@@ -1938,6 +1939,32 @@ class OnnxConverter(BaseConverter):
         for idx, need in enumerate(out_needs):
             if not need: continue
             self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+
+    def convert_pixel_norm_op(self, onnx_node):
+        assert (onnx_node.op_type == "PixelNormalization")
+        assert (len(onnx_node.inputs) in (1, 2, 3))
+        input_shape = self.getShape(onnx_node.inputs[0])
+        num_dims = len(input_shape)
+        assert (num_dims > 1)
+        eps = onnx_node.attrs.get("epsilon", 1e-05)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "eps": eps
+        }
+        wb_shape = [1] * num_dims
+        wb_shape[1] = input_shape[1]
+        input_opd = self.getOperand(onnx_node.inputs[0])
+        scale_opd = self.mlir.none_op
+        bias_opd = self.mlir.none_op
+        if len(onnx_node.inputs) > 1:
+            if not self.isScalar_(onnx_node.inputs[1], 1):
+                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
+        if len(onnx_node.inputs) > 2:
+            if not self.isScalar_(onnx_node.inputs[2], 0):
+                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
+        output_shape = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_pixel_norm_op([input_opd, scale_opd, bias_opd], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
 
     def convert_scatternd_op(self, onnx_node):
         assert (onnx_node.op_type == "ScatterND")

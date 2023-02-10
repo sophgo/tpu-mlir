@@ -53,6 +53,7 @@ class Top:
     PermuteOp = 'top.Permute'
     PadOp = 'top.Pad'
     PackOp = 'top.Pack'
+    PixelNormOp = 'top.PixelNorm'
     PowOp = 'top.Pow'
     PriorBoxOp = 'top.PriorBox'
     PReluOp = 'top.PRelu'
@@ -997,6 +998,15 @@ class MLIRImporter(object):
             'eps': FloatAttr.get_f64(kargs['eps'])
         }
         return self.buildOp(Top.LayerNormOp, operands, out_types, **param)
+
+    def create_pixel_norm_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        param = {
+            'name': kargs['name'],
+            'eps': FloatAttr.get_f64(kargs['eps'])
+        }
+        return self.buildOp(Top.PixelNormOp, operands, [output_type], **param)
 
     def create_scatternd_op(self, operands, output_shape, **kargs):
         # get_value_type

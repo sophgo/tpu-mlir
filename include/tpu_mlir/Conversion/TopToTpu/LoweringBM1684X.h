@@ -96,5 +96,6 @@ LOWERING_BM1684X(TopK)
 LOWERING_BM1684X(Unpack)
 LOWERING_BM1684X(Upsample)
 LOWERING_BM1684X(Where)
+LOWERING_BM1684X(PixelNorm)
 } // namespace bm1684x
 } // namespace tpu_mlir

@@ -1629,8 +1629,8 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     AnyTensor:$input,
     AnyTensorOrNone:$weight,
     AnyTensorOrNone:$bias,
-    AnyTensorOrNone:$table,
-    AnyTensorOrNone:$mantissa_table,
+    AnyTensorOrNone:$table,            // cv18xx
+    AnyTensorOrNone:$mantissa_table,   // cv18xx
     I64Attr:$axis,
     F64Attr:$eps
   );
@@ -1638,6 +1638,27 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   	AnyTensor:$output,
   	AnyTensorOrNone:$mean,
   	AnyTensorOrNone:$rstd
+  );
+}
+
+def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>
+  ]> {
+  let summary = "PixelNorm operation";
+  let description = [{
+    pixel normalization (normalize along c-axis)
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$table,           // cv18xx
+    AnyTensorOrNone:$mantissa_table,  // cv18xx
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output
   );
 }
 
