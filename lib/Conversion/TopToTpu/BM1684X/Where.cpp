@@ -22,7 +22,7 @@ void WhereLowering::LoweringINT4(PatternRewriter &rewriter, top::WhereOp op,
 }
 void WhereLowering::LoweringINT8(PatternRewriter &rewriter, top::WhereOp op,
                                bool asymmetric) const {
-  lowering_common_f32<tpu::WhereOp>(rewriter, op);
+  lowering_common_int8<tpu::WhereOp>(rewriter, op);
 }
 
 void WhereLowering::LoweringBF16(PatternRewriter &rewriter,
