@@ -40,7 +40,7 @@ typedef struct {
 void tpu::RequantFpOp::codegen_global_bm1684x() {
   requant_fp_param_t param = {0};
   int64_t n, c, h, w;
-  BM168x::getBetterNCHW(getInput(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   param.input_addr = module::getAddress(getInput());
   param.output_addr = module::getAddress(getOutput());
   param.n = (int)n;

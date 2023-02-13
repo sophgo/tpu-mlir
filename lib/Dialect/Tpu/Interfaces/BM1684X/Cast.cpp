@@ -105,7 +105,7 @@ void tpu::CastOp::codegen_global_bm1684x() {
   bool qInput = module::isUniformQuantized(getInput());
   bool qOutput = module::isUniformQuantized(getOutput());
   int64_t n, c, h, w;
-  BM168x::getBetterNCHW(getInput(), n, c, h, w);
+  module::getNCHW(getInput(), n, c, h, w);
   auto op = getOperation();
   if (!qInput && !qOutput) {
     cast_global_spec_t spec = {0};
