@@ -22,7 +22,6 @@ using namespace tpu_mlir::backend;
 // int8
 void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
   int input_num = getInputs().size();
-  assert(input_num == 2);
   int64_t n, c, h, w;
   std::vector<gaddr_t> ga_inputs;
   for (int i = 0; i < input_num; ++i) {
@@ -34,8 +33,8 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
-  auto coeffs_ = module::getF64Array(getCoeff(), 2, 1);
   module::getNCHW(getOutput(), n, c, h, w);
+  auto coeffs_ = module::getF64Array(getCoeff(), input_num, 1);
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
   module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
@@ -47,6 +46,7 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
   if (prod0 != prod1) {
     // only support broadcast right operand
     // TODO: support broadcast both operand
+    assert(input_num == 2);
     if (prod0 < prod1) {
       std::reverse(ga_inputs.begin(), ga_inputs.end());
       std::swap(shape0, shape1);

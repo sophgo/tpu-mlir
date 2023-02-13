@@ -9,10 +9,8 @@
 
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
-
+#include "tpu_mlir/Support/Module.h"
 
 int64_t top::AddOp::getFLOPs() {
   return module::getNumElements(getOutput()) *
@@ -20,24 +18,27 @@ int64_t top::AddOp::getFLOPs() {
 }
 
 LogicalResult top::AddOp::init(InferenceParameter &p) {
-  auto binary = new Binary();
-  auto lhs_shape =  module::getShape(getInputs()[0]);
-  auto rhs_shape = module::getShape(getInputs()[1]);
-  auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
-  auto input0_shape = shape_expand_dim(lhs_shape, max_ndim);
-  auto input1_shape = shape_expand_dim(rhs_shape, max_ndim);
+  if (getInputs().size() == 2) {
+    auto binary = new Binary();
+    auto lhs_shape = module::getShape(getInputs()[0]);
+    auto rhs_shape = module::getShape(getInputs()[1]);
+    auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
+    auto input0_shape = shape_expand_dim(lhs_shape, max_ndim);
+    auto input1_shape = shape_expand_dim(rhs_shape, max_ndim);
 
-  (*binary)
-      .lhs(p.inputs[0], input0_shape)
-      .rhs(p.inputs[1], input1_shape)
-      .dst(p.outputs[0], module::getShape(getOutput()))
-      .do_relu(getDoRelu())
-      .relu_limit(getReluLimit().convertToDouble())
-      .algorithem(algorithm::binary_add)
-      .setup();
+    (*binary)
+        .lhs(p.inputs[0], input0_shape)
+        .rhs(p.inputs[1], input1_shape)
+        .dst(p.outputs[0], module::getShape(getOutput()))
+        .do_relu(getDoRelu())
+        .relu_limit(getReluLimit().convertToDouble())
+        .algorithem(algorithm::binary_add)
+        .setup();
 
-  p.handle = (void *)binary;
-
+    p.handle = (void *)binary;
+  } else {
+    p.handle = nullptr;
+  }
   return success();
 }
 void top::AddOp::deinit(InferenceParameter &p) {
@@ -49,10 +50,28 @@ void top::AddOp::deinit(InferenceParameter &p) {
 }
 
 LogicalResult top::AddOp::inference(InferenceParameter &p) {
-  if (p.handle == nullptr) {
-    return failure();
+  if (getInputs().size() == 2) {
+    if (p.handle == nullptr) {
+      return failure();
+    }
+    auto binary = (Binary *)p.handle;
+    binary->run();
+  } else {
+    auto num_elem = module::getNumElements(getOutput());
+#pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      p.outputs[0][i] = 0;
+      for (auto in : p.inputs) {
+        if (in != nullptr) {
+          p.outputs[0][i] += in[i];
+        }
+      }
+    }
+    if (getDoRelu()) {
+      auto limit = getReluLimit().convertToDouble();
+      function_relu(p.outputs[0], p.outputs[0], num_elem, limit);
+    }
   }
-  auto binary = (Binary *)p.handle;
-  binary->run();
+
   return success();
 }

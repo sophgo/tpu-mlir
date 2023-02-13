@@ -15,31 +15,35 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::AddOp::init(InferenceParameter &p) {
-  auto in0_shape = module::getShape(getInputs()[0]);
-  auto in1_shape = module::getShape(getInputs()[1]);
-  int dims = std::max(in0_shape.size(), in1_shape.size());
-  auto input0_shape = shape_expand_dim(in0_shape, dims);
-  auto input1_shape = shape_expand_dim(in1_shape, dims);
-  auto binary = new Binary();
-  // fix me. naive impletment.
-  // It should be o = alpha * i0 + beta * i1
-  auto coeff_ = module::getF64Array(getCoeff(), 2, 1);
-  bool is_add = true;
-  if (module::getStorageType(getOutput()).isa<FloatType>()) {
-    if (coeff_->at(0) == 1 && coeff_->at(1) == -1) {
-      is_add = false;
+  if (module::isCV18xx() && getInputs().size() != 2) {
+    p.handle = nullptr;
+  } else {
+    auto in0_shape = module::getShape(getInputs()[0]);
+    auto in1_shape = module::getShape(getInputs()[1]);
+    int dims = std::max(in0_shape.size(), in1_shape.size());
+    auto input0_shape = shape_expand_dim(in0_shape, dims);
+    auto input1_shape = shape_expand_dim(in1_shape, dims);
+    auto binary = new Binary();
+    // fix me. naive impletment.
+    // It should be o = alpha * i0 + beta * i1
+    auto coeff_ = module::getF64Array(getCoeff(), 2, 1);
+    bool is_add = true;
+    if (module::getStorageType(getOutput()).isa<FloatType>()) {
+      if (coeff_->at(0) == 1 && coeff_->at(1) == -1) {
+        is_add = false;
+      }
     }
-  }
 
-  (*binary)
-      .lhs(p.inputs[0], input0_shape)
-      .rhs(p.inputs[1], input1_shape)
-      .dst(p.outputs[0], module::getShape(getOutput()))
-      .do_relu(getDoRelu())
-      .relu_limit(getReluLimit().convertToDouble())
-      .algorithem(is_add ? algorithm::binary_add : algorithm::binary_sub)
-      .setup();
-  p.handle = (void *)binary;
+    (*binary)
+        .lhs(p.inputs[0], input0_shape)
+        .rhs(p.inputs[1], input1_shape)
+        .dst(p.outputs[0], module::getShape(getOutput()))
+        .do_relu(getDoRelu())
+        .relu_limit(getReluLimit().convertToDouble())
+        .algorithem(is_add ? algorithm::binary_add : algorithm::binary_sub)
+        .setup();
+    p.handle = (void *)binary;
+  }
   return success();
 }
 
@@ -73,27 +77,37 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   } else if (asym == false) {
     if (module::isCV18xx()) {
       // cv18xx interpreter
-      auto multiplier_v = module::getI64Array(getMultipliers(), 2, 1);
+      auto multiplier_v =
+          module::getI64Array(getMultipliers(), getInputs().size(), 1);
       auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
-      auto lhs_num_elem = module::getNumElements(getInputs()[0]);
-      auto rhs_num_elem = module::getNumElements(getInputs()[1]);
-      std::vector<float> lhs_tmp(lhs_num_elem);
-      std::vector<float> rhs_tmp(rhs_num_elem);
+      auto ninputs = getInputs().size();
+      if (getInputs().size() == 2) {
+        auto lhs_num_elem = module::getNumElements(getInputs()[0]);
+        auto rhs_num_elem = module::getNumElements(getInputs()[1]);
+        std::vector<float> lhs_tmp(lhs_num_elem);
+        std::vector<float> rhs_tmp(rhs_num_elem);
 #pragma omp parallel for schedule(static, omp_schedule(lhs_num_elem))
-      for (int i = 0; i < lhs_num_elem; i++) {
-        lhs_tmp[i] = p.inputs[0][i] * multiplier_v->at(0);
-      }
+        for (int i = 0; i < lhs_num_elem; i++) {
+          lhs_tmp[i] = p.inputs[0][i] * multiplier_v->at(0);
+        }
 #pragma omp parallel for schedule(static, omp_schedule(rhs_num_elem))
-      for (int i = 0; i < rhs_num_elem; i++) {
-        rhs_tmp[i] = p.inputs[1][i] * multiplier_v->at(1);
+        for (int i = 0; i < rhs_num_elem; i++) {
+          rhs_tmp[i] = p.inputs[1][i] * multiplier_v->at(1);
+        }
+
+        auto binary = (Binary *)p.handle;
+        (*binary)
+            .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
+            .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
+            .run();
+      } else {
+#pragma omp parallel for schedule(static, omp_schedule(ninputs))
+        for (int i = 0; i < ninputs; ++i) {
+          for (int j = 0; j < num_elem; ++j) {
+            p.outputs[0][j] += p.inputs[i][j] * multiplier_v->at(i);
+          }
+        }
       }
-
-      auto binary = (Binary *)p.handle;
-      (*binary)
-          .lhs(lhs_tmp.data(), module::getShape(getInputs()[0]))
-          .rhs(rhs_tmp.data(), module::getShape(getInputs()[1]))
-          .run();
-
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
       for (int i = 0; i < num_elem; i++) {
         auto &out = p.outputs[0][i];
