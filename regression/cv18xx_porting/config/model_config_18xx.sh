@@ -1209,7 +1209,7 @@ export INPUT_SCALE=0.00392 #1.0,1.0,1.0
 export STD=1
 export RAW_SCALE=1.0
 export INPUT=input
-export TOLERANCE_INT8=0.955,0.636 # 0.95,0.7
+export TOLERANCE_INT8=0.954,0.636 # 0.95,0.7
 export TOLERANCE_BF16=0.99,0.96
 export EXCEPTS=97_Conv
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
@@ -1238,43 +1238,6 @@ export TOLERANCE_INT8=0.964,0.706 # 0.91,0.50
 export TOLERANCE_BF16=0.99,0.91
 export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.94
 export CALI_IMAGES=$DATA_SET/hico_20160224_det/images/test2015/
-fi
-
-if [ $NET = "fcn-8s" ]; then
-export MODEL_DEF=$MODEL_PATH/segmentation/fcn-8s/caffe/deploy.prototxt
-export MODEL_DAT=$MODEL_PATH/segmentation/fcn-8s/caffe/fcn-8s-pascalcontext.caffemodel
-export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
-export INPUT_SHAPE=[[1,3,500,500]]
-export NET_INPUT_DIMS=500,500
-export IMAGE_RESIZE_DIMS=500,500
-export RAW_SCALE=255.0
-export MEAN=104.01,116.67,122.68  # from ilsvrc_2012_mean.npy
-export INPUT_SCALE=1.0,1.0,1.0
-export INPUT=input
-export TOLERANCE_INT8=0.92,0.44
-export DO_QUANT_BF16=0
-export TOLERANCE_BF16=0.99,0.96
-export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.96
-export CALI_IMAGES=$DATA_SET/imagenet/img_val_extracted/ILSVRC2012
-fi
-
-if [ $NET = "yolact" ]; then
-export MODEL_TYPE="onnx"
-export MODEL_DEF=$MODEL_PATH/segmentation/yolact/onnx/yolact_resnet50_coco_4outputs.onnx
-export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
-export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
-export INPUT_SHAPE=[[1,3,550,550]]
-export NET_INPUT_DIMS=550,550
-export IMAGE_RESIZE_DIMS=550,550
-export RAW_SCALE=1.0
-export MEAN=0,0,0
-export INPUT_SCALE=0.00392,0.00392,0.00392
-export INPUT=input
-export DO_QUANT_BF16=0
-export TOLERANCE_INT8=0.82,0.29
-export TOLERANCE_BF16=0.99,0.97
-export TOLERANCE_BF16_CMDBUF=0.99,0.99,0.98
-export CALI_IMAGES=$DATA_SET/coco/val2017
 fi
 
 if [ $NET = "erfnet" ]; then

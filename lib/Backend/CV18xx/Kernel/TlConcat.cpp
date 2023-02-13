@@ -104,7 +104,7 @@ void cvi_backend_tl_concat(uint32_t layer_id, int *input_dim_c,
       int align_up_c = align_up(tl_output.shape.c, step);
       int slice_nr = align_up_c / step;
       uint32_t in_csize_local =
-          ALIGN(shape.h * shape.w * CV18xx::bytesize_of_fmt(fmt), CV18xx::LMEM_BYTES) *
+          ALIGN(shape.h * shape.w * CV18xx::bytesize_of_fmt(fmt), CV18xx::EU_BYTES) *
           (step / CV18xx::NPU_NUM);
       for (int s = 0; s < slice_nr; s++) {
         cvk_tl_t _tl_output = {};
