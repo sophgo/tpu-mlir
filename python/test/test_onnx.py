@@ -23,12 +23,16 @@ import torch.nn.functional as F
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = ["PadAvgPool2d", "QDQ", "QDQConv", "TopK"]
+BM1684X_Failed_Cases = [
+    "PadAvgPool2d", "PadEdge", "QDQ", "QDQConv", "TopK", "TorchArgMax", "TorchActivation",
+    "TorchChannelShuffle"
+]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
-    "ReshapeFuse", "ScatterND", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK", "TorchGelu",
-    "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere",
-    "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d", "PermuteFuse", "SwapDimInner", "ChannelNorm"
+    "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK",
+    "TorchGelu", "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill",
+    "TorchWhere", "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d", "PermuteFuse", "SwapDimInner",
+    "ChannelNorm", "TorchActivation", "TorchArgmax", "TorchChannelShuffle"
 ]
 
 
@@ -97,7 +101,7 @@ class ONNX_IR_TESTER(object):
             "Neg": self.test_Neg,
             "Pad": self.test_Pad,  # zero pad
             "Pad1": self.test_Pad1,  # pad val
-            # "PadEdge": self.test_PadEdge, # nntc edge pad to be implemented
+            "PadEdge": self.test_PadEdge,
             "PadReflect": self.test_PadReflect,
             "Pow1": self.test_Pow1,  # y = x ^ n
             #"Pow2": self.test_Pow2, # y = n ^ x
@@ -137,8 +141,13 @@ class ONNX_IR_TESTER(object):
             #############################
             # Torch Test Case, Alphabetically
             #############################
+            "TorchActivation": self.test_TorchActivation,
+            "TorchArgmax": self.test_TorchArgmax,
+            "TorchChannelShuffle": self.test_TorchChannelShuffle,
+            "TorchChunk": self.test_TorchChunk,
             "TorchHardSwish": self.test_TorchHardSwish,
             "TorchHardSigmoid": self.test_TorchHardSigmoid,
+            "TorchIdentity": self.test_TorchIdentity,
             "TorchGelu": self.test_TorchGelu,
             "TorchGRU": self.test_TorchGRU,
             "TorchLayerGroup": self.test_TorchLayerGroup,
@@ -146,8 +155,11 @@ class ONNX_IR_TESTER(object):
             "TorchLogSoftmax": self.test_TorchLogSoftmax,
             "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
-            "TorchWhere": self.test_TorchWhere,
+            "TorchReflectionPad": self.test_TorchReflectionPad,
+            "TorchSize": self.test_TorchSize,
             "TorchStd": self.test_TorchStd,
+            "TorchWhere": self.test_TorchWhere,
+            "TorchZeroPad": self.test_TorchZeroPad,
             #############################
             # Special Pass test case, Alphabetically
             #############################
@@ -1395,7 +1407,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Softmax(self, case_name):
-        input_shapes = [[3, 100, 1, 1],[3, 100, 32], [3, 100, 32, 1]]
+        input_shapes = [[3, 100, 1, 1], [3, 100, 32], [3, 100, 32, 1]]
         axiss = [1, 2]
         for input_shape in input_shapes:
             for axis in axiss:
@@ -1867,6 +1879,52 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(10, 2).float()
         self.torch_and_test(x, Model(), case_name)
 
+    def test_TorchIdentity(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.Identity = nn.Identity(54, unused_argument1=0.1, unused_argument2=False)
+
+            def forward(self, x):
+                x = self.Identity(x)
+                y = x * x
+                return y
+
+        x = torch.randn(1, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchChannelShuffle(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.channel_shuffle = nn.ChannelShuffle(2)
+
+            def forward(self, x):
+                x = self.channel_shuffle(x)
+                return x
+
+        x = torch.randn(1, 4, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchReflectionPad(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.ReflectionPad1d = nn.ReflectionPad1d(2)
+
+            def forward(self, x):
+                x = self.ReflectionPad1d(x)
+                return x
+
+        x = torch.randn(3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
     def test_TorchLayerGroup(self, case_name):
 
         class Model(nn.Module):
@@ -2181,6 +2239,133 @@ class ONNX_IR_TESTER(object):
         a = torch.randn(4, 3, 100, 100).float()
         b = torch.randn(4, 3, 100, 100).float()
         self.torch_and_test((a, b), Net(), case_name)
+
+    def test_TorchSize(self, case_name):
+
+        class Net(nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                y = torch.ones(x.size(1))
+                return torch.add(x, y)
+
+        x = torch.randn(100, 256).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchChunk(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.div_num = 2
+
+            def forward(self, x):
+                y = torch.negative(x) * 2
+                x = torch.cat((x, y), 1)
+                x = torch.chunk(x, self.div_num, dim=1)
+                x = torch.negative(x[0])
+                return x
+
+        x = torch.randn(1, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchActivation(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.linear = nn.Linear(100, 200, bias=False)
+                self.softplus = nn.Softplus()
+                self.hardsigmoid = nn.Hardsigmoid()
+                self.prelu = nn.PReLU()
+                self.ReLU6 = nn.ReLU6(inplace=True)
+                self.mish = nn.Mish()
+                self.Softmax = nn.Softmax(dim=1)
+                self.Softmax_2d = nn.Softmax2d()
+
+            def forward(self, input):
+                #tanh
+                x = self.linear(input)
+                y0 = torch.tanh(x)
+                ##relu
+                x = self.linear(input)
+                y2 = torch.relu(x)
+                ##sigmoid
+                x = self.linear(input)
+                y1 = torch.sigmoid(x)
+                ##leaky_relu
+                # x = self.linear(input)
+                # y3 = F.leaky_relu(x)
+                ##elu
+                x = self.linear(input)
+                y4 = F.elu(x)
+                ##softplus
+                x = self.linear(input)
+                y5 = self.prelu(x)
+                ##hardsigmoid
+                x = self.linear(input)
+                y6 = self.hardsigmoid(x)
+                ##prelu
+                x = self.linear(input)
+                y7 = self.softplus(x)
+                ##relu6
+                x = self.linear(input)
+                y8 = self.ReLU6(x)
+                ##mish
+                x = self.linear(input)
+                y9 = self.mish(x)
+                ##Softmax
+                x = self.linear(input)
+                y10 = self.Softmax(x)
+                ##concat
+                y = torch.cat((y0, y1, y2, y4, y5, y6, y7, y8, y9, y10), 0)
+                ##Softmax_2d
+                x = self.linear(input)
+                x = x.unsqueeze(dim=1)
+                y2 = self.Softmax_2d(x)
+                return y
+
+        x = torch.randn(3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchArgmax(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                a = torch.argmax(x, -1)
+                b = torch.argmin(x, -1)
+                return a + b
+
+        x = np.arange(0, 256, step=2, dtype=np.float32)
+        np.random.shuffle(x)
+        # input_data = torch.from_numpy(input_data.reshape(-1, 16, 8))
+        x = torch.from_numpy(x.reshape(-1, 4, 4, 8))
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchZeroPad(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                ## left:3 right:4 up:4 down:6 postion pad zero
+                self.ZeroPad2d = nn.ZeroPad2d(padding=(3, 4, 5, 6))
+
+            def forward(self, x):
+                ##input shape = (3, 100, 100)
+                x = self.ZeroPad2d(x)  ##output shape = (3, 111, 107)
+                return x
+
+        x = torch.randn(4, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
 
     def test_Add(self, case_name):
         shapes = ([1, 3, 27, 27], [2, 6, 56, 56], [4, 9, 56, 56])
