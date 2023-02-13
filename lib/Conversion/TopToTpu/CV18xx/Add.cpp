@@ -23,7 +23,6 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   std::vector<int64_t> multiplier_v(nInputs, 1);
   std::vector<float> qscale(nInputs, 1.0);
   float max_qscale = 0.0;
-  assert(nInputs == 2);
 
   o_scale = module::getThreshold(op.getOutput());
   bool hasConst = false;
@@ -36,6 +35,7 @@ void AddLowering::LoweringINT8(PatternRewriter &rewriter, top::AddOp op,
   bool isQuantBF16WhenConst = true;
 
   if (hasConst) {
+    assert(nInputs == 2);
     if (isQuantBF16WhenConst) {
       return LoweringBF16(rewriter, op);
     } else {
