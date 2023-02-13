@@ -933,7 +933,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Upsample")
         mode = onnx_node.attrs.get("mode", "nearest")
         op = self.getOperand(onnx_node.inputs[0])
-        input_shape = self.getShape(onnx_node.inputs[0])      # upsample_input [x, scale]
+        input_shape = self.getShape(onnx_node.inputs[0])      
         scale_factor = []
         sizes = []
         scale_factor = self.getWeight(onnx_node.inputs[1])
