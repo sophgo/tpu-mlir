@@ -10,6 +10,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 
+find_program(CCACHE ccache)
+if(CCACHE)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+endif()
 #-------------------------------------------------------------------------------
 # MLIR/LLVM Configuration
 #-------------------------------------------------------------------------------
