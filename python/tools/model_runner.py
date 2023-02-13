@@ -75,7 +75,6 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             lib_so = 'libcmodel_1684.so'
         cmd = 'ln -sf $TPUC_ROOT/lib/{} $TPUC_ROOT/lib/libcmodel.so'.format(lib_so)
         os.system(cmd)
-        os.system('ln -sf $TPUC_ROOT/lib/libbmlib.so.0 $TPUC_ROOT/lib/libbmlib.so')
 
     elif model_file.endswith(".cvimodel"):
         pyruntime = pyruntime + "cvi"
