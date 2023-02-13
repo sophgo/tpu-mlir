@@ -16,10 +16,6 @@ add_mlir_conversion_library(TPUMLIRTopToTpu
   TpuMlirConversionPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRIR
-  MLIRPass
   TPUMLIRTop
   TPUMLIRTpu
-  MLIRSupport
-  TPUMLIRTrait
   )

@@ -166,7 +166,6 @@ class ONNX_IR_TESTER(object):
             "ChannelNorm": self.test_ChannelNorm,
             "ConcatFuse": self.test_ConcatFuse,
             "ConcatToSpace": self.test_ConcatToSpace,
-            "ConcatToSpace2": self.test_ConcatToSpace2,
             "Conv3dTo2d": self.test_Conv3dTo2d,
             "Div2Mul": self.test_Div2Mul,
             "PermuteFuse": self.test_PermuteFuse,
@@ -2085,10 +2084,12 @@ class ONNX_IR_TESTER(object):
 
         class Net(torch.nn.Module):
 
-            def __init__(self):
+            def __init__(self, no = 0):
                 super(Net, self).__init__()
+                self.conv = nn.Conv2d(160, 8, 3, 1, 1)
+                self.no = no
 
-            def forward(self, x):
+            def case0_f(self, x):
                 a = x[:, ::2, ::2, :]
                 b = x[:, ::2, 1::2, :]
                 c = x[:, 1::2, ::2, :]
@@ -2096,18 +2097,7 @@ class ONNX_IR_TESTER(object):
                 y = torch.cat([a, c, b, d], 3)
                 return y
 
-        x = torch.randn(1, 40, 40, 384).float()
-        self.torch_and_test(x, Net(), case_name)
-
-    def test_ConcatToSpace2(self, case_name):
-
-        class Net(torch.nn.Module):
-
-            def __init__(self):
-                super(Net, self).__init__()
-                self.conv = nn.Conv2d(160, 8, 3, 1, 1)
-
-            def forward(self, x):
+            def case1_f(self, x):
                 a = x[:, :, ::2, ::2]
                 b = x[:, :, ::2, 1::2]
                 c = x[:, :, 1::2, ::2]
@@ -2116,8 +2106,44 @@ class ONNX_IR_TESTER(object):
                 y = self.conv(y)
                 return y
 
+            def case2_f(self, x):
+                a = x[:, :, ::2, ::2, :]
+                b = x[:, :, ::2, 1::2, :]
+                c = x[:, :, 1::2, ::2, :]
+                d = x[:, :, 1::2, 1::2, :]
+                y = torch.cat([a, c, b, d], 4)
+                return y
+
+            def case3_f(self, x):
+                a = x[::2, ::2, :]
+                b = x[::2, 1::2, :]
+                c = x[1::2, ::2, :]
+                d = x[1::2, 1::2, :]
+                y = torch.cat([a, c, b, d], 2)
+                return y
+
+            def forward(self, x):
+                if self.no == 0:
+                    return self.case0_f(x)
+                if self.no == 1:
+                    return self.case1_f(x)
+                if self.no == 2:
+                    return self.case2_f(x)
+                if self.no == 3:
+                    return self.case3_f(x)
+
+        # case 0
         x = torch.randn(1, 40, 40, 384).float()
-        self.torch_and_test(x, Net(), case_name)
+        self.torch_and_test(x, Net(0), case_name + "_0")
+        # case 1
+        x = torch.randn(1, 40, 40, 384).float()
+        self.torch_and_test(x, Net(1), case_name + "_1")
+        # case 2
+        x = torch.randn(4, 2, 40, 40, 80).float()
+        self.torch_and_test(x, Net(2), case_name + "_2")
+        # case 3
+        x = torch.randn(40, 40, 384).float()
+        self.torch_and_test(x, Net(3), case_name + "_3")
 
     def test_ConcatFuse(self, case_name):
 
