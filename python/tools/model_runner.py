@@ -13,6 +13,7 @@ import numpy as np
 import argparse
 import os
 import struct
+import shutil
 
 
 def round_away_from_zero(x):
@@ -58,6 +59,18 @@ def is_dynamic_model(model_file: str) -> str:
     if dynamic == 'true':
         return True
     return False
+
+def pack_bmodel_context(model_file, net):
+    out_dir = model_file.rsplit(".", maxsplit=1)[0]
+    os.makedirs(out_dir, exist_ok=True)
+    shutil.copy(model_file, os.path.join(out_dir, "compilation.bmodel"))
+    with open(out_dir + "/input_ref_data.dat", "wb") as f:
+        for i in net.inputs:
+            i.data.tofile(f)
+    with open(out_dir + "/output_ref_data.dat", "wb") as f:
+        for o in net.outputs:
+            o.data.tofile(f)
+
 
 def model_inference(inputs: dict, model_file: str) -> dict:
     pyruntime = "pyruntime_"
@@ -154,6 +167,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
                 dyn_len = np.prod(dyn_output_shapes[dyn_idx])
                 outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(*dyn_output_shapes[dyn_idx])
                 dyn_idx += 1
+    if not is_cv18xx:
+        pack_bmodel_context(model_file, net)
     return outputs
 
 

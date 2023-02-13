@@ -113,7 +113,7 @@ static string tensor_str(const Tensor *tensor, bool is_output = false,
   ss << tensor->name()->str() << ", "
      << shape_str(shape, n_dynamic, h_w_dynamic) << ", "
      << type_name(tensor->data_type()) << ", scale: " << tensor->scale()
-     << endl;
+     << ", zero_point: " << tensor->zero_point() << endl;
   return ss.str();
 }
 
