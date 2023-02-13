@@ -38,7 +38,6 @@ add_llvm_library(TPUMLIRTpu
   MLIRQuantDialect
   MLIRRewrite
   MLIRTransforms
-  MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRGlobalGenInterface
   MLIRLocalGenInterface

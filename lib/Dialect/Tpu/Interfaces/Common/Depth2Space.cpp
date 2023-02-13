@@ -23,14 +23,14 @@ void tpu::Depth2SpaceOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::Depth2SpaceOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
   if (getInIs_NCHW()) {
-    module::getNCHW(getInput(), in, ic, ih, iw);
+    module::getNCHW(getInput(), in, ic, ih, iw, false);
   } else {
-    module::getNCHW(getInput(), in, ih, iw, ic);
+    module::getNCHW(getInput(), in, ih, iw, ic, false);
   }
   if (getOutIs_NCHW()) {
-    module::getNCHW(getOutput(), on, oc, oh, ow);
+    module::getNCHW(getOutput(), on, oc, oh, ow, false);
   } else {
-    module::getNCHW(getOutput(), on, oh, ow, oc);
+    module::getNCHW(getOutput(), on, oh, ow, oc, false);
   }
   assert(in == on);
   bool crd = getIs_CRD();

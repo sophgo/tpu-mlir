@@ -61,7 +61,7 @@ struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
     attrs.push_back(
         rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(*offset0)));
     // concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
-        // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
+    // module::getName(concat_op.getOperation()).str() + "_SwapDimInner")));
     rewriter.replaceOpWithNewOp<SwapDimInnerOp>(
         concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
 
@@ -69,18 +69,22 @@ struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
   }
 };
 
-
-static LogicalResult find_slice_order(ConcatOp concat_op, bool is_NCHW,
-  std::vector<int64_t>& order, Value& from, int64_t& bh, int64_t& bw) {
+static LogicalResult find_slice_order(ConcatOp concat_op, int ex_dims,
+                                      bool is_NCHW, std::vector<int64_t> &order,
+                                      Value &from, int64_t &bh, int64_t &bw) {
   // idx of n,c,h,w
-  int ni = 0, ci, hi, wi;
+  int ci, hi, wi;
   if (is_NCHW) {
-    ci = 1; hi = 2; wi = 3;
+    ci = 1 + ex_dims;
+    hi = 2 + ex_dims;
+    wi = 3 + ex_dims;
   } else {
-    hi = 1; wi = 2; ci = 3;
+    hi = 1 + ex_dims;
+    wi = 2 + ex_dims;
+    ci = 3 + ex_dims;
   }
   bh = 0, bw = 0;
-  const auto& inputs = concat_op.getInputs();
+  const auto &inputs = concat_op.getInputs();
   int num_inputs = inputs.size();
   order.clear();
   order.reserve(num_inputs);
@@ -91,11 +95,21 @@ static LogicalResult find_slice_order(ConcatOp concat_op, bool is_NCHW,
     }
     auto slice_op = dyn_cast<SliceOp>(in_op);
     auto offset = module::getI64Array(slice_op.getOffset());
-    if (offset->at(ni) != 0 || offset->at(ci) != 0) {
+    for (int e = 0; e <= ex_dims; e++) {
+      if (offset->at(e) != 0) {
+        return failure();
+      }
+    }
+    if (offset->at(ci) != 0) {
       return failure();
     }
     auto steps = module::getI64Array(slice_op.getSteps());
-    if (steps->at(ni) != 1 || steps->at(ci) != 1) {
+    for (int e = 0; e <= ex_dims; e++) {
+      if (steps->at(e) != 1) {
+        return failure();
+      }
+    }
+    if (steps->at(ci) != 1) {
       return failure();
     }
     if (i == 0) {
@@ -122,9 +136,11 @@ static LogicalResult find_slice_order(ConcatOp concat_op, bool is_NCHW,
   return success();
 }
 
-static void replaceOpWithDepth2SpaceOp(PatternRewriter& rewriter, ConcatOp& op,
-  ValueRange&& args, int64_t bh, int64_t bw, bool is_CRD, bool is_inversed,
-  bool in_is_NCHW, bool out_is_NCHW, bool swap_cr) {
+static void replaceOpWithDepth2SpaceOp(PatternRewriter &rewriter, ConcatOp &op,
+                                       ValueRange &&args, int64_t bh,
+                                       int64_t bw, bool is_CRD,
+                                       bool is_inversed, bool in_is_NCHW,
+                                       bool out_is_NCHW, bool swap_cr) {
   std::vector<NamedAttribute> attrs;
   attrs.push_back(
       rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(bh)));
@@ -140,8 +156,8 @@ static void replaceOpWithDepth2SpaceOp(PatternRewriter& rewriter, ConcatOp& op,
       rewriter.getNamedAttr("out_is_NCHW", rewriter.getBoolAttr(out_is_NCHW)));
   attrs.push_back(
       rewriter.getNamedAttr("swap_cr", rewriter.getBoolAttr(swap_cr)));
-  rewriter.replaceOpWithNewOp<Depth2SpaceOp>(
-      op, op.getResult().getType(), args, attrs);
+  rewriter.replaceOpWithNewOp<Depth2SpaceOp>(op, op.getResult().getType(), args,
+                                             attrs);
 }
 
 // concat slices to Depth2Space.
@@ -152,10 +168,12 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
     auto shape = module::getShape(concat_op.getOutput());
-    if (shape.size() != 4) {
+    int num_dims = shape.size();
+    if (num_dims < 3) {
       return failure();
     }
-    if (concat_op.getAxis() != 1) {
+    int ex_dims = num_dims - 4;
+    if (concat_op.getAxis() - ex_dims != 1) {
       return failure();
     }
     if (concat_op->hasOneUse() == false) {
@@ -165,10 +183,14 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
     if (!isa<ConvOp>(use_op)) {
       return failure();
     }
-    Value from; int64_t bh; int64_t bw;
+    Value from;
+    int64_t bh;
+    int64_t bw;
     std::vector<int64_t> order;
-    LogicalResult ret = find_slice_order(concat_op, true, order, from, bh, bw);
-    if (ret.failed()) return failure();
+    auto ret = find_slice_order(concat_op, ex_dims, true, order, from, bh, bw);
+    if (ret.failed()) {
+      return failure();
+    }
     bool need_reorder = false;
     for (size_t i = 0; i < order.size(); ++i) {
       if (order[i] != i && false == need_reorder) {
@@ -176,6 +198,9 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
       }
     }
     if (need_reorder) {
+      if (ex_dims != 0) {
+        return failure();
+      }
       if (concat_op->hasOneUse() == false) {
         return failure();
       }
@@ -209,12 +234,12 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
       auto new_filter_op =
           WeightOp::create(use_op, "filter_S2D", *filter_new, new_type);
       use_op->setOperand(1, new_filter_op);
+      // change name of new op to avoid wrong comparison
+      concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
+          module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
     }
-    // change name of new op to avoid wrong comparison
-    concat_op->setLoc(NameLoc::get(rewriter.getStringAttr(
-        module::getName(concat_op.getOperation()).str() + "_Depth2Space")));
-    replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from),
-      bh, bw, false, true, true, true, false);
+    replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from), bh, bw,
+                               false, true, true, true, false);
     return success();
   }
 };
@@ -224,11 +249,14 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
-    const auto& shape = module::getShape(concat_op.getOutput());
-    if (shape.size() != 4) {
+    const auto &shape = module::getShape(concat_op.getOutput());
+    int num_dims = shape.size();
+    if (num_dims < 3) {
       return failure();
     }
-    if (concat_op.getAxis() != 1 && concat_op.getAxis() != 3) {
+    int ex_dims = num_dims - 4;
+    if (concat_op.getAxis() - ex_dims != 1 &&
+        concat_op.getAxis() - ex_dims != 3) {
       return failure();
     }
     if (concat_op->hasOneUse()) {
@@ -237,13 +265,19 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
         return failure();
       }
     }
-    bool in_is_NCHW = concat_op.getAxis() == 1;
+    bool in_is_NCHW = (concat_op.getAxis() - ex_dims) == 1;
     bool out_is_NCHW = in_is_NCHW;
-    Value from; int64_t bh; int64_t bw;
+    Value from;
+    int64_t bh;
+    int64_t bw;
     std::vector<int64_t> order;
-    LogicalResult ret = find_slice_order(concat_op, in_is_NCHW, order, from, bh, bw);
-    if (ret.failed()) return failure();
-    bool flag0 = true; bool flag1 = true;
+    auto ret =
+        find_slice_order(concat_op, ex_dims, in_is_NCHW, order, from, bh, bw);
+    if (ret.failed()) {
+      return failure();
+    }
+    bool flag0 = true;
+    bool flag1 = true;
     for (int64_t i = 0; i < bh * bw; ++i) {
       if (order[i] != i) {
         flag0 = false;
@@ -263,8 +297,8 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
     if (!flag0 && !flag1)
       return failure();
     bool swap_cr = flag1;
-    replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from),
-      bh, bw, false, true, in_is_NCHW, out_is_NCHW, swap_cr);
+    replaceOpWithDepth2SpaceOp(rewriter, concat_op, ValueRange(from), bh, bw,
+                               false, true, in_is_NCHW, out_is_NCHW, swap_cr);
     return success();
   }
 };

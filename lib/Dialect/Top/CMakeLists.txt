@@ -27,7 +27,6 @@ add_mlir_library(TPUMLIRTop
   MLIRQuantDialect
   MLIRRewrite
   MLIRTransforms
-  MLIRSideEffectInterfaces
   MLIRInferenceInterface
   MLIRFlopsInterface
   TPUMLIRSupport

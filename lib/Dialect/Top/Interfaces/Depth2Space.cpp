@@ -22,14 +22,14 @@ void top::Depth2SpaceOp::deinit(InferenceParameter &p) {}
 LogicalResult top::Depth2SpaceOp::inference(InferenceParameter &p) {
   int64_t in, ic, ih, iw, on, oc, oh, ow;
   if (getInIs_NCHW()) {
-    module::getNCHW(getInput(), in, ic, ih, iw);
+    module::getNCHW(getInput(), in, ic, ih, iw, false);
   } else {
-    module::getNCHW(getInput(), in, ih, iw, ic);
+    module::getNCHW(getInput(), in, ih, iw, ic, false);
   }
   if (getOutIs_NCHW()) {
-    module::getNCHW(getOutput(), on, oc, oh, ow);
+    module::getNCHW(getOutput(), on, oc, oh, ow, false);
   } else {
-    module::getNCHW(getOutput(), on, oh, ow, oc);
+    module::getNCHW(getOutput(), on, oh, ow, oc, false);
   }
   assert(in == on);
   bool crd = getIs_CRD();
@@ -91,10 +91,10 @@ LogicalResult top::Depth2SpaceOp::inference(InferenceParameter &p) {
       for (int64_t w = 0; w < iw; w++) {
         int64_t new_h = h * bh + left / bw;
         int64_t new_w = w * bw + left % bw;
-        int64_t i_index = n * instride + c * icstride
-          + h * ihstride + w * iwstride;
-        int64_t o_index = n * onstride + new_c * ocstride
-          + new_h * ohstride + new_w * owstride;
+        int64_t i_index =
+            n * instride + c * icstride + h * ihstride + w * iwstride;
+        int64_t o_index = n * onstride + new_c * ocstride + new_h * ohstride +
+                          new_w * owstride;
         if (inversed) {
           p.outputs[0][i_index] = p.inputs[0][o_index];
         } else {
