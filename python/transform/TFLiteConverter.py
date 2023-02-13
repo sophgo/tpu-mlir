@@ -44,18 +44,6 @@ def _compute_pad(stride, dilation, input_size, filter, padding):
     pad = [i for i in padding_before] + [i for i in padding_after]
     return pad
 
-def _axis_transpose(op, axis):
-    in_dim = len(op.inputs[0].shape)
-    if in_dim == 4:
-        if axis == 0:
-            return 0
-        elif axis == 3:
-            return 1
-        else:
-            return axis + 1
-    else:
-        return axis
-
 class TFLiteReader:
     """
     Provide a TensorFlow lite model reader.
@@ -282,6 +270,9 @@ class TFLiteConverter(BaseConverter):
             "PADV2": self.pad_op,
             "SOFTMAX": self.softmax_op,
             "MEAN": self.mean_op,
+            "SUM": self.sum_op,
+            "REDUCE_MAX": self.reduce_max_op,
+            "REDUCE_MIN": self.reduce_min_op,
             "CONV_2D": self.conv_2d_op,
             "DEPTHWISE_CONV_2D": self.depthwise_2d_op,
             "FULLY_CONNECTED": self.fully_connected_op,
@@ -489,6 +480,20 @@ class TFLiteConverter(BaseConverter):
         self.mlir.insert_point.insert(op)
         return op.results[0]
 
+    def __axis_transpose(self, op, axis):
+        if self.need_transpose is False:
+            return axis
+        in_dim = len(op.inputs[0].shape)
+        if in_dim == 4:
+            if axis == 0:
+                return 0
+            elif axis == 3:
+                return 1
+            else:
+                return axis + 1
+        else:
+            return axis
+
     def __get_new_name(self):
         id = int(TFLiteConverter.ID)
         TFLiteConverter.ID += 1
@@ -695,33 +700,33 @@ class TFLiteConverter(BaseConverter):
         else:
             raise ValueError("Only support reduction in H and W dimensions.")
 
-    # def reduce_op(self, op, mode):
-    #     from .tflite.ReducerOptions import ReducerOptions
-    #     op_options = op.builtin_options
-    #     param = ReducerOptions()
-    #     param.Init(op_options.Bytes, op_options.Pos)
+    def reduce_op(self, op, mode):
+        from .tflite.ReducerOptions import ReducerOptions
+        op_options = op.builtin_options
+        param = ReducerOptions()
+        param.Init(op_options.Bytes, op_options.Pos)
 
-    #     args = op.inputs[1].buffer
-    #     op.inputs = [op.inputs[0]]
-    #     axes = [_axis_transpose(op, i) for i in args]
-    #     attr = {
-    #         "axes": self.mlir.ArrayAttr(axes),
-    #         "keepdims": BoolAttr.get(param.KeepDims()),
-    #         "mode": StringAttr.get(mode),
-    #     }
-    #     return Top.ReduceOp, attr, True
+        args = op.inputs[1].buffer
+        op.inputs = [op.inputs[0]]
+        axes = [self.__axis_transpose(op, i) for i in args]
+        attr = {
+            "axes": self.mlir.ArrayAttr(axes),
+            "keepdims": BoolAttr.get(param.KeepDims()),
+            "mode": StringAttr.get(mode),
+        }
+        return Top.ReduceOp, attr, True
 
     # def mean_op(self, op):
     #     return self.reduce_op(op, "ReduceMean")
 
-    # def sum_op(self, op):
-    #     return self.reduce_op(op, "ReduceSum")
+    def sum_op(self, op):
+        return self.reduce_op(op, "ReduceSum")
 
-    # def min_op(self, op):
-    #     return self.reduce_op(op, "ReduceMin")
+    def reduce_min_op(self, op):
+        return self.reduce_op(op, "ReduceMin")
 
-    # def max_op(self, op):
-    #     return self.reduce_op(op, "ReduceMax")
+    def reduce_max_op(self, op):
+        return self.reduce_op(op, "ReduceMax")
 
     def softmax_op(self, op):
         from .tflite.SoftmaxOptions import SoftmaxOptions
@@ -730,7 +735,7 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         beta = param.Beta()
         axis = 1 if self.need_transpose else len(op.inputs[0].shape) - 1
-        # axis = _axis_transpose(op, len(op.inputs[0].shape) - 1)
+        # axis = self.__axis_transpose(op, len(op.inputs[0].shape) - 1)
         return "top.Softmax", {
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
@@ -741,7 +746,7 @@ class TFLiteConverter(BaseConverter):
         op_options = op.builtin_options
         param = ConcatenationOptions()
         param.Init(op_options.Bytes, op_options.Pos)
-        axis = _axis_transpose(op, param.Axis()) if self.need_transpose else param.Axis()
+        axis = self.__axis_transpose(op, param.Axis()) if self.need_transpose else param.Axis()
         fused_active = param.FusedActivationFunction()
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
@@ -846,9 +851,13 @@ class TFLiteConverter(BaseConverter):
     def transpose_op(self, op):
         assert op.inputs[1].buffer is not None
         perm = op.inputs[1].buffer
+        if len(perm) == 4:
+            n, h, w, c = perm
+            perm = (n, c, h, w)
+        axes = [self.__axis_transpose(op, i) for i in perm]
         op.inputs.pop(1)
         attr = {
-            "order": self.mlir.ArrayAttr(perm),
+            "order": self.mlir.ArrayAttr(axes),
             # "num": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.BatchDims()),
         }
         return Top.PermuteOp, attr, False

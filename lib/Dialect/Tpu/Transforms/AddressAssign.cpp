@@ -47,11 +47,13 @@ public:
         return failure();
       }
       auto in_op = in.getDefiningOp();
-      if (isa<tpu::ConcatOp>(in_op)) {
+      if (in_op == nullptr) {
+        return failure();
+      } else if (isa<tpu::ConcatOp>(in_op)) {
         return failure();
       } else if (auto rshape = dyn_cast<tpu::ReshapeOp>(in_op)) {
         auto in2 = rshape.getInput();
-        if (in2.hasOneUse() == false) {
+        if (in2.getDefiningOp() == nullptr || in2.hasOneUse() == false) {
           return failure();
         }
       } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(in_op)) {
