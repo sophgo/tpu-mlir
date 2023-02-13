@@ -183,6 +183,7 @@ class OnnxConverter(BaseConverter):
             "Tile": lambda node: self.convert_tile_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
+            "Upsample":lambda node:self.convert_upsample_op(node),
             "Where": lambda node: self.convert_where_op(node),
         }
 
@@ -927,6 +928,27 @@ class OnnxConverter(BaseConverter):
         }
         new_op = self.mlir.create_interp_op(operands, output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_upsample_op(self, onnx_node):
+        assert (onnx_node.op_type == "Upsample")
+        mode = onnx_node.attrs.get("mode", "nearest")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])      # upsample_input [x, scale]
+        scale_factor = []
+        sizes = []
+        scale_factor = self.getWeight(onnx_node.inputs[1])
+        sizes = input_shape * scale_factor
+        output_shape = [int(i) for i in sizes]
+        scale_h = scale_factor[2]   # scale [n, c, h, w]
+        scale_w = scale_factor[3]
+        coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
+        if mode == b'nearest' and scale_h == int(scale_h) and scale_w == int(scale_w):
+            self.resize_to_upsample(onnx_node, op, input_shape, output_shape, scale_h, scale_w)
+            return
+        else:
+            self.resize_to_interp(onnx_node, op, input_shape, output_shape, scale_h, scale_w, mode,
+                                  coord_mode)
+            return
 
     def convert_resize_op(self, onnx_node):
         assert (onnx_node.op_type == "Resize")
