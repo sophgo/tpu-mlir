@@ -80,7 +80,7 @@ void cvi_backend_tl_quant(uint32_t layer_id, laddr_t la_input,
     int slice_nr = align_up(tl_output->shape.c, step) / step;
     uint32_t in_csize_local = ALIGN(tl_output->shape.h * tl_output->shape.w *
                                         CV18xx::bytesize_of_fmt(tl_output->fmt),
-                                    CV18xx::LMEM_BYTES) *
+                                    CV18xx::EU_BYTES) *
                               (step / CV18xx::NPU_NUM);
     for (int s = 0; s < slice_nr; s++) {
       cvk_tl_t _tl_output = {};
