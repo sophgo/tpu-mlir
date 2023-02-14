@@ -28,6 +28,7 @@ class Top:
     DivOp = 'top.Div'
     ErfOp = 'top.Erf'
     ExpOp = 'top.Exp'
+    FloorOp = 'top.Floor'
     GatherOp = 'top.Gather'
     GELUOp = 'top.GELU'
     GRUOp = 'top.GRU'
@@ -975,6 +976,13 @@ class MLIRImporter(object):
             'nms_threshold': FloatAttr.get_f64(kargs['nms_threshold']),
         }
         return self.buildOp(Top.FrcnDetection, operands, [output_type], **param)
+
+    def create_floor_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.FloorOp, operands, [output_type], **param)
 
     def create_retinaface_detection_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

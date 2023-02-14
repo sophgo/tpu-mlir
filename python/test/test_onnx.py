@@ -75,6 +75,7 @@ class ONNX_IR_TESTER(object):
             "Exp": self.test_Exp,
             "Expand": self.test_Expand,
             "Expand2": self.test_Expand2,
+            "Floor": self.test_floor,
             "Gather": self.test_Gather,
             "GatherToSlice": self.test_GatherToSlice,
             "Gemm": self.test_Gemm,
@@ -1415,6 +1416,14 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([reshape_def],
                                       case_name, [input], [output],
                                       initializer=[right])
+        self.onnx_and_test(graph_def)
+
+    def test_floor(self, case_name):
+        input_shape = [1, 128, 32, 32]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        floor_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([floor_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Softmax(self, case_name):
