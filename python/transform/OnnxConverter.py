@@ -177,6 +177,7 @@ class OnnxConverter(BaseConverter):
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
             "Slice": lambda node: self.convert_slice_op(node),
             "Softmax": lambda node: self.convert_softmax_op(node),
+            "Softplus": lambda node: self.convert_softplus_op(node),
             "Squeeze": lambda node: self.convert_squeeze_op(node),
             "Split": lambda node: self.convert_split_op(node),
             "Sum": lambda node: self.convert_sum_op(node),
@@ -1124,6 +1125,17 @@ class OnnxConverter(BaseConverter):
             'log': onnx_node.op_type == "LogSoftmax"
         }
         new_op = self.mlir.create_softmax_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_softplus_op(self, onnx_node):
+        assert (onnx_node.op_type == "Softplus")
+        op = self.getOperand(onnx_node.inputs[0])
+        input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+        }
+        new_op = self.mlir.create_softplus_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_log_op(self, onnx_node):

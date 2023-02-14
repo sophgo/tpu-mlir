@@ -121,6 +121,7 @@ class ONNX_IR_TESTER(object):
             "ScatterND": self.test_ScatterND,
             "SiLU": self.test_SiLU,
             "Softmax": self.test_Softmax,
+            "Softplus": self.test_Softplus,
             "Squeeze": self.test_Squeeze,
             "Sigmoid": self.test_Sigmoid,
             "Slice": self.test_Slice,
@@ -1427,6 +1428,14 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         softmax_def = helper.make_node(case_name, inputs=['input'], outputs=['output'], axis=axis)
         graph_def = helper.make_graph([softmax_def], case_name, [input], [output])
+        self.onnx_and_test(graph_def)
+
+    def test_Softplus(self, case_name):
+        input_shape = [200]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
+        softplus_def = helper.make_node(case_name, inputs=['input'], outputs=['output'])
+        graph_def = helper.make_graph([softplus_def], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Exp(self, case_name):

@@ -807,6 +807,17 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SoftplusOp:Top_Op<"Softplus",[InOutSameShape]> {
+  let summary = "Softplus operation";
+  let description = [{
+    y = ln(exp(x) + 1)
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_TopKOp:Top_Op<"TopK", [InOutSameDim]> {
   let summary = "TopK operation";
   let description = [{
