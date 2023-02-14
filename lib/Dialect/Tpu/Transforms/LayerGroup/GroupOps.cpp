@@ -93,7 +93,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   llvm::SmallVector<Value, 8> outputs;
   llvm::SmallVector<NamedAttribute, 8> attrs;
   llvm::SmallVector<Type, 8> in_types;
-  llvm::SmallVector<Location, 8> in_locs;
+  //llvm::SmallVector<Location, 8> in_locs;
   llvm::SmallVector<Type, 8> ret_types;
   auto &ops = lg_info.group_ops;
   auto &tensor_infos = time_step->get_tensor_infos();
@@ -102,7 +102,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   int64_t hsecs = shape_secs.hsecs;
   for (auto in : lg_info.group_ins) {
     in_types.push_back(in.getType());
-    in_locs.push_back(module::getLoc(in));
+    //in_locs.push_back(module::getLoc(in));
     operands.push_back(in);
   }
   llvm::SmallVector<Location, 8> locs;

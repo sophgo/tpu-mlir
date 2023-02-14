@@ -119,10 +119,7 @@ def mlir_to_model(tpu_mlir: str,
 
     # codegen based on final mlir
     if model.endswith(".bmodel"):
-        if not dynamic:
-            codegen_param = '--codegen="model_file={}"'.format(model)
-        else:
-            codegen_param = '--dyn_codegen="model_file={}"'.format(model)
+        codegen_param = '--codegen="model_file={} dynamic={}"'.format(model, dynamic)
     elif model.endswith(".cvimodel"):
         codegen_param = '--cv-codegen="model_file={}"'.format(model)
     cmd = [

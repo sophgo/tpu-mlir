@@ -51,6 +51,9 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   let options = [
     Option<"model_file", "model_file", "std::string", /*default=*/"",
            "save to model file">,
+    Option<"dynamic", "dynamic",
+           "bool", /*default=*/"false",
+           "dynamic or not.">
   ];
 }
 
@@ -73,16 +76,6 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
            "strip input quant.">,
     Option<"quant_output", "quant_output", "bool", /*default=*/"false",
            "strip output quant.">,
-  ];
-}
-
-def DynCodegen : Pass<"dyn_codegen", "ModuleOp"> {
-  let summary = "dynamic codegen for BM168x in tpu by tpuc-opt";
-  let constructor = "createDynCodegenPass()";
-  let dependentDialects = ["TpuDialect"];
-  let options = [
-    Option<"model_file", "model_file", "std::string", /*default=*/"",
-           "save to model file">,
   ];
 }
 

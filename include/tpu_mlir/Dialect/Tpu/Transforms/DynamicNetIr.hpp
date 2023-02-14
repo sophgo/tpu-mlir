@@ -30,23 +30,65 @@ typedef struct stage_param{
   int width_low;
 }stage_param_t;
 
+class Context {
+  public:
+    explicit Context():net_num(1), cur_net_idx(0) {
+      stage_param_vv.clear();
+      m_ir_buffer.clear();
+      m_ir_offset.clear();
+      m_ir_len.clear();
+      stage_param_vv.resize(net_num);
+      m_ir_offset.resize(net_num);
+      m_ir_len.resize(net_num);
+      m_ir_offset.push_back(0);
+      m_ir_buffer.reserve(0x1000000);
+    }
+
+    void set_stage_param(stage_param_t stage_param) {
+      stage_param_vv[cur_net_idx].push_back(stage_param);
+    }
+
+    const vector<stage_param_t>& get_stage_param(uint32_t index) {
+      return stage_param_vv[index];
+    }
+
+    uint32_t get_cur_net_idx() {return cur_net_idx;}
+    void set_cur_net_ir_len(int ir_len)  { m_ir_len[cur_net_idx] = ir_len; }
+    int get_cur_net_ir_len() { return m_ir_len[cur_net_idx]; }
+    vector<uint32_t> & get_binary_ir()  { return m_ir_buffer; }
+    uint32_t get_cur_net_offset() {return m_ir_offset[cur_net_idx];}
+  private:
+    /* net info */
+    uint32_t                                   net_num;
+    uint32_t                                   cur_net_idx;
+    vector<uint32_t>                           n_dynamic;
+    vector<uint32_t>                           h_w_dynamic;
+    vector<vector<stage_param_t> >             stage_param_vv;  /* dim 0 : net, dim 1 : stage */
+    vector<uint32_t>                           m_ir_buffer;
+    vector<uint32_t>                           m_ir_offset;     /* per net ir offset */
+    vector<uint32_t>                           m_ir_len;        /* per net ir length */
+};
+
 class SubnetIr {
   public:
     explicit SubnetIr(StringRef chip_name, int version) :
                                     chip(chip_name),
                                     dynamic_version(version),
-                                    fw_ir_length(0) {}
+                                    fw_ir_length(0),
+                                    ir_offset(0),
+                                    ir_len(0) {}
 
     virtual ~SubnetIr () {clear_all();}
     void generate_compiler_ir(ModuleOp &module, func::CallOp &call,
                               std::function<void(Operation *, SubnetIr*)> task);
 
-    int write_binary_ir_to_buffer();
+    void write_binary_ir_to_buffer(std::unique_ptr<Context> &context);
     u32 get_fw_ir_length() {return fw_ir_length;}
-
+    uint32_t get_ir_offset() {return ir_offset;}
+    uint32_t get_ir_len() {return ir_len;}
     void clear_all();
     int get_dynamic_version();
-    friend class DynCodegenPass;
+    friend class CodegenPass;
   protected:
     //=========================
     //functions
@@ -106,10 +148,16 @@ class SubnetIr {
                                  Value& tensor,
                                  int& hslice_diff_flag);
     bool check_output_order_swap(const vector<Value> &sub_out);
+    void set_ir_offset_len(uint32_t offset, uint32_t len) {
+      ir_offset = offset;
+      ir_len = len;
+      return;}
     //=========================
     //IR information
     //=========================
     uint32_t fw_ir_length;  //unit: byte
+    uint32_t ir_offset;
+    uint32_t ir_len;
     //net related ir information
     vector<uint32_t> net_input_tensor_id;
     vector<uint32_t> net_output_tensor_id;
@@ -124,8 +172,8 @@ class SubnetIr {
     vector<vector<vector<ir_tensor_gdma_info_t> > > ir_group_timestep_tensor_gdma_param;            //1st dim: group num, 2nd dim: timestep number, 3rd dim: tensor_gdma_num
     vector<vector<uint32_t> >                             ir_group_extra_tensor_record;
 
-    vector<uint32_t>                                            m_ir_buffer;
-    vector<stage_param_t>                                       stage_param_vv;
+    //vector<uint32_t>                                            m_ir_buffer;
+    //vector<stage_param_t>                                       stage_param_vv;
     // subnet related param
     vector<LgInfo> m_layer_groups_;
     vector<std::shared_ptr<BasicTimeStep>> m_time_step_groups_;

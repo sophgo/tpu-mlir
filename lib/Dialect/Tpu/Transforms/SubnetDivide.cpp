@@ -31,7 +31,7 @@ namespace tpu {
 static constexpr llvm::StringRef FUNC_TPU = "TPU";
 static constexpr llvm::StringRef FUNC_CPU = "CPU";
 static constexpr llvm::StringRef FUNC_SCF = "SCF"; // Structured Control Flow
-
+static constexpr llvm::StringRef FUNC_TPU_IR = "TPU_IR"; //dynamic_subnet
 class SubFunction {
 public:
   SubFunction(StringRef mode) : mode(mode) {
@@ -154,6 +154,8 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
 static StringRef getOpMode(Operation *op) {
   if (isa<tpu::GenericCpuOp>(op)) {
     return FUNC_CPU;
+  } else if (isa<tpu::TopKOp>(op)) {
+    return FUNC_TPU_IR;
   }
   return FUNC_TPU;
 }

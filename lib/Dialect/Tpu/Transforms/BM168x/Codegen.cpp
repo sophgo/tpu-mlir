@@ -18,7 +18,8 @@
 #include "tpu_mlir/Support/Module.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynamicNetIr.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynamicLayer.hpp"
 #include <fstream>
 #include <set>
 #include <sstream>
@@ -42,7 +43,9 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
+    bool dynamic = this->dynamic;
     bm168x = BM168x::instance();
+    DynCodegenInit();
     std::vector<top::WeightOp> weights;
     for (auto func : module.getOps<FuncOp>()) {
       func.walk([&](top::WeightOp op) {
@@ -54,6 +57,7 @@ public:
     std::vector<Value> inputs;
     std::vector<Value> outputs;
     module::getInputsOutputs(inputs, outputs);
+    SetNetIO(inputs, outputs);
 
     auto coeff_addr = module::getCoeffAddr();
     auto coeff_size = module::getCoeffSize();
@@ -72,23 +76,47 @@ public:
     cmd_group_all = std::make_shared<std::vector<Offset<bmodel::CmdGroup>>>();
     auto main_func = module::getMainFuncOp();
     std::vector<Offset<bmodel::SubNet>> subnet_v;
+    auto context = std::make_unique<Context>();
     main_func.walk([&](func::CallOp call) {
-      auto subnet = CreateSubNet(call);
-      subnet_v.push_back(subnet);
+      if (dynamic) {
+        auto subnet_ir_ = std::make_unique<SubnetIr>(chip, module::isBM1684XFamily() ? 2 : 1);
+        auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
+        subnet_v.push_back(subnet);
+      } else {
+        auto func = module::getFuncOp(call.getCallee());
+        auto mode = func->getAttrOfType<StringAttr>("mode").getValue();
+        if (mode == "TPU") {
+          auto subnet = CreateSubNet(call);
+          subnet_v.push_back(subnet);
+        } else if (mode == "TPU_IR") {
+          auto subnet_ir_ = std::make_unique<SubnetIr>(chip, module::isBM1684XFamily() ? 2 : 1);
+          auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
+          subnet_v.push_back(subnet);
+        }
+      }
     });
     auto subnets = builder.CreateVector(subnet_v);
     auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
+    bmodel::Binary binary_ir;
+    uint32_t ir_info_len = context->get_cur_net_ir_len();
+    uint32_t ir_info_len_word = (ir_info_len + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+    stage_param_t stage_param = {ir_info_len_word, 0, 0, 0, 0};
+    context->set_stage_param(stage_param);
+    auto stage_ir = CreateStageIRVector(context->get_stage_param(context->get_cur_net_idx()),
+                                      context->get_binary_ir(), context->get_cur_net_offset() * sizeof(uint32_t), binary_ir);
     bmodel::NetParameterBuilder npb(builder);
     npb.add_input_tensor(input_tensor);
     npb.add_output_tensor(output_tensor);
     npb.add_ctx_addr(neuron_addr);
     npb.add_ctx_size(neuron_size);
-    npb.add_ctx_sizes(neuron_sizes_fb);
+    npb.add_ctx_sizes(std::move(neuron_sizes_fb));
     npb.add_coeff_mem(coeff_mem);
-    npb.add_is_dynamic(false);
-    npb.add_n_dynamic(false);
-    npb.add_h_w_dynamic(false);
+    npb.add_is_dynamic(dynamic ? true : false);
+    npb.add_n_dynamic(dynamic ? true : false);
+    npb.add_h_w_dynamic(dynamic ? true : false);
     npb.add_cmd_group(cmd_group);
+    npb.add_stage_ir(stage_ir);
+    npb.add_binary_ir(&binary_ir);
     // create subnet
     npb.add_sub_net(subnets);
     model_gen->AddNet(module::getModuleName().str(), npb.Finish());
@@ -102,13 +130,18 @@ private:
   Offset<Vector<Offset<bmodel::Tensor>>>
   CreateTensorVector(const std::vector<Value> &values);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
+  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_, std::unique_ptr<Context> &context);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
                                           uint64_t coeff_size);
+  Offset<Vector<Offset<bmodel::StageIR>>> CreateStageIRVector(
+                                            const vector<stage_param_t> &stage_param_v,
+                                            const vector<u32> &binary_ir_v, u32 ir_offset,
+                                            bmodel::Binary &binary_ir);
   void codegen(Operation *op);
   void codegen_for_group(tpu::GroupOp gOP);
-
+  void codegen_ir(Operation *op, SubnetIr* subnet_ir_);
 private:
   ModuleOp module;
   StringRef state;
@@ -400,5 +433,86 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
+void CodegenPass::codegen_ir(Operation *op, SubnetIr* subnet_ir_) {
+  if (module::isOpInGroup(op) || isa_and_nonnull<top::WeightOp>(op)) {
+    return;
+  } else if (dyn_cast<tpu::GroupOp>(op) || dyn_cast<DynGlobalGenInterface>(op)) {
+    subnet_ir_->generate_crop_layer_shape_tensor_record();
+    subnet_ir_->generate_group_time_step_ir(op);
+  }
+}
+
+Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_, std::unique_ptr<Context> &context) {
+  std::vector<Value> inputs;
+  std::vector<Value> outputs;
+  module::getInputsOutputs(call, inputs, outputs);
+  auto input_tensor = CreateTensorVector(inputs);
+  auto output_tensor = CreateTensorVector(outputs);
+  std::function<void(Operation *, SubnetIr*)> task = std::bind(&CodegenPass::codegen_ir, this,
+                      std::placeholders::_1, std::placeholders::_2);
+  subnet_ir_->generate_compiler_ir(module, call, task);
+  subnet_ir_->write_binary_ir_to_buffer(context);
+  auto func = module::getFuncOp(call.getCallee());
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+
+  std::vector<int> next_id_v = {};
+  for (auto v : call.getResults()) {
+    for (auto user : v.getUsers()) {
+      if (isa<func::ReturnOp>(user)) {
+        next_id_v.push_back(-1);
+      } else if (auto call = dyn_cast<func::CallOp>(user)) {
+        auto func = module::getFuncOp(call.getCallee());
+        auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
+        next_id_v.push_back(id);
+      } else {
+        llvm_unreachable("next op is illegal");
+      }
+    }
+  }
+  auto &builder = model_gen->Builder();
+  auto next_ids = builder.CreateVector(next_id_v);
+
+  bmodel::SubNetBuilder snb(builder);
+  snb.add_is_dynamic(true);
+  snb.add_subnet_mode(SUBNET_MODE_TPU);
+  snb.add_input_tensor(input_tensor);
+  snb.add_output_tensor(output_tensor);
+  snb.add_ir_offset(subnet_ir_->get_ir_offset());
+  snb.add_ir_len(subnet_ir_->get_ir_len());
+  snb.add_id(subnet_id);
+  snb.add_next_subnet_ids(next_ids);
+  return snb.Finish();
+}
+
+Offset<Vector<Offset<bmodel::StageIR>>> CodegenPass::CreateStageIRVector(
+    const vector<stage_param_t> &stage_param_v,
+    const vector<uint32_t> &binary_ir_v, uint32_t ir_offset,
+    bmodel::Binary &binary_ir)
+{
+  auto &builder = model_gen->Builder();
+  vector<Offset<bmodel::StageIR>> stage_ir_v;
+  u32 ir_len = 0;
+  for (auto& stage_param : stage_param_v) {
+    ir_len += stage_param.ir_info_len;
+    bmodel::StageIRBuilder sirb(builder);
+    sirb.add_ir_info_len(stage_param.ir_info_len);
+    sirb.add_height_high(stage_param.height_high);
+    sirb.add_height_low(stage_param.height_low);
+    sirb.add_width_high(stage_param.width_high);
+    sirb.add_width_low(stage_param.width_low);
+    stage_ir_v.push_back(sirb.Finish());
+  }
+  if (stage_ir_v.size() == 0) {
+    return 0;
+  }
+  auto stage_ir = builder.CreateVector(stage_ir_v);
+
+  // ir binary
+  u32 ir_size = ir_len * sizeof(u32);
+  assert((ir_offset + ir_size) <= (binary_ir_v.size() * sizeof(u32)));
+  u8 *buffer = (u8 *)binary_ir_v.data();
+  binary_ir = model_gen->WriteBinary(ir_size, buffer + ir_offset);
+  return stage_ir;
+}
 } // namespace tpu
 } // namespace tpu_mlir
