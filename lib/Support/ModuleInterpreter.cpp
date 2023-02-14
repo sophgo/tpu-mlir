@@ -249,12 +249,30 @@ ModuleInterpreter::getTensor(const std::string &name) {
   auto it = mem_map.find(name);
   if (it == mem_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";
-    llvm_unreachable("Error, setTensor failed");
+    llvm_unreachable("Error, getTensor failed");
   }
   std::shared_ptr<std::vector<float>> tmp(it->second);
   return std::move(tmp);
 }
 
+bool ModuleInterpreter::getTensorQuantInfo(const std::string name, int &width, int &sign, float &scale, int &zp) {
+  auto it = mem_map.find(name);
+  if (it == mem_map.end()) {
+    return false;
+  }
+  auto value = value_map.at(name);
+  if (module::isUniformQuantized(value)) {
+    auto stype = module::getStorageType(value);
+    auto qtype = module::getUniformQuantizedType(value);
+    sign = stype.isSignedInteger(8) || stype.isSignedInteger(16);
+    scale = qtype.getScale();
+    zp = qtype.getZeroPoint();
+    width = stype.isInteger(8) ? 8: stype.isInteger(16)?16:4;
+  } else {
+    width = 32; sign = 1; scale = 1.0; zp = 0;
+  }
+  return true;
+}
 llvm::ArrayRef<int64_t>
 ModuleInterpreter::getTensorShape(const std::string &name) {
   auto it = value_map.find(name);
