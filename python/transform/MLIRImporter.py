@@ -67,6 +67,7 @@ class Top:
     SliceOp = 'top.Slice'
     SigmoidOp = 'top.Sigmoid'
     SoftmaxOp = 'top.Softmax'
+    SoftplusOp = 'top.Softplus'
     SqueezeOp = 'top.Squeeze'
     ScaleOp = 'top.Scale'
     SubOp = 'top.Sub'
@@ -541,6 +542,13 @@ class MLIRImporter(object):
         if 'log' in kargs:
             param['log'] = BoolAttr.get(kargs['log'])
         return self.buildOp(Top.SoftmaxOp, operands, [output_type], **param)
+
+    def create_softplus_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.SoftplusOp, operands, [output_type], **param)
 
     def create_log_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

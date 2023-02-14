@@ -90,6 +90,10 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::GELU:
     active_func(p, num_element, [](double val) { return gelu(val); });
     break;
+  case ActiveMode::SOFT_PLUS:
+    active_func(p, num_element,
+                [](double val) { return std::log(std::exp(val) + 1); });
+    break;
   default:
     llvm_unreachable("Not Implemented");
   }
