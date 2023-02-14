@@ -33,15 +33,29 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto gi = getGroupInfo(n_step, h_step);
   assert(false == gi.overstepped);
 
-  int64_t N, C, H, W;
+  int64_t N, C, H, W, real_hslice;
   int gdma_format;
   module::getNCHW(getOutput(), N, C, H, W);
   auto data_type = BM168x::getDataType(getOutput());
 
-  if(data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
+  real_hslice = gi.h_slice;
+  if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
-    data_type  = DTYPE_INT8;
-    W >>= 1;
+    data_type = DTYPE_INT8;
+    if (gi.h_slice == H) {
+      if (W * H & 0x1 == 1) {
+        W = align_up(W * H, (int64_t)2) / 2;
+        H = 1;
+        real_hslice = 1;
+      } else {
+        if (W & 0x1 == 1)
+          real_hslice >>= 1;
+        else
+          W >>= 1;
+      }
+    } else {
+      real_hslice = gi.h_slice;     // to do for int4
+    }
   }
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
@@ -54,7 +68,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     g_stride.C = 0;
     g_stride.H = 0;
   }
-  auto s_stride = BM168x::getLocalStride(gi.n_slice, C, gi.h_slice, W,
+  auto s_stride = BM168x::getLocalStride(gi.n_slice, C, real_hslice, W,
                                          fmt_bytes, gi.eu_align);
   auto g_addr = module::getAddress(getInput());
   int64_t g_offset =
@@ -71,20 +85,20 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     for (int i = 0; i < C; ++i) {
       BM168x::instance()->dl_tensor_broadcast_move_gen_cmd(
           g_addr + g_offset + i * W * H * fmt_bytes, 0, gi.out_addr, i * to_ic,
-          gi.n_slice, gi.h_slice, W, to_ic, g_stride.N, g_stride.H, s_stride.N,
+          gi.n_slice, real_hslice, W, to_ic, g_stride.N, g_stride.H, s_stride.N,
           s_stride.H, gdma_format, true, GDMA_VALUE_DIR_S2L, pid_node);
     }
   } else {
     BM168x::instance()->dl_tensor_stride_move_gen_cmd(
-        gi.out_addr, 0, g_addr + g_offset, gi.n_slice, C, gi.h_slice, W,
-        g_stride.N, g_stride.C, g_stride.H, g_stride.W, s_stride.N, s_stride.C,
-        s_stride.H, s_stride.W, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
+        gi.out_addr, 0, g_addr + g_offset, gi.n_slice, C, real_hslice, W, g_stride.N,
+        g_stride.C, g_stride.H, g_stride.W, s_stride.N, s_stride.C, s_stride.H,
+        s_stride.W, gdma_format, GDMA_VALUE_DIR_S2L, 0, pid_node);
   }
 }
 
-//dynamic codegen
+// dynamic codegen
 int64_t tpu::LoadOp::dyn_codegen_local_bm1684x(void *buffer) {
-  //no need to implement it
+  // no need to implement it
   return 0;
 }
 
@@ -92,6 +106,6 @@ int64_t tpu::LoadOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::LoadOp::dyn_codegen_global_bm1684x(void *buffer) {
-  //no need to implement it
+  // no need to implement it
   return 0;
 }

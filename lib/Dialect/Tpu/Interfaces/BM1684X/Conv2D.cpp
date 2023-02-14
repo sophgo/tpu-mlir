@@ -181,7 +181,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     }
     memcpy(coeff_ptr + filter_offset, filter_ptr, filter_w_bytes);
   }
-  if (merge_w > MAX_TPU_DIM) {
+  if (merge_w > MAX_TPU_DIM || coeff_shape[3] > MAX_TPU_DIM) {
     if (attr.is_dw) {
       coeff_shape[2] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
       coeff_shape[3] /= coeff_shape[2];
