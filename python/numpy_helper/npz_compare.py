@@ -157,7 +157,7 @@ def npz_compare(args_list):
     excepts = []
     if args.excepts:
         excepts = [str(s) for s in args.excepts.split(',')]
-
+    #excepts.append("Y_Index_TopK")
     ordered_names = []
     operations = {}
     quant_types = {}

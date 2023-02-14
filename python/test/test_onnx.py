@@ -183,7 +183,9 @@ class ONNX_IR_TESTER(object):
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
             "ReduceTranspose": self.test_ReduceTranspose,
-            "SliceToReverse": self.test_SliceToReverse,
+            "SliceToReverse": self.test_SliceToReverse
+            #Note: Static_Dyn_Mixed: f32 works ok, f16/bf16/int8_sym works ok with not compare top topk index with mlir topk index tensor, Todo: int8_asym bmodel result is't the same as mlir's
+            #"Static_Dyn_Mixed": self.test_StaticDynMixed,
         }
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -3479,6 +3481,59 @@ class ONNX_IR_TESTER(object):
                                       initializer=[starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
 
+    def test_StaticDynMixed(self, case_name):
+        oc = 32
+        batch = 4
+        input_shape = [batch, 16, 100, 1000]
+        filter_shape = [oc, 16, 3, 3]
+        conv_out_shape = [batch, oc, 100, 1000]
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(oc).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'weight', 'bias'],
+            outputs=['conv_output'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+        const = 500
+        K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([const]).astype(np.int64))
+        o_shape = [batch, oc, 100, const]
+        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
+        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, o_shape)
+        topk_node = helper.make_node('TopK', ['conv_output', 'K'], ['Y_Value', 'Y_Index'],
+                                     axis=-1,
+                                     largest=True)
+        oc2=64
+        output_shape2 = [4, oc2, 100,500]
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape2)
+        filter_shape2 = [oc2, oc, 3, 3]
+        weight_data2 = np.random.randn(*filter_shape2).astype(np.float32)
+        bias_data2 = np.random.randn(oc2).astype(np.float32)
+        weight2 = helper.make_tensor('weight2', TensorProto.FLOAT, filter_shape2, weight_data2)
+        bias2 = helper.make_tensor('bias2', TensorProto.FLOAT, list(bias_data2.shape), bias_data2)
+        conv_def2 = helper.make_node(
+            "Conv",
+            inputs=['Y_Value', 'weight2', 'bias2'],
+            outputs=['output'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+
+        graph_def = helper.make_graph([conv_def, topk_node, conv_def2],
+                                       case_name, [input], [output],
+                                        initializer=[weight, bias, K, weight2, bias2])
+        self.onnx_and_test(graph_def)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

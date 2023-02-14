@@ -31,8 +31,8 @@ void SubnetIr::clear_all()
   ir_group_timestep_layer_param.clear();
   ir_group_timestep_tensor_gdma_param.clear();
   ir_group_extra_tensor_record.clear();
-  stage_param_vv.clear();
-  m_ir_buffer.clear();
+  //stage_param_vv.clear();
+  //m_ir_buffer.clear();
   m_layer_groups_.clear();
   m_time_step_groups_.clear();
   for (auto iter: dynamic_layers_)
@@ -803,7 +803,7 @@ bool SubnetIr::check_output_order_swap(const vector<Value> &sub_out) {
 }
 
 void SubnetIr::generate_compiler_ir(ModuleOp &module, func::CallOp &call,
-                                             std::function<void(Operation *, SubnetIr*)> task)
+                                    std::function<void(Operation *, SubnetIr*)> task)
 {
 
   std::vector<Value> inputs;
@@ -1142,23 +1142,25 @@ int SubnetIr::write_ir_to_buffer(
   return (uint8_t *)p_ir_buf - (uint8_t *)ir_buffer;
 }
 
-int SubnetIr::write_binary_ir_to_buffer()
+void SubnetIr::write_binary_ir_to_buffer(std::unique_ptr<Context> &context)
 {
-  //int subnet_ir_offset = m_ir_buffer.size() * sizeof(uint32_t);     // == size
+  uint32_t subnet_ir_offset = context->get_binary_ir().size() * sizeof(uint32_t);
   uint32_t fw_ir_length_in_word = (fw_ir_length + sizeof(uint32_t) - 1)/sizeof(uint32_t); // == subnet_ir_len;
-  uint32_t size = m_ir_buffer.size();
-  m_ir_buffer.resize(size + fw_ir_length_in_word);
-  uint32_t * buffer = m_ir_buffer.data() + size;
+  vector<uint32_t> &binary_ir_v = context->get_binary_ir();
+  uint32_t size = binary_ir_v.size();
+  binary_ir_v.resize(size + fw_ir_length_in_word);
+  uint32_t * buffer = binary_ir_v.data() + size;
 
   int subnet_ir_len = write_ir_to_buffer((uint8_t *)buffer, net_input_tensor_id,
                                          net_output_tensor_id, 0, m_layer_groups_.size() - 1);
 
   cout << "subnet_ir_len " << subnet_ir_len << " fw_ir_length " << fw_ir_length << endl;
   assert((uint32_t)subnet_ir_len <= fw_ir_length);
-
-  m_ir_buffer.resize(size + (subnet_ir_len + sizeof(u32) - 1) / sizeof(u32));
-
-  return subnet_ir_len;
+  set_ir_offset_len(subnet_ir_offset, subnet_ir_len);
+  binary_ir_v.resize(size + (subnet_ir_len + sizeof(uint32_t) - 1) / sizeof(uint32_t));
+  uint32_t cur_net_ir_len = context->get_cur_net_ir_len();
+  context->set_cur_net_ir_len(cur_net_ir_len + subnet_ir_len);
+  return;
 }
 
 bool SubnetIr::strip_back_judge(Value v, const LgInfo &lg_info,

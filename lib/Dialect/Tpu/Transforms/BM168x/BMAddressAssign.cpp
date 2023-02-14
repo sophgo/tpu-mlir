@@ -31,6 +31,26 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
+bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
+  bool ret = false;
+  for (uint32_t i = 0; i < op->getNumOperands(); i++) {
+    if (i == index) {
+      for (const auto user : op->getOperand(i).getUsers()) {
+        if (isa<FuncOp>(user->getParentOp())) {
+          FuncOp funcOp;
+          funcOp = cast<FuncOp>(user->getParentOp());
+          func::CallOp callee = module::getCallOp(funcOp);
+          if (callee && callee.getResult(index).hasOneUse()) {
+            ret = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  return ret;
+}
+
 void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   int64_t alignment = BM168x::ALIGNMENT;
   int64_t start_addr = BM168x::CTX_START_ADDR;
@@ -200,7 +220,11 @@ void BMAddressAssign::updateLiveRangeofBMOps(
   } else if (isa<FuncOp, top::NoneOp, ReturnOp, top::WeightOp, func::CallOp,
                  tpu::YieldOp>(op) ||
              module::isOpInGroup(op)) {
-    updateOperandsLiveRange(op, endPosition);
+    if (isa<ReturnOp>(op) && is_next_subnet_input(op, index)) {
+      //for multi_subnet, the returnOp's live range increase if it connect to next subnet
+      updateOperandsLiveRange(op, endPosition+2);
+    } else {
+      updateOperandsLiveRange(op, endPosition); }
   } else if (isInPlaceOp(op)) {
     if (isa<tpu::ConcatOp>(op)) {
       uint32_t tensor_size = getTensorGmemSize(op, index, alignment);
