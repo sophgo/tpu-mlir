@@ -818,6 +818,17 @@ def Top_SoftplusOp:Top_Op<"Softplus",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_FloorOp:Top_Op<"Floor",[InOutSameShape]> {
+  let summary = "Floor operation";
+  let description = [{
+    y = floor(x)
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_TopKOp:Top_Op<"TopK", [InOutSameDim]> {
   let summary = "TopK operation";
   let description = [{

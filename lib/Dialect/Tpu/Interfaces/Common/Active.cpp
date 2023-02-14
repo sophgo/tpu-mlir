@@ -94,6 +94,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     active_func(p, num_element,
                 [](double val) { return std::log(std::exp(val) + 1); });
     break;
+  case ActiveMode::FLOOR:
+    active_func(p, num_element, [](double val) { return std::floor(val); });
+    break;
   default:
     llvm_unreachable("Not Implemented");
   }
