@@ -44,6 +44,7 @@ public:
   void setTensor(const std::string &name, const void *data, size_t size,
                  bool is_integer = false);
   std::shared_ptr<std::vector<float>> getTensor(const std::string &name);
+  bool getTensorQuantInfo(const std::string name, int &width, int &sign, float &scale, int &zp);
   llvm::ArrayRef<int64_t> getTensorShape(const std::string &name);
 
 public:

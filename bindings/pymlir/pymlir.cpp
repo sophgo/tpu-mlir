@@ -80,6 +80,13 @@ static py::dict getTensorDict(tensor_map_t &tensorMap, shape_map_t &shapeMap,
   return py_ret;
 }
 
+struct quant_brief_info {
+  std::string dtype;
+  std::string shape;
+  float scale;
+  int zp;
+};
+
 class py_module {
 public:
   py_module() {}
@@ -154,6 +161,39 @@ public:
     std::vector<int64_t> shape = interpreter_->getTensorShape(name);
     return getPythonArray(tensor.get(), shape);
   }
+
+  struct quant_brief_info format_tensor_qinfo(std::string name) {
+    int width_, sign_, zp_;
+    float scale_;
+    struct quant_brief_info q_info;
+    if (interpreter_->getTensorQuantInfo(name, width_, sign_, scale_, zp_)) {
+      if (width_ == 32) {
+        q_info.dtype = std::string("F32");
+        q_info.scale = 1.0;
+        q_info.zp = 0;
+      } else {
+      q_info.dtype = (width_ == 8)? (sign_? std::string("I8"):std::string("U8")):(width_ == 16)?(sign_? std::string("I16"):std::string("U16")):std::string("I4");
+      q_info.scale = scale_;
+      q_info.zp = zp_;
+      }
+    } else {
+      q_info.dtype = std::string("NA");
+      q_info.scale = 1.0;
+      q_info.zp = 0;
+      q_info.shape = std::string("[]");
+      return q_info;
+    }
+    std::vector<int64_t> shape_ = interpreter_->getTensorShape(name);
+    q_info.shape = std::string("[");
+    for (int i = 0; i < shape_.size(); i++) {
+      q_info.shape += std::to_string(shape_[i]);
+      if (i != shape_.size() - 1)
+      q_info.shape += std::string(", ");
+    }
+    q_info.shape += std::string("]");
+    return q_info;
+  }
+
   void invoke() { interpreter_->invoke(); }
   void fake_quant_weight() { interpreter_->fake_quant_weight(); }
 
@@ -190,6 +230,12 @@ std::string py_module::version = MLIR_VERSION;
 PYBIND11_MODULE(pymlir, m) {
   m.doc() = "pybind11 for mlir";
 
+  py::class_<quant_brief_info>(m, "q_info", "simple tensor quant info")
+      .def_readwrite("dtype", &quant_brief_info::dtype)
+      .def_readwrite("shape", &quant_brief_info::shape)
+      .def_readwrite("scale", &quant_brief_info::scale)
+      .def_readwrite("zp", &quant_brief_info::zp);
+
   py::class_<py_module>(m, "module", "MLIR Module")
       .def(py::init<>())
       .def("load", &py_module::load, "load module from IR")
@@ -201,6 +247,8 @@ PYBIND11_MODULE(pymlir, m) {
       .def("fake_quant_weight", &py_module::fake_quant_weight)
       .def("invoke_at", &py_module::invoke_at, "invote at specified layer")
       .def("invoke_from", &py_module::invoke_from, "invote from specified layer to the end")
+      .def("get_tensor_qinfo", &py_module::format_tensor_qinfo,
+           "get simple quant info of tensor")
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
