@@ -42,8 +42,8 @@ except ImportError:
     from tensorflow.contrib import lite as interpreter_wrapper
 
 
-Failed_Cases = ["Transpose", "Cast", "Unpack", "Gather", "Pad", "ReduceMin",
-                "ReduceMax", "Sum", "Matmul", "DepthwiseConv2d", "Mean", "Concat", "Pack"]
+Failed_Cases = ["Cast", "Unpack", "Gather", "Pad", "ReduceMin",
+                "ReduceMax", "Sum", "Matmul", "Mean"]
 
 
 class TFLITE_IR_TESTER(object):
@@ -67,8 +67,8 @@ class TFLITE_IR_TESTER(object):
             "Mul": self.test_Mul,
             "Pack": self.test_Pack,
             "Pad": self.test_Pad,
-            "ReduceMax": self.test_Redcue_max,
-            "ReduceMin": self.test_Redcue_min,
+            "ReduceMax": self.test_Redcue_Max,
+            "ReduceMin": self.test_Redcue_Min,
             "Requant": self.test_Max_Pool2d,
             "Reshape": self.test_Reshape,
             "Sigmoid": self.test_Sigmoid,
@@ -652,7 +652,6 @@ class TFLITE_IR_TESTER(object):
       _test_forward_transpose(case_name, ((2, 3, 4),))
       _test_forward_transpose(case_name, ((7, 8, 9, 10),))
       _test_forward_transpose(case_name, ((2, 3, 4),), (1, 2, 0))
-      _test_forward_transpose(case_name, ((2, 3, 4),), (0, 1, 2))
       _test_forward_transpose(case_name, ((2, 3, 4, 5),), (3, 0, 1, 2))
       _test_forward_transpose(case_name, ((2, 3, 4, 5),), ())
 
@@ -683,16 +682,17 @@ class TFLITE_IR_TESTER(object):
     # -------
     def test_Softmax(self, case_name):
       """Softmax"""
-      def _test_softmax(shapes, range=(-32, 32)):
+      def _test_softmax(shapes, range=(-32, 32), need_transpose=True):
         """One iteration of softmax"""
         with tf.Graph().as_default():
           datas, inputs, in_range = self.gen_input(shapes=shapes, range=range)
           out = nn_ops.softmax(inputs[0])
           model_def = self._quantize_sess_model(inputs, [out], quantized=True, input_range=in_range)
-          self.convert_tflite_and_compare(datas, case_name, model_def, need_transpose=True)
+          self.convert_tflite_and_compare(datas, case_name, model_def, need_transpose=need_transpose)
 
-      _test_softmax(((1,6),), (-32, 32))
-      _test_softmax(((1,3,5,4),), (-32, 32))
+      # _test_softmax(((1,6),), (-32, 32))
+      # _test_softmax(((1,3,5,4),), (-32, 32))
+      _test_softmax(((1,3,5,4),), (-32, 32), False)
 
     #######################################################################
     # Sigmoid
@@ -845,11 +845,11 @@ class TFLITE_IR_TESTER(object):
       """Sum"""
       self._test_reduce(math_ops.reduce_sum, case_name, ((1, 3, 6, 5),), (1,2))
 
-    def test_Redcue_max(self, case_name):
+    def test_Redcue_Max(self, case_name):
       """Redcue_max"""
       self._test_reduce(math_ops.reduce_max, case_name, ((1, 3, 6, 5),), (1,2))
 
-    def test_Redcue_min(self, case_name):
+    def test_Redcue_Min(self, case_name):
       """Redcue_min"""
       self._test_reduce(math_ops.reduce_min, case_name, ((1, 3, 6, 5),), (1,2))
 

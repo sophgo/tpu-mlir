@@ -461,12 +461,12 @@ class TFLiteConverter(BaseConverter):
             shape_.append(shape[order[i]])
         return shape_
 
-    def __do_transpose(self, tensor, operand, order, name_loc, same=True):
+    def __do_transpose(self, tensor, operand, order, name, same=True):
         shape = self.__shape_transpose(tensor.shape, order)
         if shape == tensor.shape:
             return operand
         tensor_type = self.__get_tensor_type(tensor, shape if same else None)
-        # name_loc = Location.name(name)
+        name_loc = Location.name(name)
         attr = {
             "order": self.mlir.ArrayAttr(order),
         }
@@ -502,7 +502,7 @@ class TFLiteConverter(BaseConverter):
 
     def pad_op(self, op):
         paddings = op.inputs[1].buffer
-        if paddings.shape[0] == 4:
+        if paddings.shape[0] == 4 and self.need_transpose:
             paddings = paddings[[0, 3, 1, 2], :]
         paddings = paddings.transpose([1,0])
         pad_val = op.outputs[0].quantization.ZeroPoint(0)
@@ -511,7 +511,7 @@ class TFLiteConverter(BaseConverter):
         op.inputs = [op.inputs[0]]  # remove ins[1]
         attr = {"paddings": self.mlir.ArrayAttr(paddings.flatten()),
                 "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val)}
-        return "top.Pad", attr, True
+        return "top.Pad", attr, self.need_transpose
 
     def add_op(self, op):
         from .tflite.AddOptions import AddOptions
@@ -638,6 +638,9 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         in_shape = op.inputs[0].shape
         kernel_shape = op.inputs[1].shape
+        op.inputs[1].shape = (kernel_shape[3], kernel_shape[0], kernel_shape[1], kernel_shape[2])
+        op.inputs[1].buffer = op.inputs[1].buffer.transpose([3, 0, 1, 2])
+        op.inputs[1].layout = "NCHW"
         fused_active = param.FusedActivationFunction()
         padding = [0, 0, 0, 0]  # VALID padding
         # high, width
@@ -739,7 +742,7 @@ class TFLiteConverter(BaseConverter):
         return "top.Softmax", {
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
-        }, True
+        }, self.need_transpose
 
     def concat_op(self, op):
         from .tflite.ConcatenationOptions import ConcatenationOptions
@@ -851,7 +854,7 @@ class TFLiteConverter(BaseConverter):
     def transpose_op(self, op):
         assert op.inputs[1].buffer is not None
         perm = op.inputs[1].buffer
-        if len(perm) == 4:
+        if len(perm) == 4 and self.need_transpose:
             n, h, w, c = perm
             perm = (n, c, h, w)
         axes = [self.__axis_transpose(op, i) for i in perm]

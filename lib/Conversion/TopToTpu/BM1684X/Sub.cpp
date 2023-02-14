@@ -192,9 +192,7 @@ void SubLowering::LoweringQuantized(PatternRewriter &rewriter,
   std::string suffix = "_sub";
   std::string new_name = module::getName(op).str() + suffix;
   std::vector<NamedAttribute> attrs;
-  for (auto &attr : op->getAttrs()) {
-    attrs.push_back(attr);
-  }
+  attrs.push_back(rewriter.getNamedAttr("do_relu", subOp.getDoReluAttr()));
   auto newType = RankedTensorType::get(module::getShape(subOp.getOutput()),
                                        rewriter.getI32Type());
   // auto sub_quant = lowering_common<tpu::SubOp>(op, newType);
