@@ -14,21 +14,6 @@
 namespace tpu_mlir {
 namespace cv18xx {
 
-static bool is_unused_weight(Operation *op, float v) {
-  if (auto castOp = dyn_cast<top::WeightOp>(op)) {
-    auto data = castOp.read<float>();
-    for (int i = 0; i < data->size(); i++) {
-      if (data->at(i) != v) {
-        return false;
-      }
-    }
-    return true;
-  } else {
-    op->dump();
-    llvm_unreachable("Is not weightOp.");
-  }
-}
-
 void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::LayerNormOp op) const {
 
@@ -39,17 +24,15 @@ void LayerNormLowering::LoweringBF16(PatternRewriter &rewriter,
   std::vector<Value> operands;
   operands.push_back(op.getInput());
   // lowering weight
-  auto none = module::getNoneOp(op);
-  auto filterOp = op.getWeight().getDefiningOp();
-  auto biasOp = op.getBias().getDefiningOp();
-  bool w_unused = is_unused_weight(filterOp, 1);
-  bool b_unused = is_unused_weight(biasOp, 0);
-  if (w_unused && b_unused) {
-    operands.push_back(none);
-    operands.push_back(none);
+  if (auto castOp = dyn_cast<top::WeightOp>(op.getWeight().getDefiningOp())) {
+    operands.push_back(castOp.clone_bf16(op));
   } else {
-    operands.push_back(dyn_cast<top::WeightOp>(filterOp).clone_bf16(op));
-    operands.push_back(dyn_cast<top::WeightOp>(biasOp).clone_bf16(op));
+    operands.push_back(op.getWeight());
+  }
+  if (auto castOp = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp())) {
+    operands.push_back(castOp.clone_bf16(op));
+  } else {
+    operands.push_back(op.getBias());
   }
   // add extra lut table
   int table_h = 32;

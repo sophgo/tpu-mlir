@@ -183,8 +183,8 @@ void cvi_backend_tl_bf16_layernorm(uint32_t layer_id, laddr_t la_input,
                                    laddr_t la_output, laddr_t la_table,
                                    laddr_t la_mantissa_table, laddr_t la_scale,
                                    laddr_t la_bias, laddr_t la_working,
-                                   bool affine, float eps, int n, int c, int h,
-                                   int w);
+                                   bool has_scale, bool has_bias, float eps,
+                                   int n, int c, int h, int w);
 
 void cvi_backend_bf16_tl_leaky_relu(uint32_t layer_id, laddr_t input_laddr,
                                     laddr_t output_laddr, laddr_t work_addr,
@@ -279,7 +279,6 @@ void cvi_backend_tl_pad(uint32_t layer_id, int64_t *input_dim,
 
 void cvi_backend_tl_bf16_pad(uint32_t layer_id, int64_t *input_dim,
                              int64_t *output_dim, laddr_t la_input,
-                             laddr_t la_output, float const_val,
-                             int32_t *pads);
+                             laddr_t la_output, float const_val, int32_t *pads);
 } // namespace backend
 } // namespace tpu_mlir

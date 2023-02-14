@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Backend/CV18xx/Kernel/TgConcatKernel.hpp"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
+#include "tpu_mlir/Backend/CV18xx/Kernel/TgConcatKernel.hpp"
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/Format.h>
 #include <llvm/Support/raw_ostream.h>
@@ -20,11 +20,13 @@
 
 namespace tpu_mlir {
 namespace backend {
-void cvi_backend_tg_bf16_layernorm_kernel(
-    uint32_t layer_id, gaddr_t ga_input,
-    gaddr_t ga_table, gaddr_t ga_mantissa_table, gaddr_t ga_scale,
-    gaddr_t ga_bias, gaddr_t ga_output, int batch_size, int normalized_size,
-    float eps, bool affine) {
+void cvi_backend_tg_bf16_layernorm_kernel(uint32_t layer_id, gaddr_t ga_input,
+                                          gaddr_t ga_table,
+                                          gaddr_t ga_mantissa_table,
+                                          gaddr_t ga_scale, gaddr_t ga_bias,
+                                          gaddr_t ga_output, int batch_size,
+                                          int normalized_size, float eps,
+                                          bool has_scale, bool has_bias) {
   int h, w;
   bool ret = CV18xx::size_to_hw(normalized_size, h, w);
   if (ret == false) {
@@ -42,16 +44,23 @@ void cvi_backend_tg_bf16_layernorm_kernel(
   lmem_used += 2 * CV18xx::lmem_tensor_to_size(table_shape, CVK_FMT_BF16, 1);
   cvk_tl_t *tl_scale = nullptr;
   cvk_tl_t *tl_bias = nullptr;
-  auto affine_shape = CV18xx::tl_shape_t4(1, CV18xx::CV18xx::NPU_NUM, h, w);
-  if (affine) {
-    // load scale and bias
+  auto affine_shape = CV18xx::tl_shape_t4(1, CV18xx::NPU_NUM, h, w);
+  // load scale and bias
+  cvk_tg_stride_t wb_gstride =
+      CV18xx::tg_default_stride(CV18xx::NPU_NUM, h, w, CVK_FMT_BF16);
+  wb_gstride.c = 0;
+
+  if (has_scale) {
     tl_scale = CV18xx::lmem_alloc_tensor(affine_shape, CVK_FMT_BF16, 1);
-    tl_bias = CV18xx::lmem_alloc_tensor(affine_shape, CVK_FMT_BF16, 1);
-    CV18xx::tdma_load(tl_scale, ga_scale);
-    CV18xx::tdma_load(tl_bias, ga_bias);
-    lmem_used += 2 * CV18xx::lmem_tensor_to_size(affine_shape, CVK_FMT_BF16, 1);
+    CV18xx::tdma_load_stride(tl_scale, ga_scale, wb_gstride);
+    lmem_used += CV18xx::lmem_tensor_to_size(affine_shape, CVK_FMT_BF16, 1);
     tl_scale->stride.c = 0;
     tl_scale->stride.n = 0;
+  }
+  if (has_bias) {
+    tl_bias = CV18xx::lmem_alloc_tensor(affine_shape, CVK_FMT_BF16, 1);
+    CV18xx::tdma_load_stride(tl_bias, ga_bias, wb_gstride);
+    lmem_used += CV18xx::lmem_tensor_to_size(affine_shape, CVK_FMT_BF16, 1);
     tl_bias->stride.c = 0;
     tl_bias->stride.n = 0;
   }
@@ -117,7 +126,8 @@ void cvi_backend_tg_bf16_layernorm_kernel(
     p3.rshift_bits = 0;
     p3.layer_id = layer_id;
     CV18xx::tiu_sub(&p3);
-    cvk_tl_t *tl_square = CV18xx::lmem_alloc_tensor(input_shape, CVK_FMT_BF16, 1);
+    cvk_tl_t *tl_square =
+        CV18xx::lmem_alloc_tensor(input_shape, CVK_FMT_BF16, 1);
     cvk_tiu_mul_param_t p4 = {0};
     p4.res_high = nullptr;
     p4.res_low = tl_square;
@@ -182,9 +192,8 @@ void cvi_backend_tg_bf16_layernorm_kernel(
     p9.layer_id = layer_id;
     p9.relu_enable = 0;
     CV18xx::tiu_mul(&p9);
-    if (affine) {
+    if (has_scale) {
       tl_scale->shape.c = batch;
-      tl_bias->shape.c = batch;
       cvk_tiu_mul_param_t p10 = {0};
       p10.res_high = nullptr;
       p10.res_low = tl_input;
@@ -193,6 +202,9 @@ void cvi_backend_tg_bf16_layernorm_kernel(
       p10.layer_id = layer_id;
       p10.relu_enable = 0;
       CV18xx::tiu_mul(&p10);
+    }
+    if (has_bias) {
+      tl_bias->shape.c = batch;
       cvk_tiu_add_param_t p11 = {0};
       p11.res_high = nullptr;
       p11.res_low = tl_input;
@@ -212,8 +224,10 @@ void cvi_backend_tg_bf16_layernorm_kernel(
     CV18xx::lmem_free_tensor(tl_mean);
     CV18xx::lmem_free_tensor(tl_input);
   }
-  if (affine) {
+  if (has_bias) {
     CV18xx::lmem_free_tensor(tl_bias);
+  }
+  if (has_scale) {
     CV18xx::lmem_free_tensor(tl_scale);
   }
   CV18xx::lmem_free_tensor(tl_lut_mantissa);

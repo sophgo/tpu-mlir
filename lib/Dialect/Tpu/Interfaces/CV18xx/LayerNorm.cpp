@@ -29,6 +29,8 @@ extern "C" {
 
 // int8
 void tpu::LayerNormOp::codegen_global_cv18xx(int64_t layer_id) {
+  bool has_weight = !getWeight().getType().isa<mlir::NoneType>();
+  bool has_bias = !getBias().getType().isa<mlir::NoneType>();
   const auto input_shape = module::getShape(getInput());
   const float eps = getEps().convertToDouble();
   const int axis = getAxis();
@@ -36,17 +38,8 @@ void tpu::LayerNormOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_output = module::getAddress(getOutput());
   gaddr_t ga_table = module::getAddress(getTable());
   gaddr_t ga_mantissa_table = module::getAddress(getMantissaTable());
-  gaddr_t ga_weight = GA_INVALID;
-  gaddr_t ga_bias = GA_INVALID;
-  bool affine = false;
-  bool has_weigh = !getWeight().getType().isa<mlir::NoneType>();
-  bool has_bias = !getBias().getType().isa<mlir::NoneType>();
-  if (has_weigh) {
-    assert(has_weigh && has_bias);
-    ga_weight = module::getAddress(getWeight());
-    ga_bias = module::getAddress(getBias());
-    affine = true;
-  }
+  gaddr_t ga_weight = module::getAddress(getWeight());
+  gaddr_t ga_bias = module::getAddress(getBias());
 
   int outer_dim =
       std::accumulate(input_shape.begin(), input_shape.begin() + axis, 1,
@@ -56,7 +49,7 @@ void tpu::LayerNormOp::codegen_global_cv18xx(int64_t layer_id) {
 
   cvi_backend_tg_bf16_layernorm_kernel(
       layer_id, ga_input, ga_table, ga_mantissa_table, ga_weight, ga_bias,
-      ga_output, outer_dim, axes_dim, eps, affine);
+      ga_output, outer_dim, axes_dim, eps, has_weight, has_bias);
 }
 
 // =========================================
@@ -88,6 +81,8 @@ int64_t tpu::LayerNormOp::getBufferSize_cv18xx(
 
 void tpu::LayerNormOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
                                             int64_t layer_id) {
+  bool has_weight = !getWeight().getType().isa<mlir::NoneType>();
+  bool has_bias = !getBias().getType().isa<mlir::NoneType>();
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
   auto gi = getGroupInfo(n_step, h_step);
@@ -110,14 +105,7 @@ void tpu::LayerNormOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   h = in_gi.h_slice;
 
   const float eps = getEps().convertToDouble();
-  bool affine = false;
-  bool has_weigh = !getWeight().getType().isa<mlir::NoneType>();
-  bool has_bias = !getBias().getType().isa<mlir::NoneType>();
-  if (has_weigh) {
-    assert(has_weigh && has_bias);
-    affine = true;
-  }
-  cvi_backend_tl_bf16_layernorm(layer_id, la_input, la_output, la_table,
-                                la_mantissa_table, la_scale, la_bias,
-                                la_working, affine, eps, n, c, h, w);
+  cvi_backend_tl_bf16_layernorm(
+      layer_id, la_input, la_output, la_table, la_mantissa_table, la_scale,
+      la_bias, la_working, has_weight, has_bias, eps, n, c, h, w);
 }

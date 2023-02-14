@@ -2079,7 +2079,7 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Net, self).__init__()
-                self.layer_norm = nn.LayerNorm(normalize_shape)
+                self.layer_norm = nn.LayerNorm(normalize_shape, elementwise_affine=True)
 
             def forward(self, x):
                 x = self.layer_norm(x)
@@ -2096,6 +2096,7 @@ class ONNX_IR_TESTER(object):
             def __init__(self):
                 super(Net, self).__init__()
                 self.layer_norm = nn.LayerNorm([25, 25])
+                nn.init.normal_(self.layer_norm.bias, std=0.01)
                 self.conv = nn.Conv2d(32, 32, 3, 1, 1)
 
             def forward(self, x):

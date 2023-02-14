@@ -210,7 +210,7 @@ void cvi_backend_tg_bf16_layernorm_kernel(uint32_t layer_id, gaddr_t ga_input,
                                           gaddr_t ga_scale, gaddr_t ga_bias,
                                           gaddr_t ga_output, int batch_size,
                                           int normalized_size, float eps,
-                                          bool affine = false);
+                                          bool has_scale, bool has_bias);
 
 // bf16 leakyrelu
 void cvi_backend_tg_bf16_leakyrelu_kernel(uint32_t layer_id, gaddr_t ga_input,
