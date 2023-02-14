@@ -49,7 +49,7 @@ class CaffeConverter(BaseConverter):
         text_format.Merge(open(prototxt).read(), self.param)
         self.layers = self.param.layer if len(self.param.layer) != 0 else self.param.layers
         self.input_names = self.net.inputs
-        self.select_outputs = set(output_names) if output_names else set(self.net.outputs)
+        self.select_outputs = list(output_names) if output_names else list(self.net.outputs)
         self.blobs = self.net.blobs
         self.mlir = None
         self.layer_dict = self.net.layer_dict
