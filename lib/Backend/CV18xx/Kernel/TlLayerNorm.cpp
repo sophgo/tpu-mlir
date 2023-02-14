@@ -17,13 +17,12 @@
 
 namespace tpu_mlir {
 namespace backend {
-void cvi_backend_tl_bf16_layernorm(
-                                   uint32_t layer_id, laddr_t la_input,
+void cvi_backend_tl_bf16_layernorm(uint32_t layer_id, laddr_t la_input,
                                    laddr_t la_output, laddr_t la_table,
                                    laddr_t la_mantissa_table, laddr_t la_scale,
                                    laddr_t la_bias, laddr_t la_working,
-                                   bool affine, float eps, int n, int c, int h,
-                                   int w) {
+                                   bool has_scale, bool has_bias, float eps,
+                                   int n, int c, int h, int w) {
   cvk_fmt_t fmt = CVK_FMT_BF16;
   cvk_tl_t tl_input = {0};
   cvk_tl_t tl_output = {0};
@@ -171,7 +170,7 @@ void cvi_backend_tl_bf16_layernorm(
   p9.relu_enable = 0;
   CV18xx::tiu_mul(&p9);
 
-  if (affine) {
+  if (has_scale) {
     cvk_tiu_mul_param_t p10 = {0};
     p10.res_high = nullptr;
     p10.res_low = &tl_output;
@@ -180,6 +179,8 @@ void cvi_backend_tl_bf16_layernorm(
     p10.layer_id = layer_id;
     p10.relu_enable = 0;
     CV18xx::tiu_mul(&p10);
+  }
+  if (has_bias) {
     cvk_tiu_add_param_t p11 = {0};
     p11.res_high = nullptr;
     p11.res_low = &tl_output;

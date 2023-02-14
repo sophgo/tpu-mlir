@@ -381,7 +381,6 @@ protected:
   }
 
   void all_int8_process() {
-    auto retTypes = mainFunc_.getResultTypes();
     mainFunc_.walk([&](Operation *op) {
       if (isa<tpu_mlir::InferenceInterface>(op) || isa<top::InputOp>(op)) {
         for (auto value : op->getResults()) {
