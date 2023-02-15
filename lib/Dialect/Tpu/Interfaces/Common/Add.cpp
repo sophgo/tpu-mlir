@@ -180,6 +180,20 @@ LogicalResult tpu::AddOp::inference(InferenceParameter &p) {
   return success();
 }
 
+LogicalResult tpu::AddOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
+                                    int64_t out_idx, int64_t out_slice) {
+
+  in_idx = out_idx;
+  in_slice = out_slice;
+  auto do_early_stride = getDoEarlyStride();
+  if(do_early_stride.has_value() && do_early_stride.value()) {
+    auto h_stride = getEarlyStrideH().value();
+    in_idx = out_idx * h_stride;
+    in_slice = out_slice * h_stride;
+  }
+  return success();
+}
+
 LogicalResult tpu::AddOp::LocalGenSupport() {
   // BackwardH and BackwardN can not handle more than one input right now.
   // The same n_slice and h_slice value will propagate to each inputs.

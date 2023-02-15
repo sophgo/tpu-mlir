@@ -80,6 +80,8 @@ int64_t tpu::LayerNormOp::getBufferSize_cv18xx(
   for (int i = input_shape.size(); i < 4; i++) {
     input_shape.push_back(1);
   }
+  input_shape[0] = in_nslice;
+  assert(in_hslice == input_shape[2]);
   auto fmt = CV18xx::getDataType(getInput());
   return CV18xx::lmem_woring_size(input_shape, blob_num, true, fmt);
 }

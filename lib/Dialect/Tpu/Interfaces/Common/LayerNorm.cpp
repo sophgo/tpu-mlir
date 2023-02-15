@@ -58,15 +58,15 @@ static void normlize_bf16(const float *input_data, float *output_data,
   mean_data = BF16(mean_data);
   for (int j = 0; j < inner_dim; ++j) {
     const float dij = BF16(input_data[j] - mean_data);
-    rstd_data += BF16(std::pow(dij, 2)) * avg_const;
+    rstd_data += BF16(BF16(std::pow(dij, 2)) * avg_const);
   }
   rstd_data = BF16(BF16(rstd_data) + BF16(eps_));
   if (module::isCV18xx()) {
     bf16_lut_mantissa(&rstd_data, &rstd_data, 1, table, mantissa_table,
                       "mantissa");
   } else {
-    rstd_data = std::sqrt(rstd_data);
-    rstd_data = 1.0f / rstd_data;
+    rstd_data = BF16(std::sqrt(BF16(rstd_data)));
+    rstd_data = BF16(1.0f / rstd_data);
   }
 
   for (int j = 0; j < inner_dim; ++j) {

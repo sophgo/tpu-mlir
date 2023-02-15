@@ -264,7 +264,14 @@ class Tpu_ConvOp<string mnemonic, list<Trait> traits = []> : Tpu_Op<mnemonic,
     OptionalAttr<I64ArrayAttr>:$multiplier,
     OptionalAttr<I64ArrayAttr>:$rshift,
     DefaultValuedAttr<Tpu_RequantModeAttr, "tpu::RequantMode::MultiplierShift">:$quant_mode,
-    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo,
+    // fuse leakyRelu
+    OptionalAttr<BoolAttr>:$do_leaky_relu,
+    OptionalAttr<F64Attr>:$neg_slope,
+    OptionalAttr<SI32Attr>:$multiplier_pos,
+    OptionalAttr<SI32Attr>:$multiplier_neg,
+    OptionalAttr<I64Attr>:$rshift_pos,
+    OptionalAttr<I64Attr>:$rshift_neg
   );
 
   let results = (outs AnyTensor:$output);
@@ -383,8 +390,8 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 }
 
 def Tpu_AddOp: Tpu_Op<"Add", [
-  SupportFuseRelu,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  SupportFuseRelu, SupportEarlyStride,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
 
@@ -398,6 +405,10 @@ def Tpu_AddOp: Tpu_Op<"Add", [
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     OptionalAttr<F64ArrayAttr>:$coeff,
+    // early stride param
+    OptionalAttr<BoolAttr>:$do_early_stride,
+    OptionalAttr<I32Attr>:$early_stride_h,
+    OptionalAttr<I32Attr>:$early_stride_w,
     // quant param
     OptionalAttr<I64ArrayAttr>:$multipliers,
     OptionalAttr<I64ArrayAttr>:$rshifts,

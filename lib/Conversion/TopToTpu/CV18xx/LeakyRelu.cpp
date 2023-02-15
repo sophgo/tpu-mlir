@@ -39,6 +39,7 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
                                    false);
 
   std::vector<NamedAttribute> attrs;
+  attrs.push_back(rewriter.getNamedAttr("alpha", op.getAlphaAttr()));
   attrs.push_back(rewriter.getNamedAttr(
       "multiplier", rewriter.getSI32IntegerAttr(multiplier_pos)));
   attrs.push_back(rewriter.getNamedAttr(
@@ -49,8 +50,8 @@ void LeakyReluLowering::LoweringINT8(PatternRewriter &rewriter,
       "rshift_neg", rewriter.getI64IntegerAttr(rshift_neg)));
 
   auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType, Value(op.getInput()),
-                                                attrs);
+  rewriter.replaceOpWithNewOp<tpu::LeakyReluOp>(op, newType,
+                                                Value(op.getInput()), attrs);
 }
 } // namespace cv18xx
 } // namespace tpu_mlir

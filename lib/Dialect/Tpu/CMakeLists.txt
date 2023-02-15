@@ -8,7 +8,8 @@ file(GLOB _sources
           Transforms/*.cpp
           Transforms/BM168x/*.cpp
           Transforms/CV18xx/*.cpp
-          Transforms/LayerGroup/*.cpp)
+          Transforms/LayerGroup/*.cpp
+          Transforms/CV18xx/ExtraOpt/*.cpp)
 
 add_llvm_library(TPUMLIRTpu
   ${_sources}
