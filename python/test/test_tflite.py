@@ -48,7 +48,7 @@ Failed_Cases = ["Cast", "Unpack", "Gather", "Pad", "ReduceMin",
 
 class TFLITE_IR_TESTER(object):
     # This class is built for testing single operator transform.
-    def __init__(self):
+    def __init__(self, chip: str = "bm1684x", mode: str = "all"):
         self.test_function = {
             #############################
             # TfLite Test Case, Alphabetically
@@ -81,15 +81,17 @@ class TFLITE_IR_TESTER(object):
             "Unpack": self.test_Unpack,
         }
         # no quantization when quant_mode == "f32"
-        self.quant_modes = ["int8"]
-        self.chip = self.get_chip_name()
-
-    def get_chip_name(self):
-      runchip = os.environ.get('SET_CHIP_NAME', None)
-      if not runchip:
-        print("no found SET_CHIP_NAME environment value, set bm1684x as default")
-        runchip = "bm1684x"
-      return runchip.lower()
+        self.support_quant_modes = ["int8"]
+        self.support_chip = ["bm1684x"]
+        if chip not in self.support_chip:
+            raise RuntimeError("{} not support tflite now.".format(self.chip))
+        self.chip = chip.lower()
+        if mode == "" or mode == "all":
+            self.quant_modes = self.support_quant_modes
+        else:
+            if mode not in self.support_quant_modes:
+                raise RuntimeError("{} not support mode: {}".format(self.chip, self.mode))
+            self.quant_modes = [mode]
 
     def test_single(self, case: str):
       np.random.seed(0)
@@ -928,10 +930,20 @@ def test_all(tester: TFLITE_IR_TESTER):
     print("====== test_tflite.py --chip {} TEST Success ======".format(tester.chip))
 
 if __name__ == "__main__":
-    tester = TFLITE_IR_TESTER()
+    parser = argparse.ArgumentParser()
+    # yapf: disable
+    parser.add_argument("--chip", default="bm1684x", type=str,
+                        choices=['bm1684x'],
+                        help="chip platform name")
+    parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'int8'],
+                        help="chip platform name")
+    # yapf: enable
+    args = parser.parse_args()
+    tester = TFLITE_IR_TESTER(args.chip, args.mode)
     os.makedirs("tflite_test", exist_ok=True)
     os.chdir("tflite_test")
-    if len(sys.argv) == 2:
-        tester.test_single(sys.argv[1])
-    else:
+    if args.case == "" or args.case.lower() == "all":
         test_all(tester)
+    else:
+        tester.test_single(args.case)

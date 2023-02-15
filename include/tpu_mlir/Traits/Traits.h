@@ -32,6 +32,10 @@ class SupportFuseRelu
     : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportFuseRelu> {};
 
 template <typename ConcreteType>
+class SupportEarlyStride
+    : public ::mlir::OpTrait::TraitBase<ConcreteType, SupportEarlyStride> {};
+
+template <typename ConcreteType>
 class TpuTypeRestrict
     : public ::mlir::OpTrait::TraitBase<ConcreteType, TpuTypeRestrict> {
 public:

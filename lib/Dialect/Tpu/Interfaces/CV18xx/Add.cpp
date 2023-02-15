@@ -33,6 +33,12 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
+  if (getDoEarlyStride().has_value()) {
+    do_early_stride = getDoEarlyStride().value();
+    early_stride_h = getEarlyStrideH().value();
+    early_stride_w = getEarlyStrideW().value();
+  }
+
   module::getNCHW(getOutput(), n, c, h, w);
   auto coeffs_ = module::getF64Array(getCoeff(), input_num, 1);
   std::vector<int64_t> shape0(4, 1);
@@ -147,10 +153,15 @@ void tpu::AddOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
   n = in0_gi.n_slice;
   h = in0_gi.h_slice;
 
-  // todo supoort early stride
+  // early stride
   bool do_early_stride = false;
   int32_t early_stride_h = 0;
   int32_t early_stride_w = 0;
+  if (getDoEarlyStride().has_value()) {
+    do_early_stride = getDoEarlyStride().value();
+    early_stride_h = getEarlyStrideH().value();
+    early_stride_w = getEarlyStrideW().value();
+  }
 
   // op code PROD = 0; SUM = 1; MAX = 2;
   int op_code = 1;

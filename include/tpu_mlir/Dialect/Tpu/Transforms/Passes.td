@@ -76,12 +76,6 @@ def StripIOQuant : Pass<"strip-io-quant", "ModuleOp"> {
   ];
 }
 
-def ConvertReluLimit : Pass<"convert-relu-limit", "FuncOp"> {
-  let summary = "convert relu_limit != -1 to clip for cv18xx in tpu by tpuc-opt";
-  let constructor = "createConvertReluLimit()";
-  let dependentDialects = ["TpuDialect"];
-}
-
 def DynCodegen : Pass<"dyn_codegen", "ModuleOp"> {
   let summary = "dynamic codegen for BM168x in tpu by tpuc-opt";
   let constructor = "createDynCodegenPass()";
@@ -90,5 +84,11 @@ def DynCodegen : Pass<"dyn_codegen", "ModuleOp"> {
     Option<"model_file", "model_file", "std::string", /*default=*/"",
            "save to model file">,
   ];
+}
+
+def DoExtraOpt : Pass<"do-extra-opt", "ModuleOp"> {
+  let summary = "aplly passes in tpu by tpuc-opt";
+  let constructor = "createDoExtraOptPass()";
+  let dependentDialects = ["TpuDialect"];
 }
 #endif

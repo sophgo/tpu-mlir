@@ -290,12 +290,24 @@ void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
   if (module::isUniformQuantized(getOutput())) {
     bool do_ic_alignment = getUse_3icOptimize() ? true : false;
     gaddr_t ga_scale_lut = GA_INVALID;
-    // todo leakyrelu
+    // fuse leakyrelu
     int fused_leakyrelu_pos_rshift = 0;
     int fused_leakyrelu_pos_m_i8 = 0;
     int fused_leakyrelu_neg_rshift = 0;
     int fused_leakyrelu_neg_m_i8 = 0;
     float fused_negative_slope = 0.0f; // Todo this->do_leaky_relu()
+
+    auto do_relu = attr.do_relu;
+    auto do_leaky_relu = getDoLeakyRelu();
+    if (do_leaky_relu.has_value() && do_leaky_relu.value()) {
+      fused_negative_slope =
+          static_cast<float>(getNegSlope().value().convertToDouble());
+      fused_leakyrelu_pos_rshift = static_cast<int>(getRshiftPos().value());
+      fused_leakyrelu_neg_rshift = static_cast<int>(getRshiftNeg().value());
+      fused_leakyrelu_pos_m_i8 = static_cast<int>(getMultiplierPos().value());
+      fused_leakyrelu_neg_m_i8 = static_cast<int>(getMultiplierNeg().value());
+      do_relu = true;
+    }
 
     cvi_backend_tg_fixed_conv_kernel(
         layer_id,   // layer_id,
@@ -310,13 +322,13 @@ void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
         attr.pwr,               // pad (t, b, l, r)
         attr.ins_h, attr.ins_w, // ins_h, ins_w
         attr.sh, attr.sw,
-        attr.has_bias,                                  // bias_term,
-        attr.do_relu ? 1 : 0,                           // do_activation,
-        attr.do_relu ? &fused_negative_slope : nullptr, // activation_arg,
-        fused_leakyrelu_pos_m_i8,                       // activation_gt_scale,
-        fused_leakyrelu_pos_rshift,                     // activation_gt_rshift,
-        fused_leakyrelu_neg_m_i8,                       // activation_le_scale,
-        fused_leakyrelu_neg_rshift,                     // activation_le_rshift,
+        attr.has_bias,                             // bias_term,
+        do_relu ? 1 : 0,                           // do_activation,
+        do_relu ? &fused_negative_slope : nullptr, // activation_arg,
+        fused_leakyrelu_pos_m_i8,                  // activation_gt_scale,
+        fused_leakyrelu_pos_rshift,                // activation_gt_rshift,
+        fused_leakyrelu_neg_m_i8,                  // activation_le_scale,
+        fused_leakyrelu_neg_rshift,                // activation_le_rshift,
         0,               // (int)rshift[0], //right_shift_width,
         true,            // do_chl_quan
         do_ic_alignment, // do_ic_alignment,
@@ -354,7 +366,15 @@ void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
 int64_t tpu::Conv2DOp::getBufferSize_cv18xx(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  // todo fuse leakrelu
+  auto do_leaky_relu = getDoLeakyRelu();
+  if (do_leaky_relu.has_value() && do_leaky_relu.value()) {
+    int64_t n, c, h, w;
+    auto vOut = getOutput();
+    module::getNCHW(vOut, n, c, h, w);
+    auto fmt = CV18xx::getDataType(vOut);
+    return CV18xx::lmem_woring_size({out_nslice, c, out_hslice, w}, 1, true,
+                                    fmt);
+  }
   return 0;
 }
 
@@ -381,18 +401,27 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
 
   uint32_t pht = (in_gi.h_idx == 0 ? attr.pht : 0);
   uint32_t phb = (in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.phb : 0);
-  // todo supoort fuse leakRelu
-  int8_t pos_rshift = 0, pos_m_i8 = 0;
-  int8_t neg_rshift = 0, neg_m_i8 = 0;
-  float neg_slope = 0.0l;
+
   if (module::isUniformQuantized(getOutput())) {
+    float neg_slope = 0.0f;
+    int8_t pos_rshift = 0, pos_m_i8 = 0;
+    int8_t neg_rshift = 0, neg_m_i8 = 0;
+
+    auto do_leaky_relu = getDoLeakyRelu();
+    if (do_leaky_relu.has_value() && do_leaky_relu.value()) {
+      neg_slope = static_cast<float>(getNegSlope().value().convertToDouble());
+      pos_rshift = static_cast<int8_t>(getRshiftPos().value());
+      neg_rshift = static_cast<int8_t>(getRshiftNeg().value());
+      pos_m_i8 = static_cast<int8_t>(getMultiplierPos().value());
+      neg_m_i8 = static_cast<int8_t>(getMultiplierNeg().value());
+    }
     cvi_backend_tl_conv(layer_id, la_input, la_output, la_weight, la_working,
                         la_bias, n, attr.ic, ih, attr.iw, attr.groups, attr.oc,
                         oh, attr.ow, attr.kh, attr.kw, attr.dh, attr.dw, pht,
                         phb, attr.pwl, attr.pwr, attr.sh, attr.sw, attr.ins_h,
-                        attr.ins_w, 0,                            /*result_add*/
-                        0,                                        /*crtl*/
-                        attr.has_bias, getDoRelu(), neg_slope, 0, /*rshift*/
+                        attr.ins_w, 0, /*result_add*/
+                        0,             /*crtl*/
+                        attr.has_bias, attr.do_relu, neg_slope, 0, /*rshift*/
                         attr.oc,    /*rshift_shift_len*/
                         pos_rshift, /*rshift_pos*/
                         neg_rshift, /*rshift8_neg*/
@@ -404,7 +433,7 @@ void tpu::Conv2DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step,
         layer_id, la_input, la_output, la_weight, la_working, la_bias, n,
         attr.ic, ih, attr.iw, attr.groups, attr.oc, oh, attr.ow, attr.kh,
         attr.kw, attr.dh, attr.dw, pht, phb, attr.pwl, attr.pwr, attr.sh,
-        attr.sw, attr.ins_h, attr.ins_w, attr.has_bias, getDoRelu());
+        attr.sw, attr.ins_h, attr.ins_w, attr.has_bias, attr.do_relu);
   }
   return;
 }
