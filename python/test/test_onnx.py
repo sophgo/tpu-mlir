@@ -24,7 +24,7 @@ import onnxruntime
 import multiprocessing
 
 BM1684X_Failed_Cases = [
-    "PadAvgPool2d", "PadEdge", "QDQ", "QDQConv", "TopK", "TorchArgMax", "TorchActivation",
+    "PadAvgPool2d", "PadEdge", "QDQ", "QDQConv", "TopK", "TorchArgmax", "TorchActivation",
     "TorchChannelShuffle"
 ]
 CV18XX_Failed_Cases = [

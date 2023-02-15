@@ -111,8 +111,12 @@ class Operation:
 
     @staticmethod
     def shape(op):
-        shape_type = mlir.ir.ShapedType(op.results[0].type)
-        shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
+        shape = []
+        for result in op.results:
+            if str(result.type) != 'none':
+                shape_type = mlir.ir.ShapedType(result.type)
+                shape = [shape_type.get_dim_size(i) for i in range(shape_type.rank)]
+                break
         return shape
 
     @staticmethod
