@@ -229,7 +229,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_num = len(outs) - len(output_keys)
         outs = outs[output_num:]
         os.remove(onnx_file)
-        return dict(zip(output_keys, map(np.ndarray.flatten, outs)))
+        return dict(zip(output_keys, outs))
 
 
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
