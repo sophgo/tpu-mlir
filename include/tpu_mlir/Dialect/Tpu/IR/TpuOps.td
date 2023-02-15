@@ -64,7 +64,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
 
 def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
-def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum"]>;
+def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";

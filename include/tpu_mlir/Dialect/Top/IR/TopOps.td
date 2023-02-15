@@ -63,7 +63,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
            prev, cur, prev # ", or " # cur)>;
 def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
-def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum"]>;
+def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
 def InterpCoordModeAttr: AnyStrAttrOf<["align_corners", "half_pixel", "pytorch_half_pixel"]>;
 def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;

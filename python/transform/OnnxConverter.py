@@ -172,6 +172,7 @@ class OnnxConverter(BaseConverter):
             "ReduceMin": lambda node: self.convert_reduce_op(node),
             "ReduceL2": lambda node: self.convert_reduce_op(node),
             "ReduceL1": lambda node: self.convert_reduce_op(node),
+            "ReduceProd": lambda node: self.convert_reduce_op(node),
             "ReduceSum": lambda node: self.convert_reduce_op(node),
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
@@ -1389,7 +1390,7 @@ class OnnxConverter(BaseConverter):
     # support max ndims to 6
     def convert_reduce_op(self, onnx_node):
         assert (onnx_node.op_type
-                in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceL2", "ReduceL1", "ReduceSum"])
+                in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1", "ReduceSum"])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         op = self.getOperand(onnx_node.inputs[0])

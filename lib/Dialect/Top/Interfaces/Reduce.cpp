@@ -77,6 +77,12 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
           sum += fabs(input_v[o * axis_dims * inner_dims + a * inner_dims + i]);
         }
         output_v[o * inner_dims + i] = sum;
+      } else if (type_val == "ReduceProd") {
+        float target = input_v[o * axis_dims * inner_dims + i];
+        for (int a = 1; a < axis_dims; a++) {
+          target *= input_v[o * axis_dims * inner_dims + a * inner_dims + i];
+        }
+        output_v[o * inner_dims + i] = target;
       } else {
         llvm_unreachable("not support now.");
       }
