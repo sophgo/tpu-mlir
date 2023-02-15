@@ -425,12 +425,14 @@ protected:
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
-          mlir::Type target_type;
+          mlir::Type target_type = opd.getType();
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
             target_type = typeIf.type_verify(idx, mode);
           } else if (isa<ReturnOp>(op)) {
-            // return op
-            target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
+            if (module::isUniformQuantized(opd) || target_type.isBF16() ||
+                target_type.isF16()) {
+              target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
+            }
           } else {
             target_type = type_verify_case_same(op, idx, mode);
           }
@@ -464,10 +466,12 @@ protected:
       for (auto user : v.getUsers()) {
         if (!isa<tpu::Conv2DOp, tpu::MatMulOp>(user)) {
           all_next_layer_is_int4 = false;
-        } else if(isa<tpu::Conv2DOp>(user)) {
+        } else if (isa<tpu::Conv2DOp>(user)) {
           auto conv = dyn_cast<tpu::Conv2DOp>(user);
           auto conv_attr = getConv2DParam(conv);
-          if(conv_attr.is_dw)  all_next_layer_is_int4 = false;
+          if (conv_attr.is_dw) {
+            all_next_layer_is_int4 = false;
+          }
         }
       }
     }

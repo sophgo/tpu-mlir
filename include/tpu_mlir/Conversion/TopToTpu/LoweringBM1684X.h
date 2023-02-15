@@ -35,6 +35,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 LOWERING_BM1684X(Abs)
 LOWERING_BM1684X(Add)
+LOWERING_BM1684X(Arg)
 LOWERING_BM1684X(AddConst)
 LOWERING_BM1684X(AvgPool)
 LOWERING_BM1684X(Cast)

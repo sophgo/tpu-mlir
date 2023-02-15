@@ -61,7 +61,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
   "string attribute whose value is " #
     !foldl(/*init*/!head(cases), /*list*/!tail(cases),
            prev, cur, prev # ", or " # cur)>;
-
+def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum"]>;
 def InterpModeAttr: AnyStrAttrOf<["nearest","linear"]>;
@@ -1197,6 +1197,20 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_ArgOp : Top_Op<"Arg"> {
+  let summary = "Arg operation";
+  let description = [{
+    Computes the indices of the min/max/ of the input tensor's element along the provided axis.
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$keepdims,
+    ArgModeAttr:$mode
+  );
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_PowOp : Top_Op<"Pow", [InOutSameShape]> {
