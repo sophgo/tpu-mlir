@@ -115,6 +115,8 @@ class OnnxConverter(BaseConverter):
             # NOTICE: Please add the Op alphabetically !!!
             "Abs": lambda node: self.convert_abs_op(node),
             "Add": lambda node: self.convert_add_op(node),
+            "ArgMax": lambda node: self.convert_arg_op(node),
+            "ArgMin": lambda node: self.convert_arg_op(node),
             "Sub": lambda node: self.convert_sub_op(node),
             "AveragePool": lambda node: self.convert_avgpool_op(node),
             "BatchNormalization": lambda node: self.convert_batchnorm_op(node),
@@ -1415,6 +1417,24 @@ class OnnxConverter(BaseConverter):
             "mode": onnx_node.op_type
         }
         new_op = self.mlir.create_reduce_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_arg_op(self, onnx_node):
+        assert (onnx_node.op_type in ["ArgMin", "ArgMax"])
+        output_shape = self.getShape(onnx_node.name)
+        op = self.getOperand(onnx_node.inputs[0])
+        axis = onnx_node.attrs.get('axis', 0)
+        keepdims = onnx_node.attrs.get('keepdims', 1)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "axis": axis,
+            "keepdims": keepdims,
+            "mode": onnx_node.op_type
+        }
+        # out_shapes = [[], []]
+        # out_shapes[0] = self.getShape(onnx_node.name)
+        # out_shapes[1] = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_arg_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_lrn_op(self, onnx_node):

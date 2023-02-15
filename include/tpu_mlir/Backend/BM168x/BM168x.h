@@ -35,8 +35,8 @@ typedef enum {
   STORE_MODE_1N = 0,
   STORE_MODE_2N = 1,
   STORE_MODE_4N = 2,
-  STORE_3IC     = 3,
-  //if need to support more store mode, pls add below
+  STORE_3IC = 3,
+  // if need to support more store mode, pls add below
 } STORE_MODE_T;
 
 #define SUBNET_MODE_TPU 0
@@ -433,20 +433,20 @@ typedef struct {
 } softmax_tflite_fix8b_param_t;
 
 typedef struct layer_norm_common_spec {
-    int    axis;
-    float  eps;
-    int    affine;
-    int    need_mean;
-    int    need_rstd;
+  int axis;
+  float eps;
+  int affine;
+  int need_mean;
+  int need_rstd;
 } layer_norm_common_spec_t;
 
 typedef struct layer_norm_global_spec {
-    layer_norm_common_spec_t common;
+  layer_norm_common_spec_t common;
 } layer_norm_global_spec_t;
 
 typedef struct layer_norm_local_spec {
-    layer_norm_common_spec_t common;
-    uint32_t buffer_addr;
+  layer_norm_common_spec_t common;
+  uint32_t buffer_addr;
 } layer_norm_local_spec_t;
 
 typedef struct tranpose_spec {
@@ -503,31 +503,42 @@ typedef struct reduce_full_global_param {
 } reduce_full_global_param_t;
 
 typedef struct {
-    int block_sizes[2];
-    int in_is_nchw;
-    int out_is_nchw;
-    int is_inversed;
-    int is_crd_mode;
-    int swap_cr;
+  int block_sizes[2];
+  int in_is_nchw;
+  int out_is_nchw;
+  int is_inversed;
+  int is_crd_mode;
+  int swap_cr;
 } depth2space_common_spec_t;
 
 typedef struct {
-    depth2space_common_spec_t common;
+  depth2space_common_spec_t common;
 } depth2space_global_spec_t;
 
 typedef struct pixel_norm_common_spec {
-    float  eps;
-    int    affine;
+  float eps;
+  int affine;
 } pixel_norm_common_spec_t;
 
 typedef struct pixel_norm_global_spec {
-    pixel_norm_common_spec_t common;
+  pixel_norm_common_spec_t common;
 } pixel_norm_global_spec_t;
 
 typedef struct pixel_norm_local_spec {
-    pixel_norm_common_spec_t common;
-    uint32_t buffer_addr;
+  pixel_norm_common_spec_t common;
+  uint32_t buffer_addr;
 } pixel_norm_local_spec_t;
+
+typedef struct arg_common_spec {
+  int axis;
+  int method;
+  int is_index_int32;
+  int need_val;
+} arg_common_spec_t;
+
+typedef struct arg_global_spec {
+  arg_common_spec_t common;
+} arg_global_spec_t;
 
 #ifdef __cplusplus
 }
@@ -618,7 +629,8 @@ public:
   get_spec(ValueRange values);
   static void fix_shape(tensor_spec_t &spec,
                         const std::vector<int64_t> &new_shape);
-  static void getBetterNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w);
+  static void getBetterNCHW(Value v, int64_t &n, int64_t &c, int64_t &h,
+                            int64_t &w);
   static int compare_mode(StringRef mode);
   static int64_t ic_num(double dbytes) { return IC_PARALLEL / dbytes; }
   static stride_4D_t getGlobalStride(int64_t N, int64_t C, int64_t H,

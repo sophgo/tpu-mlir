@@ -45,6 +45,7 @@ class ONNX_IR_TESTER(object):
             #############################
             "Abs": self.test_Abs,
             "Add": self.test_Add,
+            "Arg": self.test_Arg,
             "AddConst": self.test_AddConst,
             "AvgPool1d": self.test_AvgPool1d,
             "AvgPool2d": self.test_AvgPool2d,
@@ -1787,6 +1788,35 @@ class ONNX_IR_TESTER(object):
                                       initializer=[split])
         self.onnx_and_test(graph_def)
 
+    def test_Arg(self, case_name):
+        for keep in [True, False]:
+            input_shape = [20, 40, 60]
+            output_shape = [20, 1, 60] if keep else [20, 60]
+
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
+            # output1 = helper.make_tensor_value_info('o_max_val', TensorProto.INT64, output_shape[1])
+            output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
+            # output2 = helper.make_tensor_value_info('o_min_val', TensorProto.INT64, output_shape[1])
+            arg_max = helper.make_node(
+                'ArgMax',
+                ['input'],
+                ['o_max'],
+                keepdims=keep,
+                axis=1,
+            )
+            arg_min = helper.make_node(
+                'ArgMin',
+                ['input'],
+                ['o_min'],
+                keepdims=keep,
+                axis=1,
+            )
+
+            graph_def = helper.make_graph([arg_max, arg_min], "{}_{}".format(case_name, keep),
+                                          [input], [output1, output2])
+            self.onnx_and_test(graph_def)
+
     def test_Reduce(self, case_name):
         for keep in [True, False]:
             input_shape = [4, 4, 4, 16, 64]
@@ -2120,7 +2150,7 @@ class ONNX_IR_TESTER(object):
 
         class Net(torch.nn.Module):
 
-            def __init__(self, no = 0):
+            def __init__(self, no=0):
                 super(Net, self).__init__()
                 self.conv = nn.Conv2d(160, 8, 3, 1, 1)
                 self.no = no
@@ -2427,10 +2457,9 @@ class ONNX_IR_TESTER(object):
                 b = torch.argmin(x, -1)
                 return a + b
 
-        x = np.arange(0, 256, step=2, dtype=np.float32)
+        x = np.arange(0, 128000, step=1, dtype=np.float32)
         np.random.shuffle(x)
-        # input_data = torch.from_numpy(input_data.reshape(-1, 16, 8))
-        x = torch.from_numpy(x.reshape(-1, 4, 4, 8))
+        x = torch.from_numpy(x.reshape(40, 40, 80))
         self.torch_and_test(x, Net(), case_name)
 
     def test_TorchZeroPad(self, case_name):
@@ -3517,8 +3546,8 @@ class ONNX_IR_TESTER(object):
         topk_node = helper.make_node('TopK', ['conv_output', 'K'], ['Y_Value', 'Y_Index'],
                                      axis=-1,
                                      largest=True)
-        oc2=64
-        output_shape2 = [4, oc2, 100,500]
+        oc2 = 64
+        output_shape2 = [4, oc2, 100, 500]
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape2)
         filter_shape2 = [oc2, oc, 3, 3]
         weight_data2 = np.random.randn(*filter_shape2).astype(np.float32)
@@ -3537,9 +3566,10 @@ class ONNX_IR_TESTER(object):
         )
 
         graph_def = helper.make_graph([conv_def, topk_node, conv_def2],
-                                       case_name, [input], [output],
-                                        initializer=[weight, bias, K, weight2, bias2])
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias, K, weight2, bias2])
         self.onnx_and_test(graph_def)
+
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

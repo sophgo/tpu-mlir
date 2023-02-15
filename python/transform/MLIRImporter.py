@@ -12,6 +12,7 @@ class Top:
     # NOTICE: Please add the Op alphabetically !!!
     AbsOp = 'top.Abs'
     AddOp = 'top.Add'
+    ArgOp = 'top.Arg'
     AddConstOp = 'top.AddConst'
     AvgPoolOp = 'top.AvgPool'
     BatchNormOp = 'top.BatchNorm'
@@ -785,6 +786,29 @@ class MLIRImporter(object):
             'mode': StringAttr.get(kargs['mode']),
         }
         return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
+
+    def create_arg_op(self, operands, output_shape, **kargs):
+        """
+            operands: List[pybind.op]
+            output_tensorshape: List[int] output tensor type
+            attrs: Dict, about op attrs
+        """
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        # out_types = list()
+        # for s in output_shapes:
+        #     if len(s) == 0:
+        #         out_types.append(NoneType.get())
+        #     else:
+        #         t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
+        #         out_types.append(t)
+        param = {
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
+            'mode': StringAttr.get(kargs['mode']),
+        }
+        return self.buildOp(Top.ArgOp, operands, [output_type], **param)
 
     def create_sqrt_op(self, operands, output_shape, **kargs):
         # get_value_type

@@ -61,6 +61,8 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
     !foldl(/*init*/!head(cases), /*list*/!tail(cases),
            prev, cur, prev # ", or " # cur)>;
 
+
+def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum"]>;
 
@@ -1574,6 +1576,22 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
   let extraClassDeclaration = [{
     reduce_attr_t parseParam();
   }];
+}
+
+def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
+  let summary = "Arg operator";
+  let description = [{
+    Computes the indices of the min/max/ of the input tensor's element along the provided axis.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$keepdims,
+    ArgModeAttr:$mode
+  );
+
+  let results = (outs AnyTensor:$output);
 }
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
