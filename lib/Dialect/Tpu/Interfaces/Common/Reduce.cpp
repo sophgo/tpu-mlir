@@ -144,6 +144,13 @@ LogicalResult tpu::ReduceOp::inference(InferenceParameter &p) {
                               a * attr.inner_dims + i]);
         }
         output_v[o * attr.inner_dims + i] = sum;
+      } else if (type_val == "ReduceProd") {
+        float target = input_v[o * attr.axis_dims * attr.inner_dims + i];
+        for (int a = 0; a < attr.axis_dims; a++) {
+          target *= input_v[o * attr.axis_dims * attr.inner_dims +
+                          a * attr.inner_dims + i];
+        }
+        output_v[o * attr.inner_dims + i] = target;
       } else {
         llvm_unreachable("not support now.");
       }
