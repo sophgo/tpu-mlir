@@ -69,6 +69,9 @@ struct MulToMulConst : public OpRewritePattern<MulOp> {
     if (left_elt_num > 1 && right_elt_num > 1) {
       return failure();
     }
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32())
+      return failure();
 
     Value new_input;
     std::shared_ptr<std::vector<float>> const_val;

@@ -37,6 +37,9 @@ struct AddToAddConst : public OpRewritePattern<AddOp> {
     Value new_input;
     std::shared_ptr<std::vector<float>> const_val;
     bool weight_flag = false;
+    auto storage_type = module::getStorageType(op.getOutput());
+    if (!storage_type.isF32())
+      return failure();
     if (left_elt_num == 1) {
       if (auto left_op =
               dyn_cast<WeightOp>(op.getInputs()[0].getDefiningOp())) {
