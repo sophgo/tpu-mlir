@@ -507,9 +507,14 @@ class TFLITE_IR_TESTER(object):
         self._test_elemwise(math_op, data, op_name=case_name, fused_activation_function="RELU")
         data = [
             np.array(np.random.uniform(0, 255, (2, 4)), dtype=np.uint8),
-            np.array(np.random.uniform(0, 255, (2, 4)), dtype=np.uint8),
+            np.array(np.random.uniform(0, 255, (1, 4)), dtype=np.uint8),
         ]
         self._test_elemwise(math_op, data, op_name=case_name, fused_activation_function="RELU")
+        data = [
+            np.array(np.random.uniform(0, 255, (1, 1, 1)), dtype=np.uint8),
+            np.array(np.random.uniform(0, 255, (2, 4, 3)), dtype=np.uint8),
+        ]
+        self._test_elemwise(math_op, data, op_name=case_name)
 
     def test_Add(self, case_name):
       """Add"""
