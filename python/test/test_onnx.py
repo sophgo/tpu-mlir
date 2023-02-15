@@ -3486,6 +3486,7 @@ def test_all(tester: ONNX_IR_TESTER):
     print("Failure: {}".format(error_cases))
     if error_cases:
         print("====== test_onnx.py --chip {} TEST Failed ======".format(tester.chip))
+        exit(1)
     else:
         print("====== test_onnx.py --chip {} TEST Success ======".format(tester.chip))
 
