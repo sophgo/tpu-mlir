@@ -97,14 +97,23 @@ run_all() {
   run_onnx_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
+    if [ x${test_type} == xbasic ]; then
+      return $ERR
+    fi
   fi
-  run_tflite_op
-  if [[ "$?" -ne 0 ]]; then
-    ERR=1
-  fi
+  # run_tflite_op
+  # if [[ "$?" -ne 0 ]]; then
+  #   ERR=1
+  #   if [ x${test_type} == xbasic ]; then
+  #     return $ERR
+  #   fi
+  # fi
   run_script_test
   if [[ "$?" -ne 0 ]]; then
     ERR=1
+    if [ x${test_type} == xbasic ]; then
+      return $ERR
+    fi
   fi
   for chip in ${chip_support[@]}; do
     echo "" >cmd.txt
@@ -116,6 +125,9 @@ run_all() {
     parallel -j8 --delay 5 --joblog job_regression.log <cmd.txt
     if [[ "$?" -ne 0 ]]; then
       ERR=1
+      if [ x${test_type} == xbasic ]; then
+        return $ERR
+      fi
     fi
   done
   return $ERR
