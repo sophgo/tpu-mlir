@@ -183,6 +183,7 @@ class OnnxConverter(BaseConverter):
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
             "RoiAlign": lambda node: self.convert_roi_align_op(node),
+            "ScatterElements": lambda node: self.convert_scatter_elements_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
@@ -2138,6 +2139,22 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_group_norm_op([input_opd, scale_opd, bias_opd], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
+
+    def convert_scatter_elements_op(self, onnx_node):
+        assert (onnx_node.op_type == "ScatterElements")
+        assert(len(onnx_node.inputs) == 3)
+        input = self.getOp(onnx_node.inputs[0])
+        indices =self.getOp(onnx_node.inputs[1])
+        updates = self.getOp(onnx_node.inputs[2])
+        output_shape = self.getShape(onnx_node.name)
+        axis = onnx_node.attrs.get("axis", 0)
+        reduction = onnx_node.attrs.get("reduction", None)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "axis": axis,
+            "reduction": reduction,
+        }
+        new_op = self.mlir.create_scatter_elements_op([input, indices, updates], output_shape, **p)
 
     def convert_scatternd_op(self, onnx_node):
         assert (onnx_node.op_type == "ScatterND")

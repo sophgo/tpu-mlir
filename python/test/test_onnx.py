@@ -151,6 +151,7 @@ class ONNX_IR_TESTER(object):
             "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, N, N),
             "TorchGRU":             (self.test_TorchGRU,            Y, N, N),
             "TorchIdentity":        (self.test_TorchIdentity,       Y, N, Y),
+            "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N),
             "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   Y, N, N),
             "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  Y, N, N),
             "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, N, Y),
@@ -1976,6 +1977,23 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(10, 2).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchIndexCopy(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.index = torch.tensor([0, 4, 2])
+                self.t = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                                      dtype=torch.float)
+
+            def forward(self, x):
+                y = torch.index_copy(x, 0, self.index, self.t)
+                return y
+
+        x = torch.randn(5, 3).float()
+        self.torch_and_test(x, Net(), case_name)
 
     def test_TorchIdentity(self, case_name):
 
