@@ -1761,6 +1761,40 @@ def Top_SwapDimInnerOp: Top_Op<"SwapDimInner"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_ScatterElementsOp: Top_Op<"ScatterElements", [InOutSameShape]> {
+  let summary = "ScatterElements op";
+  let description = [{
+    ScatterElements takes three inputs data, updates, and indices
+    of the same rank r >= 1 and an optional attribute axis that
+    identifies an axis of data (by default, the outer-most axis,
+    that is axis 0). The output of the operation is produced by
+    creating a copy of the input data, and then updating its
+    value to values specified by updates at specific index
+    positions specified by indices. Its output shape is the
+    same as the shape of data.
+
+    Inputs:
+      `input`       : Tensor of rank r >= 1.
+      `indices`     : Tensor of int32/int64 indices, of r >= 1 (same rank
+                      as input). All index values are expected to be within
+                      bounds [-s, s-1] along axis of size s. It is an error
+                      if any of the index values are out of bounds..
+      `updates`     : Tensor of rank r >=1 (same rank and shape as indices).
+
+    Outputs:
+      `output`      : Tensor of rank r >= 1 (same rank as input).
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$indices,
+    AnyTensor:$updates,
+    I64Attr:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ScatterNDOp: Top_Op<"ScatterND"> {
   let summary = "ScatterND operator";
   let description = [{

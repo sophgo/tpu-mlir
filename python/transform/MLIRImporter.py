@@ -71,6 +71,7 @@ class Top:
     ReduceOp = 'top.Reduce'
     ReverseOp = 'top.Reverse'
     RoiAlignOp = 'top.RoiAlign'
+    ScatterElementsOp = 'top.ScatterElements'
     ScatterNDOp = 'top.ScatterND'
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
@@ -1085,6 +1086,15 @@ class MLIRImporter(object):
                  "num_groups": IntegerAttr.get(self.mlir_type['INT64'], kargs['num_groups']),
                  'eps': FloatAttr.get_f64(kargs['eps'])}
         return self.buildOp(Top.GroupNormOp, operands, [output_type], **param)
+
+    def create_scatter_elements_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        param = {'name': kargs['name'],
+                 'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis'])}
+        if kargs['reduction'] != None:
+            param['reduction'] = kargs['reduction']
+        return self.buildOp(Top.ScatterElementsOp, operands, [output_type], **param)
 
     def create_scatternd_op(self, operands, output_shape, **kargs):
         # get_value_type
