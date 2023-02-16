@@ -75,8 +75,7 @@ LogicalResult WeightReorder<tpu::LSTMCVIOp, BFloat16Type>::matchAndRewrite(
     tpu::LSTMCVIOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getInput()).isBF16())
     return failure();
-  std::vector<int64_t> recc_shape;
-  module::getShapeVec(op.getRecurrence(), recc_shape);
+  auto recc_shape = module::getShape(op.getRecurrence());
   auto reccOp = op.getRecurrence().getDefiningOp<top::WeightOp>();
   auto recc_u16 = reccOp.read<uint16_t>();
   transposeRecurrence(*recc_u16, recc_shape);

@@ -26,8 +26,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  std::vector<int64_t> inpShape;
-  module::getShapeVec(op.getInput(), inpShape);
+  auto inpShape = module::getShape(op.getInput());
   assert(inpShape.size() == 3 && op.getBatchFirst() == false &&
          "Now just support [seq_len, batch_size, embed_size] as input.");
   operands.push_back(op.getInput());
@@ -37,8 +36,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   auto biasOp =
       cast<top::WeightOp>(op.getBias().getDefiningOp()); // spilt later
 
-  std::vector<int64_t> filterShape;
-  module::getShapeVec(op.getFilter(), filterShape);
+  auto filterShape = module::getShape(op.getFilter());
   assert(filterShape.size() == 3 && "please check filter shape.");
   auto filterF32 = filterOp.read<float>();
   auto N = filterShape[0] * filterShape[1];
@@ -52,8 +50,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
     }
   }
   // split bias to filterBias and recurrenceBias
-  std::vector<int64_t> biasShape;
-  module::getShapeVec(op.getBias(), biasShape);
+  auto biasShape = module::getShape(op.getBias());
   assert(biasShape.size() == 2 && biasShape[0] * biasShape[1] == 2 * N &&
          biasShape[1] % 2 == 0 && "please check bias shape.");
   auto biasF32 = biasOp.read<float>();
@@ -98,8 +95,7 @@ void LSTMLowering::LoweringBF16(PatternRewriter &rewriter,
   operands.push_back(fcOp.getOutput());
   // trans weight and bias in codegen
   operands.push_back(recurrenceOp.clone_bf16(op));
-  std::vector<int64_t> recurrenceShape;
-  module::getShapeVec(op.getRecurrence(), recurrenceShape);
+  auto recurrenceShape = module::getShape(op.getRecurrence());
   auto numDir = recurrenceShape[0];
   auto hiddenSize = recurrenceShape[2];
   if (has_rBias) {

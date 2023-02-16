@@ -21,11 +21,8 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::CscOp::codegen_global_cv18xx(int64_t layer_id) {
-
-  std::vector<int64_t> output_shape;
-  module::getShapeVec(this->getOutput(), output_shape);
   int64_t n, c, h, w;
-  module::getNCHW(output_shape, n, c, h, w, false);
+  module::getNCHW(getOutput(), n, c, h, w, false);
   std::vector<int32_t> order;
   if (this->getChannelOrder().has_value()) {
     order = *(module::getI32Array(this->getChannelOrderAttr()));

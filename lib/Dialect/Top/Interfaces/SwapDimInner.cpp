@@ -26,8 +26,7 @@ LogicalResult top::SwapDimInnerOp::inference(InferenceParameter &p) {
   float *output_data = p.outputs[0];
   float *buffer = nullptr;
 
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(this->getInput(), input_shape);
+  std::vector<int64_t> input_shape = module::getShape(this->getInput());
   auto offsets = module::getI64Array(this->getOffset());
   int axis_num = 0;
   for (size_t i = 0; i < offsets->size(); ++i) {

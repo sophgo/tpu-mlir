@@ -20,15 +20,14 @@ static bool ConvertConv1d(PatternRewriter &rewriter, top::ConvOp op) {
   if (kernel->size() != 1) {
     return false;
   }
-  std::vector<int64_t> vfilterShape, vAttr;
-  module::getShapeVec(op.getFilter(), vfilterShape);
+  std::vector<int64_t> vfilterShape = module::getShape(op.getFilter());
   vfilterShape.push_back(1);
   auto new_type = RankedTensorType::get(vfilterShape, rewriter.getF32Type());
   op.getFilter().setType(new_type);
 
   // update kernel_shape
   auto kernel_shape = module::getI64Array(op.getKernelShape());
-  vAttr = {kernel_shape->at(0), 1};
+  std::vector<int64_t> vAttr = {kernel_shape->at(0), 1};
   op->setAttr("kernel_shape", rewriter.getI64ArrayAttr(vAttr));
   // update strides
   vAttr.clear();
@@ -61,8 +60,7 @@ static bool ConvertDilation(PatternRewriter &rewriter, top::ConvOp op,
   // filter
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   auto filter_f32 = filterOp.read<float>();
-  std::vector<int64_t> filterShape;
-  module::getShapeVec(op.getFilter(), filterShape);
+  std::vector<int64_t> filterShape = module::getShape(op.getFilter());
   int64_t oc = 0;
   int64_t ic = 0;
   int64_t kh = 0;
@@ -153,8 +151,7 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
   // deal with pad > 16
   bool insert_pad = false;
   auto kernel_size = module::getI64Array(op.getKernelShape())->size();
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(op.getInput(), input_shape);
+  std::vector<int64_t> input_shape = module::getShape(op.getInput());
   auto _pads = module::getI64Array(op.getPads());
   std::vector<int64_t> pad_v;
   std::vector<int64_t> new_pad_v(2 * input_shape.size(), 0);

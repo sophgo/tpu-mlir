@@ -90,9 +90,7 @@ public:
     this->mean = *(module::getF64Array(op.getMean()));
     this->scale = *(module::getF64Array(op.getScale()));
     std::string pixel_format = op.getCustomizationFormat().str();
-    std::vector<int64_t> model_shape;
-    module::getShapeVec(op.getResult(), model_shape);
-    module::getNCHW(model_shape, n, c, h, w, false);
+    module::getNCHW(op.getResult(), n, c, h, w, false);
     if (resized_dims->size() == 2) {
       this->resize_h = resized_dims->at(0);
       this->resize_w = resized_dims->at(1);

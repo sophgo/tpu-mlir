@@ -15,11 +15,9 @@
 namespace tpu_mlir {
 namespace cv18xx {
 static int is_bcast(top::SubOp op) {
-  std::vector<int64_t> shape0;
-  std::vector<int64_t> shape1;
   int bcast = 0;
-  module::getShapeVec(op.getInputs()[0], shape0);
-  module::getShapeVec(op.getInputs()[1], shape1);
+  auto shape0 = module::getShape(op.getInputs()[0]);
+  auto shape1 = module::getShape(op.getInputs()[1]);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,

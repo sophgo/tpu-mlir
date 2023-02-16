@@ -21,8 +21,7 @@ LogicalResult tpu::SwapChannelOp::inference(InferenceParameter &p) {
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
   auto order = module::getI64Array(this->getChannelOrder());
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(this->getInput(), input_shape);
+  auto input_shape = module::getShape(this->getInput());
   int64_t n = input_shape[0];
   int64_t c = input_shape[1];
   int64_t frame_size = input_shape[2] * input_shape[3];

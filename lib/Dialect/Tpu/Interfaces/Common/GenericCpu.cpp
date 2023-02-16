@@ -347,8 +347,8 @@ static void interp_asymmetric(float *input, float *output, int n, int c, int ih,
 class InterpolationOpKernel {
 public:
   InterpolationOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
-    module::getShapeVec(op.getInputs()[0], this->input_shape);
-    module::getShapeVec(op.getOutput(), this->output_shape);
+    input_shape = module::getShape(op.getInputs()[0]);
+    output_shape = module::getShape(op.getOutput());
     assert(input_shape.size() == 4);
     assert(output_shape.size() == 4);
     mlir::DictionaryAttr param = op.getParam().value();
@@ -439,9 +439,9 @@ private:
 class EmbeddingOpKernel {
 public:
   EmbeddingOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
-    module::getShapeVec(op.getInputs()[0], this->input_shape);
-    module::getShapeVec(op.getInputs()[1], this->table_shape);
-    module::getShapeVec(op.getOutput(), this->output_shape);
+    input_shape = module::getShape(op.getInputs()[0]);
+    table_shape = module::getShape(op.getInputs()[1]);
+    output_shape = module::getShape(op.getOutput());
     input_data = p.inputs[0];
     table_data = p.inputs[1];
     output_data = p.outputs[0];
@@ -507,9 +507,9 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     embed_kernel.invoke();
   } else if (func_name == "detectionoutput") {
     DetParam det_param;
-    module::getShapeVec(getInputs()[0], det_param.loc_shape);
-    module::getShapeVec(getInputs()[1], det_param.conf_shape);
-    module::getShapeVec(getInputs()[2], det_param.prior_shape);
+    det_param.loc_shape = module::getShape(getInputs()[0]);
+    det_param.conf_shape = module::getShape(getInputs()[1]);
+    det_param.prior_shape = module::getShape(getInputs()[2]);
     det_param.loc_data = p.inputs[0];
     det_param.conf_data = p.inputs[1];
     det_param.prior_data = p.inputs[2];
@@ -562,12 +562,12 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
       tensor_list.size = module::getNumElements(getInputs()[i]);
-      module::getShapeVec(getInputs()[i], tensor_list.shape);
+      tensor_list.shape = module::getShape(getInputs()[i]);
       yolo_param.inputs.emplace_back(std::move(tensor_list));
     }
     yolo_param.output.ptr = p.outputs[0];
     yolo_param.output.size = module::getNumElements(getOutput());
-    module::getShapeVec(getOutput(), yolo_param.output.shape);
+    yolo_param.output.shape = module::getShape(getOutput());
     YoloDetectionFunc yolo_func(yolo_param);
     yolo_func.invoke();
   } else if (func_name == "proposal") {
@@ -591,12 +591,12 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
       tensor_list.size = module::getNumElements(getInputs()[i]);
-      module::getShapeVec(getInputs()[i], tensor_list.shape);
+      tensor_list.shape = module::getShape(getInputs()[i]);
       proposal_param.inputs.emplace_back(std::move(tensor_list));
     }
     proposal_param.output.ptr = p.outputs[0];
     proposal_param.output.size = module::getNumElements(getOutput());
-    module::getShapeVec(getOutput(), proposal_param.output.shape);
+    proposal_param.output.shape = module::getShape(getOutput());
     ProposalFunc proposal_func(proposal_param);
     proposal_func.invoke();
   } else if (func_name == "roi_pooling") {
@@ -610,12 +610,12 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
       tensor_list.size = module::getNumElements(getInputs()[i]);
-      module::getShapeVec(getInputs()[i], tensor_list.shape);
+      tensor_list.shape = module::getShape(getInputs()[i]);
       roip_param.inputs.emplace_back(std::move(tensor_list));
     }
     roip_param.output.ptr = p.outputs[0];
     roip_param.output.size = module::getNumElements(getOutput());
-    module::getShapeVec(getOutput(), roip_param.output.shape);
+    roip_param.output.shape = module::getShape(getOutput());
     ROIPoolingFunc roip_func(roip_param);
     roip_func.invoke();
   } else if (func_name == "frcn_detection") {
@@ -631,12 +631,12 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       tensor_list_t tensor_list;
       tensor_list.ptr = p.inputs[i];
       tensor_list.size = module::getNumElements(getInputs()[i]);
-      module::getShapeVec(getInputs()[i], tensor_list.shape);
+      tensor_list.shape = module::getShape(getInputs()[i]);
       frcn_param.inputs.emplace_back(std::move(tensor_list));
     }
     frcn_param.output.ptr = p.outputs[0];
     frcn_param.output.size = module::getNumElements(getOutput());
-    module::getShapeVec(getOutput(), frcn_param.output.shape);
+    frcn_param.output.shape = module::getShape(getOutput());
     FrcnDetctionFunc frcn_func(frcn_param);
     frcn_func.invoke();
   } else if (func_name == "retinaface_detection") {
@@ -651,13 +651,13 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       tensor_list_t tensor;
       tensor.ptr = p.inputs[i];
       tensor.size = module::getNumElements(getInputs()[i]);
-      module::getShapeVec(getInputs()[i], tensor.shape);
+      tensor.shape = module::getShape(getInputs()[i]);
       inputs.emplace_back(std::move(tensor));
     }
     tensor_list_t output;
     output.ptr = p.outputs[0];
     output.size = module::getNumElements(getOutput());
-    module::getShapeVec(getOutput(), output.shape);
+    output.shape = module::getShape(getOutput());
     func.setup(inputs, output, retina_param);
     func.invoke();
   } else {

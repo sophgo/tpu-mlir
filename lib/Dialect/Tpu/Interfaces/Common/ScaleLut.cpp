@@ -22,12 +22,11 @@ LogicalResult tpu::ScaleLutOp::inference(InferenceParameter &p) {
   float *input_data = p.inputs[0];
   float *table = p.inputs[1];
   float *output_data = p.outputs[0];
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(this->getInput(), input_shape);
-  int n = input_shape.at(0);
-  int c = input_shape.at(1);
-  int h = input_shape.at(2);
-  int w = input_shape.at(3);
+  auto input_shape = module::getShape(this->getInput());
+  int n = input_shape[0];
+  int c = input_shape[1];
+  int h = input_shape[2];
+  int w = input_shape[3];
   for (int ni = 0; ni < n; ++ni) {
     for (int ci = 0; ci < c; ++ci) {
       for (int i = 0; i < h * w; ++i) {
@@ -46,8 +45,7 @@ LogicalResult tpu::ScaleLutOp::LocalGenSupport() {
     return failure();
   }
   int64_t npu_num = tpu_mlir::backend::CV18xx::NPU_NUM;
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(this->getInput(), input_shape);
+  auto input_shape = module::getShape(this->getInput());
   if (input_shape.size() > 2 && input_shape[1] > npu_num) {
     return failure();
   }

@@ -90,8 +90,7 @@ void tpu::PermuteOp::codegen_global_cv18xx( int64_t layer_id) {
   gaddr_t ga_input = module::getAddress(getInput());
   gaddr_t ga_output = module::getAddress(getOutput());
   auto order = module::getI64Array(this->getOrder());
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(getInput(), input_shape);
+  std::vector<int64_t> input_shape = module::getShape(getInput());
   std::vector<int64_t> shape_4;
   std::vector<int> order_4;
   parsePermuteParam(input_shape, *order, shape_4, order_4);

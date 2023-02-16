@@ -35,8 +35,7 @@ void HardSigmoidLowering::LoweringBF16(PatternRewriter &rewriter,
   double alpha = op.getAlpha().convertToDouble();
   double beta = op.getBeta().convertToDouble();
   auto input_val = op.getInput();
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(input_val, input_shape);
+  auto input_shape = module::getShape(input_val);
   int64_t c = input_shape[1];
   //input_shape is the same with output_shape
   auto newType = RankedTensorType::get(input_shape, rewriter.getF32Type());

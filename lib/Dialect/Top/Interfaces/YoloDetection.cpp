@@ -40,12 +40,12 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
     tensor_list_t tensor_list;
     tensor_list.ptr = p.inputs[i];
     tensor_list.size = module::getNumElements(getInputs()[i]);
-    module::getShapeVec(getInputs()[i], tensor_list.shape);
+    tensor_list.shape = module::getShape(getInputs()[i]);
     param.inputs.emplace_back(std::move(tensor_list));
   }
   param.output.ptr = p.outputs[0];
   param.output.size = module::getNumElements(getOutput());
-  module::getShapeVec(getOutput(), param.output.shape);
+  param.output.shape = module::getShape(getOutput());
   YoloDetectionFunc yolo_func(param);
   yolo_func.invoke();
   return success();

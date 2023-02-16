@@ -19,12 +19,8 @@ using namespace tpu_mlir::backend;
 // =========================================
 
 void tpu::SwapChannelOp::codegen_global_cv18xx(int64_t layer_id) {
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(this->getInput(), input_shape);
-  std::vector<int> input_shape_fix;
-  for (auto &dim : input_shape) {
-    input_shape_fix.push_back((int)dim);
-  }
+  auto input_shape = module::getShape(this->getInput());
+  std::vector<int> input_shape_fix(input_shape.begin(), input_shape.end());
   gaddr_t input_gaddr = module::getAddress(this->getInput());
   gaddr_t output_gaddr = module::getAddress(this->getOutput());
   auto channel_order = module::getI64Array(this->getChannelOrder());

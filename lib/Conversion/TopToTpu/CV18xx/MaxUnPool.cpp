@@ -31,7 +31,7 @@ void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
     mask_shape[3] =
         align_up(mask_shape[3], static_cast<int64_t>(op.getScaleW()));
   } else {
-    module::getShapeVec(op.getMask(), mask_shape);
+    mask_shape = module::getShape(op.getMask());
   }
   bool need_crop = false;
   if (mask_shape[3] != output_shape[3] || mask_shape[2] != output_shape[2]) {
