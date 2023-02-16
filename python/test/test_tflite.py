@@ -43,7 +43,7 @@ except ImportError:
 
 
 Failed_Cases = ["Cast", "Unpack", "Gather", "Pad", "ReduceMin",
-                "ReduceMax", "Sum", "Matmul", "Mean"]
+                "ReduceMax", "Sum", "Matmul"]
 
 
 class TFLITE_IR_TESTER(object):
@@ -92,6 +92,7 @@ class TFLITE_IR_TESTER(object):
       return runchip.lower()
 
     def test_single(self, case: str):
+      np.random.seed(0)
       if case in self.test_function:
         print("Test: {}".format(case))
         self.test_function[case](case)
@@ -99,11 +100,10 @@ class TFLITE_IR_TESTER(object):
       else:
         self.list()
 
-    def test_all(self):
-      for case in self.test_function:
-        if case not in Failed_Cases:
-          self.test_single(case)
-      print("====== ALL TEST Success ======".format(case))
+    def check_support(self, case):
+      if case in Failed_Cases:
+        return False
+      return True
 
     def list(self):
       print("====== All Support Ops ======")
@@ -646,7 +646,7 @@ class TFLITE_IR_TESTER(object):
           else:
             out = array_ops.transpose(inputs[0], axes)
           model_def = self._quantize_sess_model(inputs, [out], quantized=True, input_range=in_range)
-          self.convert_tflite_and_compare(datas, case_name, model_def,need_transpose=True)
+          self.convert_tflite_and_compare(datas, case_name, model_def, need_transpose=True)
 
       _test_forward_transpose(case_name, ((2, 2),))
       _test_forward_transpose(case_name, ((2, 3, 4),))
@@ -690,8 +690,8 @@ class TFLITE_IR_TESTER(object):
           model_def = self._quantize_sess_model(inputs, [out], quantized=True, input_range=in_range)
           self.convert_tflite_and_compare(datas, case_name, model_def, need_transpose=need_transpose)
 
-      # _test_softmax(((1,6),), (-32, 32))
-      # _test_softmax(((1,3,5,4),), (-32, 32))
+      _test_softmax(((1,6),), (-32, 32))
+      _test_softmax(((1,3,5,4),), (-32, 32))
       _test_softmax(((1,3,5,4),), (-32, 32), False)
 
     #######################################################################
@@ -888,6 +888,45 @@ class TFLITE_IR_TESTER(object):
       _test_strided_slice(((3, 6, 5),), [0,1,0], [2,6,4], [1,2,1])
       _test_strided_slice(((6, 5),), [0,1], [2,0], emask=2)
 
+
+def test_one_case_in_all(tester: TFLITE_IR_TESTER, case, error_cases, success_cases):
+  try:
+    tester.test_single(case)
+  except:
+    error_cases.append(case)
+    return
+  success_cases.append(case)
+
+def test_all(tester: TFLITE_IR_TESTER):
+  import multiprocessing
+  process_number = multiprocessing.cpu_count() // 2 + 1
+  processes = []
+  error_cases = multiprocessing.Manager().list()
+  success_cases = multiprocessing.Manager().list()
+  for case in tester.test_function:
+    if tester.check_support(case):
+      p = multiprocessing.Process(target=test_one_case_in_all,
+                                  args=(tester, case, error_cases, success_cases))
+      processes.append(p)
+    if len(processes) == process_number:
+      for p in processes:
+        p.start()
+      for j in processes:
+        j.join()
+      processes = []
+  if processes:
+    for p in processes:
+      p.start()
+    for j in processes:
+      j.join()
+  print("Success: {}".format(success_cases))
+  print("Failure: {}".format(error_cases))
+  if error_cases:
+    print("====== test_tflite.py --chip {} TEST Failed ======".format(tester.chip))
+    exit(1)
+  else:
+    print("====== test_tflite.py --chip {} TEST Success ======".format(tester.chip))
+
 if __name__ == "__main__":
     tester = TFLITE_IR_TESTER()
     os.makedirs("tflite_test", exist_ok=True)
@@ -895,4 +934,4 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         tester.test_single(sys.argv[1])
     else:
-        tester.test_all()
+        test_all(tester)

@@ -101,13 +101,13 @@ run_all() {
       return $ERR
     fi
   fi
-  # run_tflite_op
-  # if [[ "$?" -ne 0 ]]; then
-  #   ERR=1
-  #   if [ x${test_type} == xbasic ]; then
-  #     return $ERR
-  #   fi
-  # fi
+  run_tflite_op
+  if [[ "$?" -ne 0 ]]; then
+    ERR=1
+    if [ x${test_type} == xbasic ]; then
+      return $ERR
+    fi
+  fi
   run_script_test
   if [[ "$?" -ne 0 ]]; then
     ERR=1
