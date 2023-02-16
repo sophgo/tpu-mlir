@@ -194,7 +194,7 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
 
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
-                   std::string &to_name) {
+                   std::string &to_name, tpu::RequantMode mode) {
   auto from_stype = module::getStorageType(input);
   auto ctx = input.getContext();
   OpBuilder builder(ctx);
@@ -207,7 +207,7 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
   attrs.push_back(
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(builder.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::MultiplierShift)));
+      "quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 

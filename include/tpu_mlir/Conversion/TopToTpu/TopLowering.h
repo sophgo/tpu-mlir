@@ -231,7 +231,7 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
-                   std::string &to_name);
+                   std::string &to_name, tpu::RequantMode mode=tpu::RequantMode::MultiplierShift);
 
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar,

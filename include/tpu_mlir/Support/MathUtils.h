@@ -112,10 +112,13 @@ void quantizeBiasRShiftAndMultiplier(const float *pSrc, int32_t *pDst, int len,
 template <typename T>
 T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift);
+int32_t MultiplyByQuantizedMultiplier(
+    int32_t x, int32_t multiplier, int shift,
+    RoundingMode rmode=ROUNDING_HALF_AWAY_FROM_ZERO);
 int64_t applyMultiplierAndRShift(
     int64_t v, int64_t multiplier, int64_t rshift,
-    tpu::RequantMode qmode = tpu::RequantMode::MultiplierShift);
+    tpu::RequantMode qmode = tpu::RequantMode::MultiplierShift,
+    RoundingMode rmode=ROUNDING_HALF_UP);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);
