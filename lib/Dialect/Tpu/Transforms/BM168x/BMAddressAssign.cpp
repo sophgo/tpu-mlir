@@ -221,8 +221,10 @@ void BMAddressAssign::updateLiveRangeofBMOps(
                  tpu::YieldOp>(op) ||
              module::isOpInGroup(op)) {
     if (isa<ReturnOp>(op) && is_next_subnet_input(op, index)) {
-      //for multi_subnet, the returnOp's live range increase if it connect to next subnet
-      updateOperandsLiveRange(op, endPosition+2);
+      /* for multi_subnet, the returnOp's live range increase if it connect to next subnet
+         Todo: other complex case need to handle, such as it connect to next func's inner group op */
+      //simple solution: don;t set the endlife if it connect to next subnet currently.
+      //updateOperandsLiveRange(op, endPosition+2);
     } else {
       updateOperandsLiveRange(op, endPosition); }
   } else if (isInPlaceOp(op)) {

@@ -184,9 +184,15 @@ class ONNX_IR_TESTER(object):
             "SwapDimInner": self.test_SwapDimInner,
             "ReduceTranspose": self.test_ReduceTranspose,
             "SliceToReverse": self.test_SliceToReverse
-            #Note: Static_Dyn_Mixed: f32 works ok, f16/bf16/int8_sym works ok with not compare top topk index with mlir topk index tensor, Todo: int8_asym bmodel result is't the same as mlir's
-            #"Static_Dyn_Mixed": self.test_StaticDynMixed,
+
+            # Note: Static_Dyn_Mixed: f32 works ok
+            # f16/bf16/int8_sym/int8_asym works ok with not compare top topk index
+            # with mlir topk index tensor because of precision
+            # if hope to test this case, pls enable
+            # the excepts.append("Y_Index_TopK")(LineNo: 160) at npz_compare.py
+            #"Static_Dyn_Mixed": self.test_StaticDynMixed
         }
+
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
