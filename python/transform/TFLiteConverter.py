@@ -714,7 +714,7 @@ class TFLiteConverter(BaseConverter):
         axes = [self.__axis_transpose(op, i) for i in args]
         attr = {
             "axes": self.mlir.ArrayAttr(axes),
-            "keepdims": BoolAttr.get(param.KeepDims()),
+            "keepdims": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.KeepDims()),
             "mode": StringAttr.get(mode),
         }
         return Top.ReduceOp, attr, True
