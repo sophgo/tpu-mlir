@@ -43,6 +43,7 @@ tpuc-opt resnet18_tpu_f32_reordered.mlir \
 
 # layer group
 tpuc-opt resnet18_tpu_f32_subnet.mlir \
+    --mlir-disable-threading \
     --layer-group \
     --save-weight \
     -o resnet18_tpu_f32_lg.mlir
@@ -99,6 +100,7 @@ tpuc-opt resnet18.mlir \
 
 # to symmetric bmodel （all pass in one)
 tpuc-opt resnet18_tpu_int8_sym.mlir \
+   --mlir-disable-threading \
    --weight-reorder \
    --subnet-divide \
    --layer-group \
@@ -142,6 +144,7 @@ tpuc-opt resnet18.mlir \
 
 # to asymmetric bmodel （all pass in one)
 tpuc-opt resnet18_tpu_int8_asym.mlir \
+   --mlir-disable-threading \
    --weight-reorder \
    --subnet-divide \
    --layer-group \
@@ -193,6 +196,7 @@ model_runner.py \
 
 # ToDo (convert to f16 bmodel)
 # tpuc-opt resnet18_tpu_f16.mlir \
+#    --mlir-disable-threading \
 #    --weight-reorder \
 #    --subnet-divide \
 #    --layer-group \
@@ -223,6 +227,7 @@ model_runner.py \
 
 # ToDo (convert to bf16 bmodel)
 # tpuc-opt resnet18_tpu_bf16.mlir \
+#    --mlir-disable-threading \
 #    --weight-reorder \
 #    --subnet-divide \
 #    --layer-group \

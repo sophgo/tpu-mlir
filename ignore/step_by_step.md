@@ -238,6 +238,7 @@ tpuc-opt resnet18.mlir \
     -o resnet18_f32_1684x.mlir
 
 tpuc-opt resnet18_f32_1684x.mlir \
+    --mlir-disable-threading \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
@@ -405,6 +406,7 @@ The F32 model is around `Acc@1 100.00 ( 67.76)	Acc@5 100.00 ( 88.22)`.
 
 ```bash
 tpuc-opt resnet18_int8_sym_1684x.mlir \
+    --mlir-disable-threading \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
@@ -526,6 +528,7 @@ model_eval_imagenet.py \
 
 ```bash
 tpuc-opt resnet18_int8_asym_1684x.mlir \
+    --mlir-disable-threading \
     --weight-reorder \
     --subnet-divide \
     --layer-group \
