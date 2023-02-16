@@ -28,6 +28,7 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
   int64_t mul_val = getMultiplier();
   int64_t offset = (int64_t)qtype.getZeroPoint();
   auto qmode = getQuantMode();
+  auto rmode = getRoundMode();
   switch (qmode) {
   case DequantMode::Normal: {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
@@ -44,7 +45,7 @@ LogicalResult tpu::DequantIntOp::inference(InferenceParameter &p) {
       int64_t tmp = ((int32_t)p.inputs[0][idx] - offset) * mul_val
                     << lshift_val;
       auto v = RightShiftRound(tmp, 31, ROUNDING_HALF_UP);
-      v = RightShiftRound(v, -shift_val, ROUNDING_HALF_AWAY_FROM_ZERO);
+      v = RightShiftRound(v, -shift_val, (RoundingMode)rmode);
       p.outputs[0][idx] = v;
     }
   } break;

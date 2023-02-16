@@ -476,7 +476,7 @@ template int64_t RightShiftRound(int64_t src, int shift_num,
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
 int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
-                                      int shift) {
+                                      int shift, RoundingMode rmode) {
   // int shift = -(rshift - 31);
   int64_t value = shift > 0 ? x << shift : x;
   value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
@@ -485,23 +485,22 @@ int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
   else if (value < -(1ll << 31))
     value = -(1ll << 31);
   if (shift < 0) {
-    value = RightShiftRound(value, -shift, ROUNDING_HALF_AWAY_FROM_ZERO);
+    value = RightShiftRound(value, -shift, rmode);
   }
   return (int32_t)value;
 }
 
 int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
-                                 tpu::RequantMode qmode) {
+                                 tpu::RequantMode qmode, RoundingMode rmode) {
   switch (qmode) {
   case tpu::RequantMode::MultiplierShift:
     if (module::isCV18xx()) {
-      return to_int(((((float)v * multiplier)) / (1 << rshift)),
-                    ROUNDING_HALF_UP);
+      return to_int(((((float)v * multiplier)) / (1 << rshift)), rmode);
     } else {
-      return RightShiftRound(v * multiplier, (int)rshift, ROUNDING_HALF_UP);
+      return RightShiftRound(v * multiplier, (int)rshift, rmode);
     }
   case tpu::RequantMode::OnlyShift:
-    return RightShiftRound(v, (int)rshift, ROUNDING_HALF_UP);
+    return RightShiftRound(v, (int)rshift, rmode);
   case tpu::RequantMode::QDM:
   case tpu::RequantMode::TFLite:
   case tpu::RequantMode::TFLite_LShift:
@@ -509,7 +508,7 @@ int64_t applyMultiplierAndRShift(int64_t v, int64_t multiplier, int64_t rshift,
       rshift = -rshift;
     }
     return MultiplyByQuantizedMultiplier((int32_t)v, (int32_t)multiplier,
-                                         (int32_t)rshift);
+                                         (int32_t)rshift, rmode);
   }
   llvm_unreachable("unsupport quant multiplier mode.");
   return 0;

@@ -114,6 +114,10 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
       bias_i32 = biasOp.read_as_int32();
     }
     auto qmode = getQuantMode();
+    bool is_tf = qmode == tpu::RequantMode::QDM ||
+                 qmode == tpu::RequantMode::TFLite ||
+                 qmode == tpu::RequantMode::TFLite_LShift;
+    auto rmode = is_tf ? ROUNDING_HALF_AWAY_FROM_ZERO : ROUNDING_HALF_UP;
 
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
@@ -128,7 +132,7 @@ LogicalResult tpu::Conv2DOp::inference(InferenceParameter &p) {
           int offset = (in * c + ic) * h * w + hw;
           int64_t v = 0;
           int64_t tmp = p.outputs[0][offset] + bias;
-          v = applyMultiplierAndRShift(tmp, multi, shift, qmode) +
+          v = applyMultiplierAndRShift(tmp, multi, shift, qmode, rmode) +
               o_qtype.getZeroPoint();
           if (do_relu && (v < 0)) {
             v = 0;

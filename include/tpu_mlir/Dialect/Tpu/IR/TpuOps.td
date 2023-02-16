@@ -107,6 +107,24 @@ def Tpu_RequantMode: I32EnumAttr<"RequantMode",
 }
 def Tpu_RequantModeAttr : EnumAttr<Tpu_Dialect, Tpu_RequantMode, "rq_mode">;
 
+def Tpu_RoundMode: I32EnumAttr<"RoundMode",
+    "round mode supported by Round",
+    [
+      I32EnumAttrCase<"HalfAwayFromZero", 0>,
+      I32EnumAttrCase<"HalfUp", 1>,
+      I32EnumAttrCase<"HalfDown", 2>,
+      I32EnumAttrCase<"HalfToEven", 3>,
+      I32EnumAttrCase<"HalfToOdd", 4>,
+      I32EnumAttrCase<"HalfTowardsZero", 5>,
+      I32EnumAttrCase<"TowardsZero", 6>,
+      I32EnumAttrCase<"Up", 7>,
+      I32EnumAttrCase<"Down", 8>
+    ]>{
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RoundModeAttr : EnumAttr<Tpu_Dialect, Tpu_RoundMode, "round_mode">;
+
 def Tpu_PoolMode: I32EnumAttr<"PoolMode",
     "pooling mode supported by PoolOp",
     [
@@ -852,6 +870,7 @@ def Tpu_RequantIntOp:Tpu_Op<"RequantInt", [
     SI32Attr:$multiplier,
     I64Attr:$rshift,
     Tpu_RequantModeAttr:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
@@ -869,6 +888,7 @@ def Tpu_RequantIntAxisOp:Tpu_Op<"RequantIntAxis", [
     AnyTensor:$input,
     AnyTensor:$quant,
     Tpu_RequantModeAttr:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
@@ -887,6 +907,7 @@ def Tpu_RequantFpOp:Tpu_Op<"RequantFp", [
     F64Attr:$scale,
     DefaultValuedAttr<F64Attr, "0.0">:$offset,
     Tpu_RequantModeAttr:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
@@ -904,6 +925,7 @@ def Tpu_RequantFpAxisOp:Tpu_Op<"RequantFpAxis", [
     AnyTensor:$input,
     AnyTensor:$quant,
     Tpu_RequantModeAttr:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
@@ -923,6 +945,7 @@ def Tpu_DequantIntOp:Tpu_Op<"DequantInt", [
     I64Attr:$shift,
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
@@ -941,6 +964,7 @@ def Tpu_DequantIntAxisOp:Tpu_Op<"DequantIntAxis", [
     AnyTensor:$quant,
     DefaultValuedAttr<I64Attr, "0">:$lshift,
     Tpu_DequantModeAttr:$quant_mode,
+    DefaultValuedAttr<Tpu_RoundModeAttr, "tpu::RoundMode::HalfAwayFromZero">:$round_mode,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);

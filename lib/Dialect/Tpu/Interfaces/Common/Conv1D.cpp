@@ -93,6 +93,10 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
         module::getI64Array(getMultiplier(), rshift_v->size(), 1);
     bool per_axis = rshift_v->size() == c;
     auto mode = getQuantMode();
+    bool is_tf = mode == tpu::RequantMode::QDM ||
+                 mode == tpu::RequantMode::TFLite ||
+                 mode == tpu::RequantMode::TFLite_LShift;
+    auto rmode = is_tf ? ROUNDING_HALF_AWAY_FROM_ZERO : ROUNDING_HALF_UP;
 #pragma omp parallel for schedule(static, omp_schedule(c))
     for (int ic = 0; ic < c; ic++) {
       int64_t shift = per_axis ? rshift_v->at(ic) : rshift_v->at(0);
@@ -101,7 +105,7 @@ LogicalResult tpu::Conv1DOp::inference(InferenceParameter &p) {
         for (int hw = 0; hw < h * w; hw++) {
           int offset = (in * c + ic) * h * w + hw;
           auto v = applyMultiplierAndRShift(p.outputs[0][offset], multi, shift,
-                                            mode) +
+                                            mode, rmode) +
                    o_qtype.getZeroPoint();
           p.outputs[0][offset] = saturate(v, sType);
         }
