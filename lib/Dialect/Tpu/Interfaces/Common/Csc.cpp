@@ -119,7 +119,7 @@ void yuv_csc(float *input, float *output, int n, int c, int h,
   }
 }
 
-inline int crop_offset(const std::vector<int> &indices, long int *shape) {
+inline int crop_offset(const std::vector<int> &indices, const int64_t *shape) {
   int offset = 0;
   for (int i = 0; i < 4; ++i) {
     offset *= shape[i];
@@ -138,7 +138,7 @@ inline int copy_offset(const int *indices, int32_t * stride) {
   return offset;
 }
 
-void crop(float *input, float *output, long int *input_shape,
+void crop(float *input, float *output, const int64_t *input_shape,
           long int *output_shape, int cur_dim, int *offsets, int *indices) {
   // for loop if dim is not last
   if (cur_dim + 1 < 4) {
@@ -164,7 +164,7 @@ void crop(float *input, float *output, long int *input_shape,
   }
 }
 
-void stride_copy(float *input, float *output, long int *shape,
+void stride_copy(float *input, float *output, const int64_t *shape,
                  int32_t *input_stride, int32_t *output_stride, int cur_dim,
                  int *indices) {
   if (cur_dim + 1 < 4) {
@@ -188,10 +188,8 @@ void tpu::CscOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::CscOp::inference(InferenceParameter &p) {
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
-  std::vector<int64_t> input_shape;
-  module::getShapeVec(this->getInput(), input_shape);
-  std::vector<int64_t> output_shape;
-  module::getShapeVec(this->getOutput(), output_shape);
+  auto input_shape = module::getShape(this->getInput());
+  auto output_shape = module::getShape(this->getOutput());
   if (output_shape.size() < 4 || input_shape.size() < 4) {
     dump();
     llvm_unreachable("wrong shape size");

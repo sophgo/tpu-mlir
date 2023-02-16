@@ -27,8 +27,7 @@ void tpu::SoftmaxOp::codegen_global_cv18xx(int64_t layer_id) {
       module::getAddress(getReciprocalTable());
   gaddr_t reciprocal_mantissa_table_data_lut_gaddr =
       module::getAddress(getReciprocalMantissaTable());
-  std::vector<int64_t> shape;
-  module::getShapeVec(getInput(), shape);
+  std::vector<int64_t> shape = module::getShape(getInput());
   int dimension = shape.size();
   cvi_backend_tg_bf16_softmax_kernel(
       layer_id, ga_input, exponential_table_data_lut_gaddr,

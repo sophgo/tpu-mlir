@@ -15,8 +15,6 @@ namespace cv18xx {
 static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
                              Type type) {
   std::vector<Value> operands;
-  std::vector<int64_t> input_shape;
-  std::vector<int64_t> output_shape;
   std::vector<int64_t> tmp_shape0(4, 1);
   std::vector<int64_t> tmp_shape1;
   std::vector<int64_t> _kernel;
@@ -32,8 +30,8 @@ static void convertMaxPool3D(PatternRewriter &rewriter, top::MaxPoolOp op,
                                             cali_type.getExpressedType(), scale,
                                             0, -128, 127);
   }
-  module::getShapeVec(op.getInput(), input_shape);
-  module::getShapeVec(op.getOutput(), output_shape);
+  auto input_shape = module::getShape(op.getInput());
+  auto output_shape = module::getShape(op.getOutput());
   auto kernel = module::getI64Array(op.getKernelShape());
   auto strides = module::getI64Array(op.getStrides());
   auto pads = module::getI64Array(op.getPads());

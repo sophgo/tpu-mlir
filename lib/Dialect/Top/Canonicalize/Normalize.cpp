@@ -24,8 +24,7 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
                                 PatternRewriter &rewriter) const override {
     Value input_var = op->getOperand(0);
     std::string name = module::getName(op->getResult(0)).str();
-    std::vector<int64_t> shape;
-    module::getShapeVec(op.getOperand(0), shape);
+    auto shape = module::getShape(op.getOperand(0));
     int64_t c = shape[1];
     auto weight_op = dyn_cast<top::WeightOp>(op.getScale().getDefiningOp());
     auto scale_data = weight_op.read<float>();

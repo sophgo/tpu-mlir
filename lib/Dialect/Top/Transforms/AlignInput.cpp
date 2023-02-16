@@ -50,9 +50,7 @@ public:
       // inputOp.dump();
       // auto type = inputOp.getType().cast<RankedTensorType>().getElementType();
       // llvm::errs()<<"type:"<<type<<","<<"module::isUniformQuantized(inputOp.getOutput()):"<<module::isUniformQuantized(inputOp.getOutput())<<".\n";
-      std::vector<int64_t> model_shape;
-      module::getShapeVec(inputOp.getResult(), model_shape);
-      module::getNCHW(model_shape, n, c, h, w, false);
+      module::getNCHW(inputOp.getResult(), n, c, h, w, false);
       setPixelAlign(chip, pixel_format, this->y_align, this->w_align, this->channel_align);
       auto layout = std::get<1>(attributes_map[pixel_format]);
       std::vector<Operation *> uses;

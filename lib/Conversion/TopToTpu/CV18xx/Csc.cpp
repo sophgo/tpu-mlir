@@ -20,8 +20,7 @@ static inline int align_up(int x, int n) {
 }
 
 static void resetCaliType(PatternRewriter &rewriter, top::CscOp op) {
-  std::vector<int64_t> shape;
-  module::getShapeVec(op.getResult(), shape);
+  auto shape = module::getShape(op.getResult());
   quant::CalibratedQuantizedType qtype = quant::CalibratedQuantizedType::get(rewriter.getF32Type(), 0, 255);
   RankedTensorType newType = RankedTensorType::get(shape, qtype);
   op.getResult().setType(newType);

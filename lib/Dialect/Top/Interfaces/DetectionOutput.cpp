@@ -36,12 +36,9 @@ LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
   param.num_classes = this->getNumClasses();
   param.share_location = this->getShareLocation();
   param.background_label_id = this->getBackgroundLabelId();
-  std::vector<int64_t> loc_shape;
-  std::vector<int64_t> conf_shape;
-  std::vector<int64_t> prior_shape;
-  module::getShapeVec(this->getInputs()[0], param.loc_shape);
-  module::getShapeVec(this->getInputs()[1], param.conf_shape);
-  module::getShapeVec(this->getInputs()[2], param.prior_shape);
+  param.loc_shape = module::getShape(this->getInputs()[0]);
+  param.conf_shape = module::getShape(this->getInputs()[1]);
+  param.prior_shape = module::getShape(this->getInputs()[2]);
 
   std::string str_code_type = this->getCodeType().str();
   if (str_code_type == "CORNER") {

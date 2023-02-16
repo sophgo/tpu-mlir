@@ -35,13 +35,13 @@ LogicalResult top::RetinaFaceDetectionOp::inference(InferenceParameter &p) {
     tensor_list_t tensor;
     tensor.ptr = p.inputs[i];
     tensor.size = module::getNumElements(getInputs()[i]);
-    module::getShapeVec(getInputs()[i], tensor.shape);
+    tensor.shape = module::getShape(getInputs()[i]);
     inputs.emplace_back(std::move(tensor));
   }
   tensor_list_t output;
   output.ptr = p.outputs[0];
   output.size = module::getNumElements(getOutput());
-  module::getShapeVec(getOutput(), output.shape);
+  output.shape = module::getShape(getOutput());
   func.setup(inputs, output, param);
   func.invoke();
   return success();

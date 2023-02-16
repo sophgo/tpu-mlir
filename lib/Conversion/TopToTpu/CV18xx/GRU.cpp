@@ -48,8 +48,7 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
       op, filter_name + "_FC", fc_filter_data, fc_weight_type);
 
   // create fc bias
-  std::vector<int64_t> bias_shape;
-  module::getShapeVec(op.getBias(), bias_shape);
+  std::vector<int64_t> bias_shape = module::getShape(op.getBias());
   auto bias_op = dyn_cast<top::WeightOp>(op.getBias().getDefiningOp());
   auto bias_data = bias_op.read<float>();
   auto bias_name = module::getName(op.getBias()).str();

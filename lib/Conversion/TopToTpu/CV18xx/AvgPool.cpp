@@ -13,26 +13,23 @@
 namespace tpu_mlir {
 namespace cv18xx {
 
-static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx) {
+static void splitPool(PatternRewriter &rewriter, Operation *op,
+                      MLIRContext *ctx) {
   auto poolOp = dyn_cast<tpu::Pool2DOp>(op);
   if (poolOp.getPoolMode() == tpu::PoolMode::Max) {
     return;
   }
   Value input_val = poolOp.getOperand();
   Value output_val = poolOp.getResult();
-  std::vector<int64_t> input_shape;
-  std::vector<int64_t> output_shape;
-  module::getShapeVec(input_val, input_shape);
-  module::getShapeVec(output_val, output_shape);
   int64_t on, oc, oh, ow;
-  module::getNCHW(output_shape, on, oc, oh, ow, false);
+  module::getNCHW(output_val, on, oc, oh, ow, false);
 
   uint64_t lmem_size = 32 * 1024;
-  int64_t output_size = std::accumulate(std::begin(output_shape), std::end(output_shape), 1,
-                                        std::multiplies<>());
+  int64_t output_size = module::getNumElements(output_val);
   int64_t n, c, ih, iw;
-  module::getNCHW(input_shape, n, c, ih, iw, false);
-  if ((uint64_t)(ih * iw) < ((lmem_size - output_size) / 2) || !(oh == 1 && ow == 1)) {
+  module::getNCHW(input_val, n, c, ih, iw, false);
+  if ((uint64_t)(ih * iw) < ((lmem_size - output_size) / 2) ||
+      !(oh == 1 && ow == 1)) {
     return;
   }
   std::string name = module::getName(output_val).str();
@@ -56,57 +53,81 @@ static void splitPool(PatternRewriter &rewriter, Operation *op, MLIRContext *ctx
     std::vector<Value> slice_operands;
     slice_operands.emplace_back(input_val);
     std::vector<NamedAttribute> slice_attrs;
-    slice_attrs.emplace_back(rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr({0, 0, offset, 0})));
-    slice_attrs.emplace_back(rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
+    slice_attrs.emplace_back(rewriter.getNamedAttr(
+        "offset", rewriter.getI64ArrayAttr({0, 0, offset, 0})));
+    slice_attrs.emplace_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr({1, 1, 1, 1})));
     offset += slice;
     std::string slice_name = "slice_" + name + std::to_string(offset);
     auto slice_loc = NameLoc::get(rewriter.getStringAttr(slice_name));
     auto slice_type = RankedTensorType::get({n, c, slice, iw}, elementType_);
-    auto slice_op = rewriter.create<tpu::SliceOp>(slice_loc, slice_type, slice_operands, slice_attrs);
+    auto slice_op = rewriter.create<tpu::SliceOp>(slice_loc, slice_type,
+                                                  slice_operands, slice_attrs);
     auto slice_out = slice_op.getResult();
 
     rewriter.setInsertionPointAfterValue(slice_out);
     std::vector<Value> small_pool_operands;
     small_pool_operands.emplace_back(slice_out);
     std::vector<NamedAttribute> small_pool_attrs;
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("kernel_shape", rewriter.getI64ArrayAttr({slice, iw})));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("pool_mode", tpu::PoolModeAttr::get(ctx, tpu::PoolMode::Avg)));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(poolOp.getMultiplier().value())));
-    small_pool_attrs.emplace_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(poolOp.getRshift().value())));
+    small_pool_attrs.emplace_back(rewriter.getNamedAttr(
+        "kernel_shape", rewriter.getI64ArrayAttr({slice, iw})));
+    small_pool_attrs.emplace_back(
+        rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
+    small_pool_attrs.emplace_back(
+        rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
+    small_pool_attrs.emplace_back(rewriter.getNamedAttr(
+        "pool_mode", tpu::PoolModeAttr::get(ctx, tpu::PoolMode::Avg)));
+    small_pool_attrs.emplace_back(rewriter.getNamedAttr(
+        "multiplier",
+        rewriter.getSI32IntegerAttr(poolOp.getMultiplier().value())));
+    small_pool_attrs.emplace_back(rewriter.getNamedAttr(
+        "rshift", rewriter.getI64IntegerAttr(poolOp.getRshift().value())));
     std::string small_pool_name = "pool_" + name + std::to_string(offset);
     auto small_pool_loc = NameLoc::get(rewriter.getStringAttr(small_pool_name));
     auto small_pool_type = RankedTensorType::get({n, c, 1, 1}, elementType_);
-    auto small_pool_op = rewriter.create<tpu::Pool2DOp>(small_pool_loc, small_pool_type, small_pool_operands, small_pool_attrs);
+    auto small_pool_op = rewriter.create<tpu::Pool2DOp>(
+        small_pool_loc, small_pool_type, small_pool_operands, small_pool_attrs);
     auto small_pool_out = small_pool_op.getResult();
     concat_operands.emplace_back(small_pool_out);
     rewriter.setInsertionPointAfterValue(small_pool_out);
   }
 
   std::vector<NamedAttribute> concat_attrs;
-  concat_attrs.emplace_back(rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(2)));
+  concat_attrs.emplace_back(
+      rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(2)));
   int h_slices_num = h_slices.size();
-  std::vector<int64_t>  multilpier_arr(h_slices_num, 1);
-  std::vector<int64_t>  rshifts_arr(h_slices_num, 0);
-  concat_attrs.emplace_back(rewriter.getNamedAttr("multipliers", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({multilpier_arr}))));
-  concat_attrs.emplace_back(rewriter.getNamedAttr("rshifts", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({rshifts_arr}))));
+  std::vector<int64_t> multilpier_arr(h_slices_num, 1);
+  std::vector<int64_t> rshifts_arr(h_slices_num, 0);
+  concat_attrs.emplace_back(rewriter.getNamedAttr(
+      "multipliers",
+      rewriter.getI64ArrayAttr(ArrayRef<int64_t>({multilpier_arr}))));
+  concat_attrs.emplace_back(rewriter.getNamedAttr(
+      "rshifts", rewriter.getI64ArrayAttr(ArrayRef<int64_t>({rshifts_arr}))));
   std::string concat_name = "concat_" + name;
   auto concat_loc = NameLoc::get(rewriter.getStringAttr(concat_name));
-  auto concat_type = RankedTensorType::get({n, c, h_slices_num, 1}, elementType_);
-  auto concat_op = rewriter.create<tpu::ConcatOp>(concat_loc, concat_type, concat_operands, concat_attrs);
+  auto concat_type =
+      RankedTensorType::get({n, c, h_slices_num, 1}, elementType_);
+  auto concat_op = rewriter.create<tpu::ConcatOp>(
+      concat_loc, concat_type, concat_operands, concat_attrs);
   auto concat_out = concat_op.getResult();
   rewriter.setInsertionPointAfterValue(concat_out);
 
   std::vector<NamedAttribute> final_attrs;
-  final_attrs.emplace_back(rewriter.getNamedAttr("kernel_shape", rewriter.getI64ArrayAttr({h_slices_num, 1})));
-  final_attrs.emplace_back(rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
-  final_attrs.emplace_back(rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
-  final_attrs.emplace_back(rewriter.getNamedAttr("pool_mode", tpu::PoolModeAttr::get(ctx, tpu::PoolMode::Avg)));
-  final_attrs.emplace_back(rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(1)));
-  final_attrs.emplace_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(0)));
+  final_attrs.emplace_back(rewriter.getNamedAttr(
+      "kernel_shape", rewriter.getI64ArrayAttr({h_slices_num, 1})));
+  final_attrs.emplace_back(
+      rewriter.getNamedAttr("strides", rewriter.getI64ArrayAttr({1, 1})));
+  final_attrs.emplace_back(
+      rewriter.getNamedAttr("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0})));
+  final_attrs.emplace_back(rewriter.getNamedAttr(
+      "pool_mode", tpu::PoolModeAttr::get(ctx, tpu::PoolMode::Avg)));
+  final_attrs.emplace_back(
+      rewriter.getNamedAttr("multiplier", rewriter.getSI32IntegerAttr(1)));
+  final_attrs.emplace_back(
+      rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(0)));
   auto final_type = RankedTensorType::get({n, c, 1, 1}, elementType_);
-  rewriter.replaceOpWithNewOp<tpu::Pool2DOp>(poolOp, final_type, ValueRange{concat_out}, final_attrs);
+  rewriter.replaceOpWithNewOp<tpu::Pool2DOp>(
+      poolOp, final_type, ValueRange{concat_out}, final_attrs);
 }
 
 void AvgPoolLowering::LoweringINT8(PatternRewriter &rewriter,
@@ -169,16 +190,14 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
               tpu::PoolModeAttr::get(op->getContext(), tpu::PoolMode::Avg));
   if (poolOp.getKernelShape().size() == 3) {
     std::vector<Value> operands;
-    std::vector<int64_t> input_shape;
-    std::vector<int64_t> output_shape;
+    auto input_shape = module::getShape(poolOp.getInput());
+    auto output_shape = module::getShape(poolOp.getOutput());
     std::vector<int64_t> tmp_shape0(4, 1);
     std::vector<int64_t> tmp_shape1;
     std::vector<int64_t> _kernel;
     std::vector<int64_t> _strides;
     std::vector<int64_t> _pad;
 
-    module::getShapeVec(poolOp.getInput(), input_shape);
-    module::getShapeVec(poolOp.getOutput(), output_shape);
     auto kernel = module::getI64Array(poolOp.getKernelShape());
     auto strides = module::getI64Array(poolOp.getStrides());
     auto pads = module::getI64Array(poolOp.getPads());
@@ -190,8 +209,8 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
                     tmp_shape0[3], false);
     auto newType = RankedTensorType::get(tmp_shape0, type);
     auto name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape"));
-    auto reshapeOp =
-        rewriter.create<tpu::ReshapeOp>(name_loc, newType, poolOp->getOperands());
+    auto reshapeOp = rewriter.create<tpu::ReshapeOp>(name_loc, newType,
+                                                     poolOp->getOperands());
     // 1. do pool at last 2 dim
     for (int i = 1; i < 3; i++) {
       _kernel.push_back(kernel->at(i));
@@ -207,7 +226,7 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(tmp_shape0, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_0"));
     auto newOp0 = rewriter.create<tpu::Pool2DOp>(
-        name_loc, newType, ValueRange{reshapeOp.getOutput()} , op->getAttrs());
+        name_loc, newType, ValueRange{reshapeOp.getOutput()}, op->getAttrs());
     newOp0->setAttr("kernel_shape", rewriter.getI64ArrayAttr(_kernel));
     newOp0->setAttr("strides", rewriter.getI64ArrayAttr(_strides));
     newOp0->setAttr("pads", rewriter.getI64ArrayAttr(_pad));
@@ -225,15 +244,16 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(tmp_shape1, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_trans1"));
     auto newOp1 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp0.getOutput(), module::getNoneOp(op)},
-        attrs);
+        name_loc, newType,
+        ValueRange{newOp0.getOutput(), module::getNoneOp(op)}, attrs);
     // 3. do pool last dim
     tmp_shape1[tmp_shape1.size() - 1] = output_shape[output_shape.size() - 3];
     newType = RankedTensorType::get(tmp_shape1, type);
     name_loc = NameLoc::get(rewriter.getStringAttr(op_name + "_1"));
     auto newOp2 = rewriter.create<tpu::Pool2DOp>(
         name_loc, newType, ValueRange{newOp1.getOutput()}, op->getAttrs());
-    newOp2->setAttr("kernel_shape", rewriter.getI64ArrayAttr({1, kernel->at(0)}));
+    newOp2->setAttr("kernel_shape",
+                    rewriter.getI64ArrayAttr({1, kernel->at(0)}));
     newOp2->setAttr("strides", rewriter.getI64ArrayAttr({1, strides->at(0)}));
     newOp2->setAttr("pads",
                     rewriter.getI64ArrayAttr({0, pads->at(0), 0, pads->at(3)}));
@@ -242,18 +262,17 @@ void AvgPoolLowering::LoweringBF16(PatternRewriter &rewriter,
     newType = RankedTensorType::get(output_shape, type);
     std::iota(order.begin(), order.end(), 0);
     order.pop_back();
-    order.insert(order.begin() + tmp_shape1.size() - 3,
-                 tmp_shape1.size() - 1);
+    order.insert(order.begin() + tmp_shape1.size() - 3, tmp_shape1.size() - 1);
     attrs.clear();
     attrs.push_back(
         rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr(order)));
     auto newOp3 = rewriter.create<tpu::PermuteOp>(
-        name_loc, newType, ValueRange{newOp2.getOutput(), module::getNoneOp(op)},
-        attrs);
+        name_loc, newType,
+        ValueRange{newOp2.getOutput(), module::getNoneOp(op)}, attrs);
     // 5. reshape back
     newType = RankedTensorType::get(output_shape, type);
-    auto reshape_backOp =
-        rewriter.create<tpu::ReshapeOp>(poolOp->getLoc(), newType, ValueRange{newOp3.getOutput()});
+    auto reshape_backOp = rewriter.create<tpu::ReshapeOp>(
+        poolOp->getLoc(), newType, ValueRange{newOp3.getOutput()});
 
     rewriter.replaceOp(op, {reshape_backOp.getOutput()});
   } else if (poolOp.getKernelShape().size() == 2) {

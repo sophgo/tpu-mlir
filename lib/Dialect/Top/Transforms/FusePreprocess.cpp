@@ -67,9 +67,7 @@ public:
       auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
       //Get the original channel_order(rgb,bgr,etc..) and save it to preprocessOp.
       auto channel_order = inputOp.getPixelFormat().value().str();
-      std::vector<int64_t> model_shape;
-      module::getShapeVec(inputOp.getResult(), model_shape);
-      module::getNCHW(model_shape, n, c, h, w, false);
+      module::getNCHW(inputOp.getResult(), n, c, h, w, false);
       std::vector<int64_t> dims;
       if (resized_dims->size() == 2) {
         resize_h = resized_dims->at(0);

@@ -17,10 +17,10 @@ using namespace tpu_mlir::backend;
 
 static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
                           std::vector<int64_t> &os_4, std::vector<int> &pad_4) {
-  std::vector<int64_t> is, os, pads;
+  std::vector<int64_t> pads;
   auto castOp = llvm::dyn_cast<tpu::PadOp>(op);
-  module::getShapeVec(castOp.getInput(), is);
-  module::getShapeVec(castOp.getOutput(), os);
+  std::vector<int64_t> is = module::getShape(castOp.getInput());
+  std::vector<int64_t> os = module::getShape(castOp.getOutput());
   auto _pads = module::getI64Array(castOp.getPaddings());
   pads.assign(_pads->begin(), _pads->end());
 
@@ -116,7 +116,7 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
       pads[3] = _pads->at(num_dims * 2 - 2);
     }
 
-    module::getShapeVec(getInput(), i_s);
+    i_s = module::getShape(getInput());
     int outer_size = std::accumulate(i_s.begin(), i_s.end() - 2, 1,
                                      std::multiplies<int64_t>());
     int ih = *(i_s.end() - 2);

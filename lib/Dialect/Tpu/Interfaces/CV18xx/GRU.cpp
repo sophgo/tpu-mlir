@@ -36,9 +36,8 @@ template <typename T> static void transpose_row_col(T *data, int row, int col) {
 }
 
 Value lowerWeight(Operation *op, Value w_value) {
-  std::vector<int64_t> w_shape;
   int64_t elem_num = 0;
-  module::getShapeVec(w_value, w_shape);
+  auto w_shape = module::getShape(w_value);
   elem_num = module::getNumElements(w_value);
 
   auto w_op = dyn_cast<top::WeightOp>(w_value.getDefiningOp());
@@ -88,10 +87,8 @@ transposeBiasFp32(const std::shared_ptr<std::vector<float>> &bias_f32,
 }
 
 Value lowerBias(Operation *op, Value b_value) {
-  std::vector<int64_t> b_shape;
-  int64_t elem_num = 0;
-  module::getShapeVec(b_value, b_shape);
-  elem_num = module::getNumElements(b_value);
+  auto b_shape = module::getShape(b_value);
+  auto elem_num = module::getNumElements(b_value);
 
   auto b_op = dyn_cast<top::WeightOp>(b_value.getDefiningOp());
   auto b_data_f32 = b_op.read<float>();

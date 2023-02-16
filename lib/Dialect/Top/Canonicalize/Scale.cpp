@@ -271,8 +271,7 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
 
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
-    std::vector<int64_t> input_shape;
-    module::getShapeVec(op.getInput(), input_shape);
+    auto input_shape =module::getShape(op.getInput());
 
     auto cur_scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
     auto cur_bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
