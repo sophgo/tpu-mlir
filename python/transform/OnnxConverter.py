@@ -108,6 +108,7 @@ class OnnxConverter(BaseConverter):
         self.node_name_mapping = {}  # used in onnx opt
         self.load_onnx_model(onnx_file, input_shapes, output_names)
         self.init_MLIRImporter()
+        self.opset = self.model.opset_import[-1].version
         self.preprocess_args = preprocess_args
         self.converted_nodes = list()
 
@@ -178,6 +179,7 @@ class OnnxConverter(BaseConverter):
             "Relu": lambda node: self.convert_relu_op(node),
             "Reshape": lambda node: self.convert_reshape_op(node),
             "Resize": lambda node: self.convert_resize_op(node),
+            "RoiAlign": lambda node: self.convert_roi_align_op(node),
             "ScatterND": lambda node: self.convert_scatternd_op(node),
             "Shape": lambda node: self.convert_shape_op(node),
             "Sigmoid": lambda node: self.convert_sigmoid_op(node),
@@ -2024,3 +2026,48 @@ class OnnxConverter(BaseConverter):
         }
         scatternd_op = self.mlir.create_scatternd_op([input_data, indices, updates], output_shape, **p)
         self.addOperand(onnx_node.name, scatternd_op)
+
+    def convert_roi_align_op(self, onnx_node:OnnxNode):
+        assert (onnx_node.op_type == "RoiAlign")
+        assert(len(onnx_node.inputs) == 3)
+        input = self.getOp(onnx_node.inputs[0])
+        rois = self.getOp(onnx_node.inputs[1])
+        batch_indices = self.getOp(onnx_node.inputs[2])
+        rois_shape = self.getShape(onnx_node.inputs[1])
+        batch_indices_shape = self.getShape(onnx_node.inputs[2])
+        output_shape = self.getShape(onnx_node.name)
+        output_name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        mode = onnx_node.attrs.get("mode", "Avg")
+        output_height = onnx_node.attrs.get("output_height", 1)
+        output_width = onnx_node.attrs.get("output_width", 1)
+        sampling_ratio = onnx_node.attrs.get("sampling_ratio", 0)
+        spatial_scale = onnx_node.attrs.get("spatial_scale", 1.0)
+        if self.opset < 16:
+            coord_transf_mode = "output_half_pixel"
+        else:
+            coord_transf_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
+        align_corners = coord_transf_mode == "half_pixel"
+        unsqueeze_shape = batch_indices_shape
+        unsqueeze_shape.append(1)
+        p = {
+            "name": output_name + "_unsqueeze",
+        }
+        batch_indices_xpd = self.mlir.create_unsqueeze_op([batch_indices], unsqueeze_shape, **p)
+        concat_shape = rois_shape
+        concat_shape[-1] = 5
+        p = {
+            "name": output_name + "_concat",
+            "axis": 1,
+        }
+        rois_xpd = self.mlir.create_concat_op([batch_indices_xpd, rois], concat_shape, **p)
+        p = {
+            "name": output_name,
+            "mode": mode,
+            "output_height": output_height,
+            "output_width": output_width,
+            "sampling_ratio": sampling_ratio,
+            "spatial_scale": spatial_scale,
+            "align_corners": align_corners,
+        }
+        new_op = self.mlir.create_roi_align_op([input, rois_xpd], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)

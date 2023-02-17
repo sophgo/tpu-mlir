@@ -70,6 +70,7 @@ def PixelFormatAttr: AnyStrAttrOf<["rgb","bgr","gray","rgba"]>;
 def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
 def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
+def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -1699,6 +1700,39 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
     AnyTensor:$input_data,
     AnyTensor:$indices,
     AnyTensor:$updates
+  );
+
+  let results = (outs AnyTenor:$output);
+}
+
+def Top_RoiAlignOp: Top_Op<"RoiAlign", [InOutSameDim]> {
+  let summary = "RoiAlign operator";
+  let description = [{
+    RoiAlign consumes an input tensor X and region of interests
+    (rois) to apply pooling across each RoI.
+
+    Inputs:
+      `input`         : Input data tensor, 4-D tensor.
+      `rois`          : RoIs (Regions of Interest) to pool over;
+                        rois is 2-D input of shape (num_rois, 4)
+                        given as [[x1, y1, x2, y2], ...]. .
+      `batch_indices` : 1-D tensor with each element denoting
+                        the index of the corresponding image in
+                        the batch.
+
+    Outputs:
+      `output`        : RoI pooled output, 4-D tensor.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$rois,
+    RoiAlignModeAttr:$mode,
+    I64Attr:$output_height,
+    I64Attr:$output_width,
+    I64Attr:$sampling_ratio,
+    F64Attr:$spatial_scale,
+    BoolAttr:$align_corners
   );
 
   let results = (outs AnyTenor:$output);

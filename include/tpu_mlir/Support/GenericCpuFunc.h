@@ -180,6 +180,30 @@ private:
   FrcnDetParam param_;
 };
 
+enum roi_align_mode_t {
+  RoiAlignAvgMode = 0,
+  RoiAlignMaxMode = 1,
+};
+
+struct RoiAlignParam {
+  std::vector<tensor_list_t> inputs;
+  tensor_list_t output;
+  int64_t pooled_h;
+  int64_t pooled_w;
+  int64_t sampling_ratio;
+  double spatial_scale;
+  bool aligned;
+  roi_align_mode_t mode;
+};
+
+class RoiAlignFunc {
+public:
+  RoiAlignFunc(RoiAlignParam &param);
+  void invoke();
+private:
+  RoiAlignParam param_;
+};
+
 float my_mish_activate(float x_val);
 
 struct AnchorCfg {

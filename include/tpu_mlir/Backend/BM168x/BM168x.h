@@ -348,6 +348,16 @@ typedef struct {
   int round_mode;
 } requant_int_param_t;
 
+typedef struct roi_align_spec {
+  int pooled_height;
+  int pooled_width;
+  float spatial_scale;
+  int sampling_ratio;
+  int position_sensitive;
+  int align_corners;
+  int plat_sp;
+} roi_align_spec_t;
+
 typedef struct {
   bool is_perchannel;
   int mul_value;

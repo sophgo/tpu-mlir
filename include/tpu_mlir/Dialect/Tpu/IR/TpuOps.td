@@ -65,6 +65,7 @@ class AnyStrAttrOf<list<string> cases> : StringBasedAttr<
 def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
+def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
@@ -1869,6 +1870,39 @@ def Tpu_ScatterNDOp: Tpu_Op<"ScatterND", [
     AnyTensor:$input_data,
     AnyTensor:$indices,
     AnyTensor:$updates
+  );
+
+  let results = (outs AnyTenor:$output);
+}
+
+def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
+  let summary = "RoiAlign operator";
+  let description = [{
+    RoiAlign consumes an input tensor X and region of interests
+    (rois) to apply pooling across each RoI.
+
+    Inputs:
+      `input`         : Input data tensor, 4-D tensor.
+      `rois`          : RoIs (Regions of Interest) to pool over;
+                        rois is 2-D input of shape (num_rois, 4)
+                        given as [[x1, y1, x2, y2], ...]. .
+      `batch_indices` : 1-D tensor with each element denoting
+                        the index of the corresponding image in
+                        the batch.
+
+    Outputs:
+      `output`        : RoI pooled output, 4-D tensor.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$rois,
+    RoiAlignModeAttr:$mode,
+    I64Attr:$output_height,
+    I64Attr:$output_width,
+    I64Attr:$sampling_ratio,
+    F64Attr:$spatial_scale,
+    BoolAttr:$align_corners
   );
 
   let results = (outs AnyTenor:$output);
