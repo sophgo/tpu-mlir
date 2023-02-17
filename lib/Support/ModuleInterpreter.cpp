@@ -245,12 +245,27 @@ void ModuleInterpreter::setTensor(const std::string &name, const void *data,
 }
 
 std::shared_ptr<std::vector<float>>
-ModuleInterpreter::getTensor(const std::string &name) {
+ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
   auto it = mem_map.find(name);
   if (it == mem_map.end()) {
     llvm::errs() << "Can't find op name: " << name << "\n";
     llvm_unreachable("Error, getTensor failed");
   }
+
+  if (express_type && module::isState(module::State::TPU_LOWERED)) {
+    auto value = value_map.at(name);
+    if (module::isUniformQuantized(value)) {
+      int i = 0;
+      auto mem = mem_map.at(name);
+      auto data_fp32 = std::make_shared<std::vector<float>>(it->second->size());
+      auto qtype = module::getUniformQuantizedType(value);
+      for (auto &data : *mem) {
+        data_fp32->data()[i++] = (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+      }
+      return std::move(data_fp32);
+    }
+  }
+
   std::shared_ptr<std::vector<float>> tmp(it->second);
   return std::move(tmp);
 }

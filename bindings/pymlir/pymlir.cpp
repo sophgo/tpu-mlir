@@ -162,6 +162,12 @@ public:
     return getPythonArray(tensor.get(), shape);
   }
 
+  py::array get_fp32_tensor(std::string name) {
+    auto tensor = interpreter_->getTensor(name, true);
+    std::vector<int64_t> shape = interpreter_->getTensorShape(name);
+    return getPythonArray(tensor.get(), shape);
+  }
+  
   struct quant_brief_info format_tensor_qinfo(std::string name) {
     int width_, sign_, zp_;
     float scale_;
@@ -242,6 +248,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def("set_tensor", &py_module::set_tensor)
       .def("set_tensor_from_int", &py_module::set_tensor_from_int)
       .def("get_tensor", &py_module::get_tensor, "get one tensor data")
+      .def("get_fp32_tensor", &py_module::get_fp32_tensor, "get one fp32 tensor data")
       .def("get_all_tensor", &py_module::getAllTensor, "dump all tensor data")
       .def("invoke", &py_module::invoke)
       .def("fake_quant_weight", &py_module::fake_quant_weight)
