@@ -21,7 +21,7 @@ function usage {
 }
 
 # getopts
-while getopts ":c:m:d:n:f:p:a:" opt
+while getopts ":c:m:d:n:f:p:a:r:" opt
 do
   case $opt in
   m)
@@ -45,6 +45,9 @@ do
   c)
     c=$OPTARG
     echo "set chip name: $c";;
+  r)
+    r=$OPTARG
+    echo "set release path: $r";;
   ?)
     usage
     exit 1;;
@@ -90,7 +93,7 @@ export MODEL_PATH=${MODEL_PATH}
 export DATA_SET=${DATA_SET}
 source ${cfg_file}
 
-NET_DIR=$REGRESSION_PATH/cv18xx_porting/regression_out/${NET}_${CHIP_NAME}
+NET_DIR=$REGRESSION_PATH/cv18xx_porting/regression_out/${CHIP_NAME}/${NET}
 
 model_def_opt=
 if [ x$MODEL_DEF != x ] && [ -f $MODEL_DEF ]; then
@@ -224,6 +227,7 @@ echo model_transform.py \
 # deploy to bf16 cvimodel
 #########################
 tolerance_bf16_opt=
+cvimodel_name="${NET}_${CHIP_NAME}_bf16.cvimodel"
 if [ x${TOLERANCE_BF16} != x ]; then
   tolerance_bf16_opt="--tolerance ${TOLERANCE_BF16}"
 fi
@@ -245,10 +249,15 @@ if [ ${do_bf16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     ${tolerance_bf16_opt} \
-    --model ${NET}_${CHIP_NAME}_bf16.cvimodel"
+    --model ${cvimodel_name}"
   echo $cmd
   eval $cmd
+  # mv cvimodel to release path
+  if [ x${r} != x ];then
+    mv ${cvimodel_name} $r/
+  fi
 fi
+
 #########################
 # deploy to int8 cvimodel
 #########################
@@ -283,6 +292,7 @@ if [ x${TOLERANCE_INT8} != x ]; then
   tolerance_sym_opt="--tolerance ${TOLERANCE_INT8}"
 fi
 
+cvimodel_name="${NET}_${CHIP_NAME}_int8_sym.cvimodel"
 cmd="model_deploy.py \
   --mlir ${NET}.mlir \
   --quantize INT8 \
@@ -305,8 +315,12 @@ cmd=$cmd"${test_innpz_opt} \
   ${tolerance_sym_opt} \
   ${excepts_opt} \
   --quant_input \
-  --model ${NET}_${CHIP_NAME}_int8_sym.cvimodel"
+  --model ${cvimodel_name}"
 echo $cmd
 eval $cmd
+# mv cvimodel to release path
+if [ x${r} != x ];then
+  mv ${cvimodel_name} $r/
+fi
 popd
 

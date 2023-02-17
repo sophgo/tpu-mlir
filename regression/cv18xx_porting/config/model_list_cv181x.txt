@@ -1,0 +1,65 @@
+#
+# Name                   bs1      bs4      acc    bs1_ext  bs4_ext  acc_ext
+#
+
+# caffe
+resnet50                  N        N        N        Y        N        N
+vgg16                     N        N        N        N        N        N
+mobilenet_v1              N        N        N        Y        N        Y
+mobilenet_v2              Y        N        N        N        N        N
+googlenet                 N        N        N        Y        N        Y
+inception_v3              N        N        N        Y        N        N
+inception_v4              N        N        N        Y        N        N
+squeezenet_v1.0           N        N        N        Y        N        Y
+squeezenet_v1.1           N        N        N        Y        N        Y
+shufflenet_v2             Y        N        N        N        N        Y
+densenet_121              N        N        N        Y        N        Y
+densenet_201              N        N        N        Y        N        N
+senet_res50               N        N        N        Y        N        N
+resnext50                 N        N        N        Y        N        N
+arcface_res50             N        N        N        Y        N        N
+retinaface_mnet25         N        N        N        Y        N        N
+retinaface_mnet25_600     N        N        N        Y        N        N
+retinaface_res50          N        N        N        Y        N        N
+ssd300                    N        N        N        Y        N        N
+mobilenet_ssd             N        N        N        Y        N        N
+yolo_v1_448               N        N        N        Y        N        N
+#yolo_v2_1080              N        N        N        Y        N        N
+yolo_v2_416               N        N        N        Y        N        N
+yolo_v3_608               N        N        N        Y        N        N
+yolo_v3_416               N        N        N        Y        N        N
+yolo_v3_320               N        N        N        Y        N        N
+yolo_v3_tiny              N        N        N        Y        N        N
+yolo_v3_spp               N        N        N        N        N        N
+yolo_v4                   N        N        N        Y        N        N
+faster_rcnn               N        N        N        Y        N        N
+icnet                     N        N        N        N        N        N
+erfnet                    N        N        N        Y        N        N
+enet                      N        N        N        Y        N        N
+fcn-8s                    N        N        N        Y        N        N
+
+# onnx
+blazeface                 N        N        N        Y        N        N
+resnet18                  N        N        N        Y        N        N
+efficientnet_b0           N        N        N        Y        N        N
+efficientnet-lite_b0      N        N        N        Y        N        N
+faceboxes                 N        N        N        Y        N        N
+alphapose                 N        N        N        Y        N        N
+espcn_3x                  N        N        N        Y        N        N
+unet                      N        N        N        Y        N        N
+nasnet_mobile             N        N        N        Y        N        N
+ecanet50                  N        N        N        Y        N        N
+res2net50                 N        N        N        Y        N        N
+gaitset                   N        N        N        Y        N        N
+efficientdet_d0           N        N        N        Y        N        N
+yolo_v4_s                 N        N        N        Y        N        N
+yolo_v5_s                 N        N        N        Y        N        N
+yolox_s                   N        N        N        Y        N        N
+ppyolo_tiny               N        N        N        Y        N        N
+#resnetv2                  Y        N        N        Y        N        N
+
+
+# too big:
+# vgg16 inception_v4 ssd300 retinaface_res50 yolo_v3_320 yolo_v3_416 yolo_v3_608 
+# erfnet yolo_v3_spp enet yolo_v4 unet faster_rcnn fcn-8s
+
