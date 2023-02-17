@@ -8,6 +8,7 @@
 from .npz_compare import npz_compare, dequantize
 from .npz_visualize_diff import npz_visualize_diff
 from .npz_dump import npz_dump
+from .npz_statistic import npz_statistic
 from .npz_cali_test import npz_cali_test
 import numpy as np
 import sys

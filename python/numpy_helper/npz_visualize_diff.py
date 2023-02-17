@@ -15,6 +15,7 @@ import sys
 import argparse
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from utils.misc import cos_sim
 
 def parse_args(args_list):
     parser = argparse.ArgumentParser(description='visualize_diff two npz tensor files.')
@@ -25,20 +26,12 @@ def parse_args(args_list):
     parser.add_argument('--verbose', '-v', action='count', default=0)
     parser.add_argument("--excepts", type=str,
                         help="List of tensors except from comparing")
+    parser.add_argument("--includes", type=str, default="",
+                        help="List of tensors included from comparing")
     parser.add_argument("--max_sampling", type=int, default=10000,
                         help="max sampling points")
     args = parser.parse_args(args_list)
     return args
-
-def cos_sim(vector_a, vector_b):
-    vector_a = np.mat(vector_a)
-    vector_b = np.mat(vector_b)
-    num = float(vector_a * vector_b.T)
-    denom = np.linalg.norm(vector_a) * np.linalg.norm(vector_b)
-    with np.errstate(invalid='ignore'):
-        cos = np.nan_to_num(num / denom)
-    sim = 0.5 + 0.5 * cos
-    return sim
 
 def npz_visualize_diff(args_list):
   os.system('mkdir -p tensor_diff_fp32_vs_int8/')
@@ -52,12 +45,20 @@ def npz_visualize_diff(args_list):
   if args.excepts:
     excepts = [str(s) for s in args.excepts.split(',')]
 
+  includes = None
+  if args.includes != '':
+    includes = [str(s) for s in args.includes.split(',')]
+
   npz1 = np.load(f1)
   npz2 = np.load(f2)
   print('npz1.files:', npz1.files)
   print('npz2.files:', npz2.files)
   common = list()
   for name in npz1.files:
+    if includes is not None:
+        if name in npz2.files and name in includes:
+            common.append(name)
+        continue
     if name in npz2.files and name not in excepts:
        common.append(name)
 
@@ -70,7 +71,7 @@ def npz_visualize_diff(args_list):
         blob_fp=blob_fp.flatten()[:minsize]
         blob_int=blob_int.flatten()[:minsize]
 
-    blob_COS = cos_sim(blob_fp.reshape(-1), blob_int.reshape(-1))
+    blob_COS = cos_sim(blob_fp, blob_int)
     data_size = blob_fp.size
     if data_size > args.max_sampling:
         step = data_size//args.max_sampling

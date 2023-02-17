@@ -42,7 +42,7 @@ public:
         }
       });
     }
-    bool same_name = true;
+    bool same_name = false;
     std::string file_name;
     if (this->file_name == "")
       file_name = module::genWeightFileName(same_name);
