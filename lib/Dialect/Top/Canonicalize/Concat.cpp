@@ -23,6 +23,10 @@ struct ConcatToSwapDimInner : public OpRewritePattern<ConcatOp> {
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
+    if (concat_op.getDoRelu()) {
+      return failure();
+    }
+
     int num_inputs = concat_op.getInputs().size();
     if (num_inputs != 2) {
       return failure();
@@ -167,6 +171,9 @@ struct ConcatToDepth2SpacePattern : public OpRewritePattern<ConcatOp> {
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
+    if (concat_op.getDoRelu()) {
+      return failure();
+    }
     auto shape = module::getShape(concat_op.getOutput());
     int num_dims = shape.size();
     if (num_dims < 3) {
@@ -249,6 +256,9 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
+    if (concat_op.getDoRelu()) {
+      return failure();
+    }
     const auto &shape = module::getShape(concat_op.getOutput());
     int num_dims = shape.size();
     if (num_dims < 3) {
@@ -303,12 +313,98 @@ struct ConcatToDepth2SpacePattern2 : public OpRewritePattern<ConcatOp> {
   }
 };
 
+/**
+ *       -- Slice --
+ *      /           \
+ * Op1->|            |->Concat->Op2 => Op1->Slice->Op2
+ *      \           /
+ *       -- Slice --
+ **/
+struct MergeSliceConcatPattern : public OpRewritePattern<ConcatOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ConcatOp concat_op,
+                                PatternRewriter &rewriter) const override {
+    const auto &inputs = concat_op.getInputs();
+    if (concat_op.getDoRelu()) {
+      return failure();
+    }
+    const int num_inputs = inputs.size();
+    Value from;
+    // check topo
+    for (int i = 0; i < num_inputs; i++) {
+      auto in_op = inputs[i].getDefiningOp();
+      if (!isa<SliceOp>(in_op)) {
+        return failure();
+      }
+      auto slice_op = dyn_cast<SliceOp>(in_op);
+      if (i == 0) {
+        from = slice_op.getInput();
+      } else {
+        if (from != slice_op.getInput()) {
+          return failure();
+        }
+      }
+    }
+    // check param
+    int64_t start = -1;
+    int64_t end = 0;
+    i64_array_t steps0, offset0;
+    const auto axis = concat_op.getAxis();
+    for (int i = 0; i < num_inputs; i++) {
+      auto in_op = inputs[i].getDefiningOp();
+      auto slice_op = dyn_cast<SliceOp>(in_op);
+      const auto steps = module::getI64Array(slice_op.getSteps());
+      const auto offset = module::getI64Array(slice_op.getOffset());
+      if (steps->at(axis) != 1) {
+        return failure();
+      }
+      if (i == 0) {
+        start = offset->at(axis);
+      } else {
+        if (offset->at(axis) != end) {
+          return failure();
+        }
+      }
+      if (i == 0) {
+        steps0 = steps;
+        offset0 = offset;
+      } else {
+        for (size_t i = 0; i < steps->size(); ++i) {
+          if (i == axis) continue;
+          if (steps->at(i) != steps0->at(i)) {
+            return failure();
+          }
+          if (offset->at(i) != offset0->at(i)) {
+            return failure();
+          }
+        }
+      }
+      const auto& output_shape = module::getShape(slice_op.getOutput());
+      end = offset->at(axis) + output_shape[axis];
+    }
+    // rewrite now !
+    offset0->at(axis) = start;
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("offset", rewriter.getI64ArrayAttr(*offset0)));
+    attrs.push_back(
+        rewriter.getNamedAttr("steps", rewriter.getI64ArrayAttr(*steps0)));
+    rewriter.replaceOpWithNewOp<SliceOp>(
+        concat_op, concat_op.getResult().getType(), ValueRange{from}, attrs);
+    return success();
+  }
+};
+
 struct ConvertLoadWeightConcatToLoadWeightPattern
     : public OpRewritePattern<ConcatOp> {
   using OpRewritePattern::OpRewritePattern;
 
   LogicalResult matchAndRewrite(ConcatOp concat_op,
                                 PatternRewriter &rewriter) const override {
+    if (concat_op.getDoRelu()) {
+      return failure();
+    }
     auto input_num = concat_op.getNumOperands();
     for (uint32_t i = 0; i < input_num; ++i) {
       auto formerOp = concat_op.getOperand(i).getDefiningOp();
@@ -359,5 +455,6 @@ void ConcatOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
   results.insert<ConvertLoadWeightConcatToLoadWeightPattern,
                  ConcatToDepth2SpacePattern, ConcatToDepth2SpacePattern2,
+                 MergeSliceConcatPattern,
                  ConcatToSwapDimInner>(context);
 }

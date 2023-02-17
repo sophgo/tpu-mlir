@@ -143,6 +143,8 @@ FW_LAYER_TYPE_T get_layer_type(Operation *op) {
     return FW_BMNET_MULSHIFT;
   } else if (isa<tpu::MulConstOp>(op)) {
     return FW_BMNET_CONST_BINARY;
+  } else if (isa<tpu::RoiAlignOp>(op)) {
+    return FW_BMNET_ROI_ALIGN;
   } else
     return FW_LAYER_UNKNOWN;
 }

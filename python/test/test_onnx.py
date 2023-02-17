@@ -20,6 +20,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 import onnxruntime
 import multiprocessing
 
@@ -159,6 +160,7 @@ class ONNX_IR_TESTER(object):
             "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
             "TorchReflectionPad": self.test_TorchReflectionPad,
+            "TorchRoiAlign": self.test_TorchRoiAlign,
             "TorchSize": self.test_TorchSize,
             "TorchStd": self.test_TorchStd,
             "TorchWhere": self.test_TorchWhere,
@@ -1989,6 +1991,43 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(3, 100, 100).float()
         self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchRoiAlign(self, case_name):
+        roi_num = 5
+        N, C, H, W = 1, 3, 100, 100
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, boxes):
+                y = torchvision.ops.roi_align(x, boxes, [8, 8])
+                return y
+
+        def gen_rand_rois(N, H, W, roi_num) -> torch.Tensor :
+            batch_indice = torch.randint(0, N, (roi_num,),
+                                         dtype=torch.int32).float()
+            roi_xl = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+            roi_xh = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
+            roi_yl = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+            roi_yh = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
+            for i in range(roi_num):
+                if roi_xl[i] > roi_xh[i]:
+                    roi_xl[i], roi_xh[i] = roi_xh[i], roi_xl[i]
+                if roi_yl[i] > roi_yh[i]:
+                    roi_yl[i], roi_yh[i] = roi_yh[i], roi_yl[i]
+            batch_indice.unsqueeze_(1)
+            roi_xl.unsqueeze_(1)
+            roi_yl.unsqueeze_(1)
+            roi_xh.unsqueeze_(1)
+            roi_yh.unsqueeze_(1)
+            rois = torch.cat((batch_indice, roi_xl, roi_yl, roi_xh, roi_yh), 1)
+            return rois
+
+        x = torch.randn(N, C, H, W).float()
+        boxes = gen_rand_rois(N, H, W, roi_num)
+        self.torch_and_test((x, boxes), Model(), case_name)
 
     def test_TorchLayerGroup(self, case_name):
 

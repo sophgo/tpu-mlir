@@ -1061,6 +1061,168 @@ void ROIPoolingFunc::invoke() {
   }
 }
 
+class Reducer {
+  roi_align_mode_t mode;
+  int count;
+  float result;
+public:
+  Reducer(roi_align_mode_t _mode) : mode(_mode) {}
+  void init() {
+    count = 0;
+    if (mode == RoiAlignAvgMode) {
+      result = 0;
+    } else {
+      result = __FLT_MIN__;
+    }
+  }
+  void insert(float x) {
+    count += 1;
+    if (mode == RoiAlignAvgMode) {
+      result += x;
+    } else {
+      result = std::max(result, x);
+    }
+  }
+  float reduce() {
+    if (mode == RoiAlignAvgMode) {
+      const float avg_scaling = 1.0f / count;
+      result *= avg_scaling;
+    }
+    return result;
+  }
+};
+
+RoiAlignFunc::RoiAlignFunc(RoiAlignParam &param) : param_(param) {
+
+}
+
+struct RoiAlignPreCalc {
+  int pos[4];
+  float w[4];
+};
+
+static inline void preCalcForBilinearInterp(
+    const int input_h, const int input_w, const int pooled_h,
+    const int pooled_w, const int sample_h, const int sample_w, float start_h,
+    float start_w, float bin_h, float bin_w, int sampling_ratio,
+    std::vector<RoiAlignPreCalc> &pre_calc) {
+  RoiAlignPreCalc *p = pre_calc.data();
+  float h_scale = bin_h / sample_h;
+  float w_scale = bin_w / sample_w;
+  for (int ph = 0; ph < pooled_h; ++ph) {
+    for (int pw = 0; pw < pooled_w; ++pw) {
+      float yiter = start_h + ph * bin_h + 0.5f * h_scale;
+      for (int iy = 0; iy < sample_h; ++iy) {
+        float y = yiter;
+        if (y < -1.f || y > input_h) {
+          memset(p, 0x0, sizeof(RoiAlignPreCalc) * sample_w);
+          p += sample_w;
+        } else {
+          y = std::min(std::max(y, 0.f), (float)(input_h - 1));
+          int yl = (int)std::floor(y);
+          int yh = std::min(yl + 1, input_h - 1);
+          float ly = y - yl;
+          float hy = 1.f - ly;
+          int yl_x_iw = yl * input_w;
+          int yh_x_iw = yh * input_w;
+          float xiter = start_w + pw * bin_w + 0.5f * w_scale;
+          for (int ix = 0; ix < sample_w; ++ix) {
+            float x = xiter;
+            if (x < -1.f || x > input_w)
+              *p = {0, 0, 0, 0, 0.f, 0.f, 0.f, 0.f};
+            else {
+              x = std::min(std::max(x, 0.f), (float)(input_w - 1));
+              int xl = (int)std::floor(x);
+              int xh = std::min(xl + 1, input_w - 1);
+              float lx = x - xl;
+              float hx = 1.0f - lx;
+              *p = {yl_x_iw + xl, yl_x_iw + xh, yh_x_iw + xl, yh_x_iw + xh,
+                    hy * hx,      hy * lx,      ly * hx,      ly * lx};
+            }
+            ++p;
+            xiter += w_scale;
+          }
+        }
+        yiter += h_scale;
+      }
+    }
+  }
+}
+
+void RoiAlignFunc::invoke() {
+  assert(param_.inputs.size() == 2);
+  const float spatial_scale = param_.spatial_scale;
+  const int sampling_ratio = param_.sampling_ratio;
+  const int OH = param_.pooled_h;
+  const int OW = param_.pooled_w;
+  const int pooled_size = OH * OW;
+  const bool aligned = param_.aligned; // corresponse to new attr of opset16
+  const roi_align_mode_t mode = param_.mode;
+
+  const float *input = param_.inputs[0].ptr;
+  const float *rois = param_.inputs[1].ptr;
+  float *output = param_.output.ptr;
+
+  const auto input_shape = param_.inputs[0].shape;
+  const auto rois_shape = param_.inputs[1].shape;
+
+  assert(input_shape.size() == 4);
+  assert(rois_shape.size() == 2);
+  assert(rois_shape[1] == 5);
+
+  const int IC = input_shape[1];
+  const int IH = input_shape[2];
+  const int IW = input_shape[3];
+  const int input_size = IH * IW;
+  const int roi_num = rois_shape[0];
+
+  const float roi_offset = aligned ? 0.5f : 0.f;
+  const float pooled_h_inv = 1.0f / OH;
+  const float pooled_w_inv = 1.0f / OW;
+
+#pragma omp parallel for schedule(static, omp_schedule(roi_num))
+  for (int i = 0; i < roi_num; ++i) {
+    const int batch_idx = (int)rois[i * 5 + 0];
+    float start_w = rois[i * 5 + 1] * spatial_scale - roi_offset;
+    float start_h = rois[i * 5 + 2] * spatial_scale - roi_offset;
+    float end_w = rois[i * 5 + 3] * spatial_scale - roi_offset;
+    float end_h = rois[i * 5 + 4] * spatial_scale - roi_offset;
+    float roi_h = end_h - start_h;
+    float roi_w = end_w - start_w;
+    if (!aligned) {
+      roi_h = std::max(roi_h, 1.0f);
+      roi_w = std::max(roi_w, 1.0f);
+    }
+    float bin_w = roi_w * pooled_w_inv;
+    float bin_h = roi_h * pooled_h_inv;
+    int sample_w = sampling_ratio > 0.0f ? sampling_ratio : ceil(bin_w);
+    int sample_h = sampling_ratio > 0.0f ? sampling_ratio : ceil(bin_h);
+    const int sample_size = sample_h * sample_w;
+    std::vector<RoiAlignPreCalc> pre_calc(sample_size * pooled_size);
+    preCalcForBilinearInterp(
+        IH, IW, OH, OW, sample_h, sample_w, start_h, start_w,
+        roi_h * pooled_h_inv, roi_w * pooled_w_inv, sampling_ratio, pre_calc);
+    Reducer reducer(mode);
+    int index_n = i * IC * pooled_size;
+    for (int c = 0; c < IC; ++c) {
+      int index_n_c = index_n + c * pooled_size;
+      for (int p = 0; p < pooled_size; ++p) {
+        const float *feat = input + (batch_idx * IC + c) * input_size;
+        reducer.init();
+        for (int s = 0; s < sample_size; ++s) {
+          const auto &pc = pre_calc[p * sample_size + s];
+          float x = 0.0f;
+          for (int k = 0; k < 4; ++k) {
+            x += pc.w[k] * feat[pc.pos[k]];
+          }
+          reducer.insert(x);
+        }
+        output[index_n_c + p] = reducer.reduce();
+      }
+    }
+  }
+}
+
 static void bbox_transform_inv(const float *boxes, const float *deltas,
                                float *pred, int num, int class_num) {
   for (int i = 0; i < num; ++i) {

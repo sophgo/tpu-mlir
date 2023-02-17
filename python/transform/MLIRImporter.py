@@ -66,6 +66,7 @@ class Top:
     ReluOp = 'top.Relu'
     ReduceOp = 'top.Reduce'
     ReverseOp = 'top.Reverse'
+    RoiAlignOp = 'top.RoiAlign'
     ScatterNDOp = 'top.ScatterND'
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
@@ -477,6 +478,10 @@ class MLIRImporter(object):
         return return_op
 
     def create_reshape_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        return self.buildOp(Top.ReshapeOp, operands, [output_type], name=kargs['name'])
+
+    def create_unsqueeze_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
         return self.buildOp(Top.ReshapeOp, operands, [output_type], name=kargs['name'])
 
@@ -1056,6 +1061,17 @@ class MLIRImporter(object):
         if kargs['reduction'] != None:
             param['reduction'] = kargs['reduction']
         return self.buildOp(Top.ScatterNDOp, operands, [output_type], **param)
+
+    def create_roi_align_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        param = {'name': kargs['name'],
+                 "mode": StringAttr.get(kargs['mode']),
+                 "output_height": IntegerAttr.get(self.mlir_type['INT64'], kargs["output_height"]),
+                 "output_width": IntegerAttr.get(self.mlir_type['INT64'], kargs["output_width"]),
+                 "sampling_ratio": IntegerAttr.get(self.mlir_type['INT64'], kargs["sampling_ratio"]),
+                 "spatial_scale": FloatAttr.get_f64(kargs["spatial_scale"]),
+                 "align_corners": BoolAttr.get(kargs["align_corners"])}
+        return self.buildOp(Top.RoiAlignOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
