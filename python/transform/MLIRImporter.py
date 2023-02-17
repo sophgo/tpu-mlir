@@ -26,6 +26,7 @@ class Top:
     DeconvOp = 'top.Deconv'
     DetectionOutputOp = 'top.DetectionOutput'
     DivOp = 'top.Div'
+    EluOp = 'top.Elu'
     ErfOp = 'top.Erf'
     ExpOp = 'top.Exp'
     FloorOp = 'top.Floor'
@@ -580,6 +581,14 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.MishOp, operands, [output_type], **param)
+
+    def create_elu_op(self, operands, output_shape, **kargs):
+        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
+        param = {
+            'name': kargs['name'],
+            'alpha': FloatAttr.get_f64(kargs['alpha']),
+        }
+        return self.buildOp(Top.EluOp, operands, [output_type], **param)
 
     def create_erf_op(self, operands, output_shape, **kargs):
         output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))

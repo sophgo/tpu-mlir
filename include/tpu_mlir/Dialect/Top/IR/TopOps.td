@@ -1743,4 +1743,19 @@ def Top_RetinaFaceDetectionOp : Top_Op<"RetinaFaceDetection"> {
   );
   let results = (outs AnyTensor:$output);
 }
+
+def Top_EluOp : Top_Op<"Elu", [InOutSameShape]> {
+  let summary = "Elu operation";
+  let description = [{
+    Elu takes input data (Tensor<T>) and an argument alpha,
+    and produces one output data (Tensor<T>)
+    where the function f(x) = alpha * (e^x - 1) for x <= 0, f(x) = x for x > 0,
+    is applied to the data tensor elementwise.
+  }];
+  let arguments = (ins
+    AnyTenor:$input,
+    F64Attr:$alpha
+  );
+  let results = (outs AnyTenor:$output);
+}
 #endif // Top_OPS

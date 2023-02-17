@@ -70,6 +70,7 @@ class ONNX_IR_TESTER(object):
             "Clip": self.test_Clip,
             "DepthToSpace": self.test_DepthToSpace,
             "Div": self.test_Div,
+            "Elu": self.test_Elu,
             "Erf": self.test_Erf,
             "Exp": self.test_Exp,
             "Expand": self.test_Expand,
@@ -3158,6 +3159,41 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([cmp_def], case_name, inputs, [output])
             self.onnx_and_test(graph_def, input_data=input_data)
             print("====== TEST {} Success ======".format(cmp_type))
+
+    def test_Elu(self, case_name):
+        oc = 32
+        input_shape = [1, 16, 100, 100]
+        filter_shape = [oc, 16, 3, 3]
+        output_shape = [1, oc, 100, 100]
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(oc).astype(np.float32)
+
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
+
+        conv_def = helper.make_node(
+            "Conv",
+            inputs=['input', 'weight', 'bias'],
+            outputs=['conv_output'],
+            kernel_shape=[3, 3],
+            pads=[1, 1, 1, 1],
+            strides=[1, 1],
+            dilations=[1, 1],
+            group=1,
+        )
+
+        elu_def = helper.make_node("Elu",
+                                   inputs=['conv_output'],
+                                   outputs=['output'],
+                                   alpha=0.67)
+
+        graph_def = helper.make_graph([conv_def, elu_def],
+                                      case_name, [input], [output],
+                                      initializer=[weight, bias])
+
+        self.onnx_and_test(graph_def)
 
     def test_Erf(self, case_name):
         input_shape = [10, 3, 32, 32]
