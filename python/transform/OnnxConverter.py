@@ -130,6 +130,7 @@ class OnnxConverter(BaseConverter):
             "DequantizeLinear": lambda node: self.convert_deqlinear_op(node),
             "Div": lambda node: self.convert_div_op(node),
             "Dropout": lambda node: self.convert_skip_op(node),
+            "Elu": lambda node: self.convert_elu_op(node),
             "Erf": lambda node: self.convert_erf_op(node),
             "Exp": lambda node: self.convert_exp_op(node),
             "Expand": lambda node: self.convert_expand_op(node),
@@ -1167,6 +1168,17 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         p = {'name': "{}_{}".format(onnx_node.name, onnx_node.op_type)}
         new_op = self.mlir.create_exp_op([op], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_elu_op(self, onnx_node):
+        assert (onnx_node.op_type == "Elu")
+        op = self.getOperand(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            'alpha': onnx_node.attrs.get("alpha", 0.)
+        }
+        new_op = self.mlir.create_elu_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_erf_op(self, onnx_node):

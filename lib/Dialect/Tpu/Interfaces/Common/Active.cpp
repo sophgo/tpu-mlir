@@ -20,6 +20,10 @@ static mlir::Type t;
 LogicalResult tpu::ActiveOp::init(InferenceParameter &p) { return success(); }
 void tpu::ActiveOp::deinit(InferenceParameter &p) {}
 
+static inline double elu(double x, double alpha) {
+  return x > 0 ? x : alpha * (std::exp(x) - 1);
+}
+
 static inline double hsigmoid(double x, double alpha, double beta) {
   return std::max(0.0, std::min(1.0, alpha * x + beta));
 }
@@ -52,6 +56,14 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::ABSVAL:
     active_func(p, num_element, [](double val) { return std::abs(val); });
     break;
+  case ActiveMode::ELU: {
+    const auto coeffs_ = module::getF64Array(getCoeffs(), 1, 0);
+    const double alpha = coeffs_->at(0);
+    active_func(p, num_element, [alpha](double val) {
+      return elu(val, alpha);
+    });
+    break;
+  }
   case ActiveMode::ERF:
     active_func(p, num_element, [](double val) { return std::erf(val); });
     break;
