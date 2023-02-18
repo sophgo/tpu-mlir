@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+
+bool top::DivOp::isEltwise() {
+  return false;
+}
+
 int64_t top::DivOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::DivOp::init(InferenceParameter &p) {

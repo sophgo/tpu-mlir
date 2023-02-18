@@ -13,6 +13,10 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
 
+bool top::ProposalOp::isEltwise() {
+  return false;
+}
+
 int64_t top::ProposalOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ProposalOp::init(InferenceParameter &p) { return success(); }

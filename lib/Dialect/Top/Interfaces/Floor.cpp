@@ -13,6 +13,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
+bool top::FloorOp::isEltwise() {
+  return true;
+}
 
 int64_t top::FloorOp::getFLOPs() { return module::getNumElements(getOutput()); }
 

@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+
+bool top::GELUOp::isEltwise() {
+  return true;
+}
+
 int64_t top::GELUOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 5;
 }

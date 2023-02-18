@@ -14,6 +14,9 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
 
+bool top::FrcnDetectionOp::isEltwise() {
+  return false;
+}
 
 int64_t top::FrcnDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());

@@ -14,6 +14,9 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
 
+bool top::RetinaFaceDetectionOp::isEltwise() {
+  return false;
+}
 
 int64_t top::RetinaFaceDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());

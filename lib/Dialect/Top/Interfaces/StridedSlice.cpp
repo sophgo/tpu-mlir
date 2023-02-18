@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+
+bool top::StridedSliceOp::isEltwise() {
+  return false;
+}
+
 int64_t top::StridedSliceOp::getFLOPs() { return 0; }
 
 LogicalResult top::StridedSliceOp::init(InferenceParameter &p) {

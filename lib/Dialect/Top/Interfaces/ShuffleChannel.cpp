@@ -12,6 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 
 
+bool top::ShuffleChannelOp::isEltwise() {
+  return false;
+}
 
 int64_t top::ShuffleChannelOp::getFLOPs() { return 0; }
 

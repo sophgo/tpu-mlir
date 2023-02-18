@@ -10,6 +10,12 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
+
+
+bool top::CopyOp::isEltwise() {
+  return false;
+}
+
 int64_t top::CopyOp::getFLOPs() { return module::getNumElements(getOutput());}
 
 LogicalResult top::CopyOp::init(InferenceParameter &p) { return success(); }

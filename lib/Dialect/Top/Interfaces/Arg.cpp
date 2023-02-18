@@ -14,6 +14,10 @@
 #include <float.h>
 
 
+bool top::ArgOp::isEltwise() {
+  return false;
+}
+
 int64_t top::ArgOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ArgOp::init(InferenceParameter &p) { return success(); }

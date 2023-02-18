@@ -11,6 +11,11 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
+
+bool top::PermuteOp::isEltwise() {
+  return false;
+}
+
 int64_t top::PermuteOp::getFLOPs() { return 0; }
 
 permute_attr_t top::PermuteOp::parseParam() {
