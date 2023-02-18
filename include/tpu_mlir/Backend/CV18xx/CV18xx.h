@@ -1007,7 +1007,7 @@ namespace backend {
 
 class CV18xx : public Arch {
 public:
-  static CV18xx &instance(const llvm::StringRef chip) {
+  static CV18xx &instance(module::Chip chip) {
     static CV18xx inst(chip);
     cv18xx = &inst;
     return inst;
@@ -1528,10 +1528,10 @@ protected:
                           int c, int h, int w, cvk_fmt_t fmt, int blob_num,
                           uint32_t lmem_size, tiling_mode_t mode);
 
-  CV18xx(const llvm::StringRef chip);
+  CV18xx(module::Chip chip);
   virtual ~CV18xx();
   static CV18xx *cv18xx;
-  void load_ctx(const llvm::StringRef chip);
+  void load_ctx(module::Chip chip);
   cvk_context_t *cvk_ctx_;
   uint8_t tdmaBaseSelects[MAX_GLOBAL_MEMORY_REGION];
   std::vector<uint8_t> cmdbuf_;

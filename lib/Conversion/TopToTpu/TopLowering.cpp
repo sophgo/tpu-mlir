@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 
 bool LoweringConfig::isQuantized;
-std::map<std::string, llvm::StringRef> LoweringConfig::quantize_map;
+std::map<std::string, module::Mode> LoweringConfig::quantize_map;
 
 Value do_transfer(Value in, Value out, bool asymmetric) {
   double in_scale, out_scale;

@@ -8,13 +8,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/PixelHelper.h"
-#include<iostream>
+#include "tpu_mlir/Support/Module.h"
+#include <iostream>
 namespace tpu_mlir {
-//namespace pixel_helper {
-void setPixelAlign(std::string &chip_name, std::string &pixel_format,
-                   int64_t &y_align, int64_t &w_align,
-                   int64_t &channel_align) {
-  if ("cv183x" == chip_name || "CV183X" == chip_name) {
+// namespace pixel_helper {
+void setPixelAlign(std::string &pixel_format, int64_t &y_align,
+                   int64_t &w_align, int64_t &channel_align) {
+  if (module::isChip(module::Chip::CV183x)) {
     y_align = 32;
     w_align = 32;
     channel_align = 0x1000;
@@ -29,7 +29,7 @@ void setPixelAlign(std::string &chip_name, std::string &pixel_format,
 }
 
 int aligned_image_size(int n, int c, int h, int w, std::string &pixel_format,
-               int y_align, int w_align, int channel_align) {
+                       int y_align, int w_align, int channel_align) {
   if ("YUV420_PLANAR" == pixel_format) {
     assert(c == 3);
     int y_w_aligned = align_up(w, y_align);

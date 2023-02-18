@@ -3,6 +3,10 @@ file(GLOB _sources *.cpp Dnnl/*.cpp Helper/*.cpp)
 
 add_llvm_library(TPUMLIRSupport
   ${_sources}
+
+  DEPENDS
+  ModuleAttrGen
+
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRSupport

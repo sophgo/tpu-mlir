@@ -270,8 +270,19 @@ public:
     ctx_ = &getContext();
     mainFunc_ = module::getMainFuncOp();
     LoweringConfig::isQuantized = false;
-    module::setChip(StringRef(chip).upper());
-    module::setMode(StringRef(mode).upper());
+    auto chip_ = StringRef(chip).upper();
+    if (StringRef(chip_).starts_with("CV")) {
+      if (chip_.back() == 'X') {
+        chip_.back() = 'x';
+      }
+    }
+    auto mode_ = StringRef(mode).upper();
+    auto chip = module::symbolizeChip(chip_);
+    assert(chip.has_value());
+    auto mode = module::symbolizeMode(mode_);
+    assert(mode.has_value());
+    module::setChip(chip.value());
+    module::setMode(mode.value());
     if (module::isState(module::State::TOP_QUANTIZED)) {
       module::setAsymmetric(true);
       LoweringConfig::isQuantized = true;
@@ -286,10 +297,6 @@ public:
     }
     init_qtable();
     RewritePatternSet patterns(ctx_);
-    ConversionTarget target(*ctx_);
-    target.addLegalDialect<tpu::TpuDialect, func::FuncDialect>();
-    // no need to lowering:
-    target.addLegalOp<top::InputOp, top::WeightOp, top::NoneOp>();
     if (module::isBM1684XFamily()) {
       bm1684x::populateTopToTpuConversionPatterns(&patterns);
     } else if (module::isBM1684Family()) {
@@ -302,10 +309,6 @@ public:
     auto config = GreedyRewriteConfig();
     config.maxIterations = 0; // apply each pattern only once.
     applyPatternsAndFoldGreedily(module_, std::move(patterns), config);
-    // if (failed(
-    //         applyPartialConversion(module_, target, std::move(patterns)))) {
-    //   signalPassFailure();
-    // }
     // adjust reshape
     patterns.clear();
     patterns.add<ForwardTypePattern<tpu::ReshapeOp>>(ctx_);
@@ -535,23 +538,15 @@ protected:
     return castOp.getOutput();
   }
 
-  static StringRef qmode(const std::string &mode) {
+  static module::Mode qmode(const std::string &mode) {
     std::string tmp = StringRef(mode).upper();
-    if (tmp == module::Mode::INT8) {
-      return module::Mode::INT8;
-    }
-    if (tmp == module::Mode::F16) {
-      return module::Mode::F16;
-    }
-    if (tmp == module::Mode::BF16) {
-      return module::Mode::BF16;
-    }
-    if (tmp == module::Mode::F32) {
-      return module::Mode::F32;
+    auto mode_ = module::symbolizeMode(tmp);
+    if (mode_.has_value()) {
+      return mode_.value();
     }
     llvm::errs() << "Unknown quantize mode: [" << mode << "]\n";
     llvm_unreachable("Unknown quantize mode");
-    return "";
+    return module::Mode::F32;
   }
 
   void init_qtable() {

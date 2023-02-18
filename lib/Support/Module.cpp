@@ -8,54 +8,43 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
-#include "float.h"
-#include "mlir/IR/PatternMatch.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "mlir/Dialect/Quant/FakeQuantSupport.h"
 #include "tpu_mlir/Support/MathUtils.h"
+
+#include "float.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Dialect/Quant/FakeQuantSupport.h"
 #include <map>
+
+#include "tpu_mlir/Support/ModuleEnum.cpp.inc"
 
 namespace tpu_mlir {
 namespace module {
-constexpr llvm::StringRef Attr::NAME;
-constexpr llvm::StringRef Attr::STATE;
-constexpr llvm::StringRef Attr::CHIP;
-constexpr llvm::StringRef Attr::FLOPS;
-constexpr llvm::StringRef Attr::WEIGHT_FILE;
-constexpr llvm::StringRef Attr::COEFF_ADDR;
-constexpr llvm::StringRef Attr::COEFF_SIZE;
-constexpr llvm::StringRef Attr::NEURON_ADDR;
-constexpr llvm::StringRef Attr::NEURON_SIZE;
-constexpr llvm::StringRef Attr::GMEM_PRIVATE_SIZE;
-constexpr llvm::StringRef Attr::ASYMMETRIC;
-constexpr llvm::StringRef Attr::MODE;
-
-constexpr llvm::StringRef State::TOP_F32;
-constexpr llvm::StringRef State::TOP_CALIBRATED;
-constexpr llvm::StringRef State::TOP_QUANTIZED;
-constexpr llvm::StringRef State::TPU_LOWERED;
-constexpr llvm::StringRef State::TPU_REORDERED;
-constexpr llvm::StringRef State::TPU_DIVIDED;
-constexpr llvm::StringRef State::TPU_ADDRESSED;
-
-constexpr llvm::StringRef Chip::ALL;
-constexpr llvm::StringRef Chip::BM1684;
-constexpr llvm::StringRef Chip::BM1684X;
-constexpr llvm::StringRef Chip::CV180x;
-constexpr llvm::StringRef Chip::CV181x;
-constexpr llvm::StringRef Chip::CV182x;
-constexpr llvm::StringRef Chip::CV183x;
-constexpr llvm::StringRef Chip::BM1686;
+struct Attr {
+  static constexpr llvm::StringRef NAME = "module.name";
+  static constexpr llvm::StringRef STATE = "module.state";
+  static constexpr llvm::StringRef CHIP = "module.chip";
+  static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
+  static constexpr llvm::StringRef FLOPS = "module.FLOPs";
+  static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
+  static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
+  static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
+  static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
+  static constexpr llvm::StringRef GMEM_PRIVATE_SIZE = "module.private_size";
+  static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
+  static constexpr llvm::StringRef MODE = "module.mode";
+};
 
 static ModuleOp m = nullptr;
 static MLIRContext *ctx = nullptr;
-static llvm::StringRef chip = "";
+static Chip chip = Chip::ALL;
 
 void init(ModuleOp module) {
   m = module;
   ctx = m.getContext();
-  chip = m->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
+  auto chip_ = m->getAttrOfType<StringAttr>(Attr::CHIP);
+  chip = symbolizeChip(chip_).value_or(Chip::ALL);
 }
 
 top::NoneOp getNoneOp(Operation *op) {
@@ -211,17 +200,20 @@ void removeUnusedOp() {
 std::string genWeightFileName(bool &same_name) {
   auto name = getModuleName();
   auto state = getState();
-  auto chip = getChip();
+  auto chip_ = getChip();
+  auto chip = stringifyChip(chip_);
   auto old_name = getWeightFile();
-  std::string file_name = name.lower() + std::string("_") + state.lower() +
-                          std::string("_") + chip.lower();
-  if (std::string(chip) != "ALL") {
+  std::string file_name = name.lower() + std::string("_") +
+                          stringifyState(state).lower() + std::string("_") +
+                          chip.lower();
+  if (!isChip(Chip::ALL)) {
     auto mode = getMode();
     std::string sym = "";
     if (mode == Mode::INT8) {
       sym = isAsymmetric() ? "_asym" : "_sym";
     }
-    file_name += std::string("_") + mode.lower() + sym;
+    auto mode_ = stringifyMode(mode);
+    file_name += std::string("_") + mode_.lower() + sym;
   }
   auto new_name = file_name + "_weight.npz";
   same_name = (old_name == new_name);
@@ -538,20 +530,28 @@ void setNeuronAddr(int64_t addr) {
   m->setAttr(Attr::NEURON_ADDR, Builder(ctx).getI64IntegerAttr(addr));
 }
 
-llvm::StringRef getChip() { return chip; }
-llvm::StringRef getMode() {
-  return m->getAttrOfType<StringAttr>(Attr::MODE).getValue();
+Chip getChip() { return chip; }
+
+Mode getMode() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::MODE);
+  return symbolizeMode(s).value_or(Mode::F32);
 }
+
 llvm::StringRef getFuncMode(FuncOp func) {
   return func->getAttr("mode").cast<StringAttr>().getValue();
 }
-void setChip(StringRef chip_) {
-  m->setAttr(Attr::CHIP, StringAttr::get(m.getContext(), chip_.upper()));
-  chip = m->getAttrOfType<StringAttr>(Attr::CHIP).getValue();
+
+void setChip(Chip chip_) {
+  chip = chip_;
+  auto s = stringifyChip(chip_);
+  m->setAttr(Attr::CHIP, StringAttr::get(m.getContext(), s));
 }
 
-void setMode(StringRef mode) {
-  m->setAttr(Attr::MODE, StringAttr::get(ctx, mode.upper()));
+bool isChip(Chip chip_) { return chip == chip_; }
+
+void setMode(Mode mode) {
+  auto s = stringifyMode(mode);
+  m->setAttr(Attr::MODE, StringAttr::get(ctx, s));
 }
 
 StringRef getWeightFile() {
@@ -574,21 +574,31 @@ bool isAsymmetric() {
   }
   return false;
 }
+
 void setAsymmetric(bool is_asymmetric) {
   m->setAttr(Attr::ASYMMETRIC, BoolAttr::get(ctx, is_asymmetric));
 }
-StringRef getState() {
-  return m->getAttrOfType<StringAttr>(Attr::STATE).getValue();
+
+State getState() {
+  auto s = m->getAttrOfType<StringAttr>(Attr::STATE);
+  return symbolizeState(s).value_or(State::TOP_F32);
 }
-void setState(StringRef state) {
-  m->setAttr(Attr::STATE, StringAttr::get(ctx, state));
+
+void setState(State state) {
+  auto s = stringifyState(state);
+  m->setAttr(Attr::STATE, StringAttr::get(ctx, s));
 }
-bool isState(llvm::StringRef state) { return state == getState(); }
+
+bool isState(State state) { return state == getState(); }
+
 bool isTpuOp(Operation *op) {
   return (op->getDialect()->getNamespace() == "tpu");
 }
 
-bool isCV18xx() { return (chip == Chip::CV183x || chip == Chip::CV182x || chip == Chip::CV181x || chip == Chip::CV180x); }
+bool isCV18xx() {
+  return (chip == Chip::CV183x || chip == Chip::CV182x ||
+          chip == Chip::CV181x || chip == Chip::CV180x);
+}
 bool isBM1684Family() { return (chip == Chip::BM1684); }
 bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1686);
@@ -689,12 +699,6 @@ void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
     }
   });
 }
-
-constexpr llvm::StringRef Mode::INT8;
-constexpr llvm::StringRef Mode::INT4;
-constexpr llvm::StringRef Mode::BF16;
-constexpr llvm::StringRef Mode::F16;
-constexpr llvm::StringRef Mode::F32;
 
 void getScaleAndZeroPoint(double rmin, double rmax, double &scale,
                           int64_t &zeroPoint, int bitwidth) {

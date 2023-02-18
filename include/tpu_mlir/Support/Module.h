@@ -13,6 +13,7 @@
 #include "mlir/Dialect/Quant/QuantTypes.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/AttrStruct.h"
+#include "tpu_mlir/Support/ModuleEnum.h.inc"
 
 using namespace mlir;
 using namespace mlir::func;
@@ -32,54 +33,8 @@ namespace module {
 void init(ModuleOp module);
 
 //-----------------------------------------------------------------
-// Attributes for ModuleOp
+// Helper for get/set Attributes
 //-----------------------------------------------------------------
-struct Attr {
-  static constexpr llvm::StringRef NAME = "module.name";
-  static constexpr llvm::StringRef STATE = "module.state";
-  static constexpr llvm::StringRef CHIP = "module.chip";
-  static constexpr llvm::StringRef WEIGHT_FILE = "module.weight_file";
-  static constexpr llvm::StringRef FLOPS = "module.FLOPs";
-  static constexpr llvm::StringRef COEFF_ADDR = "module.coeff_addr";
-  static constexpr llvm::StringRef COEFF_SIZE = "module.coeff_size";
-  static constexpr llvm::StringRef NEURON_ADDR = "module.neuron_addr";
-  static constexpr llvm::StringRef NEURON_SIZE = "module.neuron_size";
-  static constexpr llvm::StringRef GMEM_PRIVATE_SIZE = "module.private_size";
-  static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
-  static constexpr llvm::StringRef MODE = "module.mode";
-};
-
-struct State {
-  static constexpr llvm::StringRef TOP_F32 = "TOP_F32";
-  static constexpr llvm::StringRef TOP_CALIBRATED = "TOP_CALIBRATED";
-  static constexpr llvm::StringRef TOP_QUANTIZED = "TOP_QUANTIZED";
-  static constexpr llvm::StringRef TPU_LOWERED = "TPU_LOWERED";
-  static constexpr llvm::StringRef TPU_REORDERED = "TPU_REORDERED";
-  static constexpr llvm::StringRef TPU_DIVIDED = "TPU_DIVIDED";
-  static constexpr llvm::StringRef TPU_ADDRESSED = "TPU_ADDRESSED";
-};
-
-struct Chip {
-  static constexpr llvm::StringRef ALL = "ALL";
-  static constexpr llvm::StringRef BM1684 = "BM1684";
-  static constexpr llvm::StringRef BM1684X = "BM1684X";
-  static constexpr llvm::StringRef CV180x = "CV180X";
-  static constexpr llvm::StringRef CV181x = "CV181X";
-  static constexpr llvm::StringRef CV182x = "CV182X";
-  static constexpr llvm::StringRef CV183x = "CV183X";
-  static constexpr llvm::StringRef BM1686 = "BM1686";
-};
-
-struct Mode {
-  static constexpr llvm::StringRef INT8 = "INT8";
-  static constexpr llvm::StringRef UINT8 = "UINT8";
-  static constexpr llvm::StringRef INT4 = "INT4";
-  static constexpr llvm::StringRef BF16 = "BF16";
-  static constexpr llvm::StringRef F16 = "F16";
-  static constexpr llvm::StringRef F32 = "F32";
-};
-
-// get/set Attributes
 int64_t getCoeffSize();
 void setCoeffSize(int64_t size);
 int64_t getGmemPrivateSize();
@@ -91,20 +46,21 @@ void setNeuronSize(int64_t size);
 int64_t getNeuronAddr();
 void setNeuronAddr(int64_t addr);
 
-llvm::StringRef getChip();
-llvm::StringRef getMode();
+Chip getChip();
+void setChip(Chip chip);
+bool isChip(Chip chip);
+Mode getMode();
+void setMode(Mode mode);
 llvm::StringRef getFuncMode(FuncOp func);
-void setChip(StringRef chip);
-void setMode(StringRef mode);
 StringRef getWeightFile();
 void setWeightFile(StringRef weight_file);
 int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
-StringRef getState();
-void setState(StringRef state);
-bool isState(llvm::StringRef state);
+State getState();
+void setState(State state);
+bool isState(State state);
 
 //-----------------------------------------------------------------
 // Helper Functions for ModuleOp
@@ -118,7 +74,7 @@ void push_back(FuncOp funcOp);
 
 top::NoneOp getNoneOp(Operation *op);
 Value getOriValue(Value v);
-Operation* getNextOp(Operation *op);
+Operation *getNextOp(Operation *op);
 Value getOperand(Operation *op, int i);
 void updateModuleTypes();
 void removeUnusedOp();
