@@ -6,6 +6,7 @@ add_llvm_library(TPUMLIRSupport
 
   DEPENDS
   ModuleAttrGen
+  MLIRTopOpsIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR

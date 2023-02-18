@@ -76,7 +76,7 @@ public:
   LayerGroupPass() {}
   void runOnOperation() override {
     auto func = getOperation();
-    if (func.getName() == "main" || module::getFuncMode(func) != "TPU") {
+    if (func.getName() == "main" || getRunMode(func) != RunMode::TPU_STATIC) {
       return;
     }
     int64_t opt = this->opt;

@@ -10,7 +10,6 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 #include "llvm/ADT/TypeSwitch.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/OpImplementation.h"
@@ -48,6 +47,7 @@ void TpuDialect::initialize() {
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.cpp.inc"
 
 namespace tpu_mlir {
+namespace tpu {
 static std::map<Operation *, conv_attr_t> group_conv_attrs;
 static std::map<Operation *, pool_attr_t> group_pool_attrs;
 static std::map<Operation *, deconv_attr_t> group_deconv_attrs;
@@ -79,4 +79,10 @@ const pool_attr_t &getPool2DParam(tpu::Pool2DOp &op) {
 const slice_attr_t &getSliceParam(tpu::SliceOp &op) {
   return getOpParam<tpu::SliceOp, slice_attr_t>(op, group_slice_attrs);
 }
+
+RunMode getRunMode(FuncOp func) {
+  return func->getAttrOfType<tpu::RunModeAttr>("mode").getValue();
+}
+
+} // namespace tpu
 } // namespace tpu_mlir

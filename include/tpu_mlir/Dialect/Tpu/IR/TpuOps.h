@@ -33,8 +33,12 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h.inc"
 
 namespace tpu_mlir {
+namespace tpu {
 const conv_attr_t &getConv2DParam(tpu::Conv2DOp &op);
 const deconv_attr_t &getDeconvParam(tpu::DeconvOp &op);
 const pool_attr_t &getPool2DParam(tpu::Pool2DOp &op);
 const slice_attr_t &getSliceParam(tpu::SliceOp &op);
+
+RunMode getRunMode(mlir::func::FuncOp func);
+} // namespace tpu
 } // namespace tpu_mlir

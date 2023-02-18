@@ -28,7 +28,7 @@ class CVCodegenPass : public CVCodegenBase<CVCodegenPass> {
 public:
   CVCodegenPass() {}
   void runOnOperation() override {
-    module = getOperation();
+    auto module = getOperation();
     assert(module::isState(module::State::TPU_ADDRESSED));
     assert(module::isCV18xx());
     std::string filename = this->model_file;
@@ -38,10 +38,6 @@ public:
     CviModelBuilder builder(module);
     builder.storeModel(filename);
   }
-
-private:
-  ModuleOp module;
-  StringRef chip;
 };
 
 std::unique_ptr<OperationPass<ModuleOp>> createCVCodegenPass() {

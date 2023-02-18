@@ -32,22 +32,20 @@ def Module_State: I32EnumAttr<"State", "module state",[
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";
 }
-def Module_StateAttr : EnumAttr<Builtin_Dialect, Module_State, "State">;
 
 def Module_Chip: I32EnumAttr<"Chip", "module chip",[
       I32EnumAttrCase<"ALL", 0>,
-      I32EnumAttrCase<"BM1684",  1000>,
-      I32EnumAttrCase<"BM1684X", 1001>,
-      I32EnumAttrCase<"BM1686",  1002>,
-      I32EnumAttrCase<"CV180x",  2000>,
-      I32EnumAttrCase<"CV181x",  2001>,
-      I32EnumAttrCase<"CV182x",  2002>,
-      I32EnumAttrCase<"CV183x",  2003>
+      I32EnumAttrCase<"BM1684",  1000, "bm1684">,
+      I32EnumAttrCase<"BM1684X", 1001, "bm1684x">,
+      I32EnumAttrCase<"BM1686",  1002, "bm1686">,
+      I32EnumAttrCase<"CV180x",  2000, "cv180x">,
+      I32EnumAttrCase<"CV181x",  2001, "cv181x">,
+      I32EnumAttrCase<"CV182x",  2002, "cv182x">,
+      I32EnumAttrCase<"CV183x",  2003, "cv183x">
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";
 }
-def Module_ChipAttr : EnumAttr<Builtin_Dialect, Module_Chip, "Chip">;
 
 def Module_Mode: I32EnumAttr<"Mode", "module mode",[
       I32EnumAttrCase<"INT8",  0>,
@@ -60,7 +58,5 @@ def Module_Mode: I32EnumAttr<"Mode", "module mode",[
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";
 }
-def Module_ModeAttr : EnumAttr<Builtin_Dialect, Module_Mode, "Mode">;
-
 
 #endif // TPU_MLIR_MODULE_ATTR

@@ -108,9 +108,9 @@ CviCpuRoutine::CviCpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
   func.walk([&](Operation *op) {
     if (isa<GlobalGenInterface>(op)) {
       ops.emplace_back(op);
-      if (isa<tpu::GenericCpuOp>(op)) {
+      if (isa<GenericCpuOp>(op)) {
         op_ = op;
-        name = dyn_cast<tpu::GenericCpuOp>(op).getCpuOpName().str();
+        name = dyn_cast<GenericCpuOp>(op).getCpuOpName().str();
       }
     }
   });
@@ -218,7 +218,7 @@ CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
   auto func = module::getFuncOp(call.getCallee());
   name = func.getName().str();
   func.walk([&](Operation *op) {
-    if (isa<GlobalGenInterface, tpu::GroupOp>(op) && !module::isOpInGroup(op)) {
+    if (isa<GlobalGenInterface, GroupOp>(op) && !module::isOpInGroup(op)) {
       ops.push_back(op);
     }
   });
@@ -226,7 +226,7 @@ CviTpuRoutine::CviTpuRoutine(flatbuffers::FlatBufferBuilder &fbb,
   codeGen();
 }
 
-void CviTpuRoutine::codegen_for_group(tpu::GroupOp gOp) {
+void CviTpuRoutine::codegen_for_group(GroupOp gOp) {
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
   auto swpipl_stage_num = gOp.getSwpiplStageNum();
@@ -317,7 +317,7 @@ void CviTpuRoutine::codegen_for_group(tpu::GroupOp gOp) {
 
 void CviTpuRoutine::codeGen() {
   for (auto op : ops) {
-    if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
+    if (auto castOp = dyn_cast<GroupOp>(op)) {
       codegen_for_group(castOp);
     } else if (module::isOpInGroup(op)) {
       continue;
@@ -344,7 +344,7 @@ flatbuffers::Offset<Routine> CviTpuRoutine::build() {
 CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
   int layer_id = 0;
   auto chip_ = module::getChip();
-  chip = module::stringifyChip(chip_).lower();
+  chip = module::stringifyChip(chip_);
   privateGmemSize_ = module::getGmemPrivateSize();
   sharedGmemSize_ = module::getNeuronSize();
   version_ = get_version(majorVersion_, minorVersion_, subMinorVersion_);
@@ -361,12 +361,18 @@ CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
 void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
   // todo support cpu sub_fun
   auto func = module::getFuncOp(call.getCallee());
-  bool tpu = module::getFuncMode(func).str() == "TPU" ? true : false;
+  auto run_mode = getRunMode(func);
   CviRoutine *rt = nullptr;
-  if (tpu) {
+  switch (run_mode) {
+  case RunMode::TPU_STATIC:
     rt = new CviTpuRoutine(fbb_, call, layer_id, chip);
-  } else {
+    break;
+  case RunMode::CPU:
     rt = new CviCpuRoutine(fbb_, call, chip);
+    break;
+  default:
+    llvm_unreachable("Not Implemented");
+    break;
   }
   routines_.push_back(rt);
 }

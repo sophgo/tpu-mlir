@@ -51,16 +51,16 @@ void setChip(Chip chip);
 bool isChip(Chip chip);
 Mode getMode();
 void setMode(Mode mode);
-llvm::StringRef getFuncMode(FuncOp func);
+State getState();
+void setState(State state);
+bool isState(State state);
+
 StringRef getWeightFile();
 void setWeightFile(StringRef weight_file);
 int64_t getFLOPs();
 void setFLOPs(int64_t flops);
 bool isAsymmetric();
 void setAsymmetric(bool is_asymmetric);
-State getState();
-void setState(State state);
-bool isState(State state);
 
 //-----------------------------------------------------------------
 // Helper Functions for ModuleOp
