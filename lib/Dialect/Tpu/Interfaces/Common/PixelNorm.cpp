@@ -128,5 +128,5 @@ LogicalResult tpu::PixelNormOp::inference(InferenceParameter &p) {
 
 // TODO: activate it later
 LogicalResult tpu::PixelNormOp::LocalGenSupport() {
-  return failure();
+  return success();
 }

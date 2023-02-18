@@ -168,12 +168,13 @@ class ONNX_IR_TESTER(object):
             #############################
             # Special Pass test case, Alphabetically
             #############################
-            "PixelNorm": self.test_PixelNorm,
             "ConcatFuse": self.test_ConcatFuse,
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
             "Div2Mul": self.test_Div2Mul,
             "PermuteFuse": self.test_PermuteFuse,
+            "PixelNorm": self.test_PixelNorm,
+            "PixelNorm2": self.test_PixelNorm2,
             "GatherToSlice": self.test_GatherToSlice,
             "Mul2Scale": self.test_Mul2Scale,
             "MatMulTranspose": self.test_MatMulTranspose,
@@ -2157,6 +2158,24 @@ class ONNX_IR_TESTER(object):
                 self.bias = torch.randn(1, C, 1, 1).float()
 
             def forward(self, x):
+                m = x.mean(1, keepdim=True)
+                var = (x - m).pow(2).mean(1, keepdim=True)
+                y = (x - m) / (var + 1e-6).sqrt()
+                z = y * self.scale + self.bias
+                return z
+
+    def test_PixelNorm2(self, case_name):
+        N, C, H, W = 4, 8, 32, 32
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.scale = torch.randn(1, C, 1, 1).float()
+                self.bias = torch.randn(1, C, 1, 1).float()
+
+            def forward(self, x):
+                x = x + 1
                 m = x.mean(1, keepdim=True)
                 var = (x - m).pow(2).mean(1, keepdim=True)
                 y = (x - m) / (var + 1e-6).sqrt()
