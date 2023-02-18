@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/Module.h"
 
 
-bool top::SoftmaxOp::isEltwise() {
-  return false;
-}
 
 int64_t top::SoftmaxOp::getFLOPs() {
   //   2*n          -- compute shifted logits

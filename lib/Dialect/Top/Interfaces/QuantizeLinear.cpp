@@ -30,10 +30,6 @@ int64_t onnx_rounding(double f) {
   }
 }
 
-bool top::QuantizeLinearOp::isEltwise() {
-  return false;
-}
-
 int64_t top::QuantizeLinearOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }

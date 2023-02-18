@@ -1,7 +1,6 @@
 add_mlir_interface(InferenceInterface)
 add_mlir_interface(GlobalGenInterface)
 add_mlir_interface(FlopsInterface)
-add_mlir_interface(EltwiseInterface)
 add_mlir_interface(LocalGenInterface)
 add_mlir_interface(TypeInterface)
 add_mlir_interface(DynLocalGenInterface)

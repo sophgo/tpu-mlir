@@ -13,9 +13,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::PixelNormOp::isEltwise() {
-  return false;
-}
+
 
 int64_t top::PixelNormOp::getFLOPs() {
   const bool have_weight = !getWeight().getType().isa<NoneType>();

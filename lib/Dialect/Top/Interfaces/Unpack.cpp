@@ -13,10 +13,6 @@
 
 
 
-bool top::UnpackOp::isEltwise() {
-  return false;
-}
-
 int64_t top::UnpackOp::getFLOPs() { return 0; }
 
 LogicalResult top::UnpackOp::init(InferenceParameter &p) { return success(); }

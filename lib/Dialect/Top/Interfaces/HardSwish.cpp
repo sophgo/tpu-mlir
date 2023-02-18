@@ -12,9 +12,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::HardSwishOp::isEltwise() {
-  return true;
-}
+
 
 int64_t top::HardSwishOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 5;

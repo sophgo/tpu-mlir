@@ -213,10 +213,6 @@ void interp_core(
     }
 }
 
-bool top::InterpOp::isEltwise() {
-  return false;
-}
-
 int64_t top::InterpOp::getFLOPs() {
     // flops:
     // 1. bilinear: 2 * output_element_num

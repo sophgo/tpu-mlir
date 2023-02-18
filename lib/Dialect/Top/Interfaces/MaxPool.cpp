@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::MaxPoolOp::isEltwise() {
-  return false;
-}
 
 pool_attr_t top::MaxPoolOp::parseParam() {
   pool_attr_t p = {0};

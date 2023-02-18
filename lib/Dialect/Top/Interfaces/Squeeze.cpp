@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::SqueezeOp::isEltwise() {
-  return false;
-}
 
 int64_t top::SqueezeOp::getFLOPs() { return 0; }
 

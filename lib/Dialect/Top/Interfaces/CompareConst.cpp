@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::CompareConstOp::isEltwise() {
-  return true;
-}
 
 int64_t top::CompareConstOp::getFLOPs() {
   return module::getNumElements(getOutput());

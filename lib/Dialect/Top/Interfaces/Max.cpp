@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::MaxOp::isEltwise() {
-  return false;
-}
 
 int64_t top::MaxOp::getFLOPs() {
   return module::getNumElements(getOutput());

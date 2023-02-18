@@ -13,9 +13,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::MaskedFillOp::isEltwise() {
-  return false;
-}
+
 
 int64_t top::MaskedFillOp::getFLOPs() {
   return module::getNumElements(getOutput());

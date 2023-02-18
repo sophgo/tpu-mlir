@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::GatherOp::isEltwise() {
-  return false;
-}
 
 int64_t top::GatherOp::getFLOPs() { return 0; }
 

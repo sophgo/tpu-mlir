@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::ReshapeOp::isEltwise() {
-  return false;
-}
 
 int64_t top::ReshapeOp::getFLOPs() { return 0; }
 

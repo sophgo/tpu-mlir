@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::PowOp::isEltwise() {
-  return false;
-}
 
 int64_t top::PowOp::getFLOPs() { return module::getNumElements(getOutput()); }
 

@@ -12,11 +12,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-bool top::LSTMOp::isEltwise() {
-  return false;
-}
-
 int64_t top::LSTMOp::getFLOPs() {
   // flops: 4 * (4 * hidden_size * input_size + 4 * hidden_size * hidden_size)
   auto in_shape = module::getShape(getInput());

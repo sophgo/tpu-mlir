@@ -14,10 +14,6 @@
 #include "float.h"
 
 
-bool top::MaxPoolWithMaskOp::isEltwise() {
-  return false;
-}
-
 pool_attr_t top::MaxPoolWithMaskOp::parseParam() {
   pool_attr_t p = {0};
   assert(getKernelShape().size() == 2); // only support 2d now

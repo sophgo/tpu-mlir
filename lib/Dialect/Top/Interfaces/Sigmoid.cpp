@@ -12,11 +12,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-bool top::SigmoidOp::isEltwise() {
-  return true;
-}
-
 int64_t top::SigmoidOp::getFLOPs() {
   return module::getNumElements(getInput()) * 4;
 }

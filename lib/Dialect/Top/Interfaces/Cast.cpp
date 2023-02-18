@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::CastOp::isEltwise() {
-  return true;
-}
 
 int64_t top::CastOp::getFLOPs() { return module::getNumElements(getOutput()); }
 

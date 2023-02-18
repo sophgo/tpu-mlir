@@ -12,9 +12,7 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::HardSigmoidOp::isEltwise() {
-  return true;
-}
+
 
 int64_t top::HardSigmoidOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 4;
