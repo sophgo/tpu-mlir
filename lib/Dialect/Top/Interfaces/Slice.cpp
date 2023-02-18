@@ -14,6 +14,9 @@
 #include <valarray>
 
 
+bool top::SliceOp::isEltwise() {
+  return false;
+}
 
 int64_t top::SliceOp::getFLOPs() { return 0; }
 

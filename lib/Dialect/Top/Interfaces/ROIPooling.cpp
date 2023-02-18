@@ -14,6 +14,9 @@
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
 
+bool top::ROIPoolingOp::isEltwise() {
+  return false;
+}
 
 int64_t top::ROIPoolingOp::getFLOPs() {
   return module::getNumElements(getOutput());

@@ -17,6 +17,9 @@
 #define DEBUG_TYPE "detection-output"
 
 
+bool top::DetectionOutputOp::isEltwise() {
+  return false;
+}
 
 int64_t top::DetectionOutputOp::getFLOPs() {
   return module::getNumElements(getOutput());

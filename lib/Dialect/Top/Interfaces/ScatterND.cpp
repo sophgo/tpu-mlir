@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
+
+bool top::ScatterNDOp::isEltwise() {
+  return false;
+}
+
 int64_t top::ScatterNDOp::getFLOPs() { return 0; }
 
 LogicalResult top::ScatterNDOp::init(InferenceParameter &p) {

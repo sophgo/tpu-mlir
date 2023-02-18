@@ -13,6 +13,11 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+
+bool top::ConcatOp::isEltwise() {
+  return false;
+}
+
 int64_t top::ConcatOp::getFLOPs() { return 0; }
 
 LogicalResult top::ConcatOp::init(InferenceParameter &p) {

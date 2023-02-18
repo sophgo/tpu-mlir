@@ -12,6 +12,10 @@
 #include "tpu_mlir/Support/Module.h"
 
 
+bool top::ConvOp::isEltwise() {
+  return false;
+}
+
 conv_attr_t top::ConvOp::parseParam() {
   conv_attr_t p = {0};
   auto i_s = getInput().getType().cast<RankedTensorType>().getShape();

@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
+
+bool top::ClipOp::isEltwise() {
+  return false;
+}
+
 int64_t top::ClipOp::getFLOPs() { return 0; }
 
 LogicalResult top::ClipOp::init(InferenceParameter &p) { return success(); }

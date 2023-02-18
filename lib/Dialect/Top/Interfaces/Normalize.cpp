@@ -12,6 +12,10 @@
 #include "tpu_mlir/Support/Module.h"
 
 
+bool top::NormalizeOp::isEltwise() {
+  return false;
+}
+
 int64_t top::NormalizeOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 2;
 }

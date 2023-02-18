@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
+
+bool top::GRUOp::isEltwise() {
+  return false;
+}
+
 int64_t top::GRUOp::getFLOPs() {
   // flops： 2 * (3 * hidden_size * input_size + 3 * hidden_size * hidden_size)
   auto in_shape = module::getShape(getInput());

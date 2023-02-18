@@ -12,6 +12,10 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
+bool top::AddOp::isEltwise() {
+  return false;
+}
+
 int64_t top::AddOp::getFLOPs() {
   return module::getNumElements(getOutput()) *
          (getInputs().size() - 1 + getDoRelu() ? 1 : 0);

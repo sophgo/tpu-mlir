@@ -11,6 +11,11 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
+
+bool top::PadOp::isEltwise() {
+  return false;
+}
+
 int64_t top::PadOp::getFLOPs() { return 0; }
 
 struct pad_info {

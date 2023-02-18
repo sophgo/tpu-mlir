@@ -12,6 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 
 
+bool top::DeconvOp::isEltwise() {
+  return false;
+}
 
 deconv_attr_t top::DeconvOp::parseParam() {
   deconv_attr_t p = {0};

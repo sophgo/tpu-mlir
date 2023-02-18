@@ -13,6 +13,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
+bool top::MulConstOp::isEltwise() {
+  return true;
+}
 
 int64_t top::MulConstOp::getFLOPs() {
   return module::getNumElements(getOutput()) * (1 + getDoRelu() ? 1 : 0);

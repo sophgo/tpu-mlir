@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
+
+bool top::SoftplusOp::isEltwise() {
+  return true;
+}
+
 int64_t top::SoftplusOp::getFLOPs() {
   return module::getNumElements(getInput()) * 3;
 }

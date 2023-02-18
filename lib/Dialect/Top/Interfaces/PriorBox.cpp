@@ -13,6 +13,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
+bool top::PriorBoxOp::isEltwise() {
+  return false;
+}
 
 int64_t top::PriorBoxOp::getFLOPs() { return module::getNumElements(getOutput()); }
 

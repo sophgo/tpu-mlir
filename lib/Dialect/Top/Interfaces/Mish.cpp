@@ -14,6 +14,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
+bool top::MishOp::isEltwise() {
+  return true;
+}
 
 int64_t top::MishOp::getFLOPs() { return module::getNumElements(getOutput()) * 4; }
 

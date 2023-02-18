@@ -12,6 +12,11 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
+
+bool top::LRNOp::isEltwise() {
+  return false;
+}
+
 int64_t top::LRNOp::getFLOPs() {
   int64_t n, c, h, w;
   module::getNCHW(getInput(), n, c, h, w);
