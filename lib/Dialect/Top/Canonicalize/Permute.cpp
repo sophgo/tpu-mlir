@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Pass/Pass.h"
 
 using namespace tpu_mlir::top;
 
@@ -55,10 +55,10 @@ struct TopPermuteToPixelShuffle : public OpRewritePattern<PermuteOp> {
         rewriter.getNamedAttr("is_CRD", rewriter.getBoolAttr(true)));
     attrs.push_back(
         rewriter.getNamedAttr("is_inversed", rewriter.getBoolAttr(false)));
-    attrs.push_back(
-        rewriter.getNamedAttr("block_h", rewriter.getI64IntegerAttr(upscale_factor)));
-    attrs.push_back(
-        rewriter.getNamedAttr("block_w", rewriter.getI64IntegerAttr(upscale_factor)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "block_h", rewriter.getI64IntegerAttr(upscale_factor)));
+    attrs.push_back(rewriter.getNamedAttr(
+        "block_w", rewriter.getI64IntegerAttr(upscale_factor)));
     attrs.push_back(
         rewriter.getNamedAttr("in_is_NCHW", rewriter.getBoolAttr(true)));
     attrs.push_back(
@@ -422,10 +422,81 @@ struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
   }
 };
 
+// permute(0,1,3,4,2)+ pad(0,0,1,1,0) -> pad(0,0,0,1,1)+permute(0,1,3,4,2)
+struct PermutePadSwap : public OpRewritePattern<PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    auto out = op.getOutput();
+    if (out.hasOneUse() == false) {
+      return failure();
+    }
+    auto user = *out.getUsers().begin();
+    auto pad_op = dyn_cast<PadOp>(user);
+    if (!pad_op) {
+      return failure();
+    }
+    auto order = module::getI64Array(op.getOrder());
+    std::vector<int64_t> order_{0, 1, 3, 4, 2};
+    if (order->size() == 5) {
+      for (size_t i = 0; i < order->size(); ++i) {
+        if (order_[i] != order->at(i)) {
+          return failure();
+        }
+      }
+    } else {
+      return failure();
+    }
+    auto paddings = module::getI64Array(pad_op.getPaddings());
+    if (paddings->size() == 10) {
+      for (size_t i = 0; i < paddings->size(); ++i) {
+        if (paddings->at(i) != 0 && !(i == 2 || i == 3 || i == 7 || i == 8)) {
+          return failure();
+        }
+      }
+    } else {
+      return failure();
+    }
+
+    std::vector<int64_t> new_paddings{
+        0, 0, 0, paddings->at(2), paddings->at(3),
+        0, 0, 0, paddings->at(7), paddings->at(8)};
+    pad_op->setAttr("paddings", rewriter.getI64ArrayAttr(new_paddings));
+
+    // swap pad Op and permute Op
+    auto new_permute_attrs = op->getAttrs();
+    auto new_pad_attrs = pad_op->getAttrs();
+    auto permute_in = op.getInput();
+    auto pad_out = pad_op.getOutput();
+    auto in_shape = module::getShape(permute_in);
+    rewriter.setInsertionPointAfterValue(permute_in);
+    std::vector<int64_t> new_padded_shape(in_shape.size(), 0);
+    for (size_t i = 0; i < order->size(); ++i) {
+      new_padded_shape[i] = in_shape[i] + new_paddings[i] + new_paddings[i + 5];
+    }
+    auto newType =
+        RankedTensorType::get(new_padded_shape, module::getElementType(permute_in));
+    auto loc = NameLoc::get(
+        rewriter.getStringAttr(module::getName(permute_in).str() + "_pad"));
+    auto new_pad_op = rewriter.create<PadOp>(
+        loc, newType, ValueRange{permute_in}, new_pad_attrs);
+    rewriter.replaceOp(op, {new_pad_op});
+
+    auto new_permuted_shape = module::getShape(pad_out);
+    auto new_pad_out = new_pad_op.getOutput();
+    rewriter.setInsertionPointAfterValue(new_pad_out);
+    newType =
+        RankedTensorType::get(new_permuted_shape, module::getElementType(pad_out));
+    rewriter.replaceOpWithNewOp<PermuteOp>(pad_op, newType, new_pad_out, new_permute_attrs);
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
   results.insert<TopPermuteToPixelShuffle,
                  TopPermuteToReorg, Permute5dSplit,
                  PermuteFuse, TopPermuteToReshape,
-                 NonZeroPermutePattern>(context);
+                 NonZeroPermutePattern, PermutePadSwap>(context);
 }

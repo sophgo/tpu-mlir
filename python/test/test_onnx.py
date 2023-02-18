@@ -205,6 +205,7 @@ class ONNX_IR_TESTER(object):
             "PixelNorm":        (self.test_PixelNorm,       Y, N, N),
             "PixelNorm2":       (self.test_PixelNorm2,      Y, N, N),
             "PermuteFuse":      (self.test_PermuteFuse,     Y, N, Y),
+            "PermutePad":       (self.test_PermutePad,      Y, N, N),
             "PermuteToReorg":   (self.test_PermuteToReorg,  Y, N, Y),
             "PermuteToReorg2":  (self.test_PermuteToReorg2, Y, N, Y),
             "PermuteToReshape": (self.test_PermuteToReshape,Y, N, N),
@@ -2609,6 +2610,20 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(1, 25600, 96).float()
         self.torch_and_test(x, Model(), case_name)
+
+    def test_PermutePad(self, case_name):
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                a = torch.permute(x, [0, 1, 3, 4, 2])
+                b = torch.nn.functional.pad(a, [0, 0, 1, 1, 1, 1, 0, 0, 0, 0])
+                return b
+
+        x = torch.randn(1, 10, 20, 30, 40).float()
+        self.torch_and_test(x, Net(), case_name)
 
     def test_MatMulTranspose(self, case_name):
 
