@@ -270,12 +270,7 @@ public:
     ctx_ = &getContext();
     mainFunc_ = module::getMainFuncOp();
     LoweringConfig::isQuantized = false;
-    auto chip_ = StringRef(chip).upper();
-    if (StringRef(chip_).starts_with("CV")) {
-      if (chip_.back() == 'X') {
-        chip_.back() = 'x';
-      }
-    }
+    auto chip_ = StringRef(chip).lower();
     auto mode_ = StringRef(mode).upper();
     auto chip = module::symbolizeChip(chip_);
     assert(chip.has_value());

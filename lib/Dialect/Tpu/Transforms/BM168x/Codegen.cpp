@@ -39,7 +39,7 @@ public:
     module = getOperation();
     assert(module::isState(module::State::TPU_ADDRESSED));
     auto chip_ = module::getChip();
-    chip = module::stringifyChip(chip_);
+    chip = module::stringifyChip(chip_).upper();
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
@@ -66,7 +66,7 @@ public:
     auto neuron_size = module::getNeuronSize();
     model_gen = std::make_shared<bmodel::ModelGen>();
     // add chip name
-    model_gen->AddChip(chip.str());
+    model_gen->AddChip(chip);
     auto &builder = model_gen->Builder();
     auto input_tensor = CreateTensorVector(inputs);
     auto output_tensor = CreateTensorVector(outputs);
@@ -86,15 +86,21 @@ public:
         subnet_v.push_back(subnet);
       } else {
         auto func = module::getFuncOp(call.getCallee());
-        auto mode = func->getAttrOfType<StringAttr>("mode").getValue();
-        if (mode == "TPU") {
+        auto mode = getRunMode(func);
+        switch (mode) {
+        case RunMode::TPU_STATIC: {
           auto subnet = CreateSubNet(call);
           subnet_v.push_back(subnet);
-        } else if (mode == "TPU_IR") {
+        } break;
+        case RunMode::TPU_DYNAMIC: {
           auto subnet_ir_ =
               std::make_unique<SubnetIr>(module::isBM1684XFamily() ? 2 : 1);
           auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
           subnet_v.push_back(subnet);
+        } break;
+        default:
+          llvm_unreachable("Not Implemented");
+          break;
         }
       }
     });
@@ -148,13 +154,13 @@ private:
                       const vector<u32> &binary_ir_v, u32 ir_offset,
                       bmodel::Binary &binary_ir);
   void codegen(Operation *op);
-  void codegen_for_group(tpu::GroupOp gOP);
+  void codegen_for_group(GroupOp gOP);
   void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
 
 private:
   ModuleOp module;
   StringRef state;
-  StringRef chip;
+  std::string chip;
   BM168x *bm168x;
   std::shared_ptr<bmodel::ModelGen> model_gen;
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> cmd_group_all;
@@ -289,7 +295,7 @@ CodegenPass::CreateCmdGroupVector() {
   return std::move(cmd_group_v);
 }
 
-void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
+void CodegenPass::codegen_for_group(GroupOp gOp) {
   auto nsecs = gOp.getNsecs();
   auto hsecs = gOp.getHsecs();
   auto swpipl_stage_num = gOp.getSwpiplStageNum();
@@ -352,7 +358,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
         std::string prefix = group_ops[id]->getName().getStringRef().str();
         if (ginfo.overstepped == false) {
           auto pid_node = (CMD_ID_NODE *)BM168x::instance()->bdc_node;
-          if (isa<tpu::LoadOp, tpu::StoreOp>(*group_ops[id])) {
+          if (isa<LoadOp, StoreOp>(*group_ops[id])) {
             pid_node = (CMD_ID_NODE *)BM168x::instance()->gdma_node;
           }
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
@@ -387,7 +393,7 @@ void CodegenPass::codegen_for_group(tpu::GroupOp gOp) {
 }
 
 void CodegenPass::codegen(Operation *op) {
-  if (auto castOp = dyn_cast<tpu::GroupOp>(op)) {
+  if (auto castOp = dyn_cast<GroupOp>(op)) {
     codegen_for_group(castOp);
   } else if (module::isOpInGroup(op)) {
     return;
@@ -445,8 +451,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
 void CodegenPass::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
   if (module::isOpInGroup(op) || isa_and_nonnull<top::WeightOp>(op)) {
     return;
-  } else if (dyn_cast<tpu::GroupOp>(op) ||
-             dyn_cast<DynGlobalGenInterface>(op)) {
+  } else if (dyn_cast<GroupOp>(op) || dyn_cast<DynGlobalGenInterface>(op)) {
     subnet_ir_->generate_crop_layer_shape_tensor_record();
     subnet_ir_->generate_group_time_step_ir(op);
   }

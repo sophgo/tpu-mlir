@@ -219,6 +219,18 @@ def Tpu_ResizeCoordMode : I32EnumAttr<"ResizeCoordMode",
 }
 def Tpu_ResizeCoordModeAttr : EnumAttr<Tpu_Dialect, Tpu_ResizeCoordMode, "coord_mode">;
 
+def Tpu_RunMode: I32EnumAttr<"RunMode",
+    "tpu dialect run mode for each subnet",[
+      I32EnumAttrCase<"TPU_STATIC",  0>,
+      I32EnumAttrCase<"TPU_DYNAMIC", 1>,
+      I32EnumAttrCase<"CPU",         2>,
+      I32EnumAttrCase<"SCF",         3>
+    ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::tpu";
+}
+def Tpu_RunModeAttr : EnumAttr<Tpu_Dialect, Tpu_RunMode, "run_mode">;
+
 //===----------------------------------------------------------------------===//
 // Tpu Types.
 //===----------------------------------------------------------------------===//

@@ -537,10 +537,6 @@ Mode getMode() {
   return symbolizeMode(s).value_or(Mode::F32);
 }
 
-llvm::StringRef getFuncMode(FuncOp func) {
-  return func->getAttr("mode").cast<StringAttr>().getValue();
-}
-
 void setChip(Chip chip_) {
   chip = chip_;
   auto s = stringifyChip(chip_);

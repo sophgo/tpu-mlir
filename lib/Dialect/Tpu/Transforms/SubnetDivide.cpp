@@ -28,17 +28,13 @@ using namespace tpu_mlir::backend;
 namespace tpu_mlir {
 namespace tpu {
 
-static constexpr llvm::StringRef FUNC_TPU = "TPU";
-static constexpr llvm::StringRef FUNC_CPU = "CPU";
-static constexpr llvm::StringRef FUNC_SCF = "SCF"; // Structured Control Flow
-static constexpr llvm::StringRef FUNC_TPU_IR = "TPU_IR"; //dynamic_subnet
 class SubFunction {
 public:
-  SubFunction(StringRef mode) : mode(mode) {
+  SubFunction(RunMode mode) : mode(mode) {
     count++;
     have_none = false;
   }
-  StringRef mode; // tpu/cpu/control
+  RunMode mode; // tpu/cpu/control
   std::vector<Operation *> ops;
   bool have_none;
   static int count;
@@ -105,8 +101,8 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   OpBuilder builder(module::getCtx());
   std::vector<NamedAttribute> attrs;
   attrs.push_back(builder.getNamedAttr("id", builder.getI64IntegerAttr(id)));
-  attrs.push_back(
-      builder.getNamedAttr("mode", builder.getStringAttr(sf->mode)));
+  attrs.push_back(builder.getNamedAttr(
+      "mode", RunModeAttr::get(module::getCtx(), sf->mode)));
   auto fnType = builder.getFunctionType(llvm::ArrayRef<Type>{argType},
                                         llvm::ArrayRef<Type>{resType});
   auto fnOp = FuncOp::create(module::getLoc(), func_name, fnType,
@@ -151,13 +147,13 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   }
 }
 
-static StringRef getOpMode(Operation *op) {
-  if (isa<tpu::GenericCpuOp>(op)) {
-    return FUNC_CPU;
-  } else if (isa<tpu::TopKOp>(op)) {
-    return FUNC_TPU_IR;
+static RunMode getOpMode(Operation *op) {
+  if (isa<GenericCpuOp>(op)) {
+    return RunMode::CPU;
+  } else if (isa<TopKOp>(op)) {
+    return RunMode::TPU_DYNAMIC;
   }
-  return FUNC_TPU;
+  return RunMode::TPU_STATIC;
 }
 
 static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
@@ -203,13 +199,13 @@ public:
         if (subf == nullptr) {
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
-          if (mode == FUNC_CPU) {
+          if (mode == RunMode::CPU) {
             buildSubFunction(subf);
             subf.reset();
           }
         } else if (subf->mode == mode) {
           insert_subop(subf, op);
-        } else if (mode == FUNC_CPU) {
+        } else if (mode == RunMode::CPU) {
           buildSubFunction(subf);
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
