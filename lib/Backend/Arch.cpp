@@ -27,7 +27,7 @@ int64_t Arch::LMEM_BANKS = 0;
 int64_t Arch::LMEM_BANK_BYTES = 0;
 bool Arch::ALIGN_4N = false;
 llvm::StringRef Arch::LIB_NAME = "";
-llvm::StringRef Arch::chip = "";
+module::Chip Arch::chip;
 
 Arch *Arch::inst = nullptr;
 
@@ -97,8 +97,9 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
     int64_t eu_num = Arch::eu_num(dbytes);
     int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
     int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
-    if(type_bits == 4) {
-      return align_up((int64_t)(n * c_per_npu * eu_aligned) , (int64_t)2) * dbytes;
+    if (type_bits == 4) {
+      return align_up((int64_t)(n * c_per_npu * eu_aligned), (int64_t)2) *
+             dbytes;
     }
     return (int64_t)n * c_per_npu * eu_aligned * dbytes;
   }
@@ -113,8 +114,8 @@ int64_t Arch::get_weight_lmem_bytes(Value v, bool eu_align) {
   int64_t eu_num = Arch::eu_num(dbytes);
   int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
   int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
-  if(type_bits == 4)
-    return align_up((int64_t)(n * c_per_npu * eu_aligned) , (int64_t)2) * dbytes;
+  if (type_bits == 4)
+    return align_up((int64_t)(n * c_per_npu * eu_aligned), (int64_t)2) * dbytes;
   return (int64_t)n * c_per_npu * eu_aligned * dbytes;
 }
 

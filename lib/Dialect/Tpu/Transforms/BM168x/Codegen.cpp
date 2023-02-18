@@ -38,7 +38,8 @@ public:
   void runOnOperation() override {
     module = getOperation();
     assert(module::isState(module::State::TPU_ADDRESSED));
-    chip = module::getChip();
+    auto chip_ = module::getChip();
+    chip = module::stringifyChip(chip_);
     std::string filename = this->model_file;
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
@@ -79,7 +80,8 @@ public:
     auto context = std::make_unique<Context>();
     main_func.walk([&](func::CallOp call) {
       if (dynamic) {
-        auto subnet_ir_ = std::make_unique<SubnetIr>(chip, module::isBM1684XFamily() ? 2 : 1);
+        auto subnet_ir_ =
+            std::make_unique<SubnetIr>(module::isBM1684XFamily() ? 2 : 1);
         auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
         subnet_v.push_back(subnet);
       } else {
@@ -89,7 +91,8 @@ public:
           auto subnet = CreateSubNet(call);
           subnet_v.push_back(subnet);
         } else if (mode == "TPU_IR") {
-          auto subnet_ir_ = std::make_unique<SubnetIr>(chip, module::isBM1684XFamily() ? 2 : 1);
+          auto subnet_ir_ =
+              std::make_unique<SubnetIr>(module::isBM1684XFamily() ? 2 : 1);
           auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
           subnet_v.push_back(subnet);
         }
@@ -99,11 +102,14 @@ public:
     auto cmd_group = model_gen->Builder().CreateVector(*cmd_group_all);
     bmodel::Binary binary_ir;
     uint32_t ir_info_len = context->get_cur_net_ir_len();
-    uint32_t ir_info_len_word = (ir_info_len + sizeof(uint32_t) - 1) / sizeof(uint32_t);
+    uint32_t ir_info_len_word =
+        (ir_info_len + sizeof(uint32_t) - 1) / sizeof(uint32_t);
     stage_param_t stage_param = {ir_info_len_word, 0, 0, 0, 0};
     context->set_stage_param(stage_param);
-    auto stage_ir = CreateStageIRVector(context->get_stage_param(context->get_cur_net_idx()),
-                                      context->get_binary_ir(), context->get_cur_net_offset() * sizeof(uint32_t), binary_ir);
+    auto stage_ir = CreateStageIRVector(
+        context->get_stage_param(context->get_cur_net_idx()),
+        context->get_binary_ir(),
+        context->get_cur_net_offset() * sizeof(uint32_t), binary_ir);
     bmodel::NetParameterBuilder npb(builder);
     npb.add_input_tensor(input_tensor);
     npb.add_output_tensor(output_tensor);
@@ -130,18 +136,21 @@ private:
   Offset<Vector<Offset<bmodel::Tensor>>>
   CreateTensorVector(const std::vector<Value> &values);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
-  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_, std::unique_ptr<Context> &context);
+  Offset<bmodel::SubNet> CreateSubNet(func::CallOp call,
+                                      std::unique_ptr<SubnetIr> subnet_ir_,
+                                      std::unique_ptr<Context> &context);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
                                           uint64_t coeff_size);
-  Offset<Vector<Offset<bmodel::StageIR>>> CreateStageIRVector(
-                                            const vector<stage_param_t> &stage_param_v,
-                                            const vector<u32> &binary_ir_v, u32 ir_offset,
-                                            bmodel::Binary &binary_ir);
+  Offset<Vector<Offset<bmodel::StageIR>>>
+  CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
+                      const vector<u32> &binary_ir_v, u32 ir_offset,
+                      bmodel::Binary &binary_ir);
   void codegen(Operation *op);
   void codegen_for_group(tpu::GroupOp gOP);
-  void codegen_ir(Operation *op, SubnetIr* subnet_ir_);
+  void codegen_ir(Operation *op, SubnetIr *subnet_ir_);
+
 private:
   ModuleOp module;
   StringRef state;
@@ -433,23 +442,28 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   return snb.Finish();
 }
 
-void CodegenPass::codegen_ir(Operation *op, SubnetIr* subnet_ir_) {
+void CodegenPass::codegen_ir(Operation *op, SubnetIr *subnet_ir_) {
   if (module::isOpInGroup(op) || isa_and_nonnull<top::WeightOp>(op)) {
     return;
-  } else if (dyn_cast<tpu::GroupOp>(op) || dyn_cast<DynGlobalGenInterface>(op)) {
+  } else if (dyn_cast<tpu::GroupOp>(op) ||
+             dyn_cast<DynGlobalGenInterface>(op)) {
     subnet_ir_->generate_crop_layer_shape_tensor_record();
     subnet_ir_->generate_group_time_step_ir(op);
   }
 }
 
-Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call, std::unique_ptr<SubnetIr> subnet_ir_, std::unique_ptr<Context> &context) {
+Offset<bmodel::SubNet>
+CodegenPass::CreateSubNet(func::CallOp call,
+                          std::unique_ptr<SubnetIr> subnet_ir_,
+                          std::unique_ptr<Context> &context) {
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
   auto input_tensor = CreateTensorVector(inputs);
   auto output_tensor = CreateTensorVector(outputs);
-  std::function<void(Operation *, SubnetIr*)> task = std::bind(&CodegenPass::codegen_ir, this,
-                      std::placeholders::_1, std::placeholders::_2);
+  std::function<void(Operation *, SubnetIr *)> task =
+      std::bind(&CodegenPass::codegen_ir, this, std::placeholders::_1,
+                std::placeholders::_2);
   subnet_ir_->generate_compiler_ir(module, call, task);
   subnet_ir_->write_binary_ir_to_buffer(context);
   auto func = module::getFuncOp(call.getCallee());
@@ -484,15 +498,15 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call, std::unique_
   return snb.Finish();
 }
 
-Offset<Vector<Offset<bmodel::StageIR>>> CodegenPass::CreateStageIRVector(
-    const vector<stage_param_t> &stage_param_v,
-    const vector<uint32_t> &binary_ir_v, uint32_t ir_offset,
-    bmodel::Binary &binary_ir)
-{
+Offset<Vector<Offset<bmodel::StageIR>>>
+CodegenPass::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
+                                 const vector<uint32_t> &binary_ir_v,
+                                 uint32_t ir_offset,
+                                 bmodel::Binary &binary_ir) {
   auto &builder = model_gen->Builder();
   vector<Offset<bmodel::StageIR>> stage_ir_v;
   u32 ir_len = 0;
-  for (auto& stage_param : stage_param_v) {
+  for (auto &stage_param : stage_param_v) {
     ir_len += stage_param.ir_info_len;
     bmodel::StageIRBuilder sirb(builder);
     sirb.add_ir_info_len(stage_param.ir_info_len);

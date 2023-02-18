@@ -24,7 +24,7 @@ inline int align_up(int x, int n) {
   return (x + n - 1) & ~(n - 1);
 }
 
-void setPixelAlign(std::string &chip_name, std::string &pixel_format,
+void setPixelAlign(std::string &pixel_format,
                    int64_t &y_align, int64_t &w_align,
                    int64_t &channel_align);
 

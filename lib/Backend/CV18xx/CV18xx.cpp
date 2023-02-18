@@ -642,10 +642,11 @@ cvk_fmt_t CV18xx::getDataType(Value v) {
 
 #define CAST_FUNCTION(name) dl_##name = CastToFPtr<name>(#name)
 
-void CV18xx::load_ctx(const llvm::StringRef chip) {
+void CV18xx::load_ctx(module::Chip chip) {
   cvk_cmd_buf_.reserve(0x20000000);
   cvk_reg_info_t req_info = {0};
-  strncpy(req_info.chip_ver_str, chip.lower().c_str(),
+  auto chip_ = module::stringifyChip(chip);
+  strncpy(req_info.chip_ver_str, chip_.lower().c_str(),
           sizeof(req_info.chip_ver_str) - 1);
   req_info.cmdbuf_size = cvk_cmd_buf_.capacity();
   req_info.cmdbuf = cvk_cmd_buf_.data();
@@ -668,7 +669,7 @@ void CV18xx::load_ctx(const llvm::StringRef chip) {
   LLVM_DEBUG(llvm::errs() << "register " << chip << " done\n";);
 }
 
-CV18xx::CV18xx(const llvm::StringRef chip) {
+CV18xx::CV18xx(module::Chip chip) {
   LIB_NAME = "libcvikernel.so";
   load_library();
   load_ctx(chip);

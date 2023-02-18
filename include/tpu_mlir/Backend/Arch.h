@@ -30,7 +30,7 @@ public:
   static int64_t LMEM_BANK_BYTES;
   static llvm::StringRef LIB_NAME;
   static bool ALIGN_4N;
-  static llvm::StringRef chip;
+  static module::Chip chip;
   // dbytes is 0.5 for INT4
   static int64_t eu_num(double dbytes);
   static int64_t get_n_align(int64_t dtype_bytes) {

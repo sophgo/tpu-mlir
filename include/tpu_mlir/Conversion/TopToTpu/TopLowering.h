@@ -29,7 +29,7 @@ namespace tpu_mlir {
 
 struct LoweringConfig {
   static bool isQuantized;
-  static std::map<std::string, llvm::StringRef> quantize_map;
+  static std::map<std::string, module::Mode> quantize_map;
 };
 
 template <typename OpTy> class TopLowering : public OpRewritePattern<OpTy> {
@@ -50,24 +50,30 @@ public:
     if (iter != LoweringConfig::quantize_map.end()) {
       real_mode = iter->second;
     }
-    if (real_mode == module::Mode::INT8) {
+    switch (real_mode) {
+    case module::Mode::INT8:
       LoweringINT8(rewriter, opTy, module::isAsymmetric());
-    } else if (real_mode == module::Mode::INT4) {
+      break;
+    case module::Mode::INT4:
       if (isa<top::ConvOp, top::MatMulOp>(op)) {
         LoweringINT4(rewriter, opTy, module::isAsymmetric());
       } else {
         LoweringINT8(rewriter, opTy, module::isAsymmetric());
       }
-    } else if (real_mode == module::Mode::F16) {
+      break;
+    case module::Mode::F16:
       if (module::isCV18xx()) {
         LoweringBF16(rewriter, opTy);
       } else {
         LoweringF16(rewriter, opTy);
       }
-    } else if (real_mode == module::Mode::BF16) {
+      break;
+    case module::Mode::BF16:
       LoweringBF16(rewriter, opTy);
-    } else {
+      break;
+    default:
       LoweringF32(rewriter, opTy);
+      break;
     }
     return success();
   }
@@ -231,7 +237,8 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
                  bool tensorType, tpu::RequantMode mode);
 
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
-                   std::string &to_name, tpu::RequantMode mode=tpu::RequantMode::MultiplierShift);
+                   std::string &to_name,
+                   tpu::RequantMode mode = tpu::RequantMode::MultiplierShift);
 
 template <typename OpTy>
 Value do_binary_saclar(Value input, Type to_type, int64_t scalar,

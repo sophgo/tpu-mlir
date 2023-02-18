@@ -343,7 +343,8 @@ flatbuffers::Offset<Routine> CviTpuRoutine::build() {
 
 CviModelBuilder::CviModelBuilder(ModuleOp &module) : fbb_(1024) {
   int layer_id = 0;
-  this->chip = std::string(module::getChip().lower());
+  auto chip_ = module::getChip();
+  chip = module::stringifyChip(chip_).lower();
   privateGmemSize_ = module::getGmemPrivateSize();
   sharedGmemSize_ = module::getNeuronSize();
   version_ = get_version(majorVersion_, minorVersion_, subMinorVersion_);
@@ -451,7 +452,7 @@ void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
   name = module::getName(v).str();
   auto tensorShape = module::getShape(v);
   if (auto castOp = llvm::dyn_cast<top::InputOp>(op)) {
-    //input op should use the argshape
+    // input op should use the argshape
     tensorShape = module::getShape(op->getOperand(0));
   }
   auto type = module::getStorageType(v);
@@ -516,14 +517,14 @@ void CviModelBuilder::parseOpInfo(Operation *op, std::string &name,
 
 static int getDsize(DType &dtype) {
   int dsize = -1;
-  if (dtype == DType::DType_INT8 || dtype == DType::DType_UINT8
-              || dtype == DType::DType_MAX) {
+  if (dtype == DType::DType_INT8 || dtype == DType::DType_UINT8 ||
+      dtype == DType::DType_MAX) {
     dsize = 1;
-  } else if (dtype == DType::DType_BF16 || dtype == DType::DType_INT16
-              || dtype == DType::DType_UINT16) {
+  } else if (dtype == DType::DType_BF16 || dtype == DType::DType_INT16 ||
+             dtype == DType::DType_UINT16) {
     dsize = 2;
-  } else if (dtype == DType::DType_INT32 || dtype == DType::DType_FP32
-              || dtype == DType::DType_MIN) {
+  } else if (dtype == DType::DType_INT32 || dtype == DType::DType_FP32 ||
+             dtype == DType::DType_MIN) {
     dsize = 4;
   } else {
     llvm_unreachable("unsupported data type");
@@ -552,7 +553,9 @@ flatbuffers::Offset<Tensor> CviModelBuilder::buildNeuron(op_info_t &op_info) {
                          op_info.dtype, fbShape, 0, fbQuant, op_info.overwrite,
                          op_info.scale.size() ? &op_info.scale : nullptr,
                          op_info.bias.size() ? &op_info.bias : nullptr,
-                         op_info.customization_format.length() ? op_info.customization_format.c_str() : nullptr,
+                         op_info.customization_format.length()
+                             ? op_info.customization_format.c_str()
+                             : nullptr,
                          op_info.aligned, op_info.size);
   return fbTensor;
 }
@@ -608,11 +611,12 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
     parseOpInfo(inputOp, op_info.name, op_info.shape, op_info.size,
                 op_info.offset, op_info.dtype, op_info.idx);
     if (auto castOp = llvm::dyn_cast<top::InputOp>(inputOp)) {
-      //fuse preprocess and aligned_input
+      // fuse preprocess and aligned_input
       if (castOp.getCustomizationFormat()) {
         auto scale = module::getF64Array(castOp.getScaleAttr());
         auto mean = module::getF64Array(castOp.getMeanAttr());
-        op_info.customization_format = castOp.getCustomizationFormatAttr().str();
+        op_info.customization_format =
+            castOp.getCustomizationFormatAttr().str();
         for (int i = 0; i < scale->size(); i++) {
           op_info.scale.emplace_back(scale->at(i));
           op_info.bias.emplace_back(scale->at(i) * mean->at(i));
@@ -622,20 +626,23 @@ FBTensorVector CviModelBuilder::buildNeuronMap() {
         }
         if (op_info.aligned) {
           int64_t y_align, w_align, channel_align;
-          std::string chip = module::getChip().str();
-          setPixelAlign(chip, op_info.customization_format, y_align, w_align, channel_align);
+          setPixelAlign(op_info.customization_format, y_align, w_align,
+                        channel_align);
           int dsize = getDsize(op_info.dtype);
-          op_info.size = dsize * aligned_image_size(op_info.shape[0], op_info.shape[1], op_info.shape[2], op_info.shape[3],
-                                                    op_info.customization_format, y_align, w_align, channel_align);
-          llvm::errs()
-                     << chip << " input tensor[" <<op_info.shape[0]
-                     << ", " << op_info.shape[1] << "," <<op_info.shape[2]
-                     << "," << op_info.shape[3]
-                     << "]  pixel_format: " << op_info.customization_format
-                     << "  y aligned:" << y_align << "  w aligned:" << w_align
-                     << "  c aligned:" << channel_align
-                     << "  tensor size:" << op_info.size <<" tensor dtype:"<<op_info.dtype
-                     << "  dsize:" << dsize << "\n";
+          op_info.size =
+              dsize * aligned_image_size(op_info.shape[0], op_info.shape[1],
+                                         op_info.shape[2], op_info.shape[3],
+                                         op_info.customization_format, y_align,
+                                         w_align, channel_align);
+          llvm::errs() << chip << " input tensor[" << op_info.shape[0] << ", "
+                       << op_info.shape[1] << "," << op_info.shape[2] << ","
+                       << op_info.shape[3]
+                       << "]  pixel_format: " << op_info.customization_format
+                       << "  y aligned:" << y_align << "  w aligned:" << w_align
+                       << "  c aligned:" << channel_align
+                       << "  tensor size:" << op_info.size
+                       << " tensor dtype:" << op_info.dtype
+                       << "  dsize:" << dsize << "\n";
         }
       }
     }
