@@ -12,11 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-bool top::LeakyReluOp::isEltwise() {
-  return false;
-}
-
 int64_t top::LeakyReluOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }

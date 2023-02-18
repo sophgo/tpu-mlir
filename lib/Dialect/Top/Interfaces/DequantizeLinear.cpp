@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::DequantizeLinearOp::isEltwise() {
-  return false;
-}
 
 int64_t top::DequantizeLinearOp::getFLOPs() {
   return module::getNumElements(getOutput());

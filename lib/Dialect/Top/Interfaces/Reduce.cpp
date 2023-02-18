@@ -5,10 +5,6 @@
 #include <float.h>
 
 
-bool top::ReduceOp::isEltwise() {
-  return false;
-}
-
 int64_t top::ReduceOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::ReduceOp::init(InferenceParameter &p) { return success(); }

@@ -12,11 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-bool top::TopKOp::isEltwise() {
-  return false;
-}
-
 int64_t top::TopKOp::getFLOPs() { return 0; }
 
 LogicalResult top::TopKOp::init(InferenceParameter &p) { return success(); }

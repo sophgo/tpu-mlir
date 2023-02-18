@@ -22,7 +22,6 @@ include "mlir/IR/OpBase.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "tpu_mlir/Interfaces/InferenceInterface.td"
 include "tpu_mlir/Interfaces/FlopsInterface.td"
-include "tpu_mlir/Interfaces/EltwiseInterface.td"
 include "tpu_mlir/Traits/Traits.td"
 
 // =============================================================================
@@ -89,8 +88,7 @@ class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
 class Top_Op<string mnemonic, list<Trait> traits = []> :
     Top_BaseOp<mnemonic, !listconcat(traits,
        [DeclareOpInterfaceMethods<InferenceInterface>,
-        DeclareOpInterfaceMethods<FlopsInterface>,
-        DeclareOpInterfaceMethods<EltwiseInterface>])> ;
+        DeclareOpInterfaceMethods<FlopsInterface>])> ;
 
 def Top_NoneOp : Top_BaseOp<"None"> {
   let summary = "none operator";

@@ -12,9 +12,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::SplitOp::isEltwise() {
-  return false;
-}
 
 int64_t top::SplitOp::getFLOPs() {
   return 0;

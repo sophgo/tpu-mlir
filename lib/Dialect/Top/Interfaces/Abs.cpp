@@ -13,10 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::AbsOp::isEltwise() {
-  return true;
-}
-
 int64_t top::AbsOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }

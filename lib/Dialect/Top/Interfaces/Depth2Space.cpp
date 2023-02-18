@@ -12,11 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-bool top::Depth2SpaceOp::isEltwise() {
-  return false;
-}
-
 int64_t top::Depth2SpaceOp::getFLOPs() { return 0; }
 
 LogicalResult top::Depth2SpaceOp::init(InferenceParameter &p) {

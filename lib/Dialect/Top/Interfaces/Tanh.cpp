@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::TanhOp::isEltwise() {
-  return true;
-}
 
 int64_t top::TanhOp::getFLOPs() { return module::getNumElements(getOutput()) * 4; }
 

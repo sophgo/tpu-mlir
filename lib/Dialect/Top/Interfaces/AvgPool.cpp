@@ -13,9 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 
-bool top::AvgPoolOp::isEltwise() {
-  return false;
-}
 
 int64_t top::AvgPoolOp::getFLOPs() {
   auto attr = parseParam();

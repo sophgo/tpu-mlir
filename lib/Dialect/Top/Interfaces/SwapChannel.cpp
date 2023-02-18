@@ -11,11 +11,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-bool top::SwapChannelOp::isEltwise() {
-  return false;
-}
-
 int64_t top::SwapChannelOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }

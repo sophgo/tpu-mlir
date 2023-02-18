@@ -12,11 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-bool top::SwapDimInnerOp::isEltwise() {
-  return false;
-}
-
 int64_t top::SwapDimInnerOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }

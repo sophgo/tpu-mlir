@@ -12,11 +12,6 @@
 using namespace tpu_mlir;
 using namespace mlir;
 
-
-bool top::PackOp::isEltwise() {
-  return false;
-}
-
 int64_t top::PackOp::getFLOPs() { return 0; }
 
 LogicalResult top::PackOp::init(InferenceParameter &p) { return success(); }
