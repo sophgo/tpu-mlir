@@ -169,17 +169,16 @@ public:
     if (!module::isState(module::State::TPU_REORDERED)) {
       llvm_unreachable("module should be reordered");
     }
-    if (module::isCV18xx()) {
-      divide_func_cv();
-    } else {
-      divide_func_bm();
-    }
+    divide_func();
     module::removeUnusedOp();
     module::setState(module::State::TPU_DIVIDED);
   }
 
-  RunMode getOpMode(Operation *op) {
+  // separate: whether separate with other op
+  RunMode getOpMode(Operation *op, bool &separate) {
+    separate = false;
     if (isa<GenericCpuOp>(op)) {
+      separate = true;
       return RunMode::CPU;
     } else if (isa<TopKOp>(op)) {
       return RunMode::TPU_DYNAMIC;
@@ -190,53 +189,25 @@ public:
     return RunMode::TPU_STATIC;
   }
 
-  void divide_func_cv() {
+  void divide_func() {
     auto mainFunc = module::getMainFuncOp();
     std::shared_ptr<SubFunction> subf = nullptr;
+    bool seperate;
     mainFunc.walk([&](Operation *op) {
       if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
               func::CallOp>(op)) {
         // do nothing
       } else {
-        auto mode = getOpMode(op);
-        if (subf == nullptr) {
-          subf = std::make_shared<SubFunction>(mode);
-          insert_subop(subf, op);
-          if (mode == RunMode::CPU) {
+        auto mode = getOpMode(op, seperate);
+        if (seperate) {
+          if (subf != nullptr) {
             buildSubFunction(subf);
-            subf.reset();
           }
-        } else if (subf->mode == mode) {
-          insert_subop(subf, op);
-        } else if (mode == RunMode::CPU) {
-          buildSubFunction(subf);
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
           buildSubFunction(subf);
-          subf.reset();
-        } else {
-          buildSubFunction(subf);
-          subf = std::make_shared<SubFunction>(mode);
-          insert_subop(subf, op);
-        }
-      }
-    });
-    if (subf != nullptr) {
-      buildSubFunction(subf);
-      subf = nullptr;
-    }
-  }
-
-  void divide_func_bm() {
-    auto mainFunc = module::getMainFuncOp();
-    std::shared_ptr<SubFunction> subf = nullptr;
-    mainFunc.walk([&](Operation *op) {
-      if (isa<top::InputOp, top::WeightOp, FuncOp, top::NoneOp, ReturnOp,
-              func::CallOp>(op)) {
-        // do nothing
-      } else {
-        auto mode = getOpMode(op);
-        if (subf == nullptr) {
+          subf = nullptr;
+        } else if (subf == nullptr) {
           subf = std::make_shared<SubFunction>(mode);
           insert_subop(subf, op);
         } else if (subf->mode == mode) {
