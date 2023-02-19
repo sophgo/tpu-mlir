@@ -617,6 +617,19 @@ double getThreshold(Value v) {
 NameLoc getLoc(Value v) {
   if (auto loc = v.getLoc().dyn_cast<NameLoc>()) {
     return loc;
+  } else if (auto fuse_loc = v.getLoc().dyn_cast<FusedLoc>()) {
+    auto locs = fuse_loc.getLocations();
+    uint32_t idx = 0;
+    if (auto r = v.dyn_cast<OpResult>()) {
+      idx = r.getResultNumber();
+    } else if (auto r = v.dyn_cast<BlockArgument>()) {
+      idx = r.getArgNumber();
+    } else {
+      llvm_unreachable("Not Implemented");
+    }
+    if (auto name_loc = locs[idx].dyn_cast<NameLoc>()) {
+      return name_loc;
+    }
   } else if (auto op = v.getDefiningOp()) {
     auto loc = op->getLoc();
     if (auto name_loc = loc.dyn_cast<NameLoc>()) {
@@ -655,7 +668,7 @@ StringRef getName(Operation *op, int index) {
   return "";
 }
 
-StringRef getName(Value v) { return getLoc(v).getName(); }
+StringRef getName(Value v) { return getLoc(v).getName().strref(); }
 
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs) {
   auto main_func = getMainFuncOp();
