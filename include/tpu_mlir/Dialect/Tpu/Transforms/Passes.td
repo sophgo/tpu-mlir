@@ -22,6 +22,10 @@ def SubnetDivide : Pass<"subnet-divide", "ModuleOp"> {
   let summary = "subnet divide in tpu by tpuc-opt";
   let constructor = "createSubnetDividePass()";
   let dependentDialects = ["TpuDialect"];
+  let options = [
+      Option<"dynamic", "dynamic", "bool", /*default=*/"false",
+             "dynamic compiler or not.">
+  ];
 }
 
 def LayerGroup : Pass<"layer-group", "FuncOp"> {
@@ -50,10 +54,7 @@ def Codegen : Pass<"codegen", "ModuleOp"> {
   let dependentDialects = ["TpuDialect"];
   let options = [
     Option<"model_file", "model_file", "std::string", /*default=*/"",
-           "save to model file">,
-    Option<"dynamic", "dynamic",
-           "bool", /*default=*/"false",
-           "dynamic or not.">
+           "save to model file">
   ];
 }
 

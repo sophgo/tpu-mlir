@@ -147,15 +147,6 @@ void buildSubFunction(std::shared_ptr<SubFunction> sf) {
   }
 }
 
-static RunMode getOpMode(Operation *op) {
-  if (isa<GenericCpuOp>(op)) {
-    return RunMode::CPU;
-  } else if (isa<TopKOp>(op)) {
-    return RunMode::TPU_DYNAMIC;
-  }
-  return RunMode::TPU_STATIC;
-}
-
 static void insert_subop(std::shared_ptr<SubFunction> &subf, Operation *op) {
   for (auto opd : op->getOperands()) {
     auto op_ = opd.getDefiningOp();
@@ -185,6 +176,18 @@ public:
     }
     module::removeUnusedOp();
     module::setState(module::State::TPU_DIVIDED);
+  }
+
+  RunMode getOpMode(Operation *op) {
+    if (isa<GenericCpuOp>(op)) {
+      return RunMode::CPU;
+    } else if (isa<TopKOp>(op)) {
+      return RunMode::TPU_DYNAMIC;
+    }
+    if (dynamic) {
+      return RunMode::TPU_DYNAMIC;
+    }
+    return RunMode::TPU_STATIC;
   }
 
   void divide_func_cv() {

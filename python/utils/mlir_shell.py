@@ -95,11 +95,13 @@ def mlir_to_model(tpu_mlir: str,
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
-    lg_param = '--layer-group="opt=2"'
-    if model.endswith(".cvimodel"):
-        lg_param = '--layer-group="opt=1"'
-    if disable_layer_group:
-        lg_param = ''
+    lg_param = ''
+    if not disable_layer_group:
+        if model.endswith(".cvimodel"):
+            lg_param = '--layer-group="opt=1"'
+        else:
+            lg_param = '--layer-group="opt=2"'
+    subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -108,7 +110,7 @@ def mlir_to_model(tpu_mlir: str,
         "--do-extra-opt",
         strip_io_quant_param,
         "--weight-reorder",
-        "--subnet-divide",
+        subnet_param,
         lg_param,
         "--address-assign",
         #"--address-assign=\"reuse_addr=false\"",
@@ -122,7 +124,7 @@ def mlir_to_model(tpu_mlir: str,
 
     # codegen based on final mlir
     if model.endswith(".bmodel"):
-        codegen_param = '--codegen="model_file={} dynamic={}"'.format(model, dynamic)
+        codegen_param = '--codegen="model_file={}"'.format(model)
     elif model.endswith(".cvimodel"):
         codegen_param = '--cv-codegen="model_file={}"'.format(model)
     cmd = [

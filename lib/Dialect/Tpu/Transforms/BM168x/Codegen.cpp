@@ -44,7 +44,6 @@ public:
     if (filename.empty()) {
       llvm_unreachable("output filename is empty");
     }
-    bool dynamic = this->dynamic;
     bm168x = BM168x::instance();
     DynCodegenInit();
     std::vector<top::WeightOp> weights;
@@ -78,29 +77,30 @@ public:
     auto main_func = module::getMainFuncOp();
     std::vector<Offset<bmodel::SubNet>> subnet_v;
     auto context = std::make_unique<Context>();
+    bool first_dynamic = false;
+    bool is_first = true;
+    int dynamic_mode = module::isBM1684XFamily() ? 2 : 1;
     main_func.walk([&](func::CallOp call) {
-      if (dynamic) {
-        auto subnet_ir_ =
-            std::make_unique<SubnetIr>(module::isBM1684XFamily() ? 2 : 1);
+      auto func = module::getFuncOp(call.getCallee());
+      auto mode = getRunMode(func);
+      switch (mode) {
+      case RunMode::TPU_STATIC: {
+        auto subnet = CreateSubNet(call);
+        subnet_v.push_back(subnet);
+      } break;
+      case RunMode::TPU_DYNAMIC: {
+        auto subnet_ir_ = std::make_unique<SubnetIr>(dynamic_mode);
         auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
         subnet_v.push_back(subnet);
-      } else {
-        auto func = module::getFuncOp(call.getCallee());
-        auto mode = getRunMode(func);
-        switch (mode) {
-        case RunMode::TPU_STATIC: {
-          auto subnet = CreateSubNet(call);
-          subnet_v.push_back(subnet);
-        } break;
-        case RunMode::TPU_DYNAMIC: {
-          auto subnet_ir_ =
-              std::make_unique<SubnetIr>(module::isBM1684XFamily() ? 2 : 1);
-          auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
-          subnet_v.push_back(subnet);
-        } break;
-        default:
-          llvm_unreachable("Not Implemented");
-          break;
+      } break;
+      default:
+        llvm_unreachable("Not Implemented");
+        break;
+      }
+      if (is_first) {
+        is_first = false;
+        if (mode == RunMode::TPU_DYNAMIC) {
+          first_dynamic = true;
         }
       }
     });
@@ -123,9 +123,9 @@ public:
     npb.add_ctx_size(neuron_size);
     npb.add_ctx_sizes(std::move(neuron_sizes_fb));
     npb.add_coeff_mem(coeff_mem);
-    npb.add_is_dynamic(dynamic ? true : false);
-    npb.add_n_dynamic(dynamic ? true : false);
-    npb.add_h_w_dynamic(dynamic ? true : false);
+    npb.add_is_dynamic(first_dynamic);
+    npb.add_n_dynamic(first_dynamic);
+    npb.add_h_w_dynamic(first_dynamic);
     npb.add_cmd_group(cmd_group);
     npb.add_stage_ir(stage_ir);
     npb.add_binary_ir(&binary_ir);
