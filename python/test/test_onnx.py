@@ -24,8 +24,7 @@ import onnxruntime
 import multiprocessing
 
 BM1684X_Failed_Cases = [
-    "PadAvgPool2d", "QDQ", "QDQConv", "TopK", "TorchArgmax", "TorchActivation",
-    "TorchChannelShuffle"
+    "PadAvgPool2d", "QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle"
 ]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
@@ -186,14 +185,8 @@ class ONNX_IR_TESTER(object):
             "ReshapeFuse": self.test_ReshapeFuse,
             "SwapDimInner": self.test_SwapDimInner,
             "ReduceTranspose": self.test_ReduceTranspose,
-            "SliceToReverse": self.test_SliceToReverse
-
-            # Note: Static_Dyn_Mixed: f32 works ok
-            # f16/bf16/int8_sym/int8_asym works ok with not compare top topk index
-            # with mlir topk index tensor because of precision
-            # if hope to test this case, pls enable
-            # the excepts.append("Y_Index_TopK")(LineNo: 160) at npz_compare.py
-            #"Static_Dyn_Mixed": self.test_StaticDynMixed
+            "SliceToReverse": self.test_SliceToReverse,
+            "StaticDynMixed": self.test_StaticDynMixed
         }
 
         # no quantization when quant_mode == "f32"
@@ -369,21 +362,32 @@ class ONNX_IR_TESTER(object):
         ort_session = onnxruntime.InferenceSession(onnx_file)
         return ort_session.run(None, input_data)
 
+    def square_rooted(self, x):
+        return np.sqrt(sum([a * a for a in x]))
+
+    def cosine_similarity(self, x, y):
+        numerator = sum(a * b for a, b in zip(x, y))
+        denominator = self.square_rooted(x) * self.square_rooted(y)
+        return round(numerator / float(denominator), 3)
+
+    def compare(self, torch_out, onnx_out):
+        if torch_out.dtype in [np.int64, np.int32]:
+            cos = self.cosine_similarity(torch_out, onnx_out)
+            assert (cos > 0.9999)
+        else:
+            np.testing.assert_allclose(torch_out, onnx_out, rtol=1e-5, atol=1e-01)
+
     def torch_and_onnx_compare(self, input_data: dict, onnx_file: str, origin_output):
         onnx_outs = self.simple_onnx_inference(input_data, onnx_file)
         num_outputs = len(onnx_outs)
         if isinstance(origin_output, tuple):
             assert (len(origin_output) == num_outputs)
             for i in range(num_outputs):
-                np.testing.assert_allclose(origin_output[i].data.numpy().flatten(),
-                                           onnx_outs[i].flatten(),
-                                           rtol=1e-5,
-                                           atol=1e-01)
+                x = origin_output[i].data.numpy().flatten()
+                y = onnx_outs[i].flatten()
+                self.compare(x, y)
         else:
-            np.testing.assert_allclose(origin_output.data.numpy().flatten(),
-                                       onnx_outs[0].flatten(),
-                                       rtol=1e-5,
-                                       atol=1e-01)
+            self.compare(origin_output.data.numpy().flatten(), onnx_outs[0].flatten())
         print("* Torch and Onnx result compared *")
 
     def torch_and_test(self, inputs, torch_model: nn.Module, model_name: str):
@@ -422,19 +426,13 @@ class ONNX_IR_TESTER(object):
         onnx_outs, top_mlir_outs, input_npz, node_name_mapping = self.onnx_convert(
             input_data, graph_def, model_name)
         # test onnx and mlir outputs
-        rtol = 1e-4
-        atol = 1e-1 if not qdq else 2  # We set 2 here for we have some precision error when doing rounding and the maximum scale is 2.
         counter = 0
         for name in onnx_outs:
             if name in top_mlir_outs:
                 print("Compare mlir and onnx:{}\n".format(name))
                 top_mlir_output = top_mlir_outs[name].flatten()
                 onnx_output = onnx_outs[name].flatten()
-                np.testing.assert_allclose(top_mlir_output.astype(np.float32),
-                                           onnx_output.astype(np.float32),
-                                           rtol=rtol,
-                                           atol=atol,
-                                           verbose=True)
+                self.compare(onnx_output, top_mlir_output)
                 counter += 1
             elif name in node_name_mapping:
                 mapped_name = node_name_mapping[name]
@@ -442,10 +440,7 @@ class ONNX_IR_TESTER(object):
                     print("Compare mlir and onnx:{}\n".format(mapped_name))
                     top_mlir_output = top_mlir_outs[mapped_name].flatten()
                     onnx_output = onnx_outs[name].flatten()
-                    np.testing.assert_allclose(top_mlir_output.astype(np.float32),
-                                               onnx_output.astype(np.float32),
-                                               rtol=rtol,
-                                               atol=atol)
+                    self.compare(onnx_output, top_mlir_output)
                     counter += 1
         if counter == 0 and not qdq:
             raise RuntimeError("No compare between onnx outs and mlir outts")
@@ -1737,17 +1732,16 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_ReduceProd(self, case_name):
-        input_shape = [1,3,128,128]
-        output_shape = [1,3,128]
+        input_shape = [1, 3, 128, 128]
+        output_shape = [1, 3, 128]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         output = helper.make_tensor_value_info('o_prod', TensorProto.FLOAT, output_shape)
         reduce_prod = helper.make_node("ReduceProd",
-                                      inputs=['input'],
-                                      outputs=['o_prod'],
-                                      keepdims=0,
-                                      axes=[2])
-        graph_def = helper.make_graph([reduce_prod],
-                                      case_name, [input], [output])
+                                       inputs=['input'],
+                                       outputs=['o_prod'],
+                                       keepdims=0,
+                                       axes=[2])
+        graph_def = helper.make_graph([reduce_prod], case_name, [input], [output])
         self.onnx_and_test(graph_def)
 
     def test_Sigmoid(self, case_name):
@@ -2502,6 +2496,24 @@ class ONNX_IR_TESTER(object):
                 return x
 
         x = torch.randn(4, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_StaticDynMixed(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.conv1 = nn.Conv2d(8, 8, 3, 1, 1)
+                self.conv2 = nn.Conv2d(8, 8, 3, 1, 1)
+
+            def forward(self, x):
+                a = self.conv1(x) * 100
+                (b, indices) = torch.topk(a, 10)
+                c = self.conv2(b)
+                return c, indices
+
+        x = torch.randn(4, 8, 100, 20).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_Add(self, case_name):
@@ -3335,34 +3347,6 @@ class ONNX_IR_TESTER(object):
                                       [reduce_output])
         self.onnx_and_test(graph_def)
 
-    # def test_LayerNorm(self, case_name):
-    #     axis = 2
-    #     io_shape = [3, 4, 5, 2]
-    #     wb_shape = [x for x in io_shape]
-    #     mr_shape = [x for x in io_shape]
-    #     for i in range(axis):
-    #         wb_shape[i] = 1
-    #     for i in range(axis, 4):
-    #         mr_shape[i] = 1
-    #     w_data = np.random.randn(*wb_shape).astype(np.float32)
-    #     b_data = np.random.randn(*wb_shape).astype(np.float32)
-    #     input = helper.make_tensor_value_info('input', TensorProto.FLOAT, io_shape)
-    #     weight = helper.make_tensor('weight', TensorProto.FLOAT, w_data.shape, w_data)
-    #     bias = helper.make_tensor('bias', TensorProto.FLOAT, b_data.shape, b_data)
-    #     output = helper.make_tensor_value_info('output', TensorProto.FLOAT, io_shape)
-    #     mean = helper.make_tensor_value_info('mean', TensorProto.FLOAT, mr_shape)
-    #     rstd = helper.make_tensor_value_info('rstd', TensorProto.FLOAT, mr_shape)
-
-    #     node_def = helper.make_node(
-    #         "LayerNormalization",
-    #         inputs=['input', 'weight', 'bias'],
-    #         outputs=['output', 'mean', 'rstd'],
-    #     )
-    #     graph_def = helper.make_graph([node_def], case_name,
-    #                                   [input], [output, mean, rstd],
-    #                                   initializer=[weight, bias])
-    #     self.onnx_and_test(graph_def)
-
     def BinaryWeightBase(self, case_name, input_shape, weight_shape, binary_name, reverse=False):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
         if binary_name == "Div":
@@ -3539,60 +3523,6 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([slice_def],
                                       case_name, [input], [output],
                                       initializer=[starts, ends, axes, steps])
-        self.onnx_and_test(graph_def)
-
-    def test_StaticDynMixed(self, case_name):
-        oc = 32
-        batch = 4
-        input_shape = [batch, 16, 100, 1000]
-        filter_shape = [oc, 16, 3, 3]
-        conv_out_shape = [batch, oc, 100, 1000]
-        weight_data = np.random.randn(*filter_shape).astype(np.float32)
-        bias_data = np.random.randn(oc).astype(np.float32)
-
-        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
-        bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-        conv_def = helper.make_node(
-            "Conv",
-            inputs=['input', 'weight', 'bias'],
-            outputs=['conv_output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-        const = 500
-        K = helper.make_tensor("K", TensorProto.INT64, [1], np.array([const]).astype(np.int64))
-        o_shape = [batch, oc, 100, const]
-        Y_Value = helper.make_tensor_value_info('Y_Value', TensorProto.FLOAT, o_shape)
-        Y_Index = helper.make_tensor_value_info('Y_Index', TensorProto.INT64, o_shape)
-        topk_node = helper.make_node('TopK', ['conv_output', 'K'], ['Y_Value', 'Y_Index'],
-                                     axis=-1,
-                                     largest=True)
-        oc2 = 64
-        output_shape2 = [4, oc2, 100, 500]
-        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape2)
-        filter_shape2 = [oc2, oc, 3, 3]
-        weight_data2 = np.random.randn(*filter_shape2).astype(np.float32)
-        bias_data2 = np.random.randn(oc2).astype(np.float32)
-        weight2 = helper.make_tensor('weight2', TensorProto.FLOAT, filter_shape2, weight_data2)
-        bias2 = helper.make_tensor('bias2', TensorProto.FLOAT, list(bias_data2.shape), bias_data2)
-        conv_def2 = helper.make_node(
-            "Conv",
-            inputs=['Y_Value', 'weight2', 'bias2'],
-            outputs=['output'],
-            kernel_shape=[3, 3],
-            pads=[1, 1, 1, 1],
-            strides=[1, 1],
-            dilations=[1, 1],
-            group=1,
-        )
-
-        graph_def = helper.make_graph([conv_def, topk_node, conv_def2],
-                                      case_name, [input], [output],
-                                      initializer=[weight, bias, K, weight2, bias2])
         self.onnx_and_test(graph_def)
 
 

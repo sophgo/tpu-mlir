@@ -475,8 +475,8 @@ template int64_t RightShiftRound(int64_t src, int shift_num,
 
 // to compilable with tflite
 // tensorflow/lite/kernels/internal/common.h:MultiplyByQuantizedMultiplier()
-int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier,
-                                      int shift, RoundingMode rmode) {
+int32_t MultiplyByQuantizedMultiplier(int32_t x, int32_t multiplier, int shift,
+                                      RoundingMode rmode) {
   // int shift = -(rshift - 31);
   int64_t value = shift > 0 ? x << shift : x;
   value = RightShiftRound(value * multiplier, 31, ROUNDING_HALF_UP);
@@ -898,39 +898,20 @@ void topk_indices(std::vector<std::pair<int, float>> &result,
                   const float *items, int num_elem, int k, bool largest) {
   using pair_t = std::pair<int, float>;
   auto cmp_large = [](pair_t const &item1, pair_t const &item2) {
-    return (item1.second > item2.second)
-          || (item1.second == item2.second && item1.first < item2.first);
+    return (item1.second > item2.second) ||
+           (item1.second == item2.second && item1.first < item2.first);
   };
   auto cmp_small = [](pair_t const &item1, pair_t const &item2) {
-    return (item1.second < item2.second)
-          || (item1.second == item2.second && item1.first > item2.first);
+    return (item1.second < item2.second) ||
+           (item1.second == item2.second && item1.first > item2.first);
   };
   auto cmp = largest ? cmp_large : cmp_small;
-#if 0
-  //heap_sort is a unstable sort
-  std::priority_queue<pair_t, std::vector<pair_t>, decltype(cmp)> topk(cmp);
-  for (int i = 0; i < num_elem; ++i) {
-    if (topk.size() < k) {
-      topk.emplace(i, items[i]);
-    } else if (largest && items[i] <= topk.top().second) {
-      continue;
-    } else if (largest == false && items[i] >= topk.top().second) {
-      continue;
-    } else {
-      topk.emplace(i, items[i]);
-      topk.pop();
-    }
-  }
-  while (!topk.empty()) {
-    result.insert(result.begin(), pair_t(topk.top().first, topk.top().second));
-    topk.pop();
-  }
-#endif
   std::vector<pair_t> topk;
   for (int i = 0; i < num_elem; i++)
     topk.emplace_back(i, items[i]);
   result.resize(k);
-  std::partial_sort_copy(topk.begin(), topk.end(), result.begin(), result.end(), cmp);
+  std::partial_sort_copy(topk.begin(), topk.end(), result.begin(), result.end(),
+                         cmp);
 }
 
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
