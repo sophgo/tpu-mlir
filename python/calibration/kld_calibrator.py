@@ -690,7 +690,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
         histogram_data_map = {}
         histogram_width_map = {}
         self.activations_statistics = {}
-        all_tensors = self.module.all_tensor_names
+        all_tensors = self.parser.get_op_name_list()
         step = (99.999999 - 99.99) / len(all_tensors)
         pbar = tqdm(all_tensors, total=len(all_tensors), position=0, leave=True)
         for i, evaled_op in enumerate(all_tensors):
@@ -753,7 +753,7 @@ class ActivationCalibrator2(BaseKldCalibrator):
     def run(self):
         layer_name_list = []
         thresholds_map_list = []
-        op_layers = self.module.all_tensor_names
+        op_layers = self.parser.get_op_name_list()
         if 'input_calibration_table' in self.debug_cmd:
             assert self.args.tune_num > 0
             input_calibration_table = self.debug_cmd['input_calibration_table']
