@@ -21,6 +21,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       AddConstLowering,
       AvgPoolLowering,
       CastLowering,
+      ClipLowering,
       ConcatLowering,
       ConvLowering,
       DeconvLowering,

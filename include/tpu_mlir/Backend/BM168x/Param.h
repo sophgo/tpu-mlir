@@ -1223,6 +1223,12 @@ typedef struct arg_global_spec {
   arg_common_spec_t common;
 } arg_global_spec_t;
 
+typedef struct clip_spec {
+  float min;
+  float max;
+  int if_relu;
+} clip_spec_t;
+
 #ifdef __cplusplus
 }
 #endif
