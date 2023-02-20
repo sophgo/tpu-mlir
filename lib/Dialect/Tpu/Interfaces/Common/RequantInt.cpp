@@ -76,7 +76,7 @@ mlir::Type tpu::RequantIntOp::type_verify(uint64_t opd_idx,
     if (stype.isIntOrIndex()) {
       return do_nothing(mode);
     }
-    if (stype.isF32() && module::isUniformQuantized(getOutput())) {
+    if ((stype.isF32() || stype.isF16() || stype.isBF16()) && module::isUniformQuantized(getOutput())) {
       mode = TypeCastMode::DO_QUANTIZE;
       return module::getStorageType(getOutput());
     }
