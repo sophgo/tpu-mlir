@@ -99,17 +99,24 @@ def cyto_graph(id):
                           responsive=False)
 
 top_lable_style = {
-    "fontSize": "10px",
+    "fontSize": "16px",
     "fontWeight": "bold",
-    "color": "black",
+    "color": "blue",
     "paddingTop": "5px",
-    "paddingLeft": "5px",
+    "paddingLeft": "10px",
 }
 
 
 def top_label(id):
     return dbc.Label("Model Path", id=id, style=top_lable_style)
 
+def auto_load():
+    return dcc.Interval(
+        id="auto_load",
+        n_intervals=0,
+        max_intervals=0, #<-- only run once
+        interval=1
+    )
 
 
 def graph_layout_dropdown(id):
