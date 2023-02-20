@@ -1696,7 +1696,7 @@ class ONNX_IR_TESTER(object):
     def test_Clip(self, case_name):
         input_shape = [1, 3, 32, 32]
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        min = helper.make_tensor('min', TensorProto.FLOAT, [], 0.0 * np.ones(1))
+        min = helper.make_tensor('min', TensorProto.FLOAT, [], -1.0 * np.ones(1))
         max = helper.make_tensor('max', TensorProto.FLOAT, [], 6.0 * np.ones(1))
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, input_shape)
         node_def = helper.make_node(case_name, inputs=['input', 'min', 'max'], outputs=['output'])
