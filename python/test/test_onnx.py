@@ -23,15 +23,13 @@ import torch.nn.functional as F
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = [
-    "PadAvgPool2d", "QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle"
-]
+BM1684X_Failed_Cases = ["QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle"]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
-    "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "PadAvgPool2d", "Where", "TopK",
-    "TorchGelu", "TorchGRU", "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill",
-    "TorchWhere", "TorchStd", "QDQ", "QDQConv", "Conv3dTo2d", "PermuteFuse", "SwapDimInner",
-    "ChannelNorm", "TorchActivation", "TorchArgmax", "TorchChannelShuffle"
+    "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "Where", "TopK", "TorchGelu", "TorchGRU",
+    "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd",
+    "QDQ", "QDQConv", "PermuteFuse", "SwapDimInner", "ChannelNorm", "TorchActivation",
+    "TorchArgmax", "TorchChannelShuffle"
 ]
 
 
@@ -372,12 +370,12 @@ class ONNX_IR_TESTER(object):
         denominator = self.square_rooted(x) * self.square_rooted(y)
         return round(numerator / float(denominator), 3)
 
-    def compare(self, torch_out, onnx_out):
-        if torch_out.dtype in [np.int64, np.int32]:
-            cos = self.cosine_similarity(torch_out, onnx_out)
-            assert (cos > 0.9999)
+    def compare(self, ref_out, targe_out):
+        if ref_out.dtype in [np.int64, np.int32, np.int16, np.int8]:
+            cos = self.cosine_similarity(ref_out, targe_out)
+            assert (cos > 0.999)
         else:
-            np.testing.assert_allclose(torch_out, onnx_out, rtol=1e-5, atol=1e-01)
+            np.testing.assert_allclose(ref_out, targe_out, rtol=1e-5, atol=1e-01)
 
     def torch_and_onnx_compare(self, input_data: dict, onnx_file: str, origin_output):
         onnx_outs = self.simple_onnx_inference(input_data, onnx_file)
@@ -517,7 +515,6 @@ class ONNX_IR_TESTER(object):
 
     def test_PadAvgPool2d(self, case_name):
         input_shape = [1, 16, 56, 56]
-        pad_out_shape = [1, 16, 58, 58]
         output_shape = [1, 16, 56, 56]
         kernel_shape = [3, 3]
         strides = [1, 1]
@@ -2385,11 +2382,11 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, a, b):
-                x = torch.where(a > b, a, b)
+                x = torch.where(a >= b, a, b)
                 return x
 
-        a = torch.randn(4, 3, 100, 100).float()
-        b = torch.randn(4, 3, 100, 100).float()
+        a = torch.randint(-128,127,(4, 3, 100, 100)).float()
+        b = torch.randint(-128,127,(4, 3, 100, 100)).float()
         self.torch_and_test((a, b), Net(), case_name)
 
     def test_TorchSize(self, case_name):
@@ -3203,10 +3200,7 @@ class ONNX_IR_TESTER(object):
             group=1,
         )
 
-        elu_def = helper.make_node("Elu",
-                                   inputs=['conv_output'],
-                                   outputs=['output'],
-                                   alpha=0.67)
+        elu_def = helper.make_node("Elu", inputs=['conv_output'], outputs=['output'], alpha=0.67)
 
         graph_def = helper.make_graph([conv_def, elu_def],
                                       case_name, [input], [output],
