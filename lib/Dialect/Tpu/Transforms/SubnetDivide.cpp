@@ -174,11 +174,11 @@ public:
     module::setState(module::State::TPU_DIVIDED);
   }
 
-  // separate: whether separate with other op
-  RunMode getOpMode(Operation *op, bool &separate) {
-    separate = false;
+  // seperate: whether seperate with other op
+  RunMode getOpMode(Operation *op, bool &seperate) {
+    seperate = false;
     if (isa<GenericCpuOp>(op)) {
-      separate = true;
+      seperate = true;
       return RunMode::CPU;
     } else if (isa<TopKOp>(op)) {
       return RunMode::TPU_DYNAMIC;
