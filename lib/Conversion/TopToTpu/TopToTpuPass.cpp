@@ -422,12 +422,13 @@ protected:
         for (uint32_t idx = 0; idx < op->getNumOperands(); idx++) {
           auto opd = op->getOperand(idx);
           TypeCastMode mode = TypeCastMode::DO_NOTHING;
-          mlir::Type target_type = opd.getType();
+          mlir::Type target_type;
           if (auto typeIf = dyn_cast<TypeInterface>(op)) {
             target_type = typeIf.type_verify(idx, mode);
           } else if (isa<ReturnOp>(op)) {
-            if (module::isUniformQuantized(opd) || target_type.isBF16() ||
-                target_type.isF16()) {
+            auto stype = module::getStorageType(opd);
+            if (module::isUniformQuantized(opd) || stype.isBF16() ||
+                stype.isF16()) {
               target_type = type_verify_case_type(op, idx, retTypes[idx], mode);
             }
           } else {

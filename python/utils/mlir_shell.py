@@ -70,7 +70,9 @@ def mlir_lowering(top_mlir: str,
     qtable = ""
     save_w_cmd = "--save-weight"
     if quantize_table:
-        save_w_cmd = f"--save-weight=\"file={quantize_table}_weights.npz\""
+        assert (tpu_mlir.endswith(".mlir"))
+        weight_name = tpu_mlir[:-len(".mlir")] + "_qtable_weights.npz"
+        save_w_cmd = f"--save-weight=\"file={weight_name}\""
         qtable = "qtable={}".format(quantize_table)
     lower_param = "--convert-top-to-tpu=\"mode={} {} asymmetric={} chip={}\"".format(
         mode, qtable, asymmetric, chip.lower())
