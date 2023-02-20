@@ -13,13 +13,10 @@ def register(func):
 @register
 def forward_state(app):
     @app.callback(Output('forward', 'disabled'), Input('forward', 'n_clicks'),
-                  Input('forward-N', 'children'),
-                  Input('input-model-path', 'valid'))
-    def callback(click, done, path_valid):
+                  Input('forward-N', 'children'))
+    def callback(click, done):
         ctx = dash.callback_context
         button_id = [x['prop_id'].split('.')[0] for x in ctx.triggered]
-        if 'input-model-path' in button_id:
-            return not path_valid
 
         if 'forward-N' in button_id:
             return False
@@ -200,30 +197,30 @@ def draggable_toolbox(app):
 def load_model(app):
     # show graph
     @app.callback(Output('cytoscape-responsive-layout', 'elements'),
-                  Output('input-model-path', 'valid'),
-                  Output('input-model-path', 'invalid'),
                   Output('top-label', 'children'),
                   Output('top-label', 'style'),
                   Output('forward', 'n_clicks'),
-                  Input('input-model-path', 'value'))
-    def callback(path):
+                  Input('auto_load','interval'))
+    def callback(interval):
+        import os
+        path = os.getcwd()
         errmsg_style = component.top_lable_style
         if path is None:
-            return dash.no_update, False, False, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update
         try:
             app.Global.analysis_data = mlirnet.analysis_data(path, app.Global.f32_mlir, app.Global.quant_mlir, app.Global.input)
         except Exception as e:
             errmsg_style["color"] = "#e63946"
-            return dash.no_update, False, True, str(e), errmsg_style, dash.no_update
+            return dash.no_update, str(e), errmsg_style, dash.no_update
         app.Global.graph = graph.Graph(app.Global.analysis_data.quant_mlir)
         app.Global.analysis_data.build_blob_info(app.Global.graph)
-        errmsg_style["color"] = 'black'
+        errmsg_style["color"] = 'blue'
         if app.Global.manual_run:
             return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(
-            ), True, False, "Model Path", errmsg_style, dash.no_update
+            ), "{}: {} vs {}".format(path,app.Global.f32_mlir,app.Global.quant_mlir), errmsg_style, dash.no_update
         else:
             return app.Global.graph.cy_nodes() + app.Global.graph.cy_edges(
-            ), True, False, "Model Path", errmsg_style, 1
+            ), "{}: {} vs {}".format(path,app.Global.f32_mlir,app.Global.quant_mlir), errmsg_style, 1
 
 
 @register

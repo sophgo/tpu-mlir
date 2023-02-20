@@ -78,18 +78,10 @@ app.Global = global_state()
 app.layout = html.Div(
     style=component.page_style,
     children=[
-        component.top_label('top-label'),
+        component.auto_load(),
         dbc.Row([
             dbc.Col(
-                dbc.Input(
-                    value="./",
-                    id="input-model-path",
-                    type="text",
-                    debounce=True,
-                    size="sm",
-                ),
-                width=5,
-                align="center",
+                component.top_label('top-label'),
             ),
             dbc.Col(
                 dbc.Row(
