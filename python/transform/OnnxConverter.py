@@ -1510,21 +1510,28 @@ class OnnxConverter(BaseConverter):
 
     def convert_arg_op(self, onnx_node):
         assert (onnx_node.op_type in ["ArgMin", "ArgMax"])
-        output_shape = self.getShape(onnx_node.name)
         op = self.getOperand(onnx_node.inputs[0])
         axis = onnx_node.attrs.get('axis', 0)
         keepdims = onnx_node.attrs.get('keepdims', 1)
         p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "name":
+            [onnx_node.name + '_indices', onnx_node.name + '_values'],
             "axis": axis,
             "keepdims": keepdims,
             "mode": onnx_node.op_type
         }
-        # out_shapes = [[], []]
-        # out_shapes[0] = self.getShape(onnx_node.name)
-        # out_shapes[1] = self.getShape(onnx_node.name)
-        new_op = self.mlir.create_arg_op([op], output_shape, **p)
-        self.addOperand(onnx_node.name, new_op)
+        out_shapes = [[], []]
+        out_needs = [False, False]
+        for idx, out in enumerate(onnx_node.outputs):
+            need = len(out) > 0 and self.check_need(out)
+            if need:
+                p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
+                out_needs[idx] = True
+                out_shapes[idx] = self.getShape(out)
+        out_ops = self.mlir.create_arg_op([op], out_shapes, **p)
+        for idx, need in enumerate(out_needs):
+            if not need: continue
+            self.addOperand(onnx_node.outputs[idx], out_ops[idx])
 
     def convert_lrn_op(self, onnx_node):
         assert onnx_node.op_type == "LRN"

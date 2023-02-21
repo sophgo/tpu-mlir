@@ -191,6 +191,10 @@ typedef enum {
   SG_REDUCE_L1 = 6,
 } sg_reduce_method_t;
 
+typedef enum {
+  ARG_MAX = 0,
+  ARG_MIN = 1,
+} arg_method_t;
 // -------------------------------------------------------------------
 // Struct Definition
 // -------------------------------------------------------------------

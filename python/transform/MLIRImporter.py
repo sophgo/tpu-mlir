@@ -809,21 +809,20 @@ class MLIRImporter(object):
             attrs: Dict, about op attrs
         """
         # get_value_type
-        output_type = RankedTensorType.get(tuple(output_shape), self.get_value_type(operands[0]))
-        # out_types = list()
-        # for s in output_shapes:
-        #     if len(s) == 0:
-        #         out_types.append(NoneType.get())
-        #     else:
-        #         t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
-        #         out_types.append(t)
+        out_types = list()
+        for s in output_shape:
+            if len(s) == 0:
+                out_types.append(NoneType.get())
+            else:
+                t = RankedTensorType.get(tuple(s), self.get_value_type(operands[0]))
+                out_types.append(t)
         param = {
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
             'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
             'mode': StringAttr.get(kargs['mode']),
         }
-        return self.buildOp(Top.ArgOp, operands, [output_type], **param)
+        return self.buildOp(Top.ArgOp, operands, out_types, **param)
 
     def create_sqrt_op(self, operands, output_shape, **kargs):
         # get_value_type

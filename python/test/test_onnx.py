@@ -190,7 +190,9 @@ class ONNX_IR_TESTER(object):
             "ReduceTranspose": self.test_ReduceTranspose,
             "SliceToReverse": self.test_SliceToReverse,
             "StaticDynMixed": self.test_StaticDynMixed,
-            "ReduceFusePattern": self.test_ReduceFusePattern
+            "ReduceFusePattern": self.test_ReduceFusePattern,
+            "ArgReducefull": self.test_ArgReducefull,
+            "TransposeArg": self.test_TransposeArg,
         }
 
         # no quantization when quant_mode == "f32"
@@ -1816,9 +1818,7 @@ class ONNX_IR_TESTER(object):
 
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
-            # output1 = helper.make_tensor_value_info('o_max_val', TensorProto.INT64, output_shape[1])
             output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
-            # output2 = helper.make_tensor_value_info('o_min_val', TensorProto.INT64, output_shape[1])
             arg_max = helper.make_node(
                 'ArgMax',
                 ['input'],
@@ -3452,6 +3452,93 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([transpose_def, reduce_mean_def], case_name, [input],
                                       [reduce_output])
         self.onnx_and_test(graph_def)
+
+    def test_TransposeArg(self, case_name):
+        input_shape = [8, 16, 32, 64]
+        transpose_order = [0, 2, 1, 3]
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        transpose_output_shape = [
+            input_shape[transpose_order[i]] for i in range(len(transpose_order))
+        ]
+        transpose_output = helper.make_tensor_value_info('transpose_output', TensorProto.FLOAT,
+                                                         transpose_output_shape)
+        transpose_def = helper.make_node("Transpose",
+                                         inputs=['input'],
+                                         outputs=['transpose_output'],
+                                         perm=transpose_order)
+        arg_keepdims = False
+        arg_axis = 1
+        reduce_output_shape = [8,1,16,64]
+        arg_output = helper.make_tensor_value_info('output', TensorProto.INT64,
+                                                      reduce_output_shape)
+        arg_max_def = helper.make_node(
+            'ArgMax',
+            ['transpose_output'],
+            ['output'],
+            keepdims=arg_keepdims,
+            axis=arg_axis,
+        )
+        graph_def = helper.make_graph([transpose_def, arg_max_def], case_name, [input],
+                                      [arg_output])
+        self.onnx_and_test(graph_def)
+
+    def test_ArgReducefull(self, case_name):
+        input_shape = [2,3,4]
+        arg_axis = 0
+        reduce_axes = [0]
+        reduce_axes_num = 1
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output_shape = [1,3,4]
+        arg_output = helper.make_tensor_value_info('arg_output', TensorProto.INT64,
+                                                         output_shape)
+        arg_def = helper.make_node("ArgMax",
+                                         inputs=['input'],
+                                         outputs=['arg_output'],
+                                         axis=arg_axis)
+        reduce_output_1 = helper.make_tensor_value_info('reduce_output_1', TensorProto.FLOAT,
+                                                         output_shape)
+        reduce_def_1 = helper.make_node("ReduceMax",
+                                         inputs=['input'],
+                                         outputs=['reduce_output_1'],
+                                         axes=reduce_axes)
+        reduce_output_2 = helper.make_tensor_value_info('reduce_output_2', TensorProto.FLOAT,
+                                                         output_shape)
+        reduce_def_2 = helper.make_node("ReduceMax",
+                                         inputs=['input'],
+                                         outputs=['reduce_output_2'],
+                                         axes=reduce_axes)
+
+        graph_def = helper.make_graph([arg_def, reduce_def_1, reduce_def_2], case_name, [input],
+                                      [arg_output,reduce_output_1,reduce_output_2])
+        self.onnx_and_test(graph_def)
+
+    # def test_LayerNorm(self, case_name):
+    #     axis = 2
+    #     io_shape = [3, 4, 5, 2]
+    #     wb_shape = [x for x in io_shape]
+    #     mr_shape = [x for x in io_shape]
+    #     for i in range(axis):
+    #         wb_shape[i] = 1
+    #     for i in range(axis, 4):
+    #         mr_shape[i] = 1
+    #     w_data = np.random.randn(*wb_shape).astype(np.float32)
+    #     b_data = np.random.randn(*wb_shape).astype(np.float32)
+    #     input = helper.make_tensor_value_info('input', TensorProto.FLOAT, io_shape)
+    #     weight = helper.make_tensor('weight', TensorProto.FLOAT, w_data.shape, w_data)
+    #     bias = helper.make_tensor('bias', TensorProto.FLOAT, b_data.shape, b_data)
+    #     output = helper.make_tensor_value_info('output', TensorProto.FLOAT, io_shape)
+    #     mean = helper.make_tensor_value_info('mean', TensorProto.FLOAT, mr_shape)
+    #     rstd = helper.make_tensor_value_info('rstd', TensorProto.FLOAT, mr_shape)
+
+    #     node_def = helper.make_node(
+    #         "LayerNormalization",
+    #         inputs=['input', 'weight', 'bias'],
+    #         outputs=['output', 'mean', 'rstd'],
+    #     )
+    #     graph_def = helper.make_graph([node_def], case_name,
+    #                                   [input], [output, mean, rstd],
+    #                                   initializer=[weight, bias])
+    #     self.onnx_and_test(graph_def)
 
     def BinaryWeightBase(self, case_name, input_shape, weight_shape, binary_name, reverse=False):
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)

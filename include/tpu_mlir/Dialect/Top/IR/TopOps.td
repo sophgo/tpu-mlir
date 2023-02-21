@@ -1222,7 +1222,11 @@ def Top_ArgOp : Top_Op<"Arg"> {
     I64Attr:$keepdims,
     ArgModeAttr:$mode
   );
-  let results = (outs AnyTensor:$output);
+  let results = (outs
+    AnyTensor:$indices,
+    AnyTensorOrNone:$values
+  );
+  let hasCanonicalizer = 1;
 }
 
 def Top_PowOp : Top_Op<"Pow", [InOutSameShape]> {

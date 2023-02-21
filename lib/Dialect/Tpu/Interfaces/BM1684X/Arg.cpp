@@ -18,14 +18,14 @@ void tpu::ArgOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
-
+  const bool need_val = !getValues().getType().isa<NoneType>();
   arg_global_spec_t spec = {0};
   spec.common.axis = getAxis();
   spec.common.method = StringSwitch<int>(getMode())
                            .Case("ArgMax", 0)
                            .Case("ArgMin", 1)
                            .Default(-1);
-  spec.common.need_val = false;
+  spec.common.need_val = need_val;
   spec.common.is_index_int32 = true;
 
   BM168x::call_global_func("backend_api_arg_global", &spec,

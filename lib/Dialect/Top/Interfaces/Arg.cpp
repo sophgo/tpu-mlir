@@ -14,7 +14,7 @@
 #include <float.h>
 
 
-int64_t top::ArgOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::ArgOp::getFLOPs() { return module::getNumElements(getIndices()); }
 
 LogicalResult top::ArgOp::init(InferenceParameter &p) { return success(); }
 void top::ArgOp::deinit(InferenceParameter &p) {}
@@ -22,11 +22,10 @@ void top::ArgOp::deinit(InferenceParameter &p) {}
 LogicalResult top::ArgOp::inference(InferenceParameter &p) {
   float *input_v = p.inputs[0];
   float *output_idx = p.outputs[0];
-  // float *output_idx = p.outputs[1];
-  // float *output_val = p.outputs[1];
+  const bool need_val = !getValues().getType().isa<NoneType>();
+  float* output_val = need_val ? p.outputs[1] : nullptr;
   auto type_val = getMode().str();
   auto axis_val = getAxis();
-  // auto out_shape = module::getShape(getOutput());
   auto input_shape = module::getShape(getInput());
   // calc dims
   int start_axis = axis_val;
@@ -55,8 +54,10 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
             target_idx = a;
           }
         }
-        // output_val[o * inner_dims + i] = target_val;
         output_idx[o * inner_dims + i] = target_idx;
+        if(need_val){
+          output_val[o * inner_dims + i] = target_val;
+        }
       } else {
         llvm_unreachable("not support now.");
       }
