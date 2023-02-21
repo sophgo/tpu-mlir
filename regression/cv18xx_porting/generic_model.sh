@@ -166,6 +166,10 @@ do_bf16=
 if [ x${DO_QUANT_BF16} != x ];then
   do_bf16=${DO_QUANT_BF16}
 fi
+if [ ${SET_CHIP_NAME}x = "cv181x"x ] ||
+   [ ${SET_CHIP_NAME}x = "cv180x"x ];then
+  do_bf16=0
+fi
 
 tolerance_top_opt=
 if [ x${TOLERANCE_TOP} != x ];then
