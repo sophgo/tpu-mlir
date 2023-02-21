@@ -104,12 +104,53 @@ void tpu::MulConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 //dynamic codegen
 int64_t tpu::MulConstOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
+  if (!buffer)return sizeof(constbinary_local_param_t);
+  constbinary_local_param_t param;
+  memset(&param, 0, sizeof(param));
+
+  auto input_type = module::getStorageType(getInput());
+  param.spec.common.binary_type = BINARY_MUL;
+  param.spec.common.if_relu = getDoRelu();
+  param.spec.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.spec.common.inversed = 0;
+  param.spec.common.scale_A = 1;
+  param.spec.common.rshift_A = 0;
+  if (module::isUniformQuantized(getInput())) {
+    param.spec.common.B_const_val = 1; // coeff has been merge in multiplier&&rshift
+    param.spec.common.B_dtype = DTYPE_INT8;
+    param.spec.common.scale_A = getMultiplier();
+    param.spec.common.rshift_A = getRshift();
+  } else {
+    param.spec.common.B_const_val = getConstVal().convertToDouble();
+    param.spec.common.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  }
+
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::MulConstOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(constbinary_common_spec_t);
+  constbinary_common_spec_t param = {0};
+  auto input_type = module::getStorageType(getInput());
+  param.binary_type = BINARY_MUL;
+  param.if_relu = getDoRelu();
+  param.relu_upper_limit = getReluLimit().convertToDouble();
+  param.inversed = 0;
+  param.scale_A = 1;
+  param.rshift_A = 0;
+  if (module::isUniformQuantized(getInput())) {
+    param.B_const_val = 1; // coeff has been merge in multiplier&&rshift
+    param.B_dtype = DTYPE_INT8;
+    param.scale_A = getMultiplier();
+    param.rshift_A = getRshift();
+  } else {
+    param.B_const_val = getConstVal().convertToDouble();
+    param.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }

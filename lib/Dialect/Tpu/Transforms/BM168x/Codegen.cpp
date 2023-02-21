@@ -424,12 +424,16 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
-        next_id_v.push_back(id);
+        //callOp's result maybe have more than two users
+        next_id_v.insert(next_id_v.begin(), id);
       } else {
         llvm_unreachable("next op is illegal");
       }
     }
   }
+
+  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()), next_id_v.end());
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   auto cmd_group_v = CreateCmdGroupVector();
@@ -482,12 +486,15 @@ CodegenPass::CreateSubNet(func::CallOp call,
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
-        next_id_v.push_back(id);
+        next_id_v.insert(next_id_v.begin(), id);
       } else {
         llvm_unreachable("next op is illegal");
       }
     }
   }
+
+  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()), next_id_v.end());
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
 

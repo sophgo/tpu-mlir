@@ -721,6 +721,9 @@ void SubnetIr::generate_group_time_step_ir(
       LgInfo sub_group;
       sub_group.group_ops.push_back(op);
       sub_group.update_group_io();
+      sub_group.group_outs.clear();
+      for (auto&& v: op->getResults())
+        sub_group.group_outs.emplace_back(v);
       m_layer_groups_.push_back(sub_group);
       //get and push fw_timestep_base_info_t
       fw_timestep_base_info_t timestep_base_info = {

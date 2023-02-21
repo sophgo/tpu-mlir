@@ -35,12 +35,13 @@ bool BMAddressAssign::is_next_subnet_input(Operation *op, int index) {
   bool ret = false;
   for (uint32_t i = 0; i < op->getNumOperands(); i++) {
     if (i == index) {
-      for (const auto user : op->getOperand(i).getUsers()) {
+      for (const auto& user : op->getOperand(i).getUsers()) {
         if (isa<FuncOp>(user->getParentOp())) {
           FuncOp funcOp;
           funcOp = cast<FuncOp>(user->getParentOp());
           func::CallOp callee = module::getCallOp(funcOp);
-          if (callee && callee.getResult(index).hasOneUse()) {
+          if (callee && std::distance(callee.getResult(index).user_begin(),
+                                      callee.getResult(index).user_end())) {
             ret = true;
             break;
           }
