@@ -228,6 +228,117 @@ static bool ConvertPading(PatternRewriter &rewriter, top::ConvOp op,
   return insert_pad;
 }
 
+static bool Conv2dToMatMul(PatternRewriter &rewriter, top::ConvOp op,
+                            const conv_attr_t &attr) {
+  //support hua'an pose_res model
+  auto kernel = module::getI64Array(op.getKernelShape());
+  if (kernel->size() != 2) {
+    return false;
+  }
+  int64_t n = attr.n, ic = attr.ic, ih = attr.ih, iw = attr.iw;
+  int64_t kh = attr.kh, kw = attr.kw, sh = attr.sh, sw = attr.sw;
+  if ((kh != sh || kw != sw) ||
+      (sh < 16 || sw < 16) ||
+      (ih % kh || iw % kw)) {
+    return false;
+  }
+  if (attr.pht || attr.phb || attr.pwl || attr.pwr) {
+    return false;
+  }
+  auto input = op.getInput();
+  auto input_type = input.getType().cast<RankedTensorType>().getElementType();
+  auto out_type = op.getResult().getType().cast<RankedTensorType>().getElementType();
+  std::vector<Value> operands;
+  std::vector<NamedAttribute> attrs;
+  std::string op_name = module::getName(op.getResult()).str();
+  // reshape0 8x3x224x224 --> 8x3x14x16x14x16
+  rewriter.setInsertionPointAfterValue(input);
+  operands.emplace_back(input);
+  auto loc0 = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape0"));
+  auto reshape0_type = RankedTensorType::get({n, ic, ih / kh, kh, iw / kw, kw}, input_type);
+  auto reshape0_op = rewriter.create<top::ReshapeOp>(loc0, reshape0_type, operands, attrs);
+  auto reshape0_out = reshape0_op.getResult();
+  //permute0 [0 1 2 4 3 5] (8x3x14x16x14x16 --> 8x3x14x14x16x16)
+  rewriter.setInsertionPointAfterValue(reshape0_out);
+  operands.clear();
+  attrs.clear();
+  operands.emplace_back(reshape0_out);
+  attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 1, 2, 4, 3, 5})));
+  auto loc1 = NameLoc::get(rewriter.getStringAttr(op_name + "_permute0"));
+  auto permute0_type = RankedTensorType::get({n, ic, ih / kh, iw / kw, kh, kw}, input_type);
+  auto permute0_op = rewriter.create<top::PermuteOp>(loc1, permute0_type, operands, attrs);
+  auto permute0_out = permute0_op.getResult();
+  //permute1 [0 2 3 1 4 5] ( 8x3x14x14x16x16 --> 8x14x14x3x16x16)
+  rewriter.setInsertionPointAfterValue(permute0_out);
+  operands.clear();
+  attrs.clear();
+  operands.emplace_back(permute0_out);
+  attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 2, 3, 1, 4, 5})));
+  auto loc2 = NameLoc::get(rewriter.getStringAttr(op_name + "_permute1"));
+  auto permute1_type = RankedTensorType::get({n, ih / kh, iw / kw, ic, kh, kw}, input_type);
+  auto permute1_op = rewriter.create<top::PermuteOp>(loc2, permute1_type, operands, attrs);
+  auto permute1_out = permute1_op.getResult();
+  //reshape1 8x14x14x3x16x16 -->  MxK(8x14x14, 3x16x16)
+  rewriter.setInsertionPointAfterValue(permute1_out);
+  operands.clear();
+  attrs.clear();
+  operands.emplace_back(permute1_out);
+  auto loc3 = NameLoc::get(rewriter.getStringAttr(op_name + "_reshape1"));
+  auto reshape1_type = RankedTensorType::get({n, ih / kh, iw / kw, ic * kh * kw}, input_type);
+  auto reshape1_op = rewriter.create<top::ReshapeOp>(loc3, reshape1_type, operands, attrs);
+  auto reshape1_out = reshape1_op.getResult();
+
+  //insert matmulOp
+  rewriter.setInsertionPointAfterValue(reshape1_out);
+  operands.clear();
+  attrs.clear();
+  auto noneOp = module::getNoneOp(op);
+  operands.emplace_back(reshape1_out);
+  operands.emplace_back(noneOp);
+  operands.emplace_back(noneOp);
+  //reshape filter 768x3x16x16 --> NxK(768, 3x16x16)
+  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
+  auto filter_f32 = filterOp.read<float>();
+  std::vector<int64_t> filter_shape = module::getShape(op.getFilter());
+  if (filter_shape.size() != 4) {
+    return false;
+  }
+  int64_t N = filter_shape[0];
+  int64_t K = std::accumulate(filter_shape.begin() + 1, filter_shape.end(), 1, std::multiplies<int64_t>());
+  //filter weight transpose
+  std::vector<float> new_filter_f32(filter_f32->size());
+  for (int64_t i = 0; i < N; i++) {
+    for (int64_t j = 0; j < K; j++) {
+      new_filter_f32[j * N + i] = filter_f32->at(i * K + j);
+    }
+  }
+  attrs.emplace_back(rewriter.getNamedAttr("right_transpose", rewriter.getBoolAttr(false)));
+  auto loc4 = NameLoc::get(rewriter.getStringAttr(op_name + "_matmul"));
+  auto matmul_type = RankedTensorType::get({n, ih / kh, iw / kw, N}, out_type);
+  auto matmulOp = rewriter.create<top::MatMulOp>(loc4, matmul_type, operands, attrs);
+  auto new_filter_type = RankedTensorType::get({K, N}, rewriter.getF32Type());
+  auto new_filter = top::WeightOp::create(matmulOp, op_name + "_filter", new_filter_f32, new_filter_type);
+  matmulOp.setOperand(1, new_filter);
+  if (attr.has_bias) {
+    auto biasOp = cast<top::WeightOp>(op.getBias().getDefiningOp());
+    auto bias_f32 = biasOp.read<float>();
+    auto new_bias_type = RankedTensorType::get({N}, rewriter.getF32Type());
+    auto new_bias = top::WeightOp::create(matmulOp, op_name + "_bias", *bias_f32, new_bias_type);
+    matmulOp.setOperand(2, new_bias);
+  }
+
+  auto matmul_out = matmulOp.getResult();
+  // permute2 [0,3,1,2] --> 8x768x14x14
+  rewriter.setInsertionPointAfterValue(matmul_out);
+  operands.clear();
+  attrs.clear();
+  operands.emplace_back(matmul_out);
+  attrs.emplace_back(rewriter.getNamedAttr("order", rewriter.getI64ArrayAttr({0, 3, 1, 2})));
+  auto permute2_type = RankedTensorType::get({n,  N, ih / kh, iw / kw}, out_type);
+  rewriter.replaceOpWithNewOp<top::PermuteOp>(op, permute2_type, operands, attrs);
+  return true;
+}
+
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
   // for convert from hsigmoid/hswish
@@ -247,6 +358,9 @@ void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
     return;
   }
   if (ConvertDilation(rewriter, op, attr)) {
+    return;
+  }
+  if (Conv2dToMatMul(rewriter, op, attr)) {
     return;
   }
   double in_thr, out_thr;
@@ -365,6 +479,9 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
     return;
   }
   if (ConvertDilation(rewriter, op, attr)) {
+    return;
+  }
+  if (Conv2dToMatMul(rewriter, op, attr)) {
     return;
   }
   auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
