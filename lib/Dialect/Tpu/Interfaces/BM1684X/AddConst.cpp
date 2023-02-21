@@ -74,6 +74,7 @@ void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto output_spec = BM168x::get_output_spec(op);
   auto input_type = module::getStorageType(getInput());
   constbinary_local_spec_t param = {0};
+  auto gi = LocalGenInterface::getGroupInfo(op, n_step, h_step);
   param.common.binary_type = BINARY_ADD;
   param.common.if_relu = getDoRelu();
   param.common.relu_upper_limit = getReluLimit().convertToDouble();
@@ -81,6 +82,7 @@ void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.common.inversed = 0;
   param.common.scale_A = 1;
   param.common.rshift_A = 0;
+  param.buffer_addr = gi.buffer_addr;
   if (module::isUniformQuantized(getInput())) {
     param.common.B_dtype = DTYPE_INT32;
     param.common.scale_A = getMultiplier();
