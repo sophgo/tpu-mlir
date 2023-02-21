@@ -117,7 +117,7 @@ LogicalResult tpu::MatMulOp::inference(InferenceParameter &p) {
           int64_t v = 0;
           v = applyMultiplierAndRShift(p.outputs[0][offset],
                                        multiplier_v->at(i), rshift_v->at(i),
-                                       qmode);
+                                       qmode, ROUNDING_HALF_AWAY_FROM_ZERO);
           p.outputs[0][offset] = saturate(v, out_type);
         }
       }

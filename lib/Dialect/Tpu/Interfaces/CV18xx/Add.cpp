@@ -39,7 +39,6 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
     early_stride_w = getEarlyStrideW().value();
   }
 
-  module::getNCHW(getOutput(), n, c, h, w);
   auto coeffs_ = module::getF64Array(getCoeff(), input_num, 1);
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
@@ -81,6 +80,10 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
     }
 
   } else {
+    n = shape0[0];
+    c = shape0[1];
+    h = shape0[2];
+    w = shape0[3];
     if (module::isUniformQuantized(getOutput())) {
       auto multiplier_v = module::getI64Array(getMultipliers(), input_num, 1);
       auto rshift_v = module::getI64Array(getRshifts(), 1, 0);

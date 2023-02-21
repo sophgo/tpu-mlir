@@ -59,8 +59,13 @@ LogicalResult tpu::MulOp::inference(InferenceParameter &p) {
     auto qmode = getQuantMode();
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int i = 0; i < num_elem; i++) {
-      double sum = p.outputs[0][i];
-      sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode);
+      float sum = p.outputs[0][i];
+      if (module::isCV18xx()) {
+        sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode,
+                                       ROUNDING_HALF_AWAY_FROM_ZERO);
+      } else {
+        sum = applyMultiplierAndRShift(sum, getMultiplier(), getRshift(), qmode);
+      }
       p.outputs[0][i] = saturate(sum, out_type);
     }
   } else {

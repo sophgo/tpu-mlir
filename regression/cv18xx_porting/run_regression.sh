@@ -117,7 +117,7 @@ if [ -z $model_list_file ]; then
   fi
 fi
 
-while read net bs1 acc bs1_ext acc_ext
+while read net bs1 bs4 acc bs1_ext bs4_ext acc_ext
 do
   [[ $net =~ ^#.* ]] && continue
   # echo "net='$net' bs1='$bs1' bs4='$bs4' acc='$acc' bs1_ext='$bs1_ext' bs4_ext='$bs4_ext' acc_ext='$acc_ext'"

@@ -33,8 +33,6 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
   bool do_early_stride = false;
   int early_stride_h = 0;
   int early_stride_w = 0;
-  module::getNCHW(getOutput(), n, c, h, w);
-
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
   module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
@@ -64,6 +62,10 @@ void tpu::MulOp::codegen_global_cv18xx(int64_t layer_id) {
           getDoRelu());
     }
   } else {
+    n = shape0[0];
+    c = shape0[1];
+    h = shape0[2];
+    w = shape0[3];
     if (module::isUniformQuantized(getOutput())) {
       int32_t multiplier_v = static_cast<int32_t>(this->getMultiplier());
       int32_t rshift_v = static_cast<int32_t>(this->getRshift());
