@@ -97,12 +97,13 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
   gaddr_t ga_output = module::getAddress(getOutput());
   cvk_fmt_t fmt =
       module::isUniformQuantized(getOutput()) ? CVK_FMT_I8 : CVK_FMT_BF16;
-  if (getMode() == 0) {
+  if (getMode() == 0 || getMode() == 3) {
+    std::string mode = getMode() == 0 ? "constant" : "edge";
     parsePadParam(getOperation(), i_s, o_s, pads);
     float const_val = getVal().convertToDouble();
     cvi_backend_tg_pad_kernel(layer_id, ga_input, ga_output, i_s[0], i_s[1],
                               i_s[2], i_s[3], pads.data(), const_val,
-                              "constant", fmt);
+                              mode.c_str(), fmt);
   } else if (getMode() == 1) {
     // reflect
     std::vector<int> pads(4, 0);
@@ -126,10 +127,6 @@ void tpu::PadOp::codegen_global_cv18xx(int64_t layer_id) {
     cvi_backend_tg_reflectionpad_kernel(layer_id, ga_input, ga_output,
                                         ga_left_select, ga_right_select,
                                         outer_size, ih, iw, pads, fmt);
-
-  } else if (getMode() == 3) {
-    // edge
-    llvm_unreachable("Unsupport pad type.");
   } else {
     llvm_unreachable("Unsupport pad type.");
   }

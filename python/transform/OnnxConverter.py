@@ -14,7 +14,7 @@ from .OnnxOpt import onnx_opt
 from onnx import numpy_helper, mapping
 from numbers import Number
 import onnxsim.onnx_simplifier as onnxsim
-
+import os
 import onnx
 import onnxruntime
 import numpy as np
@@ -370,15 +370,7 @@ class OnnxConverter(BaseConverter):
             # remove astype(np.float32)
             data = numpy_helper.to_array(tensor)
             self.addWeight(name, data)
-        # add all shape info
-        for info in self.model.graph.value_info:
-            shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
-            self.addShape(info.name, shape)
-        for output in self.model.graph.output:
-            if not self.isWeight(output.name):
-                self.output_names.append(output.name)
-                shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
-                self.addShape(output.name, shape)
+        self.add_shape_info()
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         onnx.save(self.model, self.onnx_file)
         strip_model = onnx.ModelProto()
@@ -389,6 +381,77 @@ class OnnxConverter(BaseConverter):
         if is_ok:
             # fuse ops such as layernorm gelu...
             self.model, self.node_name_mapping = onnx_opt(self.model, True)
+
+    def add_shape_info(self):
+        unk_op = []
+        nodes_with_shape = []
+        for info in self.model.graph.value_info:
+            shape = [i.dim_value for i in info.type.tensor_type.shape.dim]
+            if np.any(np.array(shape) <= 0):
+                unk_op.append(info.name)
+            else:
+                self.addShape(info.name, shape)
+            nodes_with_shape.append(info.name)
+        for output in self.model.graph.output:
+            if not self.isWeight(output.name):
+                self.output_names.append(output.name)
+                shape = [i.dim_value for i in output.type.tensor_type.shape.dim]
+            if np.any(np.array(shape) <= 0) or len(shape) == 0:
+                unk_op.append(output.name)
+            else:
+                self.addShape(output.name, shape)
+            nodes_with_shape.append(output.name)
+        # get unknow shape
+        full_nodes = []
+        no_list = [
+           "Cast", "Shape", "Constant", "Unsqueeze",  "Dropout", "Loop", "TopK" #, "NonZero"
+        ]
+        for n in self.model.graph.node:
+            if n.op_type in no_list:
+                continue
+            for name in n.output:
+                if not name:
+                    continue
+                full_nodes.append(name)
+        unk_op.extend(set(full_nodes) - set(nodes_with_shape))
+
+        if (unk_op):
+            unk_shape = self.get_unk_shape(unk_op)
+            for n, s in unk_shape:
+                self.addShape(n, list(s))
+
+    def get_unk_shape(self, unk_op):
+        # Notice this not always right. For some op in onnx
+        # the shape of the output changes with the input data, such as nonzeroOp
+        # gen fake model
+        model = copy.deepcopy(self.model)
+        outnode = model.graph.output
+        for _ in range(len(outnode)):
+            model.graph.output.remove(outnode[0])
+        for name in unk_op:
+            intermediate_layer_value_info = onnx.helper.ValueInfoProto()
+            intermediate_layer_value_info.name = name
+            model.graph.output.append(intermediate_layer_value_info)
+        onnx_file = "generate_onnx_with_unk.onnx"
+        onnx.save(model, onnx_file)
+        session = onnxruntime.InferenceSession(onnx_file)
+        os.remove(onnx_file)
+        # gen fake input
+        inputs = {}
+        inp = session.get_inputs()
+        for i in inp:
+            shape = i.shape
+            name = i.name
+            dtype = np.float32
+            if i.type == 'tensor(int64)':
+                dtype = np.int64
+            elif i.type == 'tensor(bool)':
+                dtype = np.bool
+            inputs[name] = np.ones(shape).astype(dtype)
+        outs = session.run(None, inputs)
+        outs_shape = [o.shape for o in outs]
+        assert(len(outs_shape) == len(unk_op))
+        return zip(unk_op, outs_shape)
 
     def input_shape_assign(self, input_shapes):
         inputs = self.get_inputs(self.model)
