@@ -167,22 +167,11 @@ public:
     std::vector<int64_t> shape = interpreter_->getTensorShape(name);
     return getPythonArray(tensor.get(), shape);
   }
-  
+
   struct quant_brief_info format_tensor_qinfo(std::string name) {
-    int width_, sign_, zp_;
-    float scale_;
     struct quant_brief_info q_info;
-    if (interpreter_->getTensorQuantInfo(name, width_, sign_, scale_, zp_)) {
-      if (width_ == 32) {
-        q_info.dtype = std::string("F32");
-        q_info.scale = 1.0;
-        q_info.zp = 0;
-      } else {
-      q_info.dtype = (width_ == 8)? (sign_? std::string("I8"):std::string("U8")):(width_ == 16)?(sign_? std::string("I16"):std::string("U16")):std::string("I4");
-      q_info.scale = scale_;
-      q_info.zp = zp_;
-      }
-    } else {
+    if (!interpreter_->getTensorQuantInfo(name, q_info.dtype, q_info.scale,
+                                          q_info.zp)) {
       q_info.dtype = std::string("NA");
       q_info.scale = 1.0;
       q_info.zp = 0;
@@ -194,7 +183,7 @@ public:
     for (int i = 0; i < shape_.size(); i++) {
       q_info.shape += std::to_string(shape_[i]);
       if (i != shape_.size() - 1)
-      q_info.shape += std::string(", ");
+        q_info.shape += std::string(", ");
     }
     q_info.shape += std::string("]");
     return q_info;
@@ -209,9 +198,7 @@ public:
     return getPythonArray(tensor.get(), shape);
   }
 
-  void invoke_from(const std::string name) {
-    interpreter_->invoke_from(name);
-  }
+  void invoke_from(const std::string name) { interpreter_->invoke_from(name); }
 
 public:
   py::list all_tensor_names;
@@ -254,8 +241,7 @@ PYBIND11_MODULE(pymlir, m) {
       .def("fake_quant_weight", &py_module::fake_quant_weight)
       .def("invoke_at", &py_module::invoke_at, "invote at specified layer")
       .def("invoke_from", &py_module::invoke_from, "invote from specified layer to the end")
-      .def("get_tensor_qinfo", &py_module::format_tensor_qinfo,
-           "get simple quant info of tensor")
+      .def("get_tensor_qinfo", &py_module::format_tensor_qinfo, "get simple quant info of tensor")
       .def_readonly("input_names", &py_module::input_names)
       .def_readonly("output_names", &py_module::output_names)
       .def_readonly("all_tensor_names", &py_module::all_tensor_names)
