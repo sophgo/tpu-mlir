@@ -15,9 +15,22 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void LoweringArg(PatternRewriter &rewriter, top::ArgOp op) {
-  auto shape = module::getShape(op.getOutput());
-  auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
-  lowering_common<tpu::ArgOp>(rewriter, op, new_type);
+  std::vector<Value> operands;
+  operands.push_back(op.getInput());
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  std::vector<Type> new_types;
+  if (!module::isNone(op.getIndices())) {
+    auto shape = module::getShape(op.getIndices());
+    auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
+    new_types.push_back(new_type);
+  } else {
+    new_types.push_back(op.getIndices().getType());
+  }
+  new_types.push_back(op.getValues().getType());
+  rewriter.replaceOpWithNewOp<tpu::ArgOp>(op, new_types, operands, attrs);
   return;
 }
 

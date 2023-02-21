@@ -1604,7 +1604,10 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
     ArgModeAttr:$mode
   );
 
-  let results = (outs AnyTensor:$output);
+  let results = (outs
+    AnyTensor:$indices,
+    AnyTensorOrNone:$values
+  );
 }
 
 def Tpu_WhereOp: Tpu_Op<"Where", [
