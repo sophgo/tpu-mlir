@@ -33,7 +33,8 @@ def linear_plot(data, name=None, max_sampling=1000):
     fig = plt.plot_float_vs_fixpoint(
         index, (blob_fp.flatten()[::step], blob_int.flatten()[::step]),
         subplot_titles=(name, "float - int8\t "))
-    fig.update_layout(margin=dict(l=24, r=10, t=20, b=60),
+    fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.98, bgcolor="rgba(0,0,0,0)"))
+    fig.update_layout(margin=dict(l=10, r=10, t=20, b=20),
                       hovermode='x unified')
     return fig
 
