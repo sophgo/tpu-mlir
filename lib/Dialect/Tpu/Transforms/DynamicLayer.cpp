@@ -104,6 +104,7 @@ int get_tensor_id(Value v) {
 
 
 FW_LAYER_TYPE_T get_layer_type(Operation *op) {
+  //Todo: refine
   if (isa<tpu::Conv2DOp>(op))
     return FW_BMNET_CONV;
   else if (isa<tpu::Pool2DOp>(op)) {
@@ -140,6 +141,8 @@ FW_LAYER_TYPE_T get_layer_type(Operation *op) {
     return FW_BMNET_LUT;
   } else if (isa<tpu::MulShiftOp>(op)) {
     return FW_BMNET_MULSHIFT;
+  } else if (isa<tpu::MulConstOp>(op)) {
+    return FW_BMNET_CONST_BINARY;
   } else
     return FW_LAYER_UNKNOWN;
 }
