@@ -10,8 +10,8 @@
 #include "tpu_mlir/Support/ModuleInterpreter.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include <algorithm>
 #include <functional>
@@ -260,7 +260,8 @@ ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
       auto data_fp32 = std::make_shared<std::vector<float>>(it->second->size());
       auto qtype = module::getUniformQuantizedType(value);
       for (auto &data : *mem) {
-        data_fp32->data()[i++] = (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
+        data_fp32->data()[i++] =
+            (data - (float)qtype.getZeroPoint()) * (float)qtype.getScale();
       }
       return std::move(data_fp32);
     }
@@ -270,24 +271,55 @@ ModuleInterpreter::getTensor(const std::string &name, bool express_type) {
   return std::move(tmp);
 }
 
-bool ModuleInterpreter::getTensorQuantInfo(const std::string name, int &width, int &sign, float &scale, int &zp) {
+bool ModuleInterpreter::getTensorQuantInfo(const std::string name,
+                                           std::string &dtype, float &scale,
+                                           int &zp) {
   auto it = mem_map.find(name);
   if (it == mem_map.end()) {
     return false;
   }
   auto value = value_map.at(name);
+  auto stype = module::getStorageType(value);
   if (module::isUniformQuantized(value)) {
-    auto stype = module::getStorageType(value);
     auto qtype = module::getUniformQuantizedType(value);
-    sign = stype.isSignedInteger(8) || stype.isSignedInteger(16);
     scale = qtype.getScale();
     zp = qtype.getZeroPoint();
-    width = stype.isInteger(8) ? 8: stype.isInteger(16)?16:4;
-  } else {
-    width = 32; sign = 1; scale = 1.0; zp = 0;
+    if (stype.isSignlessInteger(8))
+      dtype = std::string("U8");
+    else if (stype.isSignedInteger(8))
+      dtype = std::string("I8");
+    else if (stype.isSignlessInteger(16))
+      dtype = std::string("U16");
+    else if (stype.isSignedInteger(16))
+      dtype = std::string("I16");
+    else if (stype.isSignedInteger(32))
+      dtype = std::string("I32");
+    else if (stype.isSignlessInteger(32))
+      dtype = std::string("U32");
+    else
+      dtype = std::string("I4");
+  } else if (stype.isa<FloatType>()) {
+    if (stype.isF16()) {
+      dtype = std::string("F16");
+      scale = 1.0;
+      zp = 0;
+    } else if (stype.isBF16()) {
+      dtype = std::string("BF16");
+      scale = 1.0;
+      zp = 0;
+    } else if (stype.isF32()) {
+      dtype = std::string("F32");
+      scale = 1.0;
+      zp = 0;
+    } else {
+      dtype = std::string("NA");
+      scale = 1.0;
+      zp = 0;
+    }
   }
   return true;
 }
+
 llvm::ArrayRef<int64_t>
 ModuleInterpreter::getTensorShape(const std::string &name) {
   auto it = value_map.find(name);
