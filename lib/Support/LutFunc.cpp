@@ -116,7 +116,7 @@ static void gen_bf16_slope_table(float start, float end, int table_hw,
   }
   // slope of range start
   slope_table[half] =
-      BF16((func(3 * start) - func(start)) / (std::abs(2 * start) * scale));
+      BF16((func(3 * start) - func(start)) / (2 * start * scale));
 }
 
 void bf16_gen_base_slope_table(float *base_table, float *slope_table,
