@@ -259,10 +259,14 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     if args.fuse_preprocess or args.aligned_input:
-        assert(args.chip.find("cv18") >= 0)
-        if args.customization_format is not None and args.customization_format.find("YUV") >= 0:
+        if(args.chip.find("bm168") >= 0):
             args.fuse_preprocess = True
-            args.aligned_input = True
+        else:
+            assert(args.chip.find("cv18") >= 0)
+            if args.customization_format is not None and args.customization_format.find("YUV") >= 0:
+                args.fuse_preprocess = True
+                args.aligned_input = True
+
     tool = DeployTool(args)
     # lowering to tpu
     tool.lowering()
