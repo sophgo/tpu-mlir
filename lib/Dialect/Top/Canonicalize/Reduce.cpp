@@ -10,6 +10,7 @@
 #include "mlir/Pass/Pass.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 
 using namespace tpu_mlir::top;
 using namespace tpu_mlir::trait;
@@ -87,7 +88,73 @@ struct TopReduceTranspose : public OpRewritePattern<ReduceOp> {
   }
 };
 
+struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
+
+  using OpRewritePattern::OpRewritePattern;
+  ReduceFusePattern(MLIRContext *context, PatternBenefit benefit = 10)
+      : OpRewritePattern<ReduceOp>(context, benefit) {}
+  LogicalResult matchAndRewrite(ReduceOp op,
+                                PatternRewriter &rewriter) const override {
+    auto formerOpDefine = op.getInput().getDefiningOp();
+    if (!isa<ReduceOp>(op) || !isa<ReduceOp>(formerOpDefine)) {
+      return failure();
+    }
+    auto formerOp = cast<ReduceOp>(formerOpDefine);
+    if (formerOp.getMode() != op.getMode()) {
+      return failure();
+    }
+    if (formerOp.getKeepdims() != op.getKeepdims()) {
+      return failure();
+    }
+    auto input_shape = module::getShape(op.getInput());
+    auto output_shape = module::getShape(op.getOutput());
+    auto axis_list_former = module::getI64Array(formerOp.getAxes());
+    auto axis_list_current = module::getI64Array(op.getAxes());
+    int axis_num_former = axis_list_former->size();
+    int axis_num_current = axis_list_current->size();
+    auto new_input = formerOp.getInput();
+
+    int mask[MAX_SHAPE_DIMS] = {0};
+    int new_axis_num = 0;
+    for (int i=0; i< axis_num_former; i++) {
+      mask[axis_list_former->at(i)] = 1;
+      new_axis_num += 1;
+    }
+    for (int i=0; i< axis_num_current; i++) {
+      int offset = 0;
+      while(mask[axis_list_current->at(i)+offset]) {
+          offset += 1;
+      }
+      mask[axis_list_current->at(i)+offset] = 1;
+      new_axis_num += 1;
+    }
+    int offset_start = 0;
+    while(!mask[offset_start]) {
+          offset_start += 1;
+    }
+    std::vector<int64_t> new_axis(new_axis_num, 0);
+    for (int i = 0; i < new_axis_num; i++) {
+        int offset_insert = offset_start;
+        while(!mask[offset_insert]) {
+          offset_insert += 1;
+        }
+        new_axis[i] = offset_insert;
+        offset_start = offset_insert + 1;
+    }
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(new_axis)));
+    attrs.push_back(
+        rewriter.getNamedAttr("keepdims", op->getAttr("keepdims")));
+    attrs.push_back(
+        rewriter.getNamedAttr("mode", op->getAttr("mode")));
+    rewriter.replaceOpWithNewOp<ReduceOp>(
+        op, op.getResult().getType(), new_input, attrs);
+    return success();
+  }
+};
+
 void ReduceOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                            MLIRContext *context) {
-  results.insert<TopReduceTranspose>(context);
+  results.insert<TopReduceTranspose, ReduceFusePattern>(context);
 }

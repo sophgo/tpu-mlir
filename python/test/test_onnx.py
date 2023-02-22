@@ -188,7 +188,8 @@ class ONNX_IR_TESTER(object):
             "SwapDimInner": self.test_SwapDimInner,
             "ReduceTranspose": self.test_ReduceTranspose,
             "SliceToReverse": self.test_SliceToReverse,
-            "StaticDynMixed": self.test_StaticDynMixed
+            "StaticDynMixed": self.test_StaticDynMixed,
+            "ReduceFusePattern": self.test_ReduceFusePattern
         }
 
         # no quantization when quant_mode == "f32"
@@ -3612,6 +3613,21 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
+
+    def test_ReduceFusePattern(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                x = torch.sum(x,1)
+                x = torch.sum(x,1)
+                return x
+
+        x = torch.randn(2, 2, 3, 4).float()
+        self.torch_and_test(x, Net(), case_name)
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
