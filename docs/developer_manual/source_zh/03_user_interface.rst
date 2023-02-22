@@ -467,3 +467,34 @@ npz在TPU-MLIR工程中会大量用到, 包括输入输出的结果等等。npz_
    * - to_dat
      - 将npz导出为dat文件, 连续的二进制存储
 
+visual.py
+~~~~~~~~~~~~~~~~
+
+量化网络如果遇到精度对比不过或者比较差，可以使用此工具逐层可视化对比浮点网络和量化后网络的不同，方便进行定位和手动调整。
+
+执行命令可参考如下：
+
+.. code-block:: shell
+
+   # 以使用9999端口为例
+   $ visual.py --fp32_mlir f32.mlir --quant_mlir quant.mlir --input top_input_f32.npz --port 9999
+
+支持的功能如下:
+
+.. list-table:: visual 功能
+   :widths: 18 60
+   :header-rows: 1
+
+   * - 功能
+     - 描述
+   * - f32_mlir
+     - fp32网络mlir文件
+   * - quant_mlir
+     - 量化后网络mlir文件
+   * - input
+     - 测试输入数据，可以是图像文件或者npz文件
+   * - port
+     - 使用的TCP端口，默认10000，需要在启动docker时映射至系统端口
+   * - manual_run
+     - 启动后是否自动进行网络推理比较，默认False，会自动推理比较
+

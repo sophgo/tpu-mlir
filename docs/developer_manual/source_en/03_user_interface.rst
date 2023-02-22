@@ -279,3 +279,35 @@ Supported functions:
    * - to_dat
      - Export npz as dat file, contiguous binary storage
 
+
+visual.py
+~~~~~~~~~~~~~~~~
+
+visual.py is an visualized network/tensor compare application with interface in web browser, if accuracy of quantized network is not
+as good as expected, this tool can be used to investigate the accuracy in every layer.
+
+Example:
+
+.. code-block:: shell
+
+   # use TCP port 9999 in this example
+   $ visual.py --fp32_mlir f32.mlir --quant_mlir quant.mlir --input top_input_f32.npz --port 9999
+
+Supported functions:
+
+.. list-table:: visual 功能
+   :widths: 18 60
+   :header-rows: 1
+
+   * - Function
+     - Description
+   * - f32_mlir
+     - fp32 mlir file
+   * - quant_mlir
+     - quantized mlir file
+   * - input
+     - test input data for networks, can be in jpeg or npz format.
+   * - port
+     - TCP port used for UI, default port is 10000，the port should be mapped when starting docker
+   * - manual_run
+     - if net will be automaticall inferenced when UI is opened, default is false for auto inference
