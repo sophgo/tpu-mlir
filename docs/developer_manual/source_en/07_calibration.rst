@@ -150,3 +150,46 @@ The result is shown in the following figure (:ref:`yolov5s_cali`).
    :align: center
 
    yolov5s_cali calibration result
+
+
+visual tool introduction
+------------------------------
+
+visual.py is an visualized net/tensor compare tool with UI in web browser. When quantized net encounters great accuracy decrease, this tool
+can be used to investigate the accuracy loss layer by layer. This tool is started in docker as an server listening to TCP port 10000 (default),
+and by input localhost:10000 in url of browser in host computer, the tool UI will be displayed in it, the port must be mapped to host in advance
+when starting the docker, and the tool must be start in the same directory where the mlir files located, start command is as following:
+
+.. figure:: ../assets/visual_cmd.png
+   :width: 800px
+   :align: center
+
+Open browser in host computer and input localhost:9999, the tool UI will be displayed. The float and quantized net will automatically inference
+to get output of every layer, if the nets are huge, it would took a long time to wait! UI is as following:
+
+.. figure:: ../assets/visual_interface1.png
+   :width: 800px
+   :align: center
+
+Areas of the UI is marked with light blue rectangle for reference, includeing:
+   1. working directory and net file indication
+   2. accuracy summary
+   3. layer information card
+   4. graph display area
+   5. tensor data compare figure
+   6. infomation summary
+
+With scroll wheel over graph display area, the displayed net graph can be zoomed in and out, and hover or click on the nodes (layer), the attributes of 
+it will be displayed in the layer information card, by clicking on the edges (tensor), the compare of tensor data in float and quantized net is displayed
+in tensor data compare figure, and by clicking on the dot in accuracy summary or information list cells, the layer/tensor will be located in graph display
+area.
+
+Notice: the net graph is displayed according to quantized net, and there may be difference in it comparing to float net, some layer/tensor may not exist in 
+float net, but the data is copied from quantized net for compare, so the accuracy may seem perfect, but in fact, it should be ignored. Typical layer is Cast
+layer in quantized net, in following picture, the non-exist tensor data type will be NA.
+
+information displayed on edge (tensor) is illustrated as following:
+
+.. figure:: ../assets/visual_tensor.png
+   :width: 400px
+   :align: center
