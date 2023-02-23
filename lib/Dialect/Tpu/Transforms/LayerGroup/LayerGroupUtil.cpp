@@ -18,8 +18,8 @@ namespace tpu_mlir {
 namespace tpu {
 
 shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
-  int64_t n, c, h, w;
-  module::getNCHW(lg_info.group_ops[0]->getOperand(0), n, c, h, w,
+  int64_t n, c, d, h, w;
+  module::getNCDHW(lg_info.group_ops[0]->getOperand(0), n, c, d, h, w,
                   lg_info.type);
   int64_t max_nsecs = n;
   int64_t max_hsecs = llvm::maxIntN(64);
@@ -28,7 +28,7 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
   for (auto op : lg_info.group_ops) {
     auto lgOp = cast<LocalGenInterface>(op);
     for (auto v : get_output_values(op)) {
-      module::getNCHW(v, n, c, h, w, lg_info.type);
+      module::getNCDHW(v, n, c, d, h, w, lg_info.type);
       if (Arch::ALIGN_4N) {
         auto stype = module::getStorageType(v);
         n_align = 32 / stype.getIntOrFloatBitWidth();
@@ -54,30 +54,34 @@ shape_secs_t init_group_data_secs(const LgInfo &lg_info) {
   shape_secs_t max_shape_secs = get_group_max_secs(lg_info);
   // int64_t batch_size =
   // module::getShape(lg_info.group_ops[0]->getOperand(0))[0];
-  int64_t in_n, in_c, in_h, in_w;
-  int64_t out_n, out_c, out_h, out_w;
+  int64_t in_n, in_c, in_d, in_h, in_w;
+  int64_t out_n, out_c, out_d, out_h, out_w;
   for (auto op : lg_info.group_ops) {
     auto ins = get_input_values(op);
     auto outs = get_output_values(op);
-    module::getNCHW(ins[0], in_n, in_c, in_h, in_w, lg_info.type);
-    module::getNCHW(outs[0], out_n, out_c, out_h, out_w, lg_info.type);
+    module::getNCDHW(ins[0], in_n, in_c, in_d, in_h, in_w, lg_info.type);
+    module::getNCDHW(outs[0], out_n, out_c, out_d, out_h, out_w, lg_info.type);
     int64_t in0_lmem_bytes =
-        Arch::get_tensor_lmem_bytes(ins[0], in_n, in_c, in_h, in_w);
+        Arch::get_tensor_lmem_bytes(ins[0], in_n, in_c, in_d, in_h, in_w);
     int64_t out0_lmem_bytes =
-        Arch::get_tensor_lmem_bytes(outs[0], out_n, out_c, out_h, out_w);
+        Arch::get_tensor_lmem_bytes(outs[0], out_n, out_c, out_d, out_h, out_w);
 
     int64_t total_size = in0_lmem_bytes + out0_lmem_bytes;
     auto lg_op = cast<LocalGenInterface>(op);
     total_size += lg_op.getBufferSize(in0_lmem_bytes, out0_lmem_bytes, in_n,
                                       in_h, out_n, out_h, lg_info.type);
     for (size_t i = 1; i < ins.size(); ++i) {
-      module::getNCHW(ins[i], in_n, in_c, in_h, in_w, lg_info.type);
-      total_size += Arch::get_tensor_lmem_bytes(ins[i], in_n, in_c, in_h, in_w);
+      if(module::isWeight(ins[i])){
+        total_size += Arch::get_weight_lmem_bytes(ins[i], lg_info.type, is_eu_align(ins[i]));
+      } else {
+        module::getNCDHW(ins[i], in_n, in_c, in_d, in_h, in_w, lg_info.type);
+        total_size += Arch::get_tensor_lmem_bytes(ins[i], in_n, in_c, in_d, in_h, in_w);
+      }
     }
     for (size_t i = 1; i < outs.size(); ++i) {
-      module::getNCHW(outs[i], out_n, out_c, out_h, out_w, lg_info.type);
+      module::getNCDHW(outs[i], out_n, out_c, out_d, out_h, out_w, lg_info.type);
       total_size +=
-          Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_h, out_w);
+          Arch::get_tensor_lmem_bytes(outs[i], out_n, out_c, out_d, out_h, out_w);
     }
 
     // Need consider different backends
@@ -132,14 +136,14 @@ void update_tensor_infos(const LgInfo &lg_info, TensorInfo &tensor_infos) {
   }
 
   tensor_info_t ti(TIMESTEP_LOAD);
-  int64_t n, c, h, w;
+  int64_t n, c, d, h, w;
   for (auto op : lg_info.group_ops) {
     auto ins = get_input_values(op);
     for (auto in : ins) {
       if (auto src_op = dyn_cast_or_null<top::WeightOp>(in.getDefiningOp())) {
         ti.eu_align = is_eu_align(in);
         ti.need_bcast = need_bcast(in);
-        module::getNCHW(in, n, c, h, w, lg_info.type);
+        module::getNCDHW(in, n, c, d, h, w, lg_info.type);
         ti.slice_info.n.clear();
         ti.slice_info.h.clear();
         ti.slice_info.n.push_back(std::make_pair((int64_t)0, (int64_t)n));
@@ -264,8 +268,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
                              Operation *op, Value in,
                              const shape_secs_t &shape_secs,
                              group_type_t group_type) {
-  int64_t n, c, h, w;
-  module::getNCHW(in, n, c, h, w, group_type);
+  int64_t n, c, d, h, w;
+  module::getNCDHW(in, n, c, d, h, w, group_type);
 
   auto lg_op = cast<LocalGenInterface>(op);
   int64_t idx = 0, slice = 0;
@@ -302,8 +306,8 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
 
 bool check_hsecs(Value value, slice_info_t &si, group_type_t group_type) {
   assert(si.h.size() > 0);
-  int64_t n, c, h, w;
-  module::getNCHW(value, n, c, h, w, group_type);
+  int64_t n, c, d, h, w;
+  module::getNCDHW(value, n, c, d, h, w, group_type);
   int64_t total_h = 0;
   for (auto &it : si.h) {
     total_h += it.second;
@@ -365,14 +369,14 @@ bool stripe_mine_max_slice(const LgInfo &lg_info,
   }
   tensor_infos.clear();
 
-  int64_t n, c, h, w;
+  int64_t n, c, d, h, w;
   int64_t max_nslice = 0, max_hslice = 0;
   std::list<Value> tensor_branchs;
   std::multiset<Operation *> op_set;
   std::set<Value, value_compare> out_tensor_set;
   slice_info_t si;
   for (auto out : lg_info.group_outs) {
-    module::getNCHW(out, n, c, h, w, lg_info.type);
+    module::getNCDHW(out, n, c, d, h, w, lg_info.type);
     max_nslice = std::max(max_nslice, ceiling_func(n, shape_secs.nsecs));
     if (Arch::ALIGN_4N) {
       auto stype = module::getStorageType(out);
@@ -418,12 +422,12 @@ bool stripe_mine_idx_slice(const LgInfo &lg_info,
   }
   tensor_infos.clear();
 
-  int64_t n, c, h, w;
+  int64_t n, c, d, h, w;
   std::list<Value> tensor_branchs;
   std::multiset<Operation *> op_set;
   std::set<Value, value_compare> out_tensor_set;
   for (auto out : lg_info.group_outs) {
-    module::getNCHW(out, n, c, h, w, lg_info.type);
+    module::getNCDHW(out, n, c, d, h, w, lg_info.type);
     auto si = get_out_slice_info(shape_secs, n, h);
 
     tensor_infos[out] = tensor_info_t(si);
@@ -462,20 +466,20 @@ void get_max_slice_nh(const slice_info_t &slice_info, int64_t &max_nslice,
 int64_t get_buffer_size(Value v, const tensor_info_t &ti,
                         group_type_t group_type) {
   int64_t buf_size = 0;
-  int64_t n, c, h, w;
-  module::getNCHW(v, n, c, h, w, group_type);
+  int64_t n, c, d, h, w;
+  module::getNCDHW(v, n, c, d, h, w, group_type);
   if (module::isWeight(v)) {
     if (group_type == GROUP_SMALL_C) {
-      buf_size = Arch::get_tensor_lmem_bytes(v, n, c, h, w, ti.eu_align);
+      buf_size = Arch::get_tensor_lmem_bytes(v, n, c, d, h, w, ti.eu_align);
     } else {
-      buf_size = Arch::get_weight_lmem_bytes(v, ti.eu_align);
+      buf_size = Arch::get_weight_lmem_bytes(v, group_type, ti.eu_align);
     }
   } else {
     int64_t nslice, hslice;
     auto &si = ti.slice_info;
     get_max_slice_nh(si, nslice, hslice);
     buf_size =
-        Arch::get_tensor_lmem_bytes(v, nslice, c, hslice, w, ti.eu_align);
+        Arch::get_tensor_lmem_bytes(v, nslice, hslice, group_type, ti.eu_align);
   }
   return buf_size;
 }
@@ -484,11 +488,13 @@ void set_fake_local_layer_param(Operation *op, int64_t nidx, int64_t nslice,
                                 int64_t hidx, int64_t hslice) {
   auto ctx = op->getContext();
   auto builder = OpBuilder(ctx);
+  int64_t group_type = 0;
+  module::isOpInGroup(op, &group_type);
   auto lg_attr = LayerGroupAttr::get(
       ctx, 0, 0, 0, 0, true, builder.getDenseI64ArrayAttr({hidx}),
       builder.getDenseI64ArrayAttr({hslice}),
       builder.getDenseI64ArrayAttr({nidx}),
-      builder.getDenseI64ArrayAttr({nslice}), 0, 0);
+      builder.getDenseI64ArrayAttr({nslice}), 0, 0, group_type);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName, lg_attr);
 }
 

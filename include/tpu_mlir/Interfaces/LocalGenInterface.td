@@ -46,15 +46,15 @@ def LocalGenInterface : OpInterface<"LocalGenInterface"> {
         [{
             memset(&sec_info, 0, sizeof(local_sec_info_t));
             sec_info.group_type = group_type;
-            int64_t n, c, h, w, on, oc, oh, ow;
+            int64_t n, c, d, h, w, on, oc, od, oh, ow;
             auto input = $_op->getOperand(0);
             auto output = $_op->getResult(0);
-            module::getNCHW(input, n, c, h, w, group_type);
-            module::getNCHW(output, on, oc, oh, ow, group_type);
+            module::getNCDHW(input, n, c, d, h, w, group_type);
+            module::getNCDHW(output, on, oc, od, oh, ow, group_type);
             auto gi = getGroupInfo(n_step, h_step);
             auto in_gi = LocalGenInterface::getGroupInfo(input, n_step, h_step);
             sec_info.n_slice = in_gi.n_slice;
-            sec_info.d_slice = 1;
+            sec_info.d_slice = d;
             sec_info.h_slice = in_gi.h_slice;
             sec_info.h_idx = in_gi.h_idx;
             sec_info.is_h_split = !(in_gi.h_idx == 0 && in_gi.h_slice == h);

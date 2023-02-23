@@ -123,6 +123,11 @@ LogicalResult tpu::Pool3DOp::LocalGenSupport() {
   if (attr.sd > 15 || attr.sh > 15 || attr.sw > 15) {
     return failure();
   }
+  if (module::isBM1684X())
+  {
+    return success();
+  }
+
   // do not support 3D local layer now
   return failure();
 }

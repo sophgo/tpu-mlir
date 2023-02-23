@@ -38,6 +38,8 @@ typedef enum {
   GROUP_UNSUPPORT
 } group_type_t;
 
+#define GDMA_MAX_C 65535
+
 //-----------------------------------------------------------------
 // Types
 //-----------------------------------------------------------------
@@ -106,6 +108,8 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
              int64_t &w, group_type_t group_type);
 void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
              group_type_t group_type);
+void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
+             int64_t &w, group_type_t group_type);
 double getDtypeSize(Value v);
 size_t getBytes(Value v);
 int64_t getNumElements(Value v);
@@ -136,7 +140,7 @@ i64_array_t getI64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
 f64_array_t getF64Array(ArrayAttr arrayAttr);
 f64_array_t getF64Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,
                         double default_value);
-bool isOpInGroup(Operation *Op);
+bool isOpInGroup(Operation *Op, int64_t* group_type = nullptr);
 FuncOp getFuncOp(StringRef func_name);
 func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getModuleName();
@@ -152,6 +156,7 @@ bool isCV18xx();
 bool isBM1684Family();
 bool isBM1684XFamily();
 bool isBM1686();
+bool isBM1684X();
 
 //-----------------------------------------------------------------
 // Helper Functions for quantization

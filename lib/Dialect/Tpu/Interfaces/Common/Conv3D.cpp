@@ -137,7 +137,13 @@ void tpu::Conv3DOp::assign_sec_info(int64_t n_step, int64_t h_step,
   sec_info.out_w_slice = attr.ow;
 }
 
-LogicalResult tpu::Conv3DOp::LocalGenSupport() { return failure(); }
+LogicalResult tpu::Conv3DOp::LocalGenSupport() {
+  if (module::isBM1684X()) {
+      return success();
+  } else {
+    return failure();
+  }
+}
 
 mlir::Type tpu::Conv3DOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
   return type_verify_case_i32(getOperation(), opd_idx, mode);

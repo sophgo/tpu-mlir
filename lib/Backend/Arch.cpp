@@ -74,7 +74,7 @@ size_t Arch::get_gmem_bytes(Value v) {
                              std::multiplies<int64_t>());
 }
 
-int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t h,
+int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t d, int64_t h,
                                     int64_t w, bool eu_align) {
   auto type = module::getStorageType(v);
   int type_bits = type.getIntOrFloatBitWidth();
@@ -84,35 +84,35 @@ int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t n, int64_t c, int64_t h,
     int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
     int64_t n_aligned = ceiling_func(n, 4 / (int64_t)dbytes);
     int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
-    return n_aligned * c_per_npu * eu_aligned * 4;
+    return n_aligned * d * c_per_npu * eu_aligned * 4;
   } else {
     int64_t eu_num = Arch::eu_num(dbytes);
     int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
     int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
     if (type_bits == 4) {
-      return align_up((int64_t)(n * c_per_npu * eu_aligned), (int64_t)2) *
+      return align_up((int64_t)(n * d * c_per_npu * eu_aligned), (int64_t)2) *
              dbytes;
     }
-    return (int64_t)n * c_per_npu * eu_aligned * dbytes;
+    return (int64_t)n * d * c_per_npu * eu_aligned * dbytes;
   }
 }
 
 int64_t Arch::get_tensor_lmem_bytes(Value v, int64_t slice_n, int64_t slice_h,
-                                    bool eu_align) {
-  int64_t n, c, h, w;
-  module::getNCHW(v, n, c, h, w);
+                                    group_type_t group_type, bool eu_align) {
+  int64_t n, c, d, h, w;
+  module::getNCDHW(v, n, c, d, h, w, group_type);
   if (slice_n > 0) {
     n = slice_n;
   }
   if (slice_h > 0) {
     h = slice_h;
   }
-  return get_tensor_lmem_bytes(v, n, c, h, w, eu_align);
+  return get_tensor_lmem_bytes(v, n, c, d, h, w, eu_align);
 }
 
-int64_t Arch::get_weight_lmem_bytes(Value v, bool eu_align) {
-  int64_t n, c, h, w;
-  module::getNCHW(v, n, c, h, w);
+int64_t Arch::get_weight_lmem_bytes(Value v, group_type_t group_type, bool eu_align) {
+  int64_t n, c, d, h, w;
+  module::getNCDHW(v, n, c, d, h, w, group_type);
   auto type = module::getStorageType(v);
   int type_bits = type.getIntOrFloatBitWidth();
   double dbytes = (double)type_bits / 8;
@@ -120,8 +120,8 @@ int64_t Arch::get_weight_lmem_bytes(Value v, bool eu_align) {
   int64_t c_per_npu = ceiling_func(c, Arch::NPU_NUM);
   int64_t eu_aligned = eu_align ? align_up(h * w, eu_num) : (h * w);
   if (type_bits == 4)
-    return align_up((int64_t)(n * c_per_npu * eu_aligned), (int64_t)2) * dbytes;
-  return (int64_t)n * c_per_npu * eu_aligned * dbytes;
+    return align_up((int64_t)(n * d * c_per_npu * eu_aligned), (int64_t)2) * dbytes;
+  return (int64_t)n * d * c_per_npu * eu_aligned * dbytes;
 }
 
 Arch::~Arch() {}

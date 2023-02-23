@@ -29,11 +29,11 @@ void tpu::StoreOp::assign_sec_info(int64_t n_step, int64_t h_step,
   memset(&sec_info, 0, sizeof(local_sec_info_t));
   sec_info.group_type = group_type;
 
-  int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w, group_type);
+  int64_t n, c, d, h, w;
+  module::getNCDHW(getInput(), n, c, d, h, w, group_type);
   auto gi = getGroupInfo(n_step, h_step);
   sec_info.n_slice = gi.n_slice;
-  sec_info.d_slice = 1;
+  sec_info.d_slice = d;
   sec_info.h_slice = gi.h_slice;
   sec_info.h_idx = gi.h_idx;
   sec_info.is_h_split = !(gi.h_idx == 0 && gi.h_slice == h);
