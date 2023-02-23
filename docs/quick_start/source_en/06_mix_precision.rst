@@ -170,6 +170,15 @@ Use ``run_qtable.py`` to gen qtable, parameters as below:
    * - input_num
      - N
      - The number of sample, default 10
+   * - expected_cos
+     - N
+     - Specify the minimum cos value for the expected final output layer of the network. The default is 0.99. The smaller the value, the more layers may be set to floating-point
+   * - min_layer_cos
+     - N
+     - Specify the minimum cos expected per layer, below which an attempt is made to set the fp32 calculation. The default is 0.99
+   * - debug_cmd
+     - N
+     - Specifies a debug command string for development. It is empty by default	 
    * - o
      - Y
      - output quantization table
@@ -181,6 +190,8 @@ The operation is as follows:
    $ run_qtable.py yolov3_tiny.mlir \
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
+       --min_layer_cos 0.999 \ #If the default 0.99 is used here, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching
+       --expected_cos 0.9999 \	   
        --chip bm1684x \
        -o yolov3_qtable
 
@@ -190,6 +201,16 @@ And get quantization table ``yolov3_qtable``, context as below:
 
   # op_name   quantize_mode
   convolution_output11_Conv F32
+  model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu F32
+  model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool F32
+  convolution_output10_Conv F32
+  model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu F32
+  model_1/leaky_re_lu_6/LeakyRelu:0_pooling0_MaxPool F32
+  model_1/leaky_re_lu_7/LeakyRelu:0_LeakyRelu F32
+  convolution_output5_Conv F32
+  model_1/leaky_re_lu_8/LeakyRelu:0_LeakyRelu F32
+  convolution_output4_Conv F32
+  convolution_output3_Conv F32
 
 
 In the table, first col is layer name, second is quantization type.
@@ -198,21 +219,31 @@ Also ``full_loss_table.txt`` is generated, context as blow:
 .. code-block:: shell
     :linenos:
 
-    # all int8 loss: -17.297552609443663
     # chip: bm1684x  mix_mode: F32
-    No.0 : Layer: convolution_output11_Conv                    Loss: -15.913658332824706
-    No.1 : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu  Loss: -17.148419880867003
-    No.2 : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu  Loss: -17.241489434242247
-    No.3 : Layer: model_1/concatenate_1/concat:0_Concat        Loss: -17.263980317115784
-    No.4 : Layer: model_1/leaky_re_lu_10/LeakyRelu:0_LeakyRelu Loss: -17.275933575630187
-    No.5 : Layer: convolution_output4_Conv                     Loss: -17.288181042671205
-    No.6 : Layer: model_1/leaky_re_lu_9/LeakyRelu:0_LeakyRelu  Loss: -17.289376521110533
-    No.7 : Layer: model_1/leaky_re_lu_11/LeakyRelu:0_LeakyRelu Loss: -17.295218110084534
-    ......
-
-This table is ordered by loss from small to large. Smaller is better, if layer convert to float type.
-``run_qtable.py`` use layers that have 5% improvement.
-If application performs not good, you can also add more layers to quantization table.
+    ###
+    No.0   : Layer: convolution_output11_Conv                                               Cos: 0.9923188653689166
+    No.1   : Layer: model_1/leaky_re_lu_8/LeakyRelu:0_LeakyRelu                             Cos: 0.9982724675923477
+    No.2   : Layer: model_1/leaky_re_lu_7/LeakyRelu:0_LeakyRelu                             Cos: 0.9984222695482265
+    No.3   : Layer: model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu                             Cos: 0.998515580396405
+    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.9987678931990402
+    No.5   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu                             Cos: 0.9990712074303405
+    No.6   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu                             Cos: 0.999284826478191
+    No.7   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.9993153210002395
+    No.8   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu                             Cos: 0.9993530523531371
+    No.9   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.9995473722523207
+    No.10  : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.999551823932271
+    No.11  : Layer: convolution_output9_Conv                                                Cos: 0.9995627192000597
+    No.12  : Layer: convolution_output6_Conv                                                Cos: 0.999667275119983
+    No.13  : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                             Cos: 0.9996674835174093
+	....
+	
+This table is arranged smoothly according to the cos from small to large, indicating the cos calculated 
+by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode. 
+If the cos is still smaller than the previous parameter min_layer_cos, this layer and its immediate successor 
+layer will be set to floating-point calculation。
+``run_qtable.py`` calculates the output cos of the whole network every time the neighboring two layers are set 
+to floating point. If the cos is larger than the specified expected_cos, the search is withdrawn. Therefore, 
+if you set a larger expected_cos value, you will try to set more layers to floating point。
 
 
 Step 2: Gen mix precision model

@@ -171,6 +171,15 @@
    * - input_num
      - 否
      - 指定输入样本数量, 默认用10个
+   * - expected_cos
+     - 否
+     - 指定期望网络最终输出层的最小cos值,一般默认为0.99即可，越小时可能会设置更多层为浮点计算
+   * - min_layer_cos
+     - 否
+     - 指定期望每层输出cos的最小值，低于该值会尝试设置浮点计算, 一般默认为0.99即可
+   * - debug_cmd
+     - 否
+     - 指定调试命令字符串，开发使用, 默认为空
    * - o
      - 是
      - 输出混精度量化表
@@ -183,6 +192,8 @@
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --chip bm1684x \
+       --min_layer_cos 0.999 \ #若这里使用默认的0.99时，程序会检测到原始int8模型已满足0.99的cos，从而直接不再搜素
+       --expected_cos 0.9999 \
        -o yolov3_qtable
 
 生成的混精度量化表 ``yolov3_qtable``, 内容如下:
@@ -191,7 +202,16 @@
 
   # op_name   quantize_mode
   convolution_output11_Conv F32
-
+  model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu F32
+  model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool F32
+  convolution_output10_Conv F32
+  model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu F32
+  model_1/leaky_re_lu_6/LeakyRelu:0_pooling0_MaxPool F32
+  model_1/leaky_re_lu_7/LeakyRelu:0_LeakyRelu F32
+  convolution_output5_Conv F32
+  model_1/leaky_re_lu_8/LeakyRelu:0_LeakyRelu F32
+  convolution_output4_Conv F32
+  convolution_output3_Conv F32
 
 该表中, 第一列表示相应的layer, 第二列表示类型, 支持的类型有F32/F16/BF16/INT8。
 另外同时也会生成一个loss表文件 ``full_loss_table.txt``, 内容如下:
@@ -199,21 +219,26 @@
 .. code-block:: shell
     :linenos:
 
-    # all int8 loss: -17.297552609443663
     # chip: bm1684x  mix_mode: F32
-    No.0 : Layer: convolution_output11_Conv                    Loss: -15.913658332824706
-    No.1 : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu  Loss: -17.148419880867003
-    No.2 : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_LeakyRelu  Loss: -17.241489434242247
-    No.3 : Layer: model_1/concatenate_1/concat:0_Concat        Loss: -17.263980317115784
-    No.4 : Layer: model_1/leaky_re_lu_10/LeakyRelu:0_LeakyRelu Loss: -17.275933575630187
-    No.5 : Layer: convolution_output4_Conv                     Loss: -17.288181042671205
-    No.6 : Layer: model_1/leaky_re_lu_9/LeakyRelu:0_LeakyRelu  Loss: -17.289376521110533
-    No.7 : Layer: model_1/leaky_re_lu_11/LeakyRelu:0_LeakyRelu Loss: -17.295218110084534
-    ......
+    ###
+    No.0   : Layer: convolution_output11_Conv                                               Cos: 0.9923188653689166
+    No.1   : Layer: model_1/leaky_re_lu_8/LeakyRelu:0_LeakyRelu                             Cos: 0.9982724675923477
+    No.2   : Layer: model_1/leaky_re_lu_7/LeakyRelu:0_LeakyRelu                             Cos: 0.9984222695482265
+    No.3   : Layer: model_1/leaky_re_lu_6/LeakyRelu:0_LeakyRelu                             Cos: 0.998515580396405
+    No.4   : Layer: model_1/leaky_re_lu_2/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.9987678931990402
+    No.5   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_LeakyRelu                             Cos: 0.9990712074303405
+    No.6   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_LeakyRelu                             Cos: 0.999284826478191
+    No.7   : Layer: model_1/leaky_re_lu_5/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.9993153210002395
+    No.8   : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_LeakyRelu                             Cos: 0.9993530523531371
+    No.9   : Layer: model_1/leaky_re_lu_4/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.9995473722523207
+    No.10  : Layer: model_1/leaky_re_lu_1/LeakyRelu:0_pooling0_MaxPool                      Cos: 0.999551823932271
+    No.11  : Layer: convolution_output9_Conv                                                Cos: 0.9995627192000597
+    No.12  : Layer: convolution_output6_Conv                                                Cos: 0.999667275119983
+    No.13  : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                             Cos: 0.9996674835174093
+	....
 
-该表按Loss从小到大顺利排列, 表示该层Layer换成相应的模式后, 最终结果的loss, loss越小说明改善越大。
-``run_qtable.py`` 只会取相对INT8的loss, 改善超过5%的layer做混精度。
-如果混精度量化表的实际业务效果不好, 则可以按loss顺序多添加几层, 看看效果。
+该表按cos从小到大顺利排列, 表示该层的前驱Layer根据各自的cos已换成相应的浮点模式后, 该层计算得到的cos, 若该cos仍小于前面min_layer_cos参数，则会将该层及直接后继层设置为浮点计算。
+``run_qtable.py`` 会在每次设置某相邻2层为浮点计算后，接续计算整个网络的输出cos，若该cos大于指定的expected_cos，则退出搜素。因此，若设置更大的expected_cos，会尝试将更多层设为浮点计算
 
 
 第二步: 生成混精度量化模型
