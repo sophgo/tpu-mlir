@@ -275,6 +275,12 @@ def postprocess(outputs,
     confidences = np.concatenate(nscores)
     return boxes, categories, confidences
 
+def refine_cvi_output(output):
+    new_output = {}
+    for k in output.keys():
+        if k.endswith("_f32"):
+            new_output[k] = output[k]
+    return new_output
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Inference Keras Yolo3 network.')
@@ -326,7 +332,8 @@ def main():
             output = model_inference(data, args.model)
         else:
             raise RuntimeError("not support modle file:{}".format(args.model))
-
+        if args.model.endswith(".cvimodel"):
+            output = refine_cvi_output(output)
         boxes, categories, confidences = postprocess(output, input_shape, origin_image.size,
                                                      args.score_thres, args.iou_thres,
                                                      args.conf_thres)

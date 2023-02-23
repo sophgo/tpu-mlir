@@ -2,7 +2,7 @@ TPU-MLIR简介
 ============
 
 TPU-MLIR是算能智能AI芯片的TPU编译器工程。该工程提供了一套完整的工具链, 其可以将
-不同框架下预训练的神经网络, 转化为可以在算能TPU上高效运算的模型文件 ``bmodel``。
+不同框架下预训练的神经网络, 转化为可以在算能TPU上高效运算的模型文件 ``bmodel``/``cvimodel``。
 代码已经开源到github: https://github.com/sophgo/tpu-mlir 。
 
 论文<https://arxiv.org/abs/2210.15016> 描述了TPU-MLIR的整体设计思路。
@@ -16,7 +16,7 @@ TPU-MLIR的整体架构如下:
    TPU-MLIR的整体架构
 
 
-目前直接支持的框架有ONNX、TFLite和Caffe。其他框架的模型需要转换成onnx模型。如何将其他深
+目前直接支持的框架有ONNX、TFLite和Caffe,CV18XX系列的芯片目前不支持TFLite框架。其他框架的模型需要转换成onnx模型。如何将其他深
 度学习架构的网络模型转换成onnx, 可以参考onnx官网:
 https://github.com/onnx/tutorials。
 
