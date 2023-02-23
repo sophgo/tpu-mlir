@@ -231,6 +231,7 @@ class preprocess(object):
         logger.info(info_str)
 
     def load_config(self, input_op):
+        self.input_name = Operation.name(input_op)
         shape = Operation.shape(input_op)
         self.net_input_dims = []
         if len(shape) >= 3:
@@ -241,10 +242,7 @@ class preprocess(object):
             self.net_input_dims = shape[0:]
             self.batch_size = shape[0]
         else:
-            print('error, len(input_op.shape) < 3, maybe have some error')
-            exit(1)
-
-        self.input_name = Operation.name(input_op)
+            return
         attrs = input_op.attributes
         if len(attrs) == 0:
             return

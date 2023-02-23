@@ -100,12 +100,10 @@ class BaseConverter(object):
         if shape and old_shape != shape:
             assert (np.prod(old_shape) == np.prod(shape))
             old_shape = shape
-        tp = self.tensors[name].dtype  # Ugly workaround
-        type_convert_dict = {np.dtype('int8'): "INT8", np.dtype('float32'): "F32"}
-        try:
-            tp = type_convert_dict[tp]
-        except:
-            tp = "F32"
+        ori_type = self.tensors[name].dtype
+        tp = "F32"
+        if ori_type == np.int8:
+            tp = "INT8"
         op = self.mlir.create_weight_op(name, old_shape, tp)
         self.addOperand(name, op)
         return op

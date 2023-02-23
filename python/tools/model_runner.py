@@ -239,6 +239,8 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
             dtype = np.int64
         elif node.type == 'tensor(bool)':
             dtype = np.bool
+        elif node.type == 'tensor(int32)':
+            dtype = np.int32
         data[name] = inputs[name].astype(dtype)
     outs = session.run(None, data)
     outputs = dict()

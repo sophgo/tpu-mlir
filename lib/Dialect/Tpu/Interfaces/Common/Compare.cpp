@@ -9,21 +9,52 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
-
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
+LogicalResult tpu::CompareOp::init(InferenceParameter &p) {
 
+  std::map<std::string, algorithm> map_mode = {
+      {"Equal", algorithm::binary_eq},
+      {"Greater", algorithm::binary_gt},
+      {"GreaterOrEqual", algorithm::binary_ge},
+      {"Less", algorithm::binary_lt},
+      {"LessOrEqual", algorithm::binary_le}};
 
-LogicalResult tpu::CompareOp::init(InferenceParameter &p) { return success(); }
+  auto binary = new Binary();
+  auto lhs_shape = module::getShape(getOperand(0));
+  auto rhs_shape = module::getShape(getOperand(1));
+  auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
+  auto input0_shape = shape_expand_dim(lhs_shape, max_ndim);
+  auto input1_shape = shape_expand_dim(rhs_shape, max_ndim);
+  auto iter = map_mode.find(getModeAttr().str());
+  algorithm compare_mode;
+  if (iter != map_mode.end()) {
+    compare_mode = iter->second;
+  }
+
+  (*binary)
+      .lhs(p.inputs[0], input0_shape)
+      .rhs(p.inputs[1], input1_shape)
+      .dst(p.outputs[0], module::getShape(getOutput()))
+      .algorithem(compare_mode)
+      .setup();
+
+  p.handle = (void *)binary;
+
+  return success();
+}
+
 void tpu::CompareOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::CompareOp::inference(InferenceParameter &p) {
-  auto num_element = module::getNumElements(getOutput());
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-  for (int i = 0; i < num_element; ++i) {
-    p.outputs[0][i] = compare(p.inputs[0][i], p.inputs[1][i], getMode());
+
+  if (p.handle == nullptr) {
+    return failure();
   }
+  auto binary = (Binary *)p.handle;
+  binary->run();
+
   return success();
 }

@@ -369,9 +369,9 @@ class OnnxConverter(BaseConverter):
         for tensor in self.model.graph.initializer:
             name = tensor.name
             # all weight convert to f32.
-            # TODO: support other type
-            # remove astype(np.float32)
             data = numpy_helper.to_array(tensor)
+            if data.dtype != np.int8:
+                data = data.astype(np.float32)
             self.addWeight(name, data)
         self.add_shape_info()
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
@@ -1157,7 +1157,7 @@ class OnnxConverter(BaseConverter):
                 end = end + input_shape[axis]
             if start < 0:
                 start = start + input_shape[axis]
-            if end > input_shape[axis] or end < -1:
+            if end > input_shape[axis]:
                 end = input_shape[axis]
             elif end < 0:
                 if step < 0:
