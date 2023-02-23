@@ -9,22 +9,19 @@
 #pragma once
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
-
 
 namespace tpu_mlir {
 namespace tpu {
 
 // convert (1, oc, 1, w) to (1, NPU_NUM, 1, DIV_UP(oc, NPU_NUM) * w)
 template <typename T>
-static void
-reshape_coeff_for_broadcast_channel(std::shared_ptr<std::vector<T>> &coeff,
-                                    std::vector<int64_t> &shape,
-                                    bool align = false,
-                                    bool isINT4Conv = false) {
+static void reshape_coeff_for_broadcast_channel(
+    std::shared_ptr<std::vector<T>> &coeff, std::vector<int64_t> &shape,
+    bool align = false, bool isINT4Conv = false) {
   int64_t n, c, h, w, eu_num;
   module::getNCHW(shape, n, c, h, w);
 
@@ -143,28 +140,53 @@ static void reshape_coeff_for_3ic(std::shared_ptr<std::vector<T>> &weight,
   filter_reorder(weight, shape, isINT4Conv);
 }
 
-static void compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
-                                  std::vector<int64_t> &shape) {
-  int64_t N, C, H, W;
-  // shape : (1, oc, 1, DIV_UP(ic, nIC) * w * nIC) --> (1, oc, 1,  DIV_UP(oc, nIC) * w * nIC/2  )
+static void
+compact_coeff_for_int4(std::shared_ptr<std::vector<int8_t>> &weight_nIC,
+                       std::vector<int64_t> &shape, bool isINT4Conv = true) {
+  int64_t N, C, H, W, K;
   module::getNCHW(shape, N, C, H, W);
-  auto  new_w = align_up(W, (int64_t)2) / 2;
-  auto filter_new = std::make_shared<std::vector<int8_t>>(new_w * C, 0);
-  for( uint i = 0; i < C; i++ ){
-    for( uint j = 0; j < W; j++) {
-      if ((j & 1) == 0) {
-        filter_new->at((i * W + j) >> 1) = (weight_nIC->at(i * W + j) & 0x0f);
-      } else {
-        filter_new->at((i * W + j) >> 1) &= 0x0f;
-        filter_new->at((i * W + j) >> 1) |= (weight_nIC->at(i * W + j) << 4);
+  if (isINT4Conv) {
+    // conv shape : (1, oc, 1, DIV_UP(ic, nIC) * w * nIC) --> (1, oc, 1,
+    // DIV_UP(oc, nIC) * w * nIC/2  )
+    auto new_w = align_up(W, (int64_t)2) / 2;
+    auto filter_new = std::make_shared<std::vector<int8_t>>(new_w * C, 0);
+    for (uint i = 0; i < C; i++) {
+      for (uint j = 0; j < W; j++) {
+        if ((j & 1) == 0) {
+          filter_new->at((i * W + j) >> 1) = (weight_nIC->at(i * W + j) & 0x0f);
+        } else {
+          filter_new->at((i * W + j) >> 1) &= 0x0f;
+          filter_new->at((i * W + j) >> 1) |= (weight_nIC->at(i * W + j) << 4);
+        }
       }
     }
+    assert(shape.size() > 2);
+    shape.assign(shape.size(), 1);
+    shape[1] = C;
+    shape.back() = new_w;
+    weight_nIC = filter_new;
+  } else {
+    // MMII shape : ( K, N) --> (K, N/2) ,  for (M,K) *(K,N)
+    assert(shape.size() == 2);
+    K = shape[0];
+    N = shape[1];
+    auto new_n = align_up(N, (int64_t)2) / 2;
+    auto filter_new = std::make_shared<std::vector<int8_t>>(K * new_n, 0);
+    for (uint i = 0; i < K; i++) {
+      for (uint j = 0; j < N; j++) {
+        if ((j & 1) == 0) {
+          filter_new->at((i * K + j) >> 1) = (weight_nIC->at(i * K + j) & 0x0f);
+        } else {
+          filter_new->at((i * K + j) >> 1) &= 0x0f;
+          filter_new->at((i * K + j) >> 1) |= (weight_nIC->at(i * K+ j) << 4);
+        }
+      }
+    }
+    shape.assign(shape.size(), 1);
+    shape[0] = K;
+    shape.back() = (new_n << 1);
+    weight_nIC = filter_new;
   }
-  assert(shape.size() > 2);
-  shape.assign(shape.size(), 1);
-  shape[1] = C;
-  shape.back() = new_w;
-  weight_nIC = filter_new;
 }
 
 #ifdef __cplusplus
