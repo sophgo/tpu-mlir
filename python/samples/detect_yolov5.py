@@ -236,6 +236,15 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     boxes_xyxy[:, 3] = boxes[:, 1] + boxes[:, 3] / 2.
     return scores, boxes_xyxy
 
+def refine_cvi_output(output):
+    new_output = {}
+    for k in output.keys():
+        if k.endswith("_f32"):
+            out = output[k]
+            n, c, h, w = out.shape[0], out.shape[1], out.shape[2], out.shape[3]
+            new_output[k] = out.reshape(n, c, h, w // 85, 85)
+    return new_output
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Inference Yolo v5 network.')
@@ -265,6 +274,8 @@ def main():
         output = mlir_inference(data, args.model, False)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
         output = model_inference(data, args.model)
+        if args.model.endswith(".cvimodel"):
+            output = refine_cvi_output(output)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     scores, boxes_xyxy = postproc(output, input_shape, top, left)
