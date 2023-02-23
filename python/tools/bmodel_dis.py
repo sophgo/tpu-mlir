@@ -9,7 +9,7 @@
 # ==============================================================================
 from collections import namedtuple
 import numpy as np
-from utils.bmodel_dis import opdef_1684x
+from utils.bmodel_dis import opdef_1684x, opparam_1684x
 from utils.bmodel_dis import bmodel_fbs
 import itertools
 
@@ -73,14 +73,14 @@ class BmodelReader:
 
     class tensor_cls:
         to_DType = {
-            0: opdef_1684x.DType.f32,
-            1: opdef_1684x.DType.f16,
-            2: opdef_1684x.DType.i8,
-            3: opdef_1684x.DType.ui8,
-            4: opdef_1684x.DType.i16,
-            5: opdef_1684x.DType.u16,
-            6: opdef_1684x.DType.i32,
-            7: opdef_1684x.DType.u32,
+            0: opparam_1684x.DType.f32,
+            1: opparam_1684x.DType.f16,
+            2: opparam_1684x.DType.s8,
+            3: opparam_1684x.DType.u8,
+            4: opparam_1684x.DType.s16,
+            5: opparam_1684x.DType.u16,
+            6: opparam_1684x.DType.s32,
+            7: opparam_1684x.DType.u32,
         }
 
         def __init__(self, fbs: bmodel_fbs.Tensor, buffer):
@@ -167,8 +167,8 @@ def decode_cmd(cmd):
 
 
 def tensor2memref(tensor: BmodelReader.tensor_cls):
-    return opdef_1684x.MemRef(
-        tensor.device_addr, tensor.shape[0], opdef_1684x.DType(tensor.dtype)
+    return opparam_1684x.MemRef(
+        tensor.device_addr, tensor.shape[0], opparam_1684x.DType(tensor.dtype)
     )
 
 
@@ -185,15 +185,15 @@ class Block:
 
     def __repr__(self):
         ops = "\n  ".join((f"{x}" for x in self.operations))
-        args = [f"%{a.name}: {tensor2memref(a).shape_str}" for a in self.args]
+        args = [f"%{a.name}: {tensor2memref(a).type_str}" for a in self.args]
         args = ", ".join(args)
         if all((x == -1 for x in self.successor)):
             tem = [tensor2memref(x) for x in self.terminator]
             rets = (
                 "return "
-                + ", ".join((x.addr_str for x in tem))
+                + ", ".join((x.name for x in tem))
                 + ": "
-                + ", ".join((x.shape_str for x in tem))
+                + ", ".join((x.type_str for x in tem))
             )
         else:
             rets = f"Successor {self.successor}"  # TODO
@@ -228,7 +228,7 @@ class Function:
         ret = f"res_attrs = {fmt_names(self.signature[1])}"
         attr = f"{{function_type = {{{arg}, {ret}}}}}"
         operands = ", ".join((str(tensor2memref(x)) for x in self.signature[0]))
-        returns = ", ".join((tensor2memref(x).shape_str for x in self.signature[1]))
+        returns = ", ".join((tensor2memref(x).type_str for x in self.signature[1]))
         return f"func.func @{self.name}({operands}) -> ({returns}) ({{\n{regions}\n}}) {attr}"
 
 

@@ -6,10 +6,28 @@
 # third-party components.
 #
 # ==============================================================================
+# keep This file clean and neat.
 
 import numpy as np
 from enum import Enum
 from . import regdef_1684x
+from .opparam_1684x import NamedDict
+from .opparam_1684x import (
+    conv_reg_format,
+    cw_tans_reg_format,
+    mm_reg_format,
+    mm2_reg_format,
+    cmp_reg_format,
+    sfu_reg_format,
+    lin_reg_format,
+    vc_reg_format,
+    ar_reg_format,
+    pord_reg_format,
+    rqdq_reg_format,
+    sg_reg_format,
+    sgl_reg_format,
+    bc_reg_format,
+)
 
 # global data and type
 # ------------------------------------------------------------
@@ -83,8 +101,8 @@ class MemRef:
         else:
             self.stride = self.__layout_to_stride(layout)
 
-        self.addr_str = self.__addr_str()
-        self.shape_str = self.__shape_str()
+        self.name_str = self.__addr_str()
+        self.type_str = self.__shape_str()
 
     def __layout_to_stride(self, mode: Layout):
         # local memory
@@ -139,7 +157,7 @@ class MemRef:
             return f"{i}.{s}"
 
     def __repr__(self):
-        return f"{self.addr_str}: {self.shape_str}"
+        return f"{self.name_str}: {self.type_str}"
 
 
 def attribute_builder(attr, reg_field):
@@ -190,26 +208,6 @@ def decode_reg(buffer, des_reg):
     return dict(zip(des_reg["fields"], value))
 
 
-class NamedDict(dict):
-    def __init__(self, dic):
-        self.__dict__.update(dic)
-
-    def __getitem__(self, key):
-        if key in self.__dict__:
-            return self.__dict__[key]
-        else:
-            raise KeyError(f"invalid key: {key}")
-
-    def __setitem__(self, key, value):
-        if key in self.__dict__:
-            self.__dict__[key] = value
-        else:
-            raise KeyError(f"invalid key: {key}")
-
-    def __repr__(self):
-        return str(self.__dict__)
-
-
 # ------------------------------------------------------------
 # BDC definition
 # ------------------------------------------------------------
@@ -244,9 +242,11 @@ class bdc_base:
     def decode(cls, cmd_reg):
         cls = cls()
         cls.cmd = cmd_reg[: cls.len]
-        cls.attr = NamedDict(decode_reg(cls.cmd, cls.des_reg))
-        cls.cmd_id = cls.attr["des_cmd_id"]
-        cls.cmd_id_dep = cls.attr["des_cmd_id_dep"]
+        cls.attr = NamedDict(
+            decode_reg(cls.cmd, cls.des_reg), ("des_", "short_", "opt_")
+        )
+        cls.cmd_id = cls.attr.cmd_id
+        cls.cmd_id_dep = cls.attr.cmd_id_dep
         cls.set_elt()
         return cls
 
@@ -270,48 +270,21 @@ class bdc_base:
         self.operands = []
         self.attribute = {}
 
-    def __memref(self, reg_field):
-        for opoperad in reg_field:
-            addr, shape, dtype, *layout_or_stride = opoperad
-            layout, stride = None, None
-            addr = self.attr[addr]
-            if shape != "*":
-                shape = [self.attr[x] for x in shape]
-            if layout_or_stride:
-                if isinstance(layout_or_stride[0], str):
-                    layout = self.attr[layout_or_stride[0]]
-                else:
-                    stride = [self.attr[x] for x in layout_or_stride[0]]
-            if isinstance(dtype, str):
-                dtype = get_dtype(self.attr[dtype])
-            elif isinstance(dtype, tuple):
-                _type, _sign = dtype
-                dtype = get_dtype(self.attr[_type], self.attr[_sign])
-            if addr < bank_size * 64:
-                addr += memmap["R"][0]
-            yield MemRef(addr, shape, dtype, stride, layout)
-
-    def memref(self, reg_field):
-        return list(self.__memref(reg_field))
-
-    def set_attribute(self, reg_field):
-        return dict(attribute_builder(self.attr, reg_field))
-
     def __repr__(self):
         if self.operands == []:
             return self.description
-        res_str, res_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.results))
-        opd_str, opd_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.operands))
-        op_name = self.eu_type[self.attr["des_tsk_eu_typ"]]
+        res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
+        opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
+        op_name = self.eu_type[self.attr.tsk_eu_typ]
         attribute = ""
         if self.attribute:
             attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
         return (
-            f"{', '.join(res_str)}, %B{self.cmd_id} = \"{op_name}\""
-            + f"({', '.join(opd_str)}, %D{self.cmd_id_dep})"
+            f"{', '.join(res_name)}, %B{self.cmd_id} = \"{op_name}\""
+            + f"({', '.join(opd_name)}, %D{self.cmd_id_dep})"
             + attribute
-            + f" : ({', '.join(opd_shape_t)}, none) -> ({', '.join(res_shape_t)}, none)"
+            + f" : ({', '.join(opd_type_t)}, none) -> ({', '.join(res_type_t)}, none)"
         )
 
 
@@ -328,44 +301,7 @@ class sconv_op(conv_op):
     description = "short convolution"
 
     def set_elt(self):
-        results = (
-            "des_res0_addr",
-            (f"des_res0_{x}" for x in "nchw"),
-            "des_opt_res0_prec",
-        )
-        operands = (
-            (
-                "des_opd0_addr",
-                ("des_res0_n", "des_opd0_c", "des_opd0_h", "des_opd0_w"),
-                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-                "des_short_opd0_str",
-            ),
-            (
-                "des_opd1_addr",
-                ("des_opd1_h", "des_opd1_w"),
-                ("des_opt_opd0_prec", "des_opt_opd1_sign"),
-            ),
-            (
-                "des_opd2_addr",
-                ("des_res0_c",),
-                ("des_opt_opd0_prec", "des_opt_opd2_sign"),
-            ),
-        )
-        attribute = {
-            "padding": (
-                "des_opd0_up_pad",
-                "des_opd0_dn_pad",
-                "des_opd0_lf_pad",
-                "des_opd0_rt_pad",
-            ),
-            "padding_mode": "des_pad_mode",
-            "result_add": "des_opt_res_add",
-            "ins0": ("des_opd0_x_ins0", "des_opd0_y_ins0"),
-            "dilation": ("des_opd1_x_ins0", "des_opd1_y_ins0"),
-        }
-        self.results = self.memref((results,))
-        self.operands = self.memref(operands)
-        self.attribute = self.set_attribute(attribute)
+        self.results, self.attribute, self.operands = conv_reg_format(self.attr)
 
 
 @registry_bdc("MM")
@@ -381,28 +317,13 @@ class smm_op(mm_op):
     description = "short matrix multiply"
 
     def set_elt(self):
-        results = ("des_res0_addr", ("des_res0_c", "des_res0_w"), "des_opt_res0_prec")
-        operands = (
-            (
-                "des_opd0_addr",
-                ("des_opd0_n", "des_opd0_c", "des_opd0_w"),
-                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-            ),
-            (
-                "des_opd1_addr",
-                ("des_opd1_w",),
-                ("des_opt_opd0_prec", "des_opt_opd1_sign"),
-            ),
-        )
-        self.results = self.memref((results,))
-        self.operands = self.memref(operands)
-        self.attribute = None
+        self.results, self.attribute, self.operands = mm_reg_format(self.attr)
 
 
 @registry_bdc("MM2")
 class mm2_op(bdc_base):
     opcode = 2
-    eu_type = (4, 5, 6)
+    eu_type = {4: "mm2.nn", 5: "mm2.nt", 6: "mm2.tt"}
     description = "matrix multiply2"
 
 
@@ -411,11 +332,20 @@ class smm2_op(mm2_op):
     short_cmd = True
     description = "short matrix multiply2"
 
+    def set_elt(self):
+        self.results, self.attribute, self.operands = mm2_reg_format(self.attr)
+
 
 @registry_bdc("CMP")
 class cmp_op(bdc_base):
     opcode = 13
-    eu_type = (22, 23, 24, 25, 26)
+    eu_type = {
+        22: "cmp.gt_and_sel",
+        23: "cmp.sel_gt",
+        24: "cmp.sel_eq",
+        25: "cmp.lt_and_sel",
+        26: "cmp.sel_lt",
+    }
     description = "fused_cmpare"
 
 
@@ -424,11 +354,19 @@ class scmp_op(cmp_op):
     short_cmd = True
     description = "short fused_cmpare"
 
+    def set_elt(self):
+        self.results, self.attribute, self.operands = cmp_reg_format(self.attr)
+
 
 @registry_bdc("SFU")
 class sfu_op(bdc_base):
     opcode = 9
-    eu_type = (12, 13, 15, 17)
+    eu_type = {
+        12: "sfu.tailor_4x",
+        13: "sfu.tailor",
+        15: "sfu.normalize",
+        17: "sfu.rsqrt",
+    }
     description = "special_function"
 
 
@@ -437,11 +375,31 @@ class ssfu_op(sfu_op):
     short_cmd = True
     description = "short special_function"
 
+    def set_elt(self):
+        self.results, self.attribute, self.operands = sfu_reg_format(self.attr)
+
 
 @registry_bdc("VC")
 class vc_op(bdc_base):
     opcode = 14
-    eu_type = (0, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 20, 23)
+    eu_type = {
+        0: "vc.mul",
+        2: "vc.add",
+        3: "vc.sub",
+        4: "vc.max",
+        5: "vc.min",
+        7: "vc.and",
+        8: "vc.or",
+        9: "vc.xor",
+        10: "vc.select_gt",
+        11: "vc.select_eq",
+        12: "vc.div",
+        13: "vc.select_lt",
+        15: "vc.add_satu",
+        16: "vc.sub_satu",
+        20: "vc.mul_satu",
+        23: "vc.mulDHR",
+    }
     description = "vector correlation"
 
 
@@ -450,11 +408,14 @@ class svc_op(vc_op):
     short_cmd = True
     description = "short vector correlation"
 
+    def set_elt(self):
+        self.results, self.attribute, self.operands = vc_reg_format(self.attr)
+
 
 @registry_bdc("LIN")
 class lin_op(bdc_base):
     opcode = 10
-    eu_type = (1, 20, 21)
+    eu_type = {1: "lin.mac", 20: "lin.square_sum", 21: "lin.square_diff"}
     description = "fused_linear"
 
 
@@ -462,6 +423,9 @@ class lin_op(bdc_base):
 class slin_op(lin_op):
     short_cmd = True
     description = "short fused_linear"
+
+    def set_elt(self):
+        self.results, self.attribute, self.operands = lin_reg_format(self.attr)
 
 
 @registry_bdc("AR")
@@ -508,36 +472,7 @@ class sar_op(ar_op):
     description = "short arithmetic"
 
     def set_elt(self):
-        results = (
-            "des_res0_addr",
-            (f"des_res0_{x}" for x in "nchw"),
-            "des_opt_res0_prec",
-            (f"des_res0_{x}_str" for x in "nchw"),
-        )
-        operands = (
-            (
-                "des_opd0_addr",
-                (f"des_res0_{x}" for x in "nchw"),
-                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-                (f"des_opd0_{x}_str" for x in "nchw"),
-            ),
-            (
-                "des_opd1_addr",
-                (f"des_res0_{x}" for x in "nchw"),
-                ("des_opt_opd1_prec", "des_opt_opd1_sign"),
-                (f"des_opd1_{x}_str" for x in "nchw"),
-            ),
-        )
-        self.results = self.memref((results,))
-        self.operands = self.memref(operands)
-        self.attribute = {}
-        if self.attr.des_tsk_eu_typ == 18:
-            lshift = self.attr.des_opd2_addr // 256
-            rshift = np.uint8(self.attr.des_opd2_addr % 256).view(np.int8)
-            self.attribute = {"lshift": lshift, "rshift": rshift}
-        else:
-            shift = np.uint8(self.attr.des_opd2_addr).view(np.int8)
-            self.attribute = {"shift": shift}
+        self.results, self.attribute, self.operands = ar_reg_format(self.attr)
 
 
 # @registry_bdc("SEG")
@@ -574,26 +509,7 @@ class spord_op(pord_op):
     description = "short depthwise or pooling"
 
     def set_elt(self):
-        results = (
-            "des_res0_addr",
-            ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
-            "des_opt_res0_prec",
-        )
-        operands = (
-            (
-                "des_opd0_addr",
-                ("des_opd0_h", "des_opd0_w"),
-                ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-            ),
-            (
-                "des_opd1_addr",
-                ("des_opd1_h", "des_opd1_w"),
-                ("des_opt_opd0_prec", "des_opt_opd1_sign"),
-            ),
-        )
-        self.results = self.memref((results,))
-        self.operands = self.memref(operands)
-        self.attribute = None
+        self.results, self.attribute, self.operands = pord_reg_format(self.attr)
 
 
 @registry_bdc("RQ&DQ")
@@ -616,25 +532,31 @@ class srqdq_op(rqdq_op):
     description = "short RQ && DQ"
 
     def set_elt(self):
-        results = (
-            "des_res0_addr",
-            ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
-            ("des_opt_res0_prec", "des_opt_opd2_sign"),
-        )
-        operands = (
-            "des_opd0_addr",
-            ("des_res0_n", "des_res0_c", "des_res0_h", "des_res0_w"),
-            ("des_opt_opd0_prec", "des_opt_opd0_sign"),
-        )
-        self.results = self.memref((results,))
-        self.operands = self.memref((operands,))
-        self.attribute = None
+        self.results, self.attribute, self.operands = rqdq_reg_format(self.attr)
 
 
 @registry_bdc("SG")
 class sg_op(bdc_base):
     opcode = 6
-    eu_type = set(range(17)) - set([11, 12])
+    eu_type = {
+        0: "sg.pl_gather_d1coor",
+        1: "sg.pl_gather_d2coor",
+        2: "sg.pl_gather_rec",
+        3: "sg.pl_scatter_d1coor",
+        4: "sg.pl_scatter_d2coor",
+        5: "sg.pe_s_gather_d1coor",
+        6: "sg.pe_s_scatter_d1coor",
+        7: "sg.pe_m_gather_d1coor",
+        8: "sg.pe_s_mask_select",
+        9: "sg.pe_s_nonzero",
+        10: "sg.pe_s_scatter_pp_d1coor",
+        11: "sg.pl_gather_perw",
+        12: "sg.pl_scatter_perw",
+        13: "sg.pe_s_gather_hzd",
+        14: "sg.pe_s_scatter_hzd",
+        15: "sg.pe_s_mask_selhzd",
+        16: "sg.pe_s_nonzero_hzd",
+    }
     description = "scatter_gather"
 
 
@@ -643,11 +565,14 @@ class ssg_op(sg_op):
     short_cmd = True
     description = "short scatter_gather"
 
+    def set_elt(self):
+        self.results, self.attribute, self.operands = sg_reg_format(self.attr)
+
 
 @registry_bdc("SGL")
 class sgl_op(bdc_base):
     opcode = 6
-    eu_type = (17, 18)
+    eu_type = {17: "sgl.pe_s_nonzero_hzd", 18: "sgl.pe_s_scatter_line"}
     description = "scatter_gather_line"
 
 
@@ -655,6 +580,9 @@ class sgl_op(bdc_base):
 class ssgl_op(sgl_op):
     short_cmd = True
     description = "short scatter_gather_line"
+
+    def set_elt(self):
+        self.results, self.attribute, self.operands = sgl_reg_format(self.attr)
 
 
 @registry_bdc("TRANS&BC")
@@ -677,19 +605,10 @@ class stransbc_op(transbc_op):
     description = "short TRANS && BC"
 
     def set_elt(self):
-        results = (
-            "des_res0_addr",
-            (f"des_res0_{x}" for x in "nchw"),
-            "des_opt_res0_prec",
-        )
-        operands = (
-            "des_opd0_addr",
-            (f"des_opd0_{x}" for x in "cw"),
-            "des_opt_res0_prec",
-        )
-        self.results = self.memref((results,))
-        self.operands = self.memref((operands,))
-        self.attribute = None
+        if self.attr.tsk_eu_typ in (0, 1):
+            self.results, self.attribute, self.operands = cw_tans_reg_format(self.attr)
+        else:
+            self.results, self.attribute, self.operands = bc_reg_format(self.attr)
 
 
 @registry_bdc("LAR")
@@ -793,14 +712,14 @@ class dma_base:
     def __repr__(self):
         if self.operands == []:
             return self.description
-        opd_str, opd_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.operands))
-        res_str, res_shape_t = zip(*((x.addr_str, x.shape_str) for x in self.results))
+        opd_name, opd_type_t = zip(*((x.name_str, x.type_str) for x in self.operands))
+        res_name, res_type_t = zip(*((x.name_str, x.type_str) for x in self.results))
         attribute = ""
         if self.attribute:
             attribute = f" {{{self.attribute}}}"
 
-        src_mem = opd_str[0][1]
-        des_mem = res_str[0][1]
+        src_mem = opd_name[0][1]
+        des_mem = res_name[0][1]
 
         if des_mem == src_mem:
             action = "transfer"
@@ -812,10 +731,10 @@ class dma_base:
             action = "copy"
 
         return (
-            f"{', '.join(res_str)}, %D{self.cmd_id} = \"{self.op_name}.{action}\""
-            + f"({', '.join(opd_str)}, %B{self.cmd_id_dep})"
+            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{self.op_name}.{action}\""
+            + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
             + attribute
-            + f" : ({', '.join(opd_shape_t)}, none) -> ({res_shape_t[0]}, none)"
+            + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
         )
 
 

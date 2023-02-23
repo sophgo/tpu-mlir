@@ -8,6 +8,7 @@
 #
 # ==============================================================================
 from bmodel_dis import Bmodel2MLIR, opdef_1684x, tensor2memref
+from utils.bmodel_dis.opparam_1684x import MType, Memory
 from utils.cmodel import lib, gen_lookup_table
 import cmd
 import ctypes
@@ -127,6 +128,7 @@ class Tdb(cmd.Cmd):
         self.lmem[...] = 0
         lut = np.array(gen_lookup_table(), np.uint32).view(np.uint8)
         self.smem[: len(lut)] = lut[...]
+        self.mem_manager = Memory(self.lmem, self.ddr)
 
     def message(self, msg):
         print(msg, file=self.stdout)
@@ -266,44 +268,17 @@ class Tdb(cmd.Cmd):
         self.set_data(mem, input)
 
     def set_data(self, des: opdef_1684x.MemRef, src: np.ndarray):
-        m_type = des.addr_str[1]
-        if m_type == "G":
-            offset = des.addr - opdef_1684x.memmap["G"][0]
+        m_type = des.mtype
+        if m_type == MType.G:
+            offset = m_type.r_addr
             assert src.dtype == des.np_dtype
             src_u8 = np.ascontiguousarray(src.flatten()).view(np.uint8)
             self.ddr[offset : offset + src_u8.size] = src_u8.flatten()
         if m_type == "L":
             raise Exception("Not implemented.")
 
-    def get_data(self, mem: opdef_1684x.MemRef):
-        m_type = mem.mem_type
-        if m_type == "L":
-            raise Exception("Not implemented.")
-        if m_type == "G":
-            # TODO stride layout
-            offset = mem.addr - opdef_1684x.memmap["G"][0]
-            size = int(np.prod(mem.shape)) * np.dtype(mem.np_dtype).itemsize
-            return (
-                self.ddr[offset : offset + size]
-                .view(mem.np_dtype)
-                .reshape(mem.shape)
-                .copy()
-            )
-        if m_type == "R":
-            # TODO: switch to stride
-            offset = mem.addr - opdef_1684x.memmap["R"][0]
-            tpu_lmem_size = opdef_1684x.bank_size * 16
-            tpu_offset = offset // tpu_lmem_size
-            offset = offset % tpu_lmem_size
-            lmem = self.lmem.reshape(64, -1)
-            n, c, h, w = mem.shape
-            dtype_size = np.dtype(mem.np_dtype).itemsize
-            spacial_size = h * w * dtype_size
-            tensor = lmem[:, offset : offset + spacial_size * int(np.ceil(c / 64)) * n]
-            tensor = tensor.reshape(n, -1, spacial_size)[
-                :, tpu_offset : tpu_offset + c, :
-            ]
-            return tensor.copy().view(mem.np_dtype).reshape(n, c, h, w)
+    def get_data(self, mem):
+        return self.mem_manager.get_data(mem)
 
     def get_return(self):
         outputs = self.current_function.signature[1]
@@ -340,9 +315,10 @@ class Tdb(cmd.Cmd):
         self.reset()
         self.model = Bmodel2MLIR(self.file)
         coeff = self.model.module.functions[0].regions[0].data
-        addr = coeff.address - opdef_1684x.memmap["G"][0]
-        # load constant data
-        self.ddr[addr : addr + len(coeff.data)] = memoryview(coeff.data)
+        if coeff:
+            addr = coeff.address - opdef_1684x.memmap["G"][0]
+            # load constant data
+            self.ddr[addr : addr + len(coeff.data)] = memoryview(coeff.data)
         if self.model is None:
             raise Exception("please load one file.")
         self.current_function = self.model.module.functions[0]
