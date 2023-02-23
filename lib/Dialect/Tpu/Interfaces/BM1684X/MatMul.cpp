@@ -6,7 +6,7 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-
+#include "ConvUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 
@@ -70,8 +70,27 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
   auto p = op.parseParam();
 
   // bias merge input zp
-  if (p.input_zp == 0)
+  if (p.input_zp == 0) {
+    auto in_stype = module::getStorageType(op.getInput());
+    bool isINT4MM = in_stype.isInteger(4);
+    if(isINT4MM){
+    // filter
+    auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp());
+
+    auto filter_i8 = filterOp.read<int8_t>();
+    std::vector<int64_t> filter_shape; // = {1, p.K, 1, p.N};
+    auto  shape = module::getShape(op.getRight());
+    for(int i = 0; i < shape.size(); ++i){
+      filter_shape[i] = shape[i];
+    }
+
+    tpu::compact_coeff_for_int4(filter_i8, filter_shape, false);
+    bool sign = true;
+    auto new_type = RankedTensorType::get(filter_shape, rewriter.getIntegerType(4, sign));
+    op.getRight().setType(new_type);
+    }
     return failure();
+  }
   i32_array_t bias_quant;
   if (isa<top::WeightOp>(op.getBias().getDefiningOp())) {
     bias_quant =
