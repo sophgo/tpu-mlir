@@ -249,7 +249,7 @@ def show_figure(app):
                 return dash.no_update
             id = cell[0]['row_id']
             name = app.Global.graph.edge(eval(id))
-        if name == "":
+        if name == "" or name not in app.Global.analysis_data.quant_net.all_tensor_names():
             return dash.no_update, dash.no_update
 
         fig = app.Global.figure_cache.get_figure(plot.linear_plot,
