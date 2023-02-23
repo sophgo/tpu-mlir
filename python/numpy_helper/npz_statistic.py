@@ -4,6 +4,7 @@
 # third-party components.
 #
 # ==============================================================================
+import os
 import numpy as np
 
 def normalize(v):
@@ -13,11 +14,7 @@ def normalize(v):
     return v / norm
 
 def npz_statistic(args):
-  os.system('pip3 install visdom')
-  from visdom import Visdom
-  viz = Visdom()
   npzfile = np.load(args[0])
-
   if len(args) == 1 or args[1] == "--list":
     print("\n".join(npzfile.files))
     exit(0)
@@ -40,16 +37,21 @@ def npz_statistic(args):
   print('new_shape:', new_shape)
   d = d.reshape([shape[ax],-1])
 
-  viz.boxplot(X=d)
-  # amax = np.amax(d, axis=-1)
-  # amin = np.amin(d, axis=-1)
-  # print('mean', np.mean(d, axis=-1))
-  # print('var', np.var(d, axis=-1))
-  # print('max', amax)
-  # print('min', amin)
-  # r = amax - amin
-  # print('data range', r)
-  # norm = normalize(r)
-  # norm = [(i,data)for i,data in enumerate(norm.tolist())]
-  # norm = sorted(norm, key=lambda x: x[1], reverse=False)
-  # print('norm', norm)
+  amax = np.amax(d, axis=-1)
+  amin = np.amin(d, axis=-1)
+  print('mean', np.mean(d, axis=-1))
+  print('var', np.var(d, axis=-1))
+  print('max', amax)
+  print('min', amin)
+  r = amax - amin
+  print('data range', r)
+  norm = normalize(r)
+  print('data range norm', norm)
+  norm_odr = np.argsort(norm)
+  print('norm_odr', norm_odr)
+  for i in range(len(r)):
+    print(f'idx:{i}, range:{r[i]}, range norm:{norm[i]}, norm order:{norm_odr[i]}')
+
+  d2 = npzfile[args[1]]
+  print('mean', np.mean(d2, axis=(1,2,3)))
+  print('var', np.var(d2, axis=(1,2,3)))

@@ -7,7 +7,7 @@
 # third-party components.
 #
 # ==============================================================================
-
+import os
 import sys
 import logging
 
@@ -31,3 +31,24 @@ def setup_logger(name, log_level="INFO"):
     logger.addHandler(handler)
     log_name[name] = logger
     return logger
+
+class logger():
+    def __init__(self, log_file_name:str, log_level:str = "DEBUG"):
+        os.system(f'rm -f {log_file_name}')
+        level = logging.DEBUG
+        if log_level == "INFO":
+            level = logging.INFO
+        logging.basicConfig(filename=log_file_name, level=level)
+
+    def print_dbg(self, *para):
+        tmp = [str(item) for item in para]
+        tmpStr = ' '.join(tmp)
+        print(tmpStr)
+        logging.debug(tmpStr)
+
+    def print_info(self, *para):
+        tmp = [str(item) for item in para]
+        tmpStr = ' '.join(tmp)
+        print(tmpStr)
+        logging.info(tmpStr)
+

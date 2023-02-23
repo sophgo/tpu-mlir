@@ -9,6 +9,7 @@
 # ==============================================================================
 
 import os
+import random
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -157,3 +158,8 @@ def cos_sim(vector_a, vector_b):
         cos = np.nan_to_num(num / denom)
     sim = 0.5 + 0.5 * cos
     return sim
+
+def seed_all(seed=1029):
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
