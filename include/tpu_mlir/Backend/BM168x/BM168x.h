@@ -49,6 +49,11 @@ typedef void (*tensor_broadcast_move_gen_cmd)(
     uint32_t dst_H_stride, int data_format, int stride_enable, int direction,
     CMD_ID_NODE *pid_node);
 
+typedef void (*tensor_align_move_gen_cmd)(
+    int local_mem_start_addr, int local_mem_idx, uint64_t sys_mem_start_addr,
+    int src_N, int src_C, int src_H, int src_W, int src_format, int direction,
+    int transpose, CMD_ID_NODE *pid_node);
+
 typedef void (*set_total_id_ptr)(uint32_t *gdma_total_id_ptr,
                                  uint32_t *bdc_total_id_ptr, void *cmdid_node,
                                  void *gdma_group_id_ptr,
@@ -156,6 +161,7 @@ public:
   tensor_stride_move_gen_cmd dl_tensor_stride_move_gen_cmd;
   tensor_compact_move_gen_cmd dl_tensor_compact_move_gen_cmd;
   tensor_broadcast_move_gen_cmd dl_tensor_broadcast_move_gen_cmd;
+  tensor_align_move_gen_cmd dl_tensor_align_move_gen_cmd;
   set_total_id_ptr dl_set_total_id_ptr;
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;

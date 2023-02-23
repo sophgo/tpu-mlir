@@ -66,6 +66,7 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   ginfo.buffer_addr = g_param.getBufferAddr();
   ginfo.buffer_size = g_param.getBufferSize();
   ginfo.eu_align = g_param.getEuAlign();
+  ginfo.type = g_param.getGroupType();
   auto n_idx_v = g_param.getNIdx();
   auto n_slice_v = g_param.getNSlice();
   auto h_idx_v = g_param.getHIdx();

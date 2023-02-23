@@ -39,12 +39,14 @@ protected:
   void buildMlir();
   void buildGroupOp(const LgInfo &lg_info, const shape_secs_t &shape_secs);
   void CreateLoadOp(GdmaElt &tensor, int64_t id,
-                    const std::vector<Operation *> &ops);
+                    const std::vector<Operation *> &ops, group_type_t group_type);
 
-  tpu::StoreOp CreateStoreOp(GdmaElt &tensor, int64_t id);
-  void UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos, int64_t id);
+  tpu::StoreOp CreateStoreOp(GdmaElt &tensor, int64_t id, group_type_t group_type);
+  void UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos, int64_t id,
+                       group_type_t group_type);
   tpu::LayerGroupAttr getLgParam(tensor_info_t &tensor_info, int64_t id,
                                  int64_t out_addr, int64_t out_size,
+                                 int64_t group_type = 0,
                                  int64_t buffer_addr = 0,
                                  int64_t buffer_size = 0);
   //  bool need_none(group_lmem_t &group_lmem);

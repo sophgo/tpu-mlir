@@ -158,7 +158,7 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   }
   spec.dtype = getDataType(v);
   auto shape = module::getShape(v);
-  if (group_type == GROUP_NORMAL) {
+  if (group_type == GROUP_NORMAL || group_type == GROUP_3D) {
     spec.dims = shape.size();
     for (int i = 0; i < spec.dims; i++) {
       spec.shape[i] = shape[i];
@@ -319,6 +319,7 @@ void BM168x::load_functions() {
   CAST_FUNCTION(forbid_atomic_cmodel_assert);
   CAST_FUNCTION(tensor_stride_move_gen_cmd);
   CAST_FUNCTION(tensor_compact_move_gen_cmd);
+  CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
 }
 

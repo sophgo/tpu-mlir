@@ -142,7 +142,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       if (stg == 1) {
         auto cur_ts_layers = time_step->getLayers(ts);
         for (auto op : cur_ts_layers) {
-          UpdateOpLgParam(op, tensor_infos, id++);
+          UpdateOpLgParam(op, tensor_infos, id++, lg_info.type);
           op->moveAfter(current_op_);
           current_op_ = op;
         }
@@ -152,9 +152,9 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       for (auto tensor : cur_ts_tensors) {
         if (time_step->get_tensor_swpipl_stage(tensor.first) == stg) {
           if (tensor.second.mode == TIMESTEP_LOAD) {
-            CreateLoadOp(tensor, id++, ops);
+            CreateLoadOp(tensor, id++, ops, lg_info.type);
           } else if (tensor.second.mode == TIMESTEP_STORE) {
-            auto storeOp = CreateStoreOp(tensor, id++);
+            auto storeOp = CreateStoreOp(tensor, id++, lg_info.type);
             stores.push_back(storeOp.getOutput());
           }
         }
@@ -217,7 +217,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
 }
 
 void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
-                            const std::vector<Operation *> &ops) {
+                            const std::vector<Operation *> &ops,
+                            group_type_t group_type) {
   auto builder = OpBuilder(ctx_);
   auto input = tensor.first;
   auto ti = tensor.second;
@@ -243,11 +244,16 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   mem_buffer_key_t buffer_key = {LMEM_ACTIVATION, input, nullptr};
   if (dyn_cast_or_null<top::WeightOp>(inputOp)) {
     buffer_key.type = LMEM_WEIGHT;
+    attrs.push_back(
+        builder.getNamedAttr("lmem_type", builder.getI64IntegerAttr(LMEM_WEIGHT)));
+  } else {
+    attrs.push_back(
+        builder.getNamedAttr("lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
   }
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   attrs.push_back(builder.getNamedAttr(
       LocalGenInterface::kLayerGroupAttrName,
-      getLgParam(ti, id, buffer_value.addr, buffer_value.size)));
+      getLgParam(ti, id, buffer_value.addr, buffer_value.size, group_type)));
   if (current_op_ == nullptr) {
     builder.setInsertionPointToStart(body_);
   } else if (isa<tpu::StoreOp>(current_op_)) {
@@ -267,7 +273,7 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   }
 }
 
-StoreOp GroupOps::CreateStoreOp(GdmaElt &tensor, int64_t id) {
+StoreOp GroupOps::CreateStoreOp(GdmaElt &tensor, int64_t id, group_type_t group_type) {
   auto builder = OpBuilder(ctx_);
   auto output = tensor.first;
   auto &ti = tensor.second;
@@ -280,7 +286,7 @@ StoreOp GroupOps::CreateStoreOp(GdmaElt &tensor, int64_t id) {
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   attrs.push_back(builder.getNamedAttr(
       LocalGenInterface::kLayerGroupAttrName,
-      getLgParam(ti, id, buffer_value.addr, buffer_value.size)));
+      getLgParam(ti, id, buffer_value.addr, buffer_value.size, group_type)));
   builder.setInsertionPointAfter(current_op_);
   auto storeOp =
       builder.create<tpu::StoreOp>(NameLoc::get(builder.getStringAttr(name)),
@@ -290,7 +296,7 @@ StoreOp GroupOps::CreateStoreOp(GdmaElt &tensor, int64_t id) {
 }
 
 void GroupOps::UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos,
-                               int64_t id) {
+                               int64_t id, group_type_t group_type) {
   auto output = *op->getResults().begin();
   auto &ti = tensor_infos[output];
   ti.stage = 1;
@@ -300,12 +306,13 @@ void GroupOps::UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos,
   auto &out_buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName,
               getLgParam(ti, (int64_t)id, out_buffer_value.addr,
-                         out_buffer_value.size, imm_buffer_value.addr,
+                         out_buffer_value.size, group_type, imm_buffer_value.addr,
                          imm_buffer_value.size));
 }
 
 LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
                                     int64_t out_addr, int64_t out_size,
+                                    int64_t group_type,
                                     int64_t buffer_addr, int64_t buffer_size) {
   auto builder = OpBuilder(ctx_);
   auto &si = tensor_info.slice_info;
@@ -329,7 +336,7 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
       builder.getDenseI64ArrayAttr(h_idxs),
       builder.getDenseI64ArrayAttr(h_slices),
       builder.getDenseI64ArrayAttr(n_idxs),
-      builder.getDenseI64ArrayAttr(n_slices), id, tensor_info.stage);
+      builder.getDenseI64ArrayAttr(n_slices), id, tensor_info.stage, group_type);
 }
 
 /*

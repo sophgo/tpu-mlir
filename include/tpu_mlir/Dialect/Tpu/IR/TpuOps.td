@@ -81,7 +81,8 @@ def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
     "DenseI64ArrayAttr":$n_idx,
     "DenseI64ArrayAttr":$n_slice,
     "int64_t":$id,
-    "int64_t":$stage
+    "int64_t":$stage,
+    "int64_t":$group_type
   );
   let assemblyFormat = "`<` struct(params) `>`";
 }
@@ -818,7 +819,7 @@ def Tpu_ReshapeOp:Tpu_Op<"Reshape",
 }
 
 def Tpu_ReverseOp:Tpu_Op<"Reverse", [InOutSameShape]> {
-  let summary = "Load operation";
+  let summary = "Reverse operation";
   let description = [{
     Reverse on input
   }];
@@ -858,6 +859,7 @@ def Tpu_LoadOp:Tpu_Op<"Load",
     AnyRankedTensor:$input,
     DefaultValuedAttr<BoolAttr, "false">:$do_bcast,
     DefaultValuedAttr<I64Attr, "0">:$use_3ic_optimize,
+    DefaultValuedAttr<I64Attr, "0">:$lmem_type,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyRankedTensor:$output);

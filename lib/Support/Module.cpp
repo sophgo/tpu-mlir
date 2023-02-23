@@ -544,7 +544,7 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
     }
     module::getNCHW(shape_vec, n, c, h, w, false);
   } else {
-    llvm_unreachable("GROUP_3D is not implemented");
+    module::getNCHW(shape, n, c, h, w, true);
   }
 }
 
@@ -554,12 +554,37 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
   getNCHW(shape, n, c, h, w, group_type);
 }
 
-bool isOpInGroup(Operation *Op) {
+void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
+             int64_t &w, group_type_t group_type) {
+  auto shape = v.getType().cast<RankedTensorType>().getShape();
+  int num_dims = shape.size();
+  if(GROUP_3D == group_type && isBM1684XFamily()){
+    n = num_dims>0?shape[0]:1;
+    c = num_dims>1?shape[1]:1;
+    d = num_dims>2?shape[2]:1;
+    h = num_dims>3?shape[3]:1;
+    w = 1;
+    for (size_t i = 4; i < num_dims; ++i) {
+      w *= shape[i];
+    }
+    return;
+  } else{
+    d = 1;
+    getNCHW(shape, n, c, h, w, group_type);
+  }
+}
+
+bool isOpInGroup(Operation *Op, int64_t *group_type) {
   if (Op == nullptr) {
     return false;
   }
   auto parent = Op->getParentOp();
   if (parent != nullptr && isa<tpu::GroupOp>(parent)) {
+    if(group_type){
+      if (auto groupop = dyn_cast<tpu::GroupOp>(Op)) {
+        *group_type = groupop.getGroupType();
+      }
+    }
     return true;
   }
   return false;
@@ -738,6 +763,7 @@ bool isBM1684XFamily() {
   return (chip == Chip::BM1684X || chip == Chip::BM1686);
 }
 bool isBM1686() { return (chip == Chip::BM1686); }
+bool isBM1684X() { return (chip == Chip::BM1684X); }
 
 ModuleOp getModuleOp() { return m; }
 

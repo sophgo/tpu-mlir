@@ -63,15 +63,15 @@ int64_t tpu::DequantIntOp::getBufferSize_bm1684x(
 void tpu::DequantIntOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                               group_type_t group_type,
                                               local_sec_info_t &sec_info) {
-  int64_t n, c, h, w;
-  module::getNCHW(getInput(), n, c, h, w, group_type);
+  int64_t n, c, d, h, w;
+  module::getNCDHW(getInput(), n, c, d, h, w, group_type);
   dequant_int_param_t param = {0};
   auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
   auto gi = getGroupInfo(n_step, h_step);
   param.input_addr = (uint32_t)in_gi.out_addr;
   param.output_addr = (uint32_t)gi.out_addr;
   param.buffer_local_addr = (uint32_t)gi.buffer_addr;
-  param.n = sec_info.out_n_slice;
+  param.n = sec_info.out_n_slice * d;
   param.c = c;
   param.h = sec_info.out_h_slice;
   param.w = sec_info.out_w_slice;
