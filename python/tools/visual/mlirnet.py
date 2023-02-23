@@ -120,6 +120,9 @@ class mlir_net:
         q_info = self.mlir_module.get_tensor_qinfo(name)
         return q_info.dtype
 
+    def output_names(self):
+        return self.mlir_module.output_names
+
     def all_tensor_names(self):
         return self.mlir_module.all_tensor_names
 
@@ -188,6 +191,12 @@ class analysis_data():
         self.tensor_base = pd.DataFrame(blob_info, index=index)
         self.tensor_info = pd.DataFrame()
 
+    def clean_unused(self):
+        for t in self.tensor_base['tensor']:
+            if t not in self.quant_net.all_tensor_names():
+                row = self.tensor_base[self.tensor_base.tensor == t].index.tolist()
+                self.tensor_base = self.tensor_base.drop(row)
+
     def forward(self):
         self.forwarding = True
         self.progress = 0
@@ -196,6 +205,7 @@ class analysis_data():
         self.quant_net.forward()
         self.progress = 100
         self.forwarding = False
+        self.clean_unused()
 
     def tensor(self, name):
         if name in self.quant_net.all_tensor_names():
