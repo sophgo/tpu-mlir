@@ -148,6 +148,7 @@ class ONNX_IR_TESTER(object):
             "TorchArgmax": self.test_TorchArgmax,
             "TorchChannelShuffle": self.test_TorchChannelShuffle,
             "TorchChunk": self.test_TorchChunk,
+            "TorchConv3dTranspose": self.test_TorchConv3dTranspose,
             "TorchHardSwish": self.test_TorchHardSwish,
             "TorchHardSigmoid": self.test_TorchHardSigmoid,
             "TorchIdentity": self.test_TorchIdentity,
@@ -2553,6 +2554,22 @@ class ONNX_IR_TESTER(object):
                 return x
 
         x = torch.randn(4, 3, 100, 100).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchConv3dTranspose(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.filter = torch.randn(96, 3, 6, 4, 4)
+
+            def forward(self, x):
+                x = torch.transpose(x, 1, 2)
+                x = F.conv3d(x, self.filter, stride=4)
+                return x
+
+        x = torch.randn(1, 6, 3, 640, 640).float()
         self.torch_and_test(x, Net(), case_name)
 
     def test_StaticDynMixed(self, case_name):
