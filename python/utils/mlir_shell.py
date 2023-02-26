@@ -156,3 +156,18 @@ def f32_blobs_compare(a_npz: str,
     if show_detail:
         cmd.append('-vv')
     _os_system(cmd)
+
+
+
+# TOPTOTOSA
+def top2tosa(top_mlir: str, tosa_mlir: str,):
+    cmd = ["tpuc-opt", top_mlir, "--init"]
+    lower_param = "--convert-top-to-tosa"
+    cmd.extend([
+        lower_param,
+        "--canonicalize",
+        "--mlir-print-debuginfo",
+        "-o",
+        tosa_mlir,
+    ])
+    _os_system(cmd)

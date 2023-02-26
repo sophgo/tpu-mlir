@@ -17,8 +17,7 @@ using namespace mlir;
 
 namespace mlir {
 
-std::unique_ptr<TensorFile>
-openInputTensorFile(StringRef inputFilename) {
+std::unique_ptr<TensorFile> openInputTensorFile(StringRef inputFilename) {
   return std::make_unique<TensorFile>(inputFilename, true, false);
 }
 
@@ -27,8 +26,7 @@ openOutputTensorFile(llvm::StringRef outputFilename) {
   return std::make_unique<TensorFile>(outputFilename, false, true);
 }
 
-std::unique_ptr<TensorFile>
-openTensorFile(llvm::StringRef filename) {
+std::unique_ptr<TensorFile> openTensorFile(llvm::StringRef filename) {
   return std::make_unique<TensorFile>(filename, false);
 }
 

@@ -7,13 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-#pragma once
+#ifndef TPU_MLIR_CONVERSION_TOPTOTOSA_H
+#define TPU_MLIR_CONVERSION_TOPTOTOSA_H
 
-#include "mlir/IR/Dialect.h"
-
+#include "tpu_mlir/Conversion/TopToTosa/TopLowering.h"
+/*
+namespace mlir {
+#ifndef GEN_PASS_DECL
+#define GEN_PASS_DECL
+#include "tpu_mlir/Conversion/Passes.h.inc"
+#endif
+} // namespace mlir
+*/
 namespace tpu_mlir {
 
-void registerAllDialects(mlir::DialectRegistry &registry);
-void registerAllPasses();
+std::unique_ptr<Pass> createConvertTopToTosa();
 
 } // namespace tpu_mlir
+
+#endif // TPU_MLIR_CONVERSION_TOPTOTOSA_H
