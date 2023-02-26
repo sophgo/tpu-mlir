@@ -17,11 +17,13 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Quant/QuantOps.h"
 #include "mlir/IR/Dialect.h"
+#include "mlir/Dialect/Tosa/IR/TosaOps.h"
 
 namespace tpu_mlir {
 void registerAllDialects(mlir::DialectRegistry &registry) {
-  registry.insert<mlir::func::FuncDialect, top::TopDialect, tpu::TpuDialect,
-                  mlir::quant::QuantizationDialect>();
+  registry
+      .insert<mlir::tosa::TosaDialect, mlir::func::FuncDialect, top::TopDialect,
+              tpu::TpuDialect, mlir::quant::QuantizationDialect>();
 }
 
 void registerAllPasses() {

@@ -24,10 +24,11 @@ def Module_State: I32EnumAttr<"State", "module state",[
       I32EnumAttrCase<"TOP_F32", 0>,
       I32EnumAttrCase<"TOP_CALIBRATED", 1>,
       I32EnumAttrCase<"TOP_QUANTIZED", 2>,
-      I32EnumAttrCase<"TPU_LOWERED",3>,
-      I32EnumAttrCase<"TPU_REORDERED",4>,
-      I32EnumAttrCase<"TPU_DIVIDED",5>,
-      I32EnumAttrCase<"TPU_ADDRESSED",6>
+      I32EnumAttrCase<"TPU_LOWERED", 3>,
+      I32EnumAttrCase<"TPU_REORDERED", 4>,
+      I32EnumAttrCase<"TPU_DIVIDED", 5>,
+      I32EnumAttrCase<"TPU_ADDRESSED", 6>,
+      I32EnumAttrCase<"TOSA_F32", 7>
     ]> {
   let genSpecializedAttr = 0;
   let cppNamespace = "::tpu_mlir::module";

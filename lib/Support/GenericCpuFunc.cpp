@@ -27,11 +27,9 @@ static void sigmoid_batch(float *x, const int n) {
   }
 }
 
-static float softplus_activate(float x) {
-  return std::log(std::exp(x) + 1);
-}
+static float softplus_activate(float x) { return std::log(std::exp(x) + 1); }
 
-static inline float tanh_activate (float x) {
+static inline float tanh_activate(float x) {
   return (2 / (1 + std::exp(-2 * x)) - 1);
 }
 
@@ -474,8 +472,8 @@ void DetectionOutputFunc::invoke() {
           all_conf_scores[i].find(c)->second;
 
       if (param_.top_k < (int)scores.size()) {
-        std::partial_sort(scores.begin(), scores.begin() + param_.top_k, scores.end(),
-                          SortScoreCmp0);
+        std::partial_sort(scores.begin(), scores.begin() + param_.top_k,
+                          scores.end(), SortScoreCmp0);
       } else {
         std::sort(scores.begin(), scores.end(), SortScoreCmp0);
       }
@@ -499,7 +497,8 @@ void DetectionOutputFunc::invoke() {
     }
     for (int c = 0; c < param_.num_classes; ++c) {
       if (!param_.share_location) {
-        ptr = decode_keep_index + num_priors * param_.num_classes * i + num_priors * c;
+        ptr = decode_keep_index + num_priors * param_.num_classes * i +
+              num_priors * c;
       }
       if (c == param_.background_label_id) {
         // Ignore background class.
@@ -510,7 +509,8 @@ void DetectionOutputFunc::invoke() {
         continue;
       std::vector<std::pair<float, int>> &scores =
           all_conf_scores[i].find(c)->second;
-      int length = param_.top_k < (int)scores.size() ? param_.top_k : scores.size();
+      int length =
+          param_.top_k < (int)scores.size() ? param_.top_k : scores.size();
       for (int k = 0; k < length; ++k) {
         ptr[scores[k].second] = 1;
       }
@@ -520,15 +520,17 @@ void DetectionOutputFunc::invoke() {
   // Retrieve all location predictions.
   std::vector<LabelBBox_l> all_loc_preds;
   GetLocPredictions_opt(param_.loc_data, num, num_priors, num_loc_classes,
-                        param_.share_location, decode_keep_index, &all_loc_preds);
+                        param_.share_location, decode_keep_index,
+                        &all_loc_preds);
 
   // Decode all loc predictions to bboxes.
   std::vector<LabelBBox_l> all_decode_bboxes;
   const bool clip_bbox = false;
   DecodeBBoxesAll_opt(all_loc_preds, num_priors, param_.prior_data, num,
-                      param_.share_location, num_loc_classes, param_.background_label_id,
-                      param_.code_type, variance_encoded_in_target, clip_bbox,
-                      decode_keep_index, &all_decode_bboxes);
+                      param_.share_location, num_loc_classes,
+                      param_.background_label_id, param_.code_type,
+                      variance_encoded_in_target, clip_bbox, decode_keep_index,
+                      &all_decode_bboxes);
   delete[] decode_keep_index;
 
   int num_kept = 0;
@@ -557,8 +559,8 @@ void DetectionOutputFunc::invoke() {
       const std::vector<BBox_l> &bboxes = decode_bboxes.find(label)->second;
       const std::vector<std::pair<float, int>> &aa =
           conf_scores.find(c)->second;
-      ApplyNMSFast_opt(bboxes, aa, param_.confidence_threshold, param_.nms_threshold, eta,
-                       param_.top_k, &(indices[c]));
+      ApplyNMSFast_opt(bboxes, aa, param_.confidence_threshold,
+                       param_.nms_threshold, eta, param_.top_k, &(indices[c]));
 
       num_det += indices[c].size();
     }
@@ -892,7 +894,8 @@ static void anchor_box_nms(std::vector<std::vector<float>> &pred_boxes,
 }
 
 ProposalFunc::ProposalFunc(ProposalParam &param) : param_(param) {
-  generate_anchors(param_.anchor_base_size, anchor_scale, anchor_ratio, anchor_boxes);
+  generate_anchors(param_.anchor_base_size, anchor_scale, anchor_ratio,
+                   anchor_boxes);
 }
 
 void ProposalFunc::invoke() {
@@ -978,16 +981,14 @@ void ProposalFunc::invoke() {
   }
 }
 
-ROIPoolingFunc::ROIPoolingFunc(ROIPoolingParam &param) : param_(param) {
-
-}
+ROIPoolingFunc::ROIPoolingFunc(ROIPoolingParam &param) : param_(param) {}
 
 void ROIPoolingFunc::invoke() {
   assert(param_.inputs.size() == 2);
   float *input_data = param_.inputs[0].ptr;
   float *rois = param_.inputs[1].ptr;
   float *output_data = param_.output.ptr;
-  auto input_shape =  param_.inputs[0].shape;
+  auto input_shape = param_.inputs[0].shape;
   auto roi_shape = param_.inputs[1].shape;
   int64_t pooled_h = param_.pooled_h;
   int64_t pooled_w = param_.pooled_w;
@@ -1018,8 +1019,7 @@ void ROIPoolingFunc::invoke() {
       const float bin_size_w =
           static_cast<float>(roi_width) / static_cast<float>(pooled_w);
 
-      float *batch_data =
-          input_data + roi_batch_ind * channel * height * width;
+      float *batch_data = input_data + roi_batch_ind * channel * height * width;
 
       for (int c = 0; c < channel; ++c) {
         for (int ph = 0; ph < pooled_h; ++ph) {
@@ -1070,6 +1070,7 @@ class Reducer {
   roi_align_mode_t mode;
   int count;
   float result;
+
 public:
   Reducer(roi_align_mode_t _mode) : mode(_mode) {}
   void init() {
@@ -1097,9 +1098,7 @@ public:
   }
 };
 
-RoiAlignFunc::RoiAlignFunc(RoiAlignParam &param) : param_(param) {
-
-}
+RoiAlignFunc::RoiAlignFunc(RoiAlignParam &param) : param_(param) {}
 
 struct RoiAlignPreCalc {
   int pos[4];
@@ -1204,9 +1203,9 @@ void RoiAlignFunc::invoke() {
     int sample_h = sampling_ratio > 0.0f ? sampling_ratio : ceil(bin_h);
     const int sample_size = sample_h * sample_w;
     std::vector<RoiAlignPreCalc> pre_calc(sample_size * pooled_size);
-    preCalcForBilinearInterp(
-        IH, IW, OH, OW, sample_h, sample_w, start_h, start_w,
-        roi_h * pooled_h_inv, roi_w * pooled_w_inv, sampling_ratio, pre_calc);
+    preCalcForBilinearInterp(IH, IW, OH, OW, sample_h, sample_w, start_h,
+                             start_w, roi_h * pooled_h_inv,
+                             roi_w * pooled_w_inv, sampling_ratio, pre_calc);
     Reducer reducer(mode);
     int index_n = i * IC * pooled_size;
     for (int c = 0; c < IC; ++c) {
@@ -1300,9 +1299,7 @@ static void nms(detections *dets, int num, float nms_threshold) {
   }
 }
 
-FrcnDetctionFunc::FrcnDetctionFunc(FrcnDetParam &param) : param_(param) {
-
-}
+FrcnDetctionFunc::FrcnDetctionFunc(FrcnDetParam &param) : param_(param) {}
 
 void FrcnDetctionFunc::invoke() {
   assert(param_.inputs.size() == 3);
@@ -1389,18 +1386,19 @@ void FrcnDetctionFunc::invoke() {
 }
 
 void RetinaFaceDetectionFunc::setup(std::vector<tensor_list_t> &inputs,
-            tensor_list_t &output, RetinaFaceDetectionParam &param) {
+                                    tensor_list_t &output,
+                                    RetinaFaceDetectionParam &param) {
   // sort inputs by neuron shape size
   std::sort(inputs.begin(), inputs.end(),
-   [](const tensor_list_t &a, const tensor_list_t &b) {
-    if (a.shape[3] < b.shape[3]) {
-      return true;
-    } else if (a.shape[3] == b.shape[3]) {
-      return a.shape[1] < b.shape[1];
-    } else {
-      return false;
-    }
-  });
+            [](const tensor_list_t &a, const tensor_list_t &b) {
+              if (a.shape[3] < b.shape[3]) {
+                return true;
+              } else if (a.shape[3] == b.shape[3]) {
+                return a.shape[1] < b.shape[1];
+              } else {
+                return false;
+              }
+            });
   _bottoms = inputs;
   _tops = output;
   _nms_threshold = param.nms_threshold;
@@ -1422,35 +1420,48 @@ void RetinaFaceDetectionFunc::invoke() {
     for (size_t i = 0; i < _feature_stride_fpn.size(); ++i) {
       int stride = _feature_stride_fpn[i];
 
-      size_t offset0 = b * _bottoms[3*i].shape[1] * _bottoms[3*i].shape[2] * _bottoms[3*i].shape[3];
-      size_t count0 = _bottoms[3*i].shape[0] * _bottoms[3*i].shape[1] * _bottoms[3*i].shape[2] * _bottoms[3*i].shape[3];
-      auto score_data = _bottoms[3*i].ptr + offset0;
+      size_t offset0 = b * _bottoms[3 * i].shape[1] * _bottoms[3 * i].shape[2] *
+                       _bottoms[3 * i].shape[3];
+      size_t count0 = _bottoms[3 * i].shape[0] * _bottoms[3 * i].shape[1] *
+                      _bottoms[3 * i].shape[2] * _bottoms[3 * i].shape[3];
+      auto score_data = _bottoms[3 * i].ptr + offset0;
       size_t score_count = count0 / batch;
 
-      size_t offset1 = b * _bottoms[3*i+1].shape[1] * _bottoms[3*i+1].shape[2] * _bottoms[3*i+1].shape[3];
-      size_t count1 = _bottoms[3*i+1].shape[0] * _bottoms[3*i+1].shape[1] * _bottoms[3*i+1].shape[2] * _bottoms[3*i+1].shape[3];
-      auto bbox_data = _bottoms[3*i+1].ptr + offset1;
+      size_t offset1 = b * _bottoms[3 * i + 1].shape[1] *
+                       _bottoms[3 * i + 1].shape[2] *
+                       _bottoms[3 * i + 1].shape[3];
+      size_t count1 =
+          _bottoms[3 * i + 1].shape[0] * _bottoms[3 * i + 1].shape[1] *
+          _bottoms[3 * i + 1].shape[2] * _bottoms[3 * i + 1].shape[3];
+      auto bbox_data = _bottoms[3 * i + 1].ptr + offset1;
       size_t bbox_count = count1 / batch;
 
-      size_t offset2 = b * _bottoms[3*i+2].shape[1] * _bottoms[3*i+2].shape[2] * _bottoms[3*i+2].shape[3];
-      size_t count2 = _bottoms[3*i+2].shape[0] * _bottoms[3*i+2].shape[1] * _bottoms[3*i+2].shape[2] * _bottoms[3*i+2].shape[3];
-      auto landmark_data = _bottoms[3*i+2].ptr + offset2;
+      size_t offset2 = b * _bottoms[3 * i + 2].shape[1] *
+                       _bottoms[3 * i + 2].shape[2] *
+                       _bottoms[3 * i + 2].shape[3];
+      size_t count2 =
+          _bottoms[3 * i + 2].shape[0] * _bottoms[3 * i + 2].shape[1] *
+          _bottoms[3 * i + 2].shape[2] * _bottoms[3 * i + 2].shape[3];
+      auto landmark_data = _bottoms[3 * i + 2].ptr + offset2;
       size_t landmark_count = count2 / batch;
 
-      auto shape = _bottoms[3*i].shape;
+      auto shape = _bottoms[3 * i].shape;
       size_t height = shape[2];
       size_t width = shape[3];
 
-      std::vector<float> score(score_data + score_count / 2, score_data + score_count);
+      std::vector<float> score(score_data + score_count / 2,
+                               score_data + score_count);
       std::vector<float> bbox(bbox_data, bbox_data + bbox_count);
-      std::vector<float> landmark(landmark_data, landmark_data + landmark_count);
+      std::vector<float> landmark(landmark_data,
+                                  landmark_data + landmark_count);
 
       int count = height * width;
       std::string key = "stride" + std::to_string(stride);
       auto anchors_fpn = _anchors_fpn[key];
       auto num_anchors = _num_anchors[key];
 
-      std::vector<AnchorBox> anchors = anchors_plane(height, width, stride, anchors_fpn);
+      std::vector<AnchorBox> anchors =
+          anchors_plane(height, width, stride, anchors_fpn);
 
       for (int num = 0; num < num_anchors; ++num) {
         for (int j = 0; j < count; ++j) {
@@ -1468,7 +1479,8 @@ void RetinaFaceDetectionFunc::invoke() {
           std::vector<float> landmark_deltas(10, 0);
           for (size_t k = 0; k < 5; ++k) {
             landmark_deltas[k] = landmark[j + count * (num * 10 + k * 2)];
-            landmark_deltas[k + 5] = landmark[j + count * (num * 10 + k * 2 + 1)];
+            landmark_deltas[k + 5] =
+                landmark[j + count * (num * 10 + k * 2 + 1)];
           }
 
           auto pts = landmark_pred(anchors[j + count * num], landmark_deltas);
@@ -1512,7 +1524,8 @@ void RetinaFaceDetectionFunc::invoke() {
 }
 
 template <typename Dtype>
-void ApplyNms_opt(std::vector<PredictionResult>& boxes, std::vector<int>& idxes, Dtype threshold) {
+void ApplyNms_opt(std::vector<PredictionResult> &boxes, std::vector<int> &idxes,
+                  Dtype threshold) {
   int bbox_cnt = (int)boxes.size();
   // init the map
   uint32_t map[bbox_cnt / 32 + 1];
@@ -1552,7 +1565,8 @@ void ApplyNms_opt(std::vector<PredictionResult>& boxes, std::vector<int>& idxes,
   }
 }
 
-Yolo_v2_DetectionFunc::Yolo_v2_DetectionFunc(YoloDetParam &param) : param_(param) {
+Yolo_v2_DetectionFunc::Yolo_v2_DetectionFunc(YoloDetParam &param)
+    : param_(param) {
   std::istringstream iss(param_.anchors);
   std::string s;
   while (std::getline(iss, s, ',')) {
@@ -1601,7 +1615,7 @@ void Yolo_v2_DetectionFunc::invoke() {
   int mask_offset = 0;
   const int num = batch_num;
   int total_num = 0;
-  std::vector<PredictionResult > total_preds;
+  std::vector<PredictionResult> total_preds;
   total_preds.clear();
 
   // calc the threshold for Po
@@ -1615,13 +1629,12 @@ void Yolo_v2_DetectionFunc::invoke() {
       int h = (int)param_.inputs[index].shape[2];
       int w = (int)param_.inputs[index].shape[3];
       int stride = h * w;
-      const float* input_data = param_.inputs[index].ptr;
+      const float *input_data = param_.inputs[index].ptr;
       for (int cy = 0; cy < h; cy++) {
         for (int cx = 0; cx < w; cx++) {
           for (int n = 0; n < param_.num_boxes; n++) {
-            int index = b * param_.num_boxes * len * stride +
-                          n * len * stride +
-                          cy * w + cx;
+            int index = b * param_.num_boxes * len * stride + n * len * stride +
+                        cy * w + cx;
             std::vector<float> pred;
             class_score.clear();
 
@@ -1647,23 +1660,27 @@ void Yolo_v2_DetectionFunc::invoke() {
             }
 
             PredictionResult predict;
-            swap_data[1] = *std::max_element(class_score.begin(), class_score.end());
-            int arg_max = std::distance(class_score.begin(),
-              std::max_element(class_score.begin(), class_score.end()));
+            swap_data[1] =
+                *std::max_element(class_score.begin(), class_score.end());
+            int arg_max = std::distance(
+                class_score.begin(),
+                std::max_element(class_score.begin(), class_score.end()));
 
             sigmoid_batch(swap_data, 4);
             // Pmax = Pmax * Po
             swap_data[1] = swap_data[0] * swap_data[1];
 
             if (swap_data[1] > param_.obj_threshold) {
-              [&](std::vector<float> &b, float* x, float* biases, int n, int i, int j, int lw, int lh, int w, int h) {
-                  b.clear();
-                  b.push_back((i + (x[0])) / lw);
-                  b.push_back((j + (x[1])) / lh);
-                  b.push_back(exp(x[2]) * biases[2 * n] / (w));
-                  b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
-                }(pred, &swap_data[2], _anchors.data(), param_.mask[n + mask_offset],
-                    cx, cy, w, h, param_.net_input_w, param_.net_input_h);
+              [&](std::vector<float> &b, float *x, float *biases, int n, int i,
+                  int j, int lw, int lh, int w, int h) {
+                b.clear();
+                b.push_back((i + (x[0])) / lw);
+                b.push_back((j + (x[1])) / lh);
+                b.push_back(exp(x[2]) * biases[2 * n] / (w));
+                b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
+              }(pred, &swap_data[2], _anchors.data(),
+                param_.mask[n + mask_offset], cx, cy, w, h, param_.net_input_w,
+                param_.net_input_h);
 
               predict.idx = b;
               predict.x = pred[0];
@@ -1686,21 +1703,26 @@ void Yolo_v2_DetectionFunc::invoke() {
 
     int num_kept = 0;
     if (predicts.size() > 0) {
-      std::stable_sort(predicts.begin(), predicts.end(), [](const PredictionResult& box1, const PredictionResult& box2) {
-                                                            return box1.confidence > box2.confidence;});
-      //sprintf(str, "Sort Box (batch %d)", b);
+      std::stable_sort(
+          predicts.begin(), predicts.end(),
+          [](const PredictionResult &box1, const PredictionResult &box2) {
+            return box1.confidence > box2.confidence;
+          });
+      // sprintf(str, "Sort Box (batch %d)", b);
 
       ApplyNms_opt(predicts, idxes, param_.nms_threshold);
       num_kept = idxes.size();
-      //sprintf(str, "NMS %d Boxes (batch %d)", num_kept, b);
+      // sprintf(str, "NMS %d Boxes (batch %d)", num_kept, b);
 
       if (param_.keep_topk > 0) {
-        if (num_kept > param_.keep_topk)    num_kept = param_.keep_topk;
+        if (num_kept > param_.keep_topk)
+          num_kept = param_.keep_topk;
       } else {
-        if (num_kept > KEEP_TOP_K)    num_kept = KEEP_TOP_K;
+        if (num_kept > KEEP_TOP_K)
+          num_kept = KEEP_TOP_K;
       }
 
-      for (int i=0; i < num_kept; i++) {
+      for (int i = 0; i < num_kept; i++) {
         total_preds.push_back(predicts[idxes[i]]);
       }
       total_num += num_kept;
@@ -1718,13 +1740,13 @@ void Yolo_v2_DetectionFunc::invoke() {
     }
   } else {
     for (int i = 0; i < total_num; i++) {
-      top_data[i*7+0] = total_preds[i].idx;         // Image_Id
-      top_data[i*7+1] = total_preds[i].classType;   // label
-      top_data[i*7+2] = total_preds[i].confidence;  // confidence
-      top_data[i*7+3] = total_preds[i].x;
-      top_data[i*7+4] = total_preds[i].y;
-      top_data[i*7+5] = total_preds[i].w;
-      top_data[i*7+6] = total_preds[i].h;
+      top_data[i * 7 + 0] = total_preds[i].idx;        // Image_Id
+      top_data[i * 7 + 1] = total_preds[i].classType;  // label
+      top_data[i * 7 + 2] = total_preds[i].confidence; // confidence
+      top_data[i * 7 + 3] = total_preds[i].x;
+      top_data[i * 7 + 4] = total_preds[i].y;
+      top_data[i * 7 + 5] = total_preds[i].w;
+      top_data[i * 7 + 6] = total_preds[i].h;
     }
   }
 }

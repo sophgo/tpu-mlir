@@ -311,20 +311,20 @@ void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape) {
   }
 }
 
-void get128BtyeAlignedStrideForNBit(int* stride, int* shape, int npu_num, int bit){
+void get128BtyeAlignedStrideForNBit(int *stride, int *shape, int npu_num,
+                                    int bit) {
   assert(bit == 8 || bit == 16 || bit == 32);
   int aligned_bit;
-  switch (bit)
-  {
-    case 8:
-      aligned_bit = 128;
-      break;
-    case 16:
-      aligned_bit = 64;
-      break;
-    case 32:
-      aligned_bit = 32;
-      break;
+  switch (bit) {
+  case 8:
+    aligned_bit = 128;
+    break;
+  case 16:
+    aligned_bit = 64;
+    break;
+  case 32:
+    aligned_bit = 32;
+    break;
   }
   const int cstride = align_up(shape[3] * shape[2], aligned_bit);
   stride[0] = (int)std::ceil((double)shape[1] / npu_num) * cstride;
@@ -333,7 +333,7 @@ void get128BtyeAlignedStrideForNBit(int* stride, int* shape, int npu_num, int bi
   stride[3] = 1;
 }
 
-void getCompactStride(int* stride, int* shape, int npu_num){
+void getCompactStride(int *stride, int *shape, int npu_num) {
   const int cstride = shape[2] * shape[3];
   stride[0] = (int)std::ceil((double)shape[1] / npu_num) * cstride;
   stride[1] = cstride;
@@ -341,7 +341,7 @@ void getCompactStride(int* stride, int* shape, int npu_num){
   stride[3] = 1;
 }
 
-void getContinousStride(int* stride, int* shape){
+void getContinousStride(int *stride, int *shape) {
   stride[3] = 1;
   stride[2] = shape[3];
   stride[1] = shape[3] * shape[2];
@@ -627,7 +627,8 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
 
 bool isGlobalBuffer(Value v) {
   const auto op = v.getDefiningOp();
-  if (!op) return false;
+  if (!op)
+    return false;
   return isa<tpu::BufferOp>(op);
 }
 

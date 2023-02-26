@@ -11,6 +11,7 @@
 #define TPU_MLIR_CONVERSION_PASSES_H
 
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include "tpu_mlir/Conversion/TopToTosa/TopToTosa.h"
 
 namespace mlir {
 

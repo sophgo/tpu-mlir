@@ -12,7 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include <math.h>
 
-
 namespace tpu_mlir {
 
 typedef union {

@@ -32,4 +32,14 @@ def ConvertTopToTpu : Pass<"convert-top-to-tpu", "ModuleOp"> {
   ];
 }
 
+
+//===----------------------------------------------------------------------===//
+// TopToTosa
+//===----------------------------------------------------------------------===//
+def ConvertTopToTosa : Pass<"convert-top-to-tosa", "ModuleOp"> {
+  let summary = "Convert top-level Top Ops to Tosa Ops";
+  let constructor = "tpu_mlir::createConvertTopToTosa()";
+  let dependentDialects = ["tpu_mlir::top::TopDialect", "mlir::tosa::TosaDialect"];
+}
+
 #endif // TPU_MLIR_CONVERSION_PASSES

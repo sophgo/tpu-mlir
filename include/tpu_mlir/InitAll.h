@@ -16,4 +16,4 @@ namespace tpu_mlir {
 void registerAllDialects(mlir::DialectRegistry &registry);
 void registerAllPasses();
 
-}
+} // namespace tpu_mlir
