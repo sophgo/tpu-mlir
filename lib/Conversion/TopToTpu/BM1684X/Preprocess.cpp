@@ -101,7 +101,7 @@ public:
       this->resize_w = w;
     }
     auto caliType = module::getCalibratedType(op.getOutput());
-    double qmax = caliType.getMax();
+    double qmax = _asymmetric ? caliType.getMax() : module::getThreshold(op.getOutput());
     double qmin = _asymmetric ? caliType.getMin() : -qmax;
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
         {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
