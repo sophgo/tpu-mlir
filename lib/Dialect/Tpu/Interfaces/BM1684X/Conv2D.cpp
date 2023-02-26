@@ -10,11 +10,11 @@
 #include "ConvUtils.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynamicLayer.hpp"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Float16.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/DynamicLayer.hpp"
+#include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -33,17 +33,50 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     return failure();
 
   auto attr = op.parseParam();
+  int input_c = attr.ic;
+  int output_c = attr.oc;
+  int kh = attr.kh;
+  int kw = attr.kw;
+  int stride_h = attr.sh;
+  int stride_w = attr.sw;
+  int groups = attr.groups;
+  int gic = input_c / groups;
+
+  bool strideh_gt_15 = stride_h > 15;
+  bool stridew_gt_15 = stride_w > 15;
+
+  // auto out_type = BM168x::getDataType(op.getOutput());
+  int cell_h = kh, cell_w = kw;
+  int IC_PARALLEL = BM168x::ic_num(1);
+
+  if (strideh_gt_15) {
+    for (int i = 15; i > 1; i--) {
+      if (kh % i == 0) {
+        cell_h = i;
+        break;
+      }
+    }
+  }
+
+  if (stridew_gt_15) {
+    for (int i = 15; i > 1; i--) {
+      if (kw % i == 0) {
+        cell_w = i;
+        break;
+      }
+    }
+  }
 
   bool merge = true;
   auto out_stype = module::getStorageType(op.getOutput());
   if (out_stype.isInteger(32)) {
     merge = false;
   }
-  int IC_PARALLEL = BM168x::ic_num(1);
-  bool isINT4Conv =  false;
+
+  bool isINT4Conv = false;
   auto in_stype = module::getStorageType(op.getInput());
   isINT4Conv = (in_stype.isInteger(4) && !attr.is_dw);
-  if (isINT4Conv){
+  if (isINT4Conv) {
     IC_PARALLEL = BM168x::ic_num(0.5);
   }
 
@@ -52,6 +85,7 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto filter_i8 = filterOp.read<int8_t>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
+  auto filter_type = module::getStorageType(op.getFilter());
   int use_3ic_optimize = 0;
   if (attr.ic * attr.kh * attr.kw <= IC_PARALLEL && attr.kh > 1 &&
       attr.kw > 1) {
@@ -65,6 +99,11 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     use_3ic_optimize = 0;
   }
 
+  auto stype = module::getStorageType(op.getFilter());
+  auto new_type = RankedTensorType::get(filter_shape, stype);
+  int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 1;
+  auto data_i8 = std::make_shared<std::vector<int8_t>>(weight_size);
+
   auto pre_op = op.getInput().getDefiningOp();
   if (use_3ic_optimize && !isa<top::InputOp>(*pre_op)) {
     // broadcast input using BDC rather than GDMA
@@ -77,13 +116,71 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (module::isBM1686()) {
     use_3ic_optimize = 0;
   }
+
   if (attr.is_dw == false) {
-    tpu::reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize, isINT4Conv);
+    if (strideh_gt_15 || stridew_gt_15) {
+      filter_shape[0] = 1;
+      filter_shape[1] = output_c;
+      filter_shape[2] = ceiling_func(gic, IC_PARALLEL);
+      filter_shape[3] = kh * kw * IC_PARALLEL;
+
+      for (int oc = 0; oc < output_c; oc++) {
+        for (int ic_idx = 0; ic_idx < ceiling_func(gic, IC_PARALLEL);
+             ic_idx++) {
+          for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
+            for (int icell_h = 0; icell_h < (kh / cell_h); icell_h++) {
+              for (int ih = 0; ih < cell_h; ih++) {
+                for (int icell_w = 0; icell_w < (kw / cell_w); icell_w++) {
+                  for (int iw = 0; iw < cell_w; iw++) {
+                    if (ic_idx * IC_PARALLEL + ic_inner >= gic)
+                      continue;
+                    int orig_offset =
+                        oc * gic * kh * kw +
+                        (ic_idx * IC_PARALLEL + ic_inner) * kh * kw +
+                        (icell_h * cell_h + ih) * kw + icell_w * cell_w + iw;
+                    int trans_offset =
+                        oc * kh * kw * align_up(gic, IC_PARALLEL) +
+                        (icell_h * (kw / cell_w) + icell_w) * cell_h * cell_w *
+                            align_up(gic, IC_PARALLEL) +
+                        ic_idx * cell_h * cell_w * IC_PARALLEL +
+                        (ih * cell_w + iw) * IC_PARALLEL + ic_inner;
+                    data_i8->at(trans_offset) = filter_i8->at(orig_offset);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      auto stype = module::getStorageType(op.getFilter());
+      auto new_type = RankedTensorType::get(filter_shape, stype);
+      auto new_op =
+          top::WeightOp::create(op, "filter_reorderd", *data_i8, new_type);
+      op->setOperand(1, new_op);
+      if (merge == false) {
+        if (attr.has_bias) {
+          auto elem_type = module::getStorageType(op.getBias());
+          auto bias_type = RankedTensorType::get({1, attr.oc, 1, 1}, elem_type);
+          op.getBias().setType(bias_type);
+        }
+        return success();
+      }
+      tpu::reshape_coeff_for_broadcast_channel(data_i8, filter_shape, false,
+                                               isINT4Conv);
+      if (isINT4Conv) {
+        tpu::compact_coeff_for_int4(data_i8, filter_shape);
+      }
+    } else {
+      tpu::reshape_coeff_for_3ic(filter_i8, filter_shape, use_3ic_optimize,
+                                 isINT4Conv);
+      op->setAttr("use_3ic_optimize",
+                  rewriter.getI64IntegerAttr(use_3ic_optimize));
+    }
   } else {
     filter_shape = {1, attr.oc, 1, attr.kh * attr.kw};
   }
 
-  op->setAttr("use_3ic_optimize", rewriter.getI64IntegerAttr(use_3ic_optimize));
   if (merge == false) {
     auto stype = module::getStorageType(op.getFilter());
     auto new_type = RankedTensorType::get(filter_shape, stype);
@@ -97,10 +194,16 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
     }
     return success();
   }
-  tpu::reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false, isINT4Conv);
-  if(isINT4Conv){
-    tpu::compact_coeff_for_int4(filter_i8, filter_shape);
+  // auto filter_data = (strideh_gt_15 || stridew_gt_15) == true ? data_i8 :
+  // filter_i8;
+  if (!(strideh_gt_15 || stridew_gt_15)) {
+    tpu::reshape_coeff_for_broadcast_channel(filter_i8, filter_shape, false,
+                                             isINT4Conv);
+    if (isINT4Conv) {
+      tpu::compact_coeff_for_int4(filter_i8, filter_shape);
+    }
   }
+
   int64_t new_oc = filter_shape[1];
   int64_t filter_w_bytes = filter_shape[3] * sizeof(int8_t);
 
@@ -111,7 +214,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   if (attr.has_bias) {
     auto biasOp = op.getBias().getDefiningOp<top::WeightOp>();
     bias_new = biasOp.read<int32_t>();
-    tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false, isINT4Conv);
+    tpu::reshape_coeff_for_broadcast_channel(bias_new, bias_shape, false,
+                                             isINT4Conv);
     assert(new_oc == bias_shape[1]);
     bias_w_bytes = bias_shape[3] * sizeof(int32_t);
   }
@@ -143,7 +247,8 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   }
 
   std::vector<int64_t> quant_shape = {1, attr.oc, 1, quant_w_size};
-  tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align, isINT4Conv);
+  tpu::reshape_coeff_for_broadcast_channel(quant_data, quant_shape, align,
+                                           isINT4Conv);
   assert(new_oc == quant_shape[1]);
   int64_t quant_w_bytes = quant_shape[3] * sizeof(int32_t);
 
@@ -167,13 +272,16 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   // merge requant/bias/filter
   auto new_coeff = std::make_shared<std::vector<int8_t>>(new_oc * merge_w, 0);
   std::vector<int64_t> coeff_shape = {1, new_oc, 1, merge_w};
-  if(isINT4Conv) coeff_shape[3] <<= 1;
+  if (isINT4Conv)
+    coeff_shape[3] <<= 1;
   for (int i = 0; i < new_oc; i++) {
     auto coeff_ptr = new_coeff->data() + i * merge_w;
     auto quant_ptr = quant_data->data() + i * quant_shape[3];
     auto bias_ptr =
         attr.has_bias ? (bias_new->data() + i * bias_shape[3]) : nullptr;
-    auto filter_ptr = filter_i8->data() + i * filter_shape[3];
+    auto filter_ptr = (strideh_gt_15 || stridew_gt_15) == true
+                          ? data_i8->data() + i * filter_shape[3]
+                          : filter_i8->data() + i * filter_shape[3];
     // copy quant
     memcpy(coeff_ptr + quant_offset, quant_ptr, quant_w_bytes);
     if (attr.has_bias) {
@@ -201,11 +309,13 @@ LogicalResult WeightReorder<tpu::Conv2DOp, int8_t>::matchAndRewrite(
   auto none = module::getNoneOp(op);
   op->setOperand(2, none.getResult());
 
-  auto new_type = RankedTensorType::get(coeff_shape, in_stype);
-  if(isINT4Conv) {
-    // weight data type is same as input tensor's data type, and sign is same as Filter.
-    new_type = RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
-    op.getFilter().setType(new_type);
+  auto new_type_ = RankedTensorType::get(coeff_shape, in_stype);
+  if (isINT4Conv) {
+    // weight data type is same as input tensor's data type, and sign is same
+    // as Filter.
+    new_type_ =
+        RankedTensorType::get(coeff_shape, rewriter.getIntegerType(4, sign));
+    op.getFilter().setType(new_type_);
   }
   return success();
 }
@@ -214,12 +324,45 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
                                           PatternRewriter &rewriter) {
   auto attr = op.parseParam();
 
+  int input_c = attr.ic;
+  int output_c = attr.oc;
+  int kh = attr.kh;
+  int kw = attr.kw;
+  int stride_h = attr.sh;
+  int stride_w = attr.sw;
+  int groups = attr.groups;
+  int gic = input_c / groups;
+
+  bool strideh_gt_15 = stride_h > 15;
+  bool stridew_gt_15 = stride_w > 15;
+  int cell_h = kh, cell_w = kw;
+
+  if (strideh_gt_15) {
+    for (int i = 15; i > 1; i--) {
+      if (kh % i == 0) {
+        cell_h = i;
+        break;
+      }
+    }
+  }
+
+  if (stridew_gt_15) {
+    for (int i = 15; i > 1; i--) {
+      if (kw % i == 0) {
+        cell_w = i;
+        break;
+      }
+    }
+  }
+
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   std::vector<int64_t> filter_shape = {attr.oc, attr.ic / attr.groups, attr.kh,
                                        attr.kw};
   const int IC_PARALLEL = BM168x::ic_num(2);
   auto filter_u16 = filterOp.read<uint16_t>();
   auto filter_type = module::getStorageType(op.getFilter());
+  int weight_size = align_up(gic, IC_PARALLEL) * output_c * kh * kw * 2;
+  auto data_bf16 = std::make_shared<std::vector<uint16_t>>(weight_size);
 
   if (attr.is_dw) {
     filter_shape = {1, attr.ic, attr.kh, attr.kw};
@@ -265,9 +408,45 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
       }
     }
 
-    tpu::reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
-    op->setAttr("use_3ic_optimize",
-                rewriter.getI64IntegerAttr(use_3ic_optimize));
+    if (strideh_gt_15 || stridew_gt_15) {
+      filter_shape[0] = 1;
+      filter_shape[1] = output_c;
+      filter_shape[2] = ceiling_func(gic, IC_PARALLEL);
+      filter_shape[3] = kh * kw * IC_PARALLEL;
+
+      for (int oc = 0; oc < output_c; oc++) {
+        for (int ic_idx = 0; ic_idx < ceiling_func(gic, IC_PARALLEL);
+             ic_idx++) {
+          for (int ic_inner = 0; ic_inner < IC_PARALLEL; ic_inner++) {
+            for (int icell_h = 0; icell_h < (kh / cell_h); icell_h++) {
+              for (int ih = 0; ih < cell_h; ih++) {
+                for (int icell_w = 0; icell_w < (kw / cell_w); icell_w++) {
+                  for (int iw = 0; iw < cell_w; iw++) {
+                    if (ic_idx * IC_PARALLEL + ic_inner >= gic)
+                      continue;
+                    int orig_offset =
+                        oc * gic * kh * kw +
+                        (ic_idx * IC_PARALLEL + ic_inner) * kh * kw +
+                        (icell_h * cell_h + ih) * kw + icell_w * cell_w + iw;
+                    int trans_offset =
+                        oc * kh * kw * align_up(gic, IC_PARALLEL) +
+                        (icell_h * (kw / cell_w) + icell_w) * cell_h * cell_w *
+                            align_up(gic, IC_PARALLEL) +
+                        ic_idx * cell_h * cell_w * IC_PARALLEL +
+                        (ih * cell_w + iw) * IC_PARALLEL + ic_inner;
+                    data_bf16->at(trans_offset) = filter_u16->at(orig_offset);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      tpu::reshape_coeff_for_3ic(filter_u16, filter_shape, use_3ic_optimize);
+      op->setAttr("use_3ic_optimize",
+                  rewriter.getI64IntegerAttr(use_3ic_optimize));
+    }
     // bias op
     if (attr.has_bias) {
       auto bias_type = module::getStorageType(op.getBias());
@@ -288,8 +467,10 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv2DOp op,
   }
 
   auto new_type = RankedTensorType::get(filter_shape, filter_type);
+  auto filter_data =
+      (strideh_gt_15 || stridew_gt_15) == true ? *data_bf16 : *filter_u16;
   auto new_op =
-      top::WeightOp::create(op, "filter_reorderd", *filter_u16, new_type);
+      top::WeightOp::create(op, "filter_reorderd", filter_data, new_type);
   op->setOperand(1, new_op);
   return success();
 }
@@ -315,20 +496,95 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
   if (!module::getStorageType(op.getFilter()).isF32())
     return failure();
-
   auto attr = op.parseParam();
-
-  auto out_type = module::getStorageType(op.getOutput());
-  // filter reorder
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
-  int64_t filter_shape[4];
+  auto filter_f32 = filterOp.read<float>();
+  auto filter_type = module::getStorageType(op.getFilter());
+  int input_c = attr.ic;
+  int output_c = attr.oc;
+  int kh = attr.kh;
+  int kw = attr.kw;
+  int stride_h = attr.sh;
+  int stride_w = attr.sw;
+  int groups = attr.groups;
+  int gic = input_c / groups;
+  bool strideh_gt_15 = stride_h > 15;
+  bool stridew_gt_15 = stride_w > 15;
+  int cell_h = kh, cell_w = kw;
+  int npu_num = BM168x::NPU_NUM;
+  const int IC_PARALLEL = BM168x::ic_num(4);
+  int weight_size = align_up(output_c, npu_num) * gic * kh * kw;
+  auto data_f32 = std::make_shared<std::vector<float>>(weight_size);
+  auto out_type = module::getStorageType(op.getOutput());
+
+  if (strideh_gt_15) {
+    for (int i = 15; i > 1; i--) {
+      if (kh % i == 0) {
+        cell_h = i;
+        break;
+      }
+    }
+  }
+
+  if (stridew_gt_15) {
+    for (int i = 15; i > 1; i--) {
+      if (kw % i == 0) {
+        cell_w = i;
+        break;
+      }
+    }
+  }
+
+  // filter reorder
+  std::vector<int64_t> filter_shape = {1, output_c, gic, kh * kw};
+  int ocloops = ceiling_func(output_c, npu_num);
   if (out_type.isF32()) {
-    filter_shape[0] = 1;
-    filter_shape[1] = attr.oc;
-    filter_shape[2] = attr.ic / attr.groups;
-    filter_shape[3] = attr.kh * attr.kw;
-    auto new_type = RankedTensorType::get(filter_shape, out_type);
-    op.getFilter().setType(new_type);
+    if (strideh_gt_15 || stridew_gt_15) {
+      for (int oc = 0; oc < output_c; oc++) {
+        for (int ic = 0; ic < gic; ic++) {
+          for (int icell_h = 0; icell_h < (kh / cell_h); icell_h++) {
+            for (int ih = 0; ih < cell_h; ih++) {
+              for (int icell_w = 0; icell_w < (kw / cell_w); icell_w++) {
+                for (int iw = 0; iw < cell_w; iw++) {
+                  int orig_offset = oc * gic * kh * kw + ic * kh * kw +
+                                    icell_h * cell_h * kw + ih * kw +
+                                    icell_w * cell_w + iw;
+                  int trans_offset = (oc % npu_num) * ocloops * gic * kh * kw +
+                                     (icell_h * (kw / cell_w) + icell_w) *
+                                         ocloops * cell_h * cell_w * gic +
+                                     (oc / npu_num) * cell_h * cell_w * gic +
+                                     ic * cell_h * cell_w + ih * cell_w + iw;
+                  data_f32->at(trans_offset) = filter_f32->at(orig_offset);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      filter_shape[0] = 1;
+      filter_shape[1] = npu_num;
+      filter_shape[2] = 1;
+      filter_shape[3] = ceiling_func(output_c, npu_num) * gic * kh * kw;
+
+      if (filter_shape[3] > MAX_TPU_DIM) {
+        if (attr.is_dw) {
+          filter_shape[2] = ceiling_func(attr.oc, (int64_t)IC_PARALLEL);
+          filter_shape[3] /= filter_shape[2];
+        } else {
+          filter_shape[2] = IC_PARALLEL;
+          filter_shape[3] /= IC_PARALLEL;
+        }
+      }
+      auto new_type = RankedTensorType::get(filter_shape, out_type);
+      op.getFilter().setType(new_type);
+      auto new_op =
+          top::WeightOp::create(op, "filter_reorderd", *data_f32, new_type);
+      op->setOperand(1, new_op);
+    } else {
+      auto new_type = RankedTensorType::get(filter_shape, out_type);
+      op.getFilter().setType(new_type);
+    }
   } else {
     op.dump();
     llvm_unreachable("op type not support");
@@ -504,7 +760,8 @@ void tpu::Conv2DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 // dynamic codegen
 int64_t tpu::Conv2DOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(conv_local_param_t);
+  if (!buffer)
+    return sizeof(conv_local_param_t);
   conv_local_param_t param;
   memset(&param, 0, sizeof(param));
   auto attr = parseParam();
