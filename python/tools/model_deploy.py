@@ -75,6 +75,7 @@ class DeployTool:
         self.in_f32_npz = self.module_name + "_in_f32.npz"
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
+        self.compare_all = args.compare_all
         if self.quantize == "int8":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -181,7 +182,7 @@ class DeployTool:
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
-        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir)
+        tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
         f32_blobs_compare(self.tpu_npz, self.ref_npz,
@@ -255,6 +256,8 @@ if __name__ == '__main__':
                         help='if the input frame is width/channel aligned')
     parser.add_argument("--disable_layer_group", action="store_true", default=False,
                         help="Decide whether to enable layer group pass")
+    parser.add_argument("--compare_all", action="store_true", default=False,
+                        help="Decide if compare all tensors when lowering")
 
     # yapf: enable
     args = parser.parse_args()
