@@ -20,6 +20,13 @@ namespace tpu_mlir {
 
 namespace cv18xx {
 
+class SplitReducePattern : public OpRewritePattern<tpu::ReduceOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::ReduceOp reduceOp,
+                                PatternRewriter &rewriter) const override;
+};
+
 class FuseLeakReluPattern : public OpRewritePattern<tpu::LeakyReluOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
