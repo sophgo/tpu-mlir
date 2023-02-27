@@ -494,8 +494,12 @@ LogicalResult WeightReorder<tpu::Conv2DOp, Float16Type>::matchAndRewrite(
 template <>
 LogicalResult WeightReorder<tpu::Conv2DOp, Float32Type>::matchAndRewrite(
     tpu::Conv2DOp op, PatternRewriter &rewriter) const {
-  if (!module::getStorageType(op.getFilter()).isF32())
+  if (!module::getStorageType(op.getFilter()).isF32()) {
     return failure();
+  }
+  if (module::isWeight(op.getFilter()) == false) {
+    return failure();
+  }
   auto attr = op.parseParam();
   auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   auto filter_f32 = filterOp.read<float>();

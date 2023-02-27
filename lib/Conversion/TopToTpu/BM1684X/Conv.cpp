@@ -57,6 +57,10 @@ void ConvLowering::LoweringF32(PatternRewriter &rewriter,
 
 void ConvLowering::LoweringINT8(PatternRewriter &rewriter, top::ConvOp op,
                                 bool asymmetric) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
   operands.push_back(op.getInput());
@@ -250,7 +254,7 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
   llvm::errs() << "start conv LoweringINT4, name:"
                << module::getName(op.getOperation()).str() << "\n";
   auto attr = op.parseParam();
-  if(attr.is_dw) {
+  if (attr.is_dw) {
     return LoweringINT8(rewriter, op, asymmetric);
   }
   rewriter.setInsertionPointAfter(op);
@@ -449,8 +453,8 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
         quant[i * 3 + 2] = out_zp;
       }
     }
-    auto quant_type =
-        RankedTensorType::get({1, attr.oc, 1, 1, quant_w_size}, rewriter.getI32Type());
+    auto quant_type = RankedTensorType::get({1, attr.oc, 1, 1, quant_w_size},
+                                            rewriter.getI32Type());
     auto quant_value = top::WeightOp::create(op, "quant", quant, quant_type);
     auto newValue = do_requant(op->getLoc(), conv_out, quant_value, output_type,
                                true, tpu::RequantMode::MultiplierShift);
@@ -511,9 +515,13 @@ void ConvLowering::LoweringINT4(PatternRewriter &rewriter, top::ConvOp op,
 
 void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
                                 top::ConvOp op) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_bf16(op));
   operands.push_back(op.getBias());
@@ -532,9 +540,13 @@ void ConvLowering::LoweringBF16(PatternRewriter &rewriter,
 
 void ConvLowering::LoweringF16(PatternRewriter &rewriter,
                                top::ConvOp op) const {
+  if (module::isWeight(op.getFilter()) == false) {
+    LoweringF32(rewriter, op);
+    return;
+  }
+  auto filterOp = op.getFilter().getDefiningOp<top::WeightOp>();
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> operands;
-  auto filterOp = cast<top::WeightOp>(op.getFilter().getDefiningOp());
   operands.push_back(op.getInput());
   operands.push_back(filterOp.clone_f16(op));
   operands.push_back(op.getBias());
