@@ -90,7 +90,26 @@ static void extract(const string &filename) {
 
 static void combine(int argc, char **argv) {
   if (isCv18xx(argv[2])) {
-    cout << "cv18xx not supported!" << endl;
+    std::vector<std::shared_ptr<cvtool::Model>> models;
+    string ofile = "";
+    for (int index = 2; index < argc; index++) {
+      string param = argv[index];
+      if (param == "-o") {
+        index++;
+        if (index >= argc) {
+          FATAL("there is no output filename");
+        }
+        ofile = argv[index];
+        continue;
+      }
+      auto model = std::make_shared<cvtool::Model>(param);
+      models.emplace_back(model);
+    }
+    if (models.empty()) {
+      cout << "No input file!\n" << endl;
+      return;
+    }
+    models[0]->merge(models, ofile);
   } else {
     bm_combine_bmodels(argc, argv);
   }

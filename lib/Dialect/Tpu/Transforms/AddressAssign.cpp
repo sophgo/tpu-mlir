@@ -79,7 +79,7 @@ public:
     module::removeUnusedOp();
     if (module::isCV18xx()) {
       CVAddressAssign addr_assign;
-      addr_assign.assign(mOp, reuse_addr);
+      addr_assign.assign(mOp, reuse_addr, merge_weight, compress_weight, weight_map_file);
     } else {
       RewritePatternSet patterns(mOp.getContext());
       bm168x::populateGlobalBufferPatterns(&patterns);

@@ -37,15 +37,22 @@ struct OpElement {
 class CVAddressAssign {
 public:
   CVAddressAssign() {}
-  void assign(mlir::ModuleOp &module, bool reuse_addr);
+  void assign(mlir::ModuleOp &module, bool reuse_addr, bool merge_weight,
+              bool compress_weight, std::string &weight_map_file);
 
 protected:
-  bool isOpBelongToIOMemoryRegion(Operation *op, int index,
-                                  std::vector<Value> &outputs);
+  std::string calcMD5(std::vector<uint8_t> &data);
 
-  bool isOpBelongToPrivateMemoryRegion(Operation *op, int index);
+  bool loadAddressMapping(
+      std::string &mapFileName,
+      std::unordered_map<std::string, std::pair<int64_t, int64_t>>
+          &addrMapping);
 
-  bool isInPlaceOpBelongToPrivateMemoryRegion(Operation *op, int index);
+  void checkIfFileGood(std::string &fileName,
+                       std::unique_ptr<std::fstream> &stream);
+
+  void assign_weight_addr(mlir::ModuleOp &module, bool merge_weight,
+                          bool compress_weight, std::string &weight_map_file);
 
   void updateLiveRangeofPreOp(std::map<ValueInfo, OpElement> &op_infos,
                               Operation *op, uint32_t end,
@@ -70,14 +77,10 @@ protected:
 
   bool isOutput(Operation *op, int index);
 
-  void findInPlaceOpMaxUsePosition(Operation *op, uint32_t &maxPosition,
-                                   std::map<Operation *, uint32_t> &ops_loc);
-
-  int getOutIndex(Operation *op, Value &out);
-
   uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
 
-  void updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops, std::map<ValueInfo, OpElement> &op_infos);
+  void updateConcatOpTargetV(std::vector<ValueInfo> &inplace_ops,
+                             std::map<ValueInfo, OpElement> &op_infos);
 };
 } // namespace tpu
 } // namespace tpu_mlir

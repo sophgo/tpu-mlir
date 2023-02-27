@@ -107,7 +107,8 @@ def mlir_to_model(tpu_mlir: str,
                   dynamic: bool = False,
                   quant_input: bool = False,
                   quant_output: bool = False,
-                  disable_layer_group: bool = False):
+                  disable_layer_group: bool = False,
+                  merge_weight: bool = False):
     # generate final mlir
     strip_io_quant_param = '--strip-io-quant="quant_input={} quant_output={}"'.format(
         quant_input, quant_output)
@@ -118,6 +119,10 @@ def mlir_to_model(tpu_mlir: str,
         else:
             lg_param = '--layer-group="opt=2"'
     subnet_param = '--subnet-divide="dynamic={}"'.format(dynamic)
+    address_assign_param = '--address-assign'
+    #address_assign_param = '--address-assign="reuse_addr=false"'
+    if merge_weight:
+        address_assign_param = '--address-assign="merge_weight=true weight_map_file=_weight_map.csv"'
     cmd = [
         "tpuc-opt",
         tpu_mlir,
@@ -128,8 +133,7 @@ def mlir_to_model(tpu_mlir: str,
         "--weight-reorder",
         subnet_param,
         lg_param,
-        "--address-assign",
-        #"--address-assign=\"reuse_addr=false\"",
+        address_assign_param,
         "--save-weight",
         "--mlir-print-debuginfo",
         "-o",

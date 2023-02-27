@@ -4,21 +4,19 @@
 #include "tpu_mlir/Builder/CV18xx/parameter_generated.h"
 #include <chrono>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
+#include <map>
 #include <math.h>
 #include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-#include <time.h>
-#include <unistd.h>
 #include <vector>
 
 namespace cvtool {
+
+constexpr int64_t WEIGHT_OFFSET = (uint64_t)1 << 40;
+
 class FileStream;
 using FBWeightVector = flatbuffers::Offset<
     flatbuffers::Vector<flatbuffers::Offset<cvi::model::Weight>>>;
@@ -101,6 +99,10 @@ private:
 
   void storeSectionToFile(const cvi::model::Section *section, std::string dst);
   std::string calcSectionMD5(const cvi::model::Section *section, int size);
+  std::string calcMD5(std::vector<uint8_t> &data, int64_t size);
+  int64_t extractWeightData(const cvi::model::Section *section,
+                            int64_t weight_offset, int64_t size,
+                            std::vector<uint8_t> &weight_data);
   const char *sectionTypeToStr(cvi::model::SectionType type);
   const char *dtypeToStr(cvi::model::DType type);
   size_t dtypeSize(cvi::model::DType type);
@@ -113,8 +115,9 @@ private:
   void dumpTensors(const cvi::model::Program *p, bool oldVersion);
   void dumpRoutines(const cvi::model::Program *p);
 
-  void extractSections();
-  FBWeightVector cloneWeightMap(std::vector<std::shared_ptr<Model>> &models);
+  FBWeightVector
+  cloneWeightMap(std::vector<std::shared_ptr<Model>> &models,
+                 std::map<int64_t, std::vector<uint8_t>> &weight_data_map);
   FBTensorVector cloneTensorMap(const cvi::model::Program *program);
   FBRoutineVector
   cloneRoutines(const cvi::model::Program *program, bool rename, int index,
@@ -125,12 +128,8 @@ private:
   FBSectionVector cloneSections(
       std::vector<std::shared_ptr<Model>> &models,
       std::vector<uint8_t> &sections_buf,
-      std::vector<std::map<std::string, std::string>> &routine_name_maps);
-
-  FBWeightVector rebuildWeightMap();
-  FBProgramVector rebuildPrograms();
-  int decompress_section(const cvi::model::Section *section,
-                         std::vector<char> &out_buf);
+      std::vector<std::map<std::string, std::string>> &routine_name_maps,
+      std::map<int64_t, std::vector<uint8_t>> &weight_data_map);
 };
 
 Model::Model(const std::string &model_file) : stream(model_file), fbb(0) {
@@ -279,6 +278,24 @@ std::string Model::calcSectionMD5(const cvi::model::Section *section,
   return md5.finalize().hexdigest();
 }
 
+std::string Model::calcMD5(std::vector<uint8_t> &data, int64_t size) {
+  MD5 md5;
+  md5.update(data.data(), size);
+  return md5.finalize().hexdigest();
+}
+
+int64_t Model::extractWeightData(const cvi::model::Section *section,
+                                 int64_t weight_offset, int64_t size,
+                                 std::vector<uint8_t> &weight_data) {
+  auto offset = section->offset();
+  if (section->compress()) {
+    assert(0 && "not supported!");
+  }
+  weight_data.resize(size);
+  return stream.read(weight_data.data(), binary_offset + offset + weight_offset,
+                     size);
+}
+
 void Model::show_chip() {
   if (fb_model->target()) {
     printf("For %s chip ONLY\n", fb_model->target()->c_str());
@@ -346,8 +363,8 @@ void Model::dumpBaseInfo() {
 
 void Model::dumpSections() {
   printf("\nSections:\n");
-  printf("%-3s  %-10s%-25s%-12s%-12s%-s\n", "ID", "TYPE", "NAME",
-         "SIZE", "OFFSET", "MD5");
+  printf("%-3s  %-10s%-25s%-12s%-12s%-s\n", "ID", "TYPE", "NAME", "SIZE",
+         "OFFSET", "MD5");
   auto &sections = *fb_model->sections();
   int i = 0;
   for (auto s : sections) {
@@ -356,8 +373,8 @@ void Model::dumpSections() {
     auto size = s->size();
     auto offset = s->offset();
     auto md5 = calcSectionMD5(s, s->size());
-    printf("%03d  %-10s%-25s%-12d%-12d%-s\n", i++, type, name, size,
-           offset, md5.c_str());
+    printf("%03d  %-10s%-25s%-12d%-12d%-s\n", i++, type, name, size, offset,
+           md5.c_str());
   }
 }
 
@@ -602,38 +619,6 @@ static std::string getStrOfCurrentTime() {
   return ssTime.str();
 }
 
-FBWeightVector
-Model::cloneWeightMap(std::vector<std::shared_ptr<Model>> &models) {
-  std::vector<flatbuffers::Offset<cvi::model::Weight>> tensor_vec;
-  std::vector<std::tuple<std::string, int64_t, uint32_t>> weight_tensors;
-  bool redundant = false;
-  for (auto &model : models) {
-    for (auto w : *model->fb_model->weight_map()) {
-      redundant = false;
-      auto name = w->name()->c_str();
-      for (auto t : weight_tensors) {
-        if (std::get<0>(t) == name && std::get<1>(t) == w->offset() &&
-            std::get<2>(t) == w->size()) {
-          redundant = true;
-          break;
-        }
-      }
-      if (redundant)
-        continue;
-      std::vector<int64_t> dim;
-      for (auto s : *w->shape()->dim()) {
-        dim.push_back(s);
-      }
-      auto shape = cvi::model::CreateShapeDirect(fbb, &dim);
-      auto weight = cvi::model::CreateWeightDirect(fbb, name, w->offset(),
-                                                   w->size(), shape, w->type());
-      tensor_vec.push_back(weight);
-      weight_tensors.push_back(std::make_tuple(name, w->offset(), w->size()));
-    }
-  }
-  return fbb.CreateVector(tensor_vec);
-}
-
 FBTensorVector Model::cloneTensorMap(const cvi::model::Program *program) {
   std::vector<flatbuffers::Offset<cvi::model::Tensor>> tensor_vec;
   for (auto t : *program->tensor_map()) {
@@ -781,23 +766,26 @@ typedef struct {
 FBSectionVector Model::cloneSections(
     std::vector<std::shared_ptr<Model>> &models,
     std::vector<uint8_t> &sections_buf,
-    std::vector<std::map<std::string, std::string>> &routine_name_maps) {
+    std::vector<std::map<std::string, std::string>> &routine_name_maps,
+    std::map<int64_t, std::vector<uint8_t>> &weight_data_map) {
   uint32_t offset = 0;
   std::string weight_md5 = "";
   std::vector<flatbuffers::Offset<cvi::model::Section>> section_vec;
   std::vector<weight_section_t> weight_sections;
+  std::vector<uint8_t> weight_buffer;
   assert(models.size() == routine_name_maps.size());
 
   uint8_t bit_buf_type = 0;
-  // first select candiate weight section
-  for (int i = 0; i < (int)models.size(); ++i) {
+  uint32_t weight_buf_size = 0;
+  uint32_t w_idx = 0;
+
+  for (uint32_t i = 0; i < models.size(); ++i) {
     for (auto s : *models[i]->fb_model->sections()) {
       if (s->type() == cvi::model::SectionType_WEIGHT) {
-        weight_section_t ws = {0};
-        ws.id = i;
-        ws.section = s;
-        ws.size = s->size();
-        weight_sections.emplace_back(ws);
+        if (s->size() > weight_buf_size) {
+          weight_buf_size = s->size();
+          w_idx = i;
+        }
       } else if (s->type() == cvi::model::SectionType_CMDBUF) {
         bit_buf_type |= 0x01;
       } else if (s->type() == cvi::model::SectionType_DMABUF) {
@@ -811,84 +799,99 @@ FBSectionVector Model::cloneSections(
     exit(1);
   }
 
-  std::sort(weight_sections.begin(), weight_sections.end(),
-            [](weight_section_t &s1, weight_section_t &s2) {
-              return s1.size < s2.size;
-            });
-
-  std::vector<int> weight_compare_size;
-  std::vector<int> weight_index;
-  for (auto pair : weight_sections) {
-    weight_index.push_back(pair.id);
-    weight_compare_size.push_back(pair.section->size());
+  weight_buffer.resize(weight_buf_size, 0);
+  for (auto &weight_data : weight_data_map) {
+    assert(weight_data.first + weight_data.second.size() <= weight_buf_size);
+    memcpy(weight_buffer.data() + weight_data.first, weight_data.second.data(),
+           weight_data.second.size());
   }
 
-  for (int i = weight_compare_size.size() - 1; i > 0; --i) {
-    weight_compare_size[i] = weight_compare_size[i - 1];
-  }
-
-  int candidate_index = weight_index[weight_index.size() - 1];
-
-  for (int i = 0; i < (int)weight_sections.size(); ++i) {
-    auto &ws = weight_sections[i];
-    auto model = models[ws.id];
-    auto section = ws.section;
-    auto md5 = model->calcSectionMD5(section, weight_compare_size[i]);
-    if (weight_md5.empty()) {
-      weight_md5 = md5;
-    } else {
-      if (weight_md5 != md5) {
-        printf("WARN: weight binary of cvimodels should be same, model index "
-               "(%d) vs (%d)\n",
-               weight_index[i - 1], weight_index[i]);
-        exit(1);
-      } else {
-        weight_md5 = model->calcSectionMD5(section, section->size());
-      }
-    }
-  }
-
-  printf("cvimodels weight compare pass!\n");
-
-  int model_index = 0;
   for (uint32_t i = 0; i < models.size(); ++i) {
     for (auto s : *models[i]->fb_model->sections()) {
-      auto md5 = models[i]->calcSectionMD5(s, s->size());
-      printf("section type: %d, name: %s, size: %d, offset: %d, compress:%s "
-             "md5:%s\n",
-             (int)s->type(), s->name()->c_str(), s->size(), s->offset(),
-             s->compress() ? "True" : "False", md5.c_str());
-      // check if weight binary of all cvimodels are same.
+      std::string section_name;
+      std::string md5;
       if (s->type() == cvi::model::SectionType_WEIGHT) {
-        if (model_index != candidate_index) {
+        if (i != w_idx) {
           continue;
         }
-      }
-
-      std::string section_name;
-      if (s->type() == cvi::model::SectionType_CMDBUF ||
-          s->type() == cvi::model::SectionType_DMABUF) {
+        section_name = s->name()->c_str();
+      } else {
         section_name = routine_name_maps[i][s->name()->c_str()];
         assert(!section_name.empty());
-      } else {
-        section_name = s->name()->c_str();
       }
-
-      printf("add section, name:%s type:%d, md5:%s\n", section_name.c_str(),
-             (int)s->type(), md5.c_str());
+      printf("add section, name:%s type:%d\n", section_name.c_str(),
+             (int)s->type());
       auto section = cvi::model::CreateSectionDirect(
           fbb, s->type(), section_name.c_str(), s->size(), offset, s->encrypt(),
           s->compress(), s->decompressed_size());
       section_vec.push_back(section);
-      std::vector<uint8_t> buf(s->size());
-      models[i]->stream.read(buf.data(), models[i]->binary_offset + s->offset(),
-                             s->size());
-      sections_buf.insert(sections_buf.end(), buf.begin(), buf.end());
+      if (s->type() == cvi::model::SectionType_WEIGHT) {
+        sections_buf.insert(sections_buf.end(), weight_buffer.begin(),
+                            weight_buffer.end());
+      } else {
+        std::vector<uint8_t> buf(s->size());
+        models[i]->stream.read(
+            buf.data(), models[i]->binary_offset + s->offset(), s->size());
+        sections_buf.insert(sections_buf.end(), buf.begin(), buf.end());
+      }
       offset += s->size();
     }
-    model_index++;
   }
   return fbb.CreateVector(section_vec);
+}
+
+FBWeightVector Model::cloneWeightMap(
+    std::vector<std::shared_ptr<Model>> &models,
+    std::map<int64_t, std::vector<uint8_t>> &weight_data_map) {
+  std::map<int64_t, std::pair<std::string, const cvi::model::Weight *>>
+      merged_weights;
+  std::vector<flatbuffers::Offset<cvi::model::Weight>> tensor_vec;
+
+  bool has_redundat = false;
+  for (uint32_t i = 0; i < models.size(); ++i) {
+    // find weight section
+    uint32_t s_idx = 0;
+    for (; s_idx < models[i]->fb_model->sections()->size(); ++s_idx) {
+      if ((*models[i]->fb_model->sections())[s_idx]->type() ==
+          cvi::model::SectionType_WEIGHT) {
+        break;
+      }
+    }
+    auto &&w_section = (*models[i]->fb_model->sections())[s_idx];
+
+    for (auto w : *models[i]->fb_model->weight_map()) {
+      int64_t w_offset = w->offset() - WEIGHT_OFFSET;
+      auto w_size = w->size();
+      std::vector<uint8_t> weight_data;
+      models[i]->extractWeightData(w_section, w_offset, w_size, weight_data);
+      auto md5 = calcMD5(weight_data, w_size);
+      auto iter = merged_weights.find(w_offset);
+      if (iter != merged_weights.end()) {
+        // redundant weight
+        has_redundat = true;
+        if (w_size != iter->second.second->size() ||
+            md5 != iter->second.first) {
+          std::cout << "[ERROR] Size or MD5 not equal, models cann't be merged!" << std::endl;
+          exit(1);
+        }
+      } else {
+        std::vector<int64_t> dim;
+        for (auto s : *w->shape()->dim()) {
+          dim.push_back(s);
+        }
+        auto shape = cvi::model::CreateShapeDirect(fbb, &dim);
+        auto weight = cvi::model::CreateWeightDirect(
+            fbb, w->name()->c_str(), w->offset(), w->size(), shape, w->type());
+        tensor_vec.push_back(weight);
+        weight_data_map[w_offset].swap(weight_data);
+        merged_weights[w_offset] = std::make_pair(md5, w);
+      }
+    }
+  }
+  if (!has_redundat) {
+    std::cout << "[WARNNING] No redundant weight!\n" << std::endl;
+  }
+  return fbb.CreateVector(tensor_vec);
 }
 
 void Model::merge(std::vector<std::shared_ptr<Model>> &models,
@@ -897,16 +900,18 @@ void Model::merge(std::vector<std::shared_ptr<Model>> &models,
       cvi::model::MajorVersion_value, cvi::model::MinorVersion_value,
       cvi::model::SubMinorVersion_value);
   std::vector<std::map<std::string, std::string>> routine_name_maps;
+  std::map<int64_t, std::vector<uint8_t>> weight_data_map;
   auto modelName = fbb.CreateString(fb_model->name());
   auto modelBuildTime = fbb.CreateString(getStrOfCurrentTime());
   auto modelMlirVersion = fb_model->mlir_version()
                               ? fbb.CreateString(fb_model->mlir_version())
                               : fbb.CreateString("unknown");
   auto fbTarget = fbb.CreateString(fb_model->target());
-  auto modelWeight = cloneWeightMap(models);
+  auto modelWeight = cloneWeightMap(models, weight_data_map);
   auto modelPrograms = clonePrograms(models, routine_name_maps);
   std::vector<uint8_t> sections_buf;
-  auto modelSections = cloneSections(models, sections_buf, routine_name_maps);
+  auto modelSections =
+      cloneSections(models, sections_buf, routine_name_maps, weight_data_map);
   auto newModel = cvi::model::CreateModel(
       fbb, &modelVersion, modelName, modelBuildTime, 0, 0, modelWeight,
       modelPrograms, modelSections, fbTarget, modelMlirVersion);
@@ -931,44 +936,4 @@ void Model::merge(std::vector<std::shared_ptr<Model>> &models,
   of.close();
   printf("store cvimodel to %s\n", dst.c_str());
 }
-
-FBWeightVector Model::rebuildWeightMap() {
-  std::vector<flatbuffers::Offset<cvi::model::Weight>> tensor_vec;
-  for (auto w : *fb_model->weight_map()) {
-    auto name = w->name()->c_str();
-    std::vector<int64_t> dim;
-    for (auto s : *w->shape()->dim()) {
-      dim.push_back(s);
-    }
-    auto shape = cvi::model::CreateShapeDirect(fbb, &dim);
-    auto weight = cvi::model::CreateWeightDirect(fbb, name, w->offset(),
-                                                 w->size(), shape, w->type());
-    tensor_vec.push_back(weight);
-  }
-  return fbb.CreateVector(tensor_vec);
-}
-
-FBProgramVector Model::rebuildPrograms() {
-  std::vector<flatbuffers::Offset<cvi::model::Program>> programs;
-  for (auto p : *fb_model->programs()) {
-    auto tensor_map = cloneTensorMap(p);
-    std::vector<flatbuffers::Offset<flatbuffers::String>> fbStrVec;
-    for (auto name : *p->input_tensors()) {
-      fbStrVec.push_back(fbb.CreateString(name));
-    }
-    auto inputs = fbb.CreateVector(fbStrVec);
-    fbStrVec.clear();
-    for (auto name : *p->output_tensors()) {
-      fbStrVec.push_back(fbb.CreateString(name));
-    }
-    auto outputs = fbb.CreateVector(fbStrVec);
-    auto routines = cloneRoutines(p, false, 0, nullptr);
-    auto program = cvi::model::CreateProgram(
-        fbb, p->batch_num(), p->neuron_size(), inputs, outputs, tensor_map,
-        routines, p->shared_gmem(), p->private_gmem());
-    programs.push_back(program);
-  }
-  return fbb.CreateVector(programs);
-}
-
 } // namespace cvtool

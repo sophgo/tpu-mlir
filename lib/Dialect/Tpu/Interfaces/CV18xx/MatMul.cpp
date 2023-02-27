@@ -73,7 +73,10 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
   if (is_fc) {
     int batch_high = 1;      // fixme
     int batch_low = p.batch; // fixme
-    WeightCompresser weight_opt(this->getOperation(), true);
+    auto filterOp = getRight().getDefiningOp<top::WeightOp>();
+    bool do_compress = filterOp.getDoCompress().has_value() &&
+                       filterOp.getDoCompress().value();
+    WeightCompresser weight_opt(this->getOperation(), do_compress);
     if (module::isUniformQuantized(getOutput())) {
       auto multiplier_v = module::getI64Array(getMultipliers(), p.batch, 1);
       auto rshift_v = module::getI64Array(getRshifts(), p.batch, 0);

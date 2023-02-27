@@ -19,31 +19,152 @@
 #include <set>
 #include <sstream>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
+
+#include <openssl/md5.h>
 
 using namespace llvm;
 
 namespace tpu_mlir {
 namespace tpu {
 
-void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
+std::string CVAddressAssign::calcMD5(std::vector<uint8_t> &data) {
+  MD5_CTX ctx;
+  MD5_Init(&ctx);
+  MD5_Update(&ctx, data.data(), data.size());
+  unsigned char res[16];
+  MD5_Final(res, &ctx);
+  std::string s;
+  llvm::raw_string_ostream os(s);
+  for (int i = 0; i < 16; ++i) {
+    os << llvm::format_hex_no_prefix((int)res[i], 2);
+  }
+  return os.str();
+}
+
+bool CVAddressAssign::loadAddressMapping(
+    std::string &mapFileName,
+    std::unordered_map<std::string, std::pair<int64_t, int64_t>> &addrMapping) {
+  auto stream =
+      std::make_unique<std::fstream>(mapFileName.c_str(), std::fstream::in);
+  if (!stream->is_open()) {
+    return false;
+  }
+
+  char buf[512];
+  while (!stream->eof()) {
+    memset(buf, 0, sizeof(buf));
+    stream->getline(buf, sizeof(buf));
+    StringRef str(buf);
+    if (str.empty()) {
+      continue;
+    }
+    SmallVector<StringRef, 4> fields;
+    str.split(fields, ',', -1, true);
+    auto pos = fields[1].str();
+    auto md5 = fields[2].str();
+    auto length = fields[3].str();
+    addrMapping[md5].first = std::stol(pos, nullptr, 16);
+    addrMapping[md5].second = std::stol(length, nullptr, 10);
+  }
+  return true;
+}
+
+void CVAddressAssign::checkIfFileGood(std::string &fileName,
+                                      std::unique_ptr<std::fstream> &stream) {
+  if (!stream->is_open()) {
+    llvm::errs() << "cannot open output file '" + fileName + "\n";
+    assert(0);
+  }
+}
+
+void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &module,
+                                         bool merge_weight,
+                                         bool compress_weight,
+                                         std::string &weight_map_file) {
+  if (merge_weight) {
+    compress_weight = false;
+  }
   int64_t start_addr = (uint64_t)1 << 40;
+  int64_t start_offset = 0;
   int64_t weight_alignment = 16;
-  int64_t neuron_alignment = 64;
-  Builder builder(module.getContext());
-  // assign weight first
-  auto addr = start_addr;
+  std::unordered_map<std::string, std::vector<top::WeightOp>> weight_md5_map;
+  std::unordered_map<std::string, std::pair<int64_t, int64_t>> addrMapping;
+  auto flags = std::fstream::out;
+  assert(!weight_map_file.empty());
+  if (merge_weight) {
+    // load address from pre cvimodel
+    if (loadAddressMapping(weight_map_file, addrMapping)) {
+      flags = flags | std::fstream::app;
+    }
+    if (!addrMapping.empty()) {
+      // find start addr according to pre cvimodel
+      using item_type = std::pair<std::string, std::pair<int64_t, int64_t>>;
+      auto iter = std::max_element(addrMapping.begin(), addrMapping.end(),
+                                   [](item_type &&lhs, item_type &&rhs) {
+                                     return lhs.second.first < rhs.second.first;
+                                   });
+      start_offset =
+          align_up(iter->second.first + iter->second.second, weight_alignment);
+    }
+  }
+  auto weightMapFile = std::make_unique<std::fstream>(weight_map_file, flags);
+  checkIfFileGood(weight_map_file, weightMapFile);
+
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](top::WeightOp op) {
-      module::setAddress(op.getOutput(), addr);
-      int64_t bytes = module::getBytes(op.getOutput());
-      addr = align_up(addr + bytes, weight_alignment);
+      auto weight_data = op.read_as_byte();
+      std::string md5 = calcMD5(*weight_data);
+      weight_md5_map[md5].emplace_back(op);
+      // set compress weight
+      if (compress_weight && op.getResult().hasOneUse()) {
+        auto nextOp = (*op.getResult().getUses().begin()).getOwner();
+        if (isa<tpu::Conv2DOp>(nextOp) || isa<tpu::MatMulOp>(nextOp)) {
+          Builder builder(module.getContext());
+          op.setDoCompressAttr(builder.getBoolAttr(true));
+        }
+      }
     });
   }
-  module::setCoeffAddr(start_addr);
-  module::setCoeffSize(addr - start_addr);
-  // key: the operation pointer & output index
 
+  auto addr = start_offset;
+  for (auto &pair : weight_md5_map) {
+    int64_t offset = addr;
+    int64_t bytes = module::getBytes(pair.second[0].getOutput());
+    auto iter_redundant = addrMapping.find(pair.first);
+    if (iter_redundant != addrMapping.end()) {
+      offset = iter_redundant->second.first;
+      assert(bytes == iter_redundant->second.second);
+    } else {
+      std::string s;
+      llvm::raw_string_ostream os(s);
+      os << module::getName(pair.second[0].getOutput()).str() << ","
+         << llvm::format_hex(offset, 10) << "," << pair.first << "," << bytes
+         << "\n";
+      weightMapFile->write(os.str().c_str(), os.str().size());
+      addr = align_up(addr + bytes, weight_alignment);
+    }
+    for (auto &op : pair.second) {
+      module::setAddress(op.getOutput(), offset + start_addr);
+    }
+    if (pair.second.size() > 1 || iter_redundant != addrMapping.end()) {
+      // redundant weight
+      pair.second[0].removeDoCompressAttr();
+    }
+  }
+  module::setCoeffAddr(start_addr);
+  module::setCoeffSize(addr);
+}
+
+void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr,
+                             bool merge_weight, bool compress_weight,
+                             std::string &weight_map_file) {
+  // assign weight first
+  assign_weight_addr(module, merge_weight, compress_weight, weight_map_file);
+
+  int64_t neuron_alignment = 16;
+  // key: the operation pointer & output index
   std::map<Operation *, uint32_t> ops_loc;
   std::map<ValueInfo, TensorLive> liveRange;
   std::map<ValueInfo, OpElement> op_infos;
