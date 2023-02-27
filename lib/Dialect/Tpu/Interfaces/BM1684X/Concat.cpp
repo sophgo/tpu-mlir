@@ -13,32 +13,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct concat_common_spec {
-  int input_num;
-  int concat_axis;
-} concat_common_spec_t;
-
-typedef struct concat_global_spec {
-  concat_common_spec_t common;
-  int *is_st_concat_way;
-} concat_global_spec_t;
-
-typedef struct concat_local_spec {
-  concat_common_spec_t common;
-  int *is_st_concat_way;
-} concat_local_spec_t;
-
-typedef struct concat_local_param {
-  concat_local_spec_t spec;
-} concat_local_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

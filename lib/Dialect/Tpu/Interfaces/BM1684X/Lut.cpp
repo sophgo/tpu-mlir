@@ -11,37 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  uint64_t input_addr;
-  uint64_t table_addr;
-  uint64_t output_addr;
-  unsigned int buffer_addr; // used only for local layer
-  int shape[MAX_SHAPE_DIMS];
-  int shape_dim;
-  int table_length;
-  int input_dtype;
-  int table_dtype;
-  int output_dtype;
-  int is_local_layer;
-} lut_param_t;
-
-typedef struct {
-    unsigned int buffer_addr; // used only for local layer
-    int output_dtype;
-    int is_local_layer;
-} dyn_lut_param_t;
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

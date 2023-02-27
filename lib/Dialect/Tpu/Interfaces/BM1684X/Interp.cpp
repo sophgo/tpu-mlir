@@ -9,49 +9,10 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-
 #include "tpu_mlir/Support/Module.h"
-
-
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef enum {
-  CAFFE_SUPPORT = 0,
-  TENSORFLOW_SUPPORT = 1,
-  CAFFE_NEAREST = 2,
-  TENSORFLOW_NEAREST = 3,
-  PYTORCH_SUPPORT = 4,
-  PYTORCH_NEAREST = 5,
-  OPENCV_BILINEAR = 6,
-  ONNX_NEAREST = 7,
-} PLATFORM_SUPPORT;
-
-typedef struct interp_common_spec {
-  int pad_bag;
-  int pad_end;
-  bool align_corners;
-  bool half_pixel_centers;
-  int platform_sp;
-} interp_common_spec_t;
-
-typedef struct interp_global_spec {
-  interp_common_spec_t common;
-  int shape_is_fixed;
-  int shape[MAX_SHAPE_DIMS];
-  int dims;
-} interp_global_spec_t;
-
-typedef struct interp_local_spec {
-  interp_common_spec_t common;
-} interp_local_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

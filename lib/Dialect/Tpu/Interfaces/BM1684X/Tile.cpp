@@ -13,43 +13,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-    int tile_coeff[MAX_SHAPE_DIMS];
-    int type;
-} tile_common_spec_t;
-
-typedef struct {
-    tile_common_spec_t common;
-    uint64_t buffer_addr;
-} tile_global_spec_t;
-
-typedef struct {
-    tile_global_spec_t spec;
-    int coeff_is_fixed;
-    int input_is_coeff;
-    int input_shape[MAX_SHAPE_DIMS];
-    int input_dims;
-    int dtype;
-} tile_global_param_t;
-
-typedef struct {
-  int                tile_axis;
-  int                tile_num;
-  int                type;
-} tile_1d_global_param_t;
-
-typedef struct {
-    tile_common_spec_t common;
-} tile_local_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
-
 // =========================================
 // GloballGenInterface
 // =========================================

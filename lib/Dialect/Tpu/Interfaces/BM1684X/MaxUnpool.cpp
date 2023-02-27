@@ -12,30 +12,8 @@
 #include "tpu_mlir/Support/Module.h"
 
 
-
-
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  uint64_t bottom_global_offset;
-  uint64_t bottom_mask_global_offset;
-  uint64_t top_global_offset;
-  int bottom_global_N;
-  int bottom_c;
-  int bottom_h;
-  int bottom_w;
-  int top_c;
-  int top_h;
-  int top_w;
-} upsamplemask_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

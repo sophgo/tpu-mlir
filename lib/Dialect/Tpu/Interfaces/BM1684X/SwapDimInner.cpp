@@ -13,21 +13,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct swap_dim_spec {
-  int axis_num;
-  int axis_list[MAX_SHAPE_DIMS];
-  int offset_list[MAX_SHAPE_DIMS];
-  // int offset[MAX_SHAPE_DIMS];
-} swap_dim_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
-
 void tpu::SwapDimInnerOp::codegen_global_bm1684x() {
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);

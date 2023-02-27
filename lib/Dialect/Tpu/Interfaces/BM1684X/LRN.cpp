@@ -13,27 +13,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  uint64_t input_addr;
-  uint64_t output_addr;
-  int input_n;
-  int input_c;
-  int input_h;
-  int input_w;
-  int size;
-  float alpha;
-  float beta;
-  float k;
-  int dtype;
-} lrn_global_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 // =========================================
 // GlobalGenInterface
 // =========================================

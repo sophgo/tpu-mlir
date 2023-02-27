@@ -11,26 +11,8 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  float upper_limit;
-  float slope_val;
-  int is_channel_shared;
-  int rshift_bit;
-  int round_mode;
-} prelu_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 void tpu::PReluOp::codegen_global_bm1684x() {
   prelu_spec_t spec;

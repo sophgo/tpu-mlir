@@ -15,22 +15,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct index_select_common_spec {
-  int axis;
-  int index_is_coeff; // use for dyn
-} index_select_common_spec_t;
-
-typedef struct index_select_global_spec {
-  index_select_common_spec_t common;
-} index_select_global_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

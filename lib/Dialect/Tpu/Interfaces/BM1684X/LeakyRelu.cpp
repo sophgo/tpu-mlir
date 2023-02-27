@@ -13,36 +13,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  uint64_t input_addr;
-  uint64_t slope_addr;
-  uint64_t output_addr;
-  int32_t input_n;
-  int32_t input_c;
-  int32_t input_h;
-  int32_t input_w;
-  int32_t channel_shared;
-  float slope_val;
-  int32_t rshift_bit;
-  float relu_limit;
-  DATA_TYPE_T dtype;
-} leakyrelu_param_t;
-
-typedef struct {
-  float upper_limit;
-  float slope_val;
-  int is_channel_shared;
-  int rshift_bit;
-  int round_mode;
-} prelu_spec_t;
-#ifdef __cplusplus
-}
-#endif
-
 // =========================================
 // GlobalGenInterface
 // =========================================

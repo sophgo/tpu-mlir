@@ -11,23 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  int size;
-  int if_relu;
-} upsample_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

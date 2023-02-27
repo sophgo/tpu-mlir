@@ -15,18 +15,6 @@
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef struct {
-  int k;
-  int dim;
-  int descending;
-} topk_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 // =========================================
 // GlobalGenInterface
 // =========================================

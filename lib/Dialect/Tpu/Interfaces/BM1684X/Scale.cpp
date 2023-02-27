@@ -14,46 +14,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  int axis;
-  int axis_num;
-  int has_bias;
-  int if_relu;
-  float relu_upper_limit;
-  int scale_sign;
-  int bias_sign;
-  int merge_weight_bias;
-  int round_mode;
-  int version;
-} scale_global_spec_t;
-
-typedef struct {
-  /*common param*/
-  int if_relu;
-  float relu_upper_limit;
-  int is_scale_coeff;
-  int is_bias_coeff;
-  int input_num;
-  int merge_weight_bias;
-
-  /*param for float*/
-  int scale_shape[4];
-
-  /*param for fixed*/
-  unsigned int buffer_local_addr;
-  int is_shift_coeff;
-  int round_mode;
-  int version;
-  int bias_dtype;
-} scale_local_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 // =========================================
 // GlobalGenInterface
 // =========================================

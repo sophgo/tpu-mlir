@@ -13,14 +13,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
 void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
   depth2space_global_spec_t spec = {0};
   spec.common.block_sizes[0] = getBlockH();

@@ -9,39 +9,10 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct strideslice_common_spec {
-  int begin_mask;
-  int end_mask;
-  int begin_index[MAX_SHAPE_DIMS];
-  int end_index[MAX_SHAPE_DIMS];
-  int strides[MAX_SHAPE_DIMS];
-} strideslice_common_spec_t;
-
-typedef struct strideslice_global_spec {
-  strideslice_common_spec_t common;
-  int shape_size;
-  int ellipsis_mask;
-  int new_axis_mask;
-  int shrink_axis_mask;
-  bool is_dynamic;
-} strideslice_global_spec_t;
-
-typedef struct strideslice_local_spec {
-  strideslice_common_spec_t common;
-} strideslice_local_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 void tpu::SliceOp::codegen_global_bm1684x() {
   auto p = parseParam();

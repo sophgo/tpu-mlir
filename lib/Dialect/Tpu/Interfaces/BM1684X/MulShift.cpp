@@ -11,49 +11,8 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
-
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef struct {
-  uint64_t input_addr;
-  uint64_t output_addr;
-  unsigned int buffer_addr; // only used for local layer
-  int input_n;
-  int input_c;
-  int input_h;
-  int input_w;
-  int scale_val;
-  int rshift_num;
-  DATA_TYPE_T input_dtype;
-  DATA_TYPE_T scale_dtype;
-  DATA_TYPE_T output_dtype;
-  ROUND_MODE_T round_mode;
-} mulshift_param_t;
-
-typedef struct {
-    int scale_val;
-    int rshift_num;
-    DATA_TYPE_T  scale_dtype;
-    DATA_TYPE_T  output_dtype;
-    ROUND_MODE_T round_mode;
-} dyn_mulshift_common_param_t;
-
-typedef struct {
-    dyn_mulshift_common_param_t common;
-    unsigned int buffer_addr;
-} dyn_mulshift_local_param_t;
-
-typedef struct {
-    dyn_mulshift_common_param_t common;
-} dyn_mulshift_global_param_t;
-#ifdef __cplusplus
-}
-#endif
 
 void tpu::MulShiftOp::codegen_global_bm1684x() {
   int64_t n, c, h, w;
