@@ -12,10 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -167,70 +164,6 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
   }
   return success();
 }
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef struct {
-  uint64_t input_global_addr;
-  uint64_t weight_global_addr;
-  uint64_t bias_global_addr;
-  uint64_t output_global_addr;
-  int32_t input_shape[5]; // (n, ic, it, ih, iw)
-  int32_t groups;
-  int32_t output_c;
-  int32_t kernel[3];
-  int32_t stride[3];
-  int32_t dilation[3];
-  int32_t pad[6];
-  int32_t has_bias;
-  int32_t input_dtype;
-  int32_t weight_dtype;
-  int32_t bias_dtype;
-  int32_t output_dtype;
-  int32_t do_relu;
-  float relu_limit;
-  uint64_t kzp_global_addr;
-  uint64_t pad_global_addr;
-  bool kzp_is_const;
-  bool pad_is_const;
-  int32_t kzp_val;
-  int32_t pad_val;
-  int32_t kzp_dtype;
-} conv3d_global_spec_t;
-
-typedef struct conv_local_param {
-  uint32_t input_local_addr;
-  uint32_t weight_local_addr;
-  uint32_t bias_local_addr;
-  uint32_t buffer_local_addr;
-  uint32_t output_local_addr;
-  int32_t input_shape[5]; // (id, n, ic, ih, iw)
-  int32_t groups;
-  int32_t output_c;
-  int32_t kernel[3];   // (kd, kh, kw)
-  int32_t stride[3];   // (sd, sh, sw)
-  int32_t dilation[3]; // (dd, dh, dw)
-  int32_t pad[6];      // (df, db, ht, hb, wl, wr)
-  int32_t has_bias;
-  int32_t input_dtype;
-  int32_t weight_dtype;
-  int32_t bias_dtype;
-  int32_t output_dtype;
-  int32_t do_relu;
-  float relu_limit;
-  uint32_t kzp_local_addr;
-  uint32_t pad_local_addr;
-  bool kzp_is_const;
-  bool pad_is_const;
-  int32_t kzp_val;
-  int32_t pad_val;
-  int32_t kzp_dtype;
-} conv3d_local_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 void tpu::Conv3DOp::codegen_global_bm1684x() {
   auto attr = parseParam();

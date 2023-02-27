@@ -14,8 +14,6 @@
 
 #include <cassert>
 
-
-
 using namespace tpu_mlir::backend;
 
 // =========================================

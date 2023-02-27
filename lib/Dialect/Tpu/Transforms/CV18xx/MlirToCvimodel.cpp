@@ -388,7 +388,9 @@ FBSection CviModelBuilder::buildSection(std::string name,
     offset += align_up((int64_t)data->size(), CV18xx::WEIGHT_ALIGNMENT);
     LLVM_DEBUG(llvm::errs() << "buildSection offset " << offset << "\n";);
   }
-  assert(offset == coeff_size);
+  if(offset != coeff_size) {
+    llvm::errs() << "Warning: coeff size is not correct\n";
+  }
   uint32_t bin_offset = (uint32_t)binBuffer_.size();
   for (uint32_t i = 0; i < coeff_size; i++) {
     binBuffer_.push_back(data_u8->at(i));

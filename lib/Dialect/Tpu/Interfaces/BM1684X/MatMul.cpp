@@ -17,51 +17,6 @@
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct fc_global_spec {
-  /* common param of float and fixed */
-  int32_t R_transpose;
-  int32_t have_bias;
-  int32_t if_relu;
-  float relu_limit;
-  /* quantize param */
-  int32_t rshift;
-  int32_t is_asymmetric;
-  int32_t rzp_const_val;
-  int32_t rzp_is_const;
-  int32_t izp_const_val;
-  /* requantize param */
-  int32_t requant_mode; // mode < 0 means no requantize
-  int32_t mul_val;
-  int32_t shift_val;
-  int32_t offset_val;
-  int32_t round_mode;
-} fc_global_spec_t;
-
-typedef struct batch_matmul_common_spec {
-  int Y_dtype;
-  int L_trans;
-  int R_trans;
-  bool R_zp_is_const;
-  int R_zp_const_val;
-  int izp_const_val;
-  bool has_bias;
-  bool hdim_is_batch;
-  /* requant param */
-  int requant_mode; // mode < 0 means no requantize
-  int mul_val;
-  int shift_val;
-  int offset_val;
-  // int round_mode;
-} batch_matmul_common_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
-
 template <>
 LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
     tpu::MatMulOp op, PatternRewriter &rewriter) const {

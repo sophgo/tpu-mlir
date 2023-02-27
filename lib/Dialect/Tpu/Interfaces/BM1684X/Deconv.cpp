@@ -12,10 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -172,83 +169,6 @@ LogicalResult WeightReorder<tpu::DeconvOp, Float32Type>::matchAndRewrite(
 // ======================================
 // GlobalGenInterface
 // ======================================
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-typedef struct {
-  /* common param */
-  uint64_t input_global_addr;
-  uint64_t weight_global_addr;
-  uint64_t bias_global_addr;
-  uint64_t output_global_addr;
-  int input_shape[4];
-  int groups;
-  int output_c;
-  int kernel[2];     // (kh, kw)
-  int stride[2];     // (h, w)
-  int dilation[2];   // (h, w)
-  int pad[4];        // (h0, h1, w0, w1)
-  int output_pad[2]; // (h, w)
-  int has_bias;
-  int input_dtype;
-  int weight_dtype;
-  int bias_dtype;
-  /* param for float */
-  int output_dtype;
-  int if_relu;
-  float upper_limit;
-  /* param for quant */
-  bool is_asym;
-  unsigned char rshift;
-  uint64_t kzp_global_addr;
-  uint64_t pad_insert_global_addr;
-  bool kzp_is_const;
-  bool pad_insert_is_const;
-  int kzp_val;
-  int pad_val;
-  int insert_val;
-  int kzp_dtype;
-} deconv_global_param_t;
-
-typedef struct {
-  /* common param */
-  unsigned int input_local_addr;
-  unsigned int weight_local_addr;
-  unsigned int bias_local_addr;
-  unsigned int buffer_local_addr;
-  unsigned int output_local_addr;
-  int input_shape[4];
-  int groups;
-  int output_c;
-  int kernel[2];   // (kh, kw)
-  int stride[2];   // (h, w)
-  int dilation[2]; // (h, w)
-  int pad[4];      // (h0, h1, w0, w1)
-  int has_bias;
-  int input_dtype;
-  int weight_dtype;
-  int bias_dtype;
-  /* param for float */
-  int output_dtype;
-  int if_relu;
-  float upper_limit;
-  /* param for quant */
-  bool is_asym;
-  unsigned char rshift;
-  unsigned int kzp_local_addr;
-  unsigned int pad_insert_local_addr;
-  bool kzp_is_const;
-  bool pad_insert_is_const;
-  int kzp_val;
-  int pad_val;
-  int insert_val;
-  int kzp_dtype;
-} deconv_local_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 void tpu::DeconvOp::codegen_global_bm1684x() {
   auto attr = parseParam();

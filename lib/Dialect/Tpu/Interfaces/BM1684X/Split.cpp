@@ -9,26 +9,9 @@
 
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
-
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-#define MAX_SPLIT_OUTPUT_NUM 8
-typedef struct split_spec {
-  int axis;
-  int split_size[MAX_SPLIT_OUTPUT_NUM];
-  int split_num;
-  uint64_t buffer_addr;
-  int input_num; // =2 means split_size is dynamic
-} split_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 void tpu::SplitOp::codegen_global_bm1684x() {
   auto op = getOperation();

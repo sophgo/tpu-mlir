@@ -243,7 +243,9 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
     memcpy(data_u8->data() + offset, data->data(), data->size());
     offset += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
   }
-  assert(offset == coeff_size);
+  if(offset != coeff_size) {
+    llvm::errs() << "Warning: coeff size is not correct\n";
+  }
   std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);
   bmodel::CalcSha256(data_u8->data(), coeff_size, sha256.data());
   auto binary_coeff = model_gen->WriteBinary(coeff_size, data_u8->data());

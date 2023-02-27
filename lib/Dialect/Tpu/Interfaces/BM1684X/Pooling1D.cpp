@@ -16,49 +16,6 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct pooling_common_spec {
-  int32_t kh;
-  int32_t kw;
-  int32_t pad_h_t;
-  int32_t pad_h_b;
-  int32_t pad_w_l;
-  int32_t pad_w_r;
-  int32_t stride_h;
-  int32_t stride_w;
-  int32_t dh;
-  int32_t dw;
-  int32_t is_global_pooling;
-  int32_t is_avg_pooling;
-  int32_t avg_pooling_mode;
-  /* for float */
-  int32_t if_relu;
-  float relu_limit;
-  /* for fix8b */
-  int32_t ceil_mode;
-  int32_t round_mode;
-  int32_t avg_pooling_quant_mode;
-  int32_t max_pooling_with_mask; // 1: with mask 0: no mask
-  int32_t multiplier;
-  int32_t rshiftbits;
-  /* asymmetric quantize */
-  int32_t merge_requant;
-  float rq_scale;
-  float rq_offset;
-} pooling_common_spec_t;
-
-typedef struct {
-  int32_t buffer_addr;
-  pooling_common_spec_t common;
-} pooling_local_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
-
 static void SpecAssign(const pool_attr_t &attr, pooling_common_spec_t &spec) {
   spec.kh = attr.kh;
   spec.kw = attr.kw;

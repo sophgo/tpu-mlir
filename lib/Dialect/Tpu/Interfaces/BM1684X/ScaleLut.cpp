@@ -9,21 +9,8 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
 #include "tpu_mlir/Support/Module.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct {
-  int shape_dim;
-  int table_length;
-} scalelut_param_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface

@@ -11,45 +11,10 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
-
 #include "tpu_mlir/Support/MathUtils.h"
-
-
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-typedef struct pooling3d_spec {
-  int64_t input_addr;
-  int64_t output_addr;
-  int32_t buffer_addr;
-  int32_t input_shape[5];
-  int32_t output_shape[5];
-  int32_t *kernel;
-  int32_t *stride;
-  int32_t *dilation;
-  int32_t *pad;
-  bool is_avg_pooling;
-  int32_t avg_pooling_mode;
-  int32_t avg_rd_mode;
-  /* for float */
-  int32_t if_relu;
-  float relu_limit;
-  int32_t in_dtype;
-  int32_t out_dtype;
-  /* for fix8b */
-  int32_t avg_pooling_quant_mode;
-  bool merge_requant;
-  float rq_scale;
-  float rq_offset;
-} pooling3d_spec_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 static bool has_pad(const pool_attr_t &attr) {
   if (attr.pad_h != 0 || attr.pad_w != 0 || attr.pad_d != 0)

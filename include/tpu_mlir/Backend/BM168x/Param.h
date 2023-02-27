@@ -1,0 +1,1223 @@
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
+#pragma once
+
+#include "tpu_mlir/Backend/Arch.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// -------------------------------------------------------------------
+// Constant Definition
+// -------------------------------------------------------------------
+
+#define MAX_TPU_DIM 65535
+#define MAX_SHAPE_DIMS 8
+#define MAX_SPLIT_OUTPUT_NUM 8
+
+#define SUBNET_MODE_TPU 0
+#define SUBNET_MODE_CPU 1
+#define SUBNET_MODE_MERGE 2
+#define SUBNET_MODE_SWITCH 3
+
+#define MEM_TYPE_TPU (1 << 0)
+#define MEM_TYPE_CPU (1 << 1)
+#define MEM_TYPE_ALL (MEM_TYPE_TPU | MEM_TYPE_CPU)
+
+#define GDMA_VALUE_DIR_S2L 0
+#define GDMA_VALUE_DIR_L2S 1
+#define GDMA_VALUE_DIR_S2S 2
+#define GDMA_VALUE_DIR_L2L 3
+
+// -------------------------------------------------------------------
+// Enum Definition
+// -------------------------------------------------------------------
+
+typedef enum {
+  STORAGE_MODE_1N_FP32 = 0,
+  STORAGE_MODE_1N_INT8 = 1,
+  STORAGE_MODE_1N_INT16 = 2,
+  STORAGE_MODE_2N_INT16 = 3,
+  STORAGE_MODE_4N_INT8 = 4,
+  STORAGE_MODE_2IC_FP32 = 5, // special for 2IC weight
+  STORAGE_MODE_4N_4IC_4OC = 6,
+  STORAGE_MODE_4N_INT16 = 7,
+  STORAGE_MODE_UNINITILIZED,
+  STORAGE_MODE_END
+} TENSOR_STORAGE_MODE;
+
+typedef enum {
+  STORE_MODE_1N = 0,
+  STORE_MODE_2N = 1,
+  STORE_MODE_4N = 2,
+  STORE_3IC = 3,
+  // if need to support more store mode, pls add below
+} STORE_MODE_T;
+
+typedef enum {
+  DTYPE_FP32 = 0,
+  DTYPE_FP16 = 1,
+  DTYPE_INT8 = 2,
+  DTYPE_UINT8 = 3,
+  DTYPE_INT16 = 4,
+  DTYPE_UINT16 = 5,
+  DTYPE_INT32 = 6,
+  DTYPE_UINT32 = 7,
+  DTYPE_BFP16 = 8,
+  DTYPE_INT4 = 9,
+  DTYPE_UINT4 = 10,
+  DTYPE_UNKNOWN = -1,
+} DATA_TYPE_T;
+
+typedef enum {
+  ROUND_INF = 0,  // 1.5 -> 2   -1.5 -> -2
+  ROUND_UP = 1,   // 1.5 -> 2   -1.5 -> -1
+  ROUND_DOWN = 2, // 1.5 -> 1   -1.5 -> -2
+  ROUND_EVEN = 3, // 1.5 -> 2    2.5 -> 2
+  ROUND_ODD = 4,  // 1.5 -> 1    0.5 -> 1
+  ROUND_ZERO = 5, // 1.5 -> 1   -1.5 -> -1
+  TRIM_ZERO = 6,  // 1.6 -> 1   -1.6 -> -1
+  TRIM_INF = 7,   // 1.4 -> 2   -1.4 -> -2
+  TRIM_UP = 8,    // 1.4 -> 2   -1.6 -> -1
+  TRIM_DOWN = 9,  // 1.6 -> 1   -1.4 -> -2
+} ROUND_MODE_T;
+
+typedef enum {
+  ELTWISE_PRODUCT = 0,
+  ELTWISE_ADD = 1,
+  ELTWISE_MAX = 2,
+} ELTWISE_OPCODE_T;
+
+typedef enum {
+  ACTIVE_TANH = 0,
+  ACTIVE_SIGMOID = 1,
+  ACTIVE_RELU = 2,
+  ACTIVE_EXP = 3,
+  ACTIVE_ELU = 4,
+  ACTIVE_SQRT = 5,
+  ACTIVE_SQUARE = 6,
+  ACTIVE_RSQRT = 7,
+  ACTIVE_ABSVAL = 8,
+  ACTIVE_LN = 9,
+  ACTIVE_ROUND = 10,
+  ACTIVE_CEIL = 11,
+  ACTIVE_FLOOR = 12,
+  ACTIVE_SIN = 13,
+  ACTIVE_COS = 14,
+  ACTIVE_IS_FINITE = 15,
+  ACTIVE_MISH = 16,
+  ACTIVE_SWISH = 17,
+  ACTIVE_HSWISH = 18,
+  ACTIVE_SILU = 19,
+  ACTIVE_ARCSIN = 20,
+  ACTIVE_ARCCOS = 21,
+  ACTIVE_ARCSINH = 22,
+  ACTIVE_ARCCOSH = 23,
+  ACTIVE_ARCTANH = 24,
+  ACTIVE_SINH = 25,
+  ACTIVE_COSH = 26,
+  ACTIVE_TAN = 27,
+  ACTIVE_SIGN = 28,
+  ACTIVE_GELU = 29,
+  ACTIVE_ERF = 30,
+  ACTIVE_HSIGMOID = 31,
+  ACTIVE_LOG_SIGMOID = 32,
+  ACTIVE_SOFT_PLUS = 33,
+  ACTIVE_SOFT_SIGN = 34,
+} active_type_t;
+
+typedef enum {
+  /* 3D group if this group has CONV3D/DECONV3D/POOL3D
+   * for 1684 float32, data in local memory storage as {d * n, c, h, w}
+   * for 1684 int8, data in local memory storage as {n, d * c, h, w}
+   * for 1684X, data in local memory storage as {d * n, c, h, w}
+   * data in global memory always storage as {n, c, d, h, w}
+   * group_type < 8, because 1684 dynamic compile reserved `3bit` for group_type
+   */
+  GROUP_NORMAL = 0,
+  GROUP_3D = 1,
+} group_type_t;
+
+typedef enum {
+  BINARY_ADD = 0,
+  BINARY_SUB = 1,
+  BINARY_MUL = 2,
+  BINARY_DIV = 3,
+  BINARY_MAX = 4,
+  BINARY_MIN = 10000,
+  BINARY_GT = 10001,
+  BINARY_GE = 10002,
+  BINARY_LT = 10003,
+  BINARY_LE = 10004,
+  BINARY_EQ = 10005,
+  BINARY_NE = 10006,
+  BINARY_SQUARED_DIFF = 10007,
+  BINARY_FLOOR_MOD = 10008,
+  BINARY_FLOOR_DIV = 10009,
+  BINARY_LOGIC_AND = 10010,
+  BINARY_LOGIC_OR = 10011,
+  BINARY_LOGIC_XOR = 10012,
+  BINARY_BIT_AND = 10013,
+  BINARY_BIT_OR = 10014,
+  BINARY_BIT_XOR = 10015,
+} binary_type_t;
+
+typedef enum {
+  CAFFE_SUPPORT = 0,
+  TENSORFLOW_SUPPORT = 1,
+  CAFFE_NEAREST = 2,
+  TENSORFLOW_NEAREST = 3,
+  PYTORCH_SUPPORT = 4,
+  PYTORCH_NEAREST = 5,
+  OPENCV_BILINEAR = 6,
+  ONNX_NEAREST = 7,
+} PLATFORM_SUPPORT;
+
+typedef enum {
+  SG_REDUCE_MEAN = 0,
+  SG_REDUCE_SUM = 1,
+  SG_REDUCE_MAX = 2,
+  SG_REDUCE_MIN = 3,
+  SG_REDUCE_PROD = 4,
+  SG_REDUCE_L2 = 5,
+  SG_REDUCE_L1 = 6,
+} sg_reduce_method_t;
+
+// -------------------------------------------------------------------
+// Struct Definition
+// -------------------------------------------------------------------
+
+struct cmd_id_node;
+typedef struct cmd_id_node CMD_ID_NODE;
+
+typedef struct bmcompiler_mem_info {
+  uint64_t addr;
+  uint64_t size;
+  uint64_t offset;
+} bm_mem_desc_t;
+typedef struct bmcompiler_mem_info bm_device_mem_t;
+
+typedef struct local_tensor_spec {
+  uint64_t addr;
+  int32_t dtype;
+  int32_t dims;
+  int32_t shape[MAX_SHAPE_DIMS];
+  uint8_t consume_num;
+  int *host_data;
+  int elem_num;
+} tensor_spec_t;
+
+typedef struct stride {
+  int64_t N, C, H, W;
+} stride_4D_t;
+
+typedef struct active_common_spec {
+  int active_type;
+  float coeffs[MAX_SHAPE_DIMS];
+} active_common_spec_t;
+
+typedef struct active_global_spec {
+  active_common_spec_t common;
+} active_global_spec_t;
+
+typedef struct active_local_spec {
+  active_common_spec_t common;
+  uint32_t buffer_addr;
+} active_local_spec_t;
+
+typedef struct active_local_param {
+  active_local_spec_t spec;
+} active_local_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint32_t buffer_local_addr; // for local layer param
+  int shape[MAX_SHAPE_DIMS];
+  int shape_dim;
+  int dtype;
+  int active_type;
+} active_param_t;
+
+// use for constbinary
+typedef struct constbinary_common_spec {
+  float B_const_val;
+  int B_dtype;
+  int inversed;
+  int binary_type;
+  int if_relu;
+  float relu_upper_limit;
+  int scale_A;
+  int rshift_A;
+} constbinary_common_spec_t;
+
+typedef struct constbinary_global_spec {
+  constbinary_common_spec_t common;
+} constbinary_global_spec_t;
+
+typedef struct constbinary_local_spec {
+  constbinary_common_spec_t common;
+  uint32_t buffer_addr;
+} constbinary_local_spec_t;
+
+typedef struct constbinary_local_param {
+  constbinary_local_spec_t spec;
+} constbinary_local_param_t;
+
+typedef struct concat_common_spec {
+  int input_num;
+  int concat_axis;
+} concat_common_spec_t;
+
+typedef struct concat_global_spec {
+  concat_common_spec_t common;
+  int *is_st_concat_way;
+} concat_global_spec_t;
+
+typedef struct concat_local_spec {
+  concat_common_spec_t common;
+  int *is_st_concat_way;
+} concat_local_spec_t;
+
+typedef struct concat_local_param {
+  concat_local_spec_t spec;
+} concat_local_param_t;
+
+typedef struct conv_common_spec {
+  int32_t groups;
+  int32_t input_c;
+  int32_t output_c;
+  int32_t kh;
+  int32_t kw;
+  int32_t stride_h;
+  int32_t stride_w;
+  int32_t dh;
+  int32_t dw;
+  int32_t pad_h_t;
+  int32_t pad_h_b;
+  int32_t pad_w_l;
+  int32_t pad_w_r;
+  int32_t has_bias;
+  int32_t if_relu;
+  float upper_limit;
+  int32_t rshift;
+  int32_t round_mode;
+  int32_t is_asym;
+  int32_t kzp_is_const;
+  int32_t kzp_value;
+  int32_t ipad_is_const;
+  int32_t ipad_value;
+  int32_t bias_sign; // For merged coeff
+  int32_t use_3ic_optimize;
+} conv_common_spec_t;
+
+typedef struct conv_global_spec {
+  conv_common_spec_t common;
+  /**
+   * merge_coeff:
+   *    0: Not merge and not reshape weight and bias
+   *    1. reshape and merge weight and bias as (bias, weight) align to (4, 1)
+   * bytes for depthwise_fix8b or (4, 64) bytes for conv_fix8b
+   *    2. reshape and merge weight, bias and requant as has bias-(requant,
+   * bias, weight) align to (64, 4, 1) bytes for depthwise_fix8b or (64, 4, 64)
+   * bytes for conv_fix8b or no bias-(requant, weight) align to (64, 1) bytes
+   * for depthwise_fix8b or (64, 64) bytes for conv_fix8b
+   */
+  int32_t merge_coeff;
+  int32_t weight_is_tensor;
+} conv_global_spec_t;
+
+typedef struct conv_local_spec {
+  conv_common_spec_t common;
+  uint32_t buffer_local_addr;
+  int32_t result_add;
+  int32_t unused_ht_for_input;
+  int32_t unused_hb_for_input;
+  int32_t unused_wl_for_input;
+  int32_t unused_wr_for_input;
+  int32_t group_one_conv;
+  int32_t with_requant;
+  int32_t merge_coeff;
+
+  // For dynamic inference
+  uint32_t concat_c;
+  int32_t concat_c_idx;
+  int32_t reference_id;
+} conv_local_spec_t;
+
+typedef struct conv_local_param {
+  conv_local_spec_t spec;
+} conv_local_param_t;
+
+typedef struct {
+  uint64_t input_global_addr;
+  uint64_t weight_global_addr;
+  uint64_t bias_global_addr;
+  uint64_t output_global_addr;
+  int32_t input_shape[5]; // (n, ic, it, ih, iw)
+  int32_t groups;
+  int32_t output_c;
+  int32_t kernel[3];
+  int32_t stride[3];
+  int32_t dilation[3];
+  int32_t pad[6];
+  int32_t has_bias;
+  int32_t input_dtype;
+  int32_t weight_dtype;
+  int32_t bias_dtype;
+  int32_t output_dtype;
+  int32_t do_relu;
+  float relu_limit;
+  uint64_t kzp_global_addr;
+  uint64_t pad_global_addr;
+  bool kzp_is_const;
+  bool pad_is_const;
+  int32_t kzp_val;
+  int32_t pad_val;
+  int32_t kzp_dtype;
+} conv3d_global_spec_t;
+
+typedef struct conv3d_local_param {
+  uint32_t input_local_addr;
+  uint32_t weight_local_addr;
+  uint32_t bias_local_addr;
+  uint32_t buffer_local_addr;
+  uint32_t output_local_addr;
+  int32_t input_shape[5]; // (id, n, ic, ih, iw)
+  int32_t groups;
+  int32_t output_c;
+  int32_t kernel[3];   // (kd, kh, kw)
+  int32_t stride[3];   // (sd, sh, sw)
+  int32_t dilation[3]; // (dd, dh, dw)
+  int32_t pad[6];      // (df, db, ht, hb, wl, wr)
+  int32_t has_bias;
+  int32_t input_dtype;
+  int32_t weight_dtype;
+  int32_t bias_dtype;
+  int32_t output_dtype;
+  int32_t do_relu;
+  float relu_limit;
+  uint32_t kzp_local_addr;
+  uint32_t pad_local_addr;
+  bool kzp_is_const;
+  bool pad_is_const;
+  int32_t kzp_val;
+  int32_t pad_val;
+  int32_t kzp_dtype;
+} conv3d_local_spec_t;
+
+typedef struct {
+  /* common param */
+  uint64_t input_global_addr;
+  uint64_t weight_global_addr;
+  uint64_t bias_global_addr;
+  uint64_t output_global_addr;
+  int input_shape[4];
+  int groups;
+  int output_c;
+  int kernel[2];     // (kh, kw)
+  int stride[2];     // (h, w)
+  int dilation[2];   // (h, w)
+  int pad[4];        // (h0, h1, w0, w1)
+  int output_pad[2]; // (h, w)
+  int has_bias;
+  int input_dtype;
+  int weight_dtype;
+  int bias_dtype;
+  /* param for float */
+  int output_dtype;
+  int if_relu;
+  float upper_limit;
+  /* param for quant */
+  bool is_asym;
+  unsigned char rshift;
+  uint64_t kzp_global_addr;
+  uint64_t pad_insert_global_addr;
+  bool kzp_is_const;
+  bool pad_insert_is_const;
+  int kzp_val;
+  int pad_val;
+  int insert_val;
+  int kzp_dtype;
+} deconv_global_param_t;
+
+typedef struct {
+  /* common param */
+  unsigned int input_local_addr;
+  unsigned int weight_local_addr;
+  unsigned int bias_local_addr;
+  unsigned int buffer_local_addr;
+  unsigned int output_local_addr;
+  int input_shape[4];
+  int groups;
+  int output_c;
+  int kernel[2];   // (kh, kw)
+  int stride[2];   // (h, w)
+  int dilation[2]; // (h, w)
+  int pad[4];      // (h0, h1, w0, w1)
+  int has_bias;
+  int input_dtype;
+  int weight_dtype;
+  int bias_dtype;
+  /* param for float */
+  int output_dtype;
+  int if_relu;
+  float upper_limit;
+  /* param for quant */
+  bool is_asym;
+  unsigned char rshift;
+  unsigned int kzp_local_addr;
+  unsigned int pad_insert_local_addr;
+  bool kzp_is_const;
+  bool pad_insert_is_const;
+  int kzp_val;
+  int pad_val;
+  int insert_val;
+  int kzp_dtype;
+} deconv_local_param_t;
+
+typedef struct bcbinary_common_spec {
+  int32_t binary_type;
+  int32_t if_relu;
+  float relu_upper_limit;
+  int32_t scale_A;
+  int32_t scale_B;
+  int32_t rshift_A;
+  int32_t rshift_B;
+} bcbinary_common_spec_t;
+
+typedef struct bcbinary_local_spec {
+  bcbinary_common_spec_t common;
+  uint32_t buffer_addr;
+} bcbinary_local_spec_t;
+
+typedef struct bcbinary_local_param {
+  bcbinary_local_spec_t spec;
+  int32_t A_is_coeff;
+  int32_t B_is_coeff;
+} bcbinary_local_param_t;
+
+typedef struct {
+  uint64_t input_A_global_addr;
+  uint64_t input_B_global_addr;
+  uint64_t output_global_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  int op_code;
+  int scale_A;
+  int scale_B;
+  int rshift_A;
+  int rshift_B;
+  int if_relu;
+  DATA_TYPE_T dtype_A;
+  DATA_TYPE_T dtype_B;
+  int round_mode;
+} eltwise_fixed_global_param_t;
+
+typedef struct {
+  uint64_t *input_global_addr;
+  uint64_t output_global_addr;
+  uint64_t mask_global_addr;
+  int input_num;
+  int n;
+  int c;
+  int h;
+  int w;
+  int op_code;
+  int *coeff;
+  int need_mask;
+  int *mask_index;
+  int if_relu;
+  DATA_TYPE_T dtype;
+} eltwise_float_global_param_t;
+
+typedef struct {
+  uint32_t *input_local_addr;
+  uint32_t output_local_addr;
+  uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  int op_code;
+  int *input_local_cstride;
+  int *scale_weight;
+  int *rshift;
+  DATA_TYPE_T *input_dtype;
+  int input_num;
+  int if_relu;
+  int round_mode;
+} eltwise_fixed_local_param_t;
+
+typedef struct {
+  uint32_t *input_local_addr;
+  uint32_t output_local_addr;
+  uint32_t buffer_local_addr;
+  int input_num;
+  int n;
+  int c;
+  int h;
+  int w;
+  int op_code;
+  float *coeff;
+  int *input_local_cstride;
+  int if_relu;
+  DATA_TYPE_T dtype;
+} eltwise_float_local_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t requant_addr;
+  uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  bool is_perchannel;
+  int mul_value;
+  int shift_value;
+  int offset_value;
+  int input_dtype;
+  int output_dtype;
+  int mode;
+  int reshaped_coeff;
+  int zx_value;
+  int round_mode;
+} requant_int_param_t;
+
+typedef struct index_select_common_spec {
+  int axis;
+  int index_is_coeff; // use for dyn
+} index_select_common_spec_t;
+
+typedef struct index_select_global_spec {
+  index_select_common_spec_t common;
+} index_select_global_spec_t;
+
+typedef struct roi_align_spec {
+  int pooled_height;
+  int pooled_width;
+  float spatial_scale;
+  int sampling_ratio;
+  int position_sensitive;
+  int align_corners;
+  int plat_sp;
+} roi_align_spec_t;
+
+typedef struct {
+  bool is_perchannel;
+  int mul_value;
+  int shift_value;
+  int offset_value;
+  int output_dtype;
+  int mode;
+  int reshaped_coeff;
+  int zx_value;
+  int round_mode;
+} dyn_requant_int_common_param_t;
+
+typedef struct {
+  dyn_requant_int_common_param_t common;
+  uint32_t buffer_local_addr;
+} dyn_requant_int_local_param_t;
+
+typedef struct {
+  dyn_requant_int_common_param_t common;
+} dyn_requant_int_global_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t dequant_addr;
+  uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  bool is_perchannel;
+  int scale_val;
+  int shift_val;
+  int offset_val;
+  int mode;
+  int lshift;
+  DATA_TYPE_T input_dtype;
+  DATA_TYPE_T output_dtype;
+  int round_mode;
+} dequant_int_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t slope_addr;
+  uint64_t output_addr;
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int channel_shared;
+  float slope_val;
+  int rshift_bit;
+  float relu_limit;
+  DATA_TYPE_T dtype;
+} prelu_param_t;
+
+typedef struct {
+  int sel0_is_const;
+  int sel1_is_const;
+  float sel0_const_val;
+  float sel1_const_val;
+} select_common_spec_t;
+
+typedef struct {
+  float scale_val;
+  int begin_axis;
+  int end_axis;
+  int log;
+  int zero_point;
+} softmax_common_param_t;
+
+typedef struct {
+  softmax_common_param_t common;
+} softmax_global_param_t;
+
+typedef struct {
+  softmax_common_param_t common;
+  uint32_t buffer_addr;
+} softmax_local_param_t;
+
+typedef struct {
+  softmax_common_param_t common;
+} softmax_tflite_fix8b_param_t;
+
+typedef struct layer_norm_common_spec {
+  int axis;
+  float eps;
+  int affine;
+  int need_mean;
+  int need_rstd;
+} layer_norm_common_spec_t;
+
+typedef struct layer_norm_global_spec {
+  layer_norm_common_spec_t common;
+} layer_norm_global_spec_t;
+
+typedef struct layer_norm_local_spec {
+  layer_norm_common_spec_t common;
+  uint32_t buffer_addr;
+} layer_norm_local_spec_t;
+
+typedef struct tranpose_spec {
+  uint64_t buffer_global_addr;
+  uint32_t order[MAX_SHAPE_DIMS];
+  uint32_t is_dynamic;
+} transpose_spec_t;
+
+typedef struct transpose_param {
+  transpose_spec_t spec;
+  int32_t if_getting_buffer_size;
+  uint64_t *buffer_size_ptr;
+} transpose_param_t;
+
+typedef struct reshape_spec {
+  int32_t dims;
+  int32_t shape[MAX_SHAPE_DIMS];
+} reshape_spec_t;
+
+typedef struct {
+  int pad[4][2];
+  int type;
+  float constant;
+} pad_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t requant_addr;
+  uint32_t buffer_local_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  bool is_perchannel;
+  float scale_value;
+  float offset_value;
+  int input_dtype;
+  int output_dtype;
+  int mode;
+  int round_mode;
+} requant_fp_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  uint64_t dequant_addr;
+  int n;
+  int c;
+  int h;
+  int w;
+  bool is_perchannel;
+  float scale_value;
+  int offset_value;
+  int input_dtype;
+  int output_dtype;
+} dequant_fp_param_t;
+
+typedef struct interp_common_spec {
+  int pad_bag;
+  int pad_end;
+  bool align_corners;
+  bool half_pixel_centers;
+  int platform_sp;
+} interp_common_spec_t;
+
+typedef struct interp_global_spec {
+  interp_common_spec_t common;
+  int shape_is_fixed;
+  int shape[MAX_SHAPE_DIMS];
+  int dims;
+} interp_global_spec_t;
+
+typedef struct interp_local_spec {
+  interp_common_spec_t common;
+} interp_local_spec_t;
+
+typedef struct cast_common_spec {
+  int src_dtype;
+  int dst_dtype;
+  int round_mode;
+} cast_common_spec_t;
+
+typedef struct cast_global_spec {
+  cast_common_spec_t common;
+} cast_global_spec_t;
+
+typedef struct cast_local_spec {
+  cast_common_spec_t common;
+  uint32_t buffer_addr;
+} cast_local_spec_t;
+
+typedef struct cast_local_param {
+  cast_local_spec_t spec;
+} cast_local_param_t;
+
+typedef struct {
+  bool is_perchannel;
+  float scale_value;
+  int offset_value;
+  int output_dtype; // for fp16/bfp16 output, default(0) fp32 output
+} dyn_dequant_fp_param_t;
+
+typedef struct {
+  bool is_perchannel;
+  float scale_value;
+  float offset_value;
+  int output_dtype;
+  int mode;
+  int round_mode;
+} dyn_requant_fp_common_param_t;
+
+typedef struct {
+  dyn_requant_fp_common_param_t common;
+  uint32_t buffer_local_addr;
+} dyn_requant_fp_local_param_t;
+
+typedef struct {
+  dyn_requant_fp_common_param_t common;
+} dyn_requant_fp_global_param_t;
+
+typedef struct reduce_full_common_spec {
+  int axis[MAX_SHAPE_DIMS];
+  int axis_num;
+  int method;
+  float input_scale;
+  float output_scale;
+  int keep_dims; // used for dynamic compile
+} reduce_full_common_spec_t;
+
+typedef struct reduce_full_global_spec {
+  reduce_full_common_spec_t common;
+  uint64_t buffer_addr;
+} reduce_full_global_spec_t;
+
+typedef struct reduce_full_global_param {
+  reduce_full_global_spec_t spec;
+  int if_getting_buffer_size;
+  uint64_t *buffer_size_ptr;
+} reduce_full_global_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t slope_addr;
+  uint64_t output_addr;
+  int32_t input_n;
+  int32_t input_c;
+  int32_t input_h;
+  int32_t input_w;
+  int32_t channel_shared;
+  float slope_val;
+  int32_t rshift_bit;
+  float relu_limit;
+  DATA_TYPE_T dtype;
+} leakyrelu_param_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int size;
+  float alpha;
+  float beta;
+  float k;
+  int dtype;
+} lrn_global_param_t;
+
+typedef struct {
+  float upper_limit;
+  float slope_val;
+  int is_channel_shared;
+  int rshift_bit;
+  int round_mode;
+} prelu_spec_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t table_addr;
+  uint64_t output_addr;
+  unsigned int buffer_addr; // used only for local layer
+  int shape[MAX_SHAPE_DIMS];
+  int shape_dim;
+  int table_length;
+  int input_dtype;
+  int table_dtype;
+  int output_dtype;
+  int is_local_layer;
+} lut_param_t;
+
+typedef struct {
+  unsigned int buffer_addr; // used only for local layer
+  int output_dtype;
+  int is_local_layer;
+} dyn_lut_param_t;
+
+typedef struct fc_global_spec {
+  /* common param of float and fixed */
+  int32_t R_transpose;
+  int32_t have_bias;
+  int32_t if_relu;
+  float relu_limit;
+  /* quantize param */
+  int32_t rshift;
+  int32_t is_asymmetric;
+  int32_t rzp_const_val;
+  int32_t rzp_is_const;
+  int32_t izp_const_val;
+  /* requantize param */
+  int32_t requant_mode; // mode < 0 means no requantize
+  int32_t mul_val;
+  int32_t shift_val;
+  int32_t offset_val;
+  int32_t round_mode;
+} fc_global_spec_t;
+
+typedef struct batch_matmul_common_spec {
+  int Y_dtype;
+  int L_trans;
+  int R_trans;
+  bool R_zp_is_const;
+  int R_zp_const_val;
+  int izp_const_val;
+  bool has_bias;
+  bool hdim_is_batch;
+  /* requant param */
+  int requant_mode; // mode < 0 means no requantize
+  int mul_val;
+  int shift_val;
+  int offset_val;
+  // int round_mode;
+} batch_matmul_common_spec_t;
+
+typedef struct {
+  int block_sizes[2];
+  int in_is_nchw;
+  int out_is_nchw;
+  int is_inversed;
+  int is_crd_mode;
+  int swap_cr;
+} depth2space_common_spec_t;
+
+typedef struct {
+  int size;
+  int if_relu;
+} upsample_spec_t;
+
+typedef struct {
+  uint64_t bottom_global_offset;
+  uint64_t bottom_mask_global_offset;
+  uint64_t top_global_offset;
+  int bottom_global_N;
+  int bottom_c;
+  int bottom_h;
+  int bottom_w;
+  int top_c;
+  int top_h;
+  int top_w;
+} upsamplemask_param_t;
+
+typedef struct {
+  int dims;
+  int axis;
+} reverse_global_param_t;
+
+typedef struct {
+  depth2space_common_spec_t common;
+} depth2space_global_spec_t;
+
+typedef struct pixel_norm_common_spec {
+  float eps;
+  int affine;
+} pixel_norm_common_spec_t;
+
+typedef struct pixel_norm_global_spec {
+  pixel_norm_common_spec_t common;
+} pixel_norm_global_spec_t;
+
+typedef struct pixel_norm_local_spec {
+  pixel_norm_common_spec_t common;
+  uint32_t buffer_addr;
+} pixel_norm_local_spec_t;
+
+typedef struct {
+  int axis;
+  int axis_num;
+  int has_bias;
+  int if_relu;
+  float relu_upper_limit;
+  int scale_sign;
+  int bias_sign;
+  int merge_weight_bias;
+  int round_mode;
+  int version;
+} scale_global_spec_t;
+
+typedef struct {
+  int shape_dim;
+  int table_length;
+} scalelut_param_t;
+
+typedef struct {
+  int data_dims;
+  int indices_dims;
+  int updates_dims;
+} scatter_nd_global_param_t;
+
+typedef struct strideslice_common_spec {
+  int begin_mask;
+  int end_mask;
+  int begin_index[MAX_SHAPE_DIMS];
+  int end_index[MAX_SHAPE_DIMS];
+  int strides[MAX_SHAPE_DIMS];
+} strideslice_common_spec_t;
+
+typedef struct strideslice_global_spec {
+  strideslice_common_spec_t common;
+  int shape_size;
+  int ellipsis_mask;
+  int new_axis_mask;
+  int shrink_axis_mask;
+  bool is_dynamic;
+} strideslice_global_spec_t;
+
+typedef struct strideslice_local_spec {
+  strideslice_common_spec_t common;
+} strideslice_local_spec_t;
+
+typedef struct {
+  /*common param*/
+  int if_relu;
+  float relu_upper_limit;
+  int is_scale_coeff;
+  int is_bias_coeff;
+  int input_num;
+  int merge_weight_bias;
+
+  /*param for float*/
+  int scale_shape[4];
+
+  /*param for fixed*/
+  unsigned int buffer_local_addr;
+  int is_shift_coeff;
+  int round_mode;
+  int version;
+  int bias_dtype;
+} scale_local_spec_t;
+
+typedef struct split_spec {
+  int axis;
+  int split_size[MAX_SPLIT_OUTPUT_NUM];
+  int split_num;
+  uint64_t buffer_addr;
+  int input_num; // =2 means split_size is dynamic
+} split_spec_t;
+
+typedef struct swap_dim_spec {
+  int axis_num;
+  int axis_list[MAX_SHAPE_DIMS];
+  int offset_list[MAX_SHAPE_DIMS];
+  // int offset[MAX_SHAPE_DIMS];
+} swap_dim_spec_t;
+
+typedef struct {
+  int tile_coeff[MAX_SHAPE_DIMS];
+  int type;
+} tile_common_spec_t;
+
+typedef struct {
+  tile_common_spec_t common;
+  uint64_t buffer_addr;
+} tile_global_spec_t;
+
+typedef struct {
+  tile_global_spec_t spec;
+  int coeff_is_fixed;
+  int input_is_coeff;
+  int input_shape[MAX_SHAPE_DIMS];
+  int input_dims;
+  int dtype;
+} tile_global_param_t;
+
+typedef struct {
+  int tile_axis;
+  int tile_num;
+  int type;
+} tile_1d_global_param_t;
+
+typedef struct {
+  tile_common_spec_t common;
+} tile_local_spec_t;
+
+typedef struct {
+  int k;
+  int dim;
+  int descending;
+} topk_spec_t;
+
+typedef struct {
+  uint64_t input_addr;
+  uint64_t output_addr;
+  unsigned int buffer_addr; // only used for local layer
+  int input_n;
+  int input_c;
+  int input_h;
+  int input_w;
+  int scale_val;
+  int rshift_num;
+  DATA_TYPE_T input_dtype;
+  DATA_TYPE_T scale_dtype;
+  DATA_TYPE_T output_dtype;
+  ROUND_MODE_T round_mode;
+} mulshift_param_t;
+
+typedef struct {
+  int scale_val;
+  int rshift_num;
+  DATA_TYPE_T scale_dtype;
+  DATA_TYPE_T output_dtype;
+  ROUND_MODE_T round_mode;
+} dyn_mulshift_common_param_t;
+
+typedef struct {
+  dyn_mulshift_common_param_t common;
+  unsigned int buffer_addr;
+} dyn_mulshift_local_param_t;
+
+typedef struct {
+  dyn_mulshift_common_param_t common;
+} dyn_mulshift_global_param_t;
+
+typedef struct pooling_common_spec {
+  int32_t kh;
+  int32_t kw;
+  int32_t pad_h_t;
+  int32_t pad_h_b;
+  int32_t pad_w_l;
+  int32_t pad_w_r;
+  int32_t stride_h;
+  int32_t stride_w;
+  int32_t dh;
+  int32_t dw;
+  int32_t is_global_pooling;
+  int32_t is_avg_pooling;
+  int32_t avg_pooling_mode;
+  /* for float */
+  int32_t if_relu;
+  float relu_limit;
+  /* for fix8b */
+  int32_t ceil_mode;
+  int32_t round_mode;
+  int32_t avg_pooling_quant_mode;
+  int32_t max_pooling_with_mask; // 1: with mask 0: no mask
+  int32_t multiplier;
+  int32_t rshiftbits;
+  /* asymmetric quantize */
+  int32_t merge_requant;
+  float rq_scale;
+  float rq_offset;
+} pooling_common_spec_t;
+
+typedef struct {
+  int32_t buffer_addr;
+  pooling_common_spec_t common;
+} pooling_local_spec_t;
+
+typedef struct pooling3d_spec {
+  int64_t input_addr;
+  int64_t output_addr;
+  int32_t buffer_addr;
+  int32_t input_shape[5];
+  int32_t output_shape[5];
+  int32_t *kernel;
+  int32_t *stride;
+  int32_t *dilation;
+  int32_t *pad;
+  bool is_avg_pooling;
+  int32_t avg_pooling_mode;
+  int32_t avg_rd_mode;
+  /* for float */
+  int32_t if_relu;
+  float relu_limit;
+  int32_t in_dtype;
+  int32_t out_dtype;
+  /* for fix8b */
+  int32_t avg_pooling_quant_mode;
+  bool merge_requant;
+  float rq_scale;
+  float rq_offset;
+} pooling3d_spec_t;
+
+typedef struct arg_common_spec {
+  int axis;
+  int method;
+  int is_index_int32;
+  int need_val;
+} arg_common_spec_t;
+
+typedef struct arg_global_spec {
+  arg_common_spec_t common;
+} arg_global_spec_t;
+
+#ifdef __cplusplus
+}
+#endif
