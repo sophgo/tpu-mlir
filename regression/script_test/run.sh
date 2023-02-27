@@ -58,4 +58,33 @@ run_qtable.py mobilenet_v2.mlir \
   --chip bm1684x \
   -o mobilenet_qtable
 
+# do fuse preprocess
+# f32
+model_deploy.py \
+  --mlir mobilenet_v2.mlir \
+  --quantize F32 \
+  --chip bm1684x \
+  --fuse_preprocess \
+  --test_input ${REGRESSION_PATH}/image/cat.jpg \
+  --test_reference mobilenet_v2_top_outputs.npz \
+  --model mobilenet_v2_1684x_f32_fuse.bmodel
+# f16
+model_deploy.py \
+  --mlir mobilenet_v2.mlir \
+  --quantize F16 \
+  --chip bm1684x \
+  --fuse_preprocess \
+  --test_input ${REGRESSION_PATH}/image/cat.jpg \
+  --test_reference mobilenet_v2_top_outputs.npz \
+  --model mobilenet_v2_1684x_f16_fuse.bmodel
+# int8
+model_deploy.py \
+  --mlir mobilenet_v2.mlir \
+  --quantize INT8 \
+  --chip bm1684x \
+  --calibration_table mobilenet_v2_cali_table \
+  --fuse_preprocess \
+  --test_input ${REGRESSION_PATH}/image/cat.jpg \
+  --test_reference mobilenet_v2_top_outputs.npz \
+  --model mobilenet_v2_1684x_int8_fuse.bmodel
 popd

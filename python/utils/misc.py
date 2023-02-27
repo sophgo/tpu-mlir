@@ -79,6 +79,8 @@ def save_tensor_subplot(tensor, index_list, tensor_name, file_prefix):
 def parse_debug_cmd(debug_cmd):
     debug_cmd_dict = {}
     for cmd in debug_cmd.split(';'):
+        if len(cmd) == 0:
+            continue
         tmp = cmd.split('=')
         if len(tmp) == 1:
             debug_cmd_dict[tmp[0]] = None
