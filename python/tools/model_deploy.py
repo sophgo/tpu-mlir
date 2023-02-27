@@ -71,6 +71,7 @@ class DeployTool:
         self.module_name = self.module.module_name
         self.state = self.module.module_state
         self.disable_layer_group = args.disable_layer_group
+        self.merge_weight = args.merge_weight
         self.correctness = "0.99,0.90"
         if self.quantize_table:
             self.correctness = "0.99,0.85"
@@ -211,6 +212,7 @@ class DeployTool:
             self.quant_input,
             self.quant_output,
             self.disable_layer_group,
+            self.merge_weight,
         )
         if self.do_validate:
             tool.validate_model()
@@ -276,6 +278,9 @@ if __name__ == '__main__':
     parser.add_argument("--post_op", action="store_true",
                         help="if the bmodel have post handle op")
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
+    parser.add_argument("--merge_weight", action="store_true", default=False,
+                        help="merge weights into one weight binary with previous generated cvimodel")
+
     # yapf: enable
     args = parser.parse_args()
     if args.customization_format.startswith("YUV"):

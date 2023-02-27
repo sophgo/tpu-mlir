@@ -111,7 +111,8 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
   }];
 
   let arguments = (ins
-    OptionalAttr<F64ArrayAttr>:$scale
+    OptionalAttr<F64ArrayAttr>:$scale,
+    OptionalAttr<BoolAttr>:$do_compress
   );
 
   let results = (outs AnyTensor:$output);

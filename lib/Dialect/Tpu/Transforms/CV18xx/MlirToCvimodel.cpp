@@ -25,15 +25,12 @@
 #include <set>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 // #include "tpu_mlir/Support/Helper/PixeHelper.h"
 
 #define DEBUG_TYPE "mlir-to-cvimodel"
-
-static llvm::cl::opt<std::string>
-    clModelVersion("model-version", llvm::cl::desc("cvimodel version"),
-                   llvm::cl::init("latest"));
-
 #define VERSION(V0, V1, V2) (uint32_t)((V0) << 24 | (V1) << 16 | (V2) << 8)
+constexpr int64_t WEIGHT_OFFSET = (uint64_t)1 << 40;
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::tpu;
@@ -380,23 +377,21 @@ void CviModelBuilder::addRoutine(func::CallOp &call, int *layer_id) {
 FBSection CviModelBuilder::buildSection(std::string name,
                                         cvi::model::SectionType type) {
   auto fbName = fbb_.CreateString(name);
-  uint32_t offset = 0;
   auto data_u8 = std::make_shared<std::vector<uint8_t>>(coeff_size, 0);
+  std::unordered_set<int64_t> weight_set;
   for (auto weight : weights) {
+    int64_t offset = module::getAddress(weight.getOutput());
+    if (weight_set.find(offset) != weight_set.end()) {
+      continue;
+    } else {
+      weight_set.emplace(offset);
+    }
+    offset -= WEIGHT_OFFSET;
     auto data = weight.read_as_byte();
     memcpy(data_u8->data() + offset, data->data(), data->size());
-    offset += align_up((int64_t)data->size(), CV18xx::WEIGHT_ALIGNMENT);
-    LLVM_DEBUG(llvm::errs() << "buildSection offset " << offset << "\n";);
-  }
-  if(offset != coeff_size) {
-    llvm::errs() << "Warning: coeff size is not correct\n";
   }
   uint32_t bin_offset = (uint32_t)binBuffer_.size();
-  for (uint32_t i = 0; i < coeff_size; i++) {
-    binBuffer_.push_back(data_u8->at(i));
-    LLVM_DEBUG(llvm::errs() << "buildSection " << i << " "
-                            << (int)(data_u8->at(i)) << " end \n";);
-  }
+  std::copy(data_u8->begin(), data_u8->end(), std::back_inserter(binBuffer_));
   return CreateSection(fbb_, type, fbName, coeff_size, bin_offset);
 }
 

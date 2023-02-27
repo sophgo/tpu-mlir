@@ -285,7 +285,8 @@ void tpu::Conv2DOp::codegen_global_cv18xx(int64_t layer_id) {
     ga_pc_info = module::getAddress(getBias());
   }
 
-  bool do_compress = attr.groups > 1 ? false : true;
+  auto filterOp = getFilter().getDefiningOp<top::WeightOp>();
+  bool do_compress = filterOp.getDoCompress().has_value() && filterOp.getDoCompress().value();
   WeightCompresser weight_opt(this->getOperation(), do_compress);
   if (module::isUniformQuantized(getOutput())) {
     bool do_ic_alignment = getUse_3icOptimize() ? true : false;

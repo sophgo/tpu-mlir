@@ -45,6 +45,12 @@ def AddressAssign : Pass<"address-assign", "ModuleOp"> {
   let options = [
     Option<"reuse_addr", "reuse_addr", "bool", /*default=*/"true",
            "reuse tensor memory.">,
+    Option<"merge_weight", "merge_weight", "bool", /*default=*/"false",
+           "merge weight memory.">,
+    Option<"compress_weight", "compress_weight", "bool", /*default=*/"true",
+           "compress weight memory.">,
+    Option<"weight_map_file", "weight_map_file", "std::string", /*default=*/"\"_weight_map.csv\"",
+           "record weight offset with its name into a csv map file.">,
   ];
 }
 
