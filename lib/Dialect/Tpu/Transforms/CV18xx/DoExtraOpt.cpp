@@ -22,7 +22,8 @@ void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
   patterns->add<
       FuseLeakReluPattern,
       MoveConvStrideToEltwiseOpPattern,
-      SplitReluLimitPattern
+      SplitReluLimitPattern,
+      SplitReducePattern
   >(patterns->getContext());
   // clang-format on
 };
