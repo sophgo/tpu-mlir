@@ -18,3 +18,6 @@ TPU-MLIR Quick Start
    06_mix_precision
    07_to_onnx_convert
    08_test_sdk
+   09_cv18xx_guide
+   10_fuse_preprocess
+
