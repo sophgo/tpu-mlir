@@ -67,6 +67,7 @@ model_deploy.py \
   --fuse_preprocess \
   --test_input ${REGRESSION_PATH}/image/cat.jpg \
   --test_reference mobilenet_v2_top_outputs.npz \
+  --compare_all \
   --model mobilenet_v2_1684x_f32_fuse.bmodel
 # f16
 model_deploy.py \
@@ -76,6 +77,7 @@ model_deploy.py \
   --fuse_preprocess \
   --test_input ${REGRESSION_PATH}/image/cat.jpg \
   --test_reference mobilenet_v2_top_outputs.npz \
+  --compare_all \
   --model mobilenet_v2_1684x_f16_fuse.bmodel
 # int8
 model_deploy.py \
@@ -86,5 +88,6 @@ model_deploy.py \
   --fuse_preprocess \
   --test_input ${REGRESSION_PATH}/image/cat.jpg \
   --test_reference mobilenet_v2_top_outputs.npz \
+  --compare_all \
   --model mobilenet_v2_1684x_int8_fuse.bmodel
 popd
