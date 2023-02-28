@@ -25,6 +25,7 @@ def str2list(v):
         files.remove('')
     return files
 
+
 def getCustomFormat(pixel_format, channel_format):
     custom_format = ""
     if pixel_format == "rgb":
@@ -43,8 +44,9 @@ def getCustomFormat(pixel_format, channel_format):
         custom_format == "RGBA_PLANAR"
     else:
         print("pixel_format of {} no supported!".format(pixel_format))
-        assert(0)
+        assert (0)
     return custom_format
+
 
 class DeployTool:
 
@@ -87,7 +89,8 @@ class DeployTool:
         self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
         self.final_mlir = "{}_final.mlir".format(self.prefix)
         mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
-                      self.asymmetric, self.quantize_table, False, self.customization_format, self.fuse_preprocess, self.aligned_input)
+                      self.asymmetric, self.quantize_table, False, self.customization_format,
+                      self.fuse_preprocess, self.aligned_input)
         if self.do_validate:
             tool.validate_tpu_mlir()
 
@@ -110,14 +113,16 @@ class DeployTool:
                 ppa = preprocess()
                 input_shapes = []
                 for i in range(0, len(self.test_input)):
-                    print("Load config from {}, get the following preprocess args:".format(self.mlir_file))
+                    print("Load config from {}, get the following preprocess args:".format(
+                        self.mlir_file))
                     input_op = self.module.inputs[i].op
                     if i == 0:
                         #use the first input_op's shape as input_shapes
                         input_shapes.append(Operation.shape(input_op))
                     ppa.load_config(input_op)
                     if self.customization_format == None:
-                        self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
+                        self.customization_format = getCustomFormat(ppa.pixel_format,
+                                                                    ppa.channel_format)
                         print(self.customization_format)
                     config = {
                         'input_shapes': input_shapes,
@@ -147,7 +152,7 @@ class DeployTool:
                 input_op = self.module.inputs[0].op
                 ppa.load_config(input_op)
                 self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
-            assert(self.customization_format.find("YUV") < 0)
+            assert (self.customization_format.starts_with("YUV") < 0)
             if str(self.chip).lower().endswith('183x'):
                 ppa.VPSS_W_ALIGN = 32
                 ppa.VPSS_Y_ALIGN = 32
@@ -162,7 +167,7 @@ class DeployTool:
                 x = np.squeeze(data, 0)
                 if self.customization_format == "GRAYSCALE":
                     x = ppa.align_gray_frame(x, self.aligned_input)
-                elif self.customization_format.find("_PLANAR") >= 0:
+                elif self.customization_format.ends_with("_PLANAR") >= 0:
                     x = ppa.align_planar_frame(x, self.aligned_input)
                 else:
                     x = ppa.align_packed_frame(x, self.aligned_input)
@@ -185,8 +190,7 @@ class DeployTool:
         tpu_outputs = mlir_inference(self.inputs, self.tpu_mlir, self.compare_all)
         np.savez(self.tpu_npz, **tpu_outputs)
         # compare fp32 blobs and quantized tensors with tolerance similarity
-        f32_blobs_compare(self.tpu_npz, self.ref_npz,
-                          self.tolerance, self.excepts)
+        f32_blobs_compare(self.tpu_npz, self.ref_npz, self.tolerance, self.excepts)
 
     def build_model(self):
         mlir_to_model(
@@ -207,11 +211,9 @@ class DeployTool:
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz,
-                              self.correctness, self.excepts)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts)
         else:
-            f32_blobs_compare(self.model_npz, self.tpu_npz,
-                              self.correctness, self.excepts)
+            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts)
 
 
 if __name__ == '__main__':
@@ -228,47 +230,42 @@ if __name__ == '__main__':
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
-    parser.add_argument("--excepts", default='-', help="excepts")
-    parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance")
     parser.add_argument("--chip", required=True, type=str,
                         choices=['bm1686', 'bm1684x', 'bm1684',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x'],
                         help="chip platform name")
+    parser.add_argument("--model", required=True, help='output model')
+    parser.add_argument("--dynamic", action='store_true',
+                        help="do compile dynamic")
+    # fuse preprocess
+    parser.add_argument("--fuse_preprocess", action='store_true',
+                        help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
+    parser.add_argument("--customization_format", default=None, type=str,
+                        choices=supported_customization_format,
+                        help="pixel format of input frame to the model")
+    parser.add_argument("--aligned_input", action='store_true',
+                        help='if the input frame is width/channel aligned')
+    # check result
     parser.add_argument("--test_input", default="", type=str2list,
-                        help="input npy/npz/image file for inference, image is for cv18xx fuse preprocess"
+                        help="input npy/npz/image file for inference; image if fuse preprocess"
                         "if has more than one input, join npy with semicolon")
     parser.add_argument("--test_reference", default="",
                         help="reference npz file; if none, will run inner")
-    parser.add_argument("--model", required=True, help='output model')
+    parser.add_argument("--compare_all", action="store_true",
+                        help="Decide if compare all tensors when lowering")
+    parser.add_argument("--excepts", default='-', help="excepts tensors no compare")
+    parser.add_argument("--tolerance", default='0.8,0.5', help="tolerance for compare")
+    # other functions
     parser.add_argument("--quant_input", action="store_true",
                         help="strip input type cast in bmodel, need outside type conversion")
     parser.add_argument("--quant_output", action="store_true",
                         help="strip output type cast in bmodel, need outside type conversion")
-
-    parser.add_argument("--dynamic", action='store_true',
-                        help="do compile dynamic")
-    parser.add_argument("--customization_format", default=None, type=str,
-                        choices=supported_customization_format,
-                        help="pixel format of input frame to the cvimodel")
-    parser.add_argument("--fuse_preprocess", action='store_true', default=False,
-                        help="add tpu preprocesses (mean/scale/channel_swap) in the front of cvimodel")
-    parser.add_argument("--aligned_input", action='store_true', default=False,
-                        help='if the input frame is width/channel aligned')
-    parser.add_argument("--disable_layer_group", action="store_true", default=False,
+    parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
-    parser.add_argument("--compare_all", action="store_true", default=False,
-                        help="Decide if compare all tensors when lowering")
-
     # yapf: enable
     args = parser.parse_args()
-    if args.fuse_preprocess or args.aligned_input:
-        if(args.chip.find("bm168") >= 0):
-            args.fuse_preprocess = True
-        else:
-            assert(args.chip.find("cv18") >= 0)
-            if args.customization_format is not None and args.customization_format.find("YUV") >= 0:
-                args.fuse_preprocess = True
-                args.aligned_input = True
+    if args.customization_format is not None and args.customization_format.starts_with("YUV") >= 0:
+        args.aligned_input = True
 
     tool = DeployTool(args)
     # lowering to tpu

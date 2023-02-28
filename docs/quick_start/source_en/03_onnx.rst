@@ -173,6 +173,9 @@ The relevant parameters of ``model_deploy.py`` are as follows:
    * - test_reference
      - N
      - Reference data for validating mlir tolerance (in npz format). It is the result of each operator
+   * - compare_all
+     - N
+     - Compare all tensors, if set.
    * - excepts
      - N
      - Names of network layers that need to be excluded from validation. Separated by comma

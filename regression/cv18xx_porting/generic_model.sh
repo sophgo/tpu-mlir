@@ -239,7 +239,8 @@ if [ ${do_bf16} == 1 ]; then
   cmd="model_deploy.py \
     --mlir ${NET}.mlir \
     --quantize BF16 \
-    --chip ${CHIP_NAME} "
+    --chip ${CHIP_NAME} \
+    --compare_all "
   if [ x${f} != x ];then
     cmd=$cmd"--fuse_preprocess "
   fi
@@ -302,7 +303,8 @@ cmd="model_deploy.py \
   --quantize INT8 \
   ${cali_opt} \
   ${mix_opt} \
-  --chip ${CHIP_NAME} "
+  --chip ${CHIP_NAME} \
+  --compare_all "
 # fuse preprocess
 if [ x${f} != x ];then
   cmd=$cmd"--fuse_preprocess "

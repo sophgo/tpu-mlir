@@ -224,6 +224,7 @@ if [ ${do_f32} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.99,0.99 \
+    --compare_all \
     --model ${model_name}_${chip_name}_f32.${model_type}
 fi
 
@@ -236,6 +237,7 @@ if [ ${do_f16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
+    --compare_all \
     --model ${model_name}_${chip_name}_f16.${model_type}
 fi
 
@@ -248,6 +250,7 @@ if [ ${do_bf16} == 1 ]; then
     ${test_reference_opt} \
     ${excepts_opt} \
     --tolerance 0.95,0.85 \
+    --compare_all \
     --model ${model_name}_${chip_name}_bf16.${model_type}
 fi
 
@@ -303,6 +306,7 @@ if [ ${do_symmetric} == 1 ]; then
     ${test_reference_opt} \
     ${tolerance_sym_opt} \
     ${excepts_opt} \
+    --compare_all \
     --quant_input \
     --quant_output \
     --model ${model_name}_${chip_name}_int8_sym.${model_type}
@@ -327,6 +331,7 @@ if [ $do_asymmetric == 1 ]; then
     ${test_reference_opt} \
     ${tolerance_asym_opt} \
     ${excepts_opt} \
+    --compare_all \
     --model ${model_name}_${chip_name}_int8_asym.${model_type}
 
 fi #do_asymmetric
@@ -368,6 +373,7 @@ if [ $do_dynamic == 1 ]; then
       --mlir ${static_model_name}.mlir \
       --quantize F32 \
       --chip ${chip_name} \
+      --compare_all \
       --model ${static_model}
 
     model_deploy.py \
@@ -379,6 +385,7 @@ if [ $do_dynamic == 1 ]; then
       ${dyn_test_reference_opt} \
       ${excepts_opt} \
       --tolerance 0.99,0.99 \
+      --compare_all \
       --model ${dynamic_model}
 
     model_runner.py --input ${static_input_npz} \

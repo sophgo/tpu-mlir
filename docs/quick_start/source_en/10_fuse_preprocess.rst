@@ -1,6 +1,6 @@
 Use TPU for Preprocessing
 ==========================
-At present, the two main series of chips supported by TPU-MLIR are BM1684X and CV18XX. Both of them support common image preprocessing fusion. The developer can pass the preprocessing arguments during the compilation process, and the compiler will directly insert the corresponding preprocessing operators into the generated model. The generated bmodel or cvimodel can directly use the unpreprocessed image as input and use TPU to do the preprocessing.
+At present, the two main series of chips supported by TPU-MLIR are BM168x and CV18xx. Both of them support common image preprocessing fusion. The developer can pass the preprocessing arguments during the compilation process, and the compiler will directly insert the corresponding preprocessing operators into the generated model. The generated bmodel or cvimodel can directly use the unpreprocessed image as input and use TPU to do the preprocessing.
 
 .. list-table:: Supported Preprocessing Type
    :align: center
@@ -8,7 +8,7 @@ At present, the two main series of chips supported by TPU-MLIR are BM1684X and C
    :header-rows: 1
 
    * - Preprocessing Type
-     - BM1684X
+     - BM168x
      - CV18xx
    * - Crop
      - True
@@ -23,7 +23,7 @@ At present, the two main series of chips supported by TPU-MLIR are BM1684X and C
      - False
      - True
 
-The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the model_transform tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data (i.e., data in unsigned int8 format) into data in a quantized format, such as directly converting image data into symmetric INT8 data. CV18XX currently supports BF16 and INT8 symmetric quantization, while BM1684X supports F32, F16, BF16 and INT8 symmetric quantization.
+The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the model_transform tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data.
 
 To integrate preprocessing into the model, you need to speficy the "--fuse_preprocess" argument when using the model_deploy tool, and the test_input should be an image of the original format (i.e., jpg, jpeg and png format). There will be a preprocessed npz file of input named ``${model_name}_in_ori.npz`` generated. In addition, there is a "--customization_format" argument to specify the original image format input to the model. The supported image formats are described as follows:
 
@@ -33,8 +33,12 @@ To integrate preprocessing into the model, you need to speficy the "--fuse_prepr
 
    * - customization_format
      - Description
-     - BM1684X
-     - CV18XX
+     - BM168x
+     - CV18xx
+   * - None
+     - same with model format, do nothing, as default
+     - True
+     - True
    * - RGB_PLANAR
      - rgb color order and nchw tensor format
      - True
@@ -72,14 +76,14 @@ To integrate preprocessing into the model, you need to speficy the "--fuse_prepr
      - False
      - True
 
-The "YUV*" type format is the special input format of CV18XX series chips. When the order of the color channels in the customization_format is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding customization_format will be automatically set according to the pixel_format and channel_format arguments defined when using the model_transform tool.
+The "YUV*" type format is the special input format of CV18xx series chips. When the order of the color channels in the customization_format is different from the model input, a channel conversion operation will be performed. If the customization_format argument is not specified, the corresponding customization_format will be automatically set according to the pixel_format and channel_format arguments defined when using the model_transform tool.
 
 Model Deployment Example
 -------------------------
 Take the mobilenet_v2 model as an example, use the model_transform tool to generate the original mlir, and the run_calibration tool to generate the calibration table in the tpu-mlir/regression/regression_out/ directory (refer to the chapter "Compiling the ONNX Model" for more details).
 
 
-Deploy to BM1684X
+Deploy to BM168x
 ~~~~~~~~~~~~~~~~~~~
 
 The command to generate the preprocess-fused symmetric INT8 quantized bmodel model is as follows:
@@ -95,11 +99,10 @@ The command to generate the preprocess-fused symmetric INT8 quantized bmodel mod
        --test_reference mobilenet_v2_top_outputs.npz \
        --tolerance 0.96,0.70 \
        --fuse_preprocess \
-       --customization_format RGB_PLANAR \
        --model mobilenet_v2_bm1684x_int8_sym_fuse_preprocess.bmodel
 
 
-Deploy to CV18XX
+Deploy to CV18xx
 ~~~~~~~~~~~~~~~~~
 
 The command to generate the preprocess-fused symmetric INT8 quantized cvimodel model are as follows:
