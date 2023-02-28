@@ -145,6 +145,8 @@ FW_LAYER_TYPE_T get_layer_type(Operation *op) {
     return FW_BMNET_CONST_BINARY;
   } else if (isa<tpu::RoiAlignOp>(op)) {
     return FW_BMNET_ROI_ALIGN;
+  } else if (isa<tpu::YoloDetectionOp>(op)) {
+    return FW_BMNET_YOLOV3_DETECT_OUT;
   } else
     return FW_LAYER_UNKNOWN;
 }

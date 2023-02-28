@@ -86,7 +86,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       TanhLowering,
       TopKLowering,
       ReverseLowering,
-      PixelNormLowering
+      PixelNormLowering,
+      YoloDetectionLowering
       // clang-format on
       >(patterns->getContext());
 }

@@ -78,6 +78,7 @@ class DeployTool:
         self.prefix = "{}_{}_{}".format(self.module_name, self.chip, self.quantize)
         self.dynamic = args.dynamic
         self.compare_all = args.compare_all
+        self.post_op = args.post_op
         if self.quantize == "int8":
             if self.asymmetric:
                 self.prefix += "_asym"
@@ -207,13 +208,13 @@ class DeployTool:
 
     def validate_model(self):
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
-        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
-        model_outputs = model_inference(self.inputs, self.model)
+        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz, self.post_op)
+        model_outputs = model_inference(self.inputs, self.model, self.post_op)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, self.post_op)
         else:
-            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts)
+            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, self.post_op)
 
 
 if __name__ == '__main__':
@@ -262,6 +263,8 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
+    parser.add_argument("--post_op", default=False, type=bool,
+                        help="if the bmodel have post handle op")
     # yapf: enable
     args = parser.parse_args()
     if args.customization_format is not None and args.customization_format.starts_with("YUV") >= 0:

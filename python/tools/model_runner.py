@@ -42,8 +42,8 @@ def fp32_to_bf16(d_fp32):
     return d_bf16.reshape(s)
 
 
-def show_fake_cmd(in_npz: str, model: str, out_npz: str):
-    print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
+def show_fake_cmd(in_npz: str, model: str, out_npz: str, post_op=False):
+    print("[CMD]: model_runner.py --input {} --model {} --output {} --post_op {}".format(in_npz, model, out_npz, post_op))
 
 
 def get_chip_from_model(model_file: str) -> str:
@@ -72,13 +72,13 @@ def pack_bmodel_context(model_file, net):
             o.data.tofile(f)
 
 
-def model_inference(inputs: dict, model_file: str) -> dict:
+def model_inference(inputs: dict, model_file: str, post_op=False) -> dict:
     pyruntime = "pyruntime_"
     is_cv18xx = False
     is_dynamic = False
     if model_file.endswith(".bmodel"):
         pyruntime = pyruntime + "bm"
-        is_dynamic = is_dynamic_model(model_file)
+        is_dynamic = is_dynamic_model(model_file) or post_op
         chip = get_chip_from_model(model_file)
         # trick for runtime link chip cmodel
         lib_so = 'libcmodel_1684x.so'
@@ -358,6 +358,8 @@ if __name__ == '__main__':
                         help="dump all tensors to output file")
     parser.add_argument("--debug", type=str, nargs="?", const="",
                         help="configure the debugging information.")
+    parser.add_argument("--post_op", default=False, type=bool,
+                        help="if the bmodel have post handle op")
     # yapf: enable
     args = parser.parse_args()
     data = np.load(args.input)
@@ -371,7 +373,7 @@ if __name__ == '__main__':
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
         output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
-        output = model_inference(data, args.model)
+        output = model_inference(data, args.model, args.post_op)
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     np.savez(args.output, **output)

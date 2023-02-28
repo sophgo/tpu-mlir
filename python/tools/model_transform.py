@@ -29,11 +29,11 @@ class ModelTransformer(object):
     def cleanup(self):
         pass
 
-    def model_transform(self, mlir_file: str):
+    def model_transform(self, mlir_file: str, post_handle_type=""):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
         self.converter.generate_mlir(mlir_origin)
-        mlir_opt_for_top(mlir_origin, self.mlir_file)
+        mlir_opt_for_top(mlir_origin, self.mlir_file, post_handle_type)
         print("Mlir file generated:{}".format(mlir_file))
 
         self.module_parsered = MlirParser(self.mlir_file)
@@ -203,12 +203,14 @@ if __name__ == '__main__':
     parser.add_argument("--tolerance", default='0.99,0.99',
                         help="minimum similarity tolerance to model transform")
     parser.add_argument("--excepts", default='-', help="excepts")
+    parser.add_argument("--post_handle_type", default="", type=str,
+                         help="post handle type, such as yolo,ssd etc")
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
     args = parser.parse_args()
     tool = get_model_transform(args)
-    tool.model_transform(args.mlir)
+    tool.model_transform(args.mlir, args.post_handle_type)
     if args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)

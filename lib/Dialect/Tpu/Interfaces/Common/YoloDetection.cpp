@@ -7,24 +7,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Top/IR/TopOps.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include <algorithm>
+#include <queue>
+#include <vector>
 
+LogicalResult tpu::YoloDetectionOp::init(InferenceParameter &p) { return success(); }
+void tpu::YoloDetectionOp::deinit(InferenceParameter &p) {}
 
-
-int64_t top::YoloDetectionOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
-
-LogicalResult top::YoloDetectionOp::init(InferenceParameter &p) {
-  return success();
-}
-void top::YoloDetectionOp::deinit(InferenceParameter &p) {}
-
-LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
+LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   YoloDetParam param;
   param.class_num = getClassNum();
   param.net_input_h = getNetInputH();
