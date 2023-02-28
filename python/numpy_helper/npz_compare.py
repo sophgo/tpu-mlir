@@ -52,6 +52,8 @@ def parse_args(args_list):
                         type=int,
                         default=-1,
                         help="Compare along axis, usually along axis 1 as per-channel")
+    parser.add_argument("--post_op", default=False, type=bool,
+                        help="if the bmodel have post handle op")
     args = parser.parse_args(args_list)
     return args
 
@@ -201,9 +203,15 @@ def npz_compare(args_list):
         for name in compare_process_name_list:
             pbar.set_description("compare {}".format(name))
             pbar.update(1)
-            p = multiprocessing.Process(target=compare_one_array,
-                                        args=(tc, npz1, npz2, name, args.verbose, lock, dic,
-                                              int8_tensor_close, args.per_axis_compare))
+            if args.post_op:
+                #Todo: select the minimum shape as the base to compare
+                p = multiprocessing.Process(target=compare_one_array,
+                                            args=(tc, npz1, npz2, name, args.verbose, lock, dic,
+                                                int8_tensor_close, args.per_axis_compare))
+            else:
+                p = multiprocessing.Process(target=compare_one_array,
+                                            args=(tc, npz1, npz2, name, args.verbose, lock, dic,
+                                                int8_tensor_close, args.per_axis_compare))
             processes.append(p)
             p.start()
 

@@ -11,7 +11,7 @@ import os
 def _os_system(cmd: list):
     cmd_str = ""
     for s in cmd:
-        cmd_str += s + " "
+        cmd_str += str(s) + " "
     print("[Running]: {}".format(cmd_str))
     ret = os.system(cmd_str)
     if ret == 0:
@@ -20,18 +20,32 @@ def _os_system(cmd: list):
         raise RuntimeError("[!Error]: {}".format(cmd_str))
 
 
-def mlir_opt_for_top(mlirfile, opt_mlirfile):
-    cmd = [
-        "tpuc-opt",
-        "--init",
-        "--canonicalize",
-        "--mark-FLOPs",
-        "--save-weight",
-        "--mlir-print-debuginfo",
-        mlirfile,
-        "-o",
-        opt_mlirfile,
-    ]
+def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
+    if len(post_handle_type) > 0:
+        cmd = [
+            "tpuc-opt",
+            "--init",
+            "--canonicalize",
+            f"--post-handle=\"type={post_handle_type}\"",
+            "--mark-FLOPs",
+            "--save-weight",
+            "--mlir-print-debuginfo",
+            mlirfile,
+            "-o",
+            opt_mlirfile,
+        ]
+    else:
+        cmd = [
+            "tpuc-opt",
+            "--init",
+            "--canonicalize",
+            "--mark-FLOPs",
+            "--save-weight",
+            "--mlir-print-debuginfo",
+            mlirfile,
+            "-o",
+            opt_mlirfile,
+        ]
     _os_system(cmd)
 
 
@@ -144,8 +158,8 @@ def mlir_to_model(tpu_mlir: str,
         pass
 
 
-def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True):
-    cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
+def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, post_op=False):
+    cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance, "--post_op", post_op]
     if excepts:
         cmd.extend(["--except", excepts])
     if show_detail:

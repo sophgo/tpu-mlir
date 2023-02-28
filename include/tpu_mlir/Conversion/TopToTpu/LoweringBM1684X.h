@@ -105,5 +105,6 @@ LOWERING_BM1684X(Unpack)
 LOWERING_BM1684X(Upsample)
 LOWERING_BM1684X(Where)
 LOWERING_BM1684X(PixelNorm)
+LOWERING_BM1684X(YoloDetection)
 } // namespace bm1684x
 } // namespace tpu_mlir

@@ -21,6 +21,12 @@
 
 namespace tpu_mlir {
 
+static void sigmoid_batch(float *x, const int n) {
+  for (int i = 0; i < n; ++i) {
+    x[i] = 1.0f / (1.0f + exp(-x[i]));
+  }
+}
+
 static float softplus_activate(float x) {
   return std::log(std::exp(x) + 1);
 }
@@ -682,7 +688,6 @@ void YoloDetectionFunc::invoke() {
   auto top_data = param_.output.ptr;
   memset(top_data, 0, param_.output.size);
   int batch = param_.output.shape[0];
-
   size_t bottom_count = param_.inputs.size();
   assert(_anchors.size() == bottom_count * 6);
   float(*anchors)[6] = (float(*)[6])_anchors.data();
@@ -727,6 +732,7 @@ void YoloDetectionFunc::invoke() {
     auto batch_output_data = top_data + b * param_.output.shape[1] *
                                             param_.output.shape[2] *
                                             param_.output.shape[3];
+
     for (int i = 0; i < keep_topk; ++i) {
       batch_output_data[count++] = dets[i].bbox.x;
       batch_output_data[count++] = dets[i].bbox.y;
@@ -734,7 +740,6 @@ void YoloDetectionFunc::invoke() {
       batch_output_data[count++] = dets[i].bbox.h;
       batch_output_data[count++] = dets[i].cls;
       batch_output_data[count++] = dets[i].score;
-
       // TPU_LOG_DEBUG("x = %f, y = %f, w = %f, h = %f, class = %d, score =
       // %f\n",
       //               dets[i].bbox.x, dets[i].bbox.y, dets[i].bbox.w,
@@ -1502,6 +1507,231 @@ void RetinaFaceDetectionFunc::invoke() {
         batch_top_data[count++] = preds[i].x[j];
         batch_top_data[count++] = preds[i].y[j];
       }
+    }
+  }
+}
+
+static void get_region_box2_opt(
+    std::vector<float> &b, float* x, float* biases, int n,
+    int i, int j, int lw, int lh, int w, int h) {
+  b.clear();
+  b.push_back((i + (x[0])) / lw);
+  b.push_back((j + (x[1])) / lh);
+  b.push_back(exp(x[2]) * biases[2 * n] / (w));
+  b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
+}
+
+bool BoxSortDecendScore(const PredictionResult& box1, const PredictionResult& box2) {
+  return box1.confidence > box2.confidence;
+}
+
+template <typename Dtype>
+void ApplyNms_opt(std::vector<PredictionResult>& boxes, std::vector<int>& idxes, Dtype threshold) {
+  int bbox_cnt = (int)boxes.size();
+  // init the map
+  uint32_t map[bbox_cnt / 32 + 1];
+  memset(map, 0xFF, sizeof(map));
+
+  for (int i = 0; i < bbox_cnt - 1; ++i) {
+    // skip the dropped bbox
+    if (!(map[i / 32] & (1 << (i % 32))))
+      continue;
+
+    for (int j = i + 1; j < bbox_cnt; ++j) {
+      // skip the dropped bbox
+      if (!(map[j / 32] & (1 << (j % 32))))
+        continue;
+
+      box Bbox1, Bbox2;
+      Bbox1.x = boxes[i].x;
+      Bbox1.y = boxes[i].y;
+      Bbox1.w = boxes[i].w;
+      Bbox1.h = boxes[i].h;
+      Bbox2.x = boxes[j].x;
+      Bbox2.y = boxes[j].y;
+      Bbox2.w = boxes[j].w;
+      Bbox2.h = boxes[j].h;
+
+      Dtype iou = box_iou(Bbox1, Bbox2);
+      if (iou >= threshold) {
+        map[j / 32] &= ~(1 << (j % 32));
+      }
+    }
+  }
+
+  for (int i = 0; i < bbox_cnt; ++i) {
+    if (map[i / 32] & (1 << (i % 32))) {
+      idxes.push_back(i);
+    }
+  }
+}
+
+Yolo_v2_DetectionFunc::Yolo_v2_DetectionFunc(YoloDetParam &param) : param_(param) {
+  std::istringstream iss(param_.anchors);
+  std::string s;
+  while (std::getline(iss, s, ',')) {
+    _anchors.push_back(atof(s.c_str()));
+  }
+  std::sort(param_.inputs.begin(), param_.inputs.end(),
+            [](const tensor_list_t &a, const tensor_list_t &b) {
+              return a.shape[3] > b.shape[3];
+            });
+  if (param_.tiny) {
+    assert(param_.inputs.size() == 2);
+    if (_anchors.size() == 0) {
+      _anchors = {
+          10, 14, 23,  27,  37,  58, // layer23-conv (26*26)
+          81, 82, 135, 169, 344, 319 // layer16-conv (13*13)
+      };
+    }
+  } else {
+    assert(param_.inputs.size() == 3);
+    if (_anchors.size() == 0) {
+      if (param_.yolo_v4) {
+        _anchors = {
+            142, 110, 192, 243, 459, 401, // layer161-conv
+            36,  75,  76,  55,  72,  146, // layer150-conv
+            12,  16,  19,  36,  40,  28,  // layer139-conv
+        };
+      } else {
+        // Yolov3 default anchors
+        _anchors = {
+            10,  13, 16,  30,  33,  23,  // layer106-conv (52*52)
+            30,  61, 62,  45,  59,  119, // layer94-conv  (26*26)
+            116, 90, 156, 198, 373, 326  // layer82-conv  (13*13)
+        };
+      }
+    }
+  }
+}
+
+void Yolo_v2_DetectionFunc::invoke(int &total_num) {
+  auto top_data = param_.output.ptr;
+  memset(top_data, 0, param_.output.size);
+  int batch_num = param_.inputs[0].shape[0];
+  int bottom_num = param_.inputs.size();
+  assert(_anchors.size() == bottom_num * 6);
+  int len = 4 + param_.class_num + 1;
+  int mask_offset = 0;
+  const int num = batch_num;
+  std::vector<PredictionResult > total_preds;
+  total_preds.clear();
+
+  // calc the threshold for Po
+  float po_thres = -std::log(1 / param_.obj_threshold - 1);
+  std::vector<float> class_score;
+  for (int b = 0; b < batch_num; b++) {
+    std::vector<PredictionResult> predicts;
+    predicts.clear();
+    mask_offset = 0;
+    for (int index = 0; index < bottom_num; index++) {
+      int h = (int)param_.inputs[index].shape[2];
+      int w = (int)param_.inputs[index].shape[3];
+      int stride = h * w;
+      const float* input_data = param_.inputs[index].ptr;
+      for (int cy = 0; cy < h; cy++) {
+        for (int cx = 0; cx < w; cx++) {
+          for (int n = 0; n < param_.num_boxes; n++) {
+            int index = b * param_.num_boxes * len * stride +
+                          n * len * stride +
+                          cy * w + cx;
+            std::vector<float> pred;
+            class_score.clear();
+
+            // Po/Pmax/tx/ty/tw/th
+            float swap_data[6] = {0};
+
+            // filter bbxo by Po
+            int index_po = 4 * stride + index;
+            if (input_data[index_po] <= po_thres)
+              continue;
+
+            for (int c = 0; c < len; ++c) {
+              int index2 = c * stride + index;
+              if (c > 4) {
+                class_score.push_back(input_data[index2]);
+              } else {
+                if (c == 4) {
+                  swap_data[0] = input_data[index2];
+                } else {
+                  swap_data[c + 2] = input_data[index2];
+                }
+              }
+            }
+
+            PredictionResult predict;
+            swap_data[1] = *std::max_element(class_score.begin(), class_score.end());
+            int arg_max = std::distance(class_score.begin(),
+              std::max_element(class_score.begin(), class_score.end()));
+
+            sigmoid_batch(swap_data, 4);
+            // Pmax = Pmax * Po
+            swap_data[1] = swap_data[0] * swap_data[1];
+
+            if (swap_data[1] > param_.obj_threshold) {
+              get_region_box2_opt(
+                  pred, &swap_data[2], _anchors.data(), param_.mask[n + mask_offset],
+                  cx, cy, w, h, param_.net_input_w, param_.net_input_h);
+
+              predict.idx = b;
+              predict.x = pred[0];
+              predict.y = pred[1];
+              predict.w = pred[2];
+              predict.h = pred[3];
+              predict.classType = arg_max;
+              predict.confidence = swap_data[1];
+              predicts.push_back(predict);
+            }
+          }
+        }
+      }
+      mask_offset += param_.mask_group_size;
+    }
+
+    // NMS for each image
+    std::vector<int> idxes;
+    idxes.clear();
+
+    int num_kept = 0;
+    if (predicts.size() > 0) {
+      std::stable_sort(predicts.begin(), predicts.end(), BoxSortDecendScore);
+      //sprintf(str, "Sort Box (batch %d)", b);
+
+      ApplyNms_opt(predicts, idxes, param_.nms_threshold);
+      num_kept = idxes.size();
+      //sprintf(str, "NMS %d Boxes (batch %d)", num_kept, b);
+
+      if (param_.keep_topk > 0) {
+        if (num_kept > param_.keep_topk)    num_kept = param_.keep_topk;
+      } else {
+        if (num_kept > KEEP_TOP_K)    num_kept = KEEP_TOP_K;
+      }
+
+      for (int i=0; i < num_kept; i++) {
+        total_preds.push_back(predicts[idxes[i]]);
+      }
+      total_num += num_kept;
+    }
+  }
+
+  if (total_num == 0) {
+    total_num = num;
+    // Generate fake results per image.
+    for (int i = 0; i < num; ++i) {
+      top_data[0] = i;
+      for (int j = 1; j < 7; ++j)
+        top_data[j] = -1;
+      top_data += 7;
+    }
+  } else {
+    for (int i = 0; i < total_num; i++) {
+      top_data[i*7+0] = total_preds[i].idx;         // Image_Id
+      top_data[i*7+1] = total_preds[i].classType;   // label
+      top_data[i*7+2] = total_preds[i].confidence;  // confidence
+      top_data[i*7+3] = total_preds[i].x;
+      top_data[i*7+4] = total_preds[i].y;
+      top_data[i*7+5] = total_preds[i].w;
+      top_data[i*7+6] = total_preds[i].h;
     }
   }
 }

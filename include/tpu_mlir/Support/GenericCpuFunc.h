@@ -20,7 +20,7 @@
 namespace tpu_mlir {
 #define MAX_DET 200
 #define MAX_DET_RAW 500
-
+#define KEEP_TOP_K    200
 enum Decode_CodeType {
   PriorBoxParameter_CodeType_CORNER = 1,
   PriorBoxParameter_CodeType_CENTER_SIZE = 2,
@@ -113,12 +113,34 @@ struct YoloDetParam {
   bool tiny;
   bool yolo_v4;
   bool spp_net;
+  int64_t num_boxes;
+  int64_t mask_group_size;
+  float mask[9];
 };
 
 class YoloDetectionFunc {
 public:
   YoloDetectionFunc(YoloDetParam &param);
   void invoke();
+private:
+  YoloDetParam param_;
+  std::vector<float> _anchors;
+};
+
+struct PredictionResult {
+  float x;
+  float y;
+  float w;
+  float h;
+  float idx;
+  float confidence;
+  int classType;
+};
+
+class Yolo_v2_DetectionFunc {
+public:
+  Yolo_v2_DetectionFunc(YoloDetParam &param);
+  void invoke(int &total_num);
 private:
   YoloDetParam param_;
   std::vector<float> _anchors;

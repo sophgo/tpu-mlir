@@ -1918,4 +1918,30 @@ def Tpu_RoiAlignOp: Tpu_Op<"RoiAlign"> {
   let results = (outs AnyTenor:$output);
 }
 
+def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
+  let summary = "YoloDetection operator";
+  let description = [{
+    Perform yolo detection on feature map
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    I64Attr:$net_input_h,
+    I64Attr:$net_input_w,
+    F64Attr:$nms_threshold,
+    F64Attr:$obj_threshold,
+    I64Attr:$keep_topk,
+    DefaultValuedAttr<BoolAttr, "false">:$spp_net,
+    DefaultValuedAttr<BoolAttr, "false">:$tiny,
+    DefaultValuedAttr<BoolAttr, "false">:$yolo_v4,
+    DefaultValuedAttr<I64Attr, "80">:$class_num,
+    DefaultValuedAttr<StrAttr, "">:$anchors,
+    DefaultValuedAttr<I64Attr, "0">:$flag,
+    DefaultValuedAttr<I64Attr, "3">:$num_boxes,
+    DefaultValuedAttr<I64Attr, "3">:$mask_group_size,
+    DefaultValuedAttr<ConfinedAttr<I64ArrayAttr, [ArrayCount<3>]>, "0">:$scale,
+    DefaultValuedAttr<ConfinedAttr<I64ArrayAttr, [ArrayCount<9>]>, "0">:$mask
+  );
+
+  let results = (outs AnyTensor:$output);
+}
 #endif // TPU_OPS

@@ -79,4 +79,14 @@ def AlignInput : Pass<"align-input", "ModuleOp"> {
   ];
   let dependentDialects = ["TopDialect", "mlir::quant::QuantizationDialect"];
 }
+
+def PostHandle : Pass<"post-handle", "ModuleOp"> {
+  let summary = "post handle in mlir by tpuc-opt";
+  let constructor = "createPostHandlePass()";
+  let dependentDialects = ["TopDialect"];
+  let options = [
+      Option<"type", "type", "std::string", /*default=*/"",
+             "type of post-handle.">
+  ];
+}
 #endif
