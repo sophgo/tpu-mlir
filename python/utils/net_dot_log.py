@@ -14,7 +14,7 @@ import graphviz as gz
 # which can realize the association between node related logs and the
 # network structure, and facilitate the analysis and positioning of problems
 class net_dot_log:
-    def __init__(self, dot_log_path, logger = None):
+    def __init__(self, dot_log_path, parser, logger = None):
         self.topo_idx = 0
         self.dot = None
         # self.dot = gz.Digraph()
@@ -23,6 +23,12 @@ class net_dot_log:
         self.node_attr_map = {}
         self.first_region_name = None
         self.logger = logger
+        for op in parser.ops:
+            pre_ops = parser.get_pre_op_by_op_name(op.name)
+            op_type = op.type.split('.')[-1]
+            if op_type == 'Conv' and int(op.attrs['group'].split(':')[0].strip()) > 1:
+                op_type = f'{op_type}_depth'
+            self.append_input_edge_and_node(pre_ops, op.name, op_type)
 
     def append_input_edge_and_node(self, input_edges, node:str, type:str, log_str:str = None):
         if self.dot is None:
@@ -72,7 +78,7 @@ class net_dot_log:
             log_str = info[3]
             if log_str is None:
                 log_str = '\lno log'
-            tmp_str = f'idx:{info[0]}  name:{node}  type:{info[1]}'
+            tmp_str = f'idx:{info[0]}  name:{node}  type:{info[1]}\n'
             if self.first_region_name is not None:
                 tmp_str += f'\l>>>{self.first_region_name}:'
             tmp_str += log_str

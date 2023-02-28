@@ -34,8 +34,7 @@ SKIP_OPERATION = [
 ]
 
 FLOAT_MAP = {
-    #"bm1684x": "F16",
-    "bm1684x": "F32",
+    "bm1684x": "F16",
     "bm1684": "F32",
     "cv183x": "BF16",
     "cv182x": "BF16",
@@ -101,6 +100,13 @@ class MixQuantModel:
         for k in extra_input_data_dict:
             print(f'infer_from set_extra_tensor:{k}')
             self.module.set_tensor_from_int(k, extra_input_data_dict[k])
+            next_ops = self.parser.get_next_op_by_op_name(k)
+            print(f'infer_from {k}\'s next_ops:{next_ops}')
+            for next_op in next_ops:
+                op = self.parser.get_op_by_op_name(next_op)
+                if op.type == "tpu.Cast":
+                    print(f'invoke_at CastOp:{next_op}')
+                    self.module.invoke_at(next_op)
         print(f'invoke_from {top_op_name}')
         self.module.invoke_from(top_op_name)
         outputs = {}
@@ -133,7 +139,6 @@ class MixPrecSearcher:
         log_level = "DEBUG" if 'debug_log' in self.debug_cmd else "INFO"
         self.logger = logger('MixPrecSearcher', log_level=log_level)
         self._init_inputs(args)
-        self.dot_log = net_dot_log('mix_prec_result', self.logger)
 
     def disable_print(self):
         if 'debug_log' not in self.debug_cmd:
@@ -316,15 +321,16 @@ class MixPrecSearcher:
                 if layer in data_dict[i]:
                     if data_dict[i][layer][1] <= 1:
                         data_dict[i].pop(layer)
-                        self.logger.print_dbg(f'pop {layer}')
+                        if i == 0:
+                            self.logger.print_dbg(f'pop {layer}')
                     else:
                         data_dict[i][layer][1] -= 1
-                        self.logger.print_dbg(f'dec {layer} refcount')
+                        if i == 0:
+                            self.logger.print_dbg(f'dec {layer} refcount')
 
         self.logger.print_dbg('data_dict status:')
-        for i in data_dict:
-            for layer in data_dict[i]:
-                self.logger.print_dbg(f'idx:{i}, layer:{layer} exist, refcount:{data_dict[i][layer][1]}')
+        for layer in data_dict[0]:
+            self.logger.print_dbg(f'layer:{layer} exist, refcount:{data_dict[0][layer][1]}')
 
     def gen_ref_tensor(self, i, op_name, data_dict, model, is_int8_data = False):
         if op_name in data_dict[i]:
@@ -431,11 +437,40 @@ class MixPrecSearcher:
         for idx in range(self.num_sample):
             self.clear_tensor(idx, op_name, data_dict, parser, all_pre_layers)
 
-    def collect_op_input_tensor(self, idx, op_name, extra_input, fp32_layer_list = None):
+    def clear_ref_tensor2(self, op_name, top_parser, int8_parser, data_dict):
+        all_pre_layers = []
+        find_all_pre_layers(all_pre_layers, op_name, top_parser, list(data_dict[0].keys()))
+        all_pre_layers2 = []
+        find_all_pre_layers(all_pre_layers2, op_name, int8_parser, list(data_dict[0].keys()))
+        all_pre_layers.extend(all_pre_layers2)
+        all_pre_layers = set(all_pre_layers)
+        all_pre_layers_used = len(all_pre_layers)*[False]
+        for i,layer in enumerate(all_pre_layers):
+            if self.layer_used_by_successor_op(layer, op_name, top_parser):
+                all_pre_layers_used[i] = True
+            if self.layer_used_by_successor_op(layer, op_name, int8_parser):
+                all_pre_layers_used[i] = True
+        for i in range(self.num_sample):
+            for used, layer in zip(all_pre_layers_used, all_pre_layers):
+                if not used:
+                    if layer in data_dict[i]:
+                        if data_dict[i][layer][1] <= 1:
+                            data_dict[i].pop(layer)
+                            if i == 0:
+                                self.logger.print_dbg(f'pop {layer}')
+                        else:
+                            data_dict[i][layer][1] -= 1
+                            if i == 0:
+                                self.logger.print_dbg(f'dec {layer} refcount')
+        self.logger.print_dbg('data_dict status:')
+        for layer in data_dict[0]:
+            self.logger.print_dbg(f'  layer:{layer} exist, refcount:{data_dict[0][layer][1]}')
+
+    def collect_op_input_tensor(self, idx, op_name, extra_input, fp_layer_list = None):
         input_data_dict = {}
         for i, input in enumerate(self.parser.get_pre_op_by_op_name(op_name)):
             self.logger.print_dbg(f'{op_name}\'s top input{i}:{input}')
-            if fp32_layer_list is not None and input in fp32_layer_list:
+            if fp_layer_list is not None and input in fp_layer_list:
                 input_data_dict[input] = self.get_input_fp32_tensor(idx, input)
             else:
                 input_data_dict[input] = self.get_input_int8_tensor(idx, input)
@@ -444,7 +479,7 @@ class MixPrecSearcher:
         extra_input_data_dict = {}
         for i, input in enumerate(extra_input):
             self.logger.print_dbg(f'{op_name}\'s other input{i}:{input}')
-            if fp32_layer_list is not None and input in fp32_layer_list:
+            if fp_layer_list is not None and input in fp_layer_list:
                 extra_input_data_dict[input] = self.get_input_fp32_tensor(idx, input)
             else:
                 extra_input_data_dict[input] = self.get_input_int8_tensor(idx, input)
@@ -452,8 +487,7 @@ class MixPrecSearcher:
 
     def run(self):
         t0 = time.time()
-        layer_cos_list = list()
-        predictions_gt = list()
+        layer_cos_list, predictions_gt, fp_layer_list = [], [], []
         os.system('rm -rf tensor_diff_fp32_vs_int8;mkdir -p tensor_diff_fp32_vs_int8/')
 
         # set all layer as float
@@ -483,9 +517,8 @@ class MixPrecSearcher:
             exit(0)
 
         #mixing precision of each layer is automatically selected according to the cosine of each laye
-        fp32_layer_list = []
-        layer_cos_list.clear()
-        self.dot_log.add_new_log_region('compute cos and set fp32 layer')
+        self.dot_log = net_dot_log('mix_prec_result', int8_model.parser, self.logger)
+        self.dot_log.add_new_log_region(f'compute cos and set {self.mix_mode} layer')
         top_op_names = self.parser.get_op_name_list()
         max_fp32_layer_num = len(top_op_names)//4
         fp_op_names = float_model.parser.get_op_name_list()
@@ -493,13 +526,7 @@ class MixPrecSearcher:
         int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
         int8_op_names = int8_model.parser.get_op_name_list()
         ret = None
-        for op in int8_model.parser.ops:
-            pre_ops = int8_model.parser.get_pre_op_by_op_name(op.name)
-            op_type = op.type.split('.')[-1]
-            if op.type == 'top.Conv' and int(op.attrs['group'].split(':')[0].strip()) > 1:
-                op_type = f'{op_type}_depth'
-            self.dot_log.append_input_edge_and_node(pre_ops, op.name, op_type)
-        full_op_list, cur_fp_op_idx = {},0
+        full_op_list, cur_fp_op_idx = {}, 0
         for int8_op in int8_op_names:
             pos = fp_op_names.index(int8_op) if int8_op in fp_op_names else -1
             if -1 == pos:
@@ -516,7 +543,7 @@ class MixPrecSearcher:
                 have_int8_next = False
                 if op.name in int8_op_names:
                     for next_int8_op in int8_model.parser.get_next_op_by_op_name(op.name):
-                        if next_int8_op not in fp32_layer_list:
+                        if next_int8_op not in fp_layer_list:
                             have_int8_next = True
                             break
                     if have_int8_next:
@@ -525,28 +552,29 @@ class MixPrecSearcher:
                         if ret:
                             self.dot_log.add_node_label(op.name, 'gen int8 tensor')
                     else:
-                        self.dot_log.add_node_label(op.name, 'next_layer is fp32, not need to gen int8 tensor')
+                        self.dot_log.add_node_label(op.name, f'next_layer is {self.mix_mode}, not need to gen int8 tensor')
                 if op.name in fp_op_names:
                     for idx in range(self.num_sample):
                         ret = self.gen_ref_tensor(idx, op.name, self.ref_activations, float_model)
                     if ret:
-                        self.dot_log.add_node_label(op.name, 'gen fp32 tensor')
+                        self.dot_log.add_node_label(op.name, f'gen {self.mix_mode} tensor')
                 if op.name not in top_ops:
                     self.dot_log.add_node_label(op.name, 'op not in top dialect')
                     continue
                 if op.type in SKIP_OPERATION:
                     pre_layers = self.parser.get_pre_op_by_op_name(op.name)
                     for pre_layer in pre_layers:
-                        if pre_layer in fp32_layer_list:
-                            self.dot_log.add_node_label(op.name, f'add {op.name} to fp32_layer_list')
-                            fp32_layer_list.append(op.name)
+                        if pre_layer in fp_layer_list:
+                            self.dot_log.add_node_label(op.name, f'add {op.name} to fp_layer_list')
+                            fp_layer_list.append(op.name)
                             break
                     self.dot_log.add_node_label(op.name, f'meet quant skip op, type:{op.type}, continue')
                     continue
-                if op.name in fp32_layer_list:
-                    self.dot_log.add_node_label(op.name, 'op is fp32layer, continue')
+                if op.name in fp_layer_list:
+                    self.dot_log.add_node_label(op.name, f'op is {self.mix_mode} layer, continue')
                     continue
                 if not have_int8_next:
+                    self.dot_log.add_node_label(op.name, f'not call gen_ref_tensor, continue')
                     continue
                 layer_cos = 0
                 for idx in range(self.num_sample):
@@ -560,20 +588,20 @@ class MixPrecSearcher:
                             self.dot_log.add_node_label(op.name, 'visual_tensor diff enable, please click')
                             self.dot_log.add_node_attr(op.name, 'URL', plot_path) #shape='box', fillcolor=next_node_fillcolor , style='filled'
                 avg_cos = layer_cos / self.num_sample
-                self.dot_log.add_node_label(op.name, f'int8 cos:{avg_cos:.6f}')
+                self.dot_log.add_node_label(op.name, f'int8 layer cos:{avg_cos:.6f}')
                 layer_cos_list.append((op.name, avg_cos))
                 if avg_cos < self.args.min_layer_cos:
                     outputs_cos = 0
-                    fp32_layer_list.append(op.name)
+                    fp_layer_list.append(op.name)
                     next_top_ops = self.parser.get_next_op_by_op_name(op.name)
                     tmp = ','.join(next_top_ops)
-                    self.dot_log.add_node_label(op.name, f'cos too low, set fp32 to {op.name} and next_top_ops:{tmp}')
-                    fp32_layer_list.extend(next_top_ops)
-                    mix_table = self._gen_mix_table(fp32_layer_list)
+                    self.dot_log.add_node_label(op.name, f'cos too low, set {self.mix_mode} to {op.name} and next_top_ops:{tmp}')
+                    fp_layer_list.extend(next_top_ops)
+                    mix_table = self._gen_mix_table(fp_layer_list)
                     mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table, mix_table)
-                    extra_input = self.get_extra_input_tensor(op.name, int8_model.parser)
+                    extra_input = self.get_extra_input_tensor(op.name, self.parser)
                     for idx in range(self.num_sample):
-                        input_data_dict, extra_input_data_dict = self.collect_op_input_tensor(idx, op.name, extra_input, fp32_layer_list)
+                        input_data_dict, extra_input_data_dict = self.collect_op_input_tensor(idx, op.name, extra_input, fp_layer_list)
                         tmp1 = ','.join(list(input_data_dict.keys()))
                         tmp2 = '' if len(extra_input_data_dict) == 0 else ',extra_input_data_dict:' + ','.join(list(extra_input_data_dict.keys()))
                         if idx == 0:
@@ -583,7 +611,7 @@ class MixPrecSearcher:
                         fp32_out = self.get_input_fp32_tensor(idx, op.name)
                         cos = cos_sim(mix_layer_out.reshape(-1), fp32_out.reshape(-1))
                         if idx == 0:
-                            self.dot_log.add_node_label(op.name, f'first fp32 layer:{op.name} cos:{cos}')
+                            self.dot_log.add_node_label(op.name, f'first {self.mix_mode} layer:{op.name} cos:{cos:.6f}')
                         outputs_cos += self._loss(outputs, predictions_gt[idx])
                         for next_top_op in next_top_ops:
                             count = self.parser.get_user_count_by_op_name(next_top_op)
@@ -602,11 +630,19 @@ class MixPrecSearcher:
                     if outputs_cos > self.args.expected_cos:
                         self.dot_log.add_node_label(op.name, f'job success, current cos is higher than expected_cos:{self.args.expected_cos}')
                         break
-                    if len(fp32_layer_list) > max_fp32_layer_num:
-                        self.dot_log.add_node_label(op.name, f'job fail, the number of layers of fp32 exceeded the maximum')
+                    if len(fp_layer_list) > max_fp32_layer_num:
+                        self.dot_log.add_node_label(op.name, f'job fail, the number of layers of {self.mix_mode} exceeded the maximum')
                         break
+                    if outputs_cos < all_int8_cos:
+                        fp_layer_list.remove(op.name)
+                        for i in next_top_ops:
+                            fp_layer_list.remove(i)
+                        self.dot_log.add_node_label(op.name, f'meet outputs_cos:{outputs_cos:.6f} < all_int8_cos:{all_int8_cos:.6f}')
+                        for idx in range(self.num_sample):
+                            for next_top_op in next_top_ops:
+                                self.int8_activations[idx].pop(next_top_op)
                 self.clear_ref_tensor(op.name, self.parser, self.ref_activations)
-                self.clear_ref_tensor(op.name, int8_model.parser, self.int8_activations)
+                self.clear_ref_tensor2(op.name, self.parser, int8_model.parser, self.int8_activations)
         except Exception as err:
             self.logger.print_info('An exception happened: ' + str(err))
             pass
@@ -615,6 +651,7 @@ class MixPrecSearcher:
         float_model.clean()
         self.enable_print()
 
+        self.logger.print_info('>>>run result:')
         layer_cos_list = sorted(layer_cos_list, key=lambda x: x[1], reverse=False)
         with open(self.loss_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
@@ -622,20 +659,179 @@ class MixPrecSearcher:
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
             f.write("###\n")
             for idx, layer in enumerate(layer_cos_list):
-                loss_msg = "No.{:<4}: Layer: {:<50}\t\t\tCos: {}".format(idx, layer[0], layer[1])
+                loss_msg = "No.{:<4}: Layer: {:<50}\t\t\tCos: {:.6f}".format(idx, layer[0], layer[1])
                 f.write("{}\n".format(loss_msg))
                 self.logger.print_info(loss_msg)
         with open(self.quantize_table, "w") as f:
             f.write("# genetated time: {}\n".format(datetime.datetime.now()))
             f.write("# sample number: {}\n".format(self.num_sample))
             f.write("# chip: {}  mix_mode: {}\n".format(self.chip, self.mix_mode))
-            f.write("# number of {} layer: {}\n".format(self.mix_mode, len(fp32_layer_list)))
+            f.write("# number of {} layer: {}\n".format(self.mix_mode, len(fp_layer_list)))
             f.write("###\n")
             f.write("# op_name   quantize_mode\n")
-            for layer in fp32_layer_list:
+            for layer in fp_layer_list:
                 f.write("{} {}\n".format(layer, self.mix_mode))
-        self.logger.print_info('int8 outputs_cos:', all_int8_cos)
-        self.logger.print_info(f"mix model outputs_cos:{outputs_cos}")
+        self.logger.print_info(f'int8 outputs_cos:{all_int8_cos:.6f}')
+        self.logger.print_info(f"mix model outputs_cos:{outputs_cos:.6f}")
         self.logger.print_info("Output mix quantization table to {}".format(self.quantize_table))
         self.logger.print_info("total time:{}".format(time.time() - t0))
 
+    def run_bias_correction(self):
+        self.logger.print_info("run_bias_correction start")
+        t0 = time.time()
+        layer_cos_list = list()
+        predictions_gt = list()
+        weight_file_name = MlirParser(self.fp32_mlir).module_weight_file
+        os.system('rm -rf tensor_diff_fp32_vs_int8;mkdir -p tensor_diff_fp32_vs_int8/')
+
+        # set all layer as float
+        self.logger.print_info("run float mode: {}".format(self.fp32_mlir))
+        self.disable_print()
+        float_model = MixQuantModel(self.fp32_mlir, self.chip)
+        for idx in range(self.num_sample):
+            net_input = list(self.ref_activations[idx].keys())[0]
+            outputs = float_model.infer(self.ref_activations[idx][net_input])
+            predictions_gt.append(outputs)
+
+        # set all layer as int8
+        self.logger.print_info("run int8 mode: {}".format(self.fp32_mlir))
+        outputs_cos = 0
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
+        for idx in range(self.num_sample):
+            net_input = list(self.ref_activations[idx].keys())[0]
+            outputs = int8_model.infer(self.ref_activations[idx][net_input])
+            outputs_cos += self._loss(outputs, predictions_gt[idx])
+        outputs_cos = outputs_cos / self.num_sample
+        all_int8_cos = outputs_cos
+        if outputs_cos > self.args.expected_cos:
+            float_model.clean()
+            int8_model.clean()
+            self.enable_print()
+            self.logger.print_info(f'job success, current int8 cos:{outputs_cos:.6f} is higher than expected_cos:{self.args.expected_cos:.6f},no need for mix precsion')
+            exit(0)
+
+        max_outputs_cos = all_int8_cos
+        max_layer_cos, ret= None, None
+        #mixing precision of each layer is automatically selected according to the cosine of each laye
+        fp_layer_list = []
+        layer_cos_list.clear()
+        self.dot_log = net_dot_log('bias_correction', int8_model.parser, self.logger)
+        self.dot_log.add_new_log_region('compute cos and run bias correction')
+        fp_op_names = float_model.parser.get_op_name_list()
+        top_ops = {op.name:op for op in self.parser.ops}
+        int8_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
+        int8_op_names = int8_model.parser.get_op_name_list()
+        full_op_list, cur_fp_op_idx = {},0
+        for int8_op in int8_op_names:
+            pos = fp_op_names.index(int8_op) if int8_op in fp_op_names else -1
+            if -1 == pos:
+                full_op_list[int8_op] = int8_model.parser.get_op_by_op_name(int8_op)
+            else:
+                for i in range(cur_fp_op_idx, pos+1):
+                    full_op_list[fp_op_names[i]] = float_model.parser.get_op_by_op_name(fp_op_names[i])
+                cur_fp_op_idx = pos+1
+        print('full_op_list:', list(full_op_list.keys()))
+        # try:
+        pbar = tqdm(list(full_op_list.values()))
+        for op in pbar:
+            pbar.set_description("Processing {}".format(op.name))
+            have_int8_next = False
+            if op.name in int8_op_names:
+                for next_int8_op in int8_model.parser.get_next_op_by_op_name(op.name):
+                    if next_int8_op not in fp_layer_list:
+                        have_int8_next = True
+                        break
+                if have_int8_next:
+                    for idx in range(self.num_sample):
+                        ret = self.gen_ref_tensor(idx, op.name, self.int8_activations, int8_model, True)
+                    if ret:
+                        self.dot_log.add_node_label(op.name, 'gen int8 tensor')
+                else:
+                    self.dot_log.add_node_label(op.name, f'next_layer is {self.mix_mode}, not need to gen int8 tensor')
+            if op.name in fp_op_names:
+                for idx in range(self.num_sample):
+                    ret = self.gen_ref_tensor(idx, op.name, self.ref_activations, float_model)
+                if ret:
+                    self.dot_log.add_node_label(op.name, f'gen {self.mix_mode} tensor')
+            if op.name not in top_ops:
+                self.dot_log.add_node_label(op.name, 'op not in top dialect')
+                continue
+            if op.type in SKIP_OPERATION:
+                pre_layers = self.parser.get_pre_op_by_op_name(op.name)
+                for pre_layer in pre_layers:
+                    if pre_layer in fp_layer_list:
+                        self.dot_log.add_node_label(op.name, f'add {op.name} to fp_layer_list')
+                        fp_layer_list.append(op.name)
+                        break
+                self.dot_log.add_node_label(op.name, f'meet quant skip op, type:{op.type}, continue')
+                continue
+            if op.name in fp_layer_list:
+                self.dot_log.add_node_label(op.name, f'op is {self.mix_mode} layer, continue')
+                continue
+            if not have_int8_next:
+                continue
+            if op.name not in top_ops:
+                self.dot_log.add_node_label(op.name, 'op only in int8model')
+                continue
+            top_op = top_ops[op.name]
+            layer_cos, int8_mean, fp32_mean = 0,0,0
+            for idx in range(self.num_sample):
+                int8_out = self.get_input_int8_tensor(idx, top_op.name, True)
+                int8_mean += np.mean(int8_out, axis=(0,2,3))
+                fp32_out = self.get_input_fp32_tensor(idx, top_op.name)
+                fp32_mean += np.mean(fp32_out, axis=(0,2,3))
+                layer_cos += cos_sim(int8_out, fp32_out)
+            old_layer_cos = layer_cos / self.num_sample
+            print(f'old_layer_cos:{old_layer_cos:.6f}')
+            if old_layer_cos < self.args.min_layer_cos and top_op.type == 'top.Conv' and len(top_op.opds) > 2:
+                weight_file_dict = {}
+                weight_file = np.load(weight_file_name)
+                os.system(f'cp -f {weight_file_name} {weight_file_name}_tmpbk')
+                for k in weight_file:
+                    weight_file_dict[k] = weight_file[k]
+                mean_diff = (fp32_mean - int8_mean) / self.num_sample
+                # print(f'op:{top_op.name}, mean_diff:', mean_diff[:32])
+                bias_float = weight_file_dict[top_op.opds[2]]
+                bias_float += mean_diff
+                weight_file_dict[top_op.opds[2]] = bias_float
+                os.system(f'rm -f {weight_file_name}')
+                np.savez(weight_file_name, **weight_file_dict)
+                mix_model = MixQuantModel(self.fp32_mlir, self.chip, self.calib_table)
+                extra_input = self.get_extra_input_tensor(top_op.name, int8_model.parser)
+                layer_cos, outputs_cos = 0,0
+                for idx in range(self.num_sample):
+                    input_data_dict, extra_input_data_dict = self.collect_op_input_tensor(idx, top_op.name, extra_input, fp_layer_list)
+                    outputs = mix_model.infer_from(top_op.name, input_data_dict, extra_input_data_dict)
+                    mix_layer_out = mix_model.module.get_fp32_tensor(top_op.name)
+                    fp32_out = self.get_input_fp32_tensor(idx, top_op.name)
+                    layer_cos += cos_sim(mix_layer_out, fp32_out)
+                    outputs_cos += self._loss(outputs, predictions_gt[idx])
+                layer_cos = layer_cos / self.num_sample
+                outputs_cos = outputs_cos / self.num_sample
+                if outputs_cos < max_outputs_cos or (max_layer_cos is not None and layer_cos < max_layer_cos):
+                    os.system(f'cp -f {weight_file_name}_tmpbk {weight_file_name}')
+                    print(f'op:{top_op.name} bias correction revocation, layer_cos:{layer_cos:.6f}, outputs_cos:{outputs_cos:.6f}')
+                else:
+                    print(f'op:{top_op.name} bias correction applied, layer_cos:{layer_cos:.6f}, outputs_cos:{outputs_cos:.6f}')
+                layer_cos_list.append((top_op.name, old_layer_cos, layer_cos, outputs_cos))
+                max_outputs_cos = outputs_cos if outputs_cos > max_outputs_cos else max_outputs_cos
+                max_layer_cos = layer_cos if max_layer_cos is None or layer_cos > max_layer_cos else max_layer_cos
+                if max_outputs_cos > self.args.expected_cos:
+                    print(f'job success, current cos is higher than expected_cos:{self.args.expected_cos:.6f}')
+                    break
+            self.clear_ref_tensor(top_op.name, self.parser, self.ref_activations)
+            self.clear_ref_tensor(top_op.name, int8_model.parser, self.int8_activations)
+        # except Exception as err:
+        #     self.logger.print_info('An exception happened: ' + str(err))
+        #     pass
+        self.dot_log.gen_dot_graph()
+        int8_model.clean()
+        float_model.clean()
+        self.enable_print()
+        self.logger.print_info('>>>run result:')
+        self.logger.print_info(f'int8 outputs_cos:{all_int8_cos:.6f}')
+        self.logger.print_info('bias correction statistic:')
+        for item in layer_cos_list:
+            self.logger.print_info(f'  op:{item[0]}, old layer cos:{item[1]:.6f}, new layer cos:{item[2]:.6f}, new output cos:{item[3]:.6f}')
+        self.logger.print_info(f'best mix model outputs_cos:{max_outputs_cos:.6f}')
+        self.logger.print_info("total time:{}".format(time.time() - t0))
