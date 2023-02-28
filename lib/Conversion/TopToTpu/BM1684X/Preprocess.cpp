@@ -104,11 +104,11 @@ public:
     double qmax = _asymmetric ? caliType.getMax() : module::getThreshold(op.getOutput());
     double qmin = _asymmetric ? caliType.getMin() : -qmax;
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
-        {{"RGB_PLANAR", {"rgb", "nchw"}},  {"RGB_PACKED", {"rgb", "nhwc"}},
-         {"BGR_PLANAR", {"bgr", "nchw"}},  {"BGR_PACKED", {"bgr", "nhwc"}},
-         {"GRAYSCALE", {"bgr", "nchw"}},   {"YUV420_PLANAR", {"bgr", "nchw"}},
-         {"YUV_NV21", {"bgr", "nchw"}},    {"YUV_NV12", {"bgr", "nchw"}},
-         {"RGBA_PLANAR", {"rgba", "nchw"}}};
+        {{"RGB_PLANAR", {"rgb", "nchw"}}, {"RGB_PACKED", {"rgb", "nhwc"}},
+         {"BGR_PLANAR", {"bgr", "nchw"}}, {"BGR_PACKED", {"bgr", "nhwc"}},
+         {"GRAYSCALE", {"bgr", "nchw"}}};
+    if (attributes_map.find(pixel_format) == attributes_map.end())
+      llvm_unreachable("customization format is not supported yet.");
     auto color = std::get<0>(attributes_map[pixel_format]);
     auto layout = std::get<1>(attributes_map[pixel_format]);
     bool swap_channel = (color != channel_order) ? true : false;
