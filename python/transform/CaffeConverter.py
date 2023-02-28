@@ -482,11 +482,13 @@ class CaffeConverter(BaseConverter):
     def convert_softmax_op(self, layer):
         assert (self.layerType(layer) == 'Softmax')
         in_op = self.getOperand(layer.bottom[0])
+        output_shape = self.getShape(layer.top[0])
         axis = 1
         if layer.HasField('softmax_param') and layer.softmax_param.HasField('axis'):
             axis = layer.softmax_param.axis
+        if axis < 0:
+            axis += len(output_shape)
         attrs = {'name': self.get_loc(layer.top[0]), 'axis': axis}
-        output_shape = self.getShape(layer.top[0])
         new_op = self.mlir.create_softmax_op([in_op], output_shape, **attrs)
         self.addOperand(layer.top[0], new_op)
 
