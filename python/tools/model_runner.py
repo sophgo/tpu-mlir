@@ -172,8 +172,16 @@ def model_inference(inputs: dict, model_file: str) -> dict:
     return outputs
 
 
-def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True) -> dict:
+def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
+
     import pymlir
+
+    if debug is not None:
+        if debug == "":
+            pymlir.debug([])
+        else:
+            pymlir.debug(debug.split(","))
+
     module = pymlir.module()
     module.load(mlir_file)
     for name in module.input_names:
@@ -335,12 +343,14 @@ if __name__ == '__main__':
     parser.add_argument("--output", default='_output.npz', help="output npz file")
     parser.add_argument("--dump_all_tensors",action='store_true',
                         help="dump all tensors to output file")
+    parser.add_argument("--debug", type=str, nargs="?", const="",
+                        help="configure the debugging information.")
     # yapf: enable
     args = parser.parse_args()
     data = np.load(args.input)
     output = dict()
-    if args.model.endswith('.mlir'):
-        output = mlir_inference(data, args.model, args.dump_all_tensors)
+    if args.model.endswith(".mlir"):
+        output = mlir_inference(data, args.model, args.dump_all_tensors, args.debug)
     elif args.model.endswith('.onnx'):
         output = onnx_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".tflite"):

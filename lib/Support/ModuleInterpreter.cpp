@@ -12,11 +12,14 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
+#include <llvm/Support/Debug.h>
 
 #include <algorithm>
 #include <functional>
 #include <memory>
 #include <numeric>
+
+#define DEBUG_TYPE "interpreter"
 
 namespace tpu_mlir {
 ModuleInterpreter::ModuleInterpreter(ModuleOp module) : module(module) {
@@ -157,6 +160,7 @@ void ModuleInterpreter::invoke(bool express_type) {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
       auto name = module::getName(infer_op.getOperation()).str();
+      LLVM_DEBUG(llvm::dbgs() << "compute: '" << name << "'\n");
       if (failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();
         llvm_unreachable("invoke failed!!");
