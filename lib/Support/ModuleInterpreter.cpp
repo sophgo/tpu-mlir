@@ -114,6 +114,7 @@ void ModuleInterpreter::allocate_resources() {
             param->inputs.push_back(mem_map[input_name]->data());
           }
         }
+        LLVM_DEBUG(llvm::dbgs() << "init: '" << name << "'\n");
         if (failed(infer_op.init(*param))) {
           op->dump();
           llvm_unreachable("op inferece init failed");
@@ -195,6 +196,7 @@ ModuleInterpreter::invoke_at(const std::string op_name) {
     llvm_unreachable("invoke_at infer error");
   }
   auto infer_op = cast<InferenceInterface>(op);
+  LLVM_DEBUG(llvm::dbgs() << "invoke at: '" << op_name << "'\n");
   if (failed(infer_op.inference(*inference_map[op_name]))) {
     infer_op.dump();
     llvm_unreachable("infer_op.inference failed!!");
@@ -208,10 +210,11 @@ void ModuleInterpreter::invoke_from(const std::string op_name) {
   bool start_run = false;
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
-      auto name = module::getName(infer_op.getOperation()).str();
+      auto name = module::getName(infer_op).str();
       if (name == op_name) {
         start_run = true;
       }
+      LLVM_DEBUG(llvm::dbgs() << "invoke: '" << name << "'\n");
       if (start_run && failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();
         llvm_unreachable("invoke failed!!");

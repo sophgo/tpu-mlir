@@ -7,22 +7,27 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "llvm/Support/Format.h"
-#include "llvm/Support/raw_ostream.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/DynamicNetIr.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/DynamicLayer.hpp"
+#include "mlir/IR/BlockAndValueMapping.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "llvm/Support/Format.h"
+#include "llvm/Support/raw_ostream.h"
+#include <llvm/Support/Debug.h>
+
+
 #include <fstream>
 #include <set>
 #include <sstream>
+
+#define DEBUG_TYPE "codegen"
 
 using namespace llvm;
 using namespace mlir;
@@ -367,6 +372,7 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
           lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
                                group_type, sec_info);
+          LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(lgOp) << "'\n");
           lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
                                     group_type, sec_info);
         }
@@ -404,6 +410,7 @@ void CodegenPass::codegen(Operation *op) {
     std::string prefix = op->getName().getStringRef().str();
     auto pid_node = (CMD_ID_NODE *)BM168x::instance()->cmdid_node;
     BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
+    LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(op) << "'\n");
     castOp.codegen_global_bm168x();
   }
 }
@@ -414,6 +421,7 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   func.walk([&](Operation *op) { codegen(op); });
   bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
@@ -480,7 +488,7 @@ CodegenPass::CreateSubNet(func::CallOp call,
   subnet_ir_->write_binary_ir_to_buffer(context);
   auto func = module::getFuncOp(call.getCallee());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
-
+  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<int> next_id_v = {};
   for (auto v : call.getResults()) {
     for (auto user : v.getUsers()) {
