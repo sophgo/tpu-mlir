@@ -20,7 +20,19 @@ import copy
 # MemRef: address, shape, Dtype, stride, offset?
 
 BANK_SIZE = 2**14
-LEN_SIZE = BANK_SIZE * 16
+LANE_SIZE = BANK_SIZE * 16
+
+opparam_converter = {}
+
+
+def regitstry_opparam_converter(sheet_name):
+    def add_converter(fun):
+        if sheet_name in opparam_converter:
+            raise KeyError(f"{sheet_name} have already registered.")
+        opparam_converter[sheet_name] = fun
+        return
+
+    return add_converter
 
 
 class ExtEnum:
@@ -30,6 +42,7 @@ class ExtEnum:
     """
 
     def __init__(self, enum, *args, **kargs) -> None:
+        assert isinstance(enum, Enum)
         self.eunm = enum
         self.args = args
         for k, v in kargs.items():
@@ -59,6 +72,10 @@ class ExtEnum:
 
 
 class MType(Enum):
+    """
+    The type of memory.
+    """
+
     R = 0  # local memory
     S = 1  # static memory
     L = 2  # L2 SRAM
@@ -70,32 +87,34 @@ class MType(Enum):
 
 
 class Layout(Enum):
-    alignEU = 0  # 64 bytes aligment
+    """
+    Data layout type in different storage.
+    """
+
+    # Tensor alignment
+    alignEU = 0
     compact = 1
     offset = 2
     stride = 3
-    matrix = 4
-    matrix2 = 5
-    _64IC = 10
-    _32IC = 11
-    _1IC = 12
+    # Matrix alignment
+    matrix = 10
+    matrix2 = 11
+    # Weight alignment
+    _64IC = 20
+    _32IC = 21
+    _1IC = 22
+    # special alignment. TODO: give it a better name
+    T3 = 30
+    T4 = 31
+    T5 = 32
+    # GDMA special layout
+    DMAstride = 40  # contains lane mask
+    DMA4Bank = 41
+    DMAmatrix = 42
+    DMAlinear = 43
 
     def __call__(self, *args, **kargs):
         return ExtEnum(self, *args, **kargs)
-
-    def __hash__(self):
-        return hash(self._name_)
-
-    def __eq__(self, other):
-        if isinstance(other, int):
-            return self.value == other
-
-        if isinstance(other, Layout):
-            return self.value == other.value
-
-        if isinstance(other, ExtEnum):
-            return self.value == other.value
-        return False
 
 
 # TPU1686/common/include/memmap.h
@@ -107,28 +126,11 @@ memmap = {
 }
 
 
-def get_mtype(address):
-    # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
-    # G/S/L : "r_addr"
-    for k, v in memmap.items():
-        if address >= v[0] and address < v[1]:
-            if k == MType.R:
-                r_addr = address - memmap[MType.R][0]
-                npu_offset = r_addr // LEN_SIZE
-                addr_len = r_addr - npu_offset * LEN_SIZE
-                bank_index = addr_len // BANK_SIZE
-                bank_offset = addr_len % BANK_SIZE
-                return MType.R(
-                    npu_offset=npu_offset,
-                    bank_index=bank_index,
-                    bank_offset=bank_offset,
-                    r_addr=r_addr,
-                )
-            return k(r_addr=address - v[0])
-    return MType.UNKNOWN
-
-
 class DType(IntEnum):
+    """
+    The numeric type of the data.
+    """
+
     # Signless
     # Only the bits width is correct.
     i8 = 0
@@ -163,67 +165,119 @@ def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
 to_np_dtype = {
     DType.s8: np.int8,
     DType.u8: np.uint8,
-    DType.i8: np.uint8,
     DType.f16: np.float16,
     DType.f32: np.float32,
     DType.s16: np.int16,
     DType.u16: np.uint16,
-    DType.i16: np.uint16,
     DType.s32: np.int32,
     DType.u32: np.uint32,
+    DType.i8: np.uint8,
+    DType.i16: np.uint16,
     DType.i32: np.uint32,
+    DType.bf16: np.uint16,
 }
 
 
 def local_layout_to_stride(memref):
-    def get_aligenEU_stride():
-        n, c, h, w = memref.shape
+    """
+    Layout Canonicalize. Convert special layout to stride layout.
+    """
+
+    def aligenEU_stride():
+        _, c, h, w = memref.shape
         align_type = 64 // memref.itemsize
         c_stride = (w * h + align_type - 1) // align_type * align_type
         n_stride = (c + memref.mtype.npu_offset + 63) // 64 * c_stride
         return (n_stride, c_stride, w, 1)
 
-    def get_compact_stride():
-        n, c, h, w = memref.shape
+    def compact_stride():
+        _, c, h, w = memref.shape
         c_stride = w * h
         n_stride = (c + memref.mtype.npu_offset + 63) // 64 * c_stride
         return (n_stride, c_stride, w, 1)
 
-    def get_offset_stride():
+    def offset_stride():
         return (0, 1, 0, 0)
 
-    layout = memref.layout
-    if layout == Layout.alignEU:
-        return get_aligenEU_stride()
+    def t3_stride():
+        _, c, h, w = memref.shape
+        eu_num = 64 // memref.itemsize
+        h_stride = (w + eu_num - 1) / eu_num * eu_num
+        c_stride = h * h_stride
+        n_stride = c_stride * (c + memref.mtype.npu_offset + 63) // 64
+        return (n_stride, c_stride, h_stride, 1)
 
-    if layout == Layout.compact:
-        return get_compact_stride()
+    def t4_stride():
+        _, _, _, w = memref.shape
+        eu_num = 64 // memref.itemsize
+        h_stride = (w + eu_num - 1) / eu_num * eu_num
+        return (0, 0, h_stride, 1)
 
-    if layout == Layout.offset:
-        return get_offset_stride()
+    def t5_stride():
+        _, _, _, w = memref.shape
+        eu_num = 64 // memref.itemsize
+        c_stride = (w + eu_num - 1) / eu_num * eu_num
+        n_stride = LANE_SIZE // 8 // memref.itemsize
+        return (n_stride, c_stride, w, 1)
+
+    if memref.layout == Layout.alignEU:
+        return aligenEU_stride()
+    if memref.layout == Layout.compact:
+        return compact_stride()
+    if memref.layout == Layout.offset:
+        return offset_stride()
+    if memref.layout == Layout.T3:
+        return t3_stride()
+    if memref.layout == Layout.T4:
+        return t4_stride()
+    if memref.layout == Layout.T3:
+        return t5_stride()
 
     return None
 
 
 class MemRef:
+    """
+    A description of tensor in memory.
+    """
+
     def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
         self.address = address
+        self.mtype = self.__get_mtype(address)  # extended enumerate type
         self.shape = shape
         self.dtype = dtype
         self.layout = layout
-        self.mtype = get_mtype(self.address)
+
         self.np_dtype = to_np_dtype[dtype]
         self.itemsize = self.np_dtype().itemsize
-        self.stride = None
-        if stride and any(stride):
-            self.stride = stride
-        elif layout:
-            if self.mtype == MType.R:
-                # TPU stride
-                self.stride = local_layout_to_stride(self)
+        self.stride = stride
+
+        if self.mtype == MType.R and layout != Layout.stride:
+            self.stride = local_layout_to_stride(self)
+
         # print information
         self.name = self.__name()
         self.type_str = self.__type_str()
+
+    def __get_mtype(self, address):
+        # R : "npu_offset", "bank_index", "bank_offset", "r_addr"
+        # G/S/L : "r_addr"
+        for k, v in memmap.items():
+            if address >= v[0] and address < v[1]:
+                if k == MType.R:
+                    r_addr = address - v[0]
+                    npu_offset = r_addr // LANE_SIZE
+                    addr_len = r_addr - npu_offset * LANE_SIZE
+                    bank_index = addr_len // BANK_SIZE
+                    bank_offset = addr_len % BANK_SIZE
+                    return MType.R(
+                        npu_offset=npu_offset,
+                        bank_index=bank_index,
+                        bank_offset=bank_offset,
+                        r_addr=r_addr,
+                    )
+                return k(r_addr=address - v[0])
+        return MType.UNKNOWN
 
     def __name(self):
         k = self.mtype
@@ -293,6 +347,11 @@ class NamedDict(dict):
 
 
 class Memory:
+    """
+    Memory agent. Extract/Set data from a give MemRef object.
+    This class should handle all the tenors type in all kinds of storage.
+    """
+
     def __init__(self, LMEM, DDR) -> None:
         self.LMEM = LMEM.ravel()
         self.DDR = DDR.ravel()
@@ -302,7 +361,7 @@ class Memory:
         itemsize = memref.itemsize
 
         def data_view(shape, stride):
-            offset = memref.mtype.r_addr + NPU_OFFSET * LEN_SIZE
+            offset = memref.mtype.r_addr - NPU_OFFSET * LANE_SIZE
             return np.lib.stride_tricks.as_strided(
                 self.LMEM[offset : offset + 4].view(memref.np_dtype),
                 shape,
@@ -312,8 +371,8 @@ class Memory:
         def get_stride_data_base(shape, stride):
             n, c, h, w = shape
             n_s, c_s, h_s, w_s = stride
-            _shape = [n, (c + 63) // 64, 64, h, w]
-            _stride = (n_s, c_s, LEN_SIZE // itemsize, h_s, w_s)
+            _shape = [n, (NPU_OFFSET + c + 63) // 64, 64, h, w]
+            _stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
             return data_view(_shape, _stride).reshape(n, -1, h, w)[
                 :n, NPU_OFFSET : NPU_OFFSET + c, :, :
             ]
@@ -326,7 +385,7 @@ class Memory:
             shape = ((n + 63) // 64, 64, (c + 63) // 64, 64, h, w)
             stride = (
                 (c + 63) // 64 * 64 * h * w,
-                LEN_SIZE // itemsize,
+                LANE_SIZE // itemsize,
                 64 * h * w,
                 1,
                 64 * w,
@@ -341,7 +400,7 @@ class Memory:
             shape = ((n + 63) // 64, 64, (c + 32) // 32, 32, h, w)
             stride = (
                 (c + 63) // 64 * 64 * h * w,
-                LEN_SIZE // itemsize,
+                LANE_SIZE // itemsize,
                 32 * h * w,
                 1,
                 32 * w,
@@ -356,7 +415,7 @@ class Memory:
             shape = ((n + 63) // 64, 64, c, h, w)
             stride = (
                 c * h * w,
-                LEN_SIZE // itemsize,
+                LANE_SIZE // itemsize,
                 h * w,
                 w,
                 1,
@@ -384,6 +443,44 @@ class Memory:
             stride = local_layout_to_stride(_memref)
             return get_stride_data_base(shape, stride).reshape(r, c)
 
+        def _lane_mask_filter(c, lane_mask):
+            lane_mask = np.unpackbits(
+                np.uint64([lane_mask]).view(np.uint8), bitorder="little"
+            )
+            _c = (NPU_OFFSET + c + 63) // 64
+            index = np.zeros(_c * 64, bool)
+            index[NPU_OFFSET : NPU_OFFSET + c] = True
+            index = index.reshape(_c, 64)
+            index[:, lane_mask == 0] = False
+            return index.flatten()
+
+        def get_dma4bank_data():
+            n, c, h, w = memref.shape
+            shape = (4, n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            n_s, c_s, h_s, w_s = memref.stride
+            stride = (BANK_SIZE, n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            index = _lane_mask_filter(c, memref.layout.args[0])
+            return data_view(shape, stride).reshape(4, n, -1, h, w)[:, :, index, :, :]
+
+        def get_dma_stride_data(_memref=memref):
+            n, c, h, w = _memref.shape
+            shape = (n, (NPU_OFFSET + c + 63) // 64, 64, h, w)
+            n_s, c_s, h_s, w_s = _memref.stride
+            stride = (n_s, c_s, LANE_SIZE // itemsize, h_s, w_s)
+            index = _lane_mask_filter(c, _memref.layout.args[0])
+            return data_view(shape, stride).reshape(n, -1, h, w)[:, index, :, :]
+
+        def get_dma_matrix_data():
+            r, c = memref.shape
+            w = memref.layout.args[1]
+            shape = (r, (c + w - 1) // w, 1, w)
+            _memref = copy.copy(memref)
+            _memref.shape = shape
+            return get_dma_stride_data(_memref).reshape(r, -1)[:r, :c]
+
+        def get_dma_linear_data():
+            return data_view(memref.shape, memref.stride)
+
         get_data = {
             Layout.alignEU: get_stride_data,
             Layout.compact: get_stride_data,
@@ -394,12 +491,19 @@ class Memory:
             Layout._1IC: get_1ic_data,
             Layout.matrix: get_matrix_data,
             Layout.matrix2: get_matrix2_data,
+            Layout._32IC: get_32ic_data,
+            Layout.T3: get_stride_data,
+            Layout.T4: get_stride_data,
+            Layout.T5: get_stride_data,
+            Layout.DMA4Bank: get_dma4bank_data,
+            Layout.DMAstride: get_dma_stride_data,
+            Layout.DMAmatrix: get_dma_matrix_data,
+            Layout.DMAlinear: get_dma_linear_data,
         }
 
         return get_data[memref.layout]()
 
     def _ddr_to_numpy(self, memref):
-        assert memref.layout == None
         assert memref.shape != None
         assert memref.stride != None
         assert all(memref.shape)
@@ -445,7 +549,8 @@ def get_value(
         return MemRef(address + offset, shape, _dtype, stride, _layout)
 
 
-def conv_reg_format(reg):
+@regitstry_opparam_converter("sCONV")
+def _converter(reg):
     opd0 = dict(
         address=reg.opd0_addr,
         shape=(reg.res0_n, reg.opd0_c, reg.opd0_h, reg.opd0_w),
@@ -521,7 +626,8 @@ def conv_reg_format(reg):
     return (results, attr, operands)
 
 
-def mm_reg_format(reg):
+@regitstry_opparam_converter("sMM")
+def _converter(reg):
     L_row = reg.opd0_n
     L_col = reg.opd0_w * (reg.opd0_c - 1) + reg.opd1_w
     R_col = reg.res0_c * reg.res0_w
@@ -578,7 +684,8 @@ def mm_reg_format(reg):
     return (results, attr, operands)
 
 
-def mm2_reg_format(reg):
+@regitstry_opparam_converter("sMM2")
+def _converter(reg):
     L_row = reg.res0_c
     L_col = reg.opd1_c
     l_trans, r_trans = False, False
@@ -636,7 +743,8 @@ def mm2_reg_format(reg):
     return (results, attr, operands)
 
 
-def cmp_reg_format(reg):
+@regitstry_opparam_converter("sCMP")
+def _converter(reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -697,7 +805,8 @@ def cmp_reg_format(reg):
     return (results, {}, operands)
 
 
-def sfu_reg_format(reg):
+@regitstry_opparam_converter("sSFU")
+def _converter(reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -733,7 +842,8 @@ def sfu_reg_format(reg):
     return (results, attr, operands)
 
 
-def lin_reg_format(reg):
+@regitstry_opparam_converter("sLIN")
+def _converter(reg):
     shape = tuple(reg[f"res0_{d}"] for d in "nchw")
     c = shape[1]
     opd0 = dict(
@@ -775,7 +885,8 @@ def lin_reg_format(reg):
     return (results, {}, operands)
 
 
-def vc_reg_format(reg):
+@regitstry_opparam_converter("sVC")
+def _converter(reg):
     n = (reg.opd0_c - 1) * reg.opd0_w + reg.opd1_w
     opd0 = dict(
         address=reg.opd0_addr,
@@ -817,7 +928,8 @@ def restore_org_shape(operand_def):
     return shape
 
 
-def ar_reg_format(reg):
+@regitstry_opparam_converter("sAR")
+def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
     opd0 = dict(
@@ -876,7 +988,8 @@ def ar_reg_format(reg):
     return (results, attr, operands)
 
 
-def pord_reg_format(reg):
+@regitstry_opparam_converter("sPorD")
+def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     # round mm
     opd0 = dict(
@@ -954,34 +1067,6 @@ def pord_reg_format(reg):
     return (results, attr, operands)
 
 
-def t3_stride(opdef):
-    _, c, h, w = opdef
-    itemsize = to_np_dtype[opdef["dtype"]]().itemsize
-    NPU_OFFSET = (opdef["address"] - memmap[MType.R][0]) // LEN_SIZE
-    eu_num = 64 // itemsize
-    h_stride = (w + eu_num - 1) / eu_num * eu_num
-    c_stride = h * h_stride
-    n_stride = c_stride * (c + NPU_OFFSET + 63) // 64
-    return (n_stride, c_stride, h_stride, 1)
-
-
-def t4_stride(opdef):
-    _, _, _, w = opdef
-    itemsize = to_np_dtype[opdef["dtype"]]().itemsize
-    eu_num = 64 // itemsize
-    h_stride = (w + eu_num - 1) / eu_num * eu_num
-    return (0, 0, h_stride, 1)
-
-
-def t5_stride(opdef):
-    _, _, _, w = opdef
-    itemsize = to_np_dtype[opdef["dtype"]]().itemsize
-    eu_num = 64 // itemsize
-    c_stride = (w + eu_num - 1) / eu_num * eu_num
-    n_stride = LEN_SIZE // 8 // itemsize
-    return (n_stride, c_stride, w, 1)
-
-
 def cw_tans_reg_format(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
@@ -998,8 +1083,7 @@ def cw_tans_reg_format(reg):
     )
 
     if reg.tsk_eu_typ == 0:  # cw_ts
-        opd0["stride"] = t3_stride(opd0)
-        opd0["layout"] = Layout.stride
+        opd0["layout"] = Layout.T3
 
     operands = [get_value(**opd0, offset=memmap[MType.R][0])]
     results = [get_value(**res0, offset=memmap[MType.R][0])]
@@ -1007,7 +1091,8 @@ def cw_tans_reg_format(reg):
     return (results, {}, operands)
 
 
-def rqdq_reg_format(reg):
+@regitstry_opparam_converter("sRQ&sDQ")
+def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -1086,7 +1171,8 @@ def rqdq_reg_format(reg):
     return (results, attr, operands)
 
 
-def sg_reg_format(reg):
+@regitstry_opparam_converter("sSG")
+def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
@@ -1117,8 +1203,7 @@ def sg_reg_format(reg):
     elif reg.tsk_eu_typ in [5, 6, 13, 14]:
         opd0["shape"] = (1, c, reg.opd0_h, reg.opd0_w)
         if reg.opd0_str != 0:
-            opd0["layout"] = Layout.stride
-            opd0["stride"] = t4_stride(opd0)
+            opd0["layout"] = Layout.T4
         opd1["shape"] = (n, c, 1, reg.opd1_w)
         opd1["layout"] = Layout.alignEU
     elif reg.tsk_eu_typ == 2:
@@ -1130,13 +1215,11 @@ def sg_reg_format(reg):
         kw = reg.opd3_addr % 2**16
         r_h = kh * kw
         res0["shape"] = (n, c, r_h, w)
-        res0["stride"] = t3_stride(res0)
-        res0["layout"] = Layout.stride
+        res0["layout"] = Layout.T3
     elif reg.tsk_eu_typ in [8, 15]:
         opd0["shape"] = (1, c, 1, reg.opd0_w)
         if reg.opd0_str != 0:
-            opd0["stride"] = t4_stride(opd0)
-            opd0["layout"] = Layout.stride
+            opd0["layout"] = Layout.T4
         opd1["shape"] = (n, c, 1, reg.opd1_w)
         res1 = dict(
             address=reg.res1_addr,
@@ -1161,9 +1244,9 @@ def sg_reg_format(reg):
     elif reg.tsk_eu_typ == 7:
         opd0["shape"] = (4, c, 1, reg.opd0_w)
         if reg.opd0_str == 4:
-            opd0["stride"] = t4_stride(opd0)
+            opd0["layout"] = Layout.T4
         else:
-            opd0["stride"] = t5_stride(opd0)
+            opd0["layout"] = Layout.T5
         opd0["layout"] = Layout.stride
         opd1["shape"] = (1, c, 1, reg.opd1_w)
     else:
@@ -1179,11 +1262,12 @@ def sg_reg_format(reg):
     return (results, attr, operands)
 
 
-def sgl_reg_format(reg):
+@regitstry_opparam_converter("SGL")
+def _converter(reg):
     n, c, h, w = (reg[f"res0_{d}"] for d in "nchw")
     opd0 = dict(
         address=reg.opd0_addr,
-        dtype=DType(reg.opd0_prec),
+        dtype=DType(reg.res0_prec),
         layout=Layout.stride,
     )
     res0 = dict(
@@ -1194,24 +1278,24 @@ def sgl_reg_format(reg):
     )
     opd1 = dict(
         address=reg.opd0_addr,
-        dtype=DType(reg.opd1_prec, 0),
+        dtype=(reg.opd1_prec, 0),
         layout=Layout.compact,
     )
     opd0["shape"] = (1, c, reg.opd0_h, w)
     if reg.opd0_str == 3:
-        opd0["stride"] = t3_stride(opd0)
+        opd0["layout"] = Layout.T3
     else:
-        opd0["stride"] = t4_stride(opd0)
+        opd0["layout"] = Layout.T4
 
     rets = [res0]
-    if reg.tsk_eu_typ in [17, 18]:
-        opd1_h = reg.opd1_h if reg.tsk_eu_typ == 17 else reg.opd0_h
+    if reg.tsk_eu_typ in [17, 18]:  # sliceToReverse
+        opd1_h = reg.res0_h if reg.tsk_eu_typ == 17 else reg.opd0_h
         opd1["shape"] = (n, c, opd1_h, 1)
-        res0["stride"] = t3_stride(res0)
+        res0["layout"] = Layout.T3
     elif reg.tsk_eu_typ == 19:
         opd0["shape"] = (1, c, reg.opd0_h, w)
         opd1["shape"] = (n, c, reg.opd0_h, 1)
-        res0["stride"] = t3_stride(res0)
+        res0["layout"] = Layout.T3
         res1 = dict(
             address=reg.res1_addr,
             dtype=DType.s16,
@@ -1259,5 +1343,330 @@ def bc_reg_format(reg):
 
     operands = [get_value(**opd0, offset=memmap[MType.R][0])]
     results = [get_value(**res0, offset=memmap[MType.R][0])]
+
+    return (results, {}, operands)
+
+
+@regitstry_opparam_converter("sTRANS&sBC")
+def _converter(reg):
+    if reg.tsk_eu_typ in (0, 1):
+        return cw_tans_reg_format(reg)
+    else:
+        return bc_reg_format(reg)
+
+
+def dma_addr(H, L):
+    return H * 2**32 + L
+
+
+def dma_reg_fmt_base(reg):
+    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
+
+    opd0 = dict(
+        address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=tuple(reg[f"src_{d}size"] for d in "nchw"),
+        stride=tuple(reg[f"src_{d}stride"] for d in "nchw"),
+        layout=Layout.DMAstride(lane_mask),
+    )
+    res0 = dict(
+        address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=tuple(reg[f"dst_{d}size"] for d in "nchw"),
+        stride=tuple(reg[f"dst_{d}stride"] for d in "nchw"),
+        layout=Layout.DMAstride(lane_mask),
+    )
+    if reg.nchw_copy:
+        res0["shape"] = opd0["shape"]
+
+    attr = dict(decompress=bool(reg.decompress_enable))
+
+    if lane_mask != (2**64 - 1):
+        attr["lane_mask"] = hex(lane_mask)
+
+    if reg.fill_constant_en:
+        attr = {}
+        opd0 = dict(
+            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
+        )
+
+    return res0, attr, opd0
+
+
+@regitstry_opparam_converter("DMA_tensor（0x000）")
+def _converter(reg):
+    NONE = 0
+    TRANS = 1  # NC Transpose or Matrix Transpose
+    COLLECT = 2  # CW Transpose from lmem to gmem
+    BROADCAST = 3
+    DISTRIBUTE = 4  # CW Transpose from gmem to lmem
+    BANK4_COPY = 5
+    BANK4_BDC = 6
+    res0, attr, opd0 = dma_reg_fmt_base(reg)
+    if reg.nchw_copy:
+        res0["shape"] = opd0["shape"]
+
+    if reg.cmd_special_function in (BROADCAST, BANK4_BDC):  # broadcast
+        n, _, h, w = res0["shape"]
+        res0["shape"] = (n, reg.src_csize, h, w)
+    elif reg.cmd_special_function == TRANS:  # transpose
+        n, c, h, w = opd0["shape"]
+        res0["shape"] = (c, n, h, w)
+    elif reg.cmd_special_function in (COLLECT, DISTRIBUTE):  # cw transpose
+        n, c, h, w = opd0["shape"]
+        res0["shape"] = (n, w, h, c)
+
+    if reg.cmd_special_function != NONE:
+        opd0["stride"] = (*opd0["stride"][:-1], 1)
+        res0["stride"] = (*res0["stride"][:-1], 1)
+
+    if reg.cmd_special_function in (BROADCAST, DISTRIBUTE):
+        # disable lane mask
+        opd0["layout"] = Layout.stride
+        res0["layout"] = Layout.stride
+
+    if reg.cmd_special_function in (BANK4_BDC, BANK4_COPY):
+        n, c, h, w = opd0["shape"]
+        if reg.cmd_sepcial_function == BANK4_BDC:
+            c = 0
+        opd0["shape"] = (n, 0, h, w)
+        res0["layout"] = Layout.DMA4Bank(res0["layout"].args[0])
+
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
+
+    return (results, attr, operands)
+
+
+@regitstry_opparam_converter("DMA_matrix")
+def _converter(reg):
+    """
+    |--------+--------------+--------------|
+    |        | src (local)  | des (ddr)    |
+    |--------+--------------+--------------|
+    | stride | [n, c, ?, x] | [?, ?, h, x] |
+    | shape  | [n, c, ?, w] | [x, ?, h, w] |
+    |--------+--------------+--------------|
+
+    |--------+--------------+--------------|
+    |        | src (ddr)    | des (local)  |
+    |--------+--------------+--------------|
+    | stride | [?, ?, h, x] | [n, c, ?, x] |
+    | shape  | [?, ?, h, w] | [x, c, ?, w] |
+    |--------+--------------+--------------|
+    """
+    res0, attr, opd0 = dma_reg_fmt_base(reg)
+    lane_mask = opd0["layout"].args[0]
+    l, r = memmap[MType.R]
+    s_addr = opd0["address"]
+    is_trans = reg.cmd_special_function == 1
+    if s_addr >= l and s_addr < r and (reg.fill_constant_en == 0):
+        # glocal
+        _, _, H, W = res0["shape"]
+        res0["shape"] = (1, 1, H, W)
+        _, _, h, _ = res0["stride"]
+        res0["stride"] = (0, 0, h, 1)
+        # local
+        if is_trans:
+            H, W = W, H
+        opd0["shape"] = (H, W)
+        opd0["layout"] = Layout.DMAmatrix(lane_mask, reg.src_wsize)
+        n, c, _, _ = opd0["stride"]
+        opd0["stride"] = (n, c, 0, 1)
+    else:
+        # glocal
+        _, _, H, W = opd0["shape"]
+        opd0["shape"] = (1, 1, H, W)
+        _, _, h, _ = opd0["stride"]
+        opd0["stride"] = (0, 0, h, 1)
+        # local
+        if is_trans:
+            H, W = W, H
+        res0["shape"] = (H, W)
+        n, c, _, _ = res0["stride"]
+        res0["stride"] = (n, c, 0, 1)
+        res0["layout"] = Layout.DMAmatrix(lane_mask, reg.dst_wsize)
+
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
+    return (results, attr, operands)
+
+
+@regitstry_opparam_converter("DMA_masked_select")
+def _converter(reg):
+    shape = tuple(reg[f"src_{d}size"] for d in "nchw")
+    opd0 = dict(
+        address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=shape,
+        layout=Layout.alignEU,
+    )
+    _, c, h, w = shape
+    res0 = dict(
+        address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=shape,
+        stride=(c * h * w, h * w, w),
+    )
+    opd1 = dict(
+        address=dma_addr(reg.mask_start_addr_h8, reg.mask_start_addr_l32),
+        dtype=DType(reg.mask_data_format),
+        shape=shape,
+        layout=Layout.alignEU,
+    )
+
+    operands = [get_value(**x) for x in (opd0, opd1)]
+    results = [get_value(**res0)]
+
+    return (results, {}, operands)
+
+
+@regitstry_opparam_converter("DMA_general")
+def _converter(reg):
+    copy_len = reg.src_cstride
+    opd0 = dict(
+        address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(copy_len,),
+        stride=(1,),
+        layout=Layout.DMAlinear,
+    )
+    res0 = dict(
+        address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(copy_len,),
+        stride=(1,),
+        layout=Layout.DMAlinear,
+    )
+    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
+    attr = dict(decompress=bool(reg.decompress_enable))
+    if lane_mask != (2**64 - 1):
+        attr["lane_mask"] = hex(lane_mask)
+
+    if reg.fill_constant_en:
+        opd0 = dict(
+            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
+        )
+    bc_size = reg.dst_csize
+    if reg.cmd_special_function == 1:
+        res0["shape"] = (bc_size, copy_len)
+        res0["stride"] = (LANE_SIZE, 1)
+
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
+
+    return (results, attr, operands)
+
+
+@regitstry_opparam_converter("DMA_cw_transpose")
+def _converter(reg):
+    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
+    n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
+    opd0 = dict(
+        address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(n, c, h, w),
+        stride=(*(reg[f"src_{d}stride"] for d in "nch"), 1),
+        layout=Layout.DMAstride(lane_mask),
+    )
+    res0 = dict(
+        address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(n, h, w, c),
+        stride=(*(reg[f"dst_{d}stride"] for d in "nch"), 1),
+        layout=Layout.DMAstride(lane_mask),
+    )
+
+    attr = dict(decompress=bool(reg.decompress_enable))
+
+    if lane_mask != (2**64 - 1):
+        attr["lane_mask"] = hex(lane_mask)
+
+    if reg.fill_constant_en:
+        attr = {}
+        opd0 = dict(
+            address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
+        )
+
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
+
+    return (results, attr, operands)
+
+
+@regitstry_opparam_converter("DMA_nonzero")
+def _converter(reg):
+    n, c, h, w = (reg[f"src_{d}size"] for d in "nchw")
+    stride = (c * h * w, h * w, w, 1)
+    opd0 = dict(
+        address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(n, c, h, w),
+        stride=stride,
+        layout=Layout.alignEU,
+    )
+    res0 = dict(
+        address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(n, h, w, c),
+        stride=stride,
+        layout=Layout.alignEU,
+    )
+
+    attr = dict(decompress=bool(reg.decompress_enable), base=reg.dst_nstride)
+
+    operands = [get_value(**opd0)]
+    results = [get_value(**res0)]
+
+    return (results, attr, operands)
+
+
+def dma_gather_base(reg):
+    lane_mask = reg.localmem_mask_h32 * 2**32 + reg.localmem_mask_l32
+    c, h, w = (reg[f"src_{d}size"] for d in "chw")
+    d_h = reg.dst_hsize
+    if reg.nchw_copy:
+        d_h = h
+    stride = (c * h * w, h * w, w, 1)
+    opd0 = dict(
+        address=dma_addr(reg.src_start_addr_h8, reg.src_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(1, c, h, w),
+        stride=(0, reg.src_cstride, reg.src_hstride, 1),
+        layout=Layout.stride,
+    )
+    res0 = dict(
+        address=dma_addr(reg.dst_start_addr_h8, reg.dst_start_addr_l32),
+        dtype=DType(reg.src_data_format),
+        shape=(1, max(c, reg.index_csize), d_h, w),
+        stride=(0, reg.dst_cstride, reg.dst_hstride, 1),
+        layout=Layout.DMAstride(lane_mask),
+    )
+    opd1 = dict(
+        address=dma_addr(reg.index_start_addr_h8, reg.index_start_addr_l32),
+        dtype=DType.u32,
+        shape=(1, reg.index_csize, d_h, 1),
+        stride=(0, reg.index_cstride, reg.index_hstride, 1),
+        layout=Layout.stride,
+    )
+    const = get_value(
+        address=reg.constant_value, dtype=DType(reg.src_data_format), is_const=True
+    ).data
+    attr = dict(const=const)
+
+    operands = [get_value(**x) for x in (opd0, opd1)]
+    results = [get_value(**res0)]
+
+    return (results, attr, operands)
+
+
+@regitstry_opparam_converter("DMA_gather")
+def _converter(reg):
+    return dma_gather_base(reg)
+
+
+@regitstry_opparam_converter("DMA_scatter")
+def _converter(reg):
+    results, _, operands = dma_gather_base(reg)
 
     return (results, {}, operands)

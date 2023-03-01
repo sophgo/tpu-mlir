@@ -11,23 +11,7 @@
 import numpy as np
 from enum import Enum
 from . import regdef_1684x
-from .opparam_1684x import NamedDict
-from .opparam_1684x import (
-    conv_reg_format,
-    cw_tans_reg_format,
-    mm_reg_format,
-    mm2_reg_format,
-    cmp_reg_format,
-    sfu_reg_format,
-    lin_reg_format,
-    vc_reg_format,
-    ar_reg_format,
-    pord_reg_format,
-    rqdq_reg_format,
-    sg_reg_format,
-    sgl_reg_format,
-    bc_reg_format,
-)
+from .opparam_1684x import NamedDict, opparam_converter
 
 # global data and type
 # ------------------------------------------------------------
@@ -38,126 +22,6 @@ bank_size = 2**14
 
 # cache for convert binary to unsigned integer.
 table = 2 ** np.arange(64, dtype=np.uint64)
-
-# TPU1686/common/include/memmap.h
-memmap = {
-    "R": (int("0x8000000", 16), int("0x9000000", 16)),  # lmen_base 16M
-    "S": (int("0x9000000", 16), int("0x9004000", 16)),  # static memory 16KB
-    "L": (int("0x10000000", 16), int("0x10200000", 16)),  # L2 SRAM  2M
-    "G": (int("0x100000000", 16), int("0x300000000", 16)),  # global memory
-}
-
-# for DType. Only the bits width is correct.
-class DType(Enum):
-    i8 = 0
-    f16 = 1
-    f32 = 2
-    i16 = 3
-    i32 = 4
-    bf16 = 5
-    i64 = 6
-    # offset 8
-    ui8 = i8 + 8  # type: ignore
-    u16 = i16 + 8  # type: ignore
-    u32 = i32 + 8  # type: ignore
-
-
-def get_dtype(prec, sign=1):  # unsigned -> 0; sign -> 1
-    if prec in (DType.f32.value, DType.bf16.value, DType.f16.value):
-        return DType(prec)
-    return DType(prec + (sign == 0) * 8)
-
-
-class Layout(Enum):
-    alignEU = 0  # 64 bytes aligment
-    compact = 1
-    offset = 2
-    stride = 3
-
-
-class MemRef:
-    # static memory type
-    to_np_dtype = {
-        DType.i8: np.int8,
-        DType.ui8: np.uint8,
-        DType.f16: np.float16,
-        DType.f32: np.float32,
-        DType.i16: np.int16,
-        DType.u16: np.uint16,
-        DType.i32: np.int32,
-        DType.u32: np.uint32,
-    }
-
-    def __init__(self, address, shape, dtype: DType, stride=None, layout=None):
-        self.addr = address
-        self.shape = shape
-        self.dtype = dtype
-
-        self.np_dtype = self.to_np_dtype[self.dtype]
-        self.mem_type = self.__mem_type()
-
-        if stride:
-            self.stride = stride
-        else:
-            self.stride = self.__layout_to_stride(layout)
-
-        self.name_str = self.__addr_str()
-        self.type_str = self.__shape_str()
-
-    def __layout_to_stride(self, mode: Layout):
-        # local memory
-        assert mode != Layout.stride
-        if len(self.shape) != 4 or self.mem_type != "R":
-            return None  # TODO
-
-        n, c, h, w = self.shape
-        tpu_offset = (self.addr - memmap["R"][0]) // (bank_size * 16)
-
-        if mode == Layout.alignEU:
-            data_bytes = np.dtype(self.to_np_dtype[self.dtype]).itemsize
-            align_type = 64 / data_bytes
-            c_stride = int(np.ceil(w * h / align_type))
-            n_stride = int(np.ceil((c + tpu_offset) / 64) * c_stride)
-            return [n_stride, c_stride, w, 1]
-
-        if mode == Layout.compact:
-            c_stride = w * h
-            n_stride = int(np.ceil((c + tpu_offset) / 64) * c_stride)
-            return [n_stride, c_stride, w, 1]
-
-        if mode == Layout.offset:
-            return [0, 1, 0, 0]
-
-    def __mem_type(self):
-        for k, v in memmap.items():
-            if self.addr >= v[0] and self.addr < v[1]:
-                return k
-        return "?"
-
-    def __addr_str(self):
-        k = self.mem_type
-        if k == "R":
-            return f"%R{self.fmt_lmem(self.addr - memmap[k][0])}"
-        if k in memmap:
-            return f"%{k}.{self.addr - memmap[k][0]}"
-        return f"%{k}.{self.addr}"
-
-    def __shape_str(self):
-        s = [str(x) for x in self.shape]
-        if self.stride and any((x != 0 for x in self.stride)):
-            return f"memref<{'x'.join(s)}x{self.dtype.name}, offset: 0, strides: {self.stride}>"
-        return f"memref<{'x'.join(s)}x{self.dtype.name}>"
-
-    def fmt_lmem(self, addr):
-        i = addr // bank_size
-        s = addr % bank_size
-        if s == 0:
-            return f"{i}"
-        else:
-            return f"{i}.{s}"
-
-    def __repr__(self):
-        return f"{self.name_str}: {self.type_str}"
 
 
 def attribute_builder(attr, reg_field):
@@ -185,6 +49,8 @@ def registry_base(cmd_type, sheet_name, cls):
     setattr(cls, "des_reg", {"fields": fields, "bits": bits})
     setattr(cls, "len", bits[-1])
     cmd_type.setdefault(cls.opcode, set()).add(cls)
+    if sheet_name in opparam_converter:
+        setattr(cls, "set_elt", staticmethod(opparam_converter[sheet_name]))
     return cls
 
 
@@ -242,12 +108,11 @@ class bdc_base:
     def decode(cls, cmd_reg):
         cls = cls()
         cls.cmd = cmd_reg[: cls.len]
-        cls.attr = NamedDict(
-            decode_reg(cls.cmd, cls.des_reg), ("des_", "short_", "opt_")
-        )
-        cls.cmd_id = cls.attr.cmd_id
-        cls.cmd_id_dep = cls.attr.cmd_id_dep
-        cls.set_elt()
+        attr = NamedDict(decode_reg(cls.cmd, cls.des_reg), ("des_", "short_", "opt_"))
+        cls.cmd_id = attr.cmd_id
+        cls.cmd_id_dep = attr.cmd_id_dep
+        cls.attr = attr
+        cls.results, cls.attribute, cls.operands = cls.set_elt(attr)
         return cls
 
     def __is_comp_base(self, cmd_reg):
@@ -265,10 +130,8 @@ class bdc_base:
     def is_comp(cls, cmd_reg):
         return cls.__is_comp_base(cls, cmd_reg)
 
-    def set_elt(self):
-        self.results = []
-        self.operands = []
-        self.attribute = {}
+    def set_elt(self, _):
+        return ([],) * 3
 
     def __repr__(self):
         if self.operands == []:
@@ -300,9 +163,6 @@ class sconv_op(conv_op):
     short_cmd = True
     description = "short convolution"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = conv_reg_format(self.attr)
-
 
 @registry_bdc("MM")
 class mm_op(bdc_base):
@@ -316,9 +176,6 @@ class smm_op(mm_op):
     short_cmd = True
     description = "short matrix multiply"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = mm_reg_format(self.attr)
-
 
 @registry_bdc("MM2")
 class mm2_op(bdc_base):
@@ -331,9 +188,6 @@ class mm2_op(bdc_base):
 class smm2_op(mm2_op):
     short_cmd = True
     description = "short matrix multiply2"
-
-    def set_elt(self):
-        self.results, self.attribute, self.operands = mm2_reg_format(self.attr)
 
 
 @registry_bdc("CMP")
@@ -354,9 +208,6 @@ class scmp_op(cmp_op):
     short_cmd = True
     description = "short fused_cmpare"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = cmp_reg_format(self.attr)
-
 
 @registry_bdc("SFU")
 class sfu_op(bdc_base):
@@ -374,9 +225,6 @@ class sfu_op(bdc_base):
 class ssfu_op(sfu_op):
     short_cmd = True
     description = "short special_function"
-
-    def set_elt(self):
-        self.results, self.attribute, self.operands = sfu_reg_format(self.attr)
 
 
 @registry_bdc("VC")
@@ -408,9 +256,6 @@ class svc_op(vc_op):
     short_cmd = True
     description = "short vector correlation"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = vc_reg_format(self.attr)
-
 
 @registry_bdc("LIN")
 class lin_op(bdc_base):
@@ -423,9 +268,6 @@ class lin_op(bdc_base):
 class slin_op(lin_op):
     short_cmd = True
     description = "short fused_linear"
-
-    def set_elt(self):
-        self.results, self.attribute, self.operands = lin_reg_format(self.attr)
 
 
 @registry_bdc("AR")
@@ -471,9 +313,6 @@ class sar_op(ar_op):
     short_cmd = True
     description = "short arithmetic"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = ar_reg_format(self.attr)
-
 
 # @registry_bdc("SEG")
 # class seg_op(bdc_base):
@@ -508,9 +347,6 @@ class spord_op(pord_op):
     short_cmd = True
     description = "short depthwise or pooling"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = pord_reg_format(self.attr)
-
 
 @registry_bdc("RQ&DQ")
 class rqdq_op(bdc_base):
@@ -530,9 +366,6 @@ class rqdq_op(bdc_base):
 class srqdq_op(rqdq_op):
     short_cmd = True
     description = "short RQ && DQ"
-
-    def set_elt(self):
-        self.results, self.attribute, self.operands = rqdq_reg_format(self.attr)
 
 
 @registry_bdc("SG")
@@ -565,14 +398,11 @@ class ssg_op(sg_op):
     short_cmd = True
     description = "short scatter_gather"
 
-    def set_elt(self):
-        self.results, self.attribute, self.operands = sg_reg_format(self.attr)
-
 
 @registry_bdc("SGL")
 class sgl_op(bdc_base):
     opcode = 6
-    eu_type = {17: "sgl.pe_s_nonzero_hzd", 18: "sgl.pe_s_scatter_line"}
+    eu_type = {17: "sgl.pe_s_gather_line", 18: "sgl.pe_s_scatter_line"}
     description = "scatter_gather_line"
 
 
@@ -580,9 +410,6 @@ class sgl_op(bdc_base):
 class ssgl_op(sgl_op):
     short_cmd = True
     description = "short scatter_gather_line"
-
-    def set_elt(self):
-        self.results, self.attribute, self.operands = sgl_reg_format(self.attr)
 
 
 @registry_bdc("TRANS&BC")
@@ -603,12 +430,6 @@ class transbc_op(bdc_base):
 class stransbc_op(transbc_op):
     short_cmd = True
     description = "short TRANS && BC"
-
-    def set_elt(self):
-        if self.attr.tsk_eu_typ in (0, 1):
-            self.results, self.attribute, self.operands = cw_tans_reg_format(self.attr)
-        else:
-            self.results, self.attribute, self.operands = bc_reg_format(self.attr)
 
 
 @registry_bdc("LAR")
@@ -647,6 +468,8 @@ class dma_base:
     des_reg = None
     opcode = None
     cmd_bits = (32, 36)
+    fun_bits = (36, 39)
+    sp_fun = ()
     op_name = "GDMA"
     short_cmd = False  # long_code by default
     __slots__ = (
@@ -672,11 +495,11 @@ class dma_base:
         cls = cls()
         cmd = cmd_reg[: cls.len]
         cls.cmd = cmd
-        attr = decode_reg(cmd, cls.des_reg)
+        attr = NamedDict(decode_reg(cmd, cls.des_reg))
+        cls.cmd_id = attr.cmd_id
+        cls.cmd_id_dep = attr.cmd_id_dep
         cls.attr = attr
-        cls.cmd_id = attr["cmd_id"]
-        cls.cmd_id_dep = attr["cmd_id_dep"]
-        cls.set_elt()
+        cls.results, cls.attribute, cls.operands = cls.set_elt(attr)
         return cls
 
     def __is_comp_base(self, cmd_reg):
@@ -686,52 +509,33 @@ class dma_base:
             return False
         if packbits(cmd_reg[self.cmd_bits[0] : self.cmd_bits[1]]) != self.opcode:
             return False
+        sp_fun_id = packbits(cmd_reg[self.fun_bits[0] : self.fun_bits[1]])
+        if self.sp_fun and (sp_fun_id not in self.sp_fun):
+            return False
         return True
 
     @classmethod
     def is_comp(cls, cmd_reg):
         return cls.__is_comp_base(cls, cmd_reg)
 
-    def set_elt(self):
-        self.results = []
-        self.operands = []
-        self.attribute = {}
-
-    def __memref(self, reg_field):
-        for addr, shape, stride, dtype in zip(*(reg_field[i::4] for i in range(4))):  # type: ignore
-            h8, l32 = addr
-            addr = self.attr[h8] * 2**32 + self.attr[l32]
-            shape = [self.attr[x] for x in shape]
-            stride = [self.attr[x] for x in stride]
-            dtype = get_dtype(self.attr[dtype])
-            yield MemRef(addr, shape, dtype, stride)
-
-    def memref(self, reg_field):
-        return list(self.__memref(reg_field))
+    def set_elt(self, _):
+        return ([],) * 3
 
     def __repr__(self):
         if self.operands == []:
             return self.description
-        opd_name, opd_type_t = zip(*((x.name_str, x.type_str) for x in self.operands))
-        res_name, res_type_t = zip(*((x.name_str, x.type_str) for x in self.results))
+        opd_name, opd_type_t = zip(*((x.name, x.type_str) for x in self.operands))
+        res_name, res_type_t = zip(*((x.name, x.type_str) for x in self.results))
+        if self.sp_fun:
+            op_name = self.sp_fun[self.attr.cmd_special_function]
+        else:
+            op_name = self.op_name
         attribute = ""
         if self.attribute:
-            attribute = f" {{{self.attribute}}}"
-
-        src_mem = opd_name[0][1]
-        des_mem = res_name[0][1]
-
-        if des_mem == src_mem:
-            action = "transfer"
-        elif des_mem == "R":
-            action = "load"
-        elif des_mem == "G":
-            action = "store"
-        else:
-            action = "copy"
+            attribute = f" {self.attribute}".replace(":", " =").replace("'", "")
 
         return (
-            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{self.op_name}.{action}\""
+            f"{', '.join(res_name)}, %D{self.cmd_id} = \"{op_name}\""
             + f"({', '.join(opd_name)}, %B{self.cmd_id_dep})"
             + attribute
             + f" : ({', '.join(opd_type_t)}, none) -> ({res_type_t[0]}, none)"
@@ -742,53 +546,27 @@ class dma_base:
 class dma_tensor(dma_base):
     opcode = 0
     op_name = "dma.tensor"
+    sp_fun = {
+        0: "dma.tensor",
+        1: "dma.tensor.transpose",
+        2: "dma.tensor.collect",
+        3: "dma.tensor.broadcast",
+        4: "dma.tensor.distribute",
+        5: "dma.tensor.4bank_copy",
+        6: "dma.tensor.4bank_broadcast",
+    }
     description = "DMA tensor"
-
-    def set_elt(self):
-        results = (
-            ("dst_start_addr_h8", "dst_start_addr_l32"),
-            ("dst_nsize", "dst_csize", "dst_hsize", "dst_wsize"),
-            ("dst_nstride", "dst_cstride", "dst_hstride", "dst_wstride"),
-            "src_data_format",
-        )
-        operands = (
-            ("src_start_addr_h8", "src_start_addr_l32"),
-            ("src_nsize", "src_csize", "src_hsize", "src_wsize"),
-            ("src_nstride", "src_cstride", "src_hstride", "src_wstride"),
-            "src_data_format",
-        )
-        self.results = self.memref(results)
-        self.operands = self.memref(operands)
-        if not all(self.results[0].shape):
-            self.results[0].shape = self.operands[0].shape
-        if not all(self.operands[0].shape):
-            self.operands[0].shape = self.results[0].shape
-
-        self.attribute = None
 
 
 @registry_dma("DMA_matrix")
 class dma_matrix(dma_base):
     opcode = 1
     op_name = "dma.matrix"
+    sp_fun = {
+        0: "dma.matrix",
+        1: "dma.matrix.transpose",
+    }
     description = "DMA matrix"
-
-    def set_elt(self):
-        results = (
-            ("dst_start_addr_l8", "dst_start_addr_h32"),
-            ("dst_nsize", "dst_csize", "dst_hsize", "dst_wsize"),
-            ("dst_nstride", "dst_cstride", "dst_hstride", "dst_wstride"),
-            "src_data_format",
-        )
-        operands = (
-            ("src_start_addr_l8", "src_start_addr_h32"),
-            ("src_nsize", "src_csize", "src_hsize", "src_wsize"),
-            ("src_nstride", "src_cstride", "src_hstride", "src_wstride"),
-            "src_data_format",
-        )
-        self.results = self.memref(results)
-        self.operands = self.memref(operands)
-        self.attribute = None
 
 
 @registry_dma("sDMA_matrix")
@@ -801,6 +579,7 @@ class sdma_matrix(dma_matrix):
 @registry_dma("DMA_masked_select")
 class dma_masked_select(dma_base):
     opcode = 2
+    op_name = "dma.masked_select"
     description = "DMA masked select"
 
 
@@ -813,6 +592,11 @@ class sdma_masked_select(dma_masked_select):
 @registry_dma("DMA_general")
 class dma_general(dma_base):
     opcode = 3
+    op_name = "dma.general"
+    sp_fun = {
+        0: "dma.general",
+        1: "dma.general.broadcast",
+    }
     description = "DMA general"
 
 
@@ -825,12 +609,14 @@ class sdma_general(dma_general):
 @registry_dma("DMA_cw_transpose")
 class dma_cw_transpose(dma_base):
     opcode = 4
+    op_name = "dma.cw_transpose"
     description = "DMA CW Transpose"
 
 
 @registry_dma("DMA_nonzero")
 class dma_nonzero(dma_base):
     opcode = 5
+    op_name = "dma.nonzero"
     description = "DMA nonzero"
 
 
@@ -844,6 +630,11 @@ class sdma_nonzero(dma_nonzero):
 class sdma_sys(dma_base):
     opcode = 6
     short_cmd = True
+    op_name = "dma.sys"
+    sp_fun = {
+        0: "dma.sys",
+        1: "dma.sys.nop",
+    }
     description = "short DMA sys"
 
 
@@ -853,29 +644,9 @@ class dma_gather(dma_base):
     op_name = "gdma.gather"
     description = "DMA gather"
 
-    def set_elt(self):
-        results = (
-            ("dst_start_addr_h8", "dst_start_addr_l32"),
-            ("dst_csize", "dst_hsize", "dst_wsize"),
-            ("dst_cstride", "dst_hstride"),
-            "src_data_format",
-        )
-        operands = (
-            ("src_start_addr_h8", "src_start_addr_l32"),
-            (f"src_{x}size" for x in "chw"),
-            ("src_cstride", "src_hstride"),
-            "src_data_format",
-            ("index_start_addr_h8", "index_start_addr_l32"),
-            (f"index_{x}size" for x in "ch"),
-            ("index_cstride", "index_hstride"),
-            "src_data_format",
-        )
-        self.results = self.memref(results)
-        self.operands = self.memref(operands)
-        self.attribute = None
-
 
 @registry_dma("DMA_scatter")
 class dma_scatter(dma_base):
     opcode = 8
+    op_name = "gdma.scatter"
     description = "DMA scatter"
