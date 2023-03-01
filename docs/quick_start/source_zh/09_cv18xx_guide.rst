@@ -1,8 +1,8 @@
-CV18XX芯片使用指南
+CV18xx芯片使用指南
 ===================
 
-CV18XX支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数据类型方面,CV18XX支持BF16格式的量化
-和INT8格式的非对称量化。本章节以CV183X芯片为例,介绍CV18XX系列芯片编译模型和运行runtime sample。
+CV18xx支持ONNX系列和Caffe模型,目前不支持TFLite模型。在量化数据类型方面,CV18xx支持BF16格式的量化
+和INT8格式的非对称量化。本章节以CV183X芯片为例,介绍CV18xx系列芯片编译模型和运行runtime sample。
 
 编译yolov5模型
 ------------------
@@ -168,7 +168,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
 
 
-上述教程介绍了TPU-MLIR编译CV18XX系列芯片的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的芯片名称换成实际的CV18XX芯片名称即可。
+上述教程介绍了TPU-MLIR编译CV18xx系列芯片的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的芯片名称换成实际的CV18xx芯片名称即可。
 
 
 合并cvimodel模型文件

@@ -1,7 +1,7 @@
-CV18XX Guidance
+CV18xx Guidance
 ===================
 
-CV18XX series chip currently supports ONNX and Caffe models but not TFLite models. In terms of quantization, CV18XX supports BF16 and asymmetric INT8 format. This chapter takes the CV183X as an example to introduce the compilation and runtime sample of the CV18XX series chip.
+CV18xx series chip currently supports ONNX and Caffe models but not TFLite models. In terms of quantization, CV18xx supports BF16 and asymmetric INT8 format. This chapter takes the CV183X as an example to introduce the compilation and runtime sample of the CV18xx series chip.
 
 Compile yolov5 model
 --------------------
@@ -163,7 +163,7 @@ The comparison of the four images is shown in :numref:`yolov5s_result1`, due to 
 
 
 
-The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18XX series chip. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the chip name with the specific CV18XX chip.
+The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18xx series chip. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the chip name with the specific CV18xx chip.
 
 
 Merge cvimodel Model Files

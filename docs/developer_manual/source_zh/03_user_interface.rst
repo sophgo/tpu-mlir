@@ -103,6 +103,7 @@
 然后将量化表传入生成模型, 如下:
 
 .. code-block:: shell
+
     $ model_deploy.py \
        --mlir resnet.mlir \
        --quantize INT8 \

@@ -16,8 +16,8 @@ TPU-MLIR Quick Start
    04_tflite
    05_caffe
    06_mix_precision
-   07_to_onnx_convert
-   08_test_sdk
+   07_fuse_preprocess
+   08_to_onnx_convert
    09_cv18xx_guide
-   10_fuse_preprocess
+   10_bm168x_test
 
