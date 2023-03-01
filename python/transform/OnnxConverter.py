@@ -1190,16 +1190,11 @@ class OnnxConverter(BaseConverter):
     def convert_softmax_op(self, onnx_node):
         assert (onnx_node.op_type in ("Softmax", "LogSoftmax"))
         op = self.getOperand(onnx_node.inputs[0])
-        input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
-        axis_default = -1
-        for i, shape in enumerate(output_shape):
-            if shape > 1:
-                axis_default = i
-                break
+        axis_default = -1 if self.opset >= 13 else 1
         axis = onnx_node.attrs.get('axis', axis_default)
         if axis < 0:
-            axis += len(input_shape)
+            axis += len(output_shape)
         p = {
             'name': "{}_{}".format(onnx_node.name, onnx_node.op_type),
             'axis': axis,
