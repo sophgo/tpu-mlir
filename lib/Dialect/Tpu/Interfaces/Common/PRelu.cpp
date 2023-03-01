@@ -15,10 +15,12 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::PReluOp::init(InferenceParameter &p) {
+  auto w_shape = module::getShape(getSlope());
+  auto weight_shape = channel_expand_dim(w_shape, module::getShape(getInput()).size());
   auto prelu = new PRelu();
   (*prelu)
       .src(p.inputs[0], module::getShape(getInput()))
-      .weights(p.inputs[1], module::getShape(getSlope()))
+      .weights(p.inputs[1], weight_shape)
       .dst(p.outputs[0], module::getShape(getOutput()))
       .setup();
   p.handle = (void *)prelu;

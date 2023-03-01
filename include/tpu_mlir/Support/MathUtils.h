@@ -162,6 +162,7 @@ int StopForAxis(const int *stop_indices, const int *strides, const int mask,
                 const int shrink_mask, const int *shape, const int axis,
                 int start_for_axis);
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
+std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
 
 // reset pad to 4 dim
 bool pad_reset(const std::vector<int64_t> &shape,

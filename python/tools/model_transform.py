@@ -141,6 +141,25 @@ class TFLiteTransformer(ModelTransformer):
         return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw, tf_layout = tf_layout)
 
 
+class PytorchTransformer(ModelTransformer):
+
+    def __init__(self,
+                 model_name,
+                 model_def,
+                 input_shapes: list = [],
+                 output_names=[],
+                 preprocessor=None):
+        super().__init__(model_name)
+        self.model_def = model_def
+        from transform.PytorchConverter import PytorchConverter
+        self.converter = PytorchConverter(self.model_name, self.model_def, input_shapes, output_names,
+                                          preprocessor)
+
+    def origin_inference(self, inputs: dict):
+        from tools.model_runner import pytorch_inference
+        return pytorch_inference(inputs, self.converter.model)
+
+
 def get_model_transform(args):
     preprocessor = preprocess()
     preprocessor.config(**vars(args))
@@ -156,6 +175,9 @@ def get_model_transform(args):
     elif args.model_def.endswith('.tflite'):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
                                  args.output_names, preprocessor.to_dict())
+    elif args.model_def.endswith('.pt'):
+        tool = PytorchTransformer(args.model_name, args.model_def, args.input_shapes,
+                                  args.output_names, preprocessor.to_dict())
     else:
         # TODO: support more AI model types
         raise RuntimeError("unsupport model:{}".format(args.model_def))
