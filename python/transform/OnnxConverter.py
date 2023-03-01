@@ -18,8 +18,8 @@ import os
 import onnx
 import onnxruntime
 import numpy as np
-import random
-from utils.pad_setting import get_TF_SAME_Padding, set_auto_pad
+from utils.pad_setting import set_auto_pad
+from utils.auto_remove import file_mark, file_clean
 import copy
 
 onnx_attr_translator = {
@@ -102,7 +102,7 @@ class OnnxConverter(BaseConverter):
                  preprocess_args=None):
         super().__init__()
         self.model_name = model_name
-        self.weight_file = "{}_top_weight.npz".format(model_name)
+        self.weight_file = "{}_top_origin_weight.npz".format(model_name)
         self.model = None
         self.mlir = None
         self.node_name_mapping = {}  # used in onnx opt
@@ -203,6 +203,9 @@ class OnnxConverter(BaseConverter):
         if self.mlir != None:
             del self.mlir
             self.mlir = None
+
+    def cleanup(self):
+        file_clean()
 
     def check_need(self, name):
         for node in self.converted_nodes:
@@ -372,6 +375,7 @@ class OnnxConverter(BaseConverter):
             self.addWeight(name, data)
         self.add_shape_info()
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
+        file_mark(self.onnx_file)
         onnx.save(self.model, self.onnx_file)
         strip_model = onnx.ModelProto()
         strip_model.CopyFrom(self.model)
@@ -433,6 +437,7 @@ class OnnxConverter(BaseConverter):
             intermediate_layer_value_info.name = name
             model.graph.output.append(intermediate_layer_value_info)
         onnx_file = "generate_onnx_with_unk.onnx"
+        file_mark(onnx_file)
         onnx.save(model, onnx_file)
         session = onnxruntime.InferenceSession(onnx_file)
         os.remove(onnx_file)

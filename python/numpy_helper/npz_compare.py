@@ -19,42 +19,30 @@ from tqdm import tqdm
 
 
 def parse_args(args_list):
+    # yapf: disable
     parser = argparse.ArgumentParser(description='Compare two npz tensor files.')
     parser.add_argument("target_file", help="Comparing target file")
     parser.add_argument("ref_file", help="Comparing reference file")
     parser.add_argument('--verbose', '-v', action='count', default=0)
-    parser.add_argument("--tolerance",
-                        type=str,
-                        default='0.99,0.99,0.90,50',
-                        help="tolerance for cos/cor/euclid similarity/SQNR")
-    parser.add_argument('--op_info',
-                        type=str,
+    parser.add_argument("--tolerance", type=str, default='0.99,0.99',
+                        help="tolerance for cos/euclid similarity")
+    parser.add_argument('--op_info', type=str,
                         help="A csv file op_info, including order and dequant threshold")
-    parser.add_argument("--dequant",
-                        action='store_true',
-                        default=False,
+    parser.add_argument("--dequant", action='store_true',
                         help="Do dequantization flag, use threshold table provided in --op_info")
     parser.add_argument("--excepts", type=str, help="List of tensors except from comparing")
-    parser.add_argument("--full-array",
-                        action='store_true',
-                        default=False,
+    parser.add_argument("--full-array", action='store_true',
                         help="Dump full array data when comparing failed")
-    parser.add_argument("--stats_int8_tensor",
-                        action='store_true',
-                        default=False,
+    parser.add_argument("--stats_int8_tensor", action='store_true',
                         help="Do statistics on int8 tensor for saturate ratio and low ratio")
-    parser.add_argument("--int8_tensor_close",
-                        type=int,
-                        default=1,
+    parser.add_argument("--int8_tensor_close", type=int, default=1,
                         help="whether int8 tensor compare close")
     parser.add_argument("--save", type=str, help="Save result as a csv file")
-    parser.add_argument("--per_axis_compare",
-                        type=int,
-                        default=-1,
+    parser.add_argument("--per_axis_compare", type=int, default=-1,
                         help="Compare along axis, usually along axis 1 as per-channel")
-    parser.add_argument("--post_op", default=False, type=bool,
-                        help="if the bmodel have post handle op")
+    parser.add_argument("--post_op", action='store_true', help="if the bmodel have post handle op")
     args = parser.parse_args(args_list)
+    # yapf: enable
     return args
 
 
@@ -207,11 +195,11 @@ def npz_compare(args_list):
                 #Todo: select the minimum shape as the base to compare
                 p = multiprocessing.Process(target=compare_one_array,
                                             args=(tc, npz1, npz2, name, args.verbose, lock, dic,
-                                                int8_tensor_close, args.per_axis_compare))
+                                                  int8_tensor_close, args.per_axis_compare))
             else:
                 p = multiprocessing.Process(target=compare_one_array,
                                             args=(tc, npz1, npz2, name, args.verbose, lock, dic,
-                                                int8_tensor_close, args.per_axis_compare))
+                                                  int8_tensor_close, args.per_axis_compare))
             processes.append(p)
             p.start()
 

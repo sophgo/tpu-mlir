@@ -67,9 +67,11 @@ else
   do_dynamic=0
 fi
 
+do_post_opt=
 post_handle_def=
 if [ x$do_post_handle == x1 ]; then
   post_handle_def="--post_handle_type=${post_type}"
+  do_post_opt="--post_op"
 fi
 NET_DIR=$REGRESSION_PATH/regression_out/${model_name}_${chip_name}
 mkdir -p $NET_DIR
@@ -231,7 +233,7 @@ if [ ${do_f32} == 1 ]; then
     --tolerance 0.99,0.99 \
     --compare_all \
     --model ${model_name}_${chip_name}_f32.${model_type} \
-    --post_op ${do_post_handle}
+    ${do_post_opt}
 fi
 
 if [ ${do_f16} == 1 ]; then
@@ -245,7 +247,7 @@ if [ ${do_f16} == 1 ]; then
     --tolerance 0.95,0.85 \
     --compare_all \
     --model ${model_name}_${chip_name}_f16.${model_type} \
-    --post_op ${do_post_handle}
+    ${do_post_opt}
 fi
 
 if [ ${do_bf16} == 1 ]; then
@@ -259,7 +261,7 @@ if [ ${do_bf16} == 1 ]; then
     --tolerance 0.95,0.85 \
     --compare_all \
     --model ${model_name}_${chip_name}_bf16.${model_type} \
-    --post_op ${do_post_handle}
+    ${do_post_opt}
 fi
 
 #########################
@@ -318,7 +320,7 @@ if [ ${do_symmetric} == 1 ]; then
     --quant_input \
     --quant_output \
     --model ${model_name}_${chip_name}_int8_sym.${model_type} \
-    --post_op ${do_post_handle}
+    ${do_post_opt}
 
 fi #do_symmetric
 
@@ -342,7 +344,7 @@ if [ $do_asymmetric == 1 ]; then
     ${excepts_opt} \
     --compare_all \
     --model ${model_name}_${chip_name}_int8_asym.${model_type} \
-    --post_op ${do_post_handle}
+    ${do_post_opt}
 
 fi #do_asymmetric
 
@@ -386,7 +388,7 @@ if [ $do_dynamic == 1 ]; then
       --chip ${chip_name} \
       --compare_all \
       --model ${static_model} \
-      --post_op ${do_post_handle}
+      ${do_post_opt}
 
     model_deploy.py \
       --mlir ${model_name}.mlir \
@@ -399,16 +401,16 @@ if [ $do_dynamic == 1 ]; then
       --tolerance 0.99,0.99 \
       --compare_all \
       --model ${dynamic_model} \
-      --post_op ${do_post_handle}
+      ${do_post_opt}
 
     model_runner.py --input ${static_input_npz} \
                 --model ${static_model} \
                 --output ${static_model_name}_out_f32.npz
-                --post_op ${do_post_handle}
+                ${do_post_opt}
     model_runner.py --input ${static_input_npz} \
                 --model ${dynamic_model} \
                 --output ${dynamic_model_name}_out_f32.npz \
-                --post_op ${do_post_handle}
+                ${do_post_opt}
     npz_tool.py compare ${static_model_name}_out_f32.npz \
                 ${dynamic_model_name}_out_f32.npz -vv
   fi
@@ -424,7 +426,7 @@ if [ $do_dynamic == 1 ]; then
   #     ${excepts_opt} \
   #     --tolerance 0.95,0.85 \
   #     --model ${model_name}_${chip_name}_f16.${model_type} \
-  #     --post_op ${do_post_handle}
+  #     ${do_post_opt}
   # fi
 
   # if [ ${do_bf16} == 1 ]; then
@@ -438,7 +440,7 @@ if [ $do_dynamic == 1 ]; then
   #     ${excepts_opt} \
   #     --tolerance 0.95,0.85 \
   #     --model ${model_name}_${chip_name}_bf16.${model_type} \
-  #     --post_op ${do_post_handle}
+  #     ${do_post_opt}
   # fi
 
 fi #do_dynamic
@@ -465,7 +467,7 @@ if [ x${do_int4_sym} == x1 ]; then
   #   --quant_input \
   #   --quant_output \
   #   --model ${model_name}_${chip_name}_int4_sym.${model_type} \
-  #   --post_op ${do_post_handle}
+  #   ${do_post_opt}
 
   #Temporary test code
   tpuc-opt ${model_name}.mlir \

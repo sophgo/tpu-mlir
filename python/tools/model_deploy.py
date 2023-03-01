@@ -8,12 +8,12 @@
 #
 # ==============================================================================
 
-import abc
 import numpy as np
 import argparse
 from utils.mlir_shell import *
 from utils.mlir_parser import *
 from utils.preprocess import preprocess, supported_customization_format
+from utils.auto_remove import file_mark, file_clean
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
 from utils.misc import str2bool
@@ -86,8 +86,12 @@ class DeployTool:
                 self.prefix += "_sym"
         self._prepare_input_npz()
 
+    def cleanup(self):
+        file_clean()
+
     def lowering(self):
         self.tpu_mlir = "{}_tpu.mlir".format(self.prefix)
+        file_mark(self.tpu_mlir)
         self.final_mlir = "{}_final.mlir".format(self.prefix)
         mlir_lowering(self.mlir_file, self.tpu_mlir, self.quantize, self.chip, self.cali_table,
                       self.asymmetric, self.quantize_table, False, self.customization_format,
@@ -153,7 +157,7 @@ class DeployTool:
                 input_op = self.module.inputs[0].op
                 ppa.load_config(input_op)
                 self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
-            assert (self.customization_format.starts_with("YUV") < 0)
+            assert (self.customization_format.startswith("YUV") < 0)
             if str(self.chip).lower().endswith('183x'):
                 ppa.VPSS_W_ALIGN = 32
                 ppa.VPSS_Y_ALIGN = 32
@@ -168,7 +172,7 @@ class DeployTool:
                 x = np.squeeze(data, 0)
                 if self.customization_format == "GRAYSCALE":
                     x = ppa.align_gray_frame(x, self.aligned_input)
-                elif self.customization_format.ends_with("_PLANAR") >= 0:
+                elif self.customization_format.endswith("_PLANAR") >= 0:
                     x = ppa.align_planar_frame(x, self.aligned_input)
                 else:
                     x = ppa.align_packed_frame(x, self.aligned_input)
@@ -185,6 +189,7 @@ class DeployTool:
             top_outputs = mlir_inference(self.inputs, self.mlir_file)
             np.savez(self.ref_npz, **top_outputs)
         self.tpu_npz = "{}_tpu_outputs.npz".format(self.prefix)
+        file_mark(self.tpu_npz)
 
     def validate_tpu_mlir(self):
         show_fake_cmd(self.in_f32_npz, self.tpu_mlir, self.tpu_npz)
@@ -208,6 +213,7 @@ class DeployTool:
 
     def validate_model(self):
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
+        file_mark(self.model_npz)
         show_fake_cmd(self.in_f32_npz, self.model, self.model_npz, self.post_op)
         model_outputs = model_inference(self.inputs, self.model, self.post_op)
         np.savez(self.model_npz, **model_outputs)
@@ -263,11 +269,12 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
-    parser.add_argument("--post_op", default=False, type=str2bool,
+    parser.add_argument("--post_op", action="store_true",
                         help="if the bmodel have post handle op")
+    parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     # yapf: enable
     args = parser.parse_args()
-    if args.customization_format is not None and args.customization_format.starts_with("YUV") >= 0:
+    if args.customization_format is not None and args.customization_format.startswith("YUV") >= 0:
         args.aligned_input = True
 
     tool = DeployTool(args)
@@ -275,3 +282,5 @@ if __name__ == '__main__':
     tool.lowering()
     # generate model
     tool.build_model()
+    if not args.debug:
+        tool.cleanup()
