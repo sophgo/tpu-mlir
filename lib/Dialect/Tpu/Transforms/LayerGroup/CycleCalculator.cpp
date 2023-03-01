@@ -52,7 +52,7 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
   }
 
   Value out = op->getResult(0);
-  iter = tensor_infos.find(in);
+  iter = tensor_infos.find(out);
   if (iter != tensor_infos.end()) {
     module::getNCHW(out, N, C, H, W, group_type);
     auto &si = iter->second.slice_info;
