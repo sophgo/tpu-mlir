@@ -34,6 +34,7 @@ protected:
   int getOutIndex(Operation *op, Value &out);
   uint32_t getTensorGmemSize(Operation *op, int index, int64_t aligment_);
   bool is_next_subnet_input(Operation *op, int index);
+  std::vector<uint32_t> getConcatOpLive(Operation *op, std::map<ValueInfo, TensorLive> &liveRange);
 protected:
   StringRef chip;
 };

@@ -44,6 +44,8 @@ public:
       std::map<ValueInfo, int64_t> &gaddrMap,
       int64_t baseGaddr,
       uint32_t alignment);
+  static void sortOpByLiveStart(std::vector<ValueInfo> &ops,
+                                std::map<ValueInfo, TensorLive> &liveRange);
 
   std::map<ValueInfo, int64_t> &gaddrMap_;
   uint32_t alignment;

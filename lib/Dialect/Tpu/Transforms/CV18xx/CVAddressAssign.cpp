@@ -117,6 +117,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
 
   for (auto &targetOuts : shared_outs_regions) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
+    //FitFirstAssign should make sure op's start liverange ascendingly
+    GmemAllocator::sortOpByLiveStart(targetOuts.second, liveRange);
     auto gmemUsed = allocator.assignGaddr(targetOuts.second, liveRange,
                                           reuse_addr, sharedGmemOffset);
     if (sharedGmemSize < sharedGmemOffset + gmemUsed) {
@@ -129,6 +131,8 @@ void CVAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
   // 2. Assign gaddr for ops in private region.
   if (!private_outs.empty()) {
     GmemAllocator allocator(gaddrMap, neuron_alignment);
+    //FitFirstAssign should make sure op's start liverange ascendingly
+    GmemAllocator::sortOpByLiveStart(private_outs, liveRange);
     privateGmemSize =
         allocator.assignGaddr(private_outs, liveRange, reuse_addr, baseGaddr);
   }
