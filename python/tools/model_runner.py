@@ -176,11 +176,10 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
     import pymlir
     from utils.mlir_parser import MlirParser
 
-    if debug is not None:
-        if debug == "":
-            pymlir.debug([])
-        else:
-            pymlir.debug(debug.split(","))
+    if debug == "":
+        pymlir.debug()
+    elif debug:
+        pymlir.debug(debug.split(","))
 
     module = pymlir.module()
     module.load(mlir_file)

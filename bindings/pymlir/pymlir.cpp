@@ -213,7 +213,7 @@ private:
   std::unique_ptr<ModuleInterpreter> interpreter_;
 };
 
-void debug(std::vector<std::string> debug_types) {
+void debug_only(std::vector<std::string> debug_types) {
   llvm::DebugFlag = true;
   std::vector<const char *> c_debug;
   c_debug.reserve(debug_types.size());
@@ -221,6 +221,8 @@ void debug(std::vector<std::string> debug_types) {
     c_debug.push_back(const_cast<char *>(d.c_str()));
   llvm::setCurrentDebugTypes(c_debug.data(), c_debug.size());
 }
+
+void debug(bool enable) { llvm::DebugFlag = enable; }
 
 #ifndef MLIR_VERSION
 #define MLIR_VERSION "version unknown"
@@ -231,7 +233,9 @@ std::string py_module::version = MLIR_VERSION;
 // wrap as Python module
 PYBIND11_MODULE(pymlir, m) {
   m.doc() = "pybind11 for mlir";
-  m.def("debug", &debug, "configure debugging information");
+  m.def("debug", &debug, py::arg("enable") = true,
+        "enable debugging information");
+  m.def("debug", &debug_only, "configure debugging information");
 
   py::class_<quant_brief_info>(m, "q_info", "simple tensor quant info")
       .def_readwrite("dtype", &quant_brief_info::dtype)

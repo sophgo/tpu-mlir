@@ -8,7 +8,7 @@
 #
 # ==============================================================================
 from bmodel_dis import Bmodel2MLIR, opdef_1684x, tensor2memref
-from utils.bmodel_dis.opparam_1684x import MType, Memory
+from utils.bmodel_dis.opparam_1684x import MType, Memory, memmap
 from utils.cmodel import lib, gen_lookup_table
 import cmd
 import ctypes
@@ -267,7 +267,7 @@ class Tdb(cmd.Cmd):
         mem = tensor2memref(args[id])
         self.set_data(mem, input)
 
-    def set_data(self, des: opdef_1684x.MemRef, src: np.ndarray):
+    def set_data(self, des, src: np.ndarray):
         m_type = des.mtype
         if m_type == MType.G:
             offset = m_type.r_addr
@@ -316,7 +316,7 @@ class Tdb(cmd.Cmd):
         self.model = Bmodel2MLIR(self.file)
         coeff = self.model.module.functions[0].regions[0].data
         if coeff:
-            addr = coeff.address - opdef_1684x.memmap["G"][0]
+            addr = coeff.address - memmap[MType.G][0]
             # load constant data
             self.ddr[addr : addr + len(coeff.data)] = memoryview(coeff.data)
         if self.model is None:
