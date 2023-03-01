@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Backend/Arch.h"
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
@@ -443,6 +444,7 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
   if (group_type == GROUP_NORMAL) {
     module::getNCHW(shape, n, c, h, w, true);
   } else if (group_type == GROUP_SMALL_C) {
+    int64_t npu_num = backend::Arch::NPU_NUM;
     auto shape_vec = shape.vec();
     shape_vec.resize(4);
     // shape.size() == 2/1 is for MatMul weight and bias
@@ -461,11 +463,19 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
       shape_vec[2] = shape[3];
       shape_vec[1] = shape[2];
       shape_vec[0] = shape[1] * shape[0];
+      if (shape[2] * shape[1] * shape[0] % npu_num == 0) {
+        shape_vec[1] = npu_num;
+        shape_vec[0] = shape[2] * shape[1] * shape[0] / npu_num;
+      }
     } else if (shape.size() == 5) {
       shape_vec[3] = 1;
       shape_vec[2] = shape[4];
       shape_vec[1] = shape[3];
       shape_vec[0] = shape[2] * shape[1] * shape[0];
+      if (shape[3] * shape[2] * shape[1] * shape[0] % npu_num == 0) {
+        shape_vec[1] = npu_num;
+        shape_vec[0] = shape[3] * shape[2] * shape[1] * shape[0] / npu_num;
+      }
     }
     module::getNCHW(shape_vec, n, c, h, w, false);
   } else {
