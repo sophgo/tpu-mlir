@@ -1084,6 +1084,11 @@ typedef struct swap_dim_spec {
   // int offset[MAX_SHAPE_DIMS];
 } swap_dim_spec_t;
 
+typedef struct swap_channel_param {
+  int order[3];
+  int shape_dim;
+} swap_channel_param_t;
+
 typedef struct {
   int tile_coeff[MAX_SHAPE_DIMS];
   int type;
