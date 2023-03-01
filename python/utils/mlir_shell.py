@@ -159,7 +159,9 @@ def mlir_to_model(tpu_mlir: str,
 
 
 def f32_blobs_compare(a_npz: str, b_npz: str, tolerance: str, excepts=None, show_detail=True, post_op=False):
-    cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance, "--post_op", post_op]
+    cmd = ["npz_tool.py", "compare", a_npz, b_npz, "--tolerance", tolerance]
+    if post_op:
+        cmd.extend(["--post_op", post_op])
     if excepts:
         cmd.extend(["--except", excepts])
     if show_detail:

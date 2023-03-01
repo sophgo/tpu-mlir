@@ -98,7 +98,7 @@ class State:
 
 
 def get_weight_file(model_name: str, state: str, chip: str):
-    name = "{}_{}_{}_weight.npz".format(model_name, state, chip)
+    name = "{}_{}_{}_origin_weight.npz".format(model_name, state, chip)
     return name.lower()
 
 

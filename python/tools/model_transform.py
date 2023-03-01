@@ -16,6 +16,7 @@ from transform.BaseConverter import BaseConverter
 from utils.mlir_shell import *
 from utils.mlir_parser import *
 from utils.misc import *
+from utils.auto_remove import file_mark, file_clean
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
@@ -27,11 +28,12 @@ class ModelTransformer(object):
         self.do_mlir_infer = True
 
     def cleanup(self):
-        pass
+        file_clean()
 
     def model_transform(self, mlir_file: str, post_handle_type=""):
         self.mlir_file = mlir_file
         mlir_origin = mlir_file.replace('.mlir', '_origin.mlir', 1)
+        file_mark(mlir_origin)
         self.converter.generate_mlir(mlir_origin)
         mlir_opt_for_top(mlir_origin, self.mlir_file, post_handle_type)
         print("Mlir file generated:{}".format(mlir_file))
@@ -72,9 +74,9 @@ class ModelTransformer(object):
             show_fake_cmd(in_f32_npz, self.mlir_file, test_result)
             f32_outputs = mlir_inference(inputs, self.mlir_file)
             np.savez(test_result, **f32_outputs)
-
             # compare all blobs layer by layers
             f32_blobs_compare(test_result, ref_npz, tolerance, excepts=excepts)
+            file_mark(ref_npz)
         else:
             np.savez(test_result, **ref_outputs)
 
@@ -205,6 +207,7 @@ if __name__ == '__main__':
     parser.add_argument("--excepts", default='-', help="excepts")
     parser.add_argument("--post_handle_type", default="", type=str,
                          help="post handle type, such as yolo,ssd etc")
+    parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
@@ -214,4 +217,5 @@ if __name__ == '__main__':
     if args.test_input:
         assert (args.test_result)
         tool.model_validate(args.test_input, args.tolerance, args.excepts, args.test_result)
-    tool.cleanup()
+    if not args.debug:
+        tool.cleanup()

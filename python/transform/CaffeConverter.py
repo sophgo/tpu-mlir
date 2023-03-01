@@ -53,7 +53,7 @@ class CaffeConverter(BaseConverter):
         self.blobs = self.net.blobs
         self.mlir = None
         self.layer_dict = self.net.layer_dict
-        self.weight_file = "{}_top_weight.npz".format(model_name)
+        self.weight_file = "{}_top_origin_weight.npz".format(model_name)
         self.init_shapes(input_shapes)
         self.init_MLIRImporter()
         self.location = self.resolve_alias()

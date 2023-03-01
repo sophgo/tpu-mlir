@@ -43,7 +43,8 @@ def fp32_to_bf16(d_fp32):
 
 
 def show_fake_cmd(in_npz: str, model: str, out_npz: str, post_op=False):
-    print("[CMD]: model_runner.py --input {} --model {} --output {} --post_op {}".format(in_npz, model, out_npz, post_op))
+    post_param = "" if not post_op else "--post_op"
+    print("[CMD]: model_runner.py --input {} --model {} --output {} {}".format(in_npz, model, out_npz, post_param))
 
 
 def get_chip_from_model(model_file: str) -> str:
@@ -354,11 +355,11 @@ if __name__ == '__main__':
                         help="mlir/onnx/tflie/bmodel/prototxt file.")
     parser.add_argument("--weight", type=str, default="", help="caffemodel for caffe")
     parser.add_argument("--output", default='_output.npz', help="output npz file")
-    parser.add_argument("--dump_all_tensors",action='store_true',
+    parser.add_argument("--dump_all_tensors", action='store_true',
                         help="dump all tensors to output file")
     parser.add_argument("--debug", type=str, nargs="?", const="",
                         help="configure the debugging information.")
-    parser.add_argument("--post_op", default=False, type=str2bool,
+    parser.add_argument("--post_op", action='store_true',
                         help="if the bmodel have post handle op")
     # yapf: enable
     args = parser.parse_args()
