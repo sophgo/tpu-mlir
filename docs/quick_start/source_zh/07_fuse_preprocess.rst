@@ -19,8 +19,8 @@
    * - NHWC to NCHW
      - True
      - True
-   * - BGR to RGB
-     - False
+   * - BGR/RGB 转换
+     - True
      - True
 
 其中图像裁剪会先将图片按使用model_transform工具时输入的“--resize_dims”参数将图片调整为对应的大小, 再裁剪成模型输入的尺寸。而归一化计算支持直接将未进行预处理的图像数据(即unsigned int8格式的数据)做归一化处理。

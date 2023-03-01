@@ -19,8 +19,8 @@ At present, the two main series of chips supported by TPU-MLIR are BM168x and CV
    * - NHWC to NCHW
      - True
      - True
-   * - BGR to RGB
-     - False
+   * - BGR/ RGB Conversion
+     - True
      - True
 
 The image cropping will first adjust the image to the size specified by the "--resize_dims" argument of the model_transform tool, and then crop it to the size of the model input. The normalization supports directly converting unpreprocessed image data.
