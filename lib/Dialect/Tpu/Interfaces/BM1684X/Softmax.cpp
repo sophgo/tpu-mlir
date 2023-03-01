@@ -64,12 +64,12 @@ int64_t tpu::SoftmaxOp::getBufferSize_bm1684x(
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
     group_type_t group_type) {
   int64_t N, C, H, W;
-  module::getNCHW(getInput(), N, C, H, W);
+  module::getNCHW(getInput(), N, C, H, W, group_type);
 
   int64_t buffer_size = 0;
   int c_per_npu = ceiling_func(C, BM168x::NPU_NUM);
   auto eu_num = BM168x::eu_num(sizeof(float));
-  int64_t axis = getAxis();
+  int64_t axis = group_type == GROUP_SMALL_C ? 2 : getAxis();
   if (axis == 2) {
     buffer_size += c_per_npu * align_up(W, eu_num) * sizeof(float);
   } else if (axis == 3) {
@@ -106,6 +106,10 @@ void tpu::SoftmaxOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.buffer_addr = gi.buffer_addr;
   common.begin_axis = getAxis();
   common.end_axis = getAxis();
+  if (group_type == GROUP_SMALL_C) {
+    common.begin_axis = 2;
+    common.end_axis = 2;
+  }
   common.scale_val = in_scale;
   common.log = getLog();
 

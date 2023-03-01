@@ -456,6 +456,11 @@ void getNCHW(llvm::ArrayRef<int64_t> shape, int64_t &n, int64_t &c, int64_t &h,
       shape_vec[2] = shape[0];
       shape_vec[1] = 1;
       shape_vec[0] = 1;
+    } else if (shape.size() == 4) {
+      shape_vec[3] = 1;
+      shape_vec[2] = shape[3];
+      shape_vec[1] = shape[2];
+      shape_vec[0] = shape[1] * shape[0];
     } else if (shape.size() == 5) {
       shape_vec[3] = 1;
       shape_vec[2] = shape[4];

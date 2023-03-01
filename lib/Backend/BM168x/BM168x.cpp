@@ -166,10 +166,7 @@ tensor_spec_t BM168x::value_to_spec(mlir::Value v, group_type_t group_type) {
   } else if (group_type == GROUP_SMALL_C) {
     int64_t n, c, h, w;
     module::getNCHW(v, n, c, h, w, group_type);
-    spec.dims = 4;
-    if (v.hasOneUse() && isa<tpu::MatMulOp>(*v.getUsers().begin())) {
-      spec.dims = 3;
-    }
+    spec.dims = 3;
     spec.shape[0] = n;
     spec.shape[1] = c;
     spec.shape[2] = h;

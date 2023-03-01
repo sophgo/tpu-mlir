@@ -156,7 +156,6 @@ LogicalResult tpu::LayerNormOp::AllowDataSplit(int64_t axis,
                                                group_type_t group_type) {
   int64_t ax = getAxis();
   if (group_type == GROUP_SMALL_C) {
-    assert(ax == 4);
     ax = 2;
   }
   return axis < ax ? success() : failure();

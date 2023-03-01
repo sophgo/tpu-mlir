@@ -53,33 +53,36 @@ static void set_group_type(LgInfo &lg_info) {
   }
 
   // set GROUP_NORMAL if not all ops should meet the conditions
-  // 1. shape is 5-dim
-  // 2. op is eltwise-op or only the last dim cannot split
-  // 3. shape[1] is too small to fully utilize NPU and shape[3] is better
-  // GROUP_SMALL_C: (n, c, d, h, w) --> (n*c*d, h, w, 1)
+  // 1. op is eltwise-op or only the last dim cannot split
+  // 2. C is too small to fully utilize NPU and H is better
   lg_info.type = GROUP_SMALL_C;
   for (auto op : lg_info.group_ops) {
-    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MatMulOp>(op)) {
+    if (!isa<ActiveOp, AddOp, CastOp, LayerNormOp, MatMulOp, SoftmaxOp>(op)) {
       lg_info.type = GROUP_NORMAL;
       return;
     }
+    auto shape = module::getShape(op->getOperand(0));
     if (auto op_ = dyn_cast<LayerNormOp>(op)) {
-      if (op_.getAxis() != 4) {
+      if (op_.getAxis() != shape.size() - 1) {
         lg_info.type = GROUP_NORMAL;
         return;
       }
     } else if (isa<AddOp>(op)) {
-      auto shapeA = module::getShape(op->getOperand(0));
       auto shapeB = module::getShape(op->getOperand(1));
-      if (shapeA != shapeB) {
+      if (shape != shapeB) {
+        lg_info.type = GROUP_NORMAL;
+        return;
+      }
+    } else if (auto op_ = dyn_cast<SoftmaxOp>(op)) {
+      if (op_.getAxis() != shape.size() - 1) {
         lg_info.type = GROUP_NORMAL;
         return;
       }
     }
-    auto opd0 = op->getOperand(0);
-    auto shape = module::getShape(opd0);
-    if (!(shape.size() == 5 && shape[1] < Arch::NPU_NUM &&
-          shape[3] > shape[1])) {
+
+    if (!(((shape.size() == 5 && shape[3] > shape[1]) ||
+           (shape.size() == 4 && shape[2] > shape[1])) &&
+          shape[1] < Arch::NPU_NUM / 2)) {
       lg_info.type = GROUP_NORMAL;
       return;
     }
