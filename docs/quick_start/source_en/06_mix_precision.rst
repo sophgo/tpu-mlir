@@ -178,7 +178,7 @@ Use ``run_qtable.py`` to gen qtable, parameters as below:
      - Specify the minimum cos expected per layer, below which an attempt is made to set the fp32 calculation. The default is 0.99
    * - debug_cmd
      - N
-     - Specifies a debug command string for development. It is empty by default	 
+     - Specifies a debug command string for development. It is empty by default
    * - o
      - Y
      - output quantization table
@@ -191,7 +191,7 @@ The operation is as follows:
        --dataset ../COCO2017 \
        --calibration_table yolov3_cali_table \
        --min_layer_cos 0.999 \ #If the default 0.99 is used here, the program detects that the original int8 model already meets the cos of 0.99 and simply stops searching
-       --expected_cos 0.9999 \	   
+       --expected_cos 0.9999 \
        --chip bm1684x \
        -o yolov3_qtable
 
@@ -235,14 +235,14 @@ Also ``full_loss_table.txt`` is generated, context as blow:
     No.11  : Layer: convolution_output9_Conv                                                Cos: 0.9995627192000597
     No.12  : Layer: convolution_output6_Conv                                                Cos: 0.999667275119983
     No.13  : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                             Cos: 0.9996674835174093
-	....
-	
-This table is arranged smoothly according to the cos from small to large, indicating the cos calculated 
-by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode. 
-If the cos is still smaller than the previous parameter min_layer_cos, this layer and its immediate successor 
+    ....
+
+This table is arranged smoothly according to the cos from small to large, indicating the cos calculated
+by this Layer after the precursor layer of this layer has been changed to the corresponding floating-point mode.
+If the cos is still smaller than the previous parameter min_layer_cos, this layer and its immediate successor
 layer will be set to floating-point calculation。
-``run_qtable.py`` calculates the output cos of the whole network every time the neighboring two layers are set 
-to floating point. If the cos is larger than the specified expected_cos, the search is withdrawn. Therefore, 
+``run_qtable.py`` calculates the output cos of the whole network every time the neighboring two layers are set
+to floating point. If the cos is larger than the specified expected_cos, the search is withdrawn. Therefore,
 if you set a larger expected_cos value, you will try to set more layers to floating point。
 
 

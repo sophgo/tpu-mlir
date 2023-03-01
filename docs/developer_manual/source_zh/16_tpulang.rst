@@ -118,9 +118,9 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
    * out_name：string类型或None，表示输出Tensor的名称，为None时内部会自动产生名称。
 
 
-  在 TopOps.td 中定义 Top.Conv 算子, 算子定义如图所示(:ref:`convop_def`)
+  在 TopOps.td 中定义 Top.Conv 算子, 算子定义如图所示(:ref:`conv_top_def`)
 
-.. _convop_def:
+.. _conv_top_def:
 .. figure:: ../assets/convop_def.png
    :align: center
    :height: 15cm
@@ -150,7 +150,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
                return [input.shape[0], weight.shape[0], oh, ow]
             output = Tensor(_shape_inference(), dtype=out_dtype, name=out_name)
 
-      - attributes，将输入参数打包成 (:ref:`convop_def`) 定义的attributes
+      - attributes，将输入参数打包成 (:ref:`conv_top_def`) 定义的attributes
 
          .. code-block:: python
 
@@ -173,7 +173,7 @@ TpuLang转换的工作流程如图所示(:ref:`tpulang_convert`)。
 
   根据 input_names 与 output_names 从 shapes 中获取了对应的 input_shape 与 output_shape, 加上model_name, 生成了初始的 mlir 文本 MLIRImporter.mlir_module, 如图所示(:ref:`origin_mlir`)。
 
-.. _origin_mlir:
+.. _origin_top_mlir:
 .. figure:: ../assets/origin_mlir.png
    :align: center
 

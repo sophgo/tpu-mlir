@@ -184,7 +184,7 @@
      - 是
      - 输出混精度量化表
 
-本例中采用默认10张图片校准, 执行命令如下（对于CV18XX系列的芯片，将chip设置为对应的芯片名称即可）:
+本例中采用默认10张图片校准, 执行命令如下（对于CV18xx系列的芯片，将chip设置为对应的芯片名称即可）:
 
 .. code-block:: shell
 
@@ -235,7 +235,7 @@
     No.11  : Layer: convolution_output9_Conv                                                Cos: 0.9995627192000597
     No.12  : Layer: convolution_output6_Conv                                                Cos: 0.999667275119983
     No.13  : Layer: model_1/leaky_re_lu_3/LeakyRelu:0_LeakyRelu                             Cos: 0.9996674835174093
-	....
+    ....
 
 该表按cos从小到大顺利排列, 表示该层的前驱Layer根据各自的cos已换成相应的浮点模式后, 该层计算得到的cos, 若该cos仍小于前面min_layer_cos参数，则会将该层及直接后继层设置为浮点计算。
 ``run_qtable.py`` 会在每次设置某相邻2层为浮点计算后，接续计算整个网络的输出cos，若该cos大于指定的expected_cos，则退出搜素。因此，若设置更大的expected_cos，会尝试将更多层设为浮点计算
