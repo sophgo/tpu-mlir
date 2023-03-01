@@ -923,6 +923,16 @@ std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
   return shape_v;
 }
 
+std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape, int dims) {
+  int diff = dims - shape.size();
+  if (diff == 0)
+    return shape.vec();
+  std::vector<int64_t> shape_v(shape.begin(), shape.end());
+  shape_v.insert(shape_v.begin(), 1, 1);
+  shape_v.resize(dims, 1);
+  return shape_v;
+}
+
 template <typename T> static int remove_value(std::vector<T> &v, int value) {
   int idx = 0;
   for (auto iter = v.begin(); iter != v.end(); iter++, idx++) {
