@@ -120,5 +120,42 @@ int64_t GmemAllocator::assignGaddr(std::vector<ValueInfo> &ops,
   gaddrMap_.swap(alloc_methods[idx]->gaddrMap_);
   return min_gmem_size;
 }
+
+int part(std::vector<ValueInfo> &ops, int low, int high,
+                              std::map<ValueInfo, TensorLive> &liveRange) {
+  int i = low, j = high;
+  uint32_t pivot = liveRange[ops[low]].start;
+  while (i < j ) {
+    while (i < j && liveRange[ops[j]].start > pivot) {
+      j--;
+    }
+    if (i < j) {
+      std::swap(ops[i++], ops[j]);
+    }
+    while (i < j && liveRange[ops[i]].start <= pivot) {
+      i++;
+    }
+    if (i < j) {
+      std::swap(ops[i], ops[j--]);
+    }
+  }
+  return i;
+}
+
+void quickSort(std::vector<ValueInfo> &ops, int low, int high,
+                                std::map<ValueInfo, TensorLive> &liveRange) {
+  int mid;
+  if (low < high) {
+    mid = part(ops, low, high, liveRange);
+    quickSort(ops, low, mid - 1, liveRange);
+    quickSort(ops, mid + 1, high, liveRange);
+  }
+}
+
+void GmemAllocator::sortOpByLiveStart(std::vector<ValueInfo> &ops,
+                                std::map<ValueInfo, TensorLive> &liveRange) {
+  //use quicksort algorithm
+  quickSort(ops, 0, ops.size() - 1, liveRange);
+}
 } // namespace tpu
 } // namespace tpu_mlir
