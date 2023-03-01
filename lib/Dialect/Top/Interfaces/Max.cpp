@@ -20,9 +20,11 @@ int64_t top::MaxOp::getFLOPs() {
 
 LogicalResult top::MaxOp::init(InferenceParameter &p) {
   auto binary = new Binary();
+  auto lhs_shape =  module::getShape(getInputs()[0]);
+  auto rhs_shape = module::getShape(getInputs()[1]);
+
   (*binary)
-      .lhs(p.inputs[0], module::getShape(getInputs()[0]))
-      .rhs(p.inputs[1], module::getShape(getInputs()[1]))
+      .hs(p.inputs[0], p.inputs[1], lhs_shape, rhs_shape)
       .dst(p.outputs[0], module::getShape(getOutput()))
       .algorithem(algorithm::binary_max)
       .setup();

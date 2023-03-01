@@ -23,9 +23,11 @@ LogicalResult top::SubOp::init(InferenceParameter &p) {
   if (getIsReverse()) {
     index0 = 1, index1 = 0;
   }
+  auto lhs_shape =  module::getShape(getInputs()[index0]);
+  auto rhs_shape = module::getShape(getInputs()[index1]);
+
   (*binary)
-      .lhs(p.inputs[index0], module::getShape(getInputs()[index0]))
-      .rhs(p.inputs[index1], module::getShape(getInputs()[index1]))
+      .hs(p.inputs[index0], p.inputs[index1], lhs_shape, rhs_shape)
       .dst(p.outputs[0], module::getShape(getOutput()))
       .do_relu(getDoRelu())
       .relu_limit(getReluLimit().convertToDouble())

@@ -20,9 +20,6 @@ LogicalResult tpu::AddOp::init(InferenceParameter &p) {
   } else {
     auto in0_shape = module::getShape(getInputs()[0]);
     auto in1_shape = module::getShape(getInputs()[1]);
-    int dims = std::max(in0_shape.size(), in1_shape.size());
-    auto input0_shape = shape_expand_dim(in0_shape, dims);
-    auto input1_shape = shape_expand_dim(in1_shape, dims);
     auto binary = new Binary();
     // fix me. naive impletment.
     // It should be o = alpha * i0 + beta * i1
@@ -35,8 +32,7 @@ LogicalResult tpu::AddOp::init(InferenceParameter &p) {
     }
 
     (*binary)
-        .lhs(p.inputs[0], input0_shape)
-        .rhs(p.inputs[1], input1_shape)
+        .hs(p.inputs[0], p.inputs[1], in0_shape, in1_shape)
         .dst(p.outputs[0], module::getShape(getOutput()))
         .do_relu(getDoRelu())
         .relu_limit(getReluLimit().convertToDouble())

@@ -10,6 +10,7 @@
 #pragma once
 #include "oneapi/dnnl/dnnl.hpp"
 #include "tpu_mlir/Support/Dnnl/common.h"
+#include "tpu_mlir/Support/MathUtils.h"
 #include "llvm/ADT/ArrayRef.h"
 
 using namespace dnnl;
@@ -51,6 +52,21 @@ public:
     auto mds =
         memory::desc(rhs_shape, data_traits<T>::data_type, get_tag(rhs_shape));
     rhs_mem = memory(mds, eng, rhs);
+    return *this;
+  };
+
+  template <typename T>
+  inline Binary &hs(T* lhs, T *rhs, llvm::ArrayRef<int64_t> lhs_shape,
+                     llvm::ArrayRef<int64_t> rhs_shape) {
+    auto max_ndim = std::max(lhs_shape.size(), rhs_shape.size());
+    auto l_shape = shape_expand_dim(lhs_shape, max_ndim);
+    auto r_shape = shape_expand_dim(rhs_shape, max_ndim);
+    auto lmds =
+        memory::desc(l_shape, data_traits<T>::data_type, get_tag(l_shape));
+    lhs_mem = memory(lmds, eng, lhs);
+    auto rmds =
+        memory::desc(r_shape, data_traits<T>::data_type, get_tag(r_shape));
+    rhs_mem = memory(rmds, eng, rhs);
     return *this;
   };
 

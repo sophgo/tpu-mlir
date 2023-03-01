@@ -15,15 +15,16 @@
 #include "tpu_mlir/Support/MathUtils.h"
 
 LogicalResult tpu::SubOp::init(InferenceParameter &p) {
-  auto in0_shape = module::getShape(getInputs()[0]);
-  auto in1_shape = module::getShape(getInputs()[1]);
-  int dims = std::max(in0_shape.size(), in1_shape.size());
-  auto input0_shape = shape_expand_dim(in0_shape, dims);
-  auto input1_shape = shape_expand_dim(in1_shape, dims);
+  int index0 = 0, index1 = 1;
+  if (getIsReverse()) {
+    index0 = 1, index1 = 0;
+  }
+  auto lhs_shape = module::getShape(getInputs()[index0]);
+  auto rhs_shape = module::getShape(getInputs()[index1]);
+
   auto binary = new Binary();
   (*binary)
-      .lhs(p.inputs[0], input0_shape)
-      .rhs(p.inputs[1], input1_shape)
+      .hs(p.inputs[index0], p.inputs[index1], lhs_shape, rhs_shape)
       .dst(p.outputs[0], module::getShape(getOutput()))
       .do_relu(getDoRelu())
       .relu_limit(getReluLimit().convertToDouble())

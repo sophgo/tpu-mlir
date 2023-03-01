@@ -1214,6 +1214,7 @@ def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
 
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
+    DefaultValuedAttr<BoolAttr, "false">:$is_reverse,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
