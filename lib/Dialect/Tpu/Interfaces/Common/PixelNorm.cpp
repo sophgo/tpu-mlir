@@ -80,6 +80,67 @@ static void normlize_bf16(const float *input_data, float *output_data,
   }
 }
 
+template <typename T>
+T sadd(T a, T b)
+{
+  static_assert(
+    std::is_integral<T>::value,
+    "sadd is not defined for non-integral types");
+  const T max_val = std::numeric_limits<T>::max();
+  const T min_val = std::numeric_limits<T>::min();
+  if (a > 0) {
+    if (b > max_val - a) {
+      return max_val;
+    }
+  } else {
+    if (b < min_val - a) {
+      return min_val;
+    }
+  }
+  return a + b;
+}
+
+static void normlize_i8(
+    const float *input, float *output,
+    const float *weight, const float *bias,
+    int inner_dim, int channel,
+    float eps, float scale, bool is_signed)
+{
+  const float avg_const = F16(1.0f / channel);
+  const float eps_f16 = F16(eps);
+  const float scale_f16 = F16(scale);
+  const float scale_sq_f16 = F16(scale_f16 * scale_f16);
+  int32_t sum_x = 0, sum_x2 = 0;
+  for (int j = 0; j < channel; ++j) {
+    if (is_signed) {
+      int8_t x = input[j * inner_dim];
+      sum_x = sadd<int32_t>(sum_x, x);
+      sum_x2 = sadd<int32_t>(sum_x2, x * x);
+    } else {
+      uint8_t x = input[j * inner_dim];
+      sum_x = sadd<int32_t>(sum_x, x);
+      sum_x2 = sadd<int32_t>(sum_x2, x * x);
+    }
+  }
+  float mean = F16(F16((float)sum_x) * avg_const);
+  float rstd = F16(F16((float)sum_x2) * avg_const);
+  float mean_sq = F16(mean * mean);
+  rstd = F16(rstd - mean_sq);
+  rstd = std::max(rstd, 0.0f);
+  rstd = F16(rstd * scale_sq_f16);
+  rstd = F16(rstd + eps_f16);
+  rstd = F16(1.0f / sqrtf(rstd));
+  rstd = F16(rstd * scale_f16);
+  for (int j = 0; j < channel; ++j) {
+    output[j * inner_dim] = F16(input[j * inner_dim] - mean);
+    output[j * inner_dim] = F16(output[j * inner_dim] * rstd);
+    if (weight)
+      output[j * inner_dim] = F16(output[j * inner_dim] * weight[j]);
+    if (bias)
+      output[j * inner_dim] = F16(output[j * inner_dim] + bias[j]);
+  }
+}
+
 LogicalResult tpu::PixelNormOp::init(InferenceParameter &p) {
   return success();
 }
@@ -109,24 +170,45 @@ LogicalResult tpu::PixelNormOp::inference(InferenceParameter &p) {
   float *output_data = p.outputs[0];
 
   const int num_iter = outer_dim * inner_dim;
-  //#pragma omp parallel for schedule(static, omp_schedule(num_iter))
+// #pragma omp parallel for schedule(static, omp_schedule(num_iter))
   for (int i = 0; i < num_iter; ++i) {
     const int p = i / inner_dim;
     const int q = i % inner_dim;
     const float* input_i = input_data + p * channel * inner_dim + q;
     float* output_i = output_data + p * channel * inner_dim + q;
-    if (is_bf16) {
-      normlize_bf16(input_i, output_i, weight_data, bias_data, table,
-                    mtable, inner_dim, channel, eps_);
+    if (!module::isUniformQuantized(getInput())) {
+      if (is_bf16) {
+        normlize_bf16(input_i, output_i, weight_data, bias_data, table,
+                      mtable, inner_dim, channel, eps_);
+      } else {
+        normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim,
+                     channel, eps_);
+      }
     } else {
-      normlize_f32(input_i, output_i, weight_data, bias_data, inner_dim,
-                   channel, eps_);
+      const auto qtype = module::getUniformQuantizedType(getInput());
+      normlize_i8(input_i, output_i, weight_data, bias_data, inner_dim,
+                  channel, eps_, qtype.getScale(), qtype.isSigned());
     }
   }
   return success();
 }
 
-// TODO: activate it later
 LogicalResult tpu::PixelNormOp::LocalGenSupport() {
   return success();
+}
+
+mlir::Type tpu::PixelNormOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
+  auto op = getOperation();
+  if (opd_idx == 0) {
+    auto opd = op->getOperand(0);
+    auto in_op = opd.getDefiningOp();
+    if (in_op != nullptr && isa<top::WeightOp, top::NoneOp>(in_op)) {
+      return do_nothing(mode);
+    }
+    if (module::isUniformQuantized(opd)) {
+      mode = TypeCastMode::DO_NOTHING;
+      return Builder(op).getIntegerType(8);
+    }
+  }
+  return type_verify_case_same(op, opd_idx, mode);
 }

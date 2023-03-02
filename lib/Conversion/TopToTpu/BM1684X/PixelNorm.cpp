@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 namespace bm1684x {
 
-static void LoweringPixelNorm(PatternRewriter &rewriter, top::PixelNormOp op,
+static void LoweringPixelNorm_FP(PatternRewriter &rewriter, top::PixelNormOp op,
                               Type type) {
   rewriter.setInsertionPointAfter(op);
   std::vector<Value> opds;
@@ -52,32 +52,68 @@ static void LoweringPixelNorm(PatternRewriter &rewriter, top::PixelNormOp op,
   return;
 }
 
+static void LoweringPixelNorm_INT8(PatternRewriter &rewriter, top::PixelNormOp op,
+                                  Type type) {
+  rewriter.setInsertionPointAfter(op);
+  std::vector<Value> opds;
+  opds.reserve(3);
+  const int nInputs = op->getNumOperands();
+  for (auto i = 0; i < nInputs; ++i) {
+    auto opd = op->getOperand(i);
+    if (isa<top::WeightOp>(opd.getDefiningOp())) {
+      auto weightOp = opd.getDefiningOp<top::WeightOp>();
+      if (type.isBF16()) {
+        opds.push_back(weightOp.clone_bf16(op));
+      } else if (type.isF16()) {
+        opds.push_back(weightOp.clone_f16(op));
+      } else {
+        opds.push_back(opd);
+      }
+    } else {
+      auto ctx = opd.getContext();
+      OpBuilder builder(ctx);
+      builder.setInsertionPointAfterValue(opd);
+      auto name = module::getName(opd).str();
+      auto newType = getQuantInt8Type(opd, module::isAsymmetric());
+      name += "_" + type_string(newType);
+      auto loc = NameLoc::get(builder.getStringAttr(name));
+      auto castOp = builder.create<tpu::CastOp>(loc, newType, opd);
+      opds.push_back(castOp.getOutput());
+    }
+  }
+  auto none = module::getNoneOp(op);
+  opds.push_back(none);
+  opds.push_back(none);
+  std::vector<NamedAttribute> attrs;
+  for (auto &attr : op->getAttrs()) {
+    attrs.push_back(attr);
+  }
+  Type new_type;
+  if (type.isF16()) {
+    new_type = getQuantF16Type(op.getResult());
+  } else if (type.isBF16()) {
+    new_type = getQuantBF16Type(op.getResult());
+  } else {
+    new_type = op.getResult().getType();
+  }
+  rewriter.replaceOpWithNewOp<tpu::PixelNormOp>(op, new_type, opds, attrs);
+  return;
+}
+
 void PixelNormLowering::LoweringF32(PatternRewriter &rewriter,
                                     top::PixelNormOp op) const {
-  LoweringPixelNorm(rewriter, op, rewriter.getF32Type());
-}
-
-void PixelNormLowering::LoweringINT8(PatternRewriter &rewriter,
-                                     top::PixelNormOp op,
-                                     bool asymmetric) const {
-  LoweringF16(rewriter, op);
-}
-
-void PixelNormLowering::LoweringINT4(PatternRewriter &rewriter,
-                                     top::PixelNormOp op,
-                                     bool asymmetric) const {
-  LoweringINT8(rewriter, op, asymmetric);
+  LoweringPixelNorm_FP(rewriter, op, rewriter.getF32Type());
 }
 
 void PixelNormLowering::LoweringBF16(PatternRewriter &rewriter,
                                      top::PixelNormOp op) const {
-  LoweringPixelNorm(rewriter, op, rewriter.getBF16Type());
+  LoweringPixelNorm_FP(rewriter, op, rewriter.getBF16Type());
 }
 
 void PixelNormLowering::LoweringF16(PatternRewriter &rewriter,
                                     top::PixelNormOp op) const {
   if (module::isCalibratedType(op.getInput()) == false) {
-    LoweringPixelNorm(rewriter, op, rewriter.getF32Type());
+    LoweringPixelNorm_FP(rewriter, op, rewriter.getF32Type());
     return;
   }
   auto cali_type = module::getCalibratedType(op.getInput());
@@ -88,10 +124,22 @@ void PixelNormLowering::LoweringF16(PatternRewriter &rewriter,
   // assume half distance is (max - min)
   auto limit = std::pow((max - min) / 2, 2) * channel / 2;
   if (limit > 65504.0) { // F16 Max
-    LoweringPixelNorm(rewriter, op, rewriter.getF32Type());
+    LoweringPixelNorm_FP(rewriter, op, rewriter.getF32Type());
     return;
   }
-  LoweringPixelNorm(rewriter, op, rewriter.getF16Type());
+  LoweringPixelNorm_FP(rewriter, op, rewriter.getF16Type());
+}
+
+void PixelNormLowering::LoweringINT8(PatternRewriter &rewriter,
+                                     top::PixelNormOp op,
+                                     bool asymmetric) const {
+  LoweringPixelNorm_INT8(rewriter, op, rewriter.getF16Type());
+}
+
+void PixelNormLowering::LoweringINT4(PatternRewriter &rewriter,
+                                     top::PixelNormOp op,
+                                     bool asymmetric) const {
+  LoweringPixelNorm_INT8(rewriter, op, rewriter.getF16Type());
 }
 
 void PixelNormLowering::LoweringQuantized(PatternRewriter &rewriter,
