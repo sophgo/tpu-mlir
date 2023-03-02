@@ -16,7 +16,7 @@ from utils.mlir_parser import *
 from utils.preprocess import preprocess, supported_customization_format
 from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
-
+from utils.misc import str2bool
 
 def str2list(v):
     files = v.split(',')
@@ -263,7 +263,7 @@ if __name__ == '__main__':
                         help="strip output type cast in bmodel, need outside type conversion")
     parser.add_argument("--disable_layer_group", action="store_true",
                         help="Decide whether to enable layer group pass")
-    parser.add_argument("--post_op", default=False, type=bool,
+    parser.add_argument("--post_op", default=False, type=str2bool,
                         help="if the bmodel have post handle op")
     # yapf: enable
     args = parser.parse_args()

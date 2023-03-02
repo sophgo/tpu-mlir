@@ -14,7 +14,7 @@ import argparse
 import os
 import struct
 import shutil
-
+from utils.misc import str2bool
 
 def round_away_from_zero(x):
     a = np.floor(np.abs(x) + 0.5)
@@ -358,7 +358,7 @@ if __name__ == '__main__':
                         help="dump all tensors to output file")
     parser.add_argument("--debug", type=str, nargs="?", const="",
                         help="configure the debugging information.")
-    parser.add_argument("--post_op", default=False, type=bool,
+    parser.add_argument("--post_op", default=False, type=str2bool,
                         help="if the bmodel have post handle op")
     # yapf: enable
     args = parser.parse_args()

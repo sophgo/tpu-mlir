@@ -21,8 +21,8 @@ static void LoweringYoloDetection(PatternRewriter &rewriter, top::YoloDetectionO
   for (auto &attr : op->getAttrs()) {
     attrs.push_back(attr);
   }
-  auto new_types = op.getOutput().getType();
-  rewriter.replaceOpWithNewOp<tpu::YoloDetectionOp>(op, new_types, operands, attrs);
+  mlir::Type new_type = getQuantFloatType(op.getOutput());
+  rewriter.replaceOpWithNewOp<tpu::YoloDetectionOp>(op, new_type, operands, attrs);
   return;
 }
 

@@ -47,9 +47,8 @@ LogicalResult tpu::YoloDetectionOp::inference(InferenceParameter &p) {
   param.output.size = module::getNumElements(getOutput());
   param.output.shape = module::getShape(getOutput());
   if (getFlag()) {
-    int total_num = 0;
     Yolo_v2_DetectionFunc yolo_v2_func(param);
-    yolo_v2_func.invoke(total_num);
+    yolo_v2_func.invoke();
   } else {
     YoloDetectionFunc yolo_func(param);
     yolo_func.invoke();
