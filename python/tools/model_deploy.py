@@ -218,8 +218,8 @@ class DeployTool:
     def validate_model(self):
         self.model_npz = "{}_model_outputs.npz".format(self.prefix)
         file_mark(self.model_npz)
-        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz, self.post_op)
-        model_outputs = model_inference(self.inputs, self.model, self.post_op)
+        show_fake_cmd(self.in_f32_npz, self.model, self.model_npz)
+        model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
             f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, self.post_op)
