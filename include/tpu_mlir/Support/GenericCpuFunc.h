@@ -140,7 +140,7 @@ struct PredictionResult {
 class Yolo_v2_DetectionFunc {
 public:
   Yolo_v2_DetectionFunc(YoloDetParam &param);
-  void invoke(int &total_num);
+  void invoke();
 private:
   YoloDetParam param_;
   std::vector<float> _anchors;

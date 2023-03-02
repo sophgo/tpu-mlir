@@ -1511,20 +1511,6 @@ void RetinaFaceDetectionFunc::invoke() {
   }
 }
 
-static void get_region_box2_opt(
-    std::vector<float> &b, float* x, float* biases, int n,
-    int i, int j, int lw, int lh, int w, int h) {
-  b.clear();
-  b.push_back((i + (x[0])) / lw);
-  b.push_back((j + (x[1])) / lh);
-  b.push_back(exp(x[2]) * biases[2 * n] / (w));
-  b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
-}
-
-bool BoxSortDecendScore(const PredictionResult& box1, const PredictionResult& box2) {
-  return box1.confidence > box2.confidence;
-}
-
 template <typename Dtype>
 void ApplyNms_opt(std::vector<PredictionResult>& boxes, std::vector<int>& idxes, Dtype threshold) {
   int bbox_cnt = (int)boxes.size();
@@ -1605,7 +1591,7 @@ Yolo_v2_DetectionFunc::Yolo_v2_DetectionFunc(YoloDetParam &param) : param_(param
   }
 }
 
-void Yolo_v2_DetectionFunc::invoke(int &total_num) {
+void Yolo_v2_DetectionFunc::invoke() {
   auto top_data = param_.output.ptr;
   memset(top_data, 0, param_.output.size);
   int batch_num = param_.inputs[0].shape[0];
@@ -1614,6 +1600,7 @@ void Yolo_v2_DetectionFunc::invoke(int &total_num) {
   int len = 4 + param_.class_num + 1;
   int mask_offset = 0;
   const int num = batch_num;
+  int total_num = 0;
   std::vector<PredictionResult > total_preds;
   total_preds.clear();
 
@@ -1669,9 +1656,14 @@ void Yolo_v2_DetectionFunc::invoke(int &total_num) {
             swap_data[1] = swap_data[0] * swap_data[1];
 
             if (swap_data[1] > param_.obj_threshold) {
-              get_region_box2_opt(
-                  pred, &swap_data[2], _anchors.data(), param_.mask[n + mask_offset],
-                  cx, cy, w, h, param_.net_input_w, param_.net_input_h);
+              [&](std::vector<float> &b, float* x, float* biases, int n, int i, int j, int lw, int lh, int w, int h) {
+                  b.clear();
+                  b.push_back((i + (x[0])) / lw);
+                  b.push_back((j + (x[1])) / lh);
+                  b.push_back(exp(x[2]) * biases[2 * n] / (w));
+                  b.push_back(exp(x[3]) * biases[2 * n + 1] / (h));
+                }(pred, &swap_data[2], _anchors.data(), param_.mask[n + mask_offset],
+                    cx, cy, w, h, param_.net_input_w, param_.net_input_h);
 
               predict.idx = b;
               predict.x = pred[0];
@@ -1694,7 +1686,8 @@ void Yolo_v2_DetectionFunc::invoke(int &total_num) {
 
     int num_kept = 0;
     if (predicts.size() > 0) {
-      std::stable_sort(predicts.begin(), predicts.end(), BoxSortDecendScore);
+      std::stable_sort(predicts.begin(), predicts.end(), [](const PredictionResult& box1, const PredictionResult& box2) {
+                                                            return box1.confidence > box2.confidence;});
       //sprintf(str, "Sort Box (batch %d)", b);
 
       ApplyNms_opt(predicts, idxes, param_.nms_threshold);

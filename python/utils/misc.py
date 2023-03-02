@@ -149,6 +149,16 @@ def str2list(v):
         files.remove('')
     return files
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def cos_sim(vector_a, vector_b):
     vector_a = vector_a.reshape(-1)
     vector_b = vector_b.reshape(-1)
