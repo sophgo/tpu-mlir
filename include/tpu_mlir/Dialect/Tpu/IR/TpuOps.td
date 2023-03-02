@@ -1769,6 +1769,7 @@ def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
 
 def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<TypeInterface>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>
   ]> {
   let summary = "PixelNorm operation";
