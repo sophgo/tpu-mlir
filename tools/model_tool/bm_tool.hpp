@@ -182,7 +182,11 @@ void bm_show_dynamic(const string &filename) {
     FATAL("file[%s] is not correct", filename.c_str());
   }
   auto model = model_ctx.model();
-  if (model->net()->Get(0)->parameter()->Get(0)->is_dynamic()) {
+  auto dyn_subnet_check = [&]() {
+    auto subnet = model->net()->Get(0)->parameter()->Get(0)->sub_net();
+    return subnet->Get(subnet->size()-1)->is_dynamic();};
+  if (model->net()->Get(0)->parameter()->Get(0)->is_dynamic()
+      || dyn_subnet_check()) {
     cout << "true";
   } else {
     cout << "false";
