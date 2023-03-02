@@ -126,6 +126,7 @@ class preprocess(object):
     def __init__(self, debug_cmd=''):
         self.debug_cmd = debug_cmd
         self.fuse_pre = False
+        self.has_pre = False
         pass
 
     def config(self, resize_dims=None, keep_aspect_ratio=False, customization_format = None, fuse_pre = False, aligned = False,
@@ -133,10 +134,8 @@ class preprocess(object):
                channel_format='nchw', debug_cmd='', input_shapes=None, model_format='image', **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
-        if input_shapes is None:
-            print(
-                'you must set input_shapes if you call preprocess.config, please add, for example:input_shapes=[[1,3,224,224]]')
-            exit(0)
+        if input_shapes is None or input_shapes == []:
+            return
         if isinstance(input_shapes, str):
             input_shapes = str2shape(input_shapes)
         self.batch_size = input_shapes[0][0]
@@ -182,6 +181,7 @@ class preprocess(object):
         self.aligned = aligned
         self.customization_format = customization_format
         self.fuse_pre = fuse_pre
+        self.has_pre = True
         #fuse_preprocess for cv18xx
         if self.fuse_pre:
             #resize_dims should be greater than net_input_dims
@@ -293,6 +293,8 @@ class preprocess(object):
                                       self.model_format))
 
     def to_dict(self):
+        if not self.has_pre:
+            return {}
         return {
             'resize_dims': self.resize_dims,
             'keep_aspect_ratio': self.keep_aspect_ratio,
