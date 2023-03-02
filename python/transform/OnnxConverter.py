@@ -195,7 +195,7 @@ class OnnxConverter(BaseConverter):
             "TopK": lambda node: self.convert_topk_op(node),
             "Transpose": lambda node: self.convert_transpose_op(node),
             "Unsqueeze": lambda node: self.convert_unsqueeze_op(node),
-            "Upsample":lambda node:self.convert_upsample_op(node),
+            "Upsample": lambda node: self.convert_upsample_op(node),
             "Where": lambda node: self.convert_where_op(node),
         }
 
@@ -307,6 +307,17 @@ class OnnxConverter(BaseConverter):
                 input_types.append('F32')
         return input_types
 
+    def get_output_types(self, model: onnx.ModelProto):
+        output_types = []
+        for output in self.get_outputs(model):
+            if output.type.tensor_type.elem_type in [
+                    onnx.TensorProto.INT64, onnx.TensorProto.INT32
+            ]:
+                output_types.append('INT32')
+            else:
+                output_types.append('F32')
+        return output_types
+
     def get_shape_from_value_info_proto(self, v: onnx.ValueInfoProto):
         return [dim.dim_value for dim in v.type.tensor_type.shape.dim]
 
@@ -362,6 +373,7 @@ class OnnxConverter(BaseConverter):
         self.input_shape_assign(input_shapes)
         self.input_shapes = self.get_input_shapes(self.model)
         self.input_types = self.get_input_types(self.model)
+        self.output_types = self.get_output_types(self.model)
         is_ok = self.model_simplify()
         if (is_ok_ and not is_ok):
             print("WARNING: Onnx-sim failed caused by assign input_shape.")
@@ -406,9 +418,7 @@ class OnnxConverter(BaseConverter):
             nodes_with_shape.append(output.name)
         # get unknow shape
         full_nodes = []
-        no_list = [
-           "Cast", "Shape", "Constant", "Unsqueeze",  "Dropout", "Loop", "TopK" #, "NonZero"
-        ]
+        no_list = ["Cast", "Shape", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK"]
         for n in self.model.graph.node:
             if n.op_type in no_list:
                 continue
@@ -454,7 +464,7 @@ class OnnxConverter(BaseConverter):
             inputs[name] = np.ones(shape).astype(dtype)
         outs = session.run(None, inputs)
         outs_shape = [o.shape for o in outs]
-        assert(len(outs_shape) == len(unk_op))
+        assert (len(outs_shape) == len(unk_op))
         return zip(unk_op, outs_shape)
 
     def input_shape_assign(self, input_shapes):
@@ -1039,7 +1049,7 @@ class OnnxConverter(BaseConverter):
         scale_factor = self.getWeight(onnx_node.inputs[1])
         sizes = input_shape * scale_factor
         output_shape = [int(i) for i in sizes]
-        scale_h = scale_factor[2]   # scale [n, c, h, w]
+        scale_h = scale_factor[2]  # scale [n, c, h, w]
         scale_w = scale_factor[3]
         coord_mode = onnx_node.attrs.get("coordinate_transformation_mode", "half_pixel")
         if mode == b'nearest' and scale_h == int(scale_h) and scale_w == int(scale_w):
@@ -1465,8 +1475,10 @@ class OnnxConverter(BaseConverter):
 
     # support max ndims to 6
     def convert_reduce_op(self, onnx_node):
-        assert (onnx_node.op_type
-                in ["ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1", "ReduceSum"])
+        assert (onnx_node.op_type in [
+            "ReduceMin", "ReduceMax", "ReduceMean", "ReduceProd", "ReduceL2", "ReduceL1",
+            "ReduceSum"
+        ])
         input_shape = self.getShape(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         op = self.getOperand(onnx_node.inputs[0])
@@ -1513,8 +1525,7 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs.get('axis', 0)
         keepdims = onnx_node.attrs.get('keepdims', 1)
         p = {
-            "name":
-            [onnx_node.name + '_indices', onnx_node.name + '_values'],
+            "name": [onnx_node.name + '_indices', onnx_node.name + '_values'],
             "axis": axis,
             "keepdims": keepdims,
             "mode": onnx_node.op_type
@@ -1638,18 +1649,14 @@ class OnnxConverter(BaseConverter):
         out_shape = self.getShape(onnx_node.name)
         axis = onnx_node.attrs.get('axis', 0)
         name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
-        if  self.isScalar(onnx_node.inputs[1]):
+        if self.isScalar(onnx_node.inputs[1]):
             offset = int(self.getScalar(onnx_node.inputs[1]))
             if offset < 0:
                 offset = in0_shape[axis] + offset
             slice_offset = [0] * len(in0_shape)
             slice_steps = [1] * len(in0_shape)
             slice_offset[axis] = offset
-            p = {
-                'name': name,
-                'offset': list(slice_offset),
-                'steps': list(slice_steps)
-            }
+            p = {'name': name, 'offset': list(slice_offset), 'steps': list(slice_steps)}
             if axis == 0:
                 new_op = self.mlir.create_slice_op([in0], out_shape, **p)
                 self.addOperand(onnx_node.name, new_op)
@@ -2062,10 +2069,7 @@ class OnnxConverter(BaseConverter):
         num_dims = len(input_shape)
         assert (num_dims > 1)
         eps = onnx_node.attrs.get("epsilon", 1e-05)
-        p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            "eps": eps
-        }
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "eps": eps}
         wb_shape = [1] * num_dims
         wb_shape[1] = input_shape[1]
         input_opd = self.getOperand(onnx_node.inputs[0])
@@ -2083,22 +2087,20 @@ class OnnxConverter(BaseConverter):
 
     def convert_scatternd_op(self, onnx_node):
         assert (onnx_node.op_type == "ScatterND")
-        assert(len(onnx_node.inputs) == 3)
+        assert (len(onnx_node.inputs) == 3)
         input_data = self.getOp(onnx_node.inputs[0])
-        indices =self.getOp(onnx_node.inputs[1])
+        indices = self.getOp(onnx_node.inputs[1])
         updates = self.getOp(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)
         reduction = onnx_node.attrs.get("reduction", None)
-        p = {
-            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-            "reduction": reduction
-        }
-        scatternd_op = self.mlir.create_scatternd_op([input_data, indices, updates], output_shape, **p)
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "reduction": reduction}
+        scatternd_op = self.mlir.create_scatternd_op([input_data, indices, updates], output_shape,
+                                                     **p)
         self.addOperand(onnx_node.name, scatternd_op)
 
-    def convert_roi_align_op(self, onnx_node:OnnxNode):
+    def convert_roi_align_op(self, onnx_node: OnnxNode):
         assert (onnx_node.op_type == "RoiAlign")
-        assert(len(onnx_node.inputs) == 3)
+        assert (len(onnx_node.inputs) == 3)
         input = self.getOp(onnx_node.inputs[0])
         rois = self.getOp(onnx_node.inputs[1])
         batch_indices = self.getOp(onnx_node.inputs[2])
