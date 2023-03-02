@@ -680,6 +680,12 @@ class TFLiteConverter(BaseConverter):
             "do_relu": BoolAttr.get(fused_active == 1),
             # "right_transpose": BoolAttr.get(True),
         }
+        if op.inputs[2] is not None:
+            bias_shape = [1] * len(op.inputs[0].shape)
+            bias_shape[-1] = op.inputs[2].shape[0]
+            op.inputs[2].shape = tuple(bias_shape)
+            op.inputs[2].buffer.shape = tuple(bias_shape)
+
         if op.inputs[1].buffer is not None:
             f, c = op.inputs[1].shape
             op.inputs[1].shape = (c, f)

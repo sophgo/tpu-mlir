@@ -29,6 +29,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     if (bias_size > p.N)
       llvm_unreachable("BatchMatMul does not support batch-bias yet.");
   }
+  int64_t left_num_dims = module::getShape(op.getInput()).size();
   if (auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
     auto filter_f32 = filterOp.read<float>();
     int64_t in_zp = 0, out_zp = 0;
@@ -89,7 +90,8 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
     operands.push_back(new_filter);
     auto new_bias = op.getBias();
     if (with_bias) {
-      std::vector<int64_t> shape = {p.N};
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1]= p.N;
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands.push_back(new_bias);
@@ -119,7 +121,9 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
         bias_int32->data()[j] =
             std::round(bias_fp32->at(j) / (w_scale * in_scale));
       }
-      auto new_type = RankedTensorType::get({bias_n}, rewriter.getI32Type());
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1]= bias_n;
+      auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       auto new_bias =
           top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands[2] = new_bias;
@@ -161,6 +165,7 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
   int64_t in_zp = 0, out_zp = 0;
   double in_scale = 1, out_scale = 1, w_scale = 1;
 
+  int64_t left_num_dims = module::getShape(op.getInput()).size();
   if (auto filterOp = dyn_cast<top::WeightOp>(op.getRight().getDefiningOp())) {
     auto filter_f32 = filterOp.read<float>();
     int bitwidth = 4;
@@ -283,7 +288,8 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
     operands.push_back(new_filter);
     auto new_bias = op.getBias();
     if (with_bias) {
-      std::vector<int64_t> shape = {p.N};
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1]= p.N;
       auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       new_bias = top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands.push_back(new_bias);
@@ -313,7 +319,9 @@ void MatMulLowering::LoweringINT4(PatternRewriter &rewriter, top::MatMulOp op,
         bias_int32->data()[j] =
             std::round(bias_fp32->at(j) / (w_scale * in_scale));
       }
-      auto new_type = RankedTensorType::get({bias_n}, rewriter.getI32Type());
+      std::vector<int64_t> shape(left_num_dims, 1);
+      shape[left_num_dims - 1]= bias_n;
+      auto new_type = RankedTensorType::get(shape, rewriter.getI32Type());
       auto new_bias =
           top::WeightOp::create(op, "bias_int32", *bias_int32, new_type);
       operands[2] = new_bias;
@@ -391,6 +399,7 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   auto input_qtype = module::getUniformQuantizedType(op.getInput());
   auto right_qtype = module::getUniformQuantizedType(op.getRight());
   auto output_qtype = module::getUniformQuantizedType(op.getOutput());
+  int64_t left_num_dims = module::getShape(op.getInput()).size();
 
   const double real_multiplier =
       input_qtype.getScale() * right_qtype.getScale() / output_qtype.getScale();
@@ -445,7 +454,9 @@ void MatMulLowering::LoweringQuantized(PatternRewriter &rewriter,
   } else {
     bias_quant = i32_array_t(new std::vector<int32_t>(col_size, 0));
   }
-  auto bias_type = RankedTensorType::get({col_size}, rewriter.getI32Type());
+  std::vector<int64_t> shape(left_num_dims, 1);
+  shape[left_num_dims - 1]= col_size;
+  auto bias_type = RankedTensorType::get(shape, rewriter.getI32Type());
 
   if (can_merge_izp) {
     //    attrs.push_back(rewriter.getNamedAttr(
