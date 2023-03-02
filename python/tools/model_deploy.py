@@ -103,6 +103,11 @@ class DeployTool:
         num_inputs = len(self.test_input)
         self.do_validate = (0 < num_inputs)
         if not self.do_validate:
+            if self.customization_format == '':
+                ppa = preprocess()
+                input_op = self.module.inputs[0].op
+                ppa.load_config(input_op)
+                self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
             return
         self.inputs = {}
         #self.pre_inputs = {}
@@ -125,10 +130,9 @@ class DeployTool:
                         #use the first input_op's shape as input_shapes
                         input_shapes.append(Operation.shape(input_op))
                     ppa.load_config(input_op)
-                    if self.customization_format == None:
+                    if self.customization_format == '':
                         self.customization_format = getCustomFormat(ppa.pixel_format,
                                                                     ppa.channel_format)
-                        print(self.customization_format)
                     config = {
                         'input_shapes': input_shapes,
                         'resize_dims': ppa.resize_dims,
@@ -152,7 +156,7 @@ class DeployTool:
                     self.inputs[op.name] = data
         if self.aligned_input and not self.fuse_preprocess:
             ppa = preprocess()
-            if self.customization_format is None:
+            if self.customization_format == '':
                 #use the first input_op's pixel format
                 input_op = self.module.inputs[0].op
                 ppa.load_config(input_op)
@@ -247,7 +251,7 @@ if __name__ == '__main__':
     # fuse preprocess
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
-    parser.add_argument("--customization_format", default=None, type=str,
+    parser.add_argument("--customization_format", default='', type=str,
                         choices=supported_customization_format,
                         help="pixel format of input frame to the model")
     parser.add_argument("--aligned_input", action='store_true',
@@ -274,7 +278,7 @@ if __name__ == '__main__':
     parser.add_argument("--debug", action='store_true', help='to keep all intermediate files for debug')
     # yapf: enable
     args = parser.parse_args()
-    if args.customization_format is not None and args.customization_format.startswith("YUV") >= 0:
+    if args.customization_format.startswith("YUV"):
         args.aligned_input = True
 
     tool = DeployTool(args)

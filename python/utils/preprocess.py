@@ -27,7 +27,7 @@ supported_customization_format = [
     'YUV_NV21',
     'YUV_NV12',
     'RGBA_PLANAR',
-    None
+    ''
 ]
 
 customization_format_attributes = {

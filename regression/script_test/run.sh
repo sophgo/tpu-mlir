@@ -90,4 +90,13 @@ model_deploy.py \
   --test_reference mobilenet_v2_top_outputs.npz \
   --compare_all \
   --model mobilenet_v2_1684x_int8_fuse.bmodel
+
+# no test
+model_deploy.py \
+  --mlir mobilenet_v2.mlir \
+  --quantize INT8 \
+  --chip bm1684x \
+  --calibration_table mobilenet_v2_cali_table \
+  --fuse_preprocess \
+  --model mobilenet_v2_1684x_int8_fuse2.bmodel
 popd
