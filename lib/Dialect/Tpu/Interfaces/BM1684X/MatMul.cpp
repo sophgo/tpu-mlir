@@ -60,8 +60,10 @@ LogicalResult WeightReorder<tpu::MatMulOp, int8_t>::matchAndRewrite(
       bias_quant->data()[i] += p.input_zp * p.right_zp * p.K;
     }
     auto stype = module::getStorageType(op.getBias());
-    // std::vector<int64_t> bias_shape = {N};
-    auto new_type = RankedTensorType::get({p.N}, rewriter.getI32Type());
+    int64_t left_num_dims = module::getShape(op.getInput()).size();
+    std::vector<int64_t> bias_shape(left_num_dims, 1);
+    bias_shape[left_num_dims - 1] = p.N;
+    auto new_type = RankedTensorType::get(bias_shape, rewriter.getI32Type());
     auto new_op =
         top::WeightOp::create(op, "bias_merge_izp", *bias_quant, new_type);
     op->setOperand(2, new_op);
@@ -258,8 +260,7 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   common.L_trans = getLeftTranspose();
   common.R_trans = p.right_transpose;
   common.has_bias = p.with_bias;
-  common.hdim_is_batch =
-      false; // group_type == GROUP_SMALL_C ? true : getHdimIsBatch();
+  common.hdim_is_batch = false;
   common.requant_mode = -1;
   if (module::isUniformQuantized(getInput())) {
     common.R_zp_is_const = true;

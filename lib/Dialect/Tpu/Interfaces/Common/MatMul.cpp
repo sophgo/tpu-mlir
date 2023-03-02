@@ -166,13 +166,20 @@ LogicalResult tpu::MatMulOp::LocalGenSupport() {
     return failure();
   }
 
+  auto Lshape = module::getShape(ins[0]);
+  auto Rshape = module::getShape(ins[1]);
   int left_num_dims = module::getShape(ins[0]).size();
   int right_num_dims = module::getShape(ins[1]).size();
-  if (left_num_dims == 5 && right_num_dims == 2) {
+  if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||
+       (left_num_dims == 5 && Lshape[1] < Lshape[3])) &&
+      right_num_dims == 2) {
+    // GROUP_SMALL_C
     return success();
-  } else if (left_num_dims == 3 && right_num_dims == 2) {
+  } else if (left_num_dims == 3 && right_num_dims == 3) {
+    // (1, M, K) x (1, K, N)
     return success();
   } else if (left_num_dims == 4 && right_num_dims == 4 && getHdimIsBatch()) {
+    // (B1, M, B2, K) x (B1, K, B2, N)
     return success();
   }
   return failure();
