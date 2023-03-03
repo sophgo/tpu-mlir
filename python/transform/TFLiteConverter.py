@@ -13,6 +13,7 @@ import mlir.dialects.quant as quant
 import numpy as np
 from .tflite.TensorType import TensorType
 
+
 def _indent(sOrIt_: Union[str, Iterable], numSpaces: int) -> str:
     """Indent string"""
     if sOrIt_ is None:
@@ -44,6 +45,7 @@ def _compute_pad(stride, dilation, input_size, filter, padding):
     pad = [i for i in padding_before] + [i for i in padding_after]
     return pad
 
+
 class TFLiteReader:
     """
     Provide a TensorFlow lite model reader.
@@ -62,14 +64,12 @@ class TFLiteReader:
 
         self.opType = {
             v: k
-            for k, v in vars(BuiltinOperator).items()
-            if isinstance(k, str) and isinstance(v, int)
+            for k, v in vars(BuiltinOperator).items() if isinstance(k, str) and isinstance(v, int)
         }
 
         self.tensorTypeStr = {
             v: k
-            for k, v in vars(TensorType).items()
-            if isinstance(k, str) and isinstance(v, int)
+            for k, v in vars(TensorType).items() if isinstance(k, str) and isinstance(v, int)
         }
 
         self.file = tflite_file
@@ -126,9 +126,7 @@ class TFLiteReader:
                 self.name = self.T.Name().decode()
                 self.is_variable = self.T.IsVariable()
                 self.quantization = self.T.Quantization()
-                self.is_quantized = bool(
-                    self.quantization and self.quantization.ZeroPointLength()
-                )
+                self.is_quantized = bool(self.quantization and self.quantization.ZeroPointLength())
                 self.shape_signature = self.T.ShapeSignatureAsNumpy()
                 self.buffer = self._buffer()
 
@@ -136,11 +134,8 @@ class TFLiteReader:
                 bf = ctx.buffer(self.T.Buffer())
                 if bf is None or bf.DataIsNone():
                     return None
-                return (
-                    bf.DataAsNumpy()
-                    .view(self.TFLType2Np[self.type])  # type: ignore
-                    .reshape(self.shape)
-                )
+                return (bf.DataAsNumpy().view(self.TFLType2Np[self.type])  # type: ignore
+                        .reshape(self.shape))
 
             def __repr__(self):
                 s = "tensor (\n{modstr}\n)"
@@ -148,26 +143,23 @@ class TFLiteReader:
                 return s.format(modstr=_indent(modstr, 2))
 
         class Operator:
+
             def __init__(self, graph, Op):
                 self.Op = Op
                 self.G = graph
                 opcode = ctx.operator(self.Op.OpcodeIndex())
                 assert opcode is not None
-                self.type = ctx.opType[
-                    max(opcode.BuiltinCode(), opcode.DeprecatedBuiltinCode())
-                ]
+                self.type = ctx.opType[max(opcode.BuiltinCode(), opcode.DeprecatedBuiltinCode())]
                 self.builtin_options = self.Op.BuiltinOptions()
                 self.inputs = list(self._inputs())
                 self.outputs = list(self._outputs())
 
             def __repr__(self):
                 s = "{type} (\n{modstr}\n)"
-                modstr = "\n".join(
-                    [
-                        "inputs (\n{}\n)".format(_indent(self.inputs, 2)),
-                        "outputs (\n{}\n)".format(_indent(self.outputs, 2)),
-                    ]
-                )
+                modstr = "\n".join([
+                    "inputs (\n{}\n)".format(_indent(self.inputs, 2)),
+                    "outputs (\n{}\n)".format(_indent(self.outputs, 2)),
+                ])
                 return s.format(type=self.type, modstr=_indent(modstr, 2))
 
             def _inputs(self):
@@ -182,15 +174,12 @@ class TFLiteReader:
                     yield Tensor(self.G.Tensors(i), i)
 
         class Graph:
+
             def __init__(self, G):
                 self.G = G
                 self.name = "main" if G.Name() is None else self.G.Name().decode()
-                self.inputs = [
-                    Tensor(self.G.Tensors(i), i) for i in self.G.InputsAsNumpy()
-                ]
-                self.outputs = [
-                    Tensor(self.G.Tensors(i), i) for i in self.G.OutputsAsNumpy()
-                ]
+                self.inputs = [Tensor(self.G.Tensors(i), i) for i in self.G.InputsAsNumpy()]
+                self.outputs = [Tensor(self.G.Tensors(i), i) for i in self.G.OutputsAsNumpy()]
 
             @property
             def operators(self):
@@ -199,11 +188,9 @@ class TFLiteReader:
 
             def __repr__(self) -> str:
                 s = "{name} (\n{modstr}\n)"
-                modstr = "\n".join(
-                    ["inputs (\n{}\n)".format(_indent(self.inputs, 2))]
-                    + ["outputs (\n{}\n)".format(_indent(self.outputs, 2))]
-                    + ["body (\n{}\n)".format(_indent(self.operators, 2))]
-                )
+                modstr = "\n".join(["inputs (\n{}\n)".format(_indent(self.inputs, 2))] +
+                                   ["outputs (\n{}\n)".format(_indent(self.outputs, 2))] +
+                                   ["body (\n{}\n)".format(_indent(self.operators, 2))])
                 return s.format(name=self.name, modstr=_indent(modstr, 2))
 
         for i in range(self.model.SubgraphsLength()):
@@ -224,8 +211,12 @@ class TFLiteConverter(BaseConverter):
     }
     ID = 0
 
-    def __init__(self, model_name: str, tflite_file: str, input_shapes=None,
-                 output_names: list=[], preprocess_args = None):
+    def __init__(self,
+                 model_name: str,
+                 tflite_file: str,
+                 input_shapes=None,
+                 output_names: list = [],
+                 preprocess_args=None):
         super().__init__()
         self.model_name = model_name
         self.tflite_file = tflite_file
@@ -293,13 +284,13 @@ class TFLiteConverter(BaseConverter):
             "GATHER": self.gather_op,
             "TRANSPOSE": self.transpose_op,
         }
-        input_types=[]
+        input_types = []
         for x in self.graph.inputs:
             if x.is_quantized:
                 input_types.append(self.get_quantized_type(x))
             else:
                 input_types.append(self.TFLType2MLIRImporterTypeStr[x.type])
-        output_types=[]
+        output_types = []
         for x in self.outputs:
             if x.is_quantized:
                 output_types.append(self.get_quantized_type(x))
@@ -312,6 +303,7 @@ class TFLiteConverter(BaseConverter):
             del self.mlir
 
     def __type2mlir(self, mlir_ctx):
+        # yapf: disable
         return {
             TensorType.FLOAT32: F32Type.get(mlir_ctx),
             TensorType.FLOAT16: F16Type.get(mlir_ctx),
@@ -332,54 +324,52 @@ class TFLiteConverter(BaseConverter):
             TensorType.UINT32: IntegerType.get_unsigned(32, mlir_ctx),
             TensorType.UINT16: IntegerType.get_unsigned(16, mlir_ctx),
         }
+        # yapf: enable
 
     def get_quantized_type(self, tensor):
-            quantParam = tensor.quantization
-            if quantParam.Details() is not None:
-                raise ValueError("Cannot handle experimental quantization")
-            is_signed = tensor.type_str is 'INT8' or tensor.type_str is 'INT16' or tensor.type_str is 'INT32'
-            storage_type = self.type_to_mlir[tensor.type]
-            # TFLite uses narrow-range [u]int8 for constant buffers of quantized weights.
-            # Since we don't know which ones are weights, we represent this optimization
-            # as a change in the storage bounds for the type for all constants of this type.
-            is_constant = tensor.buffer is not None
-            is_weight_buffer = is_constant and (storage_type.width == 8) and is_signed
-            storage_min = (
-                quant.QuantizedType.default_minimum_for_integer(  # type: ignore
-                    is_signed, storage_type.width
-                )
-                + is_weight_buffer
-            )
-            storage_max = quant.QuantizedType.default_maximum_for_integer(  # type: ignore
-                is_signed, storage_type.width
-            )
-            flags = 1 if is_signed else 0
+        quantParam = tensor.quantization
+        if quantParam.Details() is not None:
+            raise ValueError("Cannot handle experimental quantization")
+        is_signed = tensor.type_str is 'INT8' or tensor.type_str is 'INT16' or tensor.type_str is 'INT32'
+        storage_type = self.type_to_mlir[tensor.type]
+        # TFLite uses narrow-range [u]int8 for constant buffers of quantized weights.
+        # Since we don't know which ones are weights, we represent this optimization
+        # as a change in the storage bounds for the type for all constants of this type.
+        is_constant = tensor.buffer is not None
+        is_weight_buffer = is_constant and (storage_type.width == 8) and is_signed
+        storage_min = (
+            quant.QuantizedType.default_minimum_for_integer(  # type: ignore
+                is_signed, storage_type.width) + is_weight_buffer)
+        storage_max = quant.QuantizedType.default_maximum_for_integer(  # type: ignore
+            is_signed, storage_type.width)
+        flags = 1 if is_signed else 0
 
-            scale = quantParam.ScaleAsNumpy()
-            zero_point = quantParam.ZeroPointAsNumpy()
-            quantized_dimension = quantParam.QuantizedDimension()
-            if len(scale) > 1:
-                return quant.UniformQuantizedPerAxisType.get(  # type: ignore
-                    flags,
-                    self.type_to_mlir[tensor.type],
-                    self.type_to_mlir[TensorType.FLOAT32],
-                    scale,
-                    zero_point,
-                    quantized_dimension,
-                    storage_min,
-                    storage_max,
-                )
-            return quant.UniformQuantizedType.get(  # type: ignore
+        scale = quantParam.ScaleAsNumpy()
+        zero_point = quantParam.ZeroPointAsNumpy()
+        quantized_dimension = quantParam.QuantizedDimension()
+        if len(scale) > 1:
+            return quant.UniformQuantizedPerAxisType.get(  # type: ignore
                 flags,
                 self.type_to_mlir[tensor.type],
                 self.type_to_mlir[TensorType.FLOAT32],
-                scale[0],
-                zero_point[0],
+                scale,
+                zero_point,
+                quantized_dimension,
                 storage_min,
                 storage_max,
             )
+        return quant.UniformQuantizedType.get(  # type: ignore
+            flags,
+            self.type_to_mlir[tensor.type],
+            self.type_to_mlir[TensorType.FLOAT32],
+            scale[0],
+            zero_point[0],
+            storage_min,
+            storage_max,
+        )
 
     def __get_tensor_type(self, tensor, shape=None):
+
         def getCalibratedQuantizedType(tensor):
             quantParam = tensor.quantization
             raw_elem_type = self.type_to_mlir[tensor.type]
@@ -434,9 +424,7 @@ class TFLiteConverter(BaseConverter):
                 input_shapes_[index] = (n, h, w, c)
 
         tfi = TFLiteInterpreter(self.tflite_file)
-        inputs = {
-            org_i["name"]: usr_i for org_i, usr_i in zip(tfi.inputs, input_shapes_)
-        }
+        inputs = {org_i["name"]: usr_i for org_i, usr_i in zip(tfi.inputs, input_shapes_)}
         tfi.reshape(**inputs)
 
         def get_shape(index: int):
@@ -504,13 +492,15 @@ class TFLiteConverter(BaseConverter):
         paddings = op.inputs[1].buffer
         if paddings.shape[0] == 4 and self.need_transpose:
             paddings = paddings[[0, 3, 1, 2], :]
-        paddings = paddings.transpose([1,0])
+        paddings = paddings.transpose([1, 0])
         pad_val = op.outputs[0].quantization.ZeroPoint(0)
         if len(op.inputs) == 3:
             pad_val = op.inputs[2].buffer
         op.inputs = [op.inputs[0]]  # remove ins[1]
-        attr = {"paddings": self.mlir.ArrayAttr(paddings.flatten()),
-                "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val)}
+        attr = {
+            "paddings": self.mlir.ArrayAttr(paddings.flatten()),
+            "val": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], pad_val)
+        }
         return "top.Pad", attr, self.need_transpose
 
     def add_op(self, op):
@@ -521,9 +511,7 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         fused_active = param.FusedActivationFunction()
         if fused_active not in [0, 1]:
-            raise Exception(
-                "Not supported ActivationFunctionType: {}!".format(fused_active)
-            )
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
         return Top.AddOp, attr, False
 
@@ -535,9 +523,7 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         fused_active = param.FusedActivationFunction()
         if fused_active not in [0, 1]:
-            raise Exception(
-                "Not supported ActivationFunctionType: {}!".format(fused_active)
-            )
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {"do_relu": BoolAttr.get(fused_active == 1)}
         return Top.SubOp, attr, False
 
@@ -593,15 +579,13 @@ class TFLiteConverter(BaseConverter):
             # high, width
             stride = np.array([param.StrideH(), param.StrideW()])
             dilation_rate = np.array(
-                [param.DilationHFactor(), param.DilationWFactor()], dtype=np.int64
-            )
+                [param.DilationHFactor(), param.DilationWFactor()], dtype=np.int64)
             kernel_size = np.array(kernel_shape[1:3], dtype=np.int64)
             input_size = np.array(op.inputs[0].shape[1:3], dtype=np.int64)  # NHWC
             effective_filter_size = (kernel_size - 1) * dilation_rate + 1
             output_size = (input_size + stride - 1) // stride
-            padding_needed = np.int64(
-                (output_size - 1) * stride + effective_filter_size - input_size
-            )
+            padding_needed = np.int64((output_size - 1) * stride + effective_filter_size -
+                                      input_size)
             padding_needed = padding_needed.clip(min=0)
             # For odd values of total padding, add more padding at the 'right'
             # side of the given dimension.
@@ -615,17 +599,14 @@ class TFLiteConverter(BaseConverter):
             ]
 
         if fused_active not in [0, 1, 3]:
-            raise Exception(
-                "Not supported ActivationFunctionType: {}!".format(fused_active)
-            )
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {
             "kernel_shape": self.mlir.ArrayAttr(kernel_shape[1:-1]),
             "strides": self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
-            "dilations": self.mlir.ArrayAttr(
-                [param.DilationHFactor(), param.DilationWFactor()]
-            ),
+            "dilations": self.mlir.ArrayAttr([param.DilationHFactor(),
+                                              param.DilationWFactor()]),
             "pads": self.mlir.ArrayAttr(padding),
-            "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),     # relu6 to relu
+            "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),  # relu6 to relu
         }
         return Top.ConvOp, attr, True
 
@@ -653,15 +634,19 @@ class TFLiteConverter(BaseConverter):
         if fused_active not in [0, 1, 3]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {
-            "kernel_shape": self.mlir.ArrayAttr(kernel_shape[1:-1]),
-            "strides": self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
-            "dilations": self.mlir.ArrayAttr(
-                [param.DilationHFactor(), param.DilationWFactor()]
-            ),
-            "pads": self.mlir.ArrayAttr(padding),
-            "do_relu": BoolAttr.get(fused_active == 1 or fused_active == 3),    # relu6 to relu
-            "group": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
-                                     in_shape[3] // kernel_shape[0]),
+            "kernel_shape":
+            self.mlir.ArrayAttr(kernel_shape[1:-1]),
+            "strides":
+            self.mlir.ArrayAttr([param.StrideH(), param.StrideW()]),
+            "dilations":
+            self.mlir.ArrayAttr([param.DilationHFactor(),
+                                 param.DilationWFactor()]),
+            "pads":
+            self.mlir.ArrayAttr(padding),
+            "do_relu":
+            BoolAttr.get(fused_active == 1 or fused_active == 3),  # relu6 to relu
+            "group":
+            IntegerAttr.get(self.type_to_mlir[TensorType.INT64], in_shape[3] // kernel_shape[0]),
         }
         return Top.ConvOp, attr, True
 
@@ -673,9 +658,7 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         fused_active = param.FusedActivationFunction()
         if fused_active not in [0, 1]:
-            raise Exception(
-                "Not supported ActivationFunctionType: {}!".format(fused_active)
-            )
+            raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {
             "do_relu": BoolAttr.get(fused_active == 1),
             # "right_transpose": BoolAttr.get(True),
@@ -776,7 +759,7 @@ class TFLiteConverter(BaseConverter):
         op.inputs = [op.inputs[0]]
         coord_mode = "asymmetric"
         # round_mode = "down"
-        if align_corner is True :
+        if align_corner is True:
             coord_mode = "align_corners"
         if half_piexl is True:
             coord_mode = "half_pixel"
@@ -807,7 +790,8 @@ class TFLiteConverter(BaseConverter):
             "end_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], end_mask),
             "ellipsis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], ellipsis_mask),
             "new_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], new_axis_mask),
-            "shrink_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], shrink_axis_mask),
+            "shrink_axis_mask": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
+                                                shrink_axis_mask),
         }, False
 
     def split_op(self, op):
@@ -831,7 +815,8 @@ class TFLiteConverter(BaseConverter):
         param.Init(op_options.Bytes, op_options.Pos)
         attr = {
             "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
-            "values_count": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.ValuesCount()),
+            "values_count": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
+                                            param.ValuesCount()),
         }
         return Top.PackOp, attr, False
 
@@ -872,6 +857,7 @@ class TFLiteConverter(BaseConverter):
         return Top.PermuteOp, attr, False
 
     def convert_subgraph(self, subgraph):
+
         class symbolTable:
             symbol_table = {}
 
@@ -881,15 +867,11 @@ class TFLiteConverter(BaseConverter):
             def __getitem__(self, tensor):
                 if tensor.id not in self.symbol_table:
                     if tensor.buffer is None:
-                        raise Exception(
-                            "Tensor '{}' is not constant!".format(tensor.name)
-                        )
-                    if tensor.shape != tuple(tensor.buffer.shape):
-                        raise Exception(
-                            "Tensor shape is ambiguous! '{t_s}' vs '{b_s}'".format(
-                                t_s=tensor.shape, b_s=tensor.buffer.shape
-                            )
-                        )
+                        raise Exception("Tensor '{}' is not constant!".format(tensor.name))
+                    if tensor.shape != tuple(tensor.buffer.shape) and np.prod(
+                            tensor.shape) != np.prod(tensor.buffer.shape):
+                        raise Exception("Tensor shape is ambiguous! '{t_s}' vs '{b_s}'".format(
+                            t_s=tensor.shape, b_s=tensor.buffer.shape))
                     op = self.gen_value_func(tensor)
                     self.symbol_table[tensor.id] = op
                     return op
@@ -912,8 +894,7 @@ class TFLiteConverter(BaseConverter):
 
         def add_operation(operation):
             op_type, attributes, channel_last = self.BuiltinOptionsToAttributes[operation.type](
-                operation
-            )
+                operation)
 
             trans_suffix = ""
             if channel_last and self.need_transpose is False:
@@ -926,26 +907,27 @@ class TFLiteConverter(BaseConverter):
                     elif x.id not in symbol_table.symbol_table.keys():
                         operands.append(symbol_table[self.__nhwc2nchw(x, True)])
                     else:
-                        operands.append(self.__do_transpose(x, symbol_table[x], [0,3,1,2], self.__get_new_name()))
+                        operands.append(
+                            self.__do_transpose(x, symbol_table[x], [0, 3, 1, 2],
+                                                self.__get_new_name()))
                         if len(x.shape) == 4:
                             trans_suffix = "_bm_trans"
                 rst_type = [
-                    self.__get_tensor_type(x, self.__shape_transpose(x.shape,[0,3,1,2])) for x in operation.outputs
+                    self.__get_tensor_type(x, self.__shape_transpose(x.shape, [0, 3, 1, 2]))
+                    for x in operation.outputs
                 ]
-            else :
+            else:
                 if operation.type is 'RESHAPE':
                     operands = [symbol_table[self.__nhwc2nchw(operation.inputs[0])]]
                 else:
                     operands = []
                     for x in operation.inputs:
-                        operands.append(symbol_table[self.__nhwc2nchw(x)] if x is not None else self.mlir.none_op)
-                rst_type = [
-                    self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs
-                ]
+                        operands.append(symbol_table[self.__nhwc2nchw(x)]
+                                        if x is not None else self.mlir.none_op)
+                rst_type = [self.__get_tensor_type(self.__nhwc2nchw(x)) for x in operation.outputs]
 
             name_loc = Location.fused(
-                [Location.name(x.name + trans_suffix) for x in operation.outputs]
-            )
+                [Location.name(x.name + trans_suffix) for x in operation.outputs])
             op = Operation.create(
                 op_type,
                 results=rst_type,
@@ -958,7 +940,7 @@ class TFLiteConverter(BaseConverter):
                 # do transpose (NCHW to NHWC)
                 res = []
                 for idx, x in enumerate(operation.outputs):
-                    res.append(self.__do_transpose(x, op.results[idx], [0,2,3,1], x.name, False))
+                    res.append(self.__do_transpose(x, op.results[idx], [0, 2, 3, 1], x.name, False))
             else:
                 res = op.results
             symbol_table.update(dict(zip((x.id for x in operation.outputs), res)))  # type: ignore

@@ -369,10 +369,9 @@ class OnnxConverter(BaseConverter):
         for tensor in self.model.graph.initializer:
             name = tensor.name
             # all weight convert to f32.
-            data = numpy_helper.to_array(tensor)
-            if data.dtype != np.int8:
-                data = data.astype(np.float32)
+            data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addWeight(name, data)
+            # TODO: for quantized onnx, keep the same type
         self.add_shape_info()
         self.onnx_file = "{}_opt.onnx".format(self.model_name)
         file_mark(self.onnx_file)
