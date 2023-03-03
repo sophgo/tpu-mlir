@@ -430,6 +430,7 @@ void BM168x::getBetterNCHW(Value v, int64_t &n, int64_t &c, int64_t &h,
 
 void BM168x::before_codegen() {
   // set_command_issue_flag(true);
+  dl_sg_set_profile_path("./");
   dl_sg_set_profile_dump(true);
   reset_cmd_id_node();
   gdma_group_id.clear();

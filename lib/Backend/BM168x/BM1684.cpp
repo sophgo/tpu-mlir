@@ -28,6 +28,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION_WITH_SYM(cmd_id_divide, __cmd_id_divide);
   CAST_FUNCTION_WITH_SYM(cmd_id_merge, __cmd_id_merge);
   CAST_FUNCTION_WITH_SYM(sg_set_profile_dump, bm_set_profile_dump);
+  CAST_FUNCTION_WITH_SYM(sg_set_profile_path, bm_set_profile_path);
   CAST_FUNCTION_WITH_SYM(sg_stas_dump, bm_stas_dump);
   CAST_FUNCTION_WITH_SYM(sg_flops_dump, bm_flops_dump);
   CAST_FUNCTION_WITH_SYM(sg_stas_reset, bm_stas_reset);

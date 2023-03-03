@@ -40,6 +40,7 @@ void BM1684X::load_functions() {
   CAST_FUNCTION(store_cmd_end);
   CAST_FUNCTION(set_cmd_len_ptr);
   CAST_FUNCTION(sg_set_profile_dump);
+  CAST_FUNCTION(sg_set_profile_path);
   CAST_FUNCTION(sg_stas_dump);
   CAST_FUNCTION(sg_flops_dump);
   CAST_FUNCTION(sg_stas_reset);

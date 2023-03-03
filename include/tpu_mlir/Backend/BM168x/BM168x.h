@@ -58,6 +58,7 @@ typedef void (*cmd_id_divide)(void *p_cmd_src, void *p_cmd_dst0,
 typedef void (*cmd_id_merge)(void *p_cmd_dst, void *p_cmd_src0,
                              void *p_cmd_src1);
 typedef void (*sg_set_profile_dump)(bool enable);
+typedef void (*sg_set_profile_path)(const char* path);
 typedef void (*sg_stas_dump)(void *pid_node);
 typedef void (*sg_flops_dump)(long long flops, void *pid_node);
 typedef void (*sg_stas_reset)();
@@ -159,6 +160,7 @@ public:
   cmd_id_divide dl_cmd_id_divide;
   cmd_id_merge dl_cmd_id_merge;
   sg_set_profile_dump dl_sg_set_profile_dump;
+  sg_set_profile_path dl_sg_set_profile_path;
   sg_stas_dump dl_sg_stas_dump;
   sg_flops_dump dl_sg_flops_dump;
   sg_stas_reset dl_sg_stas_reset;
