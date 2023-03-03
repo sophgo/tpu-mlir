@@ -2,6 +2,14 @@
 
 #### 1684x/1686
 
+
+
+2023-03-03
+build from TPU1684     4d6f48e47dd144eaef4a5091b2ab8962c5b13a4c
+build from TPU1686     308f56c7dc2c5b0c0ebb0c1d8ba65ca8382e937b
+build from tpu-runtime 7cabdb184e5c7a3217ddfd578c18ac53fa071cbd
+build from nntoolchain e0309c47ba4957dec9e9a7c108946f7eee943128
+
 2023-03-01
 build from TPU1686     532a31342dd80dbfa23e9a717bd43644a3e44790
 
