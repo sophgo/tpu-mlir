@@ -438,7 +438,10 @@ class TFLiteConverter(BaseConverter):
         name_loc = Location.name(tensor.name)
         op = Operation.create(Top.WeightOp, results=[tensor_type], loc=name_loc)
         self.mlir.insert_point.insert(op)
-        self.constant[tensor.name] = tensor.buffer
+        if len(tensor.shape) == 0:
+            self.constant[tensor.name] = tensor.buffer.reshape(1)
+        else:
+            self.constant[tensor.name] = tensor.buffer
         return op.results[0]
 
     def __shape_transpose(self, shape: List[int], order: List[int]):
