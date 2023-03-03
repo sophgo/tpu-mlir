@@ -149,7 +149,7 @@ Add
 
 这里对称提供的方式是用INT16做中间buffer;
 
-非对称是先反量化成float, 做加法后再重量化成INT8
+在网络中，输入A、B已经是量化后的结果 :math:`q_a`、 :math:`q_b`，因此非对称是先反量化成float, 做加法后再重量化成INT8
 
 
 AvgPool
