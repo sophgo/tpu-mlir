@@ -157,7 +157,7 @@ def mlir_to_model(tpu_mlir: str,
     _os_system(cmd)
 
     try:
-        _os_system(["mv compiler_profile_0.txt", model + ".compiler_profile_0.txt"])
+        _os_system(["mv compiler_profile_0.[td][xa]t", model + ".compiler_profile_0.txt"])
     except RuntimeError:
         pass
 
