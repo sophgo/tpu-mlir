@@ -938,7 +938,7 @@ typedef struct batch_matmul_common_spec {
   int mul_val;
   int shift_val;
   int offset_val;
-  // int round_mode;
+  int round_mode;
 } batch_matmul_common_spec_t;
 
 typedef struct batch_matmul_global_spec {

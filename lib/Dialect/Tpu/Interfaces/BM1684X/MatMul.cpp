@@ -252,9 +252,10 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
-  // const auto &gi = getGroupInfo(n_step, h_step);
+  const auto &gi = getGroupInfo(n_step, h_step);
 
   batch_matmul_local_spec_t param{0};
+  param.buffer_addr = gi.buffer_addr;
   auto &common = param.common;
   common.Y_dtype = output_spec->at(0).dtype;
   common.L_trans = getLeftTranspose();
