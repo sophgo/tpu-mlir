@@ -20,6 +20,7 @@ from utils.auto_remove import file_mark, file_clean
 from utils.preprocess import get_preprocess_parser, preprocess
 import pymlir
 
+
 class ModelTransformer(object):
 
     def __init__(self, model_name):
@@ -127,8 +128,12 @@ class CaffeTransformer(ModelTransformer):
 
 class TFLiteTransformer(ModelTransformer):
 
-    def __init__(self, model_name, model_def, input_shapes: list = [],
-                 output_names=[], preprocessor=None):
+    def __init__(self,
+                 model_name,
+                 model_def,
+                 input_shapes: list = [],
+                 output_names=[],
+                 preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
         self.do_mlir_infer = False
@@ -140,7 +145,10 @@ class TFLiteTransformer(ModelTransformer):
         from tools.model_runner import tflite_inference
         is_nchw = self.converter.preprocess_args['channel_format'] == 'nchw'
         tf_layout = self.converter.preprocess_args['model_format'] == 'nlp'
-        return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw, tf_layout = tf_layout)
+        return tflite_inference(inputs,
+                                self.converter.tflite_file,
+                                input_is_nchw=is_nchw,
+                                tf_layout=tf_layout)
 
 
 class TorchTransformer(ModelTransformer):
@@ -211,7 +219,9 @@ if __name__ == '__main__':
     parser.add_argument("--mlir", type=str, required=True, help="output mlir model file")
     # yapf: enable
     parser = get_preprocess_parser(existed_parser=parser)
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
+    if unknown_args:
+        args.unknown_params += unknown_args
     tool = get_model_transform(args)
     tool.model_transform(args.mlir, args.post_handle_type)
     if args.test_input:
