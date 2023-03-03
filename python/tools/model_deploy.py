@@ -18,6 +18,7 @@ from tools.model_runner import mlir_inference, model_inference, show_fake_cmd
 import pymlir
 from utils.misc import str2bool
 
+
 def str2list(v):
     files = v.split(',')
     files = [s.strip() for s in files]
@@ -108,7 +109,9 @@ class DeployTool:
                 ppa = preprocess()
                 input_op = self.module.inputs[0].op
                 ppa.load_config(input_op)
-                self.customization_format = getCustomFormat(ppa.pixel_format, ppa.channel_format)
+                if ppa.has_pre:
+                    self.customization_format = getCustomFormat(ppa.pixel_format,
+                                                                ppa.channel_format)
             return
         self.inputs = {}
         #self.pre_inputs = {}
@@ -224,9 +227,11 @@ class DeployTool:
         model_outputs = model_inference(self.inputs, self.model)
         np.savez(self.model_npz, **model_outputs)
         if self.state == "TOP_QUANTIZED":
-            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts, self.post_op)
+            f32_blobs_compare(self.model_npz, self.ref_npz, self.correctness, self.excepts,
+                              self.post_op)
         else:
-            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts, self.post_op)
+            f32_blobs_compare(self.model_npz, self.tpu_npz, self.correctness, self.excepts,
+                              self.post_op)
 
 
 if __name__ == '__main__':
