@@ -174,6 +174,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
 def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=None) -> dict:
 
     import pymlir
+    from utils.mlir_parser import MlirParser
 
     if debug is not None:
         if debug == "":
@@ -183,6 +184,7 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
 
     module = pymlir.module()
     module.load(mlir_file)
+    parser = MlirParser(mlir_file)
     for name in module.input_names:
         assert (name in inputs)
         input = inputs[name]
@@ -197,6 +199,13 @@ def mlir_inference(inputs: dict, mlir_file: str, dump_all: bool = True, debug=No
     outputs = dict()
     for name in module.output_names:
         outputs[name] = tensors[name]
+    for name in module.output_names:
+        # assume output of op has the same name
+        op_type = parser.get_op_type_by_op_name(name)
+        if op_type == "tpu.Cast":
+            pre_op = parser.get_pre_op_by_op_name(name)
+            for op in pre_op:
+                outputs[op] = tensors[op]
     return outputs
 
 
