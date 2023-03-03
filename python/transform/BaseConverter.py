@@ -82,7 +82,7 @@ class BaseConverter(object):
         return np.all(w == w.flatten()[0])
 
     def isScalar_(self, name, x):
-        assert(isinstance(x, (int, float)))
+        assert (isinstance(x, (int, float)))
         if not self.isWeight(name): return False
         if np.prod(self.getShape(name)) == 1: return True
         w = self.getWeight(name)
@@ -100,11 +100,18 @@ class BaseConverter(object):
         if shape and old_shape != shape:
             assert (np.prod(old_shape) == np.prod(shape))
             old_shape = shape
-        ori_type = self.tensors[name].dtype
-        tp = "F32"
-        if ori_type == np.int8:
-            tp = "INT8"
-        op = self.mlir.create_weight_op(name, old_shape, tp)
+        ori_type = str(self.tensors[name].dtype)
+        type_dict = {
+            'int8': "INT8",
+            'uint8': "UINT8",
+            'float32': "F32",
+            'int32': "INT32",
+            'int16': "INT16",
+            'uint16': "UINT16",
+        }
+        if ori_type not in type_dict:
+            raise KeyError("type {} not implemented".format(ori_type))
+        op = self.mlir.create_weight_op(name, old_shape, type_dict[ori_type])
         self.addOperand(name, op)
         return op
 
