@@ -66,6 +66,7 @@ def ArgModeAttr: AnyStrAttrOf<["ArgMin","ArgMax"]>;
 def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","LessOrEqual"]>;
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
+def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
@@ -1295,6 +1296,22 @@ def Tpu_TopKOp:Tpu_Op<"TopK"> {
   let results = (outs
     AnyTensorOrNone:$values,
     AnyTensorOrNone:$indices
+  );
+}
+
+def Tpu_NonZeroOp:Tpu_Op<"NonZero"> {
+  let summary = "NonZero operation";
+  let description = [{
+    Returns the indices of the elements that are non-zero
+    (in row-major order - by dimension).
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$buffer,
+    NonZeroOrderAttr:$order
+  );
+  let results = (outs
+    AnyTensor:$output
   );
 }
 

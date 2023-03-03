@@ -147,6 +147,8 @@ FW_LAYER_TYPE_T get_layer_type(Operation *op) {
     return FW_BMNET_ROI_ALIGN;
   } else if (isa<tpu::YoloDetectionOp>(op)) {
     return FW_BMNET_YOLOV3_DETECT_OUT;
+  } else if (isa<tpu::NonZeroOp>(op)) {
+    return FW_BMNET_WHERE;
   } else
     return FW_LAYER_UNKNOWN;
 }
@@ -324,7 +326,7 @@ std::vector<dynamic_global_tensor_spec>
 dynamic_layer::get_input_global_tensor_specs() {
     std::vector<dynamic_global_tensor_spec> specs;
     for (auto v : op_->getOperands()) {
-        if (module::isNone(v)) {
+        if (module::isNone(v) || module::isGlobalBuffer(v)) {
           continue;
         }
         dynamic_global_tensor_spec spec = {0};

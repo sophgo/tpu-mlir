@@ -145,13 +145,34 @@ public:
   }
 };
 
+class NonZeroGlobalBuffer : public OpRewritePattern<tpu::NonZeroOp> {
+public:
+  using OpRewritePattern<tpu::NonZeroOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::NonZeroOp op,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(op.getBuffer())) {
+      return failure();
+    }
+    auto type = module::getStorageType(op.getInput());
+    // add buffer
+    auto buffer_type = RankedTensorType::get(module::getShape(op.getInput()), type);
+    auto buffer = tpu::BufferOp::create(op, buffer_type);
+    op.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == op.getBuffer();
+    });
+    return success();
+  }
+};
+
 void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,
-      PermuteGlobalBuffer
+      PermuteGlobalBuffer,
+      NonZeroGlobalBuffer
   >(patterns->getContext());
   // clang-format on
 }

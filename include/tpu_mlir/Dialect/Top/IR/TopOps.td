@@ -72,6 +72,7 @@ def ChannelFormatAttr: AnyStrAttrOf<["nhwc","nchw"]>;
 def PadModeAttr: AnyStrAttrOf<["normal","center"]>;
 def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
 def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
+def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Types.
@@ -848,6 +849,21 @@ def Top_TopKOp:Top_Op<"TopK"> {
   let results = (outs
     AnyTensorOrNone:$values,
     AnyTensorOrNone:$indices
+  );
+}
+
+def Top_NonZeroOp:Top_Op<"NonZero"> {
+  let summary = "NonZero operation";
+  let description = [{
+    Returns the indices of the elements that are non-zero
+    (in row-major order - by dimension).
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    NonZeroOrderAttr:$order
+  );
+  let results = (outs
+    AnyTensor:$output
   );
 }
 

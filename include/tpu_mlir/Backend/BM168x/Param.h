@@ -1235,6 +1235,11 @@ typedef struct clip_spec {
   int if_relu;
 } clip_spec_t;
 
+typedef struct where_spec {
+  // int order;
+  uint64_t buffer_addr;
+} where_spec_t;
+
 #ifdef __cplusplus
 }
 #endif

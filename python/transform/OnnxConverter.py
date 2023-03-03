@@ -163,6 +163,7 @@ class OnnxConverter(BaseConverter):
             "Min": lambda node: self.convert_min_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
+            "NonZero": lambda node: self.convert_nonzero_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "PixelNormalization": lambda node: self.convert_pixel_norm_op(node),
             "PRelu": lambda node: self.convert_prelu_op(node),
@@ -2141,4 +2142,16 @@ class OnnxConverter(BaseConverter):
             "align_corners": align_corners,
         }
         new_op = self.mlir.create_roi_align_op([input, rois_xpd], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_nonzero_op(self, onnx_node):
+        assert (onnx_node.op_type == "NonZero")
+        assert(len(onnx_node.inputs) == 1)
+        input_data = self.getOp(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "order": "RowMajor",
+        }
+        new_op = self.mlir.create_nonzero_op([input_data], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)

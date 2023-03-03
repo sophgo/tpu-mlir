@@ -24,7 +24,7 @@ import torchvision
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = ["QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle"]
+BM1684X_Failed_Cases = ["QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle", "TorchNonZero"]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
     "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "Where", "TopK", "TorchGelu", "TorchGRU",
@@ -161,6 +161,7 @@ class ONNX_IR_TESTER(object):
             "TorchLogSoftmax": self.test_TorchLogSoftmax,
             "TorchLSTM": self.test_TorchLSTM,
             "TorchMaskedFill": self.test_TorchMaskedFill,
+            "TorchNonZero": self.test_TorchNonZero,
             "TorchReflectionPad": self.test_TorchReflectionPad,
             "TorchRoiAlign": self.test_TorchRoiAlign,
             "TorchSize": self.test_TorchSize,
@@ -2188,6 +2189,20 @@ class ONNX_IR_TESTER(object):
                 return y
 
         input_shape = [2, 3, 100]
+        input_data = torch.rand(input_shape)
+        self.torch_and_test(input_data, Net(), case_name)
+
+    def test_TorchNonZero(self, case_name):
+        class Net(nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+
+            def forward(self, x):
+                y = x.nonzero()
+                return y
+
+        input_shape = [1, 4, 64, 32]
         input_data = torch.rand(input_shape)
         self.torch_and_test(input_data, Net(), case_name)
 

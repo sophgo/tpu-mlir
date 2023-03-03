@@ -53,6 +53,7 @@ class Top:
     MishOp = 'top.Mish'
     MulOp = 'top.Mul'
     MulConstOp = 'top.MulConst'
+    NonZeroOp = 'top.NonZero'
     NormalizeOp = 'top.Normalize'
     PermuteOp = 'top.Permute'
     PadOp = 'top.Pad'
@@ -1076,6 +1077,13 @@ class MLIRImporter(object):
             "align_corners": BoolAttr.get(kargs["align_corners"])
         }
         return self.buildOp(Top.RoiAlignOp, operands, [output_type], **param)
+
+    def create_nonzero_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
+        param = {'name': kargs['name'],
+                 'order': StringAttr.get(kargs["order"])}
+        return self.buildOp(Top.NonZeroOp, operands, [output_type], **param)
 
     def print_module(self):
         mlir_format = self.mlir_module.operation.get_asm(enable_debug_info=True)
