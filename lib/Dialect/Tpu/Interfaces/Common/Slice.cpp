@@ -7,9 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include <valarray>
@@ -179,16 +179,23 @@ LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 LogicalResult tpu::SliceOp::LocalGenSupport() {
   auto shape = module::getShape(getInput());
   int num_dims = shape.size();
-  if (num_dims != 3 && num_dims != 4) {
-    return failure();
-  }
   if (module::isCV18xx()) {
+    if (num_dims != 3 && num_dims != 4) {
+      return failure();
+    }
     auto p = parseParam();
     if (!p.no_step || p.fusible == true) {
       return failure();
     }
     return (p.offset_4[1] % CV18xx::NPU_NUM == 0) ? success() : failure();
   } else {
-    return failure();
+    const auto offset = module::getI64Array(getOffset());
+    const auto steps = module::getI64Array(getSteps());
+    if (steps->at(1) != 1) return failure();
+    if (num_dims > 1) {
+      if (offset->at(1) % BM1684X::NPU_NUM != 0) return failure();
+      if (steps->at(1) != 1) return failure();
+    }
+    return success();
   }
 }

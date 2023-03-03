@@ -127,6 +127,7 @@ class ONNX_IR_TESTER(object):
             "Squeeze": self.test_Squeeze,
             "Sigmoid": self.test_Sigmoid,
             "Slice": self.test_Slice,
+            "Slice2": self.test_Slice2,
             "Split": self.test_Split,
             "Scale": self.test_Scale,
             "Sqrt": self.test_Sqrt,
@@ -1779,7 +1780,7 @@ class ONNX_IR_TESTER(object):
         axes = helper.make_tensor('axes', TensorProto.INT64, [4], axes_data)
         steps = helper.make_tensor('steps', TensorProto.INT64, [4], steps_data)
         slice_def = helper.make_node(
-            case_name,
+            "Slice",
             inputs=['input', 'starts', 'ends', 'axes', 'steps'],
             outputs=['output'],
         )
@@ -1788,6 +1789,20 @@ class ONNX_IR_TESTER(object):
                                       case_name, [input], [output],
                                       initializer=[starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
+
+    def test_Slice2(self, case_name):
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y = x[:, :, 30::2, :42:2]
+                y = y + 1
+                return y
+
+        x = torch.randn(4, 8, 60, 80).float()
+        self.torch_and_test(x, Model(), case_name)
 
     def test_Split(self, case_name):
         input_shape = [6, 116, 64, 64]
