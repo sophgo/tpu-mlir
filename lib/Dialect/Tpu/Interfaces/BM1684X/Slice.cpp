@@ -46,14 +46,29 @@ int64_t tpu::SliceOp::getBufferSize_bm1684x(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
     group_type_t group_type) {
-  llvm_unreachable("Not support.");
   return 0;
 }
 
 void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                          group_type_t group_type,
                                          local_sec_info_t &sec_info) {
-  llvm_unreachable("Not support.");
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  strideslice_common_spec_t param = {0};
+  param.begin_mask = 0;
+  param.end_mask = 0;
+  const auto output_shape = module::getShape(getOutput());
+  const int num_dims = output_shape.size();
+  const auto offset = module::getI64Array(getOffset());
+  const auto steps = module::getI64Array(getSteps());
+  for (int i = 0; i < num_dims; i++) {
+    param.begin_index[i] = offset->at(i);
+    param.strides[i] = steps->at(i);
+    param.end_index[i] = param.begin_index[i] + output_shape[i] * param.strides[i];
+  }
+  BM168x::call_local_func("backend_api_strideslice_local", &param, sizeof(param),
+                          &sec_info, input_spec->data(), output_spec->data());
 }
 
 // ======================================
