@@ -41,4 +41,7 @@ if __name__ == '__main__':
     # yapf: enable
     args = parser.parse_args()
     searcher = MixPrecSearcher(args)
-    searcher.run()
+    if 'run_bias_correction' in args.debug_cmd:
+        searcher.run_bias_correction()
+    else:
+        searcher.run()

@@ -45,6 +45,8 @@ def type_map(element_type):
         ret_type = TensorProto.BFLOAT16
     elif str_element_type == 'si8':
         ret_type = TensorProto.INT8
+    elif str_element_type == 'si4':
+        ret_type = TensorProto.INT8
     elif (str_element_type == 'si16'):
         ret_type = TensorProto.INT16
     elif (str_element_type == 'si32'):
@@ -53,6 +55,8 @@ def type_map(element_type):
         ret_type = TensorProto.INT64
     elif str_element_type == 'i8':
         ret_type = TensorProto.INT8 if signed_flag else TensorProto.UINT8
+    elif str_element_type == 'i4':
+        ret_type = TensorProto.INT8 if signed_flag else TensorProto.UINT8
     elif str_element_type == 'i16':
         ret_type = TensorProto.INT16 if signed_flag else TensorProto.UINT16
     elif str_element_type == 'i32':
@@ -60,6 +64,8 @@ def type_map(element_type):
     elif str_element_type == 'i64':
         ret_type = TensorProto.INT64 if signed_flag else TensorProto.UINT64
     elif str_element_type == 'ui8':
+        ret_type = TensorProto.UINT8
+    elif str_element_type == 'ui4':
         ret_type = TensorProto.UINT8
     elif str_element_type == 'ui16':
         ret_type = TensorProto.UINT16
