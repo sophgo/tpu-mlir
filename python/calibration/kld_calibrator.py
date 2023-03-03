@@ -176,7 +176,9 @@ class SimpleTuner:
     def load_net_input(self):
         self.dq_activations = {}
         self.ref_activations = {}
-        count = self.parser.get_use_count_by_op_name(self.ppa_list[0].input_name)
+        inp_ref_dict = {}
+        for input in self.module.input_names:
+            inp_ref_dict[input] = self.parser.get_use_count_by_op_name(input)
         batched_inputs = self.input_num * ['']
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
@@ -188,8 +190,8 @@ class SimpleTuner:
                     assert (input in x)
                     #maybe have more than two input tensors, and have different user_count
                     count = self.parser.get_use_count_by_op_name(input)
-                    self.dq_activations[tune_idx][input] = [x[input], count]
-                    self.ref_activations[tune_idx][input] = [x[input], count]
+                    self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                    self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')
@@ -199,8 +201,9 @@ class SimpleTuner:
                     batched_inputs[i] += '{},'.format(inputs[i])
                     if idx == self.batch_size:
                         x = self.ppa_list[i].run(batched_inputs[i][:-1])
-                        self.dq_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
-                        self.ref_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
+                        name = self.ppa_list[i].input_name
+                        self.dq_activations[tune_idx][name] = [x, inp_ref_dict[name]]
+                        self.ref_activations[tune_idx][name] = [x, inp_ref_dict[name]]                        
                 if idx == self.batch_size:
                     idx = 0
                     batched_inputs = self.input_num * ['']
@@ -214,8 +217,8 @@ class SimpleTuner:
                 assert (self.input_num == len(inputs))
                 for name, input in zip(self.module.input_names, inputs):
                     x = np.load(input)
-                    self.dq_activations[tune_idx][name] = [x, count]
-                    self.ref_activations[tune_idx][name] = [x, count]
+                    self.dq_activations[tune_idx][name] = [x, inp_ref_dict[name]]
+                    self.ref_activations[tune_idx][name] = [x, inp_ref_dict[name]]
             tune_idx += 1
             self.dq_activations[tune_idx] = {}
             self.ref_activations[tune_idx] = {}
@@ -595,7 +598,9 @@ class ActivationCalibrator2(BaseKldCalibrator):
     def load_net_input(self):
         self.dq_activations = {}
         self.ref_activations = {}
-        count = self.parser.get_use_count_by_op_name(self.ppa_list[0].input_name)
+        inp_ref_dict = {}
+        for input in self.module.input_names:
+            inp_ref_dict[input] = self.parser.get_use_count_by_op_name(input)
         batched_inputs = self.input_num * ['']
         idx, tune_idx = 0, 0
         self.dq_activations[tune_idx] = {}
@@ -605,8 +610,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 x = np.load(data)
                 for input in self.module.input_names:
                     assert (input in x)
-                    self.dq_activations[tune_idx][input] = [x[input], count]
-                    self.ref_activations[tune_idx][input] = [x[input], count]
+                    self.dq_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
+                    self.ref_activations[tune_idx][input] = [x[input], inp_ref_dict[input]]
             elif self.ds.all_image:
                 idx += 1
                 inputs = data.split(',')
@@ -616,8 +621,9 @@ class ActivationCalibrator2(BaseKldCalibrator):
                     batched_inputs[i] += '{},'.format(inputs[i])
                     if idx == self.batch_size:
                         x = self.ppa_list[i].run(batched_inputs[i][:-1])
-                        self.dq_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
-                        self.ref_activations[tune_idx][self.ppa_list[i].input_name] = [x, count]
+                        name = self.ppa_list[i].input_name
+                        self.dq_activations[tune_idx][name] = [x, inp_ref_dict[name]]
+                        self.ref_activations[tune_idx][name] = [x, inp_ref_dict[name]]
                 if idx == self.batch_size:
                     idx = 0
                     batched_inputs = self.input_num * ['']
@@ -631,8 +637,8 @@ class ActivationCalibrator2(BaseKldCalibrator):
                 assert (self.input_num == len(inputs))
                 for name, input in zip(self.module.input_names, inputs):
                     x = np.load(input)
-                    self.dq_activations[tune_idx][name] = [x, count]
-                    self.ref_activations[tune_idx][name] = [x, count]
+                    self.dq_activations[tune_idx][name] = [x, inp_ref_dict[name]]
+                    self.ref_activations[tune_idx][name] = [x, inp_ref_dict[name]]
             tune_idx += 1
             self.dq_activations[tune_idx] = {}
             self.ref_activations[tune_idx] = {}
