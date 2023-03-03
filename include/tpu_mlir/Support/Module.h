@@ -121,6 +121,7 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape);
 bool isSign(Value v);
 bool isWeight(Value v);
 bool isNone(Value v);
+bool isGlobalBuffer(Value v);
 FuncOp getMainFuncOp();
 i32_array_t getI32Array(ArrayAttr arrayAttr);
 i32_array_t getI32Array(llvm::Optional<ArrayAttr> arrayAttr, int64_t num_elem,

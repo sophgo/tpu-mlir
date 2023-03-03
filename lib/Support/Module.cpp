@@ -588,6 +588,12 @@ void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
   }
 }
 
+bool isGlobalBuffer(Value v) {
+  const auto op = v.getDefiningOp();
+  if (!op) return false;
+  return isa<tpu::BufferOp>(op);
+}
+
 llvm::StringRef getModuleName() {
   return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
 }

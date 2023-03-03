@@ -386,8 +386,46 @@ struct TopPermuteToReshape : public OpRewritePattern<PermuteOp> {
   }
 };
 
+/**
+ * Op1->NonZero->Permute->Op2 => Op1->NonZero->Op2
+ **/
+struct NonZeroPermutePattern : public OpRewritePattern<PermuteOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(PermuteOp op,
+                                PatternRewriter &rewriter) const override {
+    const auto &input = op.getInput();
+    // check topo
+    auto in_op = input.getDefiningOp();
+    if (!isa<NonZeroOp>(in_op)) {
+      return failure();
+    }
+    auto nonzero_op = dyn_cast<NonZeroOp>(in_op);
+    // check param
+    const auto permute_order = module::getI64Array(op.getOrder());
+    if (permute_order->size() != 2) {
+      return failure();
+    }
+    if (permute_order->at(0) != 1 || permute_order->at(1) != 0) {
+      return failure();
+    }
+    // rewrite now !
+    const auto old_nz_order = nonzero_op.getOrder().str();
+    const auto new_nz_order = old_nz_order == "ColMajor" ? "RowMajor" : "ColMajor";
+    Value from = nonzero_op.getInput();
+    std::vector<NamedAttribute> attrs;
+    attrs.push_back(
+        rewriter.getNamedAttr("order", rewriter.getStringAttr(new_nz_order)));
+    rewriter.replaceOpWithNewOp<NonZeroOp>(
+        op, op.getResult().getType(), ValueRange{from}, attrs);
+    return success();
+  }
+};
+
 void PermuteOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<TopPermuteToPixelShuffle, TopPermuteToReorg, Permute5dSplit,
-                 PermuteFuse, TopPermuteToReshape>(context);
+  results.insert<TopPermuteToPixelShuffle,
+                 TopPermuteToReorg, Permute5dSplit,
+                 PermuteFuse, TopPermuteToReshape,
+                 NonZeroPermutePattern>(context);
 }

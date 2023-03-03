@@ -184,6 +184,8 @@ public:
       return RunMode::TPU_DYNAMIC;
     } else if (isa<RoiAlignOp>(op)) {
       return RunMode::TPU_DYNAMIC;
+    } else if (isa<NonZeroOp>(op)) {
+      return RunMode::TPU_DYNAMIC;
     }
     if (dynamic) {
       return RunMode::TPU_DYNAMIC;
