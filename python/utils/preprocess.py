@@ -94,7 +94,7 @@ def add_preprocess_parser(parser):
     parser.add_argument("--keep_aspect_ratio", action='store_true', default=False,
                         help="Resize image by keeping same ratio, any areas which" +
                              "are not taken are filled with 0")
-    parser.add_argument("--mean", default='0,0,0',
+    parser.add_argument("--mean", default='0,0,0', nargs='?',
                         help="Per Channel image mean values")
     parser.add_argument("--scale", default='1,1,1',
                         help="Per Channel image scale values")
@@ -109,6 +109,9 @@ def add_preprocess_parser(parser):
     parser.add_argument("--debug_cmd", type=str, default='', help="debug cmd")
     parser.add_argument("--model_format", choices=['image', 'nlp'], default='image',
                         help='image or nlp')
+    avoid_opts = parser.add_argument_group('avoid options')
+    avoid_opts.add_argument('unknown_params', nargs='?', default=[], help='not parameters but starting with "-"')
+
     return parser
 
 
@@ -131,7 +134,7 @@ class preprocess(object):
 
     def config(self, resize_dims=None, keep_aspect_ratio=False, customization_format = None, fuse_pre = False, aligned = False,
                mean='0,0,0', scale='1,1,1', pixel_format='bgr', pad_type='center', pad_value=0, chip = "",
-               channel_format='nchw', debug_cmd='', input_shapes=None, model_format='image', **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
+               channel_format='nchw', debug_cmd='', input_shapes=None, model_format='image', unknown_params=[], **ignored):  # add input_shapes for model_eval.py by wangxuechuan 20221110
         if self.debug_cmd == '':
             self.debug_cmd = debug_cmd
         if input_shapes is None or input_shapes == []:
@@ -169,7 +172,10 @@ class preprocess(object):
         elif self.pixel_format == 'rgba':
             self.channel_num = 4
 
-        self.mean = np.array([float(s)
+        if unknown_params:
+            self.mean = np.array([float(s) for sublist in unknown_params for s in sublist.split(',')], dtype=np.float32)
+        else:
+            self.mean = np.array([float(s)
                              for s in mean.split(',')], dtype=np.float32)
         self.mean = self.mean[np.newaxis, :, np.newaxis, np.newaxis]
         assert (self.mean.size >= self.channel_num)
