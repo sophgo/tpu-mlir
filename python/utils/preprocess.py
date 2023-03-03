@@ -270,7 +270,7 @@ class preprocess(object):
             attrs['scale'])).astype(np.float32)
         self.scale = self.scale[np.newaxis, :, np.newaxis, np.newaxis]
         self.crop_method = 'center'
-
+        self.has_pre = True
         format_str = "\n  load_config Preprocess args : \n" + \
             "\tresize_dims           : {}\n" + \
             "\tkeep_aspect_ratio     : {}\n" + \

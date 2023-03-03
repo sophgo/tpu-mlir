@@ -30,4 +30,5 @@ def file_clean():
                     os.remove(weight_npz)
             except:
                 pass
-        os.remove(n)
+        else:
+            os.remove(n)
