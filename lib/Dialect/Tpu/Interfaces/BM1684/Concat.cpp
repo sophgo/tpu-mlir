@@ -13,12 +13,27 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::ConcatOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  if (getOnlyMerge()) {
+    return;
+  }
+  int num_input = getInputs().size();
+  int(*bottomtensor_shape)[MAX_SHAPE_DIMS] = new int[num_input][MAX_SHAPE_DIMS];
+  int is_st_concat_way[num_input] = {0};
+  uint64_t in_addr[num_input] = {0};
+  auto out_addr = module::getAddress(getOutput());
+  for (int i = 0; i < num_input; ++i) {
+    in_addr[i] = module::getAddress(getInputs()[i]);
+    module::getGlobalShape(getInputs()[i], bottomtensor_shape[i]);
+  }
+  int out_shape[MAX_SHAPE_DIMS] = {0};
+  module::getGlobalShape(getOutput(), out_shape);
+  BM1684::instance().dl_nodechip_concat_md(
+      getAxis(), module::getShape(getInputs()[0]).size(), getInputs().size(),
+      in_addr, out_addr, bottomtensor_shape, out_shape, is_st_concat_way,
+      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
 }
 
 // =========================================
@@ -31,6 +46,26 @@ int64_t tpu::ConcatOp::getBufferSize_bm1684(
   return 0;
 }
 
-void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+void tpu::ConcatOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                         local_sec_info_t &sec_info) {
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  auto gi = getGroupInfo(n_step, h_step);
+  int num_inputs = getInputs().size();
+  int is_st_concat_way[num_inputs] = {0};
+  uint32_t in_addr[num_inputs] = {0};
+  int(*tmp)[MAX_SHAPE_DIMS] = new int[num_inputs][MAX_SHAPE_DIMS];
+  for (int i = 0; i < num_inputs; i++) {
+    in_addr[i] = LocalGenInterface::getGroupInfo(getInputs()[i], n_step, h_step)
+                     .out_addr;
+    module::getLocalShape(getInputs()[i], n_step, h_step, tmp[i]);
+  }
+  int **bottomtensor_shape = static_cast<int **>(static_cast<void *>(tmp));
+  int out_shape[MAX_SHAPE_DIMS] = {0};
+  module::getLocalShape(getOutput(), n_step, h_step, out_shape);
+  BM1684::instance().dl_nodechip_concat_local_v2(
+      in_addr, gi.out_addr, bottomtensor_shape,
+      module::getShape(getInputs()[0]).size(), is_st_concat_way, out_shape,
+      getAxis(), (CMD_ID_NODE *)BM1684::instance().bdc_node,
+      (CMD_ID_NODE *)BM1684::instance().gdma_node);
 }

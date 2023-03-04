@@ -12,6 +12,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Interfaces/LocalGenInterface.h"
 
 #include "float.h"
 #include "mlir/Dialect/Quant/FakeQuantSupport.h"
@@ -284,6 +285,30 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
   }
   auto type = v.getType().cast<RankedTensorType>();
   return type.getShape();
+}
+
+void getGlobalShape(Value v, int* shape) {
+  for(auto v : llvm::enumerate(getShape(v)))
+    shape[v.index()] = (int)v.value();
+}
+
+void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int* shape) {
+  int64_t n, c, h, w;
+  module::getNCHW(op->getResult(0), n, c, h, w);
+  group_info_t gi = LocalGenInterface::getGroupInfo(op, n_step, h_step);
+  shape[0] = (int)gi.n_slice;
+  shape[1] = (int)c;
+  shape[2] = (int)gi.h_slice;
+  shape[3] = (int)w;
+}
+
+void getLocalShape(Value v, int64_t n_step, int64_t h_step, int* shape) {
+  auto op = v.getDefiningOp();
+  if (op != nullptr ){
+    getLocalShape(op, n_step, h_step, shape);
+  } else {
+    llvm_unreachable("cannot find op");
+  }
 }
 
 i32_array_t getI32Array(ArrayAttr arrayAttr) {
