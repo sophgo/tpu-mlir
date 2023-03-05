@@ -53,7 +53,7 @@ class DeployTool:
 
     def __init__(self, args):
         self.mlir_file = args.mlir
-        self.chip = args.chip.lower()
+        self.chip = args.chip
         self.excepts = args.excepts
         self.tolerance = args.tolerance
         self.test_input = args.test_input
@@ -244,11 +244,11 @@ if __name__ == '__main__':
                         help="calibration table for int8 quantization")
     parser.add_argument("--quantize_table",
                         help="table of OPs that quantized to specific mode")
-    parser.add_argument("--quantize", default="F32", type=str, choices=['F32', 'BF16', 'F16', 'INT8', 'QDQ'],
+    parser.add_argument("--quantize", default="F32", type=str.upper, choices=['F32', 'BF16', 'F16', 'INT8', 'QDQ'],
                         help="set default qauntization type: F32/BF16/F16/INT8")
     parser.add_argument("--asymmetric", action='store_true',
                         help="do INT8 asymmetric quantization")
-    parser.add_argument("--chip", required=True, type=str,
+    parser.add_argument("--chip", required=True, type=str.lower,
                         choices=['bm1686', 'bm1684x', 'bm1684',
                                  'cv183x', 'cv182x', 'cv181x', 'cv180x'],
                         help="chip platform name")
@@ -258,7 +258,7 @@ if __name__ == '__main__':
     # fuse preprocess
     parser.add_argument("--fuse_preprocess", action='store_true',
                         help="add tpu preprocesses (mean/scale/channel_swap) in the front of model")
-    parser.add_argument("--customization_format", default='', type=str,
+    parser.add_argument("--customization_format", default='', type=str.upper,
                         choices=supported_customization_format,
                         help="pixel format of input frame to the model")
     parser.add_argument("--aligned_input", action='store_true',
