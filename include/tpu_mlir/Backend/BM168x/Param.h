@@ -993,6 +993,7 @@ typedef struct {
 typedef struct pixel_norm_common_spec {
   float eps;
   int affine;
+  float  scale;
 } pixel_norm_common_spec_t;
 
 typedef struct pixel_norm_global_spec {
