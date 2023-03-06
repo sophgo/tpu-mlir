@@ -69,7 +69,7 @@ The model conversion command is as follows:
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
-
+       --post_handle_type yolo
 
 ``model_transform.py`` supports the following parameters:
 
@@ -120,7 +120,9 @@ The model conversion command is as follows:
    * - mlir
      - Y
      - The output mlir file name (including path)
-
+   * - post_handle_type
+     - N
+     - fuse the post handle op into bmodel, set the type of post handle op such as yolo、ssd
 
 After converting to an mlir file, a ``${model_name}_in_f32.npz`` file will be generated, which is the input file for the subsequent models.
 

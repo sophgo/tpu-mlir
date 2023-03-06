@@ -109,7 +109,8 @@ model_transform.py \
     --output_names 350,498,646 \
     --test_input ../image/dog.jpg \
     --test_result yolov5s_top_outputs.npz \
-    --mlir yolov5s.mlir
+    --mlir yolov5s.mlir \
+    --post_handle_type yolo
 ```
 
 `model_transform.py`支持的参数如下:
@@ -130,6 +131,7 @@ model_transform.py \
 | test_result         | 否    | 指定验证后的输出文件                                         |
 | excepts             | 否    | 指定需要排除验证的网络层的名称，多个用,隔开                      |
 | mlir                | 是    | 指定输出的mlir文件路径                                       |
+| post_handle_type    | 否    | 将后处理融合到模型中，指定后处理类型， 比如yolo、ssd            |
 
 转成mlir文件后，会生成一个`${model_name}_in_f32.npz`文件，该文件是模型的输入文件。它是通过对图片输入进行预处理后得到的数据。
 

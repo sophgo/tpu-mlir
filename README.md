@@ -107,6 +107,7 @@ model_transform.py \
     --test_input ../image/dog.jpg \
     --test_result yolov5s_top_outputs.npz \
     --mlir yolov5s.mlir
+    --post_handle_type yolo
 ```
 
 The arguments of `model_transform.py`:
@@ -127,7 +128,7 @@ The arguments of `model_transform.py`:
 | test_result         | No    | Output file to save validation result                                         |
 | excepts             | No    | Names of network layers that need to be excluded from validation. Separated by comma                      |
 | mlir                | Yes    | The output mlir file name (including path)                                       |
-
+| post_handle_type    | No     | fuse the post handle op into bmodel, set the type of post handle op such as yolo、ssd |
 After converting to mlir file, a `${model_name}_in_f32.npz` file containing preprocessed input will be generated.
 
 
