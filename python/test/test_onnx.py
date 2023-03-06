@@ -30,7 +30,7 @@ CV18XX_Failed_Cases = [
     "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "Where", "TopK", "TorchGelu", "TorchGRU",
     "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd",
     "QDQ", "QDQConv", "PermuteFuse", "SwapDimInner", "ChannelNorm", "TorchActivation",
-    "TorchArgmax", "TorchChannelShuffle"
+    "TorchArgmax", "TorchChannelShuffle", "PermuteToReshape"
 ]
 
 
@@ -194,6 +194,10 @@ class ONNX_IR_TESTER(object):
             "ReduceFusePattern": self.test_ReduceFusePattern,
             "ArgReducefull": self.test_ArgReducefull,
             "TransposeArg": self.test_TransposeArg,
+            "PermuteToReorg": self.test_PermuteToReorg,
+            "PermuteToReorg2": self.test_PermuteToReorg2,
+            "PermuteToReshape": self.test_PermuteToReshape,
+            "Permute5dSplit": self.test_Permute5dSplit,
         }
 
         # no quantization when quant_mode == "f32"
@@ -3747,6 +3751,100 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(2, 2, 3, 4).float()
         self.torch_and_test(x, Net(), case_name)
+
+    def test_PermuteToReshape(self, case_name):
+        input_shapes = [[4, 3, 28, 1], [4, 1, 3, 20]]
+        transpose_orders = [[0, 1, 3, 2], [0, 2, 1, 3]]
+        for i, input_shape in enumerate(input_shapes):
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            order = transpose_orders[i]
+            output_shape = [input_shape[order[i]] for i in range(len(order))]
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            transpose_def = helper.make_node("Transpose",
+                                             inputs=['input'],
+                                             outputs=['output'],
+                                             perm=order)
+            graph_def = helper.make_graph([transpose_def], "{}_{}".format(case_name, i), [input],
+                                          [output])
+            self.onnx_and_test(graph_def)
+
+
+    def test_PermuteToReorg(self, case_name):
+        input_shape = [1, 4, 6, 6]
+        output_shape = [1, 16, 3, 3]
+        input = helper.make_tensor_value_info(
+            'input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info(
+            'output', TensorProto.FLOAT, output_shape)
+        rshape1 = [6]
+        rshape1_data = np.array([1, 4, 3, 2, 3, 2], dtype=np.int64)
+        r1 = helper.make_tensor('shape1', TensorProto.INT64, rshape1, rshape1_data)
+        reshape1_def = helper.make_node("Reshape", inputs=['input', 'shape1'], outputs=['out1'])
+        order = [0, 1, 3, 5, 2, 4]
+        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm = order)
+        rshape2 = [4]
+        rshape2_data = np.array(output_shape, dtype=np.int64)
+        r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
+        reshape2_def = helper.make_node("Reshape", inputs=['out2', 'shape2'], outputs=['output'])
+        graph_def = helper.make_graph([reshape1_def, permute_def, reshape2_def],
+                                    case_name, [input], [output],
+                                    initializer=[r1, r2])
+        self.onnx_and_test(graph_def)
+
+    def test_PermuteToReorg2(self, case_name):
+        input_shape = [1, 16, 200, 200]
+        output_shape = [1, 64, 100, 100]
+        input = helper.make_tensor_value_info(
+            'input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info(
+            'output', TensorProto.FLOAT, output_shape)
+        rshape1 = [6]
+        rshape1_data = np.array([1, 16, 100, 2, 100, 2], dtype=np.int64)
+        r1 = helper.make_tensor('shape1', TensorProto.INT64, rshape1, rshape1_data)
+        reshape1_def = helper.make_node("Reshape", inputs=['input', 'shape1'], outputs=['out1'])
+        order = [0, 1, 3, 5, 2, 4]
+        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm = order)
+        rshape2 = [4]
+        rshape2_data = np.array(output_shape, dtype=np.int64)
+        r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
+        reshape2_def = helper.make_node("Reshape", inputs=['out2', 'shape2'], outputs=['out3'])
+        #add conv define
+        filter_shape = [64, 64, 3, 3]
+        kernel = [3, 3]
+        padding = [1, 1, 1, 1]
+        stride = [1, 1]
+        dilation =  [1, 1]
+        weight_data = np.random.randn(*filter_shape).astype(np.float32)
+        bias_data = np.random.randn(output_shape[1]).astype(np.float32)
+        weight = helper.make_tensor("weight", TensorProto.FLOAT, filter_shape, weight_data)
+        bias = helper.make_tensor("bias", TensorProto.FLOAT, list(bias_data.shape), bias_data)
+        conv_def = helper.make_node("Conv", inputs = ['out3', 'weight', 'bias'], outputs = ['output'],
+                                        kernel_shape = kernel,
+                                        pads = padding,
+                                        strides = stride,
+                                        dilations = dilation,
+                                        group = 1)
+        graph_def = helper.make_graph([reshape1_def, permute_def, reshape2_def, conv_def],
+                                        case_name, [input], [output],
+                                        initializer = [r1, r2, weight, bias])
+        self.onnx_and_test(graph_def)
+
+    def test_Permute5dSplit(self, case_name):
+        input_shape = [2, 4, 16, 20, 32]
+        orders = [[0, 4, 2, 1, 3], [3, 1, 0, 4, 2], [2, 1, 3, 4, 0], [1, 0, 2, 4, 3], [4, 0, 3, 2, 1], [4, 3, 2, 1, 0]]
+        for i in range(0, len(orders)):
+            order = orders[i]
+            if i >= 3 and self.chip.startswith("cv18"):
+                #because cv183x backend don't support all permute4d
+                continue
+            print("order:", order)
+            output_shape = [input_shape[order[i]] for i in range(0, len(order))]
+            input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+            output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
+            permute_def = helper.make_node("Transpose", inputs = ['input'],
+                                            outputs = ['output'], perm = order)
+            graph_def = helper.make_graph([permute_def], "{}_{}".format(case_name, i), [input], [output])
+            self.onnx_and_test(graph_def)
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
