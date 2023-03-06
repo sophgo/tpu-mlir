@@ -129,6 +129,7 @@ class TorchConverter(BaseConverter):
       "aten::_convolution": lambda node: self.convert_conv_op(node),
       "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
       "aten::add": lambda node: self.convert_add_op(node),
+      "aten::sub": lambda node: self.convert_sub_op(node),
       "aten::prelu": lambda node: self.convert_prelu_op(node),
     }
     self.check_op_names()
@@ -152,6 +153,12 @@ class TorchConverter(BaseConverter):
     self.output_shapes=[o.shape for o in output_tensors]
     for idx, name in enumerate(self.output_names):
       self.addShape(name, self.output_shapes[idx])
+
+  def get_shape_by_name(self, name):
+    if name in self.output_names or name in self.input_names or name in self.weight_names:
+      return self.getShape(name)
+    else:
+      return None
 
   def get_all_op_names(self):
     """Return all operator names in the input graph"""
@@ -208,6 +215,7 @@ class TorchConverter(BaseConverter):
     for outp in self.graph.outputs():
       self.output_names.append(outp.debugName())
 
+    self.weight_names = []
     self.num_input = len(self.input_names)
     self.num_output = len(self.output_names)
     self.input_shapes = input_shapes
@@ -240,6 +248,7 @@ class TorchConverter(BaseConverter):
         self.const_val[name] = data
       else:
         self.addWeight(name, data)
+        self.weight_names.append(name)
     elif node.kind() == 'prim::ListConstruct':
       name, data = self.get_constant_list(node)
       self.const_val[name] = data
@@ -336,7 +345,7 @@ class TorchConverter(BaseConverter):
         'do_relu': False,
         'ins': [],
     }
-    output_shape = self.getShape(torch_node.name)
+    output_shape = self.get_shape_by_name(torch_node.name)
     new_op = self.mlir.create_conv_op(operands, output_shape, **p)
     self.addOperand(torch_node.name, new_op)
 
@@ -346,22 +355,47 @@ class TorchConverter(BaseConverter):
   def convert_conv_mode_op(self, torch_node: TorchNode):
     self.convert_base_conv_op(torch_node, True)
 
+  def _mul_scale(self, in_name, scale):
+    in_op = self.getOp(in_name)
+    op_name = in_name + "_ml_mulscale"
+    p = {
+        'name': op_name,
+        'const_val': scale,
+    }
+    out_shape = self.get_shape_by_name(in_name)
+    new_op = self.mlir.create_mul_const_op([in_op], out_shape, **p)
+    self.addOperand(op_name, new_op)
+    return new_op
+
   def convert_add_op(self, torch_node: TorchNode):
     op0 = self.getOp(torch_node.inputs[0])
-    op1 = self.getOp(torch_node.inputs[1])
     scale = self.const_val[torch_node.inputs[2]]
-    assert scale == 1
+    op1 = self.getOp(torch_node.inputs[1]) if scale == 1 else \
+          self._mul_scale(torch_node.inputs[1], scale)
     p = {
         'name': torch_node.name,
         'do_relu': False,
     }
-    output_shape = self.getShape(torch_node.name)
+    output_shape = self.get_shape_by_name(torch_node.name)
     new_op = self.mlir.create_add_op([op0, op1], output_shape, **p)
+    self.addOperand(torch_node.name, new_op)
+
+  def convert_sub_op(self, torch_node: TorchNode):
+    op0 = self.getOp(torch_node.inputs[0])
+    scale = self.const_val[torch_node.inputs[2]]
+    op1 = self.getOp(torch_node.inputs[1]) if scale == 1 else \
+          self._mul_scale(torch_node.inputs[1], scale)
+    p = {
+        'name': torch_node.name,
+        'do_relu': False,
+    }
+    output_shape = self.get_shape_by_name(torch_node.name)
+    new_op = self.mlir.create_sub_op([op0, op1], output_shape, **p)
     self.addOperand(torch_node.name, new_op)
 
   def convert_prelu_op(self, torch_node: TorchNode):
     op0 = self.getOp(torch_node.inputs[0])
     op1 = self.getOp(torch_node.inputs[1])
-    output_shape = self.getShape(torch_node.name)
+    output_shape = self.get_shape_by_name(torch_node.name)
     new_op = self.mlir.create_prelu_op([op0, op1], output_shape, **{'name': torch_node.name})
     self.addOperand(torch_node.name, new_op)
