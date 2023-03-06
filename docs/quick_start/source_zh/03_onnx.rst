@@ -68,7 +68,7 @@ ONNX转MLIR
        --test_input ../image/dog.jpg \
        --test_result yolov5s_top_outputs.npz \
        --mlir yolov5s.mlir
-
+       --post_handle_type yolo
 
 ``model_transform.py`` 支持的参数如下:
 
@@ -119,7 +119,9 @@ ONNX转MLIR
    * - mlir
      - 是
      - 指定输出的mlir文件名称和路径
-
+   * - post_handle_type
+     - 否
+     - 将后处理融合到模型中，指定后处理类型， 比如yolo、ssd
 
 转成mlir文件后, 会生成一个 ``${model_name}_in_f32.npz`` 文件, 该文件是模型的输入文件。
 
