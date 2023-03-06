@@ -40,6 +40,7 @@ static void parsePadParam(Operation *op, std::vector<int64_t> &is_4,
           is.erase(is.begin() + i + 1);
           os.erase(os.begin() + i + 1);
           pads.erase(pads.begin() + i + 1);
+          pads.erase(pads.begin() + i + 1 + num_dims);
           num_dims--;
           done = true;
           break;

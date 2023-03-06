@@ -159,6 +159,16 @@ void cvi_backend_tg_bf16_conv_kernel(
     std::vector<uint8_t> *new_filter = nullptr, bool do_quant = false,
     gaddr_t ga_scale = 0, gaddr_t ga_zeropoint = 0);
 
+void cvi_backend_tg_bf16_conv3d_kernel(
+    uint32_t layer_id, gaddr_t ga_ifmap, gaddr_t ga_ofmap, gaddr_t ga_weight,
+    gaddr_t ga_bias, int input_n, int input_c, int input_d, int input_h,
+    int input_w, int output_c, int output_d, int output_h, int output_w,
+    uint16_t kd, uint16_t kh, uint16_t kw, uint16_t dilation_d,
+    uint16_t dilation_h, uint16_t dilation_w, uint8_t pad_d0, uint8_t pad_d1,
+    uint8_t pad_top, uint8_t pad_bottom, uint8_t pad_left, uint8_t pad_right,
+    uint8_t stride_d, uint8_t stride_h, uint8_t stride_w, bool has_bias,
+    bool do_relu);
+
 void cvi_backend_tg_bf16_bcast_sub_kernel(uint32_t layer_id, gaddr_t ga_a,
                                           gaddr_t ga_b, gaddr_t ga_output,
                                           int an, int ac, int ah, int aw,
