@@ -4,9 +4,9 @@
 
 
 
-2023-03-03
+2023-03-06
 build from TPU1684     4d6f48e47dd144eaef4a5091b2ab8962c5b13a4c
-build from TPU1686     0e098399b1ecfebe8c30f4107c05ba75eb7a5237
+build from TPU1686     40377f7da4e2ce98efc51561fb4db3857a76b784
 build from tpu-runtime 7cabdb184e5c7a3217ddfd578c18ac53fa071cbd
 build from nntoolchain e0309c47ba4957dec9e9a7c108946f7eee943128
 
