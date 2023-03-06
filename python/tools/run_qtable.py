@@ -25,6 +25,8 @@ if __name__ == '__main__':
                         help='num of inputs for quantization searching')
     parser.add_argument('--expected_cos', type=float, default=0.99,
                         help='expected net output cos')
+    parser.add_argument('--global_compare_layers', type=str, default='',
+                        help='global compare layers, for example:\'layer1,layer2\' or \'layer1:0.3,layer2:0.7\'')
     parser.add_argument('--min_layer_cos', type=float, default=0.99,
                         help='minimum cos of layer')
     parser.add_argument('--calibration_table', required=True,

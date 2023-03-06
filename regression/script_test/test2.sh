@@ -26,11 +26,11 @@ run_calibration.py test.mlir \
   --data_list data_list \
   -o test_cali_table
 
-# run_qtable.py test.mlir \
-#   --data_list data_list \
-#   --calibration_table test_cali_table \
-#   --chip bm1684x \
-#   -o test_qtable
+run_qtable.py test.mlir \
+  --data_list data_list \
+  --calibration_table test_cali_table \
+  --chip bm1684x \
+  -o test_qtable
 
 model_deploy.py \
   --mlir test.mlir \
