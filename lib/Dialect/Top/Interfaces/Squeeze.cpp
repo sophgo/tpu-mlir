@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::SqueezeOp::getFLOPs() { return 0; }
 
 LogicalResult top::SqueezeOp::init(InferenceParameter &p) { return success(); }
@@ -26,4 +24,8 @@ LogicalResult top::SqueezeOp::inference(InferenceParameter &p) {
     p.outputs[0][i] = p.inputs[0][i];
   }
   return success();
+}
+
+void top::SqueezeOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

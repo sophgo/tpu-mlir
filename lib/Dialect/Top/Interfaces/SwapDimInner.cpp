@@ -52,3 +52,7 @@ LogicalResult top::SwapDimInnerOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::SwapDimInnerOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

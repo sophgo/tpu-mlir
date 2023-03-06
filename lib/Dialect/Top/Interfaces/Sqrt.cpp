@@ -12,12 +12,7 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-
-int64_t top::SqrtOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::SqrtOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::SqrtOp::init(InferenceParameter &p) { return success(); }
 void top::SqrtOp::deinit(InferenceParameter &p) {}
@@ -31,3 +26,5 @@ LogicalResult top::SqrtOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::SqrtOp::shape_inference() { common_shape_inference(getOperation()); }

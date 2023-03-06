@@ -50,3 +50,5 @@ LogicalResult top::UnpackOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::UnpackOp::shape_inference() {}

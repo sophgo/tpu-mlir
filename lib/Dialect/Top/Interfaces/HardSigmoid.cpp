@@ -11,18 +11,17 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-
 int64_t top::HardSigmoidOp::getFLOPs() {
   return module::getNumElements(getOutput()) * 4;
 }
 
-LogicalResult top::HardSigmoidOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::HardSigmoidOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::HardSigmoidOp::deinit(InferenceParameter &p) {}
 
 static inline double hsigmoid(double x, double alpha, double beta) {
-  return std::max(0.0, std::min(1.0, alpha * x + beta)) ;
+  return std::max(0.0, std::min(1.0, alpha * x + beta));
 }
 
 LogicalResult top::HardSigmoidOp::inference(InferenceParameter &p) {
@@ -34,4 +33,8 @@ LogicalResult top::HardSigmoidOp::inference(InferenceParameter &p) {
     p.outputs[0][i] = hsigmoid(p.inputs[0][i], alpha_, beta_);
   }
   return success();
+}
+
+void top::HardSigmoidOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

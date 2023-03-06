@@ -52,3 +52,5 @@ LogicalResult top::MulOp::inference(InferenceParameter &p) {
   binary->run();
   return success();
 }
+
+void top::MulOp::shape_inference() {}

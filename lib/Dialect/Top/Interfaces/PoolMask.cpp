@@ -56,3 +56,5 @@ LogicalResult top::PoolMaskOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::PoolMaskOp::shape_inference() {}

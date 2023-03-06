@@ -12,9 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-int64_t top::ExpOp::getFLOPs() { return module::getNumElements(getOutput()) * 4; }
+int64_t top::ExpOp::getFLOPs() {
+  return module::getNumElements(getOutput()) * 4;
+}
 
 LogicalResult top::ExpOp::init(InferenceParameter &p) { return success(); }
 void top::ExpOp::deinit(InferenceParameter &p) {}
@@ -28,3 +28,5 @@ LogicalResult top::ExpOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ExpOp::shape_inference() { common_shape_inference(getOperation()); }

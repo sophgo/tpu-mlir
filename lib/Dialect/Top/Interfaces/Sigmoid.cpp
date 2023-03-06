@@ -28,3 +28,7 @@ LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::SigmoidOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::CompareConstOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -38,4 +36,8 @@ LogicalResult top::CompareConstOp::inference(InferenceParameter &p) {
     }
   }
   return success();
+}
+
+void top::CompareConstOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

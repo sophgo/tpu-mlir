@@ -12,9 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-
 int64_t top::PixelNormOp::getFLOPs() {
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
@@ -22,7 +19,9 @@ int64_t top::PixelNormOp::getFLOPs() {
   return num_elem * (10 + have_weight + have_bias);
 }
 
-LogicalResult top::PixelNormOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::PixelNormOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::PixelNormOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PixelNormOp::inference(InferenceParameter &p) {
@@ -39,38 +38,42 @@ LogicalResult top::PixelNormOp::inference(InferenceParameter &p) {
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
 
-  const float* input_data = p.inputs[0];
-  const float* weight_data = have_weight ? p.inputs[1] : nullptr;
-  const float* bias_data = have_bias ? p.inputs[2] : nullptr;
-  float* output_data = p.outputs[0];
+  const float *input_data = p.inputs[0];
+  const float *weight_data = have_weight ? p.inputs[1] : nullptr;
+  const float *bias_data = have_bias ? p.inputs[2] : nullptr;
+  float *output_data = p.outputs[0];
 
   const int num_iter = outer_dim * inner_dim;
-  //#pragma omp parallel for schedule(static, omp_schedule(num_iter))
+  // #pragma omp parallel for schedule(static, omp_schedule(num_iter))
   for (int i = 0; i < num_iter; ++i) {
     const int p = i / inner_dim;
     const int q = i % inner_dim;
-    const float* input_i = input_data + p * channel * inner_dim + q;
-    float* output_i = output_data + p * channel * inner_dim + q;
+    const float *input_i = input_data + p * channel * inner_dim + q;
+    float *output_i = output_data + p * channel * inner_dim + q;
     float mean = 0, rstd = 0;
     for (int j = 0; j < channel; ++j) {
-        mean += input_i[j * inner_dim];
+      mean += input_i[j * inner_dim];
     }
     mean /= channel;
     for (int j = 0; j < channel; ++j) {
-        const float dij = input_i[j * inner_dim] - mean;
-        rstd += dij * dij;
+      const float dij = input_i[j * inner_dim] - mean;
+      rstd += dij * dij;
     }
     rstd /= channel;
     rstd += eps;
     rstd = 1.0f / std::sqrt(rstd);
     for (int j = 0; j < channel; ++j) {
-        output_i[j * inner_dim] = input_i[j * inner_dim] - mean;
-        output_i[j * inner_dim] *= rstd;
-        if (have_weight)
-            output_i[j * inner_dim] *= weight_data[j];
-        if (have_bias)
-            output_i[j * inner_dim] += bias_data[j];
+      output_i[j * inner_dim] = input_i[j * inner_dim] - mean;
+      output_i[j * inner_dim] *= rstd;
+      if (have_weight)
+        output_i[j * inner_dim] *= weight_data[j];
+      if (have_bias)
+        output_i[j * inner_dim] += bias_data[j];
     }
   }
   return success();
+}
+
+void top::PixelNormOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

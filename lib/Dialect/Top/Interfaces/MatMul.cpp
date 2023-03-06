@@ -85,3 +85,5 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
   matmul->run();
   return success();
 }
+
+void top::MatMulOp::shape_inference() {}

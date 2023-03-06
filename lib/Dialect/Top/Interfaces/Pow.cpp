@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::PowOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::PowOp::init(InferenceParameter &p) { return success(); }
@@ -29,3 +27,5 @@ LogicalResult top::PowOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::PowOp::shape_inference() { common_shape_inference(getOperation()); }

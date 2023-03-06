@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::DequantizeLinearOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -56,4 +54,8 @@ LogicalResult top::DequantizeLinearOp::inference(InferenceParameter &p) {
     }
   }
   return success();
+}
+
+void top::DequantizeLinearOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

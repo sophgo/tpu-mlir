@@ -37,7 +37,6 @@ typedef enum {
   GROUP_SMALL_C = 2,
 } group_type_t;
 
-
 //-----------------------------------------------------------------
 // Types
 //-----------------------------------------------------------------
@@ -117,6 +116,8 @@ llvm::ArrayRef<int64_t> getShape(Value v);
 void getGlobalShape(Value v, int* shape);
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int* shape);
 void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int* shape);
+bool isUnranked(Value v);
+void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape);
 bool isSign(Value v);
 bool isWeight(Value v);
 bool isNone(Value v);

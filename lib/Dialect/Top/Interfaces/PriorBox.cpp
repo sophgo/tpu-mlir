@@ -121,3 +121,6 @@ LogicalResult top::PriorBoxOp::inference(InferenceParameter &p) {
   #endif
   return success();
 }
+
+
+void top::PriorBoxOp::shape_inference() {}

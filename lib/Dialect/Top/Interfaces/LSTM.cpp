@@ -219,3 +219,5 @@ LogicalResult top::LSTMOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::LSTMOp::shape_inference() {}

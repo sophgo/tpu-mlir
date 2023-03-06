@@ -55,3 +55,7 @@ LogicalResult top::TopKOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::TopKOp::shape_inference() {}
+
+

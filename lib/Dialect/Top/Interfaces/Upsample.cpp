@@ -47,3 +47,5 @@ LogicalResult top::UpsampleOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::UpsampleOp::shape_inference() {}

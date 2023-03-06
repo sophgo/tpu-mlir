@@ -46,6 +46,12 @@ def MarkFLOPs : Pass<"mark-FLOPs", "ModuleOp"> {
   let dependentDialects = ["TopDialect"];
 }
 
+def ShapeInfer : Pass<"shape-infer", "ModuleOp"> {
+  let summary = "do shape inference for each op";
+  let constructor = "createShapeInferPass()";
+  let dependentDialects = ["TopDialect"];
+}
+
 def SaveWeight : Pass<"save-weight", "ModuleOp"> {
   let summary = "save weight by tpuc-opt";
   let constructor = "createSaveWeightPass()";

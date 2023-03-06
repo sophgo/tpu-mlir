@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::CastOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::CastOp::init(InferenceParameter &p) { return success(); }
@@ -22,3 +20,5 @@ void top::CastOp::deinit(InferenceParameter &p) {}
 LogicalResult top::CastOp::inference(InferenceParameter &p) {
   llvm_unreachable("Not Implemented");
 }
+
+void top::CastOp::shape_inference() { common_shape_inference(getOperation()); }

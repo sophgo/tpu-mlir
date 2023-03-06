@@ -63,3 +63,5 @@ LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
                    p_info->order_fix);
   return success();
 }
+
+void top::PermuteOp::shape_inference() {}

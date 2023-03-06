@@ -44,3 +44,5 @@ LogicalResult top::FrcnDetectionOp::inference(InferenceParameter &p) {
   func.invoke();
   return success();
 }
+
+void top::FrcnDetectionOp::shape_inference() {}

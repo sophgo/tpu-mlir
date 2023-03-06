@@ -42,3 +42,5 @@ LogicalResult top::TileOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::TileOp::shape_inference() {}

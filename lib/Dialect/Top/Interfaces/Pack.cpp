@@ -47,3 +47,5 @@ LogicalResult top::PackOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::PackOp::shape_inference() {}

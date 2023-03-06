@@ -117,3 +117,5 @@ LogicalResult top::MaxPoolOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::MaxPoolOp::shape_inference() {}

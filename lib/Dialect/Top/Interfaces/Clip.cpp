@@ -28,3 +28,5 @@ LogicalResult top::ClipOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ClipOp::shape_inference() { common_shape_inference(getOperation()); }

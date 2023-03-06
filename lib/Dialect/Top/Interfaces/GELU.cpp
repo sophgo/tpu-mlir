@@ -28,3 +28,5 @@ LogicalResult top::GELUOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::GELUOp::shape_inference() { common_shape_inference(getOperation()); }

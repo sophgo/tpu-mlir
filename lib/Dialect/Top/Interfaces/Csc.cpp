@@ -27,3 +27,6 @@ LogicalResult top::CscOp::inference(InferenceParameter &p) {
   llvm_unreachable("top::CscOp no need to inference");
   return failure();
 }
+
+void top::CscOp::shape_inference() {}
+

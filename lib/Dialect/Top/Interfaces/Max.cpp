@@ -49,3 +49,5 @@ LogicalResult top::MaxOp::inference(InferenceParameter &p) {
   binary->run();
   return success();
 }
+
+void top::MaxOp::shape_inference() {}

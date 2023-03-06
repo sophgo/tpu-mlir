@@ -49,3 +49,5 @@ LogicalResult top::MaxUnpoolOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::MaxUnpoolOp::shape_inference() {}
