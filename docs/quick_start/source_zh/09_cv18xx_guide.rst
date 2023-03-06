@@ -156,9 +156,6 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
        --model yolov5s_cv183x_int8_sym.cvimodel \
        --output dog_int8.jpg
 
-
-四张图片对比如 :numref:`yolov5s_result1` ，由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result1` 会有些差异。
-
 .. _yolov5s_result1:
 .. figure:: ../assets/yolov5s_cvi.jpg
    :height: 13cm
@@ -166,14 +163,155 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 
    不同模型效果对比
 
-
+四张图片对比如 :numref:`yolov5s_result1` ，由于运行环境不同, 最终的效果和精度与 :numref:`yolov5s_result1` 会有些差异。
 
 上述教程介绍了TPU-MLIR编译CV18xx系列芯片的ONNX模型的过程,caffe模型的转换过程可参考“编译Caffe模型”章节,只需要将对应的芯片名称换成实际的CV18xx芯片名称即可。
 
 
 合并cvimodel模型文件
 --------------------------
-待补充
+
+对于同一个模型，可以依据输入的batch size以及分辨率（不同的h和w）分别生成独立的cvimodel文件。不过为了节省外存和运存，可以选择将这些相关的cvimodel文件合并为一个cvimodel文件，共享其权重部分。具体步骤如下：
+
+步骤0：生成batch 1的cvimodel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+请参考前述章节，新建workspace目录，通过model_transform.py将yolov5s转换成mlir fp32模型。
+
+.. admonition:: 注意 ：
+  :class: attention
+
+  1.需要合并的cvimodel使用同一个workspace目录，并且不要与不需要合并的cvimodel
+  共用一个workspace；
+
+  2.步骤0、步骤1中 --merge_weight是必需选项。
+
+
+.. code-block:: shell
+
+   $ model_transform.py \
+       --model_name yolov5s \
+       --model_def ../yolov5s.onnx \
+       --input_shapes [[1,3,640,640]] \
+       --mean 0.0,0.0,0.0 \
+       --scale 0.0039216,0.0039216,0.0039216 \
+       --keep_aspect_ratio \
+       --pixel_format rgb \
+       --output_names 350,498,646 \
+       --test_input ../image/dog.jpg \
+       --test_result yolov5s_top_outputs.npz \
+       --mlir yolov5s_bs1.mlir
+
+使用前述章节生成的yolov5s_cali_table；如果没有，则通过run_calibration.py工具对yolov5s.mlir进行量化校验获得calibration table文件。
+然后将模型量化并生成cvimodel:
+
+.. code-block:: shell
+
+  # 加上 --merge_weight参数
+   $ model_deploy.py \
+       --mlir yolov5s_bs1.mlir \
+       --quantize INT8 \
+       --calibration_table yolov5s_cali_table \
+       --chip cv183x \
+       --test_input yolov5s_in_f32.npz \
+       --test_reference yolov5s_top_outputs.npz \
+       --tolerance 0.85,0.45 \
+       --merge_weight \
+       --model yolov5s_cv183x_int8_sym_bs1.cvimodel
+
+步骤1：生成batch 2的cvimodel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+同步骤0，在同一个workspace中生成batch为2的mlir fp32文件：
+
+.. code-block:: shell
+
+   $ model_transform.py \
+       --model_name yolov5s \
+       --model_def ../yolov5s.onnx \
+       --input_shapes [[2,3,640,640]] \
+       --mean 0.0,0.0,0.0 \
+       --scale 0.0039216,0.0039216,0.0039216 \
+       --keep_aspect_ratio \
+       --pixel_format rgb \
+       --output_names 350,498,646 \
+       --test_input ../image/dog.jpg \
+       --test_result yolov5s_top_outputs.npz \
+       --mlir yolov5s_bs2.mlir
+
+.. code-block:: shell
+
+  # 加上 --merge_weight参数
+   $ model_deploy.py \
+       --mlir yolov5s_bs2.mlir \
+       --quantize INT8 \
+       --calibration_table yolov5s_cali_table \
+       --chip cv183x \
+       --test_input yolov5s_in_f32.npz \
+       --test_reference yolov5s_top_outputs.npz \
+       --tolerance 0.85,0.45 \
+       --merge_weight \
+       --model yolov5s_cv183x_int8_sym_bs2.cvimodel
+
+步骤2：合并batch 1和batch 2的cvimodel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+使用model_tool合并两个cvimodel文件：
+
+.. code-block:: shell
+
+  model_tool \
+    --combine \
+      yolov5s_cv183x_int8_sym_bs1.cvimodel \
+      yolov5s_cv183x_int8_sym_bs2.cvimodel \
+      -o yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
+
+步骤3：runtime接口调用cvimodel
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+可以通过命令：
+
+.. code-block:: shell
+
+  model_tool --info yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
+
+查看bs1和bs2指令的program id，在运行时可以通过如下方式去运行不同的batch命令：
+
+.. code-block:: c++
+
+  CVI_MODEL_HANDEL bs1_handle;
+  CVI_RC ret = CVI_NN_RegisterModel("yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel", &bs1_handle);
+  assert(ret == CVI_RC_SUCCESS);
+  CVI_NN_SetConfig(bs1_handle, OPTION_PROGRAM_INDEX, 0);
+  CVI_NN_GetInputOutputTensors(bs1_handle, ...);
+  ....
+
+
+  CVI_MODEL_HANDLE bs2_handle;
+  // 复用已加载的模型
+  CVI_RC ret = CVI_NN_CloneModel(bs1_handle, &bs2_handle);
+  assert(ret == CVI_RC_SUCCESS);
+  // 选择bs4的指令
+  CVI_NN_SetConfig(bs2_handle, OPTION_PROGRAM_INDEX, 1);
+  CVI_NN_GetInputOutputTensors(bs2_handle, ...);
+  ...
+
+  // 最后销毁bs1_handle, bs2_handel
+  CVI_NN_CleanupModel(bs1_handle);
+  CVI_NN_CleanupModel(bs2_handle);
+
+综述：合并过程
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+使用上面命令，不论是相同模型还是不同模型，均可以进行合并。
+合并的原理是：模型生成过程中，会叠加前面模型的weight（如果相同则共用）。
+
+主要步骤在于：
+
+1. 用model_deploy.py生成模型时，加上--merge_weight参数
+2. 要合并的模型的生成目录必须是同一个，且在合并模型前不要清理任何中间文件（叠加前面模型weight通过中间文件_weight_map.csv实现）
+3. 用model_tool --combine 将多个cvimodel合并
+
 
 
 编译和运行runtime sample

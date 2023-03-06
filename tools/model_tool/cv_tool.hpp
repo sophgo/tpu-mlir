@@ -843,7 +843,8 @@ FBSectionVector Model::cloneSections(
 FBWeightVector Model::cloneWeightMap(
     std::vector<std::shared_ptr<Model>> &models,
     std::map<int64_t, std::vector<uint8_t>> &weight_data_map) {
-  std::map<int64_t, std::pair<std::string, const cvi::model::Weight *>>
+  // map < offset, tuple<md5, size, vector<name>>>
+  std::map<int64_t, std::tuple<std::string, int64_t, std::vector<std::string>>>
       merged_weights;
   std::vector<flatbuffers::Offset<cvi::model::Weight>> tensor_vec;
 
@@ -869,22 +870,38 @@ FBWeightVector Model::cloneWeightMap(
       if (iter != merged_weights.end()) {
         // redundant weight
         has_redundat = true;
-        if (w_size != iter->second.second->size() ||
-            md5 != iter->second.first) {
-          std::cout << "[ERROR] Size or MD5 not equal, models cann't be merged!" << std::endl;
+        if (w_size != std::get<1>(iter->second) ||
+            md5 != std::get<0>(iter->second)) {
+          std::cout << "[ERROR] Size or MD5 not equal, models cann't be merged!"
+                    << std::endl;
           exit(1);
         }
-      } else {
-        std::vector<int64_t> dim;
-        for (auto s : *w->shape()->dim()) {
-          dim.push_back(s);
+
+        // need add to WeightMap when weight's name isn't equal, even if they
+        // offset/size/md5 are equal
+        //auto &names = std::get<2>(std::get<1>(*iter));
+        auto &names = std::get<2>(iter->second);
+        auto name_iter = std::find(names.begin(), names.end(), w->name()->str());
+        if (name_iter == names.end()) {
+          names.emplace_back(w->name()->str());
+        } else {
+          continue;
         }
-        auto shape = cvi::model::CreateShapeDirect(fbb, &dim);
-        auto weight = cvi::model::CreateWeightDirect(
-            fbb, w->name()->c_str(), w->offset(), w->size(), shape, w->type());
-        tensor_vec.push_back(weight);
+      } else {
+        std::vector<std::string> names;
+        names.emplace_back(w->name()->str());
+        merged_weights[w_offset] = std::make_tuple(md5, w_size, std::move(names));
+      }
+      std::vector<int64_t> dim;
+      for (auto s : *w->shape()->dim()) {
+        dim.push_back(s);
+      }
+      auto shape = cvi::model::CreateShapeDirect(fbb, &dim);
+      auto weight = cvi::model::CreateWeightDirect(
+          fbb, w->name()->c_str(), w->offset(), w->size(), shape, w->type());
+      tensor_vec.push_back(weight);
+      if (!has_redundat) {
         weight_data_map[w_offset].swap(weight_data);
-        merged_weights[w_offset] = std::make_pair(md5, w);
       }
     }
   }
