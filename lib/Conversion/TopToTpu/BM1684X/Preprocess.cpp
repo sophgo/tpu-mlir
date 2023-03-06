@@ -149,12 +149,15 @@ public:
 
     rewriter.replaceOp(op, {currentOut});
 
-    Operation *curOp = currentOut.getDefiningOp();
-    if (quant_mode == "INT8") {
-      FoldSwapAxisOp<int8_t>(curOp, rewriter);
-    } else {
-      FoldSwapAxisOp<uint16_t>(curOp, rewriter);
+    if (swap_channel) {
+      Operation *curOp = currentOut.getDefiningOp();
+      if (quant_mode == "INT8") {
+        FoldSwapAxisOp<int8_t>(curOp, rewriter);
+      } else {
+        FoldSwapAxisOp<uint16_t>(curOp, rewriter);
+      }
     }
+
   }
 
 private:
@@ -200,7 +203,15 @@ private:
   Value insertScaleLutOp(PatternRewriter &rewriter, std::string &name,
                          Value opd, double threshold, bool swap_channel) {
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_scale_lut"));
-    double qscale = module::getScale(threshold, true, 8);
+    bool sign = false;
+    for (int i = 0; i < this->mean.size(); i++) {
+      if (this->mean[i] > 0) {
+        sign = true;
+        break;
+      }
+    }
+
+    double qscale = module::getScale(threshold, sign, 8);
     std::vector<double> scales;
     std::vector<double> bias;
     for (int i = 0; i < c; i++) {

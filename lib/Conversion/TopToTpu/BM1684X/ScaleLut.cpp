@@ -24,23 +24,62 @@ void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleLutOp o
   int table_w = 16;
   int table_hw = table_h * table_w;
   int table_size = c * table_hw;
-  std::vector<int8_t> table(table_size, 0);
-  for (int i = 0; i < c; i++) {
-    for (int idx = 0; idx < table_hw; ++idx) {
-      table[i * table_hw + idx] = to_int8(idx * scale->at(i) + bias->at(i), ROUNDING_HALF_UP);
-    }
-  }
+  bool sign = false;
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
   attrs.emplace_back(rewriter.getNamedAttr("bias", op.getBiasAttr()));
   auto table_shape = std::vector<int64_t>{1, c, table_h, table_w};
-  auto table_type = RankedTensorType::get(table_shape, rewriter.getI8Type());
-  auto table_op = top::WeightOp::create(op, name + "_table", table, table_type);
   std::vector<Value> operands;
   operands.emplace_back(input_val);
-  operands.emplace_back(table_op);
-  auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
-  rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
+
+  for (int i = 0; i < bias->size(); i++) {
+    if (bias->at(i) != 0) {
+      sign = true;
+      break;
+    }
+  }
+
+  if (!sign) {
+    std::vector<uint8_t> table(table_size, 0);
+    auto table_type = RankedTensorType::get(table_shape, rewriter.getIntegerType(8, false));
+    for (int i = 0; i < c; i++) {
+      for (int idx = 0; idx < table_hw; ++idx) {
+        table[i * table_hw + idx] = to_uint8(idx * scale->at(i), ROUNDING_HALF_UP);
+      }
+    }
+    auto table_op = top::WeightOp::create(op, name + "_table", table, table_type);
+    operands.emplace_back(table_op);
+
+    auto output = op.getOutput();
+    auto type = output.getType().cast<RankedTensorType>();
+    auto ctx = output.getContext();
+    auto cali_type = module::getCalibratedType(output);
+    double scale;
+    int64_t zeropoint = 0;
+    int64_t qmin = 0, qmax = 255;
+    uint32_t flag = 0;
+    auto max = cali_type.getMax();
+    scale = module::getScale(max, sign);
+    auto qtype = quant::UniformQuantizedType::get(flag, IntegerType::get(ctx, 8),
+                                                  cali_type.getExpressedType(),
+                                                  scale, zeropoint, qmin, qmax);
+    auto newType = RankedTensorType::get(type.getShape(), qtype);
+    rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
+  } else {
+    std::vector<int8_t> table(table_size, 0);
+    auto table_type = RankedTensorType::get(table_shape, rewriter.getI8Type());
+    for (int i = 0; i < c; i++) {
+      for (int idx = 0; idx < table_hw; ++idx) {
+        table[i * table_hw + idx] = to_int8(idx * scale->at(i) + bias->at(i), ROUNDING_HALF_UP);
+      }
+    }
+    auto table_op = top::WeightOp::create(op, name + "_table", table, table_type);
+    operands.emplace_back(table_op);
+
+    auto newType = getQuantInt8Type(op.getOutput(), asymmetric);
+    rewriter.replaceOpWithNewOp<tpu::ScaleLutOp>(op, newType, operands, attrs);
+  }
+
 }
 
 void ScaleLutLowering::LoweringF32(PatternRewriter &rewriter,
