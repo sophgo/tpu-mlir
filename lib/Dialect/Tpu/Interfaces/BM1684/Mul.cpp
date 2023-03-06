@@ -7,17 +7,53 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 
 #include "tpu_mlir/Support/Module.h"
 
-
-
 using namespace tpu_mlir::backend;
 
+int v_is_int8(Value v) {
+  auto d = BM168x::getDataType(v);
+  return d == DTYPE_INT8 || d == DTYPE_UINT8;
+}
+
+static int ceiling_func(int numerator, int denominator) {
+  return (numerator + denominator - 1) / denominator;
+}
+
 void tpu::MulOp::codegen_global_bm1684() {
-  llvm_unreachable("Not Implemented");
+  int input_num = getInputs().size();
+  assert(input_num == 2);
+  int op_code = 2;
+  auto a_addr = module::getAddress(getInputs()[0]);
+  auto b_addr = module::getAddress(getInputs()[1]);
+  auto o_addr = module::getAddress(getOutput());
+  int a_shape[MAX_SHAPE_DIMS] = {0};
+  int b_shape[MAX_SHAPE_DIMS] = {0};
+  module::getGlobalShape(getInputs()[0], a_shape);
+  module::getGlobalShape(getInputs()[1], b_shape);
+  if (false == module::isUniformQuantized(getOutput())) {
+    BM1684::instance().dl_nodechip_broadcast_binary(
+        a_addr, a_shape, b_addr, b_shape, o_addr, op_code, getDoRelu() ? 1 : 0,
+        -1.f, (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
+  } else {
+    int sign[3] = {0};
+    int is_int8[3] = {0};
+    for (int i = 0; i < input_num; ++i) {
+      is_int8[i] = v_is_int8(getInputs()[i]);
+      sign[i] = module::isSign(getInputs()[i]) ? 1 : 0;
+    }
+    is_int8[2] = v_is_int8(getOutput());
+    sign[2] = module::isSign(getOutput()) ? 1 : 0;
+    BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_parallel(
+        a_addr, b_addr, o_addr, a_shape, b_shape,
+        module::getShape(getInputs()[0]).size(),
+        module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
+        op_code, getMultiplier(), 1, getRshift(), 0, is_int8, sign,
+        getDoRelu() ? 1 : 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  }
 }
 
 int64_t tpu::MulOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
@@ -25,9 +61,79 @@ int64_t tpu::MulOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
                                          int64_t in_nslice, int64_t in_hslice,
                                          int64_t out_nslice,
                                          int64_t out_hslice) {
-  return 0;
+  int64_t buffer_size = 0;
+  auto dtype_A = BM168x::getDataType(getInputs()[0]);
+  auto dtype_O = BM168x::getDataType(getOutput());
+  if (dtype_A == DTYPE_INT8 || dtype_A == DTYPE_UINT8) {
+    if (getMultiplier() != 1 || getRshift() != 0) {
+      buffer_size = in_lmem_bytes * 2;
+    }
+  } else if ((BM168x::getFmtBytes(dtype_A) > BM168x::getFmtBytes(dtype_O)) &&
+             (module::isSign(getInputs()[0]) ||
+              module::isSign(getInputs()[1])) &&
+             (!module::isSign(getOutput()))) {
+    buffer_size = in_lmem_bytes;
+  }
+  return buffer_size;
 }
 
-void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step, local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
+                                      local_sec_info_t &sec_info) {
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  auto out_gi = getGroupInfo(n_step, h_step);
+  int num_inputs = getInputs().size();
+  llvm::SmallVector<int, 8> input_addrs;
+  int op_code = 2;
+  for (int i = 0; i < num_inputs; i++) {
+    auto in = getInputs()[i];
+    auto in_ginfo = LocalGenInterface::getGroupInfo(in);
+    input_addrs.push_back(in_ginfo.out_addr);
+  }
+  int b0_shape[MAX_SHAPE_DIMS] = {0};
+  int b1_shape[MAX_SHAPE_DIMS] = {0};
+  module::getLocalShape(getInputs()[0], n_step, h_step, b0_shape);
+  module::getLocalShape(getInputs()[1], n_step, h_step, b1_shape);
+  if (module::isUniformQuantized(getOutput())) {
+    int sign[3] = {0};
+    int is_int8[3] = {0};
+    for (int i = 0; i < num_inputs; ++i) {
+      is_int8[i] = v_is_int8(getInputs()[i]);
+      sign[i] = module::isSign(getInputs()[i]) ? 1 : 0;
+    }
+    is_int8[2] = v_is_int8(getOutput());
+    sign[2] = module::isSign(getOutput()) ? 1 : 0;
+    BM1684::instance().dl_nodechip_broadcast_binary_fix8b_forward_local(
+        input_addrs[0], input_addrs[1], out_gi.out_addr, out_gi.buffer_addr,
+        b0_shape, b1_shape, module::getShape(getInputs()[0]).size(),
+        module::isWeight(getInputs()[0]), module::isWeight(getInputs()[1]),
+        op_code, getMultiplier(), 1, getRshift(), 0, is_int8, sign, 0,
+        BM1684::instance().bdc_node);
+  } else {
+    int b0_stride[4] = {0};
+    int b1_stride[4] = {0};
+    int top_stride[4] = {0};
+    int top_shape[MAX_SHAPE_DIMS] = {0};
+    module::getLocalShape(getOutput(), n_step, h_step, top_shape);
+    module::get128BtyeAlignedStrideForNBit(b0_stride, b0_shape, BM1684::NPU_NUM,
+                                           32);
+    module::get128BtyeAlignedStrideForNBit(b1_stride, b1_shape, BM1684::NPU_NUM,
+                                           32);
+    module::get128BtyeAlignedStrideForNBit(top_stride, top_shape,
+                                           BM1684::NPU_NUM, 32);
+    for (int i = 0; i < 4; i++) {
+      top_shape[i] = std::max(b0_shape[i], b1_shape[i]);
+      if (b0_shape[i] != b1_shape[i]) {
+        if (b0_shape[i] == 1)
+          b0_stride[i] = 0;
+        if (b1_shape[i] == 1)
+          b1_stride[i] = 0;
+      }
+    }
+    BM1684::instance().dl_nodechip_broadcast_binary_local(
+        input_addrs[0], b0_shape, b0_stride, input_addrs[1], b1_shape,
+        b1_stride, out_gi.out_addr, top_stride, op_code, 0, -1.f,
+        b0_shape[1] > b1_shape[1] ? input_addrs[0] : input_addrs[1],
+        BM1684::instance().bdc_node);
+  }
 }
