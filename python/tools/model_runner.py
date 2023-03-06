@@ -343,7 +343,7 @@ def tflite_inference(
         return {k["name"]: out_tensor_process((k, v)) for k, v in outputs}
 
 
-def pytorch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
+def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     import torch
     net = torch.jit.load(model, map_location=torch.device('cpu'))
     net.eval()

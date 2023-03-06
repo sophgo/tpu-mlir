@@ -143,7 +143,7 @@ class TFLiteTransformer(ModelTransformer):
         return tflite_inference(inputs, self.converter.tflite_file, input_is_nchw=is_nchw, tf_layout = tf_layout)
 
 
-class PytorchTransformer(ModelTransformer):
+class TorchTransformer(ModelTransformer):
 
     def __init__(self,
                  model_name,
@@ -153,13 +153,13 @@ class PytorchTransformer(ModelTransformer):
                  preprocessor=None):
         super().__init__(model_name)
         self.model_def = model_def
-        from transform.PytorchConverter import PytorchConverter
-        self.converter = PytorchConverter(self.model_name, self.model_def, input_shapes, output_names,
+        from transform.TorchConverter import TorchConverter
+        self.converter = TorchConverter(self.model_name, self.model_def, input_shapes, output_names,
                                           preprocessor)
 
     def origin_inference(self, inputs: dict):
-        from tools.model_runner import pytorch_inference
-        return pytorch_inference(inputs, self.converter.model)
+        from tools.model_runner import torch_inference
+        return torch_inference(inputs, self.converter.model)
 
 
 def get_model_transform(args):
@@ -178,7 +178,7 @@ def get_model_transform(args):
         tool = TFLiteTransformer(args.model_name, args.model_def, args.input_shapes,
                                  args.output_names, preprocessor.to_dict())
     elif args.model_def.endswith('.pt'):
-        tool = PytorchTransformer(args.model_name, args.model_def, args.input_shapes,
+        tool = TorchTransformer(args.model_name, args.model_def, args.input_shapes,
                                   args.output_names, preprocessor.to_dict())
     else:
         # TODO: support more AI model types

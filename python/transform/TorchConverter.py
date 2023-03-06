@@ -79,7 +79,7 @@ class BaseNode():
     self.inputs = list(info["inputs"])
     self.outputs = list(info["outputs"])
 
-class PytorchNode(BaseNode):
+class TorchNode(BaseNode):
   def __init__(self, node):
     info = dict()
     info["name"] = node.output().debugName()
@@ -90,7 +90,7 @@ class PytorchNode(BaseNode):
     self.node_proto = node
 
 
-class PytorchConverter(BaseConverter):
+class TorchConverter(BaseConverter):
   MLIRImporterTypeStr = {
     "float64": "f64",
     "float32": "F32",
@@ -108,7 +108,7 @@ class PytorchConverter(BaseConverter):
 
   def __init__(self,
                model_name: str,
-               pytorch_file,
+               torch_file,
                input_shapes: list,
                output_names: list,
                preprocess_args=None):
@@ -117,10 +117,10 @@ class PytorchConverter(BaseConverter):
     self.weight_file = "{}_top_weight.npz".format(model_name)
     self.model = None
     self.mlir = None
-    self.node_name_mapping = {}  # used in pytorch opt
+    self.node_name_mapping = {}  # used in torch opt
     self.const_val = {}
 
-    self.load_torch_model(pytorch_file, input_shapes, output_names)
+    self.load_torch_model(torch_file, input_shapes, output_names)
     self.shape_infer()
     self.init_MLIRImporter()
     self.preprocess_args = preprocess_args
@@ -188,11 +188,11 @@ class PytorchConverter(BaseConverter):
       raise RuntimeError(
         "The following operators are not implemented: {}".format(unknown_ops))
 
-  def load_torch_model(self, pytorch_file, input_shapes: list, output_names: list):
-    if isinstance(pytorch_file, str):
-      self.model = torch.jit.load(pytorch_file, map_location=torch.device('cpu'))
+  def load_torch_model(self, torch_file, input_shapes: list, output_names: list):
+    if isinstance(torch_file, str):
+      self.model = torch.jit.load(torch_file, map_location=torch.device('cpu'))
     else:
-      self.model = pytorch_file
+      self.model = torch_file
     self.model.eval()
     self.graph = self.model.graph
     is_module = isinstance(self.model, torch.jit.ScriptModule)
@@ -272,7 +272,7 @@ class PytorchConverter(BaseConverter):
     self.converted_nodes.clear()
     for node in self.graph.nodes():
       if (self.read_node(node) is False):
-        nd = PytorchNode(node)
+        nd = TorchNode(node)
         self.converted_nodes.append(nd)
     # checkout all type is supported
     unsupported = set()
@@ -298,20 +298,20 @@ class PytorchConverter(BaseConverter):
     self.WeightToNpz(self.weight_file)
     print("Save mlir file: {}".format(mlir_file))
 
-  def convert_base_conv_op(self, pytorch_node: PytorchNode, mode = False):
-    op = self.getOp(pytorch_node.inputs[0])
-    strides = _data_expand(self.const_val[pytorch_node.inputs[3]], 2)
-    pads = self.const_val[pytorch_node.inputs[4]]
-    dilations = _data_expand(self.const_val[pytorch_node.inputs[5]], 2)
-    group = self.const_val[pytorch_node.inputs[6 if mode else 8]]
-    kernel_shape = self.getShape(pytorch_node.inputs[1])
+  def convert_base_conv_op(self, torch_node: TorchNode, mode = False):
+    op = self.getOp(torch_node.inputs[0])
+    strides = _data_expand(self.const_val[torch_node.inputs[3]], 2)
+    pads = self.const_val[torch_node.inputs[4]]
+    dilations = _data_expand(self.const_val[torch_node.inputs[5]], 2)
+    group = self.const_val[torch_node.inputs[6 if mode else 8]]
+    kernel_shape = self.getShape(torch_node.inputs[1])
     kernel_shape = kernel_shape[2:]
     if mode == True:
-      input_size = self.getShape(pytorch_node.inputs[0])[2:]
+      input_size = self.getShape(torch_node.inputs[0])[2:]
       pads = _compute_pad(strides, dilations, input_size, kernel_shape, pads)
     else:
-      transposed = self.const_val[pytorch_node.inputs[6]]
-      output_padding = self.const_val[pytorch_node.inputs[7]]
+      transposed = self.const_val[torch_node.inputs[6]]
+      output_padding = self.const_val[torch_node.inputs[7]]
       if isinstance(pads, int):
         pads = [pads for i in range(4)]
       elif len(pads) == 2:
@@ -319,15 +319,15 @@ class PytorchConverter(BaseConverter):
 
     operands = list()
     operands.append(op)
-    filter_op = self.getOp(pytorch_node.inputs[1])
+    filter_op = self.getOp(torch_node.inputs[1])
     operands.append(filter_op)
-    if pytorch_node.inputs[2] not in self.const_val.keys() or self.const_val[pytorch_node.inputs[2]] is not None:
-      bias_op = self.getOp(pytorch_node.inputs[2])
+    if torch_node.inputs[2] not in self.const_val.keys() or self.const_val[torch_node.inputs[2]] is not None:
+      bias_op = self.getOp(torch_node.inputs[2])
     else:
       bias_op = self.mlir.none_op
     operands.append(bias_op)
     p = {
-        'name': pytorch_node.name,
+        'name': torch_node.name,
         'kernel_shape': kernel_shape,
         'strides': strides,
         'dilations': dilations,
@@ -336,32 +336,32 @@ class PytorchConverter(BaseConverter):
         'do_relu': False,
         'ins': [],
     }
-    output_shape = self.getShape(pytorch_node.name)
+    output_shape = self.getShape(torch_node.name)
     new_op = self.mlir.create_conv_op(operands, output_shape, **p)
-    self.addOperand(pytorch_node.name, new_op)
+    self.addOperand(torch_node.name, new_op)
 
-  def convert_conv_op(self, pytorch_node: PytorchNode):
-    self.convert_base_conv_op(pytorch_node)
+  def convert_conv_op(self, torch_node: TorchNode):
+    self.convert_base_conv_op(torch_node)
 
-  def convert_conv_mode_op(self, pytorch_node: PytorchNode):
-    self.convert_base_conv_op(pytorch_node, True)
+  def convert_conv_mode_op(self, torch_node: TorchNode):
+    self.convert_base_conv_op(torch_node, True)
 
-  def convert_add_op(self, pytorch_node: PytorchNode):
-    op0 = self.getOp(pytorch_node.inputs[0])
-    op1 = self.getOp(pytorch_node.inputs[1])
-    scale = self.const_val[pytorch_node.inputs[2]]
+  def convert_add_op(self, torch_node: TorchNode):
+    op0 = self.getOp(torch_node.inputs[0])
+    op1 = self.getOp(torch_node.inputs[1])
+    scale = self.const_val[torch_node.inputs[2]]
     assert scale == 1
     p = {
-        'name': pytorch_node.name,
+        'name': torch_node.name,
         'do_relu': False,
     }
-    output_shape = self.getShape(pytorch_node.name)
+    output_shape = self.getShape(torch_node.name)
     new_op = self.mlir.create_add_op([op0, op1], output_shape, **p)
-    self.addOperand(pytorch_node.name, new_op)
+    self.addOperand(torch_node.name, new_op)
 
-  def convert_prelu_op(self, pytorch_node: PytorchNode):
-    op0 = self.getOp(pytorch_node.inputs[0])
-    op1 = self.getOp(pytorch_node.inputs[1])
-    output_shape = self.getShape(pytorch_node.name)
-    new_op = self.mlir.create_prelu_op([op0, op1], output_shape, **{'name': pytorch_node.name})
-    self.addOperand(pytorch_node.name, new_op)
+  def convert_prelu_op(self, torch_node: TorchNode):
+    op0 = self.getOp(torch_node.inputs[0])
+    op1 = self.getOp(torch_node.inputs[1])
+    output_shape = self.getShape(torch_node.name)
+    new_op = self.mlir.create_prelu_op([op0, op1], output_shape, **{'name': torch_node.name})
+    self.addOperand(torch_node.name, new_op)

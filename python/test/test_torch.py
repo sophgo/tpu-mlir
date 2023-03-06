@@ -11,7 +11,7 @@ from re import T
 import numpy as np
 from typing import List, Union
 
-from tools.model_runner import mlir_inference, model_inference, pytorch_inference, show_fake_cmd
+from tools.model_runner import mlir_inference, model_inference, torch_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
@@ -24,12 +24,12 @@ import torch.jit as jit
 
 Failed_Cases = []
 
-class PYTORCH_IR_TESTER(object):
+class TORCH_IR_TESTER(object):
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x", mode: str = "all"):
       self.test_function = {
         #############################
-        # Pytorch Test Case, Alphabetically
+        # Torch Test Case, Alphabetically
         #############################
         "Conv2d": self.test_Conv2d,
         "Prelu": self.test_Prelu,
@@ -112,11 +112,11 @@ class PYTORCH_IR_TESTER(object):
         inputs = [np.clip(np.random.randn(*s).astype(np.float32), -10, 10) for s in shapes]
         return [torch.from_numpy(inp) for inp in inputs]
 
-    def pytorch_convert(self, in_shapes, pytorch_model, model_name: str):
-      # pytorch --> mlir conversion (origin and optimized mlir models will be generated and saved)
+    def torch_convert(self, in_shapes, torch_model, model_name: str):
+      # torch --> mlir conversion (origin and optimized mlir models will be generated and saved)
       fp32_mlir = "{}.mlir".format(model_name)
 
-      tool = PytorchTransformer(model_name, pytorch_model, input_shapes=in_shapes)
+      tool = TorchTransformer(model_name, torch_model, input_shapes=in_shapes)
       tool.model_transform(fp32_mlir)
 
       input_npz = "{}_ref_in_fp32.npz".format(model_name)
@@ -126,12 +126,12 @@ class PYTORCH_IR_TESTER(object):
         input_data[name] = np.random.random(size=in_shapes[idx]).astype(np.float32)
       np.savez(input_npz, **input_data)
       # # top mlir outputs will be inferenced first in case the quant mode is int8
-      show_fake_cmd(input_npz, pytorch_model, ref_npz)
-      pytorch_outs = pytorch_inference(input_data, pytorch_model, True)
-      np.savez(ref_npz, **pytorch_outs)
+      show_fake_cmd(input_npz, torch_model, ref_npz)
+      torch_outs = torch_inference(input_data, torch_model, True)
+      np.savez(ref_npz, **torch_outs)
       show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
       top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
-      return (pytorch_outs, top_mlir_outs, input_npz)
+      return (torch_outs, top_mlir_outs, input_npz)
 
     def bmodel_generate(self,
                         model_name: str,
@@ -162,7 +162,7 @@ class PYTORCH_IR_TESTER(object):
       return (tpu_mlir + ".mlir", bmodel)
 
     def inference_and_compare(self,
-                              pytorch_output: dict,
+                              torch_output: dict,
                               tpu_mlir: str,
                               bmodel: str,
                               input_npz: str,
@@ -177,7 +177,7 @@ class PYTORCH_IR_TESTER(object):
       tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
       show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
       tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
-      np.savez(ref_npz, **pytorch_output)
+      np.savez(ref_npz, **torch_output)
       np.savez(tpu_npz, **tpu_mlir_outs)
       npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
       # bmodel inference and compare
@@ -192,29 +192,29 @@ class PYTORCH_IR_TESTER(object):
         msg += ", Asymmetric: {}".format(isAsym)
       print("[Success] test {} {}".format(model_name, msg))
 
-    def convert_pytorch_and_compare(
+    def convert_torch_and_compare(
         self,
         in_shapes,
         model_name,
-        pytorch_model,
+        torch_model,
     ):
-      """Generic function to generate and compare pytorch and Tpu-Mlir output"""
+      """Generic function to generate and compare torch and Tpu-Mlir output"""
       model_def = model_name + ".pt"
       inputs = self.create_random_input(in_shapes)
-      jit.trace(pytorch_model, inputs).save(model_def)
-      pytorch_outs, top_mlir_outs, input_npz = self.pytorch_convert(in_shapes, model_def, model_name)
+      jit.trace(torch_model, inputs).save(model_def)
+      torch_outs, top_mlir_outs, input_npz = self.torch_convert(in_shapes, model_def, model_name)
       # test onnx and mlir outputs
       counter = 0
-      for name in pytorch_outs:
+      for name in torch_outs:
         if name in top_mlir_outs:
-          print("Compare mlir and pytorch:{}\n".format(name))
+          print("Compare mlir and torch:{}\n".format(name))
           top_mlir_output = top_mlir_outs[name].flatten()
-          onnx_output = pytorch_outs[name].flatten()
+          onnx_output = torch_outs[name].flatten()
           self.compare(onnx_output, top_mlir_output)
           counter += 1
       if counter == 0:
-        raise RuntimeError("No compare between pytorch outs and mlir outts")
-      print("Success: Pytorch outs and Mlir outs are equal\n")
+        raise RuntimeError("No compare between torch outs and mlir outts")
+      print("Success: Torch outs and Mlir outs are equal\n")
       for quant_mode in self.quant_modes:
         if quant_mode == "int8" or quant_mode == "int4":
           for isAsym in self.support_asym:
@@ -247,7 +247,7 @@ class PYTORCH_IR_TESTER(object):
               y = F.conv2d(x, self.filter, bias=self.bias, padding=padding,
                            stride=stride, dilation=dilation, groups=group)
               return y
-        self.convert_pytorch_and_compare([input_shape], case_name, Model().eval())
+        self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
       _test_convolution((1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
       _test_convolution((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
@@ -268,14 +268,14 @@ class PYTORCH_IR_TESTER(object):
               y0 = F.prelu(x, self.weight0)
               # y1 = F.prelu(x, self.weight1)
               return y0
-        self.convert_pytorch_and_compare([input_shape], case_name, Model().eval())
+        self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
       _test_prelu((1, 3, 32, 32))
       _test_prelu((2, 32, 16))
       _test_prelu((32, 32))
 
 
-def test_one_case_in_all(tester: PYTORCH_IR_TESTER, case, error_cases, success_cases):
+def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
   try:
     tester.test_single(case)
   except:
@@ -283,7 +283,7 @@ def test_one_case_in_all(tester: PYTORCH_IR_TESTER, case, error_cases, success_c
     return
   success_cases.append(case)
 
-def test_all(tester: PYTORCH_IR_TESTER):
+def test_all(tester: TORCH_IR_TESTER):
   import multiprocessing
   process_number = multiprocessing.cpu_count() // 2 + 1
   processes = []
@@ -308,10 +308,10 @@ def test_all(tester: PYTORCH_IR_TESTER):
   print("Success: {}".format(success_cases))
   print("Failure: {}".format(error_cases))
   if error_cases:
-    print("====== test_pytorch.py --chip {} TEST Failed ======".format(tester.chip))
+    print("====== test_torch.py --chip {} TEST Failed ======".format(tester.chip))
     exit(1)
   else:
-    print("====== test_pytorch.py --chip {} TEST Success ======".format(tester.chip))
+    print("====== test_torch.py --chip {} TEST Success ======".format(tester.chip))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -324,9 +324,9 @@ if __name__ == "__main__":
                         help="chip platform name")
     # yapf: enable
     args = parser.parse_args()
-    tester = PYTORCH_IR_TESTER(args.chip, args.mode)
-    os.makedirs("pytorch_test", exist_ok=True)
-    os.chdir("pytorch_test")
+    tester = TORCH_IR_TESTER(args.chip, args.mode)
+    os.makedirs("torch_test", exist_ok=True)
+    os.chdir("torch_test")
     if args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:
