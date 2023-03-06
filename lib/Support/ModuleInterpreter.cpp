@@ -291,20 +291,21 @@ bool ModuleInterpreter::getTensorQuantInfo(const std::string name,
     auto qtype = module::getUniformQuantizedType(value);
     scale = qtype.getScale();
     zp = qtype.getZeroPoint();
-    if (stype.isSignlessInteger(8))
+    if (stype.isSignlessInteger(8) || stype.isUnsignedInteger(8))
       dtype = std::string("U8");
     else if (stype.isSignedInteger(8))
       dtype = std::string("I8");
-    else if (stype.isSignlessInteger(16))
+    else if (stype.isSignlessInteger(16) || stype.isUnsignedInteger(16))
       dtype = std::string("U16");
     else if (stype.isSignedInteger(16))
       dtype = std::string("I16");
     else if (stype.isSignedInteger(32))
       dtype = std::string("I32");
-    else if (stype.isSignlessInteger(32))
+    else if (stype.isSignlessInteger(32) || stype.isUnsignedInteger(32))
       dtype = std::string("U32");
-    else
+    else {
       dtype = std::string("I4");
+    }
   } else if (stype.isa<FloatType>()) {
     if (stype.isF16()) {
       dtype = std::string("F16");
