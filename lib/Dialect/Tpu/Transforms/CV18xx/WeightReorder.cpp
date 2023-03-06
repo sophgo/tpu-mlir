@@ -25,6 +25,7 @@ void populateWeightReorderPatterns(RewritePatternSet *patterns) {
     WeightReorder<tpu::Conv2DOp, BFloat16Type>,
     WeightReorder<tpu::DeconvOp, int8_t>,
     WeightReorder<tpu::DeconvOp, BFloat16Type>,
+    WeightReorder<tpu::Conv3DOp, BFloat16Type>,
     WeightReorder<tpu::GRUOp, int8_t>,
     WeightReorder<tpu::GRUOp, BFloat16Type>,
     WeightReorder<tpu::LSTMCVIOp, BFloat16Type>
