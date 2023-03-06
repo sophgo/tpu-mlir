@@ -42,3 +42,6 @@ LogicalResult top::ProposalOp::inference(InferenceParameter &p) {
   proposal_func.invoke();
   return success();
 }
+
+void top::ProposalOp::shape_inference() {}
+

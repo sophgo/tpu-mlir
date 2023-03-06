@@ -105,3 +105,5 @@ LogicalResult top::Depth2SpaceOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::Depth2SpaceOp::shape_inference() {}

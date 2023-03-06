@@ -262,3 +262,6 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     }
     return success();
 }
+
+void top::InterpOp::shape_inference() {}
+

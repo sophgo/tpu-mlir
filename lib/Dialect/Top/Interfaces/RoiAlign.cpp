@@ -42,3 +42,5 @@ LogicalResult top::RoiAlignOp::inference(InferenceParameter &p) {
   func.invoke();
   return success();
 }
+
+void top::RoiAlignOp::shape_inference() {}

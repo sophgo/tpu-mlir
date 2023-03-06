@@ -43,3 +43,5 @@ LogicalResult top::ROIPoolingOp::inference(InferenceParameter &p) {
   func.invoke();
   return success();
 }
+
+void top::ROIPoolingOp::shape_inference() {}

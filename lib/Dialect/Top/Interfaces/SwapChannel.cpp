@@ -31,12 +31,15 @@ LogicalResult top::SwapChannelOp::inference(InferenceParameter &p) {
   int batch_length = c * frame_size;
   for (int i = 0; i < n; ++i) {
     for (int j = 0; j < c; j++) {
-      float *p_in =
-          input_data + i * batch_length + frame_size * order->at(j);
+      float *p_in = input_data + i * batch_length + frame_size * order->at(j);
       float *p_out = output_data + i * batch_length + frame_size * j;
       memcpy((void *)p_out, (void *)p_in, frame_size * sizeof(float));
     }
   }
 
   return success();
+}
+
+void top::SwapChannelOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

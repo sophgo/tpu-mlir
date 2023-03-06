@@ -90,3 +90,5 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ReduceOp::shape_inference() {}

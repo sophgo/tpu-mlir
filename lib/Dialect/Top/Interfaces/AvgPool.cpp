@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::AvgPoolOp::getFLOPs() {
   auto attr = parseParam();
   return module::getNumElements(getOutput()) *
@@ -111,8 +109,10 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   pooling->run();
   if (getDoRelu()) {
     auto limit = getReluLimit().convertToDouble();
-    function_relu(p.outputs[0], p.outputs[0], module::getNumElements(getOutput()),
-                  limit);
+    function_relu(p.outputs[0], p.outputs[0],
+                  module::getNumElements(getOutput()), limit);
   }
   return success();
 }
+
+void top::AvgPoolOp::shape_inference() {}

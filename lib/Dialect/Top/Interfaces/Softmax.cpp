@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 int64_t top::SoftmaxOp::getFLOPs() {
   //   2*n          -- compute shifted logits
   //   n            -- exp of shifted logits
@@ -61,4 +59,8 @@ LogicalResult top::SoftmaxOp::inference(InferenceParameter &p) {
   auto softmax = (Softmax *)p.handle;
   softmax->run();
   return success();
+}
+
+void top::SoftmaxOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

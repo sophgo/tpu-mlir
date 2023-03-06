@@ -72,3 +72,7 @@ LogicalResult top::QuantizeLinearOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::QuantizeLinearOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

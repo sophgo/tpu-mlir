@@ -52,3 +52,6 @@ LogicalResult top::CopyOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::CopyOp::shape_inference() {}
+

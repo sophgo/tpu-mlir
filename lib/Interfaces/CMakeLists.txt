@@ -7,6 +7,7 @@ set(LLVM_OPTIONAL_SOURCES
   DynLocalGenInterface.cpp
   DynGlobalGenInterface.cpp
   TypeInterface.cpp
+  ShapeInterface.cpp
   )
 
 function(add_mlir_interface_library name)
@@ -31,3 +32,4 @@ add_mlir_interface_library(LocalGenInterface)
 add_mlir_interface_library(DynLocalGenInterface)
 add_mlir_interface_library(DynGlobalGenInterface)
 add_mlir_interface_library(TypeInterface)
+add_mlir_interface_library(ShapeInterface)

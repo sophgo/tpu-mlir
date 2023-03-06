@@ -46,3 +46,5 @@ LogicalResult top::RetinaFaceDetectionOp::inference(InferenceParameter &p) {
   func.invoke();
   return success();
 }
+
+void top::RetinaFaceDetectionOp::shape_inference() {}

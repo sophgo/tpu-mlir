@@ -70,3 +70,5 @@ LogicalResult top::ConcatOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::ConcatOp::shape_inference() {}

@@ -12,9 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-int64_t top::TanhOp::getFLOPs() { return module::getNumElements(getOutput()) * 4; }
+int64_t top::TanhOp::getFLOPs() {
+  return module::getNumElements(getOutput()) * 4;
+}
 
 LogicalResult top::TanhOp::init(InferenceParameter &p) { return success(); }
 void top::TanhOp::deinit(InferenceParameter &p) {}
@@ -28,3 +28,5 @@ LogicalResult top::TanhOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::TanhOp::shape_inference() { common_shape_inference(getOperation()); }

@@ -12,9 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-
 int64_t top::LayerNormOp::getFLOPs() {
   const bool have_weight = !getWeight().getType().isa<NoneType>();
   const bool have_bias = !getBias().getType().isa<NoneType>();
@@ -22,7 +19,9 @@ int64_t top::LayerNormOp::getFLOPs() {
   return num_elem * (10 + have_weight + have_bias);
 }
 
-LogicalResult top::LayerNormOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::LayerNormOp::init(InferenceParameter &p) {
+  return success();
+}
 void top::LayerNormOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
@@ -45,17 +44,17 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
   const bool need_mean = !getMean().getType().isa<NoneType>();
   const bool need_rstd = !getRstd().getType().isa<NoneType>();
 
-  const float* input_data = p.inputs[0];
-  const float* weight_data = have_weight ? p.inputs[1] : nullptr;
-  const float* bias_data = have_bias ? p.inputs[2] : nullptr;
-  float* output_data = p.outputs[0];
-  float* mean_data = need_mean ? p.outputs[1] : nullptr;
-  float* rstd_data = need_rstd ? p.outputs[2] : nullptr;
+  const float *input_data = p.inputs[0];
+  const float *weight_data = have_weight ? p.inputs[1] : nullptr;
+  const float *bias_data = have_bias ? p.inputs[2] : nullptr;
+  float *output_data = p.outputs[0];
+  float *mean_data = need_mean ? p.outputs[1] : nullptr;
+  float *rstd_data = need_rstd ? p.outputs[2] : nullptr;
 
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
 
-  #pragma omp parallel for schedule(static, omp_schedule(outer_dim))
+#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
     for (int j = 0; j < inner_dim; ++j) {
       mean_arr[i] += input_data[i * inner_dim + j];
@@ -76,7 +75,8 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
       rstd_data[i] = rstd_arr[i];
     }
     for (int j = 0; j < inner_dim; ++j) {
-      output_data[i * inner_dim + j] = input_data[i * inner_dim + j] - mean_arr[i];
+      output_data[i * inner_dim + j] =
+          input_data[i * inner_dim + j] - mean_arr[i];
       output_data[i * inner_dim + j] *= rstd_arr[i];
       if (have_weight) {
         output_data[i * inner_dim + j] *= weight_data[j];
@@ -88,3 +88,5 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::LayerNormOp::shape_inference() {}

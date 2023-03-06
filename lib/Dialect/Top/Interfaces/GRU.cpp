@@ -194,3 +194,5 @@ LogicalResult top::GRUOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::GRUOp::shape_inference() {}

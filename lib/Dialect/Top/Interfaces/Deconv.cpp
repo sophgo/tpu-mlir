@@ -117,3 +117,5 @@ LogicalResult top::DeconvOp::inference(InferenceParameter &p) {
   deconv->run();
   return success();
 }
+
+void top::DeconvOp::shape_inference() {}

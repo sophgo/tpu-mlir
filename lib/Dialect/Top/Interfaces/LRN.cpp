@@ -50,3 +50,5 @@ LogicalResult top::LRNOp::inference(InferenceParameter &p) {
   lrn->run();
   return success();
 }
+
+void top::LRNOp::shape_inference() { common_shape_inference(getOperation()); }

@@ -12,7 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
 int64_t top::PreprocessOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -23,7 +22,11 @@ LogicalResult top::PreprocessOp::init(InferenceParameter &p) {
 void top::PreprocessOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::PreprocessOp::inference(InferenceParameter &p) {
-  //top::PreprocessOp no need to inference
+  // top::PreprocessOp no need to inference
   llvm_unreachable("top::PreprocessOp no need to inference");
   return failure();
+}
+
+void top::PreprocessOp::shape_inference() {
+  common_shape_inference(getOperation());
 }

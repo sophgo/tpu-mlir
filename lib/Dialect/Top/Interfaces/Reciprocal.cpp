@@ -36,3 +36,7 @@ LogicalResult top::ReciprocalOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ReciprocalOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

@@ -96,3 +96,5 @@ LogicalResult top::MaxPoolWithMaskOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::MaxPoolWithMaskOp::shape_inference() {}

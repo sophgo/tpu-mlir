@@ -51,3 +51,5 @@ LogicalResult top::SplitOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::SplitOp::shape_inference() {}

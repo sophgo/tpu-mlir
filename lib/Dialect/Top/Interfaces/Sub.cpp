@@ -54,3 +54,5 @@ LogicalResult top::SubOp::inference(InferenceParameter &p) {
   binary->run();
   return success();
 }
+
+void top::SubOp::shape_inference() {}

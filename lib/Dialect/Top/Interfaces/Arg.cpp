@@ -13,7 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <float.h>
 
-
 int64_t top::ArgOp::getFLOPs() { return module::getNumElements(getIndices()); }
 
 LogicalResult top::ArgOp::init(InferenceParameter &p) { return success(); }
@@ -23,7 +22,7 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
   float *input_v = p.inputs[0];
   float *output_idx = p.outputs[0];
   const bool need_val = !getValues().getType().isa<NoneType>();
-  float* output_val = need_val ? p.outputs[1] : nullptr;
+  float *output_val = need_val ? p.outputs[1] : nullptr;
   auto type_val = getMode().str();
   auto axis_val = getAxis();
   auto input_shape = module::getShape(getInput());
@@ -55,7 +54,7 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
           }
         }
         output_idx[o * inner_dims + i] = target_idx;
-        if(need_val){
+        if (need_val) {
           output_val[o * inner_dims + i] = target_val;
         }
       } else {
@@ -65,3 +64,5 @@ LogicalResult top::ArgOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ArgOp::shape_inference() {}

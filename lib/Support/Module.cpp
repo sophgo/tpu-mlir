@@ -570,6 +570,21 @@ bool isWeight(Value v) {
 
 bool isNone(Value v) { return v.getType().isa<mlir::NoneType>(); }
 
+bool isUnranked(Value v) { return v.getType().isa<mlir::UnrankedTensorType>(); }
+
+void setShapeOrVerify(Value v, llvm::ArrayRef<int64_t> shape) {
+  if (isUnranked(v)) {
+    auto newType = RankedTensorType::get(shape, getElementType(v));
+    v.setType(newType);
+  } else {
+    auto s = getShape(v);
+    if (s != shape) {
+      v.dump();
+      llvm_unreachable("Shape Verify failed");
+    }
+  }
+}
+
 llvm::StringRef getModuleName() {
   return m->getAttrOfType<StringAttr>(Attr::NAME).getValue();
 }

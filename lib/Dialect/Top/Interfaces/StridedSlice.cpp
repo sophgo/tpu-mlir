@@ -97,3 +97,5 @@ LogicalResult top::StridedSliceOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::StridedSliceOp::shape_inference() {}

@@ -79,3 +79,5 @@ LogicalResult top::ScatterNDOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::ScatterNDOp::shape_inference() {}

@@ -27,3 +27,5 @@ LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ReshapeOp::shape_inference() {}

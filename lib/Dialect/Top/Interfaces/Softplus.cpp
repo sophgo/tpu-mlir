@@ -29,3 +29,7 @@ LogicalResult top::SoftplusOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::SoftplusOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

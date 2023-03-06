@@ -119,3 +119,6 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   conv->run();
   return success();
 }
+
+void top::ConvOp::shape_inference() {}
+

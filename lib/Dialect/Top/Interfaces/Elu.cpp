@@ -12,13 +12,9 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-int64_t top::EluOp::getFLOPs() {
-  return module::getNumElements(getOutput());
-}
+int64_t top::EluOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
-LogicalResult top::EluOp::init(InferenceParameter &p) {
-  return success();
-}
+LogicalResult top::EluOp::init(InferenceParameter &p) { return success(); }
 void top::EluOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::EluOp::inference(InferenceParameter &p) {
@@ -27,8 +23,10 @@ LogicalResult top::EluOp::inference(InferenceParameter &p) {
   int64_t num_elements = module::getNumElements(getInput());
   float alpha = static_cast<float>(getAlpha().convertToDouble());
 #pragma omp parallel for schedule(static, omp_schedule(num_elements))
-    for (int64_t i = 0; i < num_elements; ++i) {
-        dst[i] = src[i] > 0 ? src[i] : alpha * (std::exp(src[i]) - 1);
-    }
-    return success();
+  for (int64_t i = 0; i < num_elements; ++i) {
+    dst[i] = src[i] > 0 ? src[i] : alpha * (std::exp(src[i]) - 1);
+  }
+  return success();
 }
+
+void top::EluOp::shape_inference() { common_shape_inference(getOperation()); }

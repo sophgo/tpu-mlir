@@ -30,3 +30,5 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::WhereOp::shape_inference() {}

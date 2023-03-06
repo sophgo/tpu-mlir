@@ -60,3 +60,5 @@ LogicalResult top::DetectionOutputOp::inference(InferenceParameter &p) {
   det_func.invoke();
   return success();
 }
+
+void top::DetectionOutputOp::shape_inference() {}

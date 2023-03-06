@@ -13,8 +13,6 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 
-
-
 int64_t top::YoloDetectionOp::getFLOPs() {
   return module::getNumElements(getOutput());
 }
@@ -38,7 +36,7 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   param.anchors = getAnchors().str();
   param.num_boxes = getNumBoxes();
   param.mask_group_size = getMaskGroupSize();
-  ArrayAttr&& mask = getMask();
+  ArrayAttr &&mask = getMask();
   for (uint32_t i = 0; i < mask.size(); i++)
     param.mask[i] = (float)(mask[i].cast<IntegerAttr>().getInt());
   for (size_t i = 0; i < getInputs().size(); ++i) {
@@ -60,3 +58,5 @@ LogicalResult top::YoloDetectionOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::YoloDetectionOp::shape_inference() {}

@@ -49,3 +49,5 @@ LogicalResult top::MinOp::inference(InferenceParameter &p) {
   binary->run();
   return success();
 }
+
+void top::MinOp::shape_inference() {}

@@ -32,3 +32,7 @@ LogicalResult top::LeakyReluOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::LeakyReluOp::shape_inference() {
+  common_shape_inference(getOperation());
+}

@@ -61,3 +61,5 @@ LogicalResult top::CompareOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::CompareOp::shape_inference() {}

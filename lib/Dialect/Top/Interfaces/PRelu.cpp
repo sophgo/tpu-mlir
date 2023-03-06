@@ -12,13 +12,12 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::PReluOp::getFLOPs() { return module::getNumElements(getOutput()); }
 
 LogicalResult top::PReluOp::init(InferenceParameter &p) {
   auto w_shape = module::getShape(getSlope());
-  auto weight_shape = channel_expand_dim(w_shape, module::getShape(getInput()).size());
+  auto weight_shape =
+      channel_expand_dim(w_shape, module::getShape(getInput()).size());
   auto prelu = new PRelu();
   (*prelu)
       .src(p.inputs[0], module::getShape(getInput()))
@@ -46,3 +45,5 @@ LogicalResult top::PReluOp::inference(InferenceParameter &p) {
   prelu->run();
   return success();
 }
+
+void top::PReluOp::shape_inference() { common_shape_inference(getOperation()); }

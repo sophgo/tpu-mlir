@@ -13,9 +13,9 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
-int64_t top::MishOp::getFLOPs() { return module::getNumElements(getOutput()) * 4; }
+int64_t top::MishOp::getFLOPs() {
+  return module::getNumElements(getOutput()) * 4;
+}
 
 LogicalResult top::MishOp::init(InferenceParameter &p) { return success(); }
 void top::MishOp::deinit(InferenceParameter &p) {}
@@ -29,3 +29,5 @@ LogicalResult top::MishOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::MishOp::shape_inference() { common_shape_inference(getOperation()); }

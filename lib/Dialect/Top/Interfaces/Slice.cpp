@@ -58,3 +58,5 @@ LogicalResult top::SliceOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::SliceOp::shape_inference() {}

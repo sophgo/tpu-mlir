@@ -50,3 +50,5 @@ LogicalResult top::GatherOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::GatherOp::shape_inference() {}

@@ -200,3 +200,5 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
 
   return success();
 }
+
+void top::PadOp::shape_inference() {}

@@ -11,17 +11,17 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
-
 int64_t top::ShuffleChannelOp::getFLOPs() { return 0; }
 
-LogicalResult top::ShuffleChannelOp::init(InferenceParameter &p) { return success(); }
+LogicalResult top::ShuffleChannelOp::init(InferenceParameter &p) {
+  return success();
+}
 
 void top::ShuffleChannelOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::ShuffleChannelOp::inference(InferenceParameter &p) {
   int64_t group = this->getGroup();
-  //auto input = this->getInput();
+  // auto input = this->getInput();
   float *input_data = p.inputs[0];
   float *output_data = p.outputs[0];
   auto input_shape = module::getShape(this->getInput());
@@ -51,3 +51,5 @@ LogicalResult top::ShuffleChannelOp::inference(InferenceParameter &p) {
   }
   return success();
 }
+
+void top::ShuffleChannelOp::shape_inference() {}
