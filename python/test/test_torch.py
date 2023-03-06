@@ -33,6 +33,7 @@ class TORCH_IR_TESTER(object):
         #############################
         "Conv2d": self.test_Conv2d,
         "Prelu": self.test_Prelu,
+        "Add": self.test_Add,
       }
       self.support_quant_modes = ["f32", "f16", "bf16"]
       #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
@@ -252,6 +253,27 @@ class TORCH_IR_TESTER(object):
       _test_convolution((1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
       _test_convolution((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
       _test_convolution((1, 3, 32, 32), (3, 3), 12, group=3, padding=(1,1), stride=(2,1))
+
+    #######################################################################
+    # Add
+    # ------------
+    def test_Add(self, case_name):
+      """Add"""
+      def _test_add(in0_shape, in1_shape, alpha = 1.0):
+        class Model(nn.Module):
+          def __init__(self):
+              super(Model, self).__init__()
+              self.weight = torch.randn(in1_shape)
+          def forward(self, x):
+              y0 = x + 1
+              y1 = torch.add(self.weight, y0, alpha=alpha)
+              # y1 = torch.add(y0, self.weight, alpha=alpha)
+              return y1
+        self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
+      _test_add((1, 3, 32, 32), (1, 3, 32, 32), 3)
+      _test_add((2, 32, 16), (2, 1, 16), 3)
+      _test_add((32, 32), (32))
 
     #######################################################################
     # Prelu
