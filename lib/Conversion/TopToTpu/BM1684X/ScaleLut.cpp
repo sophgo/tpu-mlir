@@ -24,20 +24,14 @@ void ScaleLutLowering::LoweringINT8(PatternRewriter &rewriter, top::ScaleLutOp o
   int table_w = 16;
   int table_hw = table_h * table_w;
   int table_size = c * table_hw;
-  bool sign = false;
+  bool sign = op.getSign();
   std::vector<NamedAttribute> attrs;
   attrs.emplace_back(rewriter.getNamedAttr("scale", op.getScaleAttr()));
   attrs.emplace_back(rewriter.getNamedAttr("bias", op.getBiasAttr()));
+  attrs.emplace_back(rewriter.getNamedAttr("sign", op.getSignAttr()));
   auto table_shape = std::vector<int64_t>{1, c, table_h, table_w};
   std::vector<Value> operands;
   operands.emplace_back(input_val);
-
-  for (int i = 0; i < bias->size(); i++) {
-    if (bias->at(i) != 0) {
-      sign = true;
-      break;
-    }
-  }
 
   if (!sign) {
     std::vector<uint8_t> table(table_size, 0);

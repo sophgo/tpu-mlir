@@ -47,11 +47,11 @@ public:
     std::string pixel_format = this->customization_format;
     fn.walk([&](top::InputOp inputOp) {
       double threshold;
-      if (quant_mode == "BF16") {
-        threshold = 127;
-      } else if (quant_mode == "INT8") {
+      if (quant_mode == "INT8") {
         auto itype = module::getCalibratedType(inputOp.getOutput());
         threshold = itype.getMax();
+      } else {
+        threshold = 127; // a random threshold value for Type
       }
       auto name = module::getName(inputOp.getOutput()).str();
       auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
@@ -126,6 +126,7 @@ public:
           break;
         }
       }
+      attrs.emplace_back(builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
       auto cali_type = quant::CalibratedQuantizedType::get(
           builder.getF32Type(), sign ? -threshold : 0, threshold);
       auto type = RankedTensorType::get({n, c, h, w}, cali_type);

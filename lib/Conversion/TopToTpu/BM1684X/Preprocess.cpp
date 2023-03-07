@@ -46,35 +46,19 @@ void swapInputChannelOfFilter(std::vector<T> &filter_data,
 }
 
 template <typename T>
-LogicalResult FoldSwapAxisOp(Operation *op, PatternRewriter &rewriter) {
-  auto swapOp = dyn_cast_or_null<top::SwapChannelOp>(op);
-  if (!swapOp) {
-    return failure();
-  }
-  auto nextOp = module::getNextOp(swapOp);
-  if (!nextOp) {
-    return failure();
-  }
-  auto convOp = dyn_cast_or_null<tpu::Conv2DOp>(nextOp);
-  if (!convOp) {
-    return failure();
-  }
-  if (convOp.getGroup() != 1) {
-    return failure();
-  }
+LogicalResult FoldSwapAxisOp(Operation *op, PatternRewriter &rewriter,
+                             tpu::Conv2DOp &convOp, RankedTensorType &filter_type) {
   assert(convOp.getNumOperands() == 3 && "Conv2D op should have 3 operands");
   // filter
   auto filterOp = cast<top::WeightOp>(convOp.getFilter().getDefiningOp());
   auto filter_data = *(filterOp.read<T>());
   auto filter_name = module::getName(filterOp.getOutput()).str();
-  auto filter_type =
-      convOp.getFilter().getType().template cast<RankedTensorType>();
   std::vector<T> new_filter_data(filter_data.size());
   swapInputChannelOfFilter<T>(filter_data, new_filter_data, filter_type);
   auto newFilterOp = top::WeightOp::create(
       convOp, filter_name + "_swap_channel", new_filter_data, filter_type);
   convOp.setOperand(1, newFilterOp);
-  rewriter.replaceOp(op, {swapOp.getOperand()});
+  rewriter.replaceOp(op, op->getOperands());
   return success();
 }
 
@@ -91,6 +75,7 @@ public:
     std::string channel_order = op.getChannelOrder().str();
     this->mean = *(module::getF64Array(op.getMean()));
     this->scale = *(module::getF64Array(op.getScale()));
+    this->sign = op.getSign();
     std::string pixel_format = op.getCustomizationFormat().str();
     module::getNCHW(op.getResult(), n, c, h, w, false);
     if (resized_dims->size() == 2) {
@@ -101,11 +86,14 @@ public:
       this->resize_w = w;
     }
     auto caliType = module::getCalibratedType(op.getOutput());
-    double qmax = _asymmetric ? caliType.getMax() : module::getThreshold(op.getOutput());
+    double qmax =
+        _asymmetric ? caliType.getMax() : module::getThreshold(op.getOutput());
     double qmin = _asymmetric ? caliType.getMin() : -qmax;
     std::map<std::string, std::pair<std::string, std::string>> attributes_map =
-        {{"RGB_PLANAR", {"rgb", "nchw"}}, {"RGB_PACKED", {"rgb", "nhwc"}},
-         {"BGR_PLANAR", {"bgr", "nchw"}}, {"BGR_PACKED", {"bgr", "nhwc"}},
+        {{"RGB_PLANAR", {"rgb", "nchw"}},
+         {"RGB_PACKED", {"rgb", "nhwc"}},
+         {"BGR_PLANAR", {"bgr", "nchw"}},
+         {"BGR_PACKED", {"bgr", "nhwc"}},
          {"GRAYSCALE", {"bgr", "nchw"}}};
     if (attributes_map.find(pixel_format) == attributes_map.end())
       llvm_unreachable("customization format is not supported yet.");
@@ -149,15 +137,29 @@ public:
 
     rewriter.replaceOp(op, {currentOut});
 
+    // merge swapChannelOp into the following Conv filter
     if (swap_channel) {
       Operation *curOp = currentOut.getDefiningOp();
-      if (quant_mode == "INT8") {
-        FoldSwapAxisOp<int8_t>(curOp, rewriter);
-      } else {
-        FoldSwapAxisOp<uint16_t>(curOp, rewriter);
+      auto nextOp = module::getNextOp(curOp);
+      if (nextOp) {
+        auto convOp = dyn_cast_or_null<tpu::Conv2DOp>(nextOp);
+        if (convOp && convOp.getGroup() == 1) {
+          auto filter_type =
+              convOp.getFilter().getType().template cast<RankedTensorType>();
+          auto eleType = filter_type.getElementType();
+          if (eleType.isInteger(8)) {
+            FoldSwapAxisOp<int8_t>(curOp, rewriter, convOp, filter_type);
+          } else if (eleType.isBF16() || eleType.isF16()) {
+            FoldSwapAxisOp<uint16_t>(curOp, rewriter, convOp, filter_type);
+          } else if (eleType.isF32()) {
+            FoldSwapAxisOp<float>(curOp, rewriter, convOp, filter_type);
+          } else {
+            llvm_unreachable(
+                "FoldSwapAxisOp does not support current quantize type");
+          }
+        }
       }
     }
-
   }
 
 private:
@@ -165,6 +167,7 @@ private:
   int64_t resize_h, resize_w;
   std::vector<double> mean, scale;
   bool _asymmetric = false;
+  bool sign;
 
   Value insertTransposeOp(PatternRewriter &rewriter, std::string &name,
                           Value opd) {
@@ -203,15 +206,7 @@ private:
   Value insertScaleLutOp(PatternRewriter &rewriter, std::string &name,
                          Value opd, double threshold, bool swap_channel) {
     auto loc = NameLoc::get(rewriter.getStringAttr(name + "_scale_lut"));
-    bool sign = false;
-    for (int i = 0; i < this->mean.size(); i++) {
-      if (this->mean[i] > 0) {
-        sign = true;
-        break;
-      }
-    }
-
-    double qscale = module::getScale(threshold, sign, 8);
+    double qscale = module::getScale(threshold, this->sign, 8);
     std::vector<double> scales;
     std::vector<double> bias;
     for (int i = 0; i < c; i++) {
@@ -233,6 +228,8 @@ private:
         rewriter.getNamedAttr("scale", rewriter.getF64ArrayAttr(scales)));
     attrs.emplace_back(
         rewriter.getNamedAttr("bias", rewriter.getF64ArrayAttr(bias)));
+    attrs.emplace_back(
+        rewriter.getNamedAttr("sign", rewriter.getBoolAttr(this->sign)));
     auto cali_type = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
                                                          -threshold, threshold);
     auto type = RankedTensorType::get({n, c, h, w}, cali_type);

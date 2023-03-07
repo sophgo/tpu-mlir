@@ -1811,6 +1811,7 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
     Inputs:
       `input`          : required, the variadic activation memref.
       `table`          : required, the lookup table
+      `sign`           : if output is signed
 
     Result:
       `output`          : result tensor.
@@ -1826,6 +1827,7 @@ def Tpu_ScaleLutOp : Tpu_Op<"ScaleLut", [
     AnyTensor:$table,
     F64ArrayAttr:$scale,
     F64ArrayAttr:$bias,
+    DefaultValuedAttr<BoolAttr, "true">:$sign,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
   let results = (outs AnyTensor:$output);
