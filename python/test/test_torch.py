@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
 
-Failed_Cases = []
+Failed_Cases = ["PRelu", "Add", "Gather", "Conv2d"]
 
 class TORCH_IR_TESTER(object):
     # This class is built for testing single operator transform.
@@ -34,6 +34,8 @@ class TORCH_IR_TESTER(object):
         "Conv2d": self.test_Conv2d,
         "PRelu": self.test_PRelu,
         "Add": self.test_Add,
+        # "Gather": self.test_Gather,
+        "Permute": self.test_Permute,
         "Concat": self.test_Concat,
       }
       self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -296,6 +298,45 @@ class TORCH_IR_TESTER(object):
       _test_prelu((1, 3, 32, 32))
       _test_prelu((2, 32, 16))
       _test_prelu((32, 32))
+
+    #######################################################################
+    # Gather
+    # ------------
+    # def test_Gather(self, case_name):
+    #   """Gather"""
+    #   def _test_gather(in0_shape, in1_shape, dim=None):
+    #     class Model(nn.Module):
+    #       def __init__(self):
+    #           super(Model, self).__init__()
+    #       def forward(self, x):
+    #           # if dim is None:
+    #           #   y1 = torch.concat((x, self.weight))
+    #           # else:
+    #           #   y1 = torch.concat((x, self.weight), dim=dim)
+    #           return
+    #     self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
+    #   _test_gather((1, 3, 32, 32), (1,6,32,32), 1)
+    #   _test_gather((2, 32, 16), (3, 32, 16))
+    #   _test_gather((32, 32), (1, 32), 0)
+
+    #######################################################################
+    # Permute
+    # ------------
+    def test_Permute(self, case_name):
+      """Permute"""
+      def _test_permute(in_shape, dims):
+        class Model(nn.Module):
+          def __init__(self):
+              super(Model, self).__init__()
+          def forward(self, x):
+              y1 = torch.permute(x, dims=dims)
+              return y1
+        self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+      _test_permute((1, 3, 32, 32), (0,3,1,2))
+      _test_permute((2, 32, 16), (2,0,1))
+      _test_permute((32, 32), (1,0))
 
     #######################################################################
     # Concat

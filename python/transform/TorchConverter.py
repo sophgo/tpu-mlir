@@ -130,6 +130,7 @@ class TorchConverter(BaseConverter):
       "aten::add": lambda node: self.convert_add_op(node),
       "aten::sub": lambda node: self.convert_sub_op(node),
       "aten::prelu": lambda node: self.convert_prelu_op(node),
+      "aten::permute": lambda node: self.convert_permute_op(node),
       "aten::cat": lambda node: self.convert_concat_op(node),
     }
     self.check_op_names()
@@ -379,6 +380,16 @@ class TorchConverter(BaseConverter):
     op0 = self.getOp(torch_node.inputs[0])
     op1 = self.getOp(torch_node.inputs[1])
     new_op = self.mlir.create_prelu_op([op0, op1], None, **{'name': torch_node.name})
+    self.addOperand(torch_node.name, new_op)
+
+  def convert_permute_op(self, torch_node: TorchNode):
+    op = self.getOp(torch_node.inputs[0])
+    order = self.const_val[torch_node.inputs[1]]
+    p = {
+        'name': torch_node.name,
+        'order': order,
+    }
+    new_op = self.mlir.create_permute_op([op], None, **p)
     self.addOperand(torch_node.name, new_op)
 
   def convert_concat_op(self, torch_node: TorchNode):
