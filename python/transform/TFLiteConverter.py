@@ -741,7 +741,8 @@ class TFLiteConverter(BaseConverter):
         op_options = op.builtin_options
         param = ConcatenationOptions()
         param.Init(op_options.Bytes, op_options.Pos)
-        axis = self.__axis_transpose(op, param.Axis()) if self.need_transpose else param.Axis()
+        axis = param.Axis() if param.Axis() >= 0 else param.Axis() + len(op.inputs[0].shape)
+        axis = self.__axis_transpose(op, axis) if self.need_transpose else axis
         fused_active = param.FusedActivationFunction()
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))

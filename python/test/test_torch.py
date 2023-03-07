@@ -34,6 +34,7 @@ class TORCH_IR_TESTER(object):
         "Conv2d": self.test_Conv2d,
         "PRelu": self.test_PRelu,
         "Add": self.test_Add,
+        "Concat": self.test_Concat,
       }
       self.support_quant_modes = ["f32", "f16", "bf16"]
       #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
@@ -296,6 +297,27 @@ class TORCH_IR_TESTER(object):
       _test_prelu((2, 32, 16))
       _test_prelu((32, 32))
 
+    #######################################################################
+    # Concat
+    # ------------
+    def test_Concat(self, case_name):
+      """Concat"""
+      def _test_concat(in0_shape, in1_shape, dim=None):
+        class Model(nn.Module):
+          def __init__(self):
+              super(Model, self).__init__()
+              self.weight = torch.randn(in1_shape)
+          def forward(self, x):
+              if dim is None:
+                y1 = torch.concat((x, self.weight))
+              else:
+                y1 = torch.concat((x, self.weight), dim=dim)
+              return y1
+        self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
+      _test_concat((1, 3, 32, 32), (1,6,32,32), 1)
+      _test_concat((2, 32, 16), (3, 32, 16))
+      _test_concat((32, 32), (1, 32), 0)
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
   try:

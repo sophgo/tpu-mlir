@@ -71,4 +71,15 @@ LogicalResult top::ConcatOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ConcatOp::shape_inference() {}
+void top::ConcatOp::shape_inference() {
+  auto axis_ = getAxis();
+  int64_t shape_axis = 0;
+  for (auto inp : getInputs()) {
+    auto shape = module::getShape(inp);
+    shape_axis += shape[axis_];
+  }
+  auto in0_shape = module::getShape(getInputs()[0]);
+  std::vector<int64_t> out_shape(in0_shape);
+  out_shape[axis_] = shape_axis;
+  module::setShapeOrVerify(getOutput(), out_shape);
+}
