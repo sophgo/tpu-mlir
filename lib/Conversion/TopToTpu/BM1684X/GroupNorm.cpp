@@ -49,7 +49,7 @@ static void LoweringGroupNorm(PatternRewriter &rewriter, top::GroupNormOp op,
   } else {
     new_type = op.getResult().getType();
   }
-  rewriter.replaceOpWithNewOp<tpu::InstanceNormOp>(op, new_type, opds, attrs);
+  rewriter.replaceOpWithNewOp<tpu::GroupNormOp>(op, new_type, opds, attrs);
 }
 
 void GroupNormLowering::LoweringF32(PatternRewriter &rewriter,

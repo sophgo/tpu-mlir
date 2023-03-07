@@ -102,7 +102,56 @@ struct TopFuseReshape3 : public OpRewritePattern<ReshapeOp> {
   }
 };
 
+// reshape<(0,ng,-1)> + instance_norm -> group_norm<ng> + reshape
+struct ReshapeInstanceNormPattern : public OpRewritePattern<ReshapeOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ReshapeOp op,
+                                PatternRewriter &rewriter) const override {
+    // check param
+    auto output = op.getOutput();
+    if (!output.hasOneUse())
+      return failure();
+    auto next_op_ = *output.getUsers().begin();
+    if (!isa<InstanceNormOp>(next_op_))
+      return failure();
+    auto next_op = dyn_cast<InstanceNormOp>(next_op_);
+    auto ishape = module::getShape(op.getInput());
+    auto oshape = module::getShape(op.getOutput());
+    if (ishape[0] != oshape[0])
+      return failure();
+    if (ishape[1] < oshape[1])
+      return failure();
+    // rewrite now !
+    const auto num_groups = oshape[1];
+    auto input = op.getInput();
+    std::vector<NamedAttribute> attrs;
+    next_op->setAttr("num_groups", rewriter.getI64IntegerAttr(num_groups));
+    for (auto &attr : next_op->getAttrs()) {
+      attrs.push_back(attr);
+    }
+    std::vector<Value> gn_opds = {input, next_op->getOperand(1), next_op->getOperand(2)};
+    auto gn_out_type =
+      RankedTensorType::get(ishape, module::getElementType(input));
+    auto loc = NameLoc::get(
+      rewriter.getStringAttr(module::getName(input).str() + "_GroupNorm"));
+    rewriter.setInsertionPointAfterValue(input);
+    auto gn_op = rewriter.create<GroupNormOp>(
+      loc, gn_out_type, gn_opds, attrs);
+    rewriter.replaceOp(op, {gn_op});
+    auto gn_output = gn_op.getOutput();
+    rewriter.setInsertionPointAfterValue(gn_output);
+    auto new_reshape_out_type = next_op.getResult().getType();
+    rewriter.replaceOpWithNewOp<ReshapeOp>(
+      next_op, new_reshape_out_type, gn_output, std::vector<NamedAttribute>());
+    return failure();
+  }
+};
+
 void ReshapeOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                             MLIRContext *context) {
-  results.insert<TopFuseReshape, TopFuseReshape2, TopFuseReshape3>(context);
+  results.insert<TopFuseReshape,
+                 TopFuseReshape2,
+                 TopFuseReshape3,
+                 ReshapeInstanceNormPattern>(context);
 }

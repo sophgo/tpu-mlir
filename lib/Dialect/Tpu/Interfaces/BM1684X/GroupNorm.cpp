@@ -27,10 +27,11 @@ void tpu::GroupNormOp::codegen_global_bm1684x() {
   group_norm_global_param_t param = {0};
   const bool have_weight = !module::isNone(getWeight());
   const bool have_bias = !module::isNone(getBias());
+  param.axis = 1;
   param.common.group_num = (int)getNumGroups();
   param.common.eps = getEps().convertToDouble();
   param.common.affine = (have_weight << 0) + (have_bias << 1);
-  BM168x::call_global_func("backend_api_layer_norm_global", &param,
+  BM168x::call_global_func("backend_api_group_norm_global", &param,
                            sizeof(param), input_spec->data(),
                            output_spec->data());
 }
@@ -77,7 +78,7 @@ void tpu::GroupNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   param.common.affine = (have_weight << 0) + (have_bias << 1);
   const auto &gi = getGroupInfo(0, 0);
   param.buffer_addr = gi.buffer_addr;
-  BM168x::call_local_func("backend_api_layer_norm_local", &param, sizeof(param),
+  BM168x::call_local_func("backend_api_group_norm_local", &param, sizeof(param),
                           &sec_info, input_spec->data(), output_spec->data());
 }
 
