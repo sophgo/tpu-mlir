@@ -12,7 +12,7 @@
 namespace tpu_mlir {
 namespace bm1684x {
 void PReluLowering::LoweringINT4(PatternRewriter &rewriter, top::PReluOp op,
-                                   bool asymmetric) const {
+                                 bool asymmetric) const {
   LoweringINT8(rewriter, op, asymmetric);
 }
 void PReluLowering::LoweringINT8(PatternRewriter &rewriter, top::PReluOp op,
@@ -72,26 +72,11 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
   for (auto i = 0; i < nInputs; ++i) {
     operands.push_back(op->getOperand(i));
   }
-
-  auto src_shape = module::getShape(op.getInput());
-  auto slope_shape = module::getShape(op.getSlope());
-  int src_dims = src_shape.size();
-  int slope_dims = slope_shape.size();
-  assert(src_dims == slope_dims);
-
+  auto slope_num = module::getNumElements(op.getSlope());
   bool channel_share = false;
-  if (slope_shape[1] == 1) {
+  if (slope_num == 1) {
     channel_share = true;
-  } else {
-    for (int i = 0; i < slope_dims; i++) {
-      if (i != 1 && slope_shape[i] != 1) {
-        assert(0);
-      }
-    }
   }
-
-  auto slopeOp = cast<top::WeightOp>(op.getSlope().getDefiningOp());
-  auto slope_f32 = slopeOp.read<float>();
 
   std::vector<NamedAttribute> attrs;
   for (auto &attr : op->getAttrs()) {
@@ -100,6 +85,8 @@ void PReluLowering::LoweringF32(PatternRewriter &rewriter,
   attrs.push_back(rewriter.getNamedAttr("channel_shared",
                                         rewriter.getBoolAttr(channel_share)));
   if (channel_share) {
+    auto slopeOp = cast<top::WeightOp>(op.getSlope().getDefiningOp());
+    auto slope_f32 = slopeOp.read<float>();
     float *slope_data = slope_f32->data();
     float slope_val = (float)(*slope_data);
     attrs.push_back(rewriter.getNamedAttr("slope_val",

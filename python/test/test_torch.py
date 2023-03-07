@@ -32,7 +32,7 @@ class TORCH_IR_TESTER(object):
         # Torch Test Case, Alphabetically
         #############################
         "Conv2d": self.test_Conv2d,
-        "Prelu": self.test_Prelu,
+        "PRelu": self.test_PRelu,
         "Add": self.test_Add,
       }
       self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -276,20 +276,20 @@ class TORCH_IR_TESTER(object):
       _test_add((32, 32), (32))
 
     #######################################################################
-    # Prelu
+    # PRelu
     # ------------
-    def test_Prelu(self, case_name):
-      """Prelu"""
+    def test_PRelu(self, case_name):
+      """PRelu"""
       def _test_prelu(input_shape):
         class Model(nn.Module):
           def __init__(self):
               super(Model, self).__init__()
-              self.weight0 = torch.randn(1)
-              # self.weight1 = torch.randn(input_shape[1])
+              # self.weight0 = torch.randn(1)
+              self.weight1 = torch.randn(input_shape[1])
           def forward(self, x):
-              y0 = F.prelu(x, self.weight0)
-              # y1 = F.prelu(x, self.weight1)
-              return y0
+              # y0 = F.prelu(x, self.weight0)
+              y1 = F.prelu(x, self.weight1)
+              return y1
         self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
       _test_prelu((1, 3, 32, 32))
@@ -347,8 +347,9 @@ if __name__ == "__main__":
     # yapf: enable
     args = parser.parse_args()
     tester = TORCH_IR_TESTER(args.chip, args.mode)
-    os.makedirs("torch_test", exist_ok=True)
-    os.chdir("torch_test")
+    dir = "torch_test_{}".format(args.chip)
+    os.makedirs(dir, exist_ok=True)
+    os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:

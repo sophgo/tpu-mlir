@@ -161,7 +161,7 @@ def Top_InputOp: Top_BaseOp<"Input"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu, InOutSameShape]> {
+def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
   let summary = "BatchNormalization operation";
   let description = [{
     Applies Batch Normalization over a 4D input (a mini-batch of 2D inputs
@@ -191,7 +191,7 @@ def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu, InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_CastOp:Top_Op<"Cast",[InOutSameShape]> {
+def Top_CastOp:Top_Op<"Cast"> {
   let summary = "Cast operation";
   let description = [{
     quant::UniformQuantizedType cast to float type; or float type cast to quant::UniformQuantizedType
@@ -503,7 +503,7 @@ def Top_MaxOp: Top_Op<"Max"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, InOutSameShape]> {
+def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu]> {
   let summary = "Add Const operator";
 
   let description = [{
@@ -520,7 +520,7 @@ def Top_AddConstOp: Top_Op<"AddConst", [SupportFuseRelu, InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
+def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu]> {
   let summary = "Mul Const operator";
 
   let description = [{
@@ -538,7 +538,7 @@ def Top_MulConstOp: Top_Op<"MulConst", [SupportFuseRelu, InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_NormalizeOp: Top_Op<"Normalize", [InOutSameShape]> {
+def Top_NormalizeOp: Top_Op<"Normalize"> {
   let summary = "Normalize operator";
 
   let description = [{
@@ -565,7 +565,7 @@ def Top_NormalizeOp: Top_Op<"Normalize", [InOutSameShape]> {
   let hasCanonicalizer = 1;
 }
 
-def Top_ReciprocalOp: Top_Op<"Reciprocal", [SupportFuseRelu, InOutSameShape]> {
+def Top_ReciprocalOp: Top_Op<"Reciprocal", [SupportFuseRelu]> {
   let summary = "Constant scalar divide tensor operator";
 
   let description = [{
@@ -664,7 +664,7 @@ def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ReluOp: Top_Op<"Relu",[InOutSameShape]> {
+def Top_ReluOp: Top_Op<"Relu"> {
   let summary = "Relu operator";
 
   let description = [{
@@ -695,7 +695,7 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_ReverseOp:Top_Op<"Reverse", [InOutSameShape]> {
+def Top_ReverseOp:Top_Op<"Reverse"> {
   let summary = "Reverse operation";
   let description = [{
     Reverse on input.
@@ -707,7 +707,7 @@ def Top_ReverseOp:Top_Op<"Reverse", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SigmoidOp : Top_Op<"Sigmoid", [InOutSameShape]> {
+def Top_SigmoidOp : Top_Op<"Sigmoid"> {
   let summary = " Exp operator,  scale * Sigmoid + bias";
   let description = [{
      Y = scale * Sigmoid(x) + bias
@@ -721,7 +721,7 @@ def Top_SigmoidOp : Top_Op<"Sigmoid", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SiLUOp : Top_Op<"SiLU", [InOutSameShape]> {
+def Top_SiLUOp : Top_Op<"SiLU"> {
   let summary = " SiLU operator,  y = x * Sigmoid(x)";
   let description = [{
      Y = x * Sigmoid(x)
@@ -733,7 +733,7 @@ def Top_SiLUOp : Top_Op<"SiLU", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_GELUOp : Top_Op<"GELU", [InOutSameShape]> {
+def Top_GELUOp : Top_Op<"GELU"> {
   let summary = " GELU operator,  0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))";
   let description = [{
      Y = 0.5x * (1.0 + tf.erf(x / tf.sqrt(2.0)))
@@ -797,7 +797,7 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
+def Top_SoftmaxOp:Top_Op<"Softmax"> {
   let summary = "Softmax operation";
   let description = [{
     Integrates some operations related to softmax.
@@ -811,7 +811,7 @@ def Top_SoftmaxOp:Top_Op<"Softmax",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SoftplusOp:Top_Op<"Softplus",[InOutSameShape]> {
+def Top_SoftplusOp:Top_Op<"Softplus"> {
   let summary = "Softplus operation";
   let description = [{
     y = ln(exp(x) + 1)
@@ -822,7 +822,7 @@ def Top_SoftplusOp:Top_Op<"Softplus",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_FloorOp:Top_Op<"Floor",[InOutSameShape]> {
+def Top_FloorOp:Top_Op<"Floor"> {
   let summary = "Floor operation";
   let description = [{
     y = floor(x)
@@ -833,7 +833,7 @@ def Top_FloorOp:Top_Op<"Floor",[InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_TopKOp:Top_Op<"TopK", [InOutSameDim]> {
+def Top_TopKOp:Top_Op<"TopK"> {
   let summary = "TopK operation";
   let description = [{
     Integrates some operations related to topk.
@@ -851,7 +851,7 @@ def Top_TopKOp:Top_Op<"TopK", [InOutSameDim]> {
   );
 }
 
-def Top_LeakyReluOp : Top_Op<"LeakyRelu", [InOutSameShape]> {
+def Top_LeakyReluOp : Top_Op<"LeakyRelu"> {
   let summary = "LeakyRelu operation";
   let description = [{
     LeakyRelu takes input data (Tensor<T>) and an argument alpha,
@@ -895,7 +895,7 @@ def Top_MaxUnpoolOp : Top_Op<"MaxUnpool"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_LogOp: Top_Op<"Log", [InOutSameShape]> {
+def Top_LogOp: Top_Op<"Log"> {
   let summary = "Log operator";
 
   let description = [{
@@ -909,7 +909,7 @@ def Top_LogOp: Top_Op<"Log", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_LRNOp: Top_Op<"LRN", [InOutSameShape]> {
+def Top_LRNOp: Top_Op<"LRN"> {
   let summary = "Local Response Normalization";
 
   let description = [{
@@ -927,7 +927,7 @@ def Top_LRNOp: Top_Op<"LRN", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ExpOp: Top_Op<"Exp", [InOutSameShape]> {
+def Top_ExpOp: Top_Op<"Exp"> {
   let summary = "Exp operator";
 
   let description = [{
@@ -941,7 +941,7 @@ def Top_ExpOp: Top_Op<"Exp", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_TanhOp: Top_Op<"Tanh", [InOutSameShape]> {
+def Top_TanhOp: Top_Op<"Tanh"> {
   let summary = "Tanh operator";
 
   let description = [{
@@ -955,7 +955,7 @@ def Top_TanhOp: Top_Op<"Tanh", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_MishOp: Top_Op<"Mish", [InOutSameShape]> {
+def Top_MishOp: Top_Op<"Mish"> {
   let summary = "Mish operator";
 
   let description = [{
@@ -969,7 +969,7 @@ def Top_MishOp: Top_Op<"Mish", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_DivOp: Top_Op<"Div", [InOutSameShape]> {
+def Top_DivOp: Top_Op<"Div"> {
   let summary = "Div operator";
 
   let description = [{
@@ -1005,7 +1005,7 @@ def Top_SqueezeOp: Top_Op<"Squeeze"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ClipOp: Top_Op<"Clip", [InOutSameShape]> {
+def Top_ClipOp: Top_Op<"Clip"> {
   let summary = "Clip operator";
 
   let description = [{
@@ -1048,7 +1048,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
   }];
 }
 
-def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu, InOutSameShape]> {
+def Top_ScaleOp: Top_Op<"Scale", [SupportFuseRelu]> {
   let summary = "Scale operator";
 
   let description = [{
@@ -1158,7 +1158,7 @@ def Top_TileOp: Top_Op<"Tile"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_AbsOp : Top_Op<"Abs", [InOutSameShape]> {
+def Top_AbsOp : Top_Op<"Abs"> {
   let summary = " Abs operator";
   let description = [{
      y = abs(x)
@@ -1170,7 +1170,7 @@ def Top_AbsOp : Top_Op<"Abs", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_PReluOp : Top_Op<"PRelu", [InOutSameDim]> {
+def Top_PReluOp : Top_Op<"PRelu"> {
   let summary = "PRelu operator";
   let description = [{
      f(x) = slope * x   for x < 0
@@ -1233,7 +1233,7 @@ def Top_ArgOp : Top_Op<"Arg"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_PowOp : Top_Op<"Pow", [InOutSameShape]> {
+def Top_PowOp : Top_Op<"Pow"> {
   let summary = "Pow operation";
   let description = [{
     output = input ^ n
@@ -1245,7 +1245,7 @@ def Top_PowOp : Top_Op<"Pow", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SqrtOp : Top_Op<"Sqrt", [InOutSameShape]> {
+def Top_SqrtOp : Top_Op<"Sqrt"> {
   let summary = "Sqrt operation";
   let description = [{
     Computes the square root of the input tensor's element.
@@ -1418,7 +1418,7 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear", [InOutSameShape]> {
+def Top_QuantizeLinearOp : Top_Op<"QuantizeLinear"> {
   let summary = "Linear quantize operation";
   let description = [{
     QuantizeLinear(x) := saturate ((x / y_scale) + y_zero_point)
@@ -1533,7 +1533,7 @@ def Top_ROIPoolingOp : Top_Op<"ROIPooling">  {
 }
 
 
-def Top_DequantizeLinearOp : Top_Op<"DequantizeLinear", [InOutSameShape]> {
+def Top_DequantizeLinearOp : Top_Op<"DequantizeLinear"> {
   let summary = "Linear dequantize operation";
   let description = [{
     DequantizeLinear(x) := (x - x_zero_point) * x_scale
@@ -1622,7 +1622,7 @@ def Top_CscOp: Top_Op<"Csc"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_ScaleLutOp: Top_Op<"ScaleLut", [InOutSameShape]> {
+def Top_ScaleLutOp: Top_Op<"ScaleLut"> {
   let summary = "Scale by lut operator";
 
   let description = [{
@@ -1650,7 +1650,7 @@ def Top_ScaleLutOp: Top_Op<"ScaleLut", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SwapChannelOp: Top_Op<"SwapChannel", [InOutSameShape]> {
+def Top_SwapChannelOp: Top_Op<"SwapChannel"> {
   let summary = "swap channel operator, normally RGB <=> BGR";
 
   let description = [{
@@ -1678,7 +1678,7 @@ def Top_SwapChannelOp: Top_Op<"SwapChannel", [InOutSameShape]> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_SwapDimInnerOp: Top_Op<"SwapDimInner", [InOutSameShape]> {
+def Top_SwapDimInnerOp: Top_Op<"SwapDimInner"> {
   let summary = "if offset is not 0, split there and swap first part and second part of it";
 
   let description = [{
@@ -1718,7 +1718,7 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
   let results = (outs AnyTenor:$output);
 }
 
-def Top_RoiAlignOp: Top_Op<"RoiAlign", [InOutSameDim]> {
+def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
   let summary = "RoiAlign operator";
   let description = [{
     RoiAlign consumes an input tensor X and region of interests
@@ -1791,7 +1791,7 @@ def Top_RetinaFaceDetectionOp : Top_Op<"RetinaFaceDetection"> {
   let results = (outs AnyTensor:$output);
 }
 
-def Top_EluOp : Top_Op<"Elu", [InOutSameShape]> {
+def Top_EluOp : Top_Op<"Elu"> {
   let summary = "Elu operation";
   let description = [{
     Elu takes input data (Tensor<T>) and an argument alpha,

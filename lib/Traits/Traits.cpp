@@ -53,17 +53,6 @@ LogicalResult verifyInOutSameShapeTrait(Operation *op) {
   return mlir::success();
 }
 
-LogicalResult verifyInOutSameDimTrait(Operation *op) {
-  auto in_shape_size =
-      op->getOperand(0).getType().cast<RankedTensorType>().getShape().size();
-  auto out_shape_size =
-      op->getResult(0).getType().cast<RankedTensorType>().getShape().size();
-  if (in_shape_size != out_shape_size) {
-    return op->emitError("expected input and output with same shape");
-  }
-  return mlir::success();
-}
-
 } // namespace impl
 } // namespace trait
 

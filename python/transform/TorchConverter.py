@@ -114,14 +114,13 @@ class TorchConverter(BaseConverter):
                preprocess_args=None):
     super().__init__()
     self.model_name = model_name
-    self.weight_file = "{}_top_weight.npz".format(model_name)
+    self.weight_file = "{}_top_origin_weight.npz".format(model_name)
     self.model = None
     self.mlir = None
     self.node_name_mapping = {}  # used in torch opt
     self.const_val = {}
 
     self.load_torch_model(torch_file, input_shapes, output_names)
-    self.shape_infer()
     self.init_MLIRImporter()
     self.preprocess_args = preprocess_args
     self.converted_nodes = list()
@@ -138,27 +137,6 @@ class TorchConverter(BaseConverter):
     if self.mlir != None:
       del self.mlir
       self.mlir = None
-
-  def shape_infer(self):
-    in_tensors = [torch.rand(s) for s in self.input_shapes]
-    with torch.no_grad():
-      out_tensors = self.model(*in_tensors)
-    output_tensors = []
-    if isinstance(out_tensors, tuple):
-      for o in out_tensors:
-        output_tensors.append(o.numpy())
-    else:
-      output_tensors.append(out_tensors.numpy())
-    self.output_types = [self.MLIRImporterTypeStr[o.dtype.name] for o in output_tensors]
-    self.output_shapes=[o.shape for o in output_tensors]
-    for idx, name in enumerate(self.output_names):
-      self.addShape(name, self.output_shapes[idx])
-
-  def get_shape_by_name(self, name):
-    if name in self.output_names or name in self.input_names or name in self.weight_names:
-      return self.getShape(name)
-    else:
-      return None
 
   def get_all_op_names(self):
     """Return all operator names in the input graph"""
@@ -212,24 +190,25 @@ class TorchConverter(BaseConverter):
       self.addShape(inp.debugName(), input_shapes[idx])
 
     self.output_names = []
-    for outp in self.graph.outputs():
-      self.output_names.append(outp.debugName())
+    if output_names:
+      self.output_names = output_names
+    else:
+      for outp in self.graph.outputs():
+        self.output_names.append(outp.debugName())
 
     self.weight_names = []
     self.num_input = len(self.input_names)
     self.num_output = len(self.output_names)
     self.input_shapes = input_shapes
     self.input_types = [self.MLIRImporterTypeStr["float32"] for i in range(self.num_input)]
+    self.output_shapes = [None] * self.num_output
 
   def init_MLIRImporter(self):
     input_shapes = list()
     for _name in self.input_names:
       input_shapes.append(self.getShape(_name))
-    output_shapes = list()
-    for _name in self.output_names:
-      output_shapes.append(self.getShape(_name))
     # init importer
-    self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, self.input_types)
+    self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, self.input_types)
     self.weight_file = self.mlir.weight_file
 
   def get_constant_list(self, node):
@@ -345,8 +324,7 @@ class TorchConverter(BaseConverter):
         'do_relu': False,
         'ins': [],
     }
-    output_shape = self.get_shape_by_name(torch_node.name)
-    new_op = self.mlir.create_conv_op(operands, output_shape, **p)
+    new_op = self.mlir.create_conv_op(operands, None, **p)
     self.addOperand(torch_node.name, new_op)
 
   def convert_conv_op(self, torch_node: TorchNode):
@@ -362,8 +340,7 @@ class TorchConverter(BaseConverter):
         'name': op_name,
         'const_val': scale,
     }
-    out_shape = self.get_shape_by_name(in_name)
-    new_op = self.mlir.create_mul_const_op([in_op], out_shape, **p)
+    new_op = self.mlir.create_mul_const_op([in_op], None, **p)
     self.addOperand(op_name, new_op)
     return new_op
 
@@ -376,8 +353,7 @@ class TorchConverter(BaseConverter):
         'name': torch_node.name,
         'do_relu': False,
     }
-    output_shape = self.get_shape_by_name(torch_node.name)
-    new_op = self.mlir.create_add_op([op0, op1], output_shape, **p)
+    new_op = self.mlir.create_add_op([op0, op1], None, **p)
     self.addOperand(torch_node.name, new_op)
 
   def convert_sub_op(self, torch_node: TorchNode):
@@ -389,13 +365,11 @@ class TorchConverter(BaseConverter):
         'name': torch_node.name,
         'do_relu': False,
     }
-    output_shape = self.get_shape_by_name(torch_node.name)
-    new_op = self.mlir.create_sub_op([op0, op1], output_shape, **p)
+    new_op = self.mlir.create_sub_op([op0, op1], None, **p)
     self.addOperand(torch_node.name, new_op)
 
   def convert_prelu_op(self, torch_node: TorchNode):
     op0 = self.getOp(torch_node.inputs[0])
     op1 = self.getOp(torch_node.inputs[1])
-    output_shape = self.get_shape_by_name(torch_node.name)
-    new_op = self.mlir.create_prelu_op([op0, op1], output_shape, **{'name': torch_node.name})
+    new_op = self.mlir.create_prelu_op([op0, op1], None, **{'name': torch_node.name})
     self.addOperand(torch_node.name, new_op)

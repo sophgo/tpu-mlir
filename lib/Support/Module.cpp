@@ -287,12 +287,12 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
   return type.getShape();
 }
 
-void getGlobalShape(Value v, int* shape) {
-  for(auto v : llvm::enumerate(getShape(v)))
+void getGlobalShape(Value v, int *shape) {
+  for (auto v : llvm::enumerate(getShape(v)))
     shape[v.index()] = (int)v.value();
 }
 
-void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int* shape) {
+void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int *shape) {
   int64_t n, c, h, w;
   module::getNCHW(op->getResult(0), n, c, h, w);
   group_info_t gi = LocalGenInterface::getGroupInfo(op, n_step, h_step);
@@ -302,9 +302,9 @@ void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int* shape) {
   shape[3] = (int)w;
 }
 
-void getLocalShape(Value v, int64_t n_step, int64_t h_step, int* shape) {
+void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape) {
   auto op = v.getDefiningOp();
-  if (op != nullptr ){
+  if (op != nullptr) {
     getLocalShape(op, n_step, h_step, shape);
   } else {
     llvm_unreachable("cannot find op");
@@ -404,7 +404,10 @@ Type getStorageType(Value v) { return getStorageType(v.getType()); }
 Type getElementType(Value v) {
   auto type = v.getType();
   if (type.isa<RankedTensorType>()) {
-    auto rtype = v.getType().cast<RankedTensorType>();
+    auto rtype = type.cast<RankedTensorType>();
+    return rtype.getElementType();
+  } else if (type.isa<UnrankedTensorType>()) {
+    auto rtype = type.cast<UnrankedTensorType>();
     return rtype.getElementType();
   }
   return type;
