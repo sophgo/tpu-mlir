@@ -1650,6 +1650,7 @@ def Top_ScaleLutOp: Top_Op<"ScaleLut"> {
     Attributes:
       `scale`   : each channel scale
       `bias`    : each channel bias
+      `sign`    : if output is signed
 
 
     Result:
@@ -1660,7 +1661,8 @@ def Top_ScaleLutOp: Top_Op<"ScaleLut"> {
   let arguments = (
     ins AnyTensor:$input,
     F64ArrayAttr:$scale,
-    F64ArrayAttr:$bias
+    F64ArrayAttr:$bias,
+    DefaultValuedAttr<BoolAttr, "true">:$sign
   );
 
   let results = (outs AnyTensor:$output);
@@ -1779,7 +1781,8 @@ def Top_PreprocessOp: Top_Op<"Preprocess"> {
     StrAttr:$channel_order,
     I64ArrayAttr:$resize_dims,
     F64ArrayAttr:$scale,
-    F64ArrayAttr:$mean
+    F64ArrayAttr:$mean,
+    DefaultValuedAttr<BoolAttr, "true">:$sign
   );
   let results = (outs AnyTensor:$output);
 }
