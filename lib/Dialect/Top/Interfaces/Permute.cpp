@@ -64,4 +64,12 @@ LogicalResult top::PermuteOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::PermuteOp::shape_inference() {}
+void top::PermuteOp::shape_inference() {
+  i64_array_t in_order = module::getI64Array(getOrder());
+  auto in_shape = module::getShape(getInput());
+  std::vector<int64_t> out_shape;
+  for (int64_t i = 0; i < in_shape.size(); ++i) {
+    out_shape.push_back(in_shape[(*in_order)[i]]);
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}
