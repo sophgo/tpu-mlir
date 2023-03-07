@@ -14,6 +14,7 @@ except ModuleNotFoundError:
 
 
 class TFLiteInterpreter(TFLiteItp.Interpreter):
+
     def __init__(self, model_path=None, **args):
         __args = {
             "experimental_op_resolver_type": TFLiteItp.experimental.OpResolverType.BUILTIN_REF,
@@ -24,9 +25,7 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
             **__args,
         )
         self.allocate_tensors()
-        self.name2index = {
-            t["name"]: t["index"] for t in self.get_tensor_details() if t["name"]
-        }
+        self.name2index = {t["name"]: t["index"] for t in self.get_tensor_details() if t["name"]}
 
     @property
     def inputs(self):
@@ -48,6 +47,7 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
             self.allocate_tensors()
 
     def run(self, input_is_nchw=False, **inputs):
+
         def nchw2nhwc(x):
             if x.ndim == 4:
                 return x.transpose([0, 2, 3, 1])
@@ -73,11 +73,8 @@ class TFLiteInterpreter(TFLiteItp.Interpreter):
             try:
                 yield (t, self.tensor(t["index"])())
             except ValueError:
-                warnings.warn(
-                    "Can not get tensor '{name}'(index: {index}) value.".format(
-                        name=t["name"], index=t["index"]
-                    )
-                )
+                warnings.warn("Can not get tensor '{name}'(index: {index}) value.".format(
+                    name=t["name"], index=t["index"]))
                 yield (t, None)
 
     def to_expressed_dat(self, tensor_with_desc):

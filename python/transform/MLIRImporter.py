@@ -1081,8 +1081,7 @@ class MLIRImporter(object):
     def create_nonzero_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
-        param = {'name': kargs['name'],
-                 'order': StringAttr.get(kargs["order"])}
+        param = {'name': kargs['name'], 'order': StringAttr.get(kargs["order"])}
         return self.buildOp(Top.NonZeroOp, operands, [output_type], **param)
 
     def print_module(self):
