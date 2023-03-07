@@ -55,4 +55,6 @@ LogicalResult top::SubOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::SubOp::shape_inference() {}
+void top::SubOp::shape_inference() {
+  broadcast_shape_inference(getOperation());
+}

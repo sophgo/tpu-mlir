@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
 
-Failed_Cases = ["PRelu", "Add", "Gather", "Conv2d", "LayerNorm"]
+Failed_Cases = ["PRelu", "Gather", "Conv2d", "LayerNorm"]
 
 
 class TORCH_IR_TESTER(object):
@@ -35,10 +35,13 @@ class TORCH_IR_TESTER(object):
             "Add": self.test_Add,
             "Concat": self.test_Concat,
             "Conv2d": self.test_Conv2d,
+            "Div": self.test_Div,
             # "Gather": self.test_Gather,
             "LayerNorm": self.test_LayerNorm,
+            "Mul": self.test_Mul,
             "PRelu": self.test_PRelu,
             "Permute": self.test_Permute,
+            "Sub": self.test_Sub,
         }
         self.support_quant_modes = ["f32", "f16", "bf16"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
@@ -290,31 +293,69 @@ class TORCH_IR_TESTER(object):
         case2((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1, suffix="_3")
         case2((1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1), suffix="_4")
 
+
+    #######################################################################
+    # Binary Base
+    # ------------
+    def _test_binary(self, case_name, op_type, in0_shape, in1_shape, alpha=None):
+
+        _alpha = {}
+        if alpha:
+            _alpha = dict(alpha=alpha)
+
+        class Model(nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.weight = torch.randn(in1_shape)
+
+            def forward(self, x):
+                y0 = x + 1
+                y1 = op_type(self.weight, y0, **_alpha)
+                y2 = op_type(y0, y1, **_alpha)
+                return y2
+
+        self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
     #######################################################################
     # Add
     # ------------
     def test_Add(self, case_name):
         """Add"""
 
-        def _test_add(in0_shape, in1_shape, alpha=1.0):
+        self._test_binary(case_name, torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
+        self._test_binary(case_name, torch.add, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(case_name, torch.add, (32, 32), (32))
 
-            class Model(nn.Module):
+    #######################################################################
+    # Sub
+    # ------------
+    def test_Sub(self, case_name):
+        """Sub"""
 
-                def __init__(self):
-                    super(Model, self).__init__()
-                    self.weight = torch.randn(in1_shape)
+        self._test_binary(case_name, torch.sub, (1, 3, 32, 31), (1, 3, 32, 1), 3)
+        self._test_binary(case_name, torch.sub, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(case_name, torch.sub, (32, 32), (32))
 
-                def forward(self, x):
-                    y0 = x + 1
-                    y1 = torch.add(self.weight, y0, alpha=alpha)
-                    # y1 = torch.add(y0, self.weight, alpha=alpha)
-                    return y1
+    #######################################################################
+    # Mul
+    # ------------
+    def test_Mul(self, case_name):
+        """Mul"""
 
-            self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+        self._test_binary(case_name, torch.multiply, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name, torch.multiply, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name, torch.multiply, (32, 32), (32))
 
-        _test_add((1, 3, 32, 32), (1, 3, 32, 32), 3)
-        _test_add((2, 32, 16), (2, 1, 16), 3)
-        _test_add((32, 32), (32))
+    #######################################################################
+    # Div
+    # ------------
+    def test_Div(self, case_name):
+        """Div"""
+
+        self._test_binary(case_name, torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name, torch.div, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name, torch.div, (32, 32), (32))
+
 
     #######################################################################
     # LayerNorm

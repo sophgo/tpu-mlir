@@ -140,7 +140,9 @@ class TorchConverter(BaseConverter):
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
+            "aten::div": lambda node: self.convert_div_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
+            "aten::mul": lambda node: self.convert_mul_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
@@ -393,6 +395,26 @@ class TorchConverter(BaseConverter):
             'do_relu': False,
         }
         new_op = self.mlir.create_sub_op([op0, op1], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_mul_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        p = {
+            'name': torch_node.name,
+            'do_relu': False,
+        }
+        new_op = self.mlir.create_mul_op([op0, op1], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_div_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        p = {
+            'name': torch_node.name,
+            'do_relu': False,
+        }
+        new_op = self.mlir.create_div_op([op0, op1], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_prelu_op(self, torch_node: TorchNode):
