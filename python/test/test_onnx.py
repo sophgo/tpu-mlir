@@ -153,7 +153,11 @@ class ONNX_IR_TESTER(object):
             "TorchHardSwish": self.test_TorchHardSwish,
             "TorchHardSigmoid": self.test_TorchHardSigmoid,
             "TorchIdentity": self.test_TorchIdentity,
+            "TorchInstanceNorm": self.test_TorchInstanceNorm,
+            "TorchInstanceNorm2": self.test_TorchInstanceNorm2,
             "TorchGelu": self.test_TorchGelu,
+            "TorchGroupNorm": self.test_TorchGroupNorm,
+            "TorchGroupNorm2": self.test_TorchGroupNorm2,
             "TorchGRU": self.test_TorchGRU,
             "TorchLayerGroup": self.test_TorchLayerGroup,
             "TorchLayerNorm": self.test_TorchLayerNorm,
@@ -2109,6 +2113,62 @@ class ONNX_IR_TESTER(object):
 
         inputs = (input, h_0, c_0)
         self.torch_and_test(inputs, Net(), case_name)
+
+    def test_TorchInstanceNorm(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.instance_norm = nn.InstanceNorm2d(100, affine=True)
+
+            def forward(self, x):
+                return self.instance_norm(x)
+
+        x = torch.randn(20, 100, 35, 45).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchInstanceNorm2(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.instance_norm = nn.InstanceNorm2d(100, affine=True)
+
+            def forward(self, x):
+                return self.instance_norm(x + 1)
+
+        x = torch.randn(20, 100, 35, 45).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchGroupNorm(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.group_norm = nn.GroupNorm(3, 6)
+
+            def forward(self, x):
+                return self.group_norm(x)
+
+        x = torch.randn(20, 6, 10, 10).float()
+        self.torch_and_test(x, Net(), case_name)
+
+    def test_TorchGroupNorm2(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.group_norm = nn.GroupNorm(3, 6)
+
+            def forward(self, x):
+                return self.group_norm(x + 1)
+
+        x = torch.randn(20, 6, 10, 10).float()
+        self.torch_and_test(x, Net(), case_name)
 
     def test_TorchGelu(self, case_name):
 

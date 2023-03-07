@@ -1469,6 +1469,39 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
   );
 }
 
+def Top_InstanceNormOp : Top_Op<"InstanceNorm"> {
+  let summary = "Instance Norm operation";
+  let description = [{
+    instance normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output
+  );
+}
+
+def Top_GroupNormOp : Top_Op<"GroupNorm"> {
+  let summary = "GroupNorm operation";
+  let description = [{
+    group normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    I64Attr:$num_groups,
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output
+  );
+}
+
 def Top_PixelNormOp : Top_Op<"PixelNorm"> {
   let summary = "PixelNorm operation";
   let description = [{

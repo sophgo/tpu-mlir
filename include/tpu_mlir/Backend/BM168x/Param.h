@@ -708,6 +708,36 @@ typedef struct layer_norm_local_spec {
   uint32_t buffer_addr;
 } layer_norm_local_spec_t;
 
+typedef struct instance_norm_common_spec {
+    float  eps;
+    int    affine;
+} instance_norm_common_spec_t;
+
+typedef struct instance_norm_global_spec {
+    instance_norm_common_spec_t common;
+} instance_norm_global_spec_t;
+
+typedef struct instance_norm_local_spec {
+    instance_norm_common_spec_t common;
+    uint32_t buffer_addr;
+} instance_norm_local_spec_t;
+
+typedef struct group_norm_common_spec {
+    int group_num;
+    float eps;
+    int affine;
+} group_norm_common_spec_t;
+
+typedef struct group_norm_local_param {
+    group_norm_common_spec_t common;
+    uint32_t buffer_addr;
+} group_norm_local_param_t;
+
+typedef struct group_norm_global_param {
+    group_norm_common_spec_t common;
+    int axis;
+} group_norm_global_param_t;
+
 typedef struct tranpose_spec {
   uint64_t buffer_global_addr;
   uint32_t order[MAX_SHAPE_DIMS];
