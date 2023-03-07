@@ -317,7 +317,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 编译和运行runtime sample
 --------------------------
 
-本章首先介绍EVB如何运行sample应用程序，然后介绍如何交叉编译sample应用程序，最后介绍docker仿真编译和运行sample。具体包括3个samples：
+本章首先介绍EVB如何运行sample应用程序，然后介绍如何交叉编译sample应用程序，最后介绍docker仿真编译和运行sample。具体包括4个samples：
 * Sample-1 : classifier (mobilenet_v2)
 
 * Sample-2 : classifier_bf16 (mobilenet_v2)
@@ -643,7 +643,7 @@ TPU sdk准备：
    cmake --build . --target install
 
 
-1) docker环境仿真运行的samples程序
+3) docker环境仿真运行的samples程序
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 需要如下文件：

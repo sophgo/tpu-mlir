@@ -173,6 +173,379 @@ To be completed
 
 Compile and Run the Runtime Sample
 -----------------------------------
-To be completed
+This part introduces how to compile and run the runtime samples, include how to cross-compile samples for EVB board
+and how to compile and run samples in docker. The following 4 samples are included:
+
+* Sample-1 : classifier (mobilenet_v2)
+
+* Sample-2 : classifier_bf16 (mobilenet_v2)
+
+* Sample-3 : classifier fused preprocess (mobilenet_v2)
+
+* Sample-4 : classifier multiple batch (mobilenet_v2)
+
+1) Run the provided pre-build samples
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The following files are required:
+
+* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv|cv181x_glibc_riscv64].tar.gz
+* cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
+
+Select the required files according to the chip type and load them into the EVB file system.
+Execute them on the Linux console of EVB. Here, we take CV183x as an example.
+
+Unzip the model file (delivered in cvimodel format) and the TPU_SDK used by samples. Enter into the samples directory to execute the test.
+The process is as follows:
+
+.. code-block:: shell
+
+   #env
+   tar zxf cvimodel_samples_cv183x.tar.gz
+   export MODEL_PATH=$PWD/cvimodel_samples
+   tar zxf cvitek_tpu_sdk_cv183x.tar.gz
+   export TPU_ROOT=$PWD/cvitek_tpu_sdk
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh
+   # get cvimodel info
+   cd samples
+   ./bin/cvi_sample_model_info $MODEL_PATH/mobilenet_v2.cvimodel
+
+   ####################################
+   # sample-1 : classifier
+   ###################################
+   ./bin/cvi_sample_classifier \
+       $MODEL_PATH/mobilenet_v2.cvimodel \
+       ./data/cat.jpg \
+       ./data/synset_words.txt
+
+   # TOP_K[5]:
+   #  0.326172, idx 282, n02123159 tiger cat
+   #  0.326172, idx 285, n02124075 Egyptian cat
+   #  0.099609, idx 281, n02123045 tabby, tabby cat
+   #  0.071777, idx 287, n02127052 lynx, catamount
+   #  0.041504, idx 331, n02326432 hare
+
+   ####################################
+   # sample-2 : classifier_bf16
+   ###################################
+   ./bin/cvi_sample_classifier_bf16 \
+       $MODEL_PATH/mobilenet_v2_bf16.cvimodel \
+       ./data/cat.jpg \
+       ./data/synset_words.txt
+
+   # TOP_K[5]:
+   #  0.314453, idx 285, n02124075 Egyptian cat
+   #  0.040039, idx 331, n02326432 hare
+   #  0.018677, idx 330, n02325366 wood rabbit, cottontail, cottontail rabbit
+   #  0.010986, idx 463, n02909870 bucket, pail
+   #  0.010986, idx 852, n04409515 tennis ball
 
 
+   ############################################
+   # sample-3 : classifier fused preprocess
+   ############################################
+   ./bin/cvi_sample_classifier_fused_preprocess \
+       $MODEL_PATH/mobilenet_v2_fused_preprocess.cvimodel \
+       ./data/cat.jpg \
+       ./data/synset_words.txt
+
+   # TOP_K[5]:
+   #  0.326172, idx 282, n02123159 tiger cat
+   #  0.326172, idx 285, n02124075 Egyptian cat
+   #  0.099609, idx 281, n02123045 tabby, tabby cat
+   #  0.071777, idx 287, n02127052 lynx, catamount
+   #  0.041504, idx 331, n02326432 hare
+
+   ############################################
+   # sample-4 : classifier multiple batch
+   ############################################
+   ./bin/cvi_sample_classifier_multi_batch \
+       $MODEL_PATH/mobilenet_v2_bs1_bs4.cvimodel \
+       ./data/cat.jpg \
+       ./data/synset_words.txt
+
+   # TOP_K[5]:
+   #  0.326172, idx 282, n02123159 tiger cat
+   #  0.326172, idx 285, n02124075 Egyptian cat
+   #  0.099609, idx 281, n02123045 tabby, tabby cat
+   #  0.071777, idx 287, n02127052 lynx, catamount
+   #  0.041504, idx 331, n02326432 hare
+
+At the same time, the script is provided as a reference, and the execution effect is the same as that of direct operation, as follows:
+
+.. code-block:: shell
+
+   ./run_classifier.sh
+   ./run_classifier_bf16.sh
+   ./run_classifier_fused_preprocess.sh
+   ./run_classifier_multi_batch.sh
+
+There are more samples can be refered in the ``cvitek_tpu_sdk/samples/samples_extra``：
+
+.. code-block:: shell
+
+   ./bin/cvi_sample_detector_yolo_v3_fused_preprocess \
+       $MODEL_PATH/yolo_v3_416_fused_preprocess_with_detection.cvimodel \
+       ./data/dog.jpg \
+       yolo_v3_out.jpg
+
+   ./bin/cvi_sample_detector_yolo_v5_fused_preprocess \
+       $MODEL_PATH/yolov5s_fused_preprocess.cvimodel \
+       ./data/dog.jpg \
+       yolo_v5_out.jpg
+
+   ./bin/cvi_sample_detector_yolox_s \
+       $MODEL_PATH/yolox_s.cvimodel \
+       ./data/dog.jpg \
+       yolox_s_out.jpg
+
+   ./bin/cvi_sample_alphapose_fused_preprocess \
+       $MODEL_PATH/yolo_v3_416_fused_preprocess_with_detection.cvimodel \
+       $MODEL_PATH/alphapose_fused_preprocess.cvimodel \
+       ./data/pose_demo_2.jpg \
+       alphapose_out.jpg
+
+   ./bin/cvi_sample_fd_fr_fused_preprocess \
+       $MODEL_PATH/retinaface_mnet25_600_fused_preprocess_with_detection.cvimodel \
+       $MODEL_PATH/arcface_res50_fused_preprocess.cvimodel \
+       ./data/obama1.jpg \
+       ./data/obama2.jpg
+
+
+2) Cross-compile samples
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The source code is given in the released packages. You can cross-compile the samples' source code in the docker environment and
+run them on EVB board according to the following instructions.
+
+The following files are required in this part:
+
+* cvitek_tpu_sdk_[cv182x|cv182x_uclibc|cv183x|cv181x_glibc32|cv181x_musl_riscv64_rvv|cv180x_musl_riscv64_rvv]].tar.gz
+* cvitek_tpu_samples.tar.gz
+
+aarch 64-bit  (such as cv183x aarch64-bit platform)
+""""""""""""""""""""""""""""""""""""""
+
+Prepare TPU sdk:
+
+
+.. code-block:: shell
+
+   tar zxf host-tools.tar.gz
+   tar zxf cvitek_tpu_sdk_cv183x.tar.gz
+   export PATH=$PWD/host-tools/gcc/gcc-linaro-6.3.1-2017.05-x86_64_aarch64-linux-gnu/bin:$PATH
+   export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
+
+Compile samples and install them into "install_samples" directory:
+
+.. code-block:: shell
+
+   tar zxf cvitek_tpu_samples.tar.gz
+   cd cvitek_tpu_samples
+   mkdir build_soc
+   cd build_soc
+   cmake -G Ninja \
+       -DCMAKE_BUILD_TYPE=RELEASE \
+       -DCMAKE_C_FLAGS_RELEASE=-O3 \
+       -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
+       -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-aarch64-linux.cmake \
+       -DTPU_SDK_PATH=$TPU_SDK_PATH \
+       -DOPENCV_PATH=$TPU_SDK_PATH/opencv \
+       -DCMAKE_INSTALL_PREFIX=../install_samples \
+       ..
+   cmake --build . --target install
+
+arm 32-bit  (such as 32-bit cv183x/cv182x platform)
+""""""""""""""""""""""""""""""""""""""""""
+
+Prepare TPU sdk:
+
+.. code-block:: shell
+
+   tar zxf host-tools.tar.gz
+   tar zxf cvitek_tpu_sdk_cv182x.tar.gz
+   export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
+   export PATH=$PWD/host-tools/gcc/gcc-linaro-6.3.1-2017.05-x86_64_arm-linux-gnueabihf/bin:$PATH
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
+
+If docker version < 1.7, please update 32-bit system library(just once):
+
+.. code-block:: shell
+
+   dpkg --add-architecture i386
+   apt-get update
+   apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
+
+Compile samples and install them into ``install_samples`` directory:
+
+.. code-block:: shell
+
+   tar zxf cvitek_tpu_samples.tar.gz
+   cd cvitek_tpu_samples
+   mkdir build_soc
+   cd build_soc
+   cmake -G Ninja \
+       -DCMAKE_BUILD_TYPE=RELEASE \
+       -DCMAKE_C_FLAGS_RELEASE=-O3 \
+       -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
+       -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-linux-gnueabihf.cmake \
+       -DTPU_SDK_PATH=$TPU_SDK_PATH \
+       -DOPENCV_PATH=$TPU_SDK_PATH/opencv \
+       -DCMAKE_INSTALL_PREFIX=../install_samples \
+       ..
+   cmake --build . --target install
+
+
+uclibc 32-bit platform (such as cv182x uclibc platform)
+""""""""""""""""""""""""""""""""""""""
+Prepare TPU sdk:
+
+.. code-block:: shell
+
+   tar zxf host-tools.tar.gz
+   tar zxf cvitek_tpu_sdk_cv182x_uclibc.tar.gz
+   export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
+   export PATH=$PWD/host-tools/gcc/arm-cvitek-linux-uclibcgnueabihf/bin:$PATH
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
+
+If docker version < 1.7, please update 32-bit system library(just once):
+
+.. code-block:: shell
+
+   dpkg --add-architecture i386
+   apt-get update
+   apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
+
+Compile samples and install them into ``install_samples`` directory:
+
+.. code-block:: shell
+
+   tar zxf cvitek_tpu_samples.tar.gz
+   cd cvitek_tpu_samples
+   mkdir build_soc
+   cd build_soc
+   cmake -G Ninja \
+       -DCMAKE_BUILD_TYPE=RELEASE \
+       -DCMAKE_C_FLAGS_RELEASE=-O3 \
+       -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
+       -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-linux-uclibc.cmake \
+       -DTPU_SDK_PATH=$TPU_SDK_PATH \
+       -DOPENCV_PATH=$TPU_SDK_PATH/opencv \
+       -DCMAKE_INSTALL_PREFIX=../install_samples \
+       ..
+   cmake --build . --target install
+
+riscv 64-bit musl platform (such as cv180x/cv181x riscv 64-bit musl platform)
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Prepare TPU sdk:
+
+.. code-block:: shell
+
+   tar zxf host-tools.tar.gz
+   tar zxf cvitek_tpu_sdk_cv181x_musl_riscv64_rvv.tar.gz
+   export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
+   export PATH=$PWD/host-tools/gcc/riscv64-linux-musl-x86_64/bin:$PATH
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
+
+Compile samples and install them into ``install_samples`` directory:
+
+.. code-block:: shell
+
+   tar zxf cvitek_tpu_samples.tar.gz
+   cd cvitek_tpu_samples
+   mkdir build_soc
+   cd build_soc
+   cmake -G Ninja \
+       -DCMAKE_BUILD_TYPE=RELEASE \
+       -DCMAKE_C_FLAGS_RELEASE=-O3 \
+       -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
+       -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-riscv64-linux-musl-x86_64.cmake \
+       -DTPU_SDK_PATH=$TPU_SDK_PATH \
+       -DOPENCV_PATH=$TPU_SDK_PATH/opencv \
+       -DCMAKE_INSTALL_PREFIX=../install_samples \
+       ..
+   cmake --build . --target install
+
+
+riscv 64-bit glibc platform(such as cv180x/cv181x 64-bit glibc platform)
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+Prepare TPU sdk:
+
+.. code-block:: shell
+
+   tar zxf host-tools.tar.gz
+   tar zxf cvitek_tpu_sdk_cv181x_glibc_riscv64.tar.gz
+   export TPU_SDK_PATH=$PWD/cvitek_tpu_sdk
+   export PATH=$PWD/host-tools/gcc/riscv64-linux-x86_64/bin:$PATH
+   cd cvitek_tpu_sdk && source ./envs_tpu_sdk.sh && cd ..
+
+Compile samples and install them into ``install_samples`` directory:
+
+.. code-block:: shell
+
+   tar zxf cvitek_tpu_samples.tar.gz
+   cd cvitek_tpu_samples
+   mkdir build_soc
+   cd build_soc
+   cmake -G Ninja \
+       -DCMAKE_BUILD_TYPE=RELEASE \
+       -DCMAKE_C_FLAGS_RELEASE=-O3 \
+       -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
+       -DCMAKE_TOOLCHAIN_FILE=$TPU_SDK_PATH/cmake/toolchain-riscv64-linux-x86_64.cmake \
+       -DTPU_SDK_PATH=$TPU_SDK_PATH \
+       -DOPENCV_PATH=$TPU_SDK_PATH/opencv \
+       -DCMAKE_INSTALL_PREFIX=../install_samples \
+       ..
+   cmake --build . --target install
+
+
+1) Run samples in docker environment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following files are required:
+
+* cvitek_mlir_ubuntu-18.04.tar.gz
+* cvimodel_samples_[cv182x|cv183x|cv181x|cv180x].tar.gz
+* cvitek_tpu_samples.tar.gz
+
+Prepare TPU sdk:
+
+.. code-block:: shell
+
+   tar zxf cvitek_mlir_ubuntu-18.04.tar.gz
+   source cvitek_mlir/cvitek_envs.sh
+
+Compile samples and install them into ``install_samples`` directory:
+
+.. code-block:: shell
+
+   tar zxf cvitek_tpu_samples.tar.gz
+   cd cvitek_tpu_samples
+   mkdir build_soc
+   cd build_soc
+   cmake -G Ninja \
+      -DCMAKE_BUILD_TYPE=RELEASE \
+      -DCMAKE_C_FLAGS_RELEASE=-O3 \
+      -DCMAKE_CXX_FLAGS_RELEASE=-O3 \
+      -DTPU_SDK_PATH=$MLIR_PATH/tpuc \
+      -DCNPY_PATH=$MLIR_PATH/cnpy \
+      -DOPENCV_PATH=$MLIR_PATH/opencv \
+      -DCMAKE_INSTALL_PREFIX=../install_samples \
+      ..
+   cmake --build . --target install
+
+Run samples:
+
+.. code-block:: shell
+
+   # envs
+   tar zxf cvimodel_samples_cv183x.tar.gz
+   export MODEL_PATH=$PWD/cvimodel_samples
+   source cvitek_mlir/cvitek_envs.sh
+
+   # get cvimodel info
+   cd ../install_samples
+   ./bin/cvi_sample_model_info $MODEL_PATH/mobilenet_v2.cvimodel
+
+**Other samples are samely to the instructions of running on EVB board.**
