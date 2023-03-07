@@ -380,6 +380,8 @@ if __name__ == '__main__':
         output = tflite_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".prototxt") and args.weight.endswith(".caffemodel"):
         output = caffe_inference(data, args.model, args.weight, args.dump_all_tensors)
+    elif args.model.endswith(".pt") or args.model.endswith(".pth"):
+        output = torch_inference(data, args.model, args.dump_all_tensors)
     elif args.model.endswith(".bmodel") or args.model.endswith(".cvimodel"):
         output = model_inference(data, args.model)
     else:

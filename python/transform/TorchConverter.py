@@ -130,6 +130,7 @@ class TorchConverter(BaseConverter):
       "aten::add": lambda node: self.convert_add_op(node),
       "aten::sub": lambda node: self.convert_sub_op(node),
       "aten::prelu": lambda node: self.convert_prelu_op(node),
+      "aten::cat": lambda node: self.convert_concat_op(node),
     }
     self.check_op_names()
 
@@ -211,14 +212,16 @@ class TorchConverter(BaseConverter):
     self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, self.input_types)
     self.weight_file = self.mlir.weight_file
 
-  def get_constant_list(self, node):
+  def get_list(self, node):
     data = []
+    is_const = True
     for input in node.inputs():
       if input.debugName() in self.const_val.keys():
         data.append(self.const_val[input.debugName()])
       else:
-        raise KeyError("can not find const data")
-    return node.output().debugName(), data
+        data.append(input.debugName())
+        is_const = False
+    return node.output().debugName(), data, is_const
 
   def read_node(self, node):
     if node.kind() == 'prim::Constant':
@@ -229,8 +232,11 @@ class TorchConverter(BaseConverter):
         self.addWeight(name, data)
         self.weight_names.append(name)
     elif node.kind() == 'prim::ListConstruct':
-      name, data = self.get_constant_list(node)
-      self.const_val[name] = data
+      name, data, is_const = self.get_list(node)
+      if is_const:
+        self.const_val[name] = data
+      else:
+        self.tensor_list[name] = data
     elif node.kind() == 'prim::ListUnpack':
       raise TypeError("can not find kind {}".format(node.kind()))
     elif node.kind() == 'prim::TupleConstruct':
@@ -257,6 +263,7 @@ class TorchConverter(BaseConverter):
     def NoneAndRaise(node):
       raise RuntimeError("{} Op not support now".format(node.op_type))
 
+    self.tensor_list = {}
     self.converted_nodes.clear()
     for node in self.graph.nodes():
       if (self.read_node(node) is False):
@@ -372,4 +379,17 @@ class TorchConverter(BaseConverter):
     op0 = self.getOp(torch_node.inputs[0])
     op1 = self.getOp(torch_node.inputs[1])
     new_op = self.mlir.create_prelu_op([op0, op1], None, **{'name': torch_node.name})
+    self.addOperand(torch_node.name, new_op)
+
+  def convert_concat_op(self, torch_node: TorchNode):
+    operands = list()
+    for name in self.tensor_list[torch_node.inputs[0]]:
+      op = self.getOp(name)
+      operands.append(op)
+    axis = self.const_val[torch_node.inputs[1]]
+    p = {
+        'name': torch_node.name,
+        'axis': axis,
+    }
+    new_op = self.mlir.create_concat_op(operands, None, **p)
     self.addOperand(torch_node.name, new_op)
