@@ -166,9 +166,148 @@ The comparison of the four images is shown in :numref:`yolov5s_result1`, due to 
 The above tutorial introduces the process of TPU-MLIR deploying the ONNX model to the CV18xx series chip. For the conversion process of the Caffe model, please refer to the chapter "Compiling the Caffe Model". You only need to replace the chip name with the specific CV18xx chip.
 
 
-Merge cvimodel Model Files
+Merge cvimodel Files
 ---------------------------
-To be completed
+For the same model, independent cvimodel files can be generated according to the input batch size and resolution(different H and W). However, in order to save storage, you can merge these related cvimodel files into one cvimodel file and share its weight part. The steps are as follows:
+
+Step 0: generate the cvimodel for batch 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Please refer to the previous section to create a new workspace directory and convert yolov5s to the mlir fp32 model by model_transform.py
+
+.. admonition:: Attention ：
+  :class: attention
+
+  1.Use the same workspace directory for the cvimodels that need to be merged, and do not share the workspace with other cvimodes that do not need to be merged.
+
+  2.In Step 0, Step 1, --merge_weight is required
+
+
+.. code-block:: shell
+
+   $ model_transform.py \
+       --model_name yolov5s \
+       --model_def ../yolov5s.onnx \
+       --input_shapes [[1,3,640,640]] \
+       --mean 0.0,0.0,0.0 \
+       --scale 0.0039216,0.0039216,0.0039216 \
+       --keep_aspect_ratio \
+       --pixel_format rgb \
+       --output_names 350,498,646 \
+       --test_input ../image/dog.jpg \
+       --test_result yolov5s_top_outputs.npz \
+       --mlir yolov5s_bs1.mlir
+
+Use the yolov5s_cali_table generated in preceding sections, or generate calibration table by run_calibration.py.
+
+.. code-block:: shell
+
+  # Add --merge_weight
+   $ model_deploy.py \
+       --mlir yolov5s_bs1.mlir \
+       --quantize INT8 \
+       --calibration_table yolov5s_cali_table \
+       --chip cv183x \
+       --test_input yolov5s_in_f32.npz \
+       --test_reference yolov5s_top_outputs.npz \
+       --tolerance 0.85,0.45 \
+       --merge_weight \
+       --model yolov5s_cv183x_int8_sym_bs1.cvimodel
+
+Step 1: generate the cvimodel for batch 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Generate mlir fp32 file in the same workspace:
+
+.. code-block:: shell
+
+   $ model_transform.py \
+       --model_name yolov5s \
+       --model_def ../yolov5s.onnx \
+       --input_shapes [[2,3,640,640]] \
+       --mean 0.0,0.0,0.0 \
+       --scale 0.0039216,0.0039216,0.0039216 \
+       --keep_aspect_ratio \
+       --pixel_format rgb \
+       --output_names 350,498,646 \
+       --test_input ../image/dog.jpg \
+       --test_result yolov5s_top_outputs.npz \
+       --mlir yolov5s_bs2.mlir
+
+.. code-block:: shell
+
+  # Add --merge_weight
+   $ model_deploy.py \
+       --mlir yolov5s_bs2.mlir \
+       --quantize INT8 \
+       --calibration_table yolov5s_cali_table \
+       --chip cv183x \
+       --test_input yolov5s_in_f32.npz \
+       --test_reference yolov5s_top_outputs.npz \
+       --tolerance 0.85,0.45 \
+       --merge_weight \
+       --model yolov5s_cv183x_int8_sym_bs2.cvimodel
+
+Step 2: merge the cvimodel of batch 1 and batch 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use model_tool to mrege two cvimodel files:
+
+.. code-block:: shell
+
+  model_tool \
+    --combine \
+      yolov5s_cv183x_int8_sym_bs1.cvimodel \
+      yolov5s_cv183x_int8_sym_bs2.cvimodel \
+      -o yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
+
+Step 3: use the cvimodel through the runtime interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use model_tool to check the program id of bs1 and bs2.:
+
+.. code-block:: shell
+
+  model_tool --info yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
+
+At runtime, you can run different batch program in the following ways:
+
+.. code-block:: c++
+
+  CVI_MODEL_HANDEL bs1_handle;
+  CVI_RC ret = CVI_NN_RegisterModel("yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel", &bs1_handle);
+  assert(ret == CVI_RC_SUCCESS);
+  // choice batch 1 program
+  CVI_NN_SetConfig(bs1_handle, OPTION_PROGRAM_INDEX, 0);
+  CVI_NN_GetInputOutputTensors(bs1_handle, ...);
+  ....
+
+
+  CVI_MODEL_HANDLE bs2_handle;
+  // Reuse loaded cvimodel
+  CVI_RC ret = CVI_NN_CloneModel(bs1_handle, &bs2_handle);
+  assert(ret == CVI_RC_SUCCESS);
+  // choice batch 2 program
+  CVI_NN_SetConfig(bs2_handle, OPTION_PROGRAM_INDEX, 1);
+  CVI_NN_GetInputOutputTensors(bs2_handle, ...);
+  ...
+
+  // clean up bs1_handle and bs2_handle
+  CVI_NN_CleanupModel(bs1_handle);
+  CVI_NN_CleanupModel(bs2_handle);
+
+Overview:
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Using the above command, you can merge either the same models or different models
+
+The main steps are:
+
+1. When generating a cvimodel through model_deploy.py, add the --merge_weight parameter.
+2. The work directory of the model to be merged must be the same, and do not clean up any intermediate files before merging the models(Reuse the previous model's weight is implemented through the intermediate file _weight_map.csv).
+3. Use model_tool to merge cvimodels.
+
+
 
 
 Compile and Run the Runtime Sample
@@ -322,7 +461,7 @@ The following files are required in this part:
 * cvitek_tpu_samples.tar.gz
 
 aarch 64-bit  (such as cv183x aarch64-bit platform)
-""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 Prepare TPU sdk:
 
@@ -355,7 +494,7 @@ Compile samples and install them into "install_samples" directory:
    cmake --build . --target install
 
 arm 32-bit  (such as 32-bit cv183x/cv182x platform)
-""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 Prepare TPU sdk:
 
@@ -396,7 +535,7 @@ Compile samples and install them into ``install_samples`` directory:
 
 
 uclibc 32-bit platform (such as cv182x uclibc platform)
-""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 Prepare TPU sdk:
 
 .. code-block:: shell
@@ -468,7 +607,7 @@ Compile samples and install them into ``install_samples`` directory:
 
 
 riscv 64-bit glibc platform(such as cv180x/cv181x 64-bit glibc platform)
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 Prepare TPU sdk:
 
@@ -501,7 +640,7 @@ Compile samples and install them into ``install_samples`` directory:
 
 
 1) Run samples in docker environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The following files are required:
 

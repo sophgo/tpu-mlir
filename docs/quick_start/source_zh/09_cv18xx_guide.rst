@@ -269,19 +269,20 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 步骤3：runtime接口调用cvimodel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-可以通过命令：
+可以通过以下命令查看bs1和bs2指令的program id：
 
 .. code-block:: shell
 
   model_tool --info yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel
 
-查看bs1和bs2指令的program id，在运行时可以通过如下方式去运行不同的batch命令：
+在运行时可以通过如下方式去运行不同的batch命令：
 
 .. code-block:: c++
 
   CVI_MODEL_HANDEL bs1_handle;
   CVI_RC ret = CVI_NN_RegisterModel("yolov5s_cv183x_int8_sym_bs1_bs2.cvimodel", &bs1_handle);
   assert(ret == CVI_RC_SUCCESS);
+  // 选择bs1的program id
   CVI_NN_SetConfig(bs1_handle, OPTION_PROGRAM_INDEX, 0);
   CVI_NN_GetInputOutputTensors(bs1_handle, ...);
   ....
@@ -291,7 +292,7 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
   // 复用已加载的模型
   CVI_RC ret = CVI_NN_CloneModel(bs1_handle, &bs2_handle);
   assert(ret == CVI_RC_SUCCESS);
-  // 选择bs4的指令
+  // 选择bs2的program id
   CVI_NN_SetConfig(bs2_handle, OPTION_PROGRAM_INDEX, 1);
   CVI_NN_GetInputOutputTensors(bs2_handle, ...);
   ...
@@ -311,7 +312,6 @@ INT8 cvimodel的执行方式如下, 得到 ``dog_int8.jpg`` :
 1. 用model_deploy.py生成模型时，加上--merge_weight参数
 2. 要合并的模型的生成目录必须是同一个，且在合并模型前不要清理任何中间文件（叠加前面模型weight通过中间文件_weight_map.csv实现）
 3. 用model_tool --combine 将多个cvimodel合并
-
 
 
 编译和运行runtime sample
