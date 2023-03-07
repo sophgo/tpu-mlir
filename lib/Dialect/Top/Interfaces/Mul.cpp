@@ -53,4 +53,6 @@ LogicalResult top::MulOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::MulOp::shape_inference() {}
+void top::MulOp::shape_inference() {
+  broadcast_shape_inference(getOperation());
+}

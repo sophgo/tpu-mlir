@@ -1206,7 +1206,7 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
   let results = (outs AnyTensor:$output);
 }
 
-def Tpu_DivOp: Tpu_Op<"Div", [InOutSameShape]> {
+def Tpu_DivOp: Tpu_Op<"Div"> {
   let summary = "div operator";
 
   let description = [{

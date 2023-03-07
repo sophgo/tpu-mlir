@@ -198,8 +198,9 @@ LogicalResult tpu::AddOp::LocalGenSupport() {
   auto out_shape = module::getShape(getOutput());
   auto lhs_shape = module::getShape(getInputs()[0]);
   auto rhs_shape = module::getShape(getInputs()[1]);
-  if (getOperand(1).getDefiningOp() &&
-      isa<top::WeightOp>(getOperand(1).getDefiningOp()))
+  if (lhs_shape.size() != rhs_shape.size())
+    return failure();
+  if (module::isWeight(getOperand(0)) || module::isWeight(getOperand(1)))
     return failure();
   // left align
   switch (out_shape.size()) {

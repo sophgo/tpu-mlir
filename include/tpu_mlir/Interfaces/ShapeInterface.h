@@ -16,6 +16,9 @@ namespace tpu_mlir {
 // only one output, and output shape is the same with the first input shape
 void common_shape_inference(mlir::Operation *op);
 
+// binary operation with the implicit broadcast
+void broadcast_shape_inference(mlir::Operation *op);
+
 } // namespace tpu_mlir
 /// Include the ODS generated interface header files.
 #include "tpu_mlir/Interfaces/ShapeInterface.h.inc"

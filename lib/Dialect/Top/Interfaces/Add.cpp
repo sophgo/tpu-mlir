@@ -72,4 +72,6 @@ LogicalResult top::AddOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::AddOp::shape_inference() {}
+void top::AddOp::shape_inference() {
+  broadcast_shape_inference(getOperation());
+}
