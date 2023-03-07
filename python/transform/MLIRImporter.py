@@ -33,10 +33,12 @@ class Top:
     FloorOp = 'top.Floor'
     GatherOp = 'top.Gather'
     GELUOp = 'top.GELU'
+    GroupNormOp = 'top.GroupNorm'
     GRUOp = 'top.GRU'
     HardSigmoidOp = 'top.HardSigmoid'
     HardSwishOp = 'top.HardSwish'
     InputOp = 'top.Input'
+    InstanceNormOp = 'top.InstanceNorm'
     InterpOp = 'top.Interp'
     LayerNormOp = 'top.LayerNorm'
     LeakyReluOp = 'top.LeakyRelu'
@@ -1056,6 +1058,21 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {'name': kargs['name'], 'eps': FloatAttr.get_f64(kargs['eps'])}
         return self.buildOp(Top.PixelNormOp, operands, [output_type], **param)
+
+    def create_instance_norm_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
+        param = {'name': kargs['name'],
+                 'eps': FloatAttr.get_f64(kargs['eps'])}
+        return self.buildOp(Top.InstanceNormOp, operands, [output_type], **param)
+
+    def create_group_norm_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
+        param = {'name': kargs['name'],
+                 "num_groups": IntegerAttr.get(self.mlir_type['INT64'], kargs['num_groups']),
+                 'eps': FloatAttr.get_f64(kargs['eps'])}
+        return self.buildOp(Top.GroupNormOp, operands, [output_type], **param)
 
     def create_scatternd_op(self, operands, output_shape, **kargs):
         # get_value_type

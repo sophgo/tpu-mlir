@@ -1723,6 +1723,49 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
   );
 }
 
+def Tpu_InstanceNormOp : Tpu_Op<"InstanceNorm", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>
+  ]> {
+  let summary = "InstanceNorm operation";
+  let description = [{
+    instance normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$table,            // cv18xx
+    AnyTensorOrNone:$mantissa_table,   // cv18xx
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output
+  );
+}
+
+def Tpu_GroupNormOp : Tpu_Op<"GroupNorm", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["AllowDataSplit", "LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>
+  ]> {
+  let summary = "GroupNorm operation";
+  let description = [{
+    group normalization
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensorOrNone:$weight,
+    AnyTensorOrNone:$bias,
+    AnyTensorOrNone:$table,            // cv18xx
+    AnyTensorOrNone:$mantissa_table,   // cv18xx
+    I64Attr:$num_groups,
+    F64Attr:$eps
+  );
+  let results = (outs
+  	AnyTensor:$output
+  );
+}
+
 def Tpu_PixelNormOp : Tpu_Op<"PixelNorm", [
   DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>

@@ -143,12 +143,14 @@ class OnnxConverter(BaseConverter):
             "Gemm": lambda node: self.convert_gemm_op(node),
             "GlobalAveragePool": lambda node: self.convert_global_avgpool_op(node),
             "GlobalMaxPool": lambda node: self.convert_global_maxpool_op(node),
+            "GroupNormalization": lambda node: self.convert_group_norm_op(node),
             "Greater": lambda node: self.convert_cmp_op(node),
             "GreaterOrEqual": lambda node: self.convert_cmp_op(node),
             "GRU": lambda node: self.convert_gru_op(node),
             "HardSigmoid": lambda node: self.convert_hsigmoid_op(node),
             "HardSwish": lambda node: self.convert_hswish_op(node),
             "Identity": lambda node: self.convert_skip_op(node),
+            "InstanceNormalization": lambda node: self.convert_instance_norm_op(node),
             "LayerNormalization": lambda node: self.convert_layer_norm_op(node),
             "LeakyRelu": lambda node: self.convert_leaky_relu_op(node),
             "Log": lambda node: self.convert_log_op(node),
@@ -2084,6 +2086,55 @@ class OnnxConverter(BaseConverter):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
         output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_pixel_norm_op([input_opd, scale_opd, bias_opd], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_instance_norm_op(self, onnx_node):
+        assert (onnx_node.op_type == "InstanceNormalization")
+        assert (len(onnx_node.inputs) in (1, 2, 3))
+        input_shape = self.getShape(onnx_node.inputs[0])
+        num_dims = len(input_shape)
+        assert (num_dims > 1)
+        eps = onnx_node.attrs.get("epsilon", 1e-05)
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type), "eps": eps}
+        wb_shape = [1] * num_dims
+        wb_shape[1] = input_shape[1]
+        input_opd = self.getOperand(onnx_node.inputs[0])
+        scale_opd = self.mlir.none_op
+        bias_opd = self.mlir.none_op
+        if len(onnx_node.inputs) > 1:
+            if not self.isScalar_(onnx_node.inputs[1], 1):
+                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
+        if len(onnx_node.inputs) > 2:
+            if not self.isScalar_(onnx_node.inputs[2], 0):
+                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
+        output_shape = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_instance_norm_op([input_opd, scale_opd, bias_opd], output_shape, **p)
+        self.addOperand(onnx_node.name, new_op)
+
+    def convert_group_norm_op(self, onnx_node):
+        assert (onnx_node.op_type == "GroupNormalization")
+        assert (len(onnx_node.inputs) in (1, 2, 3))
+        input_shape = self.getShape(onnx_node.inputs[0])
+        num_dims = len(input_shape)
+        assert (num_dims > 1)
+        num_groups = onnx_node.attrs.get("num_groups") # required
+        eps = onnx_node.attrs.get("epsilon", 1e-05)
+        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+             "num_groups": num_groups,
+             "eps": eps}
+        wb_shape = [1] * num_dims
+        wb_shape[1] = input_shape[1]
+        input_opd = self.getOperand(onnx_node.inputs[0])
+        scale_opd = self.mlir.none_op
+        bias_opd = self.mlir.none_op
+        if len(onnx_node.inputs) > 1:
+            if not self.isScalar_(onnx_node.inputs[1], 1):
+                scale_opd = self.getWeightOp(onnx_node.inputs[1], wb_shape)
+        if len(onnx_node.inputs) > 2:
+            if not self.isScalar_(onnx_node.inputs[2], 0):
+                bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
+        output_shape = self.getShape(onnx_node.name)
+        new_op = self.mlir.create_group_norm_op([input_opd, scale_opd, bias_opd], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_scatternd_op(self, onnx_node):
