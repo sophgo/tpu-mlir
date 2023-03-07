@@ -8,6 +8,7 @@
 from mlir.ir import *
 from typing import List
 
+
 class Top:
     # NOTICE: Please add the Op alphabetically !!!
     AbsOp = 'top.Abs'
@@ -177,7 +178,7 @@ class MLIRImporter(object):
             return ArrayAttr.get([FloatAttr.get_f64(x) for x in data])
         raise RuntimeError("unsupport data type:{}".format(data_type))
 
-    def get_tensor_type(self, output_shape:List, type=None):
+    def get_tensor_type(self, output_shape: list, type=None):
         type = F32Type.get() if type is None else type
         if output_shape is None:
             return UnrankedTensorType.get(type)
@@ -1094,10 +1095,10 @@ class MLIRImporter(object):
             else:
                 self.input_types.append(RankedTensorType.get(_shape, _type))
         for _shape, _type in zip(self.output_shapes, output_types):
+            t = _type
             if isinstance(_type, str):
-                self.output_types.append(RankedTensorType.get(_shape, self.mlir_type[_type]))
-            else:
-                self.output_types.append(RankedTensorType.get(_shape, _type))
+                t = self.mlir_type[_type]
+            self.output_types.append(self.get_tensor_type(_shape, t))
         args_txt = str()
         for _idx, _type in enumerate(self.input_types):
             args_txt += "%args{}: {} loc(unknown)".format(_idx, _type.__str__())
