@@ -27,6 +27,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns);
 
 LOWERING_BM1684(Abs)
 LOWERING_BM1684(Add)
+LOWERING_BM1684(Arg)
 LOWERING_BM1684(AvgPool)
 LOWERING_BM1684(Concat)
 LOWERING_BM1684(Conv)
