@@ -22,10 +22,20 @@ void tpu::SoftmaxOp::codegen_global_bm1684() {
   auto log = getLog();
   auto in_addr = module::getAddress(input);
   auto out_addr = module::getAddress(output);
-  int64_t buffer_addr = 0;
+  uint64_t buffer_addr = 0;
   auto in_dtype = module::getStorageType(input);
   auto out_dtype = module::getStorageType(output);
-  if (!in_dtype.isF32() || !out_dtype.isF32()) {
+  double in_scale = 0.f;
+  int in_tensor_global_store_mode = 0;
+  int bottom_prec = 0;
+  if (module::isUniformQuantized(input)) {
+    buffer_addr = module::getAddress(getBuffer());
+    auto qtype = module::getUniformQuantizedType(input);
+    in_scale = qtype.getScale();
+    in_tensor_global_store_mode = 2;
+    bottom_prec = in_dtype.isSignedInteger() ? 1 : 2;
+  }
+  if (module::isUniformQuantized(output)) {
     llvm_unreachable("Not supported now");
     return;
   }
@@ -41,13 +51,11 @@ void tpu::SoftmaxOp::codegen_global_bm1684() {
   for (int i = axis + 1; i < input_dim; ++i) {
     inner_num *= input_shape[i];
   }
-  int in_tensor_global_store_mode = 0;
-  int bottom_prec = 0;
   BM1684::instance().dl_nodechip_softmax_forward_parallel(
       in_addr, out_addr, outer_num, softmax_num, inner_num, 1, input_shape[0],
       input_shape[1], input_shape[2], input_shape[3],
-      in_tensor_global_store_mode, buffer_addr, bottom_prec, 0, log,
-      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+      in_tensor_global_store_mode, buffer_addr, bottom_prec, (float)in_scale,
+      log, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   delete[] input_shape;
 }
 

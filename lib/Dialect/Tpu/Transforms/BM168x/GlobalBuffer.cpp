@@ -8,8 +8,9 @@
 //===----------------------------------------------------------------------===//
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/BMAddressAssign.h"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
@@ -109,6 +110,34 @@ public:
   }
 };
 
+class SoftmaxGlobalBuffer : public OpRewritePattern<tpu::SoftmaxOp> {
+public:
+  using OpRewritePattern<tpu::SoftmaxOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::SoftmaxOp softmaxOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(softmaxOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684Family()) {
+      return failure();
+    }
+    if (!module::isUniformQuantized(softmaxOp.getInput())) {
+      return failure();
+    }
+    int64_t n, c, h, w;
+    module::getNCHW(softmaxOp.getInput(), n, c, h, w);
+    std::vector<int64_t> buffer_shape = {ceiling_func(n, (int64_t)4), c, h, w};
+    auto type = module::getStorageType(softmaxOp.getOutput());
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(softmaxOp, buffer_type);
+    softmaxOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == softmaxOp.getBuffer();
+    });
+    return success();
+  }
+};
+
 class PermuteGlobalBuffer : public OpRewritePattern<tpu::PermuteOp> {
 public:
   using OpRewritePattern<tpu::PermuteOp>::OpRewritePattern;
@@ -171,6 +200,7 @@ void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,
+      SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       NonZeroGlobalBuffer
   >(patterns->getContext());
