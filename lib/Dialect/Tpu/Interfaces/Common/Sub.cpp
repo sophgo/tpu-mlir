@@ -156,32 +156,5 @@ LogicalResult tpu::SubOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::SubOp::LocalGenSupport() {
-  // BackwardH and BackwardN can not handle more than one input right now.
-  // The same n_slice and h_slice value will propagate to each inputs.
-  // Thus, the local layer is only safe when we do not need to slice n and h
-  // dimensions.
-  auto out_shape = module::getShape(getOutput());
-  auto lhs_shape = module::getShape(getInputs()[0]);
-  auto rhs_shape = module::getShape(getInputs()[1]);
-  if (lhs_shape.size() != rhs_shape.size())
-    return failure();
-  if (module::isWeight(getOperand(0)) || module::isWeight(getOperand(1)))
-    return failure();
-  // left align
-  switch (out_shape.size()) {
-  case 2:
-    if (lhs_shape[0] != rhs_shape[0])
-      return failure();
-    break;
-  case 3:
-  case 4:
-    if (lhs_shape[0] != rhs_shape[0])
-      return failure();
-    if (lhs_shape[2] != rhs_shape[2])
-      return failure();
-    break;
-  default:
-    success();
-  }
-  return success();
+  return BroadCastBinaryLocalGenSupport(getOperation());
 }

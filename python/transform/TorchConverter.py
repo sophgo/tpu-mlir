@@ -142,8 +142,13 @@ class TorchConverter(BaseConverter):
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
+            "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
+            "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
+            "aten::gt": lambda node: self.convert_compare_op(node, "Greater"),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
+            "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
+            "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
             "aten::mul": lambda node: self.convert_mul_op(node),
             "aten::pad": lambda node: self.convert_pad_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
@@ -427,6 +432,14 @@ class TorchConverter(BaseConverter):
             'do_relu': False,
         }
         new_op = self.mlir.create_div_op([op0, op1], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_compare_op(self, torch_node: TorchNode, mode):
+        assert mode in ("Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual")
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        p = {"name": torch_node.name, "mode": mode}
+        new_op = self.mlir.create_compare_op([op0, op1], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_prelu_op(self, torch_node: TorchNode):

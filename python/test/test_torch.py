@@ -36,6 +36,7 @@ class TORCH_IR_TESTER(object):
             # Torch Test Case, Alphabetically
             #############################
             "Add": self.test_Add,
+            "Compare": self.test_Compare,
             "Concat": self.test_Concat,
             "ConstantPad1d": self.test_Pad1d,
             "ConstantPad2d": self.test_Pad2d,
@@ -63,6 +64,7 @@ class TORCH_IR_TESTER(object):
             "Tanh": self.test_Activation,
             "Transpose": self.test_Transpose,
             "ZeroPad2d": self.test_Pad2d,
+
         }
         self.support_quant_modes = ["f32", "f16", "bf16"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
@@ -330,7 +332,7 @@ class TORCH_IR_TESTER(object):
                 self.weight = torch.randn(in1_shape)
 
             def forward(self, x):
-                y0 = x + 1
+                y0 = x + 3
                 y1 = op_type(self.weight, y0, **_alpha)
                 y2 = op_type(y0, y1, **_alpha)
                 return y2
@@ -343,9 +345,9 @@ class TORCH_IR_TESTER(object):
     def test_Add(self, case_name):
         """Add"""
 
-        self._test_binary(case_name, torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
-        self._test_binary(case_name, torch.add, (2, 32, 16), (2, 1, 16), 3)
-        self._test_binary(case_name, torch.add, (32, 32), (32))
+        self._test_binary(case_name + "_1", torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
+        self._test_binary(case_name + "_2", torch.add, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(case_name + "_3", torch.add, (32, 32), (32))
 
     #######################################################################
     # Sub
@@ -353,9 +355,9 @@ class TORCH_IR_TESTER(object):
     def test_Sub(self, case_name):
         """Sub"""
 
-        self._test_binary(case_name, torch.sub, (1, 3, 32, 31), (1, 3, 32, 1), 3)
-        self._test_binary(case_name, torch.sub, (2, 32, 16), (2, 1, 16), 3)
-        self._test_binary(case_name, torch.sub, (32, 32), (32))
+        self._test_binary(case_name + "_1", torch.sub, (1, 3, 32, 31), (1, 3, 32, 1), 3)
+        self._test_binary(case_name + "_2", torch.sub, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(case_name + "_3", torch.sub, (32, 32), (32))
 
     #######################################################################
     # Mul
@@ -363,9 +365,10 @@ class TORCH_IR_TESTER(object):
     def test_Mul(self, case_name):
         """Mul"""
 
-        self._test_binary(case_name, torch.multiply, (1, 3, 32, 31), (1, 3, 32, 1))
-        self._test_binary(case_name, torch.multiply, (2, 32, 16), (2, 1, 16))
-        self._test_binary(case_name, torch.multiply, (32, 32), (32))
+        self._test_binary(case_name + "_1", torch.multiply, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name + "_2", torch.multiply, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name + "_3", torch.multiply, (32, 32), (32))
+
 
     #######################################################################
     # Div
@@ -373,9 +376,25 @@ class TORCH_IR_TESTER(object):
     def test_Div(self, case_name):
         """Div"""
 
-        self._test_binary(case_name, torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
-        self._test_binary(case_name, torch.div, (2, 32, 16), (2, 1, 16))
-        self._test_binary(case_name, torch.div, (32, 32), (32))
+        self._test_binary(case_name + "_1", torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name + "_2", torch.div, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name + "_3", torch.div, (32, 32), (32))
+
+    #######################################################################
+    # Compare
+    # ------------
+    def test_Compare(self, case_name):
+        """Compare
+        greater, greater_equal, less, less_equal, equal
+
+        """
+        self._test_binary(case_name + "GT", torch.greater, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name + "GT1", torch.greater, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name + "GT2", torch.greater, (32, 32), (32))
+        self._test_binary(case_name + "GE", torch.greater_equal, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name + "LT", torch.less, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name + "LE", torch.less_equal, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name + "EQ", torch.eq, (1, 3, 32, 31), (1, 3, 32, 1))
 
     #######################################################################
     # LayerNorm

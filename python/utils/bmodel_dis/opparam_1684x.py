@@ -964,7 +964,7 @@ def _converter(reg):
         is_const=reg.opd1_const,
     )
     opd2 = dict(
-        address=reg.opd1_addr,
+        address=reg.opd2_addr,
         dtype=(reg.opd2_prec, reg.opd2_sign),
         shape=(1, c, 1, 1),
         layout=Layout.compact,

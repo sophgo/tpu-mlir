@@ -1666,7 +1666,7 @@ def Tpu_MaskedFillOp: Tpu_Op<"MaskedFill", [
 }
 
 def Tpu_CompareOp: Tpu_Op<"Compare", [
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Compare operator";
   let description = [{
