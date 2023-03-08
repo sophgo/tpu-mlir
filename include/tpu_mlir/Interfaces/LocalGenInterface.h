@@ -57,6 +57,8 @@ typedef struct local_sec_info {
 }
 #endif
 
+mlir::LogicalResult BroadCastBinaryLocalGenSupport(mlir::Operation *op);
+
 } // namespace tpu_mlir
 
 #include "tpu_mlir/Support/Module.h"
