@@ -74,10 +74,10 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   pad_attrs.emplace_back(
       rewriter.getNamedAttr("mode", rewriter.getI64IntegerAttr(mode)));
   auto input_type = op.getInput().getType().cast<RankedTensorType>();
-  auto pad_type = RankedTensorType::get(shape_after_pad,
-                                        op.getInput().getType().getElementType());
-  auto pad_op = rewriter.create<top::PadOp>(loc, pad_type,
-                                            ValueRange{op.getInput()}, pad_attrs);
+  auto pad_type = RankedTensorType::get(
+      shape_after_pad, op.getInput().getType().getElementType());
+  auto pad_op = rewriter.create<top::PadOp>(
+      loc, pad_type, ValueRange{op.getInput()}, pad_attrs);
 
   // insert conv op
   int64_t ic = shape_after_pad[1];
@@ -108,7 +108,8 @@ static void resize_to_conv1(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<int64_t> weight_shape = {ic, 1, 1, conv_kernel_shape[0],
                                        conv_kernel_shape[1]};
   auto weight_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
-  std::string weight_name = module::getName(op.getInput()).str() + "_add_weight";
+  std::string weight_name =
+      module::getName(op.getInput()).str() + "_add_weight";
   auto weight_operand =
       top::WeightOp::create(op, weight_name, weight, weight_type);
 
@@ -154,7 +155,8 @@ static void resize_to_conv2(PatternRewriter &rewriter, top::InterpOp &op,
   std::vector<int64_t> weight_shape = {ic, 1, 1, conv_kernel_shape[0],
                                        conv_kernel_shape[1]};
   auto weight_type = RankedTensorType::get(weight_shape, rewriter.getF32Type());
-  std::string weight_name = module::getName(op.getInput()).str() + "_conv_filter";
+  std::string weight_name =
+      module::getName(op.getInput()).str() + "_conv_filter";
   auto weight_operand =
       top::WeightOp::create(op, weight_name, weight, weight_type);
 
@@ -747,31 +749,26 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   assert(o_shape.size() >= 2);
   switch (coord_mode.value()) {
   case tpu::ResizeCoordMode::half_pixel:
-    if (mode.value() == tpu::ResizeMode::nearest) {
-      coordinate_transformation_mode = "nearest_half_pixel";
-    } else {
-      coordinate_transformation_mode = "half_pixel";
-    }
+    coordinate_transformation_mode = "half_pixel";
     break;
   case tpu::ResizeCoordMode::align_corners:
     coordinate_transformation_mode = "align_corners";
     break;
   case tpu::ResizeCoordMode::pytorch_half_pixel:
-    if (mode.value() == tpu::ResizeMode::linear &&
-        o_shape[o_shape.size() - 1] > 1 && o_shape[o_shape.size() - 2] > 1) {
-      coordinate_transformation_mode = "half_pixel";
-    } else {
-      coordinate_transformation_mode = "pytorch_half_pixel";
-    }
+    coordinate_transformation_mode = "pytorch_half_pixel";
     break;
   default:
     llvm_unreachable("Unsupport interp coord type \n");
   }
 
-  // convert interp to conv/deconv ...
   double scale_h = op.getScaleH().convertToDouble();
   double scale_w = op.getScaleW().convertToDouble();
   if (mode.value() == tpu::ResizeMode::linear) {
+    if (o_shape[o_shape.size() - 1] > 1 && o_shape[o_shape.size() - 2] > 1 &&
+        coordinate_transformation_mode == "pytorch_half_pixel") {
+      coordinate_transformation_mode = "half_pixel";
+    }
+    // convert interp to conv/deconv ...
     if (coordinate_transformation_mode == "half_pixel") {
       if (std::ceil(scale_h) == std::floor(scale_h) &&
           std::ceil(scale_w) == std::floor(scale_w)) {
@@ -786,12 +783,14 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   } else if (mode.value() == tpu::ResizeMode::nearest) {
     if (std::ceil(scale_h) == std::floor(scale_h) &&
         std::ceil(scale_w) == std::floor(scale_w)) {
-      //assert(0 && "already converted in onnx_convert\n");
-      // from caffe
+      assert(0 && "already converted in onnx_convert\n");
+      //  from caffe
     }
+    coordinate_transformation_mode = "nearest_half_pixel";
   } else {
     llvm_unreachable("Unsupport interp mode type \n");
   }
+
   int64_t on, oc, oh, ow;
   int64_t in, ic, ih, iw;
   module::getNCHW(o_shape, on, oc, oh, ow);
@@ -812,8 +811,8 @@ static void LoweringInterp(PatternRewriter &rewriter, top::InterpOp op,
   // lowering to cpu op
   std::vector<NamedAttribute> attrs;
   std::vector<NamedAttribute> param;
-  attrs.emplace_back(rewriter.getNamedAttr("cpu_op_name",
-                                           rewriter.getStringAttr("interp")));
+  attrs.emplace_back(
+      rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("interp")));
   param.emplace_back(rewriter.getNamedAttr(
       "width", rewriter.getI32IntegerAttr(o_shape[o_shape.size() - 1])));
   param.emplace_back(rewriter.getNamedAttr(

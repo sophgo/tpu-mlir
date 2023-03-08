@@ -1443,8 +1443,8 @@ def Top_YoloDetectionOp : Top_Op<"YoloDetection"> {
     DefaultValuedAttr<I64Attr, "0">:$flag,
     DefaultValuedAttr<I64Attr, "3">:$num_boxes,
     DefaultValuedAttr<I64Attr, "3">:$mask_group_size,
-    DefaultValuedAttr<ConfinedAttr<I64ArrayAttr, [ArrayCount<3>]>, "0">:$scale,
-    DefaultValuedAttr<ConfinedAttr<I64ArrayAttr, [ArrayCount<9>]>, "0">:$mask
+    DefaultValuedAttr<ConfinedAttr<I64ArrayAttr, [ArrayCount<3>]>, "{0,0,0}">:$scale,
+    DefaultValuedAttr<ConfinedAttr<I64ArrayAttr, [ArrayCount<9>]>, "{0,0,0,0,0,0,0,0,0}">:$mask
   );
 
   let results = (outs AnyTensor:$output);

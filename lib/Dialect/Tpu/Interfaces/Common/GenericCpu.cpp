@@ -355,7 +355,7 @@ public:
     this->height = param.get("height").cast<IntegerAttr>().getInt();
     this->width = param.get("width").cast<IntegerAttr>().getInt();
     this->pad_beg = param.get("pad_beg").cast<IntegerAttr>().getInt();
-    this->pad_beg = param.get("pad_end").cast<IntegerAttr>().getInt();
+    this->pad_end = param.get("pad_end").cast<IntegerAttr>().getInt();
     this->shrink_factor =
         param.get("shrink_factor").cast<IntegerAttr>().getInt();
     this->zoom_factor = param.get("zoom_factor").cast<IntegerAttr>().getInt();
