@@ -1842,4 +1842,26 @@ void Yolo_v2_DetectionFunc::invoke() {
   }
 }
 
+
+
+BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op): op_(op) {
+  this->op_name = op.getCpuOpName().str();
+  this->op_type = this->getCpuOpType();
+  this->getCpuParam();
+}
+
+int BMCpuOp::getCpuOpType() {
+  return StringSwitch<int>(op_.getCpuOpName())
+      .Default(CPU_LAYER_UNKNOW);
+}
+
+void BMCpuOp::getCpuParam() {
+  switch (this->op_type) {
+  case CPU_LAYER_UNKNOW:
+    llvm_unreachable("wrong cpu layer type");
+  }
+}
+
+
+
 } // namespace tpu_mlir

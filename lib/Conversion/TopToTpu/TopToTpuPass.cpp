@@ -590,7 +590,7 @@ protected:
         builder.getNamedAttr("param", builder.getDictionaryAttr(param)));
     auto castOp = builder.create<tpu::GenericCpuOp>(
         loc, newType, ValueRange{v}, ArrayRef<NamedAttribute>{attrs});
-    return castOp.getOutput();
+    return castOp.getOutputs()[0];
   }
 
   static module::Mode qmode(const std::string &mode) {

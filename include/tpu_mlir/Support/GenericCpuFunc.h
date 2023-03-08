@@ -16,7 +16,8 @@
 #include <math.h>
 #include <algorithm>
 #include <unordered_map>
-
+#include "bmcpu_common.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 namespace tpu_mlir {
 #define MAX_DET 200
 #define MAX_DET_RAW 500
@@ -498,6 +499,21 @@ private:
   std::unordered_map<std::string, int> _num_anchors;
   std::vector<AnchorCfg> _cfg;
   std::vector<int> _feature_stride_fpn{32, 16, 8};
+};
+
+
+class BMCpuOp {
+public:
+  BMCpuOp(tpu::GenericCpuOp &op);
+  ~BMCpuOp() {param=NULL;}
+  int op_type;
+  int param_size;
+  void *param;
+private:
+  std::string op_name;
+  int getCpuOpType();
+  void getCpuParam();
+  tpu::GenericCpuOp op_;
 };
 
 } // namespace tpu_mlir

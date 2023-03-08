@@ -1621,7 +1621,7 @@ def Tpu_GenericCpuOp : Tpu_Op<"GenericCpu", [
     OptionalAttr<DictionaryAttr>:$param
   );
 
-  let results = (outs AnyRankedTensor:$output);
+  let results = (outs Variadic<AnyRankedTensor>:$outputs);
 }
 
 def Tpu_InterpOp: Tpu_Op<"Interp"> {

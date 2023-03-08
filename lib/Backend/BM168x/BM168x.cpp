@@ -321,16 +321,27 @@ void BM168x::load_functions() {
   CAST_FUNCTION(tensor_compact_move_gen_cmd);
   CAST_FUNCTION(tensor_align_move_gen_cmd);
   CAST_FUNCTION(set_total_id_ptr);
+  CAST_CPU_FUNCTION(bmcpu_init);
+  CAST_CPU_FUNCTION(bmcpu_uninit);
+  CAST_CPU_FUNCTION(bmcpu_process);
+  CAST_CPU_FUNCTION(bmcpu_reshape);
+  CAST_CPU_FUNCTION(bmcpu_dtype);
 }
 
-BM168x::~BM168x() {}
+BM168x::~BM168x() {
+  if(bmcpu_handle != nullptr) {
+    dl_bmcpu_uninit(bmcpu_handle);
+  }
+}
 
 void BM168x::start_env() {
   load_library();
+  bmcpu_setup();
   load_functions();
   if (0 != dl_cmodel_init(0, CMODEL_GMEM_SIZE)) {
     llvm_unreachable("cmodel init failed");
   }
+  bmcpu_handle  = dl_bmcpu_init();
   cmdid_node = dl_create_cmd_id_node();
   bdc_node = dl_create_cmd_id_node();
   gdma_node = dl_create_cmd_id_node();
@@ -353,6 +364,14 @@ void BM168x::end_env() {
       dl_destroy_cmd_id_node(cmdid_node);
     }
     dl_cmodel_deinit(0);
+  }
+}
+
+void BM168x::bmcpu_setup() {
+  std::string Err;
+  cpuopDL = llvm::sys::DynamicLibrary::getPermanentLibrary(libcpuop.data(), &Err);
+  if (cpuopDL.isValid() == false) {
+      llvm_unreachable(Err.c_str());
   }
 }
 

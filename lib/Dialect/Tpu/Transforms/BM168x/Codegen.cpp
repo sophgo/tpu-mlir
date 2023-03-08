@@ -7,21 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "bmcpu_common.h"
+#include "mlir/IR/BlockAndValueMapping.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Builder/BM168x/bmodel.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/SwPipeline.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/Passes.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicNetIr.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
-#include "mlir/IR/BlockAndValueMapping.h"
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/raw_ostream.h"
 #include <llvm/Support/Debug.h>
-
 
 #include <fstream>
 #include <set>
@@ -98,6 +99,10 @@ public:
         auto subnet = CreateSubNet(call, std::move(subnet_ir_), context);
         subnet_v.push_back(subnet);
       } break;
+      case RunMode::CPU: {
+        auto subnet = CreateCPUSubNet(call);
+        subnet_v.push_back(subnet);
+      } break;
       default:
         llvm_unreachable("Not Implemented");
         break;
@@ -136,20 +141,25 @@ public:
     npb.add_binary_ir(&binary_ir);
     // create subnet
     npb.add_sub_net(subnets);
+    npb.add_cpu_mem_size(max_cpu_mem_size);
     model_gen->AddNet(module::getModuleName().str(), npb.Finish());
     model_gen->Finish();
     model_gen->Save(filename);
   }
 
 private:
+  u32 max_cpu_mem_size = 0;
   Offset<Vector<Offset<bmodel::Shape>>>
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
-  CreateTensorVector(const std::vector<Value> &values);
+  CreateTensorVector(const std::vector<Value> &values,
+                     std::vector<bool> cpu_type = {},
+                     std::vector<uint32_t> cpu_addr = {});
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,
                                       std::unique_ptr<Context> &context);
+  Offset<bmodel::SubNet> CreateCPUSubNet(func::CallOp call);
   std::shared_ptr<std::vector<Offset<bmodel::CmdGroup>>> CreateCmdGroupVector();
   Offset<bmodel::CoeffMem> CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
                                           uint64_t coeff_addr,
@@ -190,9 +200,11 @@ CodegenPass::CreateShapeVector(const ArrayRef<int64_t> &shape) {
 }
 
 Offset<Vector<Offset<bmodel::Tensor>>>
-CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
+CodegenPass::CreateTensorVector(const std::vector<Value> &values,
+                                std::vector<bool> is_cpu, std::vector<uint32_t> cpu_addr) {
   auto &builder = model_gen->Builder();
   std::vector<Offset<bmodel::Tensor>> tensor_v;
+  int index = 0;
   for (auto v : values) {
     auto v_name = module::getName(v).str();
     auto type = module::getStorageType(v);
@@ -215,7 +227,27 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
     tb.add_data_type(data_type);
     tb.add_gmem_stmode(gmem_stmode);
     tb.add_shape(stage_shape);
-    tb.add_mem_type(MEM_TYPE_TPU);
+    /*
++--------------------------+     +-----------------------------------------+
+| TPU_LAYER (MEM_TYPE_ALL) | --> | (MEM_TYPE_ALL) CPU_LAYER (MEM_TYPE_ALL) |
++--------------------------+     +-----------------------------------------+
+                                                  |
+                                                  |
+                                                  |
+                                                  |
+                                                  |
+                                                  |
+                                                  |
+                                                  v
+                                 +-----------------------------------------+
+                                 |        (MEM_TYPE_ALL) TPU_LAYER)        |
+                                 +-----------------------------------------+
+     */
+    if (is_cpu.empty()) {
+      tb.add_mem_type(MEM_TYPE_TPU);
+    } else {
+      tb.add_mem_type(is_cpu[index] ? MEM_TYPE_ALL : MEM_TYPE_TPU);
+    }
     float scale = 1.0f;
     int zero_point = 0;
     if (module::isUniformQuantized(v)) {
@@ -227,10 +259,15 @@ CodegenPass::CreateTensorVector(const std::vector<Value> &values) {
       zero_point = qtype.getZeroPoint();
       tb.add_scale(scale);
       tb.add_zero_point(zero_point);
+    } else {
+      tb.add_scale(scale);
     }
     tb.add_device_addr(module::getAddress(v));
     tb.add_size(Arch::get_gmem_bytes(v));
+    if(!cpu_addr.empty())
+      tb.add_cpu_addr(cpu_addr[index]);
     tensor_v.push_back(tb.Finish());
+    ++index;
   }
   return builder.CreateVector(tensor_v);
 }
@@ -248,7 +285,7 @@ CodegenPass::CreateCoeffMem(std::vector<top::WeightOp> &coeffs,
     memcpy(data_u8->data() + offset, data->data(), data->size());
     offset += align_up((int64_t)data->size(), BM168x::ALIGNMENT);
   }
-  if(offset != coeff_size) {
+  if (offset != coeff_size) {
     llvm::errs() << "Warning: coeff size is not correct\n";
   }
   std::vector<uint8_t> sha256(bmodel::SHA256_LEN, 0);
@@ -372,7 +409,8 @@ void CodegenPass::codegen_for_group(GroupOp gOp) {
           BM168x::instance()->dl_set_cmd_id_prefix(pid_node, prefix.c_str());
           lgOp.assign_sec_info(tensor_step->nstep, tensor_step->hstep,
                                group_type, sec_info);
-          LLVM_DEBUG(llvm::dbgs() << "codegen op: '" << module::getName(lgOp) << "'\n");
+          LLVM_DEBUG(llvm::dbgs()
+                     << "codegen op: '" << module::getName(lgOp) << "'\n");
           lgOp.codegen_local_bm168x(tensor_step->nstep, tensor_step->hstep,
                                     group_type, sec_info);
         }
@@ -418,33 +456,55 @@ void CodegenPass::codegen(Operation *op) {
 Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   bm168x->before_codegen();
   auto func = module::getFuncOp(call.getCallee());
-  func.walk([&](Operation *op) { codegen(op); });
+  std::vector<bool> input_is_cpu = {};
+  bool first = true;
+  func.walk([&](Operation *op) {
+    codegen(op);
+    if (first) {
+      first = false;
+      auto prevs = op->getOperands();
+      if(!prevs.empty()){
+        for (auto prev : prevs) {
+          if (prev.getDefiningOp() != nullptr) {
+            input_is_cpu.push_back(isa<tpu::GenericCpuOp>(prev.getDefiningOp()));
+          } else {
+            input_is_cpu.push_back(false);
+          }
+        }
+      } else {
+        input_is_cpu.push_back(false);
+      }
+    }
+  });
   bm168x->after_codegen(module::getFLOPs());
   int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
   LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
   std::vector<Value> inputs;
   std::vector<Value> outputs;
   module::getInputsOutputs(call, inputs, outputs);
-  auto input_tensor = CreateTensorVector(inputs);
-  auto output_tensor = CreateTensorVector(outputs);
   std::vector<int> next_id_v = {};
+  std::vector<bool> next_is_cpu = {};
   for (auto v : call.getResults()) {
     for (auto user : v.getUsers()) {
       if (isa<ReturnOp>(user)) {
+        next_is_cpu.push_back(false);
         next_id_v.push_back(-1);
       } else if (auto call = dyn_cast<func::CallOp>(user)) {
         auto func = module::getFuncOp(call.getCallee());
         auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
-        //callOp's result maybe have more than two users
+        next_is_cpu.push_back(getRunMode(func) == RunMode::CPU);
+        // callOp's result maybe have more than two users
         next_id_v.insert(next_id_v.begin(), id);
       } else {
         llvm_unreachable("next op is illegal");
       }
     }
   }
-
+  auto input_tensor = CreateTensorVector(inputs, input_is_cpu);
+  auto output_tensor = CreateTensorVector(outputs, next_is_cpu);
   std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()), next_id_v.end());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
+                  next_id_v.end());
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
   auto cmd_group_v = CreateCmdGroupVector();
@@ -460,6 +520,104 @@ Offset<bmodel::SubNet> CodegenPass::CreateSubNet(func::CallOp call) {
   snb.add_output_tensor(output_tensor);
   snb.add_id(subnet_id);
   snb.add_next_subnet_ids(next_ids);
+  return snb.Finish();
+}
+
+Offset<bmodel::SubNet> CodegenPass::CreateCPUSubNet(func::CallOp call) {
+  bm168x->before_codegen();
+  auto func = module::getFuncOp(call.getCallee());
+  bm168x->after_codegen(module::getFLOPs());
+  int subnet_id = func->getAttrOfType<IntegerAttr>("id").getInt();
+  LLVM_DEBUG(llvm::dbgs() << "subnet id: '" << subnet_id << "'\n");
+  std::vector<Value> inputs;
+  std::vector<Value> outputs;
+  module::getInputsOutputs(call, inputs, outputs);
+  std::vector<bool> input_is_cpu(inputs.size(), true);
+  std::vector<bool> output_is_cpu(outputs.size(), true);
+  std::vector<uint32_t> in_cpu_addr = {};
+  std::vector<uint32_t> out_cpu_addr = {};
+  uint32_t cpu_addr = 0;
+  in_cpu_addr.push_back(0);
+  if(inputs.size() > 1) {
+    for(int i = 1; i<inputs.size();++i) {
+      // cpu input is always float
+      cpu_addr += module::getNumElements(inputs[i-1]) * sizeof(float);
+      in_cpu_addr.push_back(cpu_addr);
+    }
+  }
+  cpu_addr += module::getNumElements(inputs[inputs.size()-1]) * sizeof(float);
+  out_cpu_addr.push_back(cpu_addr);
+  if(outputs.size() > 1) {
+    for(int i = 1; i<outputs.size();++i) {
+      cpu_addr += module::getNumElements(outputs[i-1]) * sizeof(float);
+      out_cpu_addr.push_back(cpu_addr);
+    }
+  }
+  auto input_tensor = CreateTensorVector(inputs, input_is_cpu, in_cpu_addr);
+  auto output_tensor = CreateTensorVector(outputs, output_is_cpu, out_cpu_addr);
+  std::vector<int> next_id_v = {};
+  for (auto v : call.getResults()) {
+    for (auto user : v.getUsers()) {
+      if (isa<ReturnOp>(user)) {
+        next_id_v.push_back(-1);
+      } else if (auto call = dyn_cast<func::CallOp>(user)) {
+        auto func = module::getFuncOp(call.getCallee());
+        auto id = func->getAttrOfType<IntegerAttr>("id").getInt();
+        // callOp's result maybe have more than two users
+        next_id_v.insert(next_id_v.begin(), id);
+      } else {
+        llvm_unreachable("next op is illegal");
+      }
+    }
+  }
+
+  std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
+                  next_id_v.end());
+  auto &builder = model_gen->Builder();
+  auto next_ids = builder.CreateVector(next_id_v);
+
+  vector<Offset<bmodel::CpuParam>> cpu_param_v;
+
+  /* currently only 1 cpu layer per subnet, but it should to able to support
+   * multiple cpu layers in 1 subnet soon.
+   */
+  vector<Offset<bmodel::CpuConst>> tmp;
+  auto cpu_const_v = builder.CreateVector(tmp);
+  bmodel::CpuParamBuilder cpb(builder);
+  void *param = nullptr;
+  int op_type;
+  int param_size;
+  func.walk([&](tpu::GenericCpuOp op) {
+    BMCpuOp cpuOp(op);
+    param = malloc(cpuOp.param_size);
+    memcpy(param, cpuOp.param, cpuOp.param_size);
+    uint32_t io_size = 0;
+    for (int i = 0; i < op.getInputs().size(); ++i) {
+      io_size += module::getNumElements(op.getInputs()[i]) * sizeof(float);
+    }
+    for (int i = 0; i < op.getOutputs().size(); ++i) {
+      io_size += module::getNumElements(op.getOutputs()[i]) * sizeof(float);
+    }
+    max_cpu_mem_size = std::max(io_size, max_cpu_mem_size);
+    op_type = cpuOp.op_type;
+    param_size = cpuOp.param_size;
+  });
+  cpb.add_op_type(op_type);
+  bmodel::Binary binary_cpu_param =
+      model_gen->WriteBinary(param_size, (u8 *)param);
+  cpb.add_binary_param(&binary_cpu_param);
+  cpb.add_cpu_const(cpu_const_v);
+  cpu_param_v.push_back(cpb.Finish());
+  auto cpu_param = builder.CreateVector(cpu_param_v);
+  bmodel::SubNetBuilder snb(builder);
+  snb.add_cpu_param(cpu_param);
+  snb.add_subnet_mode(SUBNET_MODE_CPU);
+  snb.add_input_tensor(input_tensor);
+  snb.add_output_tensor(output_tensor);
+  snb.add_id(subnet_id);
+  snb.add_next_subnet_ids(next_ids);
+  free(param);
   return snb.Finish();
 }
 
@@ -505,7 +663,8 @@ CodegenPass::CreateSubNet(func::CallOp call,
   }
 
   std::sort(next_id_v.begin(), next_id_v.end(), std::greater<int>());
-  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()), next_id_v.end());
+  next_id_v.erase(std::unique(next_id_v.begin(), next_id_v.end()),
+                  next_id_v.end());
   auto &builder = model_gen->Builder();
   auto next_ids = builder.CreateVector(next_id_v);
 
@@ -550,6 +709,7 @@ CodegenPass::CreateStageIRVector(const vector<stage_param_t> &stage_param_v,
   u8 *buffer = (u8 *)binary_ir_v.data();
   binary_ir = model_gen->WriteBinary(ir_size, buffer + ir_offset);
   return stage_ir;
+
 }
 } // namespace tpu
 } // namespace tpu_mlir
