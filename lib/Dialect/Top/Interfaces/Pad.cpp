@@ -201,4 +201,12 @@ LogicalResult top::PadOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::PadOp::shape_inference() {}
+void top::PadOp::shape_inference() {
+  i64_array_t pads = module::getI64Array(getPaddings());
+  auto input_shape = module::getShape(getInput());
+  std::vector<int64_t> out_shape(input_shape);
+  int dim = out_shape.size();
+  for (int i = 0; i < dim; i++)
+    out_shape[i] += pads->at(i) + pads->at(i + dim);
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

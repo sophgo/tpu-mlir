@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
 
-Failed_Cases = ["PRelu", "Gather", "Conv2d", "LayerNorm"]
+Failed_Cases = ["PRelu", "Gather", "Conv2d", "LayerNorm", "Elu"]
 
 
 class TORCH_IR_TESTER(object):
@@ -34,16 +34,25 @@ class TORCH_IR_TESTER(object):
             #############################
             "Add": self.test_Add,
             "Concat": self.test_Concat,
+            "ConstantPad1d": self.test_Pad1d,
+            "ConstantPad2d": self.test_Pad2d,
             "Conv2d": self.test_Conv2d,
             "Div": self.test_Div,
+            "Elu": self.test_Elu,
             # "Gather": self.test_Gather,
             "LayerNorm": self.test_LayerNorm,
             "Mul": self.test_Mul,
             "PRelu": self.test_PRelu,
             "Permute": self.test_Permute,
+            "ReflectionPad1d": self.test_Pad1d,
+            "ReflectionPad2d": self.test_Pad2d,
+            "Relu": self.test_Relu,
+            "ReplicationPad1d": self.test_Pad1d,
+            "ReplicationPad2d": self.test_Pad2d,
             "Sub": self.test_Sub,
             "T": self.test_T,
             "Transpose": self.test_Transpose,
+            "ZeroPad2d": self.test_Pad2d,
         }
         self.support_quant_modes = ["f32", "f16", "bf16"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
@@ -295,7 +304,6 @@ class TORCH_IR_TESTER(object):
         case2((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1, suffix="_3")
         case2((1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1), suffix="_4")
 
-
     #######################################################################
     # Binary Base
     # ------------
@@ -306,6 +314,7 @@ class TORCH_IR_TESTER(object):
             _alpha = dict(alpha=alpha)
 
         class Model(nn.Module):
+
             def __init__(self):
                 super(Model, self).__init__()
                 self.weight = torch.randn(in1_shape)
@@ -357,7 +366,6 @@ class TORCH_IR_TESTER(object):
         self._test_binary(case_name, torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
         self._test_binary(case_name, torch.div, (2, 32, 16), (2, 1, 16))
         self._test_binary(case_name, torch.div, (32, 32), (32))
-
 
     #######################################################################
     # LayerNorm
@@ -523,6 +531,115 @@ class TORCH_IR_TESTER(object):
         _test_concat((1, 3, 32, 32), (1, 6, 32, 32), 1)
         _test_concat((2, 32, 16), (3, 32, 16))
         _test_concat((32, 32), (1, 32), 0)
+
+    #######################################################################
+    # Elu
+    # ------------
+    def test_Elu(self, case_name):
+        """Elu"""
+
+        def _test_elu(input_shape, alpha=1.0):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.elu(x)
+
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
+
+        _test_elu((1, 3, 32, 32), 2.0)
+        _test_elu((3, 16, 32), 3.5)
+        _test_elu((64, 32))
+
+    #######################################################################
+    # Relu
+    # ------------
+    def test_Relu(self, case_name):
+        """Relu"""
+
+        def _test_relu(in_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return torch.relu(x)
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        _test_relu((1, 3, 32, 32))
+        _test_relu((3, 16, 32))
+        _test_relu((64, 32))
+
+    #######################################################################
+    # Pad1D
+    # ------------
+    def test_Pad1d(self, case_name):
+        """Pad 1D (ReflectionPad1d, ReplicationPad1d, ConstantPad1d)
+        Input: (N,C,W) or (C, W)
+        Padding: int (pad_left == pad_right) or tuple (pad_left, pad_right)
+      """
+
+        def _test_pad1d(input_shape, padding: Union[int, tuple], value=0.):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.pad1d = nn.ConstantPad1d(padding, value)
+                    if case_name == "ReflectionPad1d":
+                        self.pad1d = nn.ReflectionPad1d(padding)
+                    elif case_name == "ReplicationPad1d":
+                        self.pad1d = nn.ReplicationPad1d(padding)
+
+                def forward(self, x):
+                    return self.pad1d(x)
+
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
+
+        _test_pad1d((1, 3, 32), 5, 3.0)
+        _test_pad1d((2, 3, 32), (5, 3))
+        _test_pad1d((64, 32), (3, 6), 5.0)
+        _test_pad1d((64, 32), 7, 6.0)
+
+    #######################################################################
+    # Pad2D
+    # ------------
+    def test_Pad2d(self, case_name):
+        """Pad 2D (ReflectionPad2d, ReplicationPad2d, ConstantPad2d, ZeroPad2d)
+        Input: (C, H, W) or (N, C, H, W)
+        Padding: int (pad_left == pad_right == pad_top == pad_bottom)
+                  or tuple (pad_left, pad_right, pad_top, pad_bottom)
+      """
+
+        def _test_pad2d(input_shape, padding: Union[int, tuple], value=0.):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.pad2d = nn.ConstantPad2d(padding, value)
+                    if case_name == "ReflectionPad2d":
+                        self.pad2d = nn.ReflectionPad2d(padding)
+                    elif case_name == "ReplicationPad2d":
+                        self.pad2d = nn.ReplicationPad2d(padding)
+                    elif case_name == "ZeroPad2d":
+                        self.pad2d = nn.ZeroPad2d(padding)
+
+                def forward(self, x):
+                    return self.pad2d(x)
+
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
+
+        _test_pad2d((1, 16, 32), 7, 3.0)
+        _test_pad2d((3, 16, 32), (4, 6, 7, 8))
+        _test_pad2d((1, 3, 16, 32), 3, 4.0)
+        _test_pad2d((2, 4, 16, 32), (3, 4, 5, 6), 6.0)
 
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
