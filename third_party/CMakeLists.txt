@@ -23,6 +23,7 @@ install(FILES oneDNN/lib/libdnnl.so
               nntoolchain/lib/libbmrt.so
               nntoolchain/lib/libbmcpu.so
               nntoolchain/lib/libusercpu.so
+              nntoolchain/lib/libcpuop.so
               # cvitek
               CV18xx/lib/libcvikernel.so
               CV18xx/lib/libcviruntime.so

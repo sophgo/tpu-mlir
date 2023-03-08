@@ -12,13 +12,72 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
-#include "tpu_mlir/Support/MathUtils.h"
+#include "bmcpu_common.h"
+#include "tpu_mlir/Backend/BM168x/BM1684.h"
+#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
+#include "tpu_mlir/Support/MathUtils.h"
+using namespace tpu_mlir::backend;
 
 LogicalResult tpu::GenericCpuOp::init(InferenceParameter &p) {
   return success();
 }
 void tpu::GenericCpuOp::deinit(InferenceParameter &p) {}
+
+LogicalResult bmcpu_inference(tpu::GenericCpuOp &op, InferenceParameter &p) {
+  std::vector<std::vector<int>> input_shapes_v;
+  std::vector<std::vector<int>> output_shapes_v;
+  std::vector<float *> input_tensor_data_v;
+  std::vector<float *> output_tensor_data_v;
+  for (int i = 0; i < op.getInputs().size(); ++i) {
+    int shape[MAX_SHAPE_DIMS] = {1};
+    module::getGlobalShape(op.getInputs()[i], shape);
+    std::vector<int> shapev(shape,
+                            shape + module::getShape(op.getInputs()[i]).size());
+    input_shapes_v.push_back(shapev);
+    input_tensor_data_v.push_back(p.inputs[i]);
+  }
+  for (int i = 0; i < op.getOutputs().size(); ++i) {
+    int shape[MAX_SHAPE_DIMS] = {1};
+    module::getGlobalShape(op.getOutputs()[i], shape);
+    std::vector<int> shapev(
+        shape, shape + module::getShape(op.getOutputs()[i]).size());
+    output_shapes_v.push_back(shapev);
+    output_tensor_data_v.push_back(p.outputs[i]);
+  }
+  BMCpuOp cpuOp(op);
+  void *param = malloc(cpuOp.param_size);
+  memcpy(param, cpuOp.param, cpuOp.param_size);
+  BM1684::instance().dl_bmcpu_reshape(BM1684::instance().bmcpu_handle,
+                                      cpuOp.op_type, param, cpuOp.param_size,
+                                      input_shapes_v, output_shapes_v);
+  BM1684::instance().dl_bmcpu_process(BM1684::instance().bmcpu_handle,
+                                      cpuOp.op_type, param, cpuOp.param_size,
+                                      input_tensor_data_v, input_shapes_v,
+                                      output_tensor_data_v, output_shapes_v);
+  for (int i = 0; i < op.getOutputs().size(); ++i) {
+    auto dtype = BM168x::getDataType(op.getOutputs()[i]);
+    if (dtype == DTYPE_FP32) {
+      p.outputs[i] = output_tensor_data_v[i];
+    } else if (dtype == DTYPE_INT32) {
+      // The output of the CPU layer is a float pointer
+      // when the actual output data type is int32
+      // we need to first convert the float pointer to an int pointer in order
+      // to obtain the correct output value.
+      auto tmp = (int *)output_tensor_data_v[i];
+      int64_t num_element = module::getNumElements(op.getOutputs()[i]);
+#pragma omp parallel for schedule(static, omp_schedule(num_element))
+      for (int64_t j = 0; j < num_element; ++j) {
+        // p.output always need float
+        p.outputs[i][j] = (float)tmp[j];
+      }
+    } else {
+      llvm_unreachable("not support dtype");
+    }
+  }
+  free(param);
+  return success();
+}
 
 static void my_interp(const int channels, const float *data1, const int x1,
                       const int y1, const int height1, const int width1,
@@ -348,7 +407,7 @@ class InterpolationOpKernel {
 public:
   InterpolationOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
     input_shape = module::getShape(op.getInputs()[0]);
-    output_shape = module::getShape(op.getOutput());
+    output_shape = module::getShape(op.getOutputs()[0]);
     assert(input_shape.size() == 4);
     assert(output_shape.size() == 4);
     mlir::DictionaryAttr param = op.getParam().value();
@@ -441,7 +500,7 @@ public:
   EmbeddingOpKernel(tpu::GenericCpuOp &op, InferenceParameter &p) {
     input_shape = module::getShape(op.getInputs()[0]);
     table_shape = module::getShape(op.getInputs()[1]);
-    output_shape = module::getShape(op.getOutput());
+    output_shape = module::getShape(op.getOutputs()[0]);
     input_data = p.inputs[0];
     table_data = p.inputs[1];
     output_data = p.outputs[0];
@@ -487,11 +546,14 @@ private:
 
 LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   std::string func_name = getCpuOpName().str();
+  if (module::isBM1684Family()) {
+    return bmcpu_inference(*this, p);
+  }
   if (func_name == "quant") {
     assert(getInputs().size() == 1);
-    auto num_elem = module::getNumElements(getOutput());
+    auto num_elem = module::getNumElements(getOutputs()[0]);
     auto in_type = module::getStorageType(getInputs()[0]);
-    auto out_type = module::getStorageType(getOutput());
+    auto out_type = module::getStorageType(getOutputs()[0]);
     if (in_type.isF32() && out_type.isSignedInteger()) {
       mlir::DictionaryAttr param = this->getParam().value();
       float scale = param.get("scale").cast<FloatAttr>().getValueAsDouble();
@@ -566,8 +628,8 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       yolo_param.inputs.emplace_back(std::move(tensor_list));
     }
     yolo_param.output.ptr = p.outputs[0];
-    yolo_param.output.size = module::getNumElements(getOutput());
-    yolo_param.output.shape = module::getShape(getOutput());
+    yolo_param.output.size = module::getNumElements(getOutputs()[0]);
+    yolo_param.output.shape = module::getShape(getOutputs()[0]);
     YoloDetectionFunc yolo_func(yolo_param);
     yolo_func.invoke();
   } else if (func_name == "proposal") {
@@ -595,8 +657,8 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       proposal_param.inputs.emplace_back(std::move(tensor_list));
     }
     proposal_param.output.ptr = p.outputs[0];
-    proposal_param.output.size = module::getNumElements(getOutput());
-    proposal_param.output.shape = module::getShape(getOutput());
+    proposal_param.output.size = module::getNumElements(getOutputs()[0]);
+    proposal_param.output.shape = module::getShape(getOutputs()[0]);
     ProposalFunc proposal_func(proposal_param);
     proposal_func.invoke();
   } else if (func_name == "roi_pooling") {
@@ -614,8 +676,8 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       roip_param.inputs.emplace_back(std::move(tensor_list));
     }
     roip_param.output.ptr = p.outputs[0];
-    roip_param.output.size = module::getNumElements(getOutput());
-    roip_param.output.shape = module::getShape(getOutput());
+    roip_param.output.size = module::getNumElements(getOutputs()[0]);
+    roip_param.output.shape = module::getShape(getOutputs()[0]);
     ROIPoolingFunc roip_func(roip_param);
     roip_func.invoke();
   } else if (func_name == "frcn_detection") {
@@ -635,16 +697,19 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
       frcn_param.inputs.emplace_back(std::move(tensor_list));
     }
     frcn_param.output.ptr = p.outputs[0];
-    frcn_param.output.size = module::getNumElements(getOutput());
-    frcn_param.output.shape = module::getShape(getOutput());
+    frcn_param.output.size = module::getNumElements(getOutputs()[0]);
+    frcn_param.output.shape = module::getShape(getOutputs()[0]);
     FrcnDetctionFunc frcn_func(frcn_param);
     frcn_func.invoke();
   } else if (func_name == "retinaface_detection") {
     RetinaFaceDetectionParam retina_param;
     mlir::DictionaryAttr param = this->getParam().value();
-    retina_param.keep_topk = param.get("keep_topk").cast<IntegerAttr>().getInt();
-    retina_param.confidence_threshold = param.get("confidence_threshold").cast<FloatAttr>().getValueAsDouble();
-    retina_param.nms_threshold = param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
+    retina_param.keep_topk =
+        param.get("keep_topk").cast<IntegerAttr>().getInt();
+    retina_param.confidence_threshold =
+        param.get("confidence_threshold").cast<FloatAttr>().getValueAsDouble();
+    retina_param.nms_threshold =
+        param.get("nms_threshold").cast<FloatAttr>().getValueAsDouble();
     RetinaFaceDetectionFunc func;
     std::vector<tensor_list_t> inputs;
     for (size_t i = 0; i < getInputs().size(); i++) {
@@ -656,8 +721,8 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     }
     tensor_list_t output;
     output.ptr = p.outputs[0];
-    output.size = module::getNumElements(getOutput());
-    output.shape = module::getShape(getOutput());
+    output.size = module::getNumElements(getOutputs()[0]);
+    output.shape = module::getShape(getOutputs()[0]);
     func.setup(inputs, output, retina_param);
     func.invoke();
   } else {

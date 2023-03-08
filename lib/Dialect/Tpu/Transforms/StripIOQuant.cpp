@@ -44,7 +44,7 @@ struct StripInputQuantCpuCastPattern
     if (auto inputOp = op.getInputs()[0].getDefiningOp<top::InputOp>()) {
       if (!inputOp.getResult().hasOneUse())
         return failure();
-      inputOp.getResult().setType(op.getResult().getType());
+      inputOp.getResult().setType(op.getResults()[0].getType());
       rewriter.replaceOp(op, inputOp.getResult());
       return success();
     }
@@ -73,11 +73,12 @@ struct StripOutputQuantCpuCastPattern
       : OpRewritePattern<tpu::GenericCpuOp>(context) {}
   LogicalResult matchAndRewrite(tpu::GenericCpuOp op,
                                 PatternRewriter &rewriter) const override {
-
-    if (op.getOutput().hasOneUse() &&
-        isa<ReturnOp>(op.getOutput().use_begin().getUser())) {
-      rewriter.replaceOp(op, op.getInputs()[0]);
-      return success();
+    if(module::isCV18xx()) {
+      if (op.getOutputs()[0].hasOneUse() &&
+          isa<ReturnOp>(op.getOutputs()[0].use_begin().getUser())) {
+        rewriter.replaceOp(op, op.getInputs()[0]);
+        return success();
+      }
     }
     return failure();
   };
