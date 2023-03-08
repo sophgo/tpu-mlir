@@ -30,7 +30,7 @@ void SoftmaxLowering::LoweringBF16(PatternRewriter &rewriter,
   rewriter.replaceOpWithNewOp<tpu::SoftmaxOp>(
       op, newType,
       ValueRange{op.getInput(), table_weight, slope_table_weight,
-                 reciprocal_table_weight, reciprocal_mantissa_table_weight},
+                 reciprocal_table_weight, reciprocal_mantissa_table_weight, module::getNoneOp(op.getOperation())},
       op->getAttrs());
   return;
 }

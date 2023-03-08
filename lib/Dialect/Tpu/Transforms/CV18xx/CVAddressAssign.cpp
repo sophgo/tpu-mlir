@@ -150,7 +150,9 @@ void CVAddressAssign::assign_weight_addr(mlir::ModuleOp &module,
     }
     if (pair.second.size() > 1 || iter_redundant != addrMapping.end()) {
       // redundant weight
-      pair.second[0].removeDoCompressAttr();
+      for (auto &weight_op : pair.second) {
+        weight_op.removeDoCompressAttr();
+      }
     }
   }
   module::setCoeffAddr(start_addr);
