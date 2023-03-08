@@ -652,27 +652,32 @@ def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cas
 
 
 def test_all(tester: TORCH_IR_TESTER):
-    import multiprocessing
-    process_number = multiprocessing.cpu_count() // 2 + 1
-    processes = []
-    error_cases = multiprocessing.Manager().list()
-    success_cases = multiprocessing.Manager().list()
+    # import multiprocessing
+    # process_number = multiprocessing.cpu_count() // 2 + 1
+    # processes = []
+    # error_cases = multiprocessing.Manager().list()
+    # success_cases = multiprocessing.Manager().list()
+    # for case in tester.test_function:
+    #     if tester.check_support(case):
+    #         p = multiprocessing.Process(target=test_one_case_in_all,
+    #                                     args=(tester, case, error_cases, success_cases))
+    #         processes.append(p)
+    #     if len(processes) == process_number:
+    #         for p in processes:
+    #             p.start()
+    #         for j in processes:
+    #             j.join()
+    #         processes = []
+    # if processes:
+    #     for p in processes:
+    #         p.start()
+    #     for j in processes:
+    #         j.join()
+    error_cases = []
+    success_cases = []
     for case in tester.test_function:
         if tester.check_support(case):
-            p = multiprocessing.Process(target=test_one_case_in_all,
-                                        args=(tester, case, error_cases, success_cases))
-            processes.append(p)
-        if len(processes) == process_number:
-            for p in processes:
-                p.start()
-            for j in processes:
-                j.join()
-            processes = []
-    if processes:
-        for p in processes:
-            p.start()
-        for j in processes:
-            j.join()
+            test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
