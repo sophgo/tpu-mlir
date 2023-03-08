@@ -146,6 +146,8 @@ class TorchConverter(BaseConverter):
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
+            "aten::t": lambda node: self.convert_transpose_op(node),
+            "aten::transpose": lambda node: self.convert_transpose_op(node),
         }
         self.check_op_names()
 
@@ -431,6 +433,19 @@ class TorchConverter(BaseConverter):
             'order': order,
         }
         new_op = self.mlir.create_permute_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_transpose_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        no_dims = len(torch_node.inputs) == 1
+        dim0 = self.const_val[torch_node.inputs[1]] if not no_dims else 0
+        dim1 = self.const_val[torch_node.inputs[2]] if not no_dims else 1
+        p = {
+            'name': torch_node.name,
+            'dim0': dim0,
+            'dim1': dim1,
+        }
+        new_op = self.mlir.create_transpose_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_layer_norm_op(self, torch_node: TorchNode):

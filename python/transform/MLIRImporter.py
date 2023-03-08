@@ -86,6 +86,7 @@ class Top:
     TileOp = 'top.Tile'
     TanhOp = 'top.Tanh'
     TopKOp = 'top.TopK'
+    TransposeOp = 'top.Transpose'
     UnpackOp = 'top.Unpack'
     UpsampleOp = 'top.Upsample'
     WeightOp = 'top.Weight'
@@ -456,6 +457,16 @@ class MLIRImporter(object):
             'order': self.ArrayAttr(kargs['order']),
         }
         return self.buildOp(Top.PermuteOp, operands, [output_type], **param)
+
+    def create_transpose_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = self.get_tensor_type(output_shape)
+        param = {
+            'name': kargs['name'],
+            'dim0': IntegerAttr.get(self.mlir_type['INT64'], kargs['dim0']),
+            'dim1': IntegerAttr.get(self.mlir_type['INT64'], kargs['dim1']),
+        }
+        return self.buildOp(Top.TransposeOp, operands, [output_type], **param)
 
     def create_matmul_op(self, operands, output_shape, **kargs):
         # get_value_type
