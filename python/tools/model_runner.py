@@ -16,6 +16,7 @@ import struct
 import shutil
 from utils.misc import str2bool
 
+
 def round_away_from_zero(x):
     a = np.floor(np.abs(x) + 0.5)
     return np.sign(x) * a
@@ -41,6 +42,7 @@ def fp32_to_bf16(d_fp32):
         d_bf16[i] = struct.unpack('<H', struct.pack('BB', bytes[2], bytes[3]))[0]
     return d_bf16.reshape(s)
 
+
 def show_fake_cmd(in_npz: str, model: str, out_npz: str):
     print("[CMD]: model_runner.py --input {} --model {} --output {}".format(in_npz, model, out_npz))
 
@@ -51,6 +53,7 @@ def get_chip_from_model(model_file: str) -> str:
     fd.close()
     return chip
 
+
 def is_dynamic_model(model_file: str) -> str:
     fd = os.popen("model_tool --is_dynamic {}".format(model_file))
     dynamic = fd.read()
@@ -58,6 +61,7 @@ def is_dynamic_model(model_file: str) -> str:
     if dynamic == 'true':
         return True
     return False
+
 
 def pack_bmodel_context(model_file, net):
     out_dir = model_file.rsplit(".", maxsplit=1)[0]
@@ -109,12 +113,14 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if is_cv18xx and i.aligned:
             overflow = i.size - np.prod(input.shape)
         if is_dynamic:
-            assert(len(i.data.shape) == len(input.shape))
-            for max,dim in zip(i.data.shape, input.shape):
+            assert (len(i.data.shape) == len(input.shape))
+            for max, dim in zip(i.data.shape, input.shape):
                 if dim > max:
-                    raise RuntimeError("Error shape: form {} to {}".format(i.data.shape, input.shape))
+                    raise RuntimeError("Error shape: form {} to {}".format(
+                        i.data.shape, input.shape))
             dyn_input_shapes.append(input.shape)
-            input = np.concatenate([input.flatten(), np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
+            input = np.concatenate([input.flatten(),
+                                    np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
         elif overflow != 0:
             raise RuntimeError("Error shape: form {} to {}".format(i.data.shape, input.shape))
         zp = i.qzero_point
@@ -164,7 +170,8 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         if is_dynamic:
             if outputs[i.name].shape != dyn_output_shapes[dyn_idx]:
                 dyn_len = np.prod(dyn_output_shapes[dyn_idx])
-                outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(*dyn_output_shapes[dyn_idx])
+                outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(
+                    *dyn_output_shapes[dyn_idx])
                 dyn_idx += 1
     if not is_cv18xx:
         pack_bmodel_context(model_file, net)
@@ -261,9 +268,7 @@ def onnx_inference(inputs: dict, onnx_file: str, dump_all: bool = True) -> dict:
         output_num = len(outs) - len(output_keys)
         outs = outs[output_num:]
         os.remove(onnx_file)
-        return dict(
-            filter(lambda x: isinstance(x[1], np.ndarray), zip(output_keys, outs))
-        )
+        return dict(filter(lambda x: isinstance(x[1], np.ndarray), zip(output_keys, outs)))
 
 
 def caffe_inference(inputs: dict, prototxt: str, caffemodel: str, dump_all: bool = True) -> dict:
@@ -346,12 +351,12 @@ def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     import torch
     net = torch.jit.load(model, map_location=torch.device('cpu'))
     net.eval()
-    in_tensors = [torch.from_numpy(v) for k,v in inputs.items()]
+    in_tensors = [torch.from_numpy(v) for k, v in inputs.items()]
     with torch.no_grad():
         out_tensors = net(*in_tensors)
     outputs = {}
-    if len(list(net.graph.outputs())) == 1:
-        outputs[list(net.graph.outputs())[0].debugName()] = out_tensors.numpy()
+    if len(list(net.inlined_graph.outputs())) == 1:
+        outputs[list(net.inlined_graph.outputs())[0].debugName()] = out_tensors.numpy()
     return outputs
 
 

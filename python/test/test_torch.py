@@ -239,14 +239,31 @@ class TORCH_IR_TESTER(object):
     def test_Conv2d(self, case_name):
         """Conv 2D"""
 
-        def _test_convolution(input_shape,
-                              kernel_shape,
-                              oc,
-                              has_bias=False,
-                              padding: Union[int, str, List[int]] = 0,
-                              stride: Union[int, List[int]] = 1,
-                              dilation: Union[int, List[int]] = 1,
-                              group=1):
+        def case1(suffix: str = ""):
+
+            class Net(torch.nn.Module):
+
+                def __init__(self):
+                    super(Net, self).__init__()
+                    self.conv1 = nn.Conv2d(8, 8, 3, 1, 1)
+                    self.conv2 = nn.Conv2d(8, 8, 3, 1, 1)
+
+                def forward(self, x):
+                    y = self.conv1(x)
+                    z = self.conv2(x)
+                    return y + z
+
+            self.convert_torch_and_compare([(4, 8, 28, 28)], case_name + suffix, Net().eval())
+
+        def case2(input_shape,
+                  kernel_shape,
+                  oc,
+                  has_bias=False,
+                  padding: Union[int, str, List[int]] = 0,
+                  stride: Union[int, List[int]] = 1,
+                  dilation: Union[int, List[int]] = 1,
+                  group=1,
+                  suffix: str = ""):
 
             class Model(nn.Module):
 
@@ -266,11 +283,12 @@ class TORCH_IR_TESTER(object):
                                  groups=group)
                     return y
 
-            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
+            self.convert_torch_and_compare([input_shape], case_name + suffix, Model().eval())
 
-        _test_convolution((1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
-        _test_convolution((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
-        _test_convolution((1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1))
+        case1("_1")
+        case2((1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same", suffix="_2")
+        case2((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1, suffix="_3")
+        case2((1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1), suffix="_4")
 
     #######################################################################
     # Add
