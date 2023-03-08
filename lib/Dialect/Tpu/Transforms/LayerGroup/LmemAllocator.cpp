@@ -242,7 +242,7 @@ void LmemAllocator::update_avail_lmems(
     used_overlap_buffer.second = recent_buffer_value.size;
     used_overlap_buffer.second =
         align_up(used_overlap_buffer.first + used_overlap_buffer.second,
-                 (int64_t)64) -
+                 Arch::EU_BYTES) -
         used_overlap_buffer.first;
     // buffer_key.align_bytes
 
