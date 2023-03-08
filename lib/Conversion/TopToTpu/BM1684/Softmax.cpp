@@ -14,12 +14,13 @@ namespace bm1684 {
 
 void SoftmaxLowering::LoweringF32(PatternRewriter &rewriter,
                                   top::SoftmaxOp op) const {
-  lowering_common_f32<tpu::SoftmaxOp>(rewriter, op);
+  lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
                                    bool asymmetric) const {
-  llvm_unreachable("Not Implemented");
+  //only input need scale
+  lowering_common_f32<tpu::SoftmaxOp>(rewriter, op, 6);
 }
 
 } // namespace bm1684
