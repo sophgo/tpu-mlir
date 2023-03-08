@@ -141,10 +141,13 @@ class TorchConverter(BaseConverter):
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
+            "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
+            "aten::pad": lambda node: self.convert_pad_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
+            "aten::relu": lambda node: self.convert_relu_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
             "aten::t": lambda node: self.convert_transpose_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
@@ -265,7 +268,7 @@ class TorchConverter(BaseConverter):
                 return
             folder = node.input().node().s('name')
             name = node.s('name')
-            dict_name = "{}.{}".format(folder,name)
+            dict_name = "{}.{}".format(folder, name)
             data = self.state_dict[dict_name].numpy().astype(np.float32)
             weight_name = node.output().debugName()
             self.addWeight(weight_name, data)
@@ -276,7 +279,6 @@ class TorchConverter(BaseConverter):
             return
         print(node)
         raise RuntimeError("Not Implemented")
-
 
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
@@ -473,4 +475,45 @@ class TorchConverter(BaseConverter):
             'axis': axis,
         }
         new_op = self.mlir.create_concat_op(operands, None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_relu_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = self.mlir.create_relu_op([op], None, **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_elu_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        alpha = self.const_val[torch_node.inputs[1]]
+        p = {
+            'name': torch_node.name,
+            'alpha': alpha,
+        }
+        new_op = self.mlir.create_elu_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_pad_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        pads_origin = list(self.const_val[torch_node.inputs[1]])
+        input_dim = len(self.getShape(torch_node.inputs[0]))
+        pads = [0] * input_dim * 2
+        if (len(pads_origin) >= 2):
+            # w pad
+            pads[input_dim - 1] = pads_origin[0]
+            pads[-1] = pads_origin[1]
+        if (len(pads_origin) > 2):
+            # h pad
+            pads[input_dim - 2] = pads_origin[2]
+            pads[-2] = pads_origin[3]
+
+        pad_mode = {"constant": 0, "reflect": 1, "replicate": 3}
+        mode = pad_mode[self.const_val[torch_node.inputs[2]]]
+        val = 0. if mode != 0 else self.const_val[torch_node.inputs[3]]
+        p = {
+            'name': torch_node.name,
+            'paddings': pads,
+            'mode': mode,
+            'val': val,
+        }
+        new_op = self.mlir.create_pad_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
