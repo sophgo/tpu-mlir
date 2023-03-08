@@ -206,6 +206,7 @@ class ONNX_IR_TESTER(object):
             "SliceToReverse": self.test_SliceToReverse,
             "StaticDynMixed": self.test_StaticDynMixed,
             "TransposeArg": self.test_TransposeArg,
+            "PoolAfterRelu": self.test_PoolAfterRelu,
         }
 
         # no quantization when quant_mode == "f32"
@@ -3944,6 +3945,23 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(4, 8, 32, 32).float()
         self.torch_and_test(x, Net(), case_name)
 
+    def test_PoolAfterRelu(self, case_name):
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.relu = nn.ReLU()
+                self.matmul = nn.Linear(32, 16)
+                self.pool = nn.AvgPool2d(2, 2)
+
+            def forward(self, x):
+                a = self.relu(x)
+                b = self.pool(a)
+                c = self.matmul(x)
+                return b,c
+
+        x = torch.randn(4, 8, 32, 32).float()
+        self.torch_and_test(x, Net(), case_name)
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:
