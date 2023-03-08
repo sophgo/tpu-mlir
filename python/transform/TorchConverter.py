@@ -14,6 +14,7 @@ import numpy as np
 import random
 import copy
 import torch
+import torch.nn as nn
 
 
 def _get_constant(node):
@@ -165,15 +166,16 @@ class TorchConverter(BaseConverter):
     def check_op_names(self):
         op_names = self.get_all_op_names()
         known_ops = [
+            "prim::CallMethod",
             "prim::Constant",
             "prim::GetAttr",
+            "prim::If",
             "prim::ListConstruct",
             "prim::ListUnpack",
+            "prim::Loop",
+            "prim::RaiseException",
             "prim::TupleConstruct",
             "prim::TupleUnpack",
-            "prim::RaiseException",
-            "prim::If",
-            "prim::Loop",
         ]
         known_ops += list(self.op_factory.keys())
 
@@ -192,11 +194,11 @@ class TorchConverter(BaseConverter):
         else:
             self.model = torch_file
         self.model.eval()
-        self.graph = self.model.graph
+        self.graph = self.model.inlined_graph
+        self.state_dict = self.model.state_dict()
         is_module = isinstance(self.model, torch.jit.ScriptModule)
         inputs = list(self.graph.inputs())
         inputs = inputs[1:] if is_module else inputs
-
         self.input_names = []
         for idx, inp in enumerate(inputs):
             self.input_names.append(inp.debugName())
@@ -208,6 +210,9 @@ class TorchConverter(BaseConverter):
         else:
             for outp in self.graph.outputs():
                 self.output_names.append(outp.debugName())
+        # weight
+        # for name, data in self.model.state_dict().items():
+        #     self.addWeight(name, data.numpy().astype(np.float32))
 
         self.weight_names = []
         self.num_input = len(self.input_names)
@@ -236,35 +241,38 @@ class TorchConverter(BaseConverter):
                 is_const = False
         return node.output().debugName(), data, is_const
 
-    def read_node(self, node):
+    def collect_nodes(self, node):
         if node.kind() == 'prim::Constant':
             name, data, is_tensor = _get_constant(node)
             if not is_tensor:
                 self.const_val[name] = data
             else:
                 self.addWeight(name, data)
-                self.weight_names.append(name)
-        elif node.kind() == 'prim::ListConstruct':
+            return
+        if node.kind() == 'prim::ListConstruct':
             name, data, is_const = self.get_list(node)
             if is_const:
                 self.const_val[name] = data
             else:
                 self.tensor_list[name] = data
-        elif node.kind() == 'prim::ListUnpack':
-            raise TypeError("can not find kind {}".format(node.kind()))
-        elif node.kind() == 'prim::TupleConstruct':
-            raise TypeError("can not find kind {}".format(node.kind()))
-        elif node.kind() == 'prim::TupleUnpack':
-            raise TypeError("can not find kind {}".format(node.kind()))
-        elif node.kind() == 'prim::GetAttr':
-            raise TypeError("can not find kind {}".format(node.kind()))
-        elif node.kind() == 'prim::If':
-            raise TypeError("can not find kind {}".format(node.kind()))
-        elif node.kind() == 'prim::Loop':
-            raise TypeError("can not find kind {}".format(node.kind()))
-        else:
-            return False
-        return True
+            return
+        if node.kind() == 'prim::GetAttr':
+            if node.output().type().kind() != 'TensorType':
+                return
+            folder = node.input().node().s('name')
+            name = node.s('name')
+            dict_name = "{}.{}".format(folder,name)
+            data = self.state_dict[dict_name].numpy().astype(np.float32)
+            weight_name = node.output().debugName()
+            self.addWeight(weight_name, data)
+            return
+        if node.kind().startswith("aten::"):
+            nd = TorchNode(node)
+            self.converted_nodes.append(nd)
+            return
+        print(node)
+        raise RuntimeError("Not Implemented")
+
 
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
@@ -279,9 +287,7 @@ class TorchConverter(BaseConverter):
         self.tensor_list = {}
         self.converted_nodes.clear()
         for node in self.graph.nodes():
-            if (self.read_node(node) is False):
-                nd = TorchNode(node)
-                self.converted_nodes.append(nd)
+            self.collect_nodes(node)
         # checkout all type is supported
         unsupported = set()
         for n in self.converted_nodes:
