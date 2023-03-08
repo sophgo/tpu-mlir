@@ -42,6 +42,8 @@ class TORCH_IR_TESTER(object):
             "PRelu": self.test_PRelu,
             "Permute": self.test_Permute,
             "Sub": self.test_Sub,
+            "T": self.test_T,
+            "Transpose": self.test_Transpose,
         }
         self.support_quant_modes = ["f32", "f16", "bf16"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
@@ -447,6 +449,53 @@ class TORCH_IR_TESTER(object):
         _test_permute((1, 3, 32, 32), (0, 3, 1, 2))
         _test_permute((2, 32, 16), (2, 0, 1))
         _test_permute((32, 32), (1, 0))
+
+    #######################################################################
+    # T
+    # ------------
+    def test_T(self, case_name):
+        """T"""
+
+        def _test_t(in_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    x = torch.concat((x, x))
+                    x = torch.t(x)
+                    y1 = torch.concat((x, x))
+                    return y1
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        _test_t((32, 32))
+        _test_t((32, ))
+
+    #######################################################################
+    # Transpose
+    # ------------
+    def test_Transpose(self, case_name):
+        """Transpose"""
+
+        def _test_transpose(in_shape, dims):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.transpose(x, dim0=dims[0], dim1=dims[1])
+                    return y1
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        _test_transpose((1, 3, 32, 32), (0, 3))
+        _test_transpose((2, 32, 16), (2, 0))
+        _test_transpose((32, 32), (1, 0))
 
     #######################################################################
     # Concat

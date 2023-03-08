@@ -650,6 +650,23 @@ def Top_PermuteOp: Top_Op<"Permute"> {
   }];
 }
 
+def Top_TransposeOp: Top_Op<"Transpose"> {
+
+  let summary = "Transpose operator";
+
+  let description = [{
+      Transpose on input.
+  }];
+
+  let arguments = (
+    ins AnyTensor:$input,
+    I64Attr:$dim0,
+    I64Attr:$dim1
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
   let summary = "ShuffleChannel operator";
 
