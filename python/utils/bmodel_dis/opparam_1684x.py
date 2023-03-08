@@ -220,6 +220,12 @@ def local_layout_to_stride(memref):
         n_stride = LANE_SIZE // 8 // memref.itemsize
         return (n_stride, c_stride, w, 1)
 
+    def dma_nolane_mask_to_stride():
+        lane_mask = memref.layout.args[0]
+        if lane_mask == (2**64 - 1):
+            memref.layout = Layout.stride
+        return memref.stride
+
     if memref.layout == Layout.alignEU:
         return aligenEU_stride()
     if memref.layout == Layout.compact:
@@ -232,6 +238,8 @@ def local_layout_to_stride(memref):
         return t4_stride()
     if memref.layout == Layout.T3:
         return t5_stride()
+    if memref.layout == Layout.DMAstride:
+        return dma_nolane_mask_to_stride()
 
     return None
 
