@@ -78,8 +78,7 @@ def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
 // TOP Types.
 //===----------------------------------------------------------------------===//
 
-def AnyTenor: AnyTypeOf<[AnyRankedTensor]>;
-def AnyTensorOrNone: AnyTypeOf<[AnyRankedTensor, NoneType]>;
+def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
 
 //===----------------------------------------------------------------------===//
 // TOP Op Definition.
@@ -118,7 +117,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
     OptionalAttr<BoolAttr>:$do_compress
   );
 
-  let results = (outs AnyTensor:$output);
+  let results = (outs AnyRankedTensor:$output);
   let extraClassDeclaration = [{
   template<typename T>
   mlir::LogicalResult update(const std::vector<T>& data, size_t count);
@@ -144,7 +143,7 @@ def Top_InputOp: Top_BaseOp<"Input"> {
   }];
 
   let arguments = (
-    ins AnyTensor:$input,
+    ins AnyRankedTensor:$input,
     // preprocess for input
     OptionalAttr<PixelFormatAttr>:$pixel_format,
     OptionalAttr<ChannelFormatAttr>:$channel_format,
@@ -893,10 +892,10 @@ def Top_LeakyReluOp : Top_Op<"LeakyRelu"> {
     is applied to the data tensor elementwise.
   }];
   let arguments = (ins
-    AnyTenor:$input,
+    AnyTensor:$input,
     F64Attr:$alpha
   );
-  let results = (outs AnyTenor:$output);
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_UpsampleOp : Top_Op<"Upsample", [SupportFuseRelu]> {
@@ -1171,7 +1170,7 @@ def Top_GatherOp: Top_Op<"Gather"> {
     DefaultValuedAttr<I64Attr, "0">:$axis
   );
 
-  let results = (outs AnyTenor:$output);
+  let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
 }
 
@@ -1187,7 +1186,7 @@ def Top_TileOp: Top_Op<"Tile"> {
     I64Attr:$tile
   );
 
-  let results = (outs AnyTenor:$output);
+  let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
 }
 
@@ -1783,7 +1782,7 @@ def Top_ScatterNDOp: Top_Op<"ScatterND"> {
     AnyTensor:$updates
   );
 
-  let results = (outs AnyTenor:$output);
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
@@ -1816,7 +1815,7 @@ def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
     BoolAttr:$align_corners
   );
 
-  let results = (outs AnyTenor:$output);
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_PreprocessOp: Top_Op<"Preprocess"> {
@@ -1869,9 +1868,9 @@ def Top_EluOp : Top_Op<"Elu"> {
     is applied to the data tensor elementwise.
   }];
   let arguments = (ins
-    AnyTenor:$input,
+    AnyTensor:$input,
     F64Attr:$alpha
   );
-  let results = (outs AnyTenor:$output);
+  let results = (outs AnyTensor:$output);
 }
 #endif // Top_OPS
