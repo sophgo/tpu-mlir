@@ -56,13 +56,15 @@ public:
                             int64_t *group_cost);
   bool group_one_layer_proc(const LgInfo &lg_info, bool calc_cost,
                             int64_t *group_cost);
+
+  bool group_valid_pre_check(const LgInfo &lg_info);
   bool isLgSupport(Operation *op);
 
   int64_t cost_add(int64_t cost0, int64_t cost1);
 
-void sweep_for_min_cost(
-    int64_t *group_cost, int64_t *optimal_point, int64_t start, int64_t end,
-    const std::vector<std::vector<int64_t>> &cost_table);
+  void sweep_for_min_cost(int64_t *group_cost, int64_t *optimal_point,
+                          int64_t start, int64_t end,
+                          const std::vector<std::vector<int64_t>> &cost_table);
   void
   get_layer_cut_result(std::vector<int64_t> &cut_result,
                        const std::vector<std::pair<int64_t, int64_t>> &clusters,

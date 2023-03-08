@@ -170,12 +170,43 @@ void GroupMethod::get_base_groups(
   }
 }
 
+static bool group_type_check(const LgInfo &lg_info) {
+  auto group_type = lg_info.type;
+  for (auto op : lg_info.group_ops) {
+    if (isa<MatMulOp>(op)) {
+      auto ins = op->getOperands();
+      auto Lshape = module::getShape(ins[0]);
+      int left_num_dims = Lshape.size();
+      int right_num_dims = module::getShape(ins[1]).size();
+      if (((left_num_dims == 4 && Lshape[1] < Lshape[2]) ||
+           (left_num_dims == 5 && Lshape[1] < Lshape[3])) &&
+          right_num_dims == 2) {
+        if (group_type != GROUP_SMALL_C) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+bool GroupMethod::group_valid_pre_check(const LgInfo &lg_info) {
+  if (!group_type_check(lg_info)) {
+    return false;
+  }
+  return true;
+}
+
 bool GroupMethod::is_layer_group_valid(LgInfo &lg_info, bool calc_cost,
                                        int64_t *group_cost) {
   bool status;
   status = group_one_layer_proc(lg_info, calc_cost, group_cost);
   if (status) {
     return true;
+  }
+
+  if (!group_valid_pre_check(lg_info)) {
+    return false;
   }
 
   auto shape_secs = init_group_data_secs(lg_info);
