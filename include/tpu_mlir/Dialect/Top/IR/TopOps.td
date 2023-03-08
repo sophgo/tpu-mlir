@@ -1212,7 +1212,7 @@ def Top_PReluOp : Top_Op<"PRelu"> {
     AnyTensor:$input,
     AnyTensor:$slope
   );
-
+  let hasCanonicalizer = 1;
   let results = (outs AnyTensor:$output);
 }
 
@@ -1475,7 +1475,8 @@ def Top_LayerNormOp : Top_Op<"LayerNorm"> {
     AnyTensor:$input,
     AnyTensorOrNone:$weight,
     AnyTensorOrNone:$bias,
-    I64Attr:$axis,
+    I64ArrayAttr:$normalized_shape,
+    SI32Attr:$axis,
     F64Attr:$eps
   );
   let results = (outs

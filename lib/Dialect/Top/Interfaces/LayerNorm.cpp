@@ -89,4 +89,17 @@ LogicalResult top::LayerNormOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::LayerNormOp::shape_inference() {}
+void top::LayerNormOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  auto axis = getAxis();
+  if (axis < 0) {
+    axis += in_shape.size();
+    setAxis(axis);
+  }
+  auto normalized_shape = module::getI64Array(getNormalizedShape());
+  if (!std::equal(normalized_shape->begin(), normalized_shape->end(), in_shape.begin() + axis)) {
+    dump();
+    llvm_unreachable("normalized_shape is illegal");
+  }
+  module::setShapeOrVerify(getOutput(), in_shape);
+}

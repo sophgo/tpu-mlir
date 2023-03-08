@@ -22,7 +22,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
 
-Failed_Cases = ["PRelu", "Gather", "Conv2d", "LayerNorm", "Elu"]
+Failed_Cases = ["Gather", "Conv2d", "Elu"]
 
 
 class TORCH_IR_TESTER(object):
