@@ -2034,11 +2034,13 @@ class OnnxConverter(BaseConverter):
         axis = onnx_node.attrs.get("axis", -1)
         if axis < 0:
             axis += num_dims
+        normalized_shape = input_shape[axis:]
         eps = onnx_node.attrs.get("epsilon", 1e-05)
         # stash_type is not important
         p = {
             "name":
             [onnx_node.name + '_LayerNorm', onnx_node.name + '_Mean', onnx_node.name + '_Rstd'],
+            "normalized_shape": normalized_shape,
             "axis": axis,
             "eps": eps
         }

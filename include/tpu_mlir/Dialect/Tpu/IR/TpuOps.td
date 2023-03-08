@@ -1713,7 +1713,8 @@ def Tpu_LayerNormOp : Tpu_Op<"LayerNorm", [
     AnyTensorOrNone:$bias,
     AnyTensorOrNone:$table,            // cv18xx
     AnyTensorOrNone:$mantissa_table,   // cv18xx
-    I64Attr:$axis,
+    I64ArrayAttr:$normalized_shape,
+    SI32Attr:$axis,
     F64Attr:$eps
   );
   let results = (outs

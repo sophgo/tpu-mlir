@@ -149,7 +149,7 @@ class MLIRImporter(object):
             "SINT8": IntegerType.get_signed(8),
             "INT16": IntegerType.get_signless(16),
             "UINT16": IntegerType.get_unsigned(16),
-            "INT32": IntegerType.get_signless(32),
+            "INT32": IntegerType.get_signed(32),
             "UINT32": IntegerType.get_unsigned(32),
             "INT64": IntegerType.get_signless(64),
             "UINT64": IntegerType.get_unsigned(64),
@@ -198,7 +198,7 @@ class MLIRImporter(object):
             return self.mlir_type['INT8']
         elif _type == "ui8":
             return self.mlir_type['UINT8']
-        elif _type == "i32":
+        elif _type == "i32" or _type == "si32":
             return self.mlir_type['INT32']
         else:
             raise RuntimeError("No support {}".format(_type))
@@ -1059,7 +1059,8 @@ class MLIRImporter(object):
                 out_types.append(self.get_tensor_type(s))
         param = {
             'name': kargs['name'],
-            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'normalized_shape': self.ArrayAttr(kargs['normalized_shape']),
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
             'eps': FloatAttr.get_f64(kargs['eps'])
         }
         return self.buildOp(Top.LayerNormOp, operands, out_types, **param)
