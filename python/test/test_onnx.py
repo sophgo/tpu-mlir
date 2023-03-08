@@ -24,7 +24,9 @@ import torchvision
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = ["QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle", "TorchNonZero"]
+BM1684X_Failed_Cases = [
+    "QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle", "TorchNonZero"
+]
 CV18XX_Failed_Cases = [
     "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
     "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "Where", "TopK", "TorchGelu", "TorchGRU",
@@ -152,13 +154,13 @@ class ONNX_IR_TESTER(object):
             "TorchConv3dTranspose": self.test_TorchConv3dTranspose,
             "TorchHardSwish": self.test_TorchHardSwish,
             "TorchHardSigmoid": self.test_TorchHardSigmoid,
-            "TorchIdentity": self.test_TorchIdentity,
-            "TorchInstanceNorm": self.test_TorchInstanceNorm,
-            "TorchInstanceNorm2": self.test_TorchInstanceNorm2,
             "TorchGelu": self.test_TorchGelu,
             "TorchGroupNorm": self.test_TorchGroupNorm,
             "TorchGroupNorm2": self.test_TorchGroupNorm2,
             "TorchGRU": self.test_TorchGRU,
+            "TorchIdentity": self.test_TorchIdentity,
+            "TorchInstanceNorm": self.test_TorchInstanceNorm,
+            "TorchInstanceNorm2": self.test_TorchInstanceNorm2,
             "TorchLayerGroup": self.test_TorchLayerGroup,
             "TorchLayerNorm": self.test_TorchLayerNorm,
             "TorchLayerNorm2": self.test_TorchLayerNorm2,
@@ -175,13 +177,11 @@ class ONNX_IR_TESTER(object):
             #############################
             # Special Pass test case, Alphabetically
             #############################
+            "ArgReducefull": self.test_ArgReducefull,
             "ConcatFuse": self.test_ConcatFuse,
             "ConcatToSpace": self.test_ConcatToSpace,
             "Conv3dTo2d": self.test_Conv3dTo2d,
             "Div2Mul": self.test_Div2Mul,
-            "PermuteFuse": self.test_PermuteFuse,
-            "PixelNorm": self.test_PixelNorm,
-            "PixelNorm2": self.test_PixelNorm2,
             "GatherToSlice": self.test_GatherToSlice,
             "Mul2Scale": self.test_Mul2Scale,
             "MatMulTranspose": self.test_MatMulTranspose,
@@ -191,18 +191,21 @@ class ONNX_IR_TESTER(object):
             # "PadPool1d": self.test_PadPool1d,
             # "PadPool2d": self.test_PadPool2d,
             # "PadPool3d": self.test_PadPool3d,
-            "ReshapeFuse": self.test_ReshapeFuse,
-            "SwapDimInner": self.test_SwapDimInner,
-            "ReduceTranspose": self.test_ReduceTranspose,
-            "SliceToReverse": self.test_SliceToReverse,
-            "StaticDynMixed": self.test_StaticDynMixed,
-            "ReduceFusePattern": self.test_ReduceFusePattern,
-            "ArgReducefull": self.test_ArgReducefull,
-            "TransposeArg": self.test_TransposeArg,
+            "PixelNorm": self.test_PixelNorm,
+            "PixelNorm2": self.test_PixelNorm2,
+            "PermuteFuse": self.test_PermuteFuse,
             "PermuteToReorg": self.test_PermuteToReorg,
             "PermuteToReorg2": self.test_PermuteToReorg2,
             "PermuteToReshape": self.test_PermuteToReshape,
             "Permute5dSplit": self.test_Permute5dSplit,
+            "PoolSignError": self.test_PoolSignError,
+            "ReshapeFuse": self.test_ReshapeFuse,
+            "ReduceTranspose": self.test_ReduceTranspose,
+            "ReduceFusePattern": self.test_ReduceFusePattern,
+            "SwapDimInner": self.test_SwapDimInner,
+            "SliceToReverse": self.test_SliceToReverse,
+            "StaticDynMixed": self.test_StaticDynMixed,
+            "TransposeArg": self.test_TransposeArg,
         }
 
         # no quantization when quant_mode == "f32"
@@ -1800,6 +1803,7 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_Slice2(self, case_name):
+
         class Model(nn.Module):
 
             def __init__(self):
@@ -2031,9 +2035,8 @@ class ONNX_IR_TESTER(object):
                 y = torchvision.ops.roi_align(x, boxes, [8, 8])
                 return y
 
-        def gen_rand_rois(N, H, W, roi_num) -> torch.Tensor :
-            batch_indice = torch.randint(0, N, (roi_num,),
-                                         dtype=torch.int32).float()
+        def gen_rand_rois(N, H, W, roi_num) -> torch.Tensor:
+            batch_indice = torch.randint(0, N, (roi_num, ), dtype=torch.int32).float()
             roi_xl = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
             roi_xh = torch.rand(roi_num, dtype=torch.float32) * (W - 1)
             roi_yl = torch.rand(roi_num, dtype=torch.float32) * (H - 1)
@@ -2253,6 +2256,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(input_data, Net(), case_name)
 
     def test_TorchNonZero(self, case_name):
+
         class Net(nn.Module):
 
             def __init__(self):
@@ -2520,8 +2524,8 @@ class ONNX_IR_TESTER(object):
                 x = torch.where(a >= b, a, b)
                 return x
 
-        a = torch.randint(-128,127,(4, 3, 100, 100)).float()
-        b = torch.randint(-128,127,(4, 3, 100, 100)).float()
+        a = torch.randint(-128, 127, (4, 3, 100, 100)).float()
+        b = torch.randint(-128, 127, (4, 3, 100, 100)).float()
         self.torch_and_test((a, b), Net(), case_name)
 
     def test_TorchSize(self, case_name):
@@ -3562,9 +3566,8 @@ class ONNX_IR_TESTER(object):
                                          perm=transpose_order)
         arg_keepdims = False
         arg_axis = 1
-        reduce_output_shape = [8,1,16,64]
-        arg_output = helper.make_tensor_value_info('output', TensorProto.INT64,
-                                                      reduce_output_shape)
+        reduce_output_shape = [8, 1, 16, 64]
+        arg_output = helper.make_tensor_value_info('output', TensorProto.INT64, reduce_output_shape)
         arg_max_def = helper.make_node(
             'ArgMax',
             ['transpose_output'],
@@ -3577,33 +3580,32 @@ class ONNX_IR_TESTER(object):
         self.onnx_and_test(graph_def)
 
     def test_ArgReducefull(self, case_name):
-        input_shape = [2,3,4]
+        input_shape = [2, 3, 4]
         arg_axis = 0
         reduce_axes = [0]
         reduce_axes_num = 1
         input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
-        output_shape = [1,3,4]
-        arg_output = helper.make_tensor_value_info('arg_output', TensorProto.INT64,
-                                                         output_shape)
+        output_shape = [1, 3, 4]
+        arg_output = helper.make_tensor_value_info('arg_output', TensorProto.INT64, output_shape)
         arg_def = helper.make_node("ArgMax",
-                                         inputs=['input'],
-                                         outputs=['arg_output'],
-                                         axis=arg_axis)
+                                   inputs=['input'],
+                                   outputs=['arg_output'],
+                                   axis=arg_axis)
         reduce_output_1 = helper.make_tensor_value_info('reduce_output_1', TensorProto.FLOAT,
-                                                         output_shape)
+                                                        output_shape)
         reduce_def_1 = helper.make_node("ReduceMax",
-                                         inputs=['input'],
-                                         outputs=['reduce_output_1'],
-                                         axes=reduce_axes)
+                                        inputs=['input'],
+                                        outputs=['reduce_output_1'],
+                                        axes=reduce_axes)
         reduce_output_2 = helper.make_tensor_value_info('reduce_output_2', TensorProto.FLOAT,
-                                                         output_shape)
+                                                        output_shape)
         reduce_def_2 = helper.make_node("ReduceMax",
-                                         inputs=['input'],
-                                         outputs=['reduce_output_2'],
-                                         axes=reduce_axes)
+                                        inputs=['input'],
+                                        outputs=['reduce_output_2'],
+                                        axes=reduce_axes)
 
         graph_def = helper.make_graph([arg_def, reduce_def_1, reduce_def_2], case_name, [input],
-                                      [arg_output,reduce_output_1,reduce_output_2])
+                                      [arg_output, reduce_output_1, reduce_output_2])
         self.onnx_and_test(graph_def)
 
     # def test_LayerNorm(self, case_name):
@@ -3820,8 +3822,8 @@ class ONNX_IR_TESTER(object):
                 super(Net, self).__init__()
 
             def forward(self, x):
-                x = torch.sum(x,1)
-                x = torch.sum(x,1)
+                x = torch.sum(x, 1)
+                x = torch.sum(x, 1)
                 return x
 
         x = torch.randn(2, 2, 3, 4).float()
@@ -3843,42 +3845,37 @@ class ONNX_IR_TESTER(object):
                                           [output])
             self.onnx_and_test(graph_def)
 
-
     def test_PermuteToReorg(self, case_name):
         input_shape = [1, 4, 6, 6]
         output_shape = [1, 16, 3, 3]
-        input = helper.make_tensor_value_info(
-            'input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info(
-            'output', TensorProto.FLOAT, output_shape)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         rshape1 = [6]
         rshape1_data = np.array([1, 4, 3, 2, 3, 2], dtype=np.int64)
         r1 = helper.make_tensor('shape1', TensorProto.INT64, rshape1, rshape1_data)
         reshape1_def = helper.make_node("Reshape", inputs=['input', 'shape1'], outputs=['out1'])
         order = [0, 1, 3, 5, 2, 4]
-        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm = order)
+        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm=order)
         rshape2 = [4]
         rshape2_data = np.array(output_shape, dtype=np.int64)
         r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
         reshape2_def = helper.make_node("Reshape", inputs=['out2', 'shape2'], outputs=['output'])
         graph_def = helper.make_graph([reshape1_def, permute_def, reshape2_def],
-                                    case_name, [input], [output],
-                                    initializer=[r1, r2])
+                                      case_name, [input], [output],
+                                      initializer=[r1, r2])
         self.onnx_and_test(graph_def)
 
     def test_PermuteToReorg2(self, case_name):
         input_shape = [1, 16, 200, 200]
         output_shape = [1, 64, 100, 100]
-        input = helper.make_tensor_value_info(
-            'input', TensorProto.FLOAT, input_shape)
-        output = helper.make_tensor_value_info(
-            'output', TensorProto.FLOAT, output_shape)
+        input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
+        output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         rshape1 = [6]
         rshape1_data = np.array([1, 16, 100, 2, 100, 2], dtype=np.int64)
         r1 = helper.make_tensor('shape1', TensorProto.INT64, rshape1, rshape1_data)
         reshape1_def = helper.make_node("Reshape", inputs=['input', 'shape1'], outputs=['out1'])
         order = [0, 1, 3, 5, 2, 4]
-        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm = order)
+        permute_def = helper.make_node("Transpose", inputs=['out1'], outputs=['out2'], perm=order)
         rshape2 = [4]
         rshape2_data = np.array(output_shape, dtype=np.int64)
         r2 = helper.make_tensor('shape2', TensorProto.INT64, rshape2, rshape2_data)
@@ -3888,25 +3885,28 @@ class ONNX_IR_TESTER(object):
         kernel = [3, 3]
         padding = [1, 1, 1, 1]
         stride = [1, 1]
-        dilation =  [1, 1]
+        dilation = [1, 1]
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(output_shape[1]).astype(np.float32)
         weight = helper.make_tensor("weight", TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor("bias", TensorProto.FLOAT, list(bias_data.shape), bias_data)
-        conv_def = helper.make_node("Conv", inputs = ['out3', 'weight', 'bias'], outputs = ['output'],
-                                        kernel_shape = kernel,
-                                        pads = padding,
-                                        strides = stride,
-                                        dilations = dilation,
-                                        group = 1)
+        conv_def = helper.make_node("Conv",
+                                    inputs=['out3', 'weight', 'bias'],
+                                    outputs=['output'],
+                                    kernel_shape=kernel,
+                                    pads=padding,
+                                    strides=stride,
+                                    dilations=dilation,
+                                    group=1)
         graph_def = helper.make_graph([reshape1_def, permute_def, reshape2_def, conv_def],
-                                        case_name, [input], [output],
-                                        initializer = [r1, r2, weight, bias])
+                                      case_name, [input], [output],
+                                      initializer=[r1, r2, weight, bias])
         self.onnx_and_test(graph_def)
 
     def test_Permute5dSplit(self, case_name):
         input_shape = [2, 4, 16, 20, 32]
-        orders = [[0, 4, 2, 1, 3], [3, 1, 0, 4, 2], [2, 1, 3, 4, 0], [1, 0, 2, 4, 3], [4, 0, 3, 2, 1], [4, 3, 2, 1, 0]]
+        orders = [[0, 4, 2, 1, 3], [3, 1, 0, 4, 2], [2, 1, 3, 4, 0], [1, 0, 2, 4, 3],
+                  [4, 0, 3, 2, 1], [4, 3, 2, 1, 0]]
         for i in range(0, len(orders)):
             order = orders[i]
             if i >= 3 and self.chip.startswith("cv18"):
@@ -3916,10 +3916,33 @@ class ONNX_IR_TESTER(object):
             output_shape = [input_shape[order[i]] for i in range(0, len(order))]
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
-            permute_def = helper.make_node("Transpose", inputs = ['input'],
-                                            outputs = ['output'], perm = order)
-            graph_def = helper.make_graph([permute_def], "{}_{}".format(case_name, i), [input], [output])
+            permute_def = helper.make_node("Transpose",
+                                           inputs=['input'],
+                                           outputs=['output'],
+                                           perm=order)
+            graph_def = helper.make_graph([permute_def], "{}_{}".format(case_name, i), [input],
+                                          [output])
             self.onnx_and_test(graph_def)
+
+    def test_PoolSignError(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.relu = nn.ReLU()
+                self.conv = nn.Conv2d(8, 8, 3, 2, 1)
+                self.pool = nn.AvgPool2d(2, 2)
+
+            def forward(self, x):
+                a = self.relu(x)
+                b = self.pool(a)
+                c = self.conv(x)
+                d = b + c
+                return d
+
+        x = torch.randn(4, 8, 32, 32).float()
+        self.torch_and_test(x, Net(), case_name)
 
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):

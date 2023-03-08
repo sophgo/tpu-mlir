@@ -107,6 +107,40 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
   }
 };
 
+template <typename TyOp>
+struct KeepSignPattern : public OpRewritePattern<TyOp> {
+  using OpRewritePattern<TyOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(TyOp op,
+                                PatternRewriter &rewriter) const override {
+    Value in = op.getInput();
+    Value out = op.getOutput();
+    if (!module::isCalibratedType(in, out)) {
+      return failure();
+    }
+    auto in_qtype = module::getCalibratedType(in);
+    auto out_qtype = module::getCalibratedType(out);
+    float min;
+    if (in_qtype.getMin() < 0) {
+      if (out_qtype.getMin() < 0) {
+        return failure();
+      }
+      min = -out_qtype.getMax();
+    } else {
+      if (out_qtype.getMin() >= 0) {
+        return failure();
+      }
+      min = 0;
+    }
+    auto etype = module::getStorageType(out);
+    auto new_qtype =
+        quant::CalibratedQuantizedType::get(etype, min, out_qtype.getMax());
+    auto new_type = RankedTensorType::get(module::getShape(out), new_qtype);
+    out.setType(new_type);
+    return success();
+  }
+};
+
 template <typename TyOp, bool KeepMin = false>
 struct BackwardCalibartion : public OpRewritePattern<TyOp> {
   using OpRewritePattern<TyOp>::OpRewritePattern;
@@ -375,6 +409,11 @@ protected:
       // TODO: support asymmetric mode
       patterns.add<ForwardCalibartion<top::AvgPoolOp>>(ctx_);
     }
+    applyPatternsAndFoldGreedily(module_, std::move(patterns));
+    // keep sign for some ops
+    // backend not support in out not the same sign
+    patterns.clear();
+    patterns.add<KeepSignPattern<top::AvgPoolOp>>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
   }
 
