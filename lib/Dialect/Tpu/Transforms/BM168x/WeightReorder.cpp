@@ -7,7 +7,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/Transforms/BM1684/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/GmemAllocator.hpp"

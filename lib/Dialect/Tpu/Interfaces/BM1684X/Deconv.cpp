@@ -13,7 +13,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -411,6 +411,6 @@ int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) {
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
-int64_t tpu::DeconvOp::get_layer_type() {
+int64_t tpu::DeconvOp::get_fw_type_bm1684x() {
   return FW_BMNET_DECONV;
 }

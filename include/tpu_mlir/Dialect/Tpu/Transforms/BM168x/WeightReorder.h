@@ -29,4 +29,18 @@ public:
 
 void populateWeightReorderPatterns(RewritePatternSet *patterns);
 } // namespace bm1684x
+
+namespace bm1684 {
+
+template <class Op, typename T>
+class WeightReorder : public OpRewritePattern<Op> {
+public:
+  using OpRewritePattern<Op>::OpRewritePattern;
+  LogicalResult matchAndRewrite(Op op,
+                                PatternRewriter &rewriter) const override;
+};
+
+void populateWeightReorderPatterns(RewritePatternSet *patterns);
+} // namespace bm1684
+
 } // namespace tpu_mlir
