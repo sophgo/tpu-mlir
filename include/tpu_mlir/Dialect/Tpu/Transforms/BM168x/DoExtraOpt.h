@@ -18,7 +18,20 @@ using namespace llvm;
 namespace tpu_mlir {
 
 namespace bm1684x {
-   // add bm1684x unique patterns here
+// add bm1684x unique patterns here
+class MatMulHdimBatchPattern : public OpRewritePattern<tpu::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::MatMulOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+class PermuteReorderPattern : public OpRewritePattern<tpu::PermuteOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(tpu::PermuteOp op,
+                                PatternRewriter &rewriter) const override;
+};
 
 void populateDoExtraOptPatterns(RewritePatternSet *patterns);
 } // namespace bm1684x

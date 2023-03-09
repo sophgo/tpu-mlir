@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
+#include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
@@ -17,9 +17,37 @@ void tpu::ReshapeOp::codegen_global_bm1684x() {
   // do nothing
 }
 
-//dynamic codegen
+// ======================================
+// LocalGenInterface
+// ======================================
+int64_t tpu::ReshapeOp::getBufferSize_bm1684x(
+    int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
+    int64_t in_hslice, int64_t out_nslice, int64_t out_hslice,
+    group_type_t group_type) {
+  return 0;
+}
+
+void tpu::ReshapeOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
+                                           group_type_t group_type,
+                                           local_sec_info_t &sec_info) {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+
+  auto shape = module::getShape(getOutput());
+  reshape_spec_t spec;
+  spec.dims = shape.size();
+  for (size_t i = 0; i < shape.size(); ++i) {
+    spec.shape[i] = shape[i];
+  }
+  BM168x::call_local_func("backend_api_reshape_local", &spec, sizeof(spec),
+                          &sec_info, input_spec->data(), output_spec->data());
+}
+
+// dynamic codegen
 int64_t tpu::ReshapeOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(reshape_spec_t);
+  if (!buffer)
+    return sizeof(reshape_spec_t);
   reshape_spec_t spec;
   memset(&spec, 0, sizeof(spec));
   auto out_shape = module::getShape(getOutput());
@@ -35,7 +63,8 @@ int64_t tpu::ReshapeOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(reshape_spec_t);
+  if (!buffer)
+    return sizeof(reshape_spec_t);
   reshape_spec_t spec;
 #define FLAG_VAL 0x0a0a0a0a
 #define MLIR_RESHAPE_FLAG 0x08000000
@@ -60,13 +89,13 @@ int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
     - input shape = (2,3,4), shape = (3,-1,8), output shape = (3,1,8)
     - input shape = (2,3,4), shape=(-1,), output shape = (24,)*/
   if (out_shape.size() == 1) {
-    //case: input shape = (2,3,4), output shape = (24)
+    // case: input shape = (2,3,4), output shape = (24)
     spec.shape[0] = -1;
   } else {
     for (int32_t i = 0; i < out_shape.size(); i++) {
-      if (i < in_shape.size() && out_shape.size() == in_shape.size()
-          && out_shape[i] == in_shape[i] && !bitmap[i]) {
-        spec.shape[i] = 0; //remain the same
+      if (i < in_shape.size() && out_shape.size() == in_shape.size() &&
+          out_shape[i] == in_shape[i] && !bitmap[i]) {
+        spec.shape[i] = 0; // remain the same
         bitmap[i] = 1;
       } else {
         for (int32_t j = 0; j < in_shape.size(); j++) {
@@ -75,7 +104,7 @@ int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
             bitmap[j] = 1;
             break;
           } else if (out_shape[i] == 1) {
-            //case: input shape = (2,3,4), output shape = (2, 12, 1)
+            // case: input shape = (2,3,4), output shape = (2, 12, 1)
             spec.shape[i] = 1 | MLIR_RESHAPE_FLAG;
           }
         }
@@ -90,14 +119,14 @@ int64_t tpu::ReshapeOp::dyn_codegen_global_bm1684x(void *buffer) {
     }
 
     int32_t flag = 0;
-    //config the remain axis
+    // config the remain axis
     for (int32_t i = 0; i < out_shape.size(); i++) {
       if (spec.shape[i] == FLAG_VAL && !flag) {
-        //case: input shape = (4,4,4), output shape = (2,2,16) -> (2,2,-1)
+        // case: input shape = (4,4,4), output shape = (2,2,16) -> (2,2,-1)
         spec.shape[i] = -1;
         flag = 1;
       } else if (spec.shape[i] == FLAG_VAL) {
-        //other case, need to improve
+        // other case, need to improve
         assert(0);
       }
     }

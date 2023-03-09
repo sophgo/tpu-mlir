@@ -9,11 +9,10 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
+#include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Support/Module.h"
 using namespace tpu_mlir::backend;
-
 
 void tpu::SliceOp::codegen_global_bm1684x() {
   auto p = parseParam();
@@ -49,12 +48,14 @@ int64_t tpu::SliceOp::getBufferSize_bm1684x(
     group_type_t group_type) {
   const auto offset = module::getI64Array(getOffset());
   const auto c_start = offset->at(1);
-  if (c_start % BM168x::NPU_NUM == 0) return 0;
+  if (c_start % BM168x::NPU_NUM == 0)
+    return 0;
   int64_t out_n, out_c, out_h, out_w;
   module::getNCHW(getOutput(), out_n, out_c, out_h, out_w);
   const int64_t eu_num = BM168x::eu_num(module::getDtypeSize(getInput()));
   const int64_t out_c_per_npu = ceiling_func(out_c + c_start, BM168x::NPU_NUM);
-  int64_t buffer_size = out_nslice * out_c_per_npu * align_up(out_hslice * out_w, eu_num);
+  int64_t buffer_size =
+      out_nslice * out_c_per_npu * align_up(out_hslice * out_w, eu_num);
   return buffer_size;
 }
 
@@ -65,19 +66,24 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   auto input_spec = BM168x::get_input_spec(op, group_type);
   auto output_spec = BM168x::get_output_spec(op, group_type);
   strideslice_local_spec_t spec = {0};
-  const auto& gi = getGroupInfo(0, 0);
+  const auto &gi = getGroupInfo(0, 0);
   spec.buffer_addr = gi.buffer_addr;
-  auto& common = spec.common;
+  auto &common = spec.common;
   common.begin_mask = 0;
   common.end_mask = 0;
-  const auto output_shape = module::getShape(getOutput());
+  auto output_shape = SmallVector<int64_t>(module::getShape(getOutput()));
   const int num_dims = output_shape.size();
+  output_shape[0] = sec_info.out_n_slice;
+  if (num_dims > 2) {
+    output_shape[2] = sec_info.out_h_slice;
+  }
   const auto offset = module::getI64Array(getOffset());
   const auto steps = module::getI64Array(getSteps());
   for (int i = 0; i < num_dims; i++) {
     common.begin_index[i] = offset->at(i);
     common.strides[i] = steps->at(i);
-    common.end_index[i] = common.begin_index[i] + output_shape[i] * common.strides[i];
+    common.end_index[i] =
+        common.begin_index[i] + output_shape[i] * common.strides[i];
   }
 
   BM168x::call_local_func("backend_api_strideslice_local", &spec, sizeof(spec),
@@ -111,6 +117,6 @@ int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
 }
 
 int64_t tpu::SliceOp::get_fw_type_bm1684x() {
-  //return FW_BMNET_SLICE;
+  // return FW_BMNET_SLICE;
   return FW_BMNET_STRIDESLICE;
 }

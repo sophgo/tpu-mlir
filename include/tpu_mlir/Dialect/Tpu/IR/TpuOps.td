@@ -852,7 +852,8 @@ def Tpu_ReluOp: Tpu_Op<"Relu",
 }
 
 def Tpu_ReshapeOp:Tpu_Op<"Reshape",
-    [DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+  [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "AllowDataSplit"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "Reshape operation";
   let description = [{
     Returns a tensor with the same type/values as the input, with a new shape
