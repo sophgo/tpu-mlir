@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -156,6 +156,6 @@ int64_t tpu::SoftmaxOp::dyn_codegen_global_bm1684x(void *buffer) {
   }
 }
 
-int64_t tpu::SoftmaxOp::get_layer_type() {
+int64_t tpu::SoftmaxOp::get_fw_type_bm1684x() {
   return FW_BMNET_SOFTMAX;
 }

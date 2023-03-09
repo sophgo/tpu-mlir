@@ -1,5 +1,13 @@
-#ifndef DYN_COMPILE_COMMON_HPP_
-#define DYN_COMPILE_COMMON_HPP_
+//===----------------------------------------------------------------------===//
+//
+// Copyright (C) 2022 Sophgo Technologies Inc.  All rights reserved.
+//
+// TPU-MLIR is licensed under the 2-Clause BSD License except for the
+// third-party components.
+//
+//===----------------------------------------------------------------------===//
+
+#pragma once
 
 /*  Existing Parametric Structure Modification Tips:
  ** 1. New member variables must be added at the
@@ -27,7 +35,7 @@ extern "C" {
 #define IR_TENSOR_TYPE_ARRAY 3
 #define IR_TENSOR_TYPE_FLOW 4
 
-#define TA_MEM_OFFSET (1024*1024)
+#define TA_MEM_OFFSET (1024 * 1024)
 
 typedef enum fw_layer_type {
   FW_BMNET_CONV = 0,
@@ -105,72 +113,72 @@ typedef enum fw_layer_type {
   FW_BMNET_SHAPE_RESHAPE = 72,
   FW_BMNET_SHAPE_REDUCE = 73,
   FW_BMNET_DTYPE_CONVERT = 74,
-  FW_BMNET_YOLO          = 75,
+  FW_BMNET_YOLO = 75,
   FW_BMNET_SSD_DETECT_OUT = 76,
-  FW_BMNET_HOST2DEVICE   = 77,
-  FW_BMNET_DEVICE2HOST   = 78,
-  FW_BMNET_TENSOR_ARRAY  = 79,
-  FW_BMNET_TA_WRITE      = 80,
-  FW_BMNET_TA_READ       = 81,
-  FW_BMNET_TA_SIZE       = 82,
-  FW_BMNET_TA_SCATTER    = 83,
-  FW_BMNET_TA_GATHER     = 84,
-  FW_BMNET_TA_SPLIT      = 85,
-  FW_BMNET_TA_CONCAT     = 86,
+  FW_BMNET_HOST2DEVICE = 77,
+  FW_BMNET_DEVICE2HOST = 78,
+  FW_BMNET_TENSOR_ARRAY = 79,
+  FW_BMNET_TA_WRITE = 80,
+  FW_BMNET_TA_READ = 81,
+  FW_BMNET_TA_SIZE = 82,
+  FW_BMNET_TA_SCATTER = 83,
+  FW_BMNET_TA_GATHER = 84,
+  FW_BMNET_TA_SPLIT = 85,
+  FW_BMNET_TA_CONCAT = 86,
   FW_BMNET_PSROIPOOLING = 87,
-  FW_BMNET_SHAPE_UNARY  = 88,
-  FW_BMNET_SHAPE_SPLIT  = 89,
-  FW_BMNET_SHAPE_SQUEEZE  = 90,
-  FW_BMNET_RANK           = 91,
-  FW_BMNET_WHERE          = 92,
+  FW_BMNET_SHAPE_UNARY = 88,
+  FW_BMNET_SHAPE_SPLIT = 89,
+  FW_BMNET_SHAPE_SQUEEZE = 90,
+  FW_BMNET_RANK = 91,
+  FW_BMNET_WHERE = 92,
   FW_BMNET_YOLOV3_DETECT_OUT = 93,
-  FW_BMNET_MASKED_SELECT  = 94,
-  FW_BMNET_SORT_PER_DIM   = 95,
-  FW_BMNET_INDEX_SELECT   = 96,
-  FW_BMNET_NMS            = 97,
-  FW_BMNET_SLICE          = 98,
+  FW_BMNET_MASKED_SELECT = 94,
+  FW_BMNET_SORT_PER_DIM = 95,
+  FW_BMNET_INDEX_SELECT = 96,
+  FW_BMNET_NMS = 97,
+  FW_BMNET_SLICE = 98,
   FW_BMNET_SHAPE_SIZESLICE = 99,
-  FW_BMNET_COEFF2NEURON   = 100,
-  FW_BMNET_SHAPE_SELECT   = 101,
-  FW_BMNET_DEPTH2SPACE    = 102,
+  FW_BMNET_COEFF2NEURON = 100,
+  FW_BMNET_SHAPE_SELECT = 101,
+  FW_BMNET_DEPTH2SPACE = 102,
   FW_BMNET_WHERE_SQUEEZE_GATHER = 103,
-  FW_BMNET_REVERSE        = 104,
+  FW_BMNET_REVERSE = 104,
   FW_BMNET_BROADCAST_LIKE = 105,
-  FW_BMNET_LUT            = 106,
+  FW_BMNET_LUT = 106,
   FW_BMNET_MATRIX_BAND_PART = 107,
-  FW_BMNET_ARITH_SHIFT    = 108,
-  FW_BMNET_CONV3D         = 109,
-  FW_BMNET_POOL3D         = 110,
-  FW_BMNET_STRIDECALC     = 111,
-  FW_BMNET_INTERLEAVE     = 112,
-  FW_BMNET_BITWISE        = 113,
-  FW_BMNET_BINARY_SHIFT   = 114,
-  FW_BMNET_GRU            = 115,
-  FW_BMNET_PYTORCH_LSTM   = 116,
+  FW_BMNET_ARITH_SHIFT = 108,
+  FW_BMNET_CONV3D = 109,
+  FW_BMNET_POOL3D = 110,
+  FW_BMNET_STRIDECALC = 111,
+  FW_BMNET_INTERLEAVE = 112,
+  FW_BMNET_BITWISE = 113,
+  FW_BMNET_BINARY_SHIFT = 114,
+  FW_BMNET_GRU = 115,
+  FW_BMNET_PYTORCH_LSTM = 116,
   FW_BMNET_MULTI_MASKED_SELECT = 117,
-  FW_BMNET_TPU            = 118,
-  FW_BMNET_SEQUENCE_GEN   = 119,
-  FW_BMNET_UPSAMPLEMASK   = 120,
-  FW_BMNET_QUANT_DIV      = 121,
-  FW_BMNET_GROUP_NORM     = 122,
-  FW_BMNET_ROI_ALIGN      = 123,
-  FW_BMNET_EMBEDDING_BAG     = 124,
-  FW_BMNET_TRIANGULARIZE  = 125,
-  FW_BMNET_INDEX_PUT      = 126,
-  FW_BMNET_MASKED_FILL    = 127,
-  FW_BMNET_GLU            = 128,
-  FW_BMNET_DEFORM_GATHER  = 129,
-  FW_BMNET_SCATTERND      = 130,
-  FW_BMNET_LAYER_NORM     = 131,
-  FW_BMNET_REQUANT_FP32   = 132,
-  FW_BMNET_REQUANT_INT    = 133,
-  FW_BMNET_DEQUANT_FP32   = 134,
-  FW_BMNET_CLIP           = 135,
-  FW_BMNET_DEQUANT_INT    = 136,
+  FW_BMNET_TPU = 118,
+  FW_BMNET_SEQUENCE_GEN = 119,
+  FW_BMNET_UPSAMPLEMASK = 120,
+  FW_BMNET_QUANT_DIV = 121,
+  FW_BMNET_GROUP_NORM = 122,
+  FW_BMNET_ROI_ALIGN = 123,
+  FW_BMNET_EMBEDDING_BAG = 124,
+  FW_BMNET_TRIANGULARIZE = 125,
+  FW_BMNET_INDEX_PUT = 126,
+  FW_BMNET_MASKED_FILL = 127,
+  FW_BMNET_GLU = 128,
+  FW_BMNET_DEFORM_GATHER = 129,
+  FW_BMNET_SCATTERND = 130,
+  FW_BMNET_LAYER_NORM = 131,
+  FW_BMNET_REQUANT_FP32 = 132,
+  FW_BMNET_REQUANT_INT = 133,
+  FW_BMNET_DEQUANT_FP32 = 134,
+  FW_BMNET_CLIP = 135,
+  FW_BMNET_DEQUANT_INT = 136,
   FW_BMNET_SWAP_DIM_INNER = 137,
-  FW_BMNET_SWAP_CHANNEL   = 138,
-  FW_BMNET_SCALE_LUT      = 139,
-  FW_BMNET_PIXEL_NORM     = 140,
+  FW_BMNET_SWAP_CHANNEL = 138,
+  FW_BMNET_SCALE_LUT = 139,
+  FW_BMNET_PIXEL_NORM = 140,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;
@@ -179,11 +187,11 @@ typedef enum fw_layer_type {
 // size enum with our old chum dtype, for good. But we don't want any compatib-
 // ility issue. Thus the bit-sharing. Be careful though, you should  *ONLY* set
 // dtype for 1684X IR.
-#define dtype_and_dsize             \
-union {                             \
-    DATA_SIZE_T data_size;          \
-    int dtype;                      \
-};
+#define dtype_and_dsize                                                        \
+  union {                                                                      \
+    DATA_SIZE_T data_size;                                                     \
+    int dtype;                                                                 \
+  };
 
 // corresponding DATA_TYPE_T
 typedef enum fw_data_size {
@@ -195,47 +203,43 @@ typedef enum fw_data_size {
 
 // should has same def in bmruntime_common.h, bmcompiler_common.h
 typedef enum fw_data_type {
-  FW_DTYPE_FP32   = 0,
-  FW_DTYPE_FP16   = 1,
-  FW_DTYPE_INT8   = 2,
-  FW_DTYPE_UINT8  = 3,
-  FW_DTYPE_INT16  = 4,
+  FW_DTYPE_FP32 = 0,
+  FW_DTYPE_FP16 = 1,
+  FW_DTYPE_INT8 = 2,
+  FW_DTYPE_UINT8 = 3,
+  FW_DTYPE_INT16 = 4,
   FW_DTYPE_UINT16 = 5,
-  FW_DTYPE_INT32  = 6,
+  FW_DTYPE_INT32 = 6,
   FW_DTYPE_UINT32 = 7,
-  FW_DTYPE_BFP16  = 8,
+  FW_DTYPE_BFP16 = 8,
 } FW_DATA_TYPE_T;
 
-inline static u32 is_float_dtype(FW_DATA_TYPE_T dtype)
-{
-    switch (dtype)
-    {
-    case FW_DTYPE_FP32:
-    case FW_DTYPE_FP16:
-        return 1;
-    default:
-        return 0;
-    }
+inline static u32 is_float_dtype(FW_DATA_TYPE_T dtype) {
+  switch (dtype) {
+  case FW_DTYPE_FP32:
+  case FW_DTYPE_FP16:
+    return 1;
+  default:
+    return 0;
+  }
 }
 
-inline static u32 fw_data_size(FW_DATA_TYPE_T dtype)
-{
-    switch (dtype)
-    {
-    case FW_DTYPE_FP32:
-    case FW_DTYPE_INT32:
-    case FW_DTYPE_UINT32:
-        return 4;
-    case FW_DTYPE_FP16:
-    case FW_DTYPE_UINT16:
-    case FW_DTYPE_INT16:
-        return 2;
-    case FW_DTYPE_INT8:
-    case FW_DTYPE_UINT8:
-        return 1;
-    default:
-        return 0;
-    }
+inline static u32 fw_data_size(FW_DATA_TYPE_T dtype) {
+  switch (dtype) {
+  case FW_DTYPE_FP32:
+  case FW_DTYPE_INT32:
+  case FW_DTYPE_UINT32:
+    return 4;
+  case FW_DTYPE_FP16:
+  case FW_DTYPE_UINT16:
+  case FW_DTYPE_INT16:
+    return 2;
+  case FW_DTYPE_INT8:
+  case FW_DTYPE_UINT8:
+    return 1;
+  default:
+    return 0;
+  }
 }
 typedef struct fw_tensor_arithmetic_layer_param {
   u32 input_n;
@@ -258,8 +262,7 @@ typedef struct fw_tensor_arithmetic_layer_param {
 } fw_tensor_arithmetic_layer_param_t;
 
 typedef struct fw_middle_value_param {
-  dtype_and_dsize
-  u8 intensor_store_mode;
+  dtype_and_dsize u8 intensor_store_mode;
   u8 outtensor_store_mode;
 } fw_middle_value_param_t;
 
@@ -273,7 +276,7 @@ typedef struct fw_mulshift_layer_param {
 
 typedef struct fw_conv_layer_param {
   u32 ic_oc;
-  u32 concat_c;  // full channels for local shape
+  u32 concat_c; // full channels for local shape
   u32 groups;
   u32 kh_kw;
   u8 dh;
@@ -289,7 +292,7 @@ typedef struct fw_conv_layer_param {
   float relu_upper_limit;
   u8 use_winograd;
   u32 c_idx;        // for local concat useage
-  u32 reference_id;  // for local concat , reference_id is the true ouput tensor
+  u32 reference_id; // for local concat , reference_id is the true ouput tensor
                     // of conv
   u8 rshiftbits;
   u8 opd0_sign;
@@ -347,7 +350,7 @@ typedef struct fw_deconv_layer_param {
   float relu_upper_limit;
   u8 output_padding_h;
   u8 output_padding_w;
-  u32 output_dtype;      // Note: use DATA_TYPE_T, not DATA_SIZE_T
+  u32 output_dtype; // Note: use DATA_TYPE_T, not DATA_SIZE_T
   u32 imm_buffer_offset;
   u32 using_depthwise;
 } fw_deconv_layer_param_t;
@@ -548,7 +551,7 @@ typedef struct fw_pad_layer_param {
   int paddings[4][2];
   u64 input_global_offset_1N_buf;
   u64 output_global_offset_1N_buf;
-  u8  is_dynamic;
+  u8 is_dynamic;
 } fw_pad_layer_param_t;
 
 typedef struct fw_arg_layer_param {
@@ -591,17 +594,18 @@ typedef struct {
   u8 index_dim;
   u8 index_is_coeff;
   u8 lut_is_coeff;
-  u8 stmode_dtype;      // bottom_store_mode:   0: 4N,      1: 1N;
-                        // top_data_dtype:      0: float,   1: int8 or uint8;
-                        // top_store_mode:      0: 1N,      1: 4N;
-                        // stmode_dtype = bottom_store_mode + top_data_dtype << 2 + top_store_mode << 4;
+  u8 stmode_dtype; // bottom_store_mode:   0: 4N,      1: 1N;
+                   // top_data_dtype:      0: float,   1: int8 or uint8;
+                   // top_store_mode:      0: 1N,      1: 4N;
+                   // stmode_dtype = bottom_store_mode + top_data_dtype << 2 +
+                   // top_store_mode << 4;
   int index_shape[MAX_SHAPE_DIMS];
   int dtype;
 } fw_lut_layer_param_t;
 
 typedef struct {
-    int lower;
-    int upper;
+  int lower;
+  int upper;
 } fw_matrix_band_part_layer_param_t;
 
 typedef struct {
@@ -619,7 +623,9 @@ typedef struct {
   int axis;
 } fw_shape_pack_layer_param_t;
 
-typedef struct { int binary_op; } fw_shape_op_layer_param_t;
+typedef struct {
+  int binary_op;
+} fw_shape_op_layer_param_t;
 
 typedef struct {
   int begin : 8;
@@ -637,7 +643,9 @@ typedef struct {
   int is_dynamic;
 } fw_shape_slice_layer_param_t;
 
-typedef struct { u8 order[MAX_SHAPE_DIMS]; } fw_shape_reorder_layer_param_t;
+typedef struct {
+  u8 order[MAX_SHAPE_DIMS];
+} fw_shape_reorder_layer_param_t;
 
 typedef struct {
   u8 axis_list[MAX_SHAPE_DIMS];
@@ -678,7 +686,7 @@ typedef struct {
   u8 in_sign;
   u8 s0_sign;
   u8 s1_sign;
-  u8 reserved;  // 4 bytes align
+  u8 reserved; // 4 bytes align
 } fw_select_layer_param_t;
 
 typedef struct {
@@ -693,8 +701,8 @@ typedef struct {
   int mask_store_mode;
   u64 buffer_addr;
   u64 buffer_addr_ex;
-  u8  bcast_from_begin;
-  u8  reserve[3];
+  u8 bcast_from_begin;
+  u8 reserve[3];
 } fw_masked_select_layer_param_t;
 
 typedef struct {
@@ -704,7 +712,7 @@ typedef struct {
   int mask_store_mode;
   u64 buffer_addr;
   u64 buffer_addr_ex;
-  u8  bcast_from_begin;
+  u8 bcast_from_begin;
   int multi_num;
 } fw_multi_masked_select_layer_param_t;
 
@@ -715,7 +723,7 @@ typedef struct {
   int mask_store_mode;
   u64 buffer_addr;
   u64 buffer_addr_ex;
-  u8  bcast_from_begin;
+  u8 bcast_from_begin;
   int input_num;
   int axes[8];
 } fw_where_squeeze_gather_layer_param_t;
@@ -730,7 +738,7 @@ typedef struct {
 typedef struct {
   float iou_threshold;
   float score_threshold;
-  int   input_num;
+  int input_num;
   u64 buffer_addr;
 } fw_nms_layer_param_t;
 
@@ -832,7 +840,7 @@ typedef struct {
   int ellipsis_mask;
   u64 buffer_global_addr;
   u64 imm_global_addr;
-  u8  is_dynamic;
+  u8 is_dynamic;
 } fw_stride_slice_layer_param_t;
 
 typedef struct {
@@ -875,15 +883,19 @@ typedef struct {
 
 typedef struct {
   int k;
-  u8  dim;
-  u8  is_dynamic;
-  u8  descending;
+  u8 dim;
+  u8 is_dynamic;
+  u8 descending;
   u64 buffer_addr;
 } fw_topk_layer_param_t;
 
-typedef struct { u8 dim; } fw_cumsum_layer_param_t;
+typedef struct {
+  u8 dim;
+} fw_cumsum_layer_param_t;
 
-typedef struct { int input_num; } fw_shape_addn_layer_param_t;
+typedef struct {
+  int input_num;
+} fw_shape_addn_layer_param_t;
 
 typedef struct {
   u32 value;
@@ -904,12 +916,12 @@ typedef struct {
 } fw_slicelike_layer_param_t;
 
 typedef struct {
-    u64 buffer_addr; //for fix8b
-    u32 slice_mask;
+  u64 buffer_addr; // for fix8b
+  u32 slice_mask;
 } fw_slice_layer_param_t;
 
 typedef struct {
-    u32 slice_mask;
+  u32 slice_mask;
 } fw_shape_sizeslice_layer_param_t;
 
 typedef struct {
@@ -933,7 +945,9 @@ typedef struct {
   int is_dynamic;
 } fw_shape_tile_layer_param_t;
 
-typedef struct { int axis; } fw_shape_reverse_layer_param_t;
+typedef struct {
+  int axis;
+} fw_shape_reverse_layer_param_t;
 
 typedef struct {
   int axis;
@@ -941,8 +955,8 @@ typedef struct {
 } fw_shape_expand_ndims_layer_param_t;
 
 typedef struct {
-    int dst_type;
-    int output_is_shape;
+  int dst_type;
+  int output_is_shape;
 } fw_shape_cast_layer_param_t;
 
 typedef struct {
@@ -976,25 +990,25 @@ typedef struct {
 } fw_shape_squeeze_layer_param_t;
 
 typedef struct {
-    int need_sync;
-    int input_is_coeff;
-    int input_dims;
-    int input_shape[MAX_SHAPE_DIMS];
-    int input_dtype;
+  int need_sync;
+  int input_is_coeff;
+  int input_dims;
+  int input_shape[MAX_SHAPE_DIMS];
+  int input_dtype;
 } fw_tensor_array_op_param_t;
 
 typedef struct {
-    int input_is_shape;
+  int input_is_shape;
 } fw_shape_ref_layer_param_t;
 
 typedef struct {
-    int input_is_shape;
+  int input_is_shape;
 } fw_rank_layer_param_t;
 
 typedef struct {
-    int shape[MAX_SHAPE_DIMS];
-    int dims;
-    int dtype;
+  int shape[MAX_SHAPE_DIMS];
+  int dims;
+  int dtype;
 } fw_coeff2neuron_layer_param_t;
 
 typedef struct {
@@ -1046,9 +1060,9 @@ typedef struct {
   int method;
   int scale_axis;
   int scale_axis_num;
-  u8  using_bias;
-  u8  with_eltwise_add;
-  u8  if_relu;
+  u8 using_bias;
+  u8 with_eltwise_add;
+  u8 if_relu;
   float relu_upper_limit;
   // fix8b-specific parameters
   u8 input_sign;
@@ -1059,64 +1073,64 @@ typedef struct {
 } fw_conv3d_layer_param_t;
 
 typedef struct {
-    int bias;
-    int bidirection;
-    int batch_first;
-    int num_layers;
-    u64 buffer_addr;
+  int bias;
+  int bidirection;
+  int batch_first;
+  int num_layers;
+  u64 buffer_addr;
 } fw_gru_layer_param_t, fw_pytorch_lstm_layer_param_t;
 
 typedef struct {
-  int    kt;
-  int    kh;
-  int    kw;
-  int    pad_t;
-  int    pad_t_after;
-  int    pad_h;
-  int    pad_h_after;
-  int    pad_w;
-  int    pad_w_after;
-  int    stride_t;
-  int    stride_h;
-  int    stride_w;
-  u8     is_avg_pool;
-  u8     avg_pooling_mode;
-  u8     is_global_pool;
-  u8     out_ceil_mode;
-  u8     if_relu;
-  float  relu_upper_limit;
-  u64    buffer_addr;
+  int kt;
+  int kh;
+  int kw;
+  int pad_t;
+  int pad_t_after;
+  int pad_h;
+  int pad_h_after;
+  int pad_w;
+  int pad_w_after;
+  int stride_t;
+  int stride_h;
+  int stride_w;
+  u8 is_avg_pool;
+  u8 avg_pooling_mode;
+  u8 is_global_pool;
+  u8 out_ceil_mode;
+  u8 if_relu;
+  float relu_upper_limit;
+  u64 buffer_addr;
   // fix8b-api-related parameters
-  int    using_bias;
-  int    rshift_num;
-  int    rshift_type;
-  u8     opd0_sign;
-  u8     opd1_sign;
-  u8     opd2_sign;
-  u8     res0_sign;
-  u32    local_buffer_offset;
+  int using_bias;
+  int rshift_num;
+  int rshift_type;
+  u8 opd0_sign;
+  u8 opd1_sign;
+  u8 opd2_sign;
+  u8 res0_sign;
+  u32 local_buffer_offset;
 } fw_pool3d_layer_param_t;
 
 typedef struct {
-    int input_num;
-    int output_num;
-    int param_size;
-    u64 buffer_addr;
-    u64 buffer_size;
-    int op_type;
+  int input_num;
+  int output_num;
+  int param_size;
+  u64 buffer_addr;
+  u64 buffer_size;
+  int op_type;
 } fw_tpu_layer_param_t;
 // global_dynamic step -1: declare layer_param struct
 
 typedef struct {
-    int input_sign;
-    int shift_type;
-    int shift_num;
-    int shift_mode;
-    int shift_is_const;
-    int is_num_neuron;
-    int b_shape[MAX_SHAPE_DIMS];
-    FW_DATA_TYPE_T b_dtype;
-    int ROUND_RSHIFT_OUTDTYPE;
+  int input_sign;
+  int shift_type;
+  int shift_num;
+  int shift_mode;
+  int shift_is_const;
+  int is_num_neuron;
+  int b_shape[MAX_SHAPE_DIMS];
+  FW_DATA_TYPE_T b_dtype;
+  int ROUND_RSHIFT_OUTDTYPE;
 } fw_arith_shift_layer_param_t;
 
 typedef struct {
@@ -1142,32 +1156,32 @@ typedef struct {
 } fw_upsample_layer_param_t;
 
 typedef struct {
-    int dims;
-    int shape[MAX_SHAPE_DIMS];
-    float min_sizes[MAX_SHAPE_DIMS];
-    int real_min_size;
-    float max_sizes[MAX_SHAPE_DIMS];
-    int real_max_size;
-    float aspect_ratios[MAX_SHAPE_DIMS];
-    int real_aspect_size;
-    float variance[MAX_SHAPE_DIMS];
-    int real_variance_size;
-    int num_priors;
-    int img_w;
-    int img_h;
-    float step_w;
-    float step_h;
-    float offset;
-    float thTop;
-    int bottom_0_width;
-    int bottom_0_height;
-    int bottom_1_width;
-    int bottom_1_height;
-    int dim;
-    u8 has_dim;
-    u8 flip;
-    u8 clip;
-    int version;
+  int dims;
+  int shape[MAX_SHAPE_DIMS];
+  float min_sizes[MAX_SHAPE_DIMS];
+  int real_min_size;
+  float max_sizes[MAX_SHAPE_DIMS];
+  int real_max_size;
+  float aspect_ratios[MAX_SHAPE_DIMS];
+  int real_aspect_size;
+  float variance[MAX_SHAPE_DIMS];
+  int real_variance_size;
+  int num_priors;
+  int img_w;
+  int img_h;
+  float step_w;
+  float step_h;
+  float offset;
+  float thTop;
+  int bottom_0_width;
+  int bottom_0_height;
+  int bottom_1_width;
+  int bottom_1_height;
+  int dim;
+  u8 has_dim;
+  u8 flip;
+  u8 clip;
+  int version;
 } fw_priorbox_layer_param_t;
 
 typedef struct fw_yolo_layer_param {
@@ -1179,33 +1193,33 @@ typedef struct fw_yolo_layer_param {
 } fw_yolo_layer_param_t;
 
 typedef struct fw_yolov3_detect_out_layer_param {
-  int   input_num;
-  int   num_classes;
-  int   num_boxes;
-  int   mask_group_size;
-  int   keep_top_k;
+  int input_num;
+  int num_classes;
+  int num_boxes;
+  int mask_group_size;
+  int keep_top_k;
   float confidence_threshold;
   float nms_threshold;
   float bias[18];
   float anchor_scale[3];
   float mask[9];
-  int yolo_box_flag; //0: yolov3_detect_out, 1:paddle_yolo_box
-  int clip_bbox; //used for paddle yolo_box 1:true, 0:false
-  float scale;// used for paddle yolo_box
+  int yolo_box_flag; // 0: yolov3_detect_out, 1:paddle_yolo_box
+  int clip_bbox;     // used for paddle yolo_box 1:true, 0:false
+  float scale;       // used for paddle yolo_box
 } fw_yolov3_detect_out_layer_param_t;
 
 typedef struct {
-  int   num_classes;
-  int   share_location;
-  int   background_label_id;
-  int   code_type;
-  int   variance_encoded_in_target;
-  int   keep_top_k;
+  int num_classes;
+  int share_location;
+  int background_label_id;
+  int code_type;
+  int variance_encoded_in_target;
+  int keep_top_k;
   float confidence_threshold;
   float nms_threshold;
   float eta;
-  int   top_k;
-  int  onnx_nms;//1:onnx_nms
+  int top_k;
+  int onnx_nms; // 1:onnx_nms
 } fw_ssd_detect_out_layer_param_t;
 
 typedef struct fw_reorg_layer_param {
@@ -1294,7 +1308,7 @@ typedef struct fw_upsample_mask_layer_param {
 
 typedef struct fw_group_norm_layer_param {
   int group_num;
-  int affine;  // 0: no weight and bias, 1: weight, 2: bias, 3: both
+  int affine; // 0: no weight and bias, 1: weight, 2: bias, 3: both
   float eps;
   u32 local_buffer_addr;
 } fw_group_norm_layer_param_t;
@@ -1320,11 +1334,10 @@ typedef enum tensor_gdma_type {
 typedef struct fw_gdma_ld_in_neuron {
   u32 local_offset;
   u32 ic_and_tensor_id;
-  u32 c_idx_and_reference_id;  // for local concat use, reference_id is the true
+  u32 c_idx_and_reference_id; // for local concat use, reference_id is the true
                               // tensor id
-  u32 concat_c;  // full c for tensor_id, to_ic if store_mode is STORE_3IC
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N, 3: STORE_3IC
+  u32 concat_c; // full c for tensor_id, to_ic if store_mode is STORE_3IC
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N, 3: STORE_3IC
   u32 consumer_num;
 } fw_gdma_ld_in_neuron_t;
 
@@ -1344,19 +1357,17 @@ typedef struct fw_gdma_st_out_neuron {
   u32 concat_tensor_id;
   u8 merge_npu_c;
   u8 split_c_num;
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_st_out_neuron_t;
 
 typedef struct fw_gdma_ld_itm_neuron {
   u64 global_offset;
   u32 local_offset;
   u32 ic_and_tensor_id;
-  u32 c_idx_and_reference_id;  // for local concat use, reference_id is the true
+  u32 c_idx_and_reference_id; // for local concat use, reference_id is the true
                               // tensor id
-  u32 concat_c;  // full c for tensor_id
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  u32 concat_c;               // full c for tensor_id
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
   u32 consumer_num;
 } fw_gdma_ld_itm_neuron_t;
 
@@ -1368,8 +1379,7 @@ typedef struct fw_gdma_st_itm_neuron {
   u32 concat_tensor_id;
   u8 merge_npu_c;
   u8 split_c_num;
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_st_itm_neuron_t;
 
 typedef struct fw_gdma_mv_itm_neuron {
@@ -1378,8 +1388,7 @@ typedef struct fw_gdma_mv_itm_neuron {
   u32 ic_and_tensor_id;
   u32 concat_c_and_cidx;
   u32 concat_tensor_id;
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_mv_itm_neuron_t;
 
 typedef struct fw_gdma_mv_out_neuron {
@@ -1387,8 +1396,7 @@ typedef struct fw_gdma_mv_out_neuron {
   u32 ic_and_tensor_id;
   u32 concat_c_and_cidx;
   u32 concat_tensor_id;
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_mv_out_neuron_t;
 
 typedef struct fw_gdma_coeff {
@@ -1399,8 +1407,7 @@ typedef struct fw_gdma_coeff {
   u8 one_time;
   u8 winograd_coeff;
   u8 groups;
-  dtype_and_dsize
-  u8 if_double_buffer;
+  dtype_and_dsize u8 if_double_buffer;
   u32 depth;
   FW_LAYER_TYPE_T layer_type;
 } fw_gdma_coeff_t;
@@ -1413,8 +1420,7 @@ typedef struct fw_gdma_coeff_neuron {
   u32 h_slice_and_h;
   u8 version_and_one_time;
   u8 n_is_one;
-  dtype_and_dsize
-  u32 n;
+  dtype_and_dsize u32 n;
   u32 tensor_id;
   u8 store_mode;
   u32 consumer_num;
@@ -1433,37 +1439,34 @@ typedef struct fw_gdma_ld_itm_extend_neuron {
   u32 ic;
   u32 tensor_id;
   u32 c_idx;
-  u32 reference_id;  // for local concat use, reference_id is the true tensor
-  u32 concat_c;      // full c for tensor_id, to_ic if store_mode is STORE_3IC
-  dtype_and_dsize
-  u8 store_mode;     // 0: 1N, 1: 2N, 2: 4N, 3: STORE_3IC
+  u32 reference_id; // for local concat use, reference_id is the true tensor
+  u32 concat_c;     // full c for tensor_id, to_ic if store_mode is STORE_3IC
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N, 3: STORE_3IC
   u32 consumer_num;
 } fw_gdma_ld_itm_extend_neuron_t;
 
 typedef struct fw_gdma_st_itm_extend_neuron {
-  u64   global_offset;
-  u32   local_offset;
-  u32   ic;
-  u32   tensor_id;
-  u32   concat_c;
-  u32   cidx;
-  u32   concat_tensor_id;
-  dtype_and_dsize
-  u8    merge_npu_c;
-  u8    split_c_num;
-  u8    store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  u64 global_offset;
+  u32 local_offset;
+  u32 ic;
+  u32 tensor_id;
+  u32 concat_c;
+  u32 cidx;
+  u32 concat_tensor_id;
+  dtype_and_dsize u8 merge_npu_c;
+  u8 split_c_num;
+  u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_st_itm_extend_neuron_t;
 
 typedef struct fw_gdma_mv_itm_extend_neuron {
-  u64   src_global_offset;
-  u64   dst_global_offset;
-  u32   tensor_id;
-  u32   cidx;
-  u32   concat_tensor_id;
-  dtype_and_dsize
-  u32   ic;
-  u32   concat_c;
-  u8    store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  u64 src_global_offset;
+  u64 dst_global_offset;
+  u32 tensor_id;
+  u32 cidx;
+  u32 concat_tensor_id;
+  dtype_and_dsize u32 ic;
+  u32 concat_c;
+  u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_mv_itm_extend_neuron_t;
 
 typedef struct fw_gdma_st_out_extend_neuron {
@@ -1475,16 +1478,16 @@ typedef struct fw_gdma_st_out_extend_neuron {
   u32 concat_tensor_id;
   u8 merge_npu_c;
   u8 split_c_num;
-  dtype_and_dsize
-  u8 store_mode;  // 0: 1N, 1: 2N, 2: 4N
+  dtype_and_dsize u8 store_mode; // 0: 1N, 1: 2N, 2: 4N
 } fw_gdma_st_out_extend_neuron_t;
 
 typedef struct fw_timestep_base_info {
   u32 ts_num_and_split_tensor_num;
-  u8 max_nslice_deprecated;   //for compatiable to old dynamic ir
+  u8 max_nslice_deprecated; // for compatiable to old dynamic ir
   u8 input_tensor_num;
   u8 output_tensor_num;
-  u8 flags;             //bit0: is_h_split, bit1:using max_nslice, bit2-bit4: group_type, bit5: consumer_opt
+  u8 flags; // bit0: is_h_split, bit1:using max_nslice, bit2-bit4: group_type,
+            // bit5: consumer_opt
   u8 swpipl_stage_num;
   u32 max_nslice;
 } fw_timestep_base_info_t;
@@ -1494,11 +1497,12 @@ typedef struct {
   u64 addr;
   int dims;
   int shape[MAX_SHAPE_DIMS];
-  dtype_and_dsize
-  int elem_num;
+  dtype_and_dsize int elem_num;
 } fw_fullnet_tensor_info_t;
 
-typedef struct { int padding_idx; } fw_embedding_layer_param_t;
+typedef struct {
+  int padding_idx;
+} fw_embedding_layer_param_t;
 
 // typedef struct {
 //   int num_embeddings;
@@ -1515,7 +1519,7 @@ typedef struct {
 // must be same as TENSOR_TYPE_T in bmcompiler_net_param.h
 typedef enum {
   FW_BMNET_NEURON = 0,
-  FW_BMNET_COEFF  = 1,
+  FW_BMNET_COEFF = 1,
   FW_BMNET_COEFF_NEURON = 2,
   FW_BMNET_COEFF_FC = 3,
   FW_BMNET_COEFF_WINOGRAD = 4,
@@ -1529,74 +1533,79 @@ typedef enum {
   FW_TENSOR_UNKNOWN,
 } FW_TENSOR_TYPE_T;
 
-static inline int fw_is_COEFF(FW_TENSOR_TYPE_T tensor_type)
-{
-    return (tensor_type == FW_BMNET_COEFF    ||  tensor_type == FW_BMNET_COEFF_NEURON ||
-            tensor_type == FW_BMNET_COEFF_FC ||  tensor_type == FW_BMNET_COEFF_WINOGRAD);
+static inline int fw_is_COEFF(FW_TENSOR_TYPE_T tensor_type) {
+  return (tensor_type == FW_BMNET_COEFF ||
+          tensor_type == FW_BMNET_COEFF_NEURON ||
+          tensor_type == FW_BMNET_COEFF_FC ||
+          tensor_type == FW_BMNET_COEFF_WINOGRAD);
 }
 
-static inline int fw_is_NEURON(FW_TENSOR_TYPE_T tensor_type)
-{
-    return (tensor_type == FW_BMNET_NEURON        ||
-            tensor_type == FW_BMNET_NEURON_FC     ||
-            tensor_type == FW_BMNET_NEURON_CONST  ||
-            tensor_type == FW_BMNET_NEURON_CPU    ||
-            tensor_type == FW_BMNET_NEURON_3IC);
+static inline int fw_is_NEURON(FW_TENSOR_TYPE_T tensor_type) {
+  return (tensor_type == FW_BMNET_NEURON || tensor_type == FW_BMNET_NEURON_FC ||
+          tensor_type == FW_BMNET_NEURON_CONST ||
+          tensor_type == FW_BMNET_NEURON_CPU ||
+          tensor_type == FW_BMNET_NEURON_3IC);
 }
 
 // used for tpu layer io info parsing
 typedef struct {
-    u8 ttype;
-    u8 dtype;
-    u8 store_mode;
-    u8 reserved;
+  u8 ttype;
+  u8 dtype;
+  u8 store_mode;
+  u8 reserved;
 } fw_tpu_tensor_type_info_t;
 
 typedef struct {
-    u64 addr;                          // can be local_offset or global_addr
-    u32 dims;                          // dimension of tensor
-    int elem_num;                      // real element number
-    int shape[MAX_SHAPE_DIMS];         // for global or local calculate
-    int slice_pad[MAX_SHAPE_DIMS];     // for local calculate
-    int slice_shape[MAX_SHAPE_DIMS];   // for local calculate
-    int processed[MAX_SHAPE_DIMS];     // for local calculate
-    int * host_data;                   // used for read or write host data
-    u8 ttype;
-    u8 dtype;
-    u8 store_mode;
+  u64 addr;                        // can be local_offset or global_addr
+  u32 dims;                        // dimension of tensor
+  int elem_num;                    // real element number
+  int shape[MAX_SHAPE_DIMS];       // for global or local calculate
+  int slice_pad[MAX_SHAPE_DIMS];   // for local calculate
+  int slice_shape[MAX_SHAPE_DIMS]; // for local calculate
+  int processed[MAX_SHAPE_DIMS];   // for local calculate
+  int *host_data;                  // used for read or write host data
+  u8 ttype;
+  u8 dtype;
+  u8 store_mode;
 } fw_tpu_tensor_t;
 
-typedef int (*tpu_global_entry_t)(const int op_type, const void* param, const int param_size,
-                                                     const fw_tpu_tensor_t* in_tensors, const int in_num,
-                                                     const u64 buffer_addr, const u64 buffer_size,
-                                                     fw_tpu_tensor_t* out_tensors, const int out_num);
-typedef int (*tpu_local_entry_t)(const int op_type, const void* param, const int param_size,
-                                                    const fw_tpu_tensor_t* in_tensors, const int in_num,
-                                                    const u64 buffer_offset, const u64 buffer_size,
-                                                    fw_tpu_tensor_t* out_tensors, const int out_num);
-typedef int (*tpu_shape_entry_t)(const int op_type, const void* param, const int param_size,
-                                                const fw_tpu_tensor_t* in_tensors, const int in_num,
-                                                fw_tpu_tensor_t* out_tensors, const int out_num);
+typedef int (*tpu_global_entry_t)(
+    const int op_type, const void *param, const int param_size,
+    const fw_tpu_tensor_t *in_tensors, const int in_num, const u64 buffer_addr,
+    const u64 buffer_size, fw_tpu_tensor_t *out_tensors, const int out_num);
+typedef int (*tpu_local_entry_t)(const int op_type, const void *param,
+                                 const int param_size,
+                                 const fw_tpu_tensor_t *in_tensors,
+                                 const int in_num, const u64 buffer_offset,
+                                 const u64 buffer_size,
+                                 fw_tpu_tensor_t *out_tensors,
+                                 const int out_num);
+typedef int (*tpu_shape_entry_t)(const int op_type, const void *param,
+                                 const int param_size,
+                                 const fw_tpu_tensor_t *in_tensors,
+                                 const int in_num, fw_tpu_tensor_t *out_tensors,
+                                 const int out_num);
 
-static inline void dtype_to_dsize_and_sign(int dtype, DATA_SIZE_T* dsize, int* sign){
-    if(dsize){
-        if (FW_DTYPE_INT8 == dtype || FW_DTYPE_UINT8 == dtype){
-            *dsize = DSIZE_8;
-        } else if(FW_DTYPE_UINT16 == dtype || FW_DTYPE_INT16 == dtype || FW_DTYPE_FP16 == dtype){
-            *dsize = DSIZE_16;
-        } else if(FW_DTYPE_INT32 == dtype || FW_DTYPE_UINT32 == dtype) {
-            *dsize = DSIZE_INT32;
-        } else if(FW_DTYPE_FP32 == dtype) {
-            *dsize = DSIZE_FP32;
-        }
+static inline void dtype_to_dsize_and_sign(int dtype, DATA_SIZE_T *dsize,
+                                           int *sign) {
+  if (dsize) {
+    if (FW_DTYPE_INT8 == dtype || FW_DTYPE_UINT8 == dtype) {
+      *dsize = DSIZE_8;
+    } else if (FW_DTYPE_UINT16 == dtype || FW_DTYPE_INT16 == dtype ||
+               FW_DTYPE_FP16 == dtype) {
+      *dsize = DSIZE_16;
+    } else if (FW_DTYPE_INT32 == dtype || FW_DTYPE_UINT32 == dtype) {
+      *dsize = DSIZE_INT32;
+    } else if (FW_DTYPE_FP32 == dtype) {
+      *dsize = DSIZE_FP32;
     }
-    if(sign){
-        *sign = (FW_DTYPE_INT8 == dtype || FW_DTYPE_INT16 == dtype || FW_DTYPE_INT32 == dtype);
-    }
+  }
+  if (sign) {
+    *sign = (FW_DTYPE_INT8 == dtype || FW_DTYPE_INT16 == dtype ||
+             FW_DTYPE_INT32 == dtype);
+  }
 }
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

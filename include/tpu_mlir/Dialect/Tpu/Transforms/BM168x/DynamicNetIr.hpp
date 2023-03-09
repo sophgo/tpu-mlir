@@ -14,8 +14,8 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/IrInfo.hpp"
-#include "tpu_mlir/Dialect/Tpu/Transforms/DynamicLayer.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/IrInfo.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynamicLayer.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LayerGroupUtil.h"
 using namespace std;
 using namespace llvm;

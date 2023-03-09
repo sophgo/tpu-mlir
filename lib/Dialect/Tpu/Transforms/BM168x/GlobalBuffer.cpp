@@ -185,7 +185,8 @@ public:
     }
     auto type = module::getStorageType(op.getInput());
     // add buffer
-    auto buffer_type = RankedTensorType::get(module::getShape(op.getInput()), type);
+    auto buffer_type =
+        RankedTensorType::get(module::getShape(op.getInput()), type);
     auto buffer = tpu::BufferOp::create(op, buffer_type);
     op.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
       return operand.get() == op.getBuffer();

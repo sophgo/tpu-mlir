@@ -10,7 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
+#include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/DynCompileCommon.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
@@ -366,7 +366,7 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
   return 0;
 }
 
-int64_t tpu::MatMulOp::get_layer_type() {
+int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
   auto p = parseParam();
   return (p.batch != 1 ? FW_BMNET_BATCH_MATMUL : FW_BMNET_FC);
 }
