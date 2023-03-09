@@ -19,8 +19,10 @@ namespace bm1684x {
 
 void populateDoExtraOptPatterns(RewritePatternSet *patterns) {
   // clang-format off
-  // patterns->add<
-  // >(patterns->getContext());
+  patterns->add<
+    MatMulHdimBatchPattern,
+    PermuteReorderPattern
+  >(patterns->getContext());
   // clang-format on
 };
 

@@ -9,6 +9,7 @@ file(GLOB _sources
           Transforms/BM168x/*.cpp
           Transforms/CV18xx/*.cpp
           Transforms/LayerGroup/*.cpp
+          Transforms/BM168x/ExtraOpt/*.cpp
           Transforms/CV18xx/ExtraOpt/*.cpp)
 
 add_llvm_library(TPUMLIRTpu
