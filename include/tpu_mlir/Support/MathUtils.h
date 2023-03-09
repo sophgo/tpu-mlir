@@ -114,11 +114,11 @@ T RightShiftRound(T src, int shift_num, RoundingMode round_mode);
 // to compilable with tflite
 int32_t MultiplyByQuantizedMultiplier(
     int32_t x, int32_t multiplier, int shift,
-    RoundingMode rmode=ROUNDING_HALF_AWAY_FROM_ZERO);
+    RoundingMode rmode = ROUNDING_HALF_AWAY_FROM_ZERO);
 int64_t applyMultiplierAndRShift(
     int64_t v, int64_t multiplier, int64_t rshift,
     tpu::RequantMode qmode = tpu::RequantMode::MultiplierShift,
-    RoundingMode rmode=ROUNDING_HALF_UP);
+    RoundingMode rmode = ROUNDING_HALF_UP);
 
 void pad_tensor(float *p_after_pad, float *src, int n, int c, int h, int w,
                 int pt, int pb, int pl, int pr, float pad_value);
@@ -129,6 +129,9 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
                            int h, int w, int kd, int kh, int kw, int dd, int dh,
                            int dw, int sd, int sh, int sw, int pdf, int pdb,
                            int pht, int phb, int pwl, int pwr, float pad_value);
+void dilate_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
+                   int w, int pdf, int pdb, int pht, int phb, int pwl, int pwr,
+                   float pad_value, int ins_h, int ins_w, float ins_value);
 void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point);
 void tensor_hw_transpose(float *dst, float *src, int64_t N, int64_t C,
@@ -162,7 +165,8 @@ int StopForAxis(const int *stop_indices, const int *strides, const int mask,
                 const int shrink_mask, const int *shape, const int axis,
                 int start_for_axis);
 std::vector<int64_t> shape_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
-std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape, int dims);
+std::vector<int64_t> channel_expand_dim(llvm::ArrayRef<int64_t> shape,
+                                        int dims);
 
 // reset pad to 4 dim
 bool pad_reset(const std::vector<int64_t> &shape,
