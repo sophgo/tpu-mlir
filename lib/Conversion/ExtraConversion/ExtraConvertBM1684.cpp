@@ -8,14 +8,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertBM1684.h"
-
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertBM1684X.h"
 namespace tpu_mlir {
 
 namespace bm1684 {
 
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
-
+  // clang-format off
+  patterns->add<
+      tpu_mlir::bm1684x::ConvertMatMulWithRightTranspose
+  >(patterns->getContext());
+  // clang-format on
 }
 
-}
-}
+} // namespace bm1684
+} // namespace tpu_mlir

@@ -80,7 +80,6 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   }
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
-  auto p = op.parseParam();
   auto th_output = module::getThreshold(op.getOutput());
   auto th_input = module::getThreshold(op.getInput());
   std::vector<int64_t> multipliers;
@@ -90,6 +89,7 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
   bool is_fc = isa<top::WeightOp>(op.getRight().getDefiningOp());
   if (is_fc) {
     // fc
+    auto p = op.parseParam();
     auto rightOp = cast<top::WeightOp>(op.getRight().getDefiningOp());
     auto right_f32 = rightOp.read<float>();
     assert(right_f32->size() == p.batch * p.K * p.N);
@@ -123,9 +123,6 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
       bias_operand =
           top::WeightOp::create(op, "bias_int32", bias_i32, new_type);
     }
-    for (auto &attr : op->getAttrs()) {
-      attrs.emplace_back(attr);
-    }
   } else {
     // matmul
     auto th_right = module::getThreshold(op.getRight());
@@ -138,7 +135,14 @@ void MatMulLowering::LoweringINT8(PatternRewriter &rewriter, top::MatMulOp op,
                                        rshifts.data(), true);
     }
   }
+  for (auto &attr : op->getAttrs()) {
+    attrs.emplace_back(attr);
+  }
   auto ctx = op->getContext();
+  if (op.getRightTranspose()) {
+    attrs.push_back(
+        rewriter.getNamedAttr("hdim_is_batch", rewriter.getBoolAttr(true)));
+  }
   attrs.push_back(rewriter.getNamedAttr(
       "quant_mode", tpu::RequantModeAttr::get(ctx, tpu::RequantMode::QDM)));
   attrs.push_back(rewriter.getNamedAttr(
@@ -166,8 +170,14 @@ void MatMulLowering::LoweringBF16(PatternRewriter &rewriter,
   }
   operands.push_back(op.getBias());
   auto newType = getQuantBF16Type(op.getOutput());
-  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands,
-                                             op->getAttrs());
+  for (auto &attr : op->getAttrs()) {
+    attrs.emplace_back(attr);
+  }
+  if (op.getRightTranspose()) {
+    attrs.push_back(
+        rewriter.getNamedAttr("hdim_is_batch", rewriter.getBoolAttr(true)));
+  }
+  rewriter.replaceOpWithNewOp<tpu::MatMulOp>(op, newType, operands, attrs);
 }
 } // namespace cv18xx
 } // namespace tpu_mlir

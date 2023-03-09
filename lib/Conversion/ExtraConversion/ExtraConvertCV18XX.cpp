@@ -24,7 +24,8 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
       ConvertMaxUnpoolOp,
       ConvertScaleOp,
       ConvertUpsampleOp,
-      ConvertWhereOp
+      ConvertWhereOp,
+      ConvertMatMulWithRightTranspose
   >(patterns->getContext());
   // clang-format on
 }

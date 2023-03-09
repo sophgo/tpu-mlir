@@ -35,6 +35,7 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
   p.right_transpose = getRightTranspose();
   auto b_dims = b_s.size();
   auto o_dims = o_s.size();
+  p.batch_low = 1;
   if (b_dims == 1) {
     assert(p.right_transpose == false);
     b_s.push_back(1);
@@ -42,12 +43,25 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
     b_dims += 1;
     o_dims += 1;
   }
-  p.N = p.right_transpose ? b_s[b_dims - 2] : b_s[b_dims - 1];
+  if (p.right_transpose) {
+    if (getHdimIsBatch()) {
+      // trans ch
+      p.N = b_s[b_dims - 1];
+      p.K = b_s[b_dims - 3];
+      p.batch_low = b_s[b_dims - 2];
+    } else {
+      // trans hw
+      p.N = b_s[b_dims - 2];
+      p.K = b_s[b_dims - 1];
+    }
+  } else {
+    p.N = b_s[b_dims - 1];
+    p.K = b_s[b_dims - 2];
+  }
   assert(p.N == o_s[o_dims - 1]);
-  p.K = p.right_transpose ? b_s[b_dims - 1] : b_s[b_dims - 2];
   p.batch = 1;
   for (int i = 0; i < b_dims - 2; i++) {
-    p.batch *= b_s[i];
+    p.batch *= o_s[i];
   }
   if (p.batch > 1 || o_dims <= 2) {
     p.M = o_s[o_dims - 2];
@@ -61,10 +75,9 @@ matmul_attr_t tpu::MatMulOp::parseParam() {
 LogicalResult tpu::MatMulOp::init(InferenceParameter &p) {
   auto matmul = new MatMul();
   auto a = parseParam();
-
   matmul->setup(p.inputs[0], p.inputs[1], p.inputs[2], p.outputs[0], a.batch,
                 a.M, a.K, a.N, a.do_relu, a.relu_limit, a.right_zp,
-                a.right_transpose, a.input_zp);
+                a.right_transpose, a.input_zp, getHdimIsBatch(), a.batch_low);
   p.handle = (void *)matmul;
   return success();
 }

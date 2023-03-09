@@ -75,7 +75,7 @@ class ONNX_IR_TESTER(object):
             "Expand2":      (self.test_Expand2,     Y, N, Y),
             "Floor":        (self.test_floor,       Y, N, N),
             "Gather":       (self.test_Gather,      Y, N, Y),
-            "GaToSlice":    (self.test_GaToSlice,   Y, N, N),
+            "GaToSlice":    (self.test_GaToSlice,   Y, N, Y),
             "Gemm":         (self.test_Gemm,        Y, N, Y),
             "GroupFC":      (self.test_GroupFC,     Y, N, Y),
             "GRU":          (self.test_GRU,         Y, N, Y),  # test gru output Y
@@ -187,9 +187,10 @@ class ONNX_IR_TESTER(object):
             "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, N, Y),
             "Div2Mul":          (self.test_Div2Mul,         Y, N, Y),
-            "GaToSlice":        (self.test_GaToSlice,       Y, N, N),
+            "GaToSlice":        (self.test_GaToSlice,       Y, N, Y),
             "Mul2Scale":        (self.test_Mul2Scale,       Y, N, N),
-            "MatMulTranspose":  (self.test_MatMulTranspose, Y, N, N),
+            "MatMulTranspose":  (self.test_MatMulTranspose, Y, N, Y),
+            "MatMulTranspose2":  (self.test_MatMulTranspose2, N, N, Y),
             "PadConv1d":        (self.test_PadConv1d,       N, N, N),
             "PadConv2d":        (self.test_PadConv2d,       Y, N, Y),
             "PadConv3d":        (self.test_PadConv3d,       N, N, N),
@@ -2593,6 +2594,23 @@ class ONNX_IR_TESTER(object):
 
         x = torch.randn(10, 10, 49, 32).float()
         y = torch.randn(10, 10, 49, 32).float()
+        self.torch_and_test((x, y), Model(), case_name)
+
+    def test_MatMulTranspose2(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.bias = torch.randn(96).float()
+
+            def forward(self, x, y):
+                a = torch.transpose(y, 2, 1)
+                b = torch.matmul(x, a)
+                return b
+
+        x = torch.randn(10, 10, 49, 32).float()
+        y = torch.randn(10, 32, 10, 49).float()
         self.torch_and_test((x, y), Model(), case_name)
 
     def test_ReshapeFuse(self, case_name):
