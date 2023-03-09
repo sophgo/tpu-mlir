@@ -37,6 +37,9 @@ class ONNX_IR_TESTER(object):
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
             "Abs":          (self.test_Abs,         Y, N, Y),
             "Add":          (self.test_Add,         Y, N, Y),
+            "AddBcast":     (self.test_AddBcast,    Y, N, N),
+            "AddBcast2":    (self.test_AddBcast2,   Y, N, N),
+            "AddBcast3":    (self.test_AddBcast3,   N, N, N),  # failed cases
             "Arg":          (self.test_Arg,         Y, N, N),
             "AddConst":     (self.test_AddConst,    Y, N, Y),
             "AvgPool1d":    (self.test_AvgPool1d,   Y, N, N),
@@ -63,6 +66,8 @@ class ONNX_IR_TESTER(object):
             "Clip":         (self.test_Clip,        Y, N, Y),
             "DepthToSpace": (self.test_DepthToSpace,Y, N, Y),
             "Div":          (self.test_Div,         Y, N, Y),
+            "DivBcast":     (self.test_DivBcast,    Y, N, N),
+            "DivBcast2":    (self.test_DivBcast2,   Y, N, N),
             "Elu":          (self.test_Elu,         Y, N, N),
             "Erf":          (self.test_Erf,         Y, N, N),
             "Exp":          (self.test_Exp,         Y, N, Y),
@@ -89,8 +94,12 @@ class ONNX_IR_TESTER(object):
             "MatMul":       (self.test_MatMul,      Y, N, Y),
             "MatMul2":      (self.test_MatMul2,     Y, N, Y),
             "Max":          (self.test_Max,         Y, N, Y),
+            "MaxBcast":     (self.test_MaxBcast,    Y, N, N),
             "Mul":          (self.test_Mul,         Y, N, Y),
+            "MulBcast":     (self.test_MulBcast,    Y, N, N),
+            "MulBcast2":    (self.test_MulBcast2,   Y, N, N),
             "Min":          (self.test_Min,         Y, N, Y),
+            "MinBcast":     (self.test_MinBcast,    Y, N, N),
             "MulConst":     (self.test_MulConst,    Y, N, Y),
             "Neg":          (self.test_Neg,         Y, N, Y),
             "Pad":          (self.test_Pad,         Y, N, Y),  # zero pad
@@ -126,6 +135,8 @@ class ONNX_IR_TESTER(object):
             "Sqrt":         (self.test_Sqrt,        Y, N, N),
             "Sub":          (self.test_Sub,         Y, N, Y),
             "Sub2":         (self.test_Sub2,        Y, N, N),
+            "SubBcast":     (self.test_SubBcast,    Y, N, N),
+            "SubBcast2":    (self.test_SubBcast2,   Y, N, N),
             "SubConst":     (self.test_SubConst,    Y, N, N),
             "SubConst2":    (self.test_SubConst2,   Y, N, N),
             "Sum":          (self.test_Sum,         Y, N, N),
@@ -1165,6 +1176,37 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([mul_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
 
+    def test_MulBcast(self, case_name):
+        shapes = ([7, 9, 44, 38],)
+        bcast_dims = ([[0], [2], [0, 2]],)
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                Mul_def = helper.make_node("Mul", inputs=["a", "b"], outputs=["x"])
+                Mul_def_2 = helper.make_node("Mul", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([Mul_def, Mul_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def)
+
+    def test_MulBcast2(self, case_name):
+        shapes = ([4, 7, 1, 15],)
+        bcast_shapes = ([1, 7, 13, 15],)
+        out_shapes = ([4, 7, 13, 15],)
+        for i, s in enumerate(shapes):
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
+            Mul_def = helper.make_node("Mul", inputs=["a", "b"], outputs=["x"])
+            Mul_def_2 = helper.make_node("Mul", inputs=["x", "c"], outputs=["output"])
+            graph_def = helper.make_graph([Mul_def, Mul_def_2], "{}_{}".format(case_name, i, ), [a, b, c], [output])
+            self.onnx_and_test(graph_def)
+
     def test_MulConst(self, case_name):
         input_shape = [1, 3, 27, 27]
         output_shape = [1, 3, 27, 27]
@@ -1633,6 +1675,43 @@ class ONNX_IR_TESTER(object):
 
         graph_def = helper.make_graph([div_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def, input_data=input_data)
+
+    def test_DivBcast(self, case_name):
+        shapes = ([6, 11, 39, 29],)
+        bcast_dims = ([[0], [2], [0, 2]],)
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a_data = np.random.randn(*bcast_s).astype(np.float32)
+                b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
+                c_data = np.clip(np.random.randn(*bcast_s).astype(np.float32), 0.01, 10)
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                Div_def = helper.make_node("Div", inputs=["a", "b"], outputs=["x"])
+                Div_def_2 = helper.make_node("Div", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([Div_def, Div_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
+
+    def test_DivBcast2(self, case_name):
+        shapes = ([5, 12, 1, 21],)
+        bcast_shapes = ([1, 12, 9, 21],)
+        out_shapes = ([5, 12, 9, 21],)
+        for i, s in enumerate(shapes):
+            a_data = np.random.randn(*bcast_shapes[i]).astype(np.float32)
+            b_data = np.clip(np.random.randn(*s).astype(np.float32), 0.01, 10)
+            c_data = np.clip(np.random.randn(*bcast_shapes[i]).astype(np.float32), 0.01, 10)
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
+            Div_def = helper.make_node("Div", inputs=["a", "b"], outputs=["x"])
+            Div_def_2 = helper.make_node("Div", inputs=["x", "c"], outputs=["output"])
+            graph_def = helper.make_graph([Div_def, Div_def_2], "{}_{}".format(case_name, i, ), [a, b, c], [output])
+            self.onnx_and_test(graph_def, input_data={"a": a_data, "b": b_data, "c": c_data})
 
     def test_ConvTrans(self, case_name):
         oc, ic = 16, 8
@@ -2720,6 +2799,86 @@ class ONNX_IR_TESTER(object):
             graph_def = helper.make_graph([add_def], "{}_{}".format(case_name, i), [a, b], [output])
             self.onnx_and_test(graph_def)
 
+    def test_tmp(self, case_name):
+        shapes = ([16, 9, 67, 323], )
+        bcast_dims = ([[3]], )
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
+                add_def_2 = helper.make_node("Add", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([add_def, add_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def)
+
+    def test_AddBcast(self, case_name):
+        shapes = (
+                  [10,], [9, 12], [7, 14, 15],
+                  [16, 9, 323, 67],
+                #   [4, 7, 38, 6, 4],
+                #   [3, 3, 11, 3, 4, 5],
+                 )
+        bcast_dims = (
+                      [[0]], [[0], [1]], [[0], [2], [0, 2], [0, 1, 2]],
+                      [[0], [2], [0, 2], [0, 3], [2, 3], [0, 2, 3], [0, 1, 2, 3]],
+                    #   [[0], [2], [0, 2], [3, 4], [2, 3, 4]],
+                    #   [[0], [2], [0, 2], [3, 4, 5], [2, 3, 4, 5]],
+                     )
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
+                add_def_2 = helper.make_node("Add", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([add_def, add_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def)
+
+    def test_AddBcast2(self, case_name):
+        shapes = ([4, 16, 1, 11], [3, 6, 1, 12],)
+        bcast_shapes = ([4, 16, 9, 1], [1, 6, 21, 1], )
+        out_shapes = ([4, 16, 9, 11], [3, 6, 21, 12], )
+        for i, s in enumerate(shapes):
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
+            add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
+            add_def_2 = helper.make_node("Add", inputs=["x", "c"], outputs=["output"])
+            graph_def = helper.make_graph([add_def, add_def_2], "{}_{}".format(case_name, i, ), [a, b, c], [output])
+            self.onnx_and_test(graph_def)
+
+    # Known issue: failed cases.
+    # The first one has a too large w shape and needs broadcast so cannot reshape. W is too large for local mem.
+    # Stuck in finding layer groups: is_layer_group_valid->group_one_layer_proc->getGlobalLayerCycle->global codegen->tensor_split_nh->while, as TPU_KERNEL_ASSERT is not enabled.
+    # The second one has 6-dim broadcast data and goes global. Most dims cannot be merged so the shape_dim is 5 when merging ends.
+    # Forcibly assigning a 5-dim shape into a dim4 shape, it messes up the n-dim shape and raises assert for "n-dim cannot broadcast" in calling local function.
+    def test_AddBcast3(self, case_name):
+        shapes = ([4, 9, 56, 56 * 27 * 16],)
+        bcast_shapes = ( [4, 1, 56, 56 * 27 * 16],)
+        out_shapes = ([4, 9, 56, 56 * 27 * 16],)
+        shapes = ([4, 9, 10, 11, 12, 7],)
+        bcast_shapes = ( [4, 1, 10, 1, 12, 7],)
+        out_shapes = ([4, 9, 10, 11, 12, 7],)
+        for i, s in enumerate(shapes):
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
+            add_def = helper.make_node("Add", inputs=["a", "b"], outputs=["x"])
+            add_def_2 = helper.make_node("Add", inputs=["c", "x"], outputs=["output"])
+            graph_def = helper.make_graph([add_def, add_def_2], "{}_{}".format(case_name, i, ), [a, b, c], [output])
+            self.onnx_and_test(graph_def)
+
     def test_AddConst(self, case_name):
         input_shape = [1, 16, 28, 28]
         output_shape = [1, 16, 28, 28]
@@ -3090,6 +3249,37 @@ class ONNX_IR_TESTER(object):
         )
         self.onnx_and_test(graph_def)
 
+    def test_SubBcast(self, case_name):
+        shapes = ([4, 9, 23, 39],)
+        bcast_dims = ([[0], [2], [0, 2]],)
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                sub_def = helper.make_node("Sub", inputs=["a", "b"], outputs=["x"])
+                sub_def_2 = helper.make_node("Sub", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([sub_def, sub_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def)
+
+    def test_SubBcast2(self, case_name):
+        shapes = ([6, 7, 1, 11],)
+        bcast_shapes = ([1, 7, 13, 11],)
+        out_shapes = ([6, 7, 13, 11],)
+        for i, s in enumerate(shapes):
+            a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_shapes[i])
+            b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+            c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_shapes[i])
+            output = helper.make_tensor_value_info("output", TensorProto.FLOAT, out_shapes[i])
+            sub_def = helper.make_node("Sub", inputs=["a", "b"], outputs=["x"])
+            sub_def_2 = helper.make_node("Sub", inputs=["x", "c"], outputs=["output"])
+            graph_def = helper.make_graph([sub_def, sub_def_2], "{}_{}".format(case_name, i, ), [a, b, c], [output])
+            self.onnx_and_test(graph_def)
+
     def test_SubConst(self, case_name):
         input_shape = [4, 3, 27, 27]
         output_shape = [4, 3, 27, 27]
@@ -3197,6 +3387,23 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([max_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
 
+    def test_MaxBcast(self, case_name):
+        shapes = ([6, 8, 39, 41],)
+        bcast_dims = ([[0], [2], [0, 2]],)
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                Max_def = helper.make_node("Max", inputs=["a", "b"], outputs=["x"])
+                Max_def_2 = helper.make_node("Max", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([Max_def, Max_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def)
+
     def test_Min(self, case_name):
         input_shape = {"input1": [1, 85, 32, 8], "input2": [1, 85, 32, 8]}
         output_shape = [1, 85, 32, 8]
@@ -3209,6 +3416,23 @@ class ONNX_IR_TESTER(object):
 
         graph_def = helper.make_graph([min_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
+
+    def test_MinBcast(self, case_name):
+        shapes = ([5, 11, 23, 27],)
+        bcast_dims = ([[0], [2], [0, 2]],)
+        for i, s in enumerate(shapes):
+            for dims in bcast_dims[i]:
+                bcast_s = s[::]
+                for dim in dims:
+                    bcast_s[dim] = 1
+                a = helper.make_tensor_value_info("a", TensorProto.FLOAT, bcast_s)
+                b = helper.make_tensor_value_info("b", TensorProto.FLOAT, s)
+                c = helper.make_tensor_value_info("c", TensorProto.FLOAT, bcast_s)
+                output = helper.make_tensor_value_info("output", TensorProto.FLOAT, s)
+                Min_def = helper.make_node("Min", inputs=["a", "b"], outputs=["x"])
+                Min_def_2 = helper.make_node("Min", inputs=["x", "c"], outputs=["output"])
+                graph_def = helper.make_graph([Min_def, Min_def_2], "{}_{}_{}".format(case_name, i, "".join(map(str, dims))), [a, b, c], [output])
+                self.onnx_and_test(graph_def)
 
     def test_Abs(self, case_name):
         input_shape = [1, 16, 64, 64]
