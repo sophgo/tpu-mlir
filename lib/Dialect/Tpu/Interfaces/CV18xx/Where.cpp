@@ -17,13 +17,7 @@
 
 using namespace tpu_mlir::backend;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-#ifdef __cplusplus
-}
-#endif
 
 // =========================================
 // GlobalGenInterface
