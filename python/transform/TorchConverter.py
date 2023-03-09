@@ -142,15 +142,23 @@ class TorchConverter(BaseConverter):
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
+            "aten::gelu": lambda node: self.convert_gelu_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
             "aten::pad": lambda node: self.convert_pad_op(node),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
             "aten::relu": lambda node: self.convert_relu_op(node),
+            "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
+            "aten::softplus": lambda node: self.convert_softplus_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
             "aten::t": lambda node: self.convert_transpose_op(node),
+            "aten::tanh": lambda node: self.convert_tanh_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
+            "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
+            "aten::hardswish": lambda node: self.convert_hardswish(node),
+            "aten::hardtanh":
+            lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
         }
         self.check_op_names()
 
@@ -521,4 +529,56 @@ class TorchConverter(BaseConverter):
             'val': val,
         }
         new_op = self.mlir.create_pad_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_hardsigmoid(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        p = {
+            'name': torch_node.name,
+            'alpha': 1 / 6,
+            'beta': 1 / 2,
+        }
+        new_op = self.mlir.create_hsigmoid_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_hardswish(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = self.mlir.create_hswish_op([op], None, **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_hardtanh(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        min_val = self.const_val[torch_node.inputs[1]]
+        max_val = self.const_val[torch_node.inputs[2]]
+        assert (min_val == 0 and max_val == 6 and "Only support relu6 for now")
+        p = {
+            'name': torch_node.name,
+            'relu_limit': max_val,
+        }
+        new_op = self.mlir.create_relu_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_gelu_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = self.mlir.create_gelu_op([op], None, **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_sigmoid_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        p = {
+            'name': torch_node.name,
+            'scale': 1,
+            'bias': 0,
+        }
+        new_op = self.mlir.create_sigmoid_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_tanh_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = self.mlir.create_tanh_op([op], None, **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_softplus_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = self.mlir.create_softplus_op([op], None, **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
