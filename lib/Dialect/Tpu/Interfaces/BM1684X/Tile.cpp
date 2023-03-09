@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -73,9 +73,52 @@ void tpu::TileOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::TileOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::TileOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(tile_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  auto &in = input_spec->at(0);
+  auto &out = output_spec->at(0);
+  tile_local_spec_t spec = {0};
+  for (int i = 0; i < in.dims; ++i) {
+    spec.common.tile_coeff[i] = out.shape[i] / in.shape[i];
+  }
+  spec.common.type = 0;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::TileOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::TileOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(tile_global_param_t);
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  auto &in = input_spec->at(0);
+  auto &out = output_spec->at(0);
+  if (in.dims < out.dims) {
+    const int more_dims = out.dims - in.dims;
+    memmove(in.shape + more_dims, in.shape, in.dims * sizeof(int));
+    for (int i = 0; i < more_dims; ++i) {
+      in.shape[i] = 1;
+    }
+    in.dims = out.dims;
+  }
+  tile_global_param_t param = {0};
+  for (int i = 0; i < out.dims; ++i) {
+    param.spec.common.tile_coeff[i] = out.shape[i] / in.shape[i];
+  }
+  param.spec.common.type = 0;
+  param.coeff_is_fixed = true;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::TileOp::get_layer_type() {
+  return FW_BMNET_TILE;
+}

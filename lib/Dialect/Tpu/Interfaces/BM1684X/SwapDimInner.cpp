@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 void tpu::SwapDimInnerOp::codegen_global_bm1684x() {
@@ -33,7 +33,18 @@ void tpu::SwapDimInnerOp::codegen_global_bm1684x() {
 }
 
 int64_t tpu::SwapDimInnerOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(swap_dim_spec_t);
+  swap_dim_spec_t param = {0};
+  auto offset = module::getI64Array(getOffset());
+  for (int i = 0; i < offset->size(); ++i) {
+    if (offset->at(i) != 0) {
+      param.axis_list[param.axis_num] = i;
+      param.offset_list[param.axis_num] = offset->at(i);
+      param.axis_num += 1;
+    }
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 // =========================================
 // LocalGenInterface
@@ -50,4 +61,8 @@ void tpu::SwapDimInnerOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                                 group_type_t group_type,
                                                 local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
+}
+
+int64_t tpu::SwapDimInnerOp::get_layer_type() {
+  return FW_BMNET_SWAP_DIM_INNER;
 }

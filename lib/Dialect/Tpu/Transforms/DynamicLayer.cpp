@@ -102,57 +102,6 @@ int get_tensor_id(Value v) {
 }
 #endif
 
-
-FW_LAYER_TYPE_T get_layer_type(Operation *op) {
-  //Todo: refine
-  if (isa<tpu::Conv2DOp>(op))
-    return FW_BMNET_CONV;
-  else if (isa<tpu::Pool2DOp>(op)) {
-    return FW_BMNET_POOL;
-  } else if (isa<tpu::ActiveOp>(op)) {
-    return FW_BMNET_ACTIVE;
-  } else if (isa<tpu::UpsampleOp>(op)) {
-    return FW_BMNET_UPSAMPLE;
-  } else if (isa<tpu::ConcatOp>(op)) {
-    return FW_BMNET_CONCAT;
-  } else if (isa<tpu::PermuteOp>(op)) {
-    return FW_BMNET_TRANSPOSE;
-  } else if (isa<tpu::ReshapeOp>(op)) {
-    return FW_BMNET_RESHAPE;
-  } else if (isa<tpu::AddOp>(op)) {
-    return FW_BMNET_BROADCAST_BINARY;
-  } else if (isa<tpu::TopKOp>(op)) {
-    return FW_BMNET_TOPK;
-  } else if (isa<tpu::CastOp>(op)) {
-    auto castop = dyn_cast<tpu::CastOp>(*op);
-    bool qInput = module::isUniformQuantized(castop.getInput());
-    bool qOutput = module::isUniformQuantized(castop.getOutput());
-    if (!qInput && !qOutput)
-        return FW_BMNET_DTYPE_CONVERT;
-    else {
-        if (!qInput && qOutput)
-            return FW_BMNET_REQUANT_FP32;
-        else
-            return FW_BMNET_DEQUANT_FP32;
-    }
-  } else if (isa<tpu::RequantIntOp>(op)) {
-    return FW_BMNET_REQUANT_INT;
-  } else if (isa<tpu::LutOp>(op)) {
-    return FW_BMNET_LUT;
-  } else if (isa<tpu::MulShiftOp>(op)) {
-    return FW_BMNET_MULSHIFT;
-  } else if (isa<tpu::MulConstOp>(op)) {
-    return FW_BMNET_CONST_BINARY;
-  } else if (isa<tpu::RoiAlignOp>(op)) {
-    return FW_BMNET_ROI_ALIGN;
-  } else if (isa<tpu::YoloDetectionOp>(op)) {
-    return FW_BMNET_YOLOV3_DETECT_OUT;
-  } else if (isa<tpu::NonZeroOp>(op)) {
-    return FW_BMNET_WHERE;
-  } else
-    return FW_LAYER_UNKNOWN;
-}
-
 #define write_var(var)                                                  \
     do {                                                                \
         if (!feign)                                                     \
@@ -326,9 +275,8 @@ std::vector<dynamic_global_tensor_spec>
 dynamic_layer::get_input_global_tensor_specs() {
     std::vector<dynamic_global_tensor_spec> specs;
     for (auto v : op_->getOperands()) {
-        if (module::isNone(v) || module::isGlobalBuffer(v)) {
-          continue;
-        }
+        if (isa_and_nonnull<top::NoneOp, tpu::BufferOp>(v.getDefiningOp()))
+            continue;
         dynamic_global_tensor_spec spec = {0};
         spec.type = to_dynamic_tensor_type(v);
         spec.id = get_tensor_id(v);
@@ -352,9 +300,8 @@ dynamic_layer::get_output_global_tensor_specs()
 {
     std::vector<dynamic_global_tensor_spec> specs;
     for (auto v:op_->getResults()) {
-        if (module::isNone(v)) {
-          continue;
-        }
+        if (module::isNone(v))
+            continue;
         dynamic_global_tensor_spec spec = {0};
         spec.type = to_dynamic_tensor_type(v);
         spec.id = get_tensor_id(v);
@@ -378,9 +325,8 @@ dynamic_layer::get_input_local_tensor_specs()
 {
     std::vector<dynamic_local_tensor_spec> specs;
     for (auto v : op_->getOperands()) {
-        if (module::isNone(v)) {
+        if (isa_and_nonnull<top::NoneOp, tpu::BufferOp>(v.getDefiningOp()))
             continue;
-        }
         dynamic_local_tensor_spec spec = {0};
         spec.id = get_tensor_id(v);
         spec.type = to_dynamic_tensor_type(v);
@@ -404,9 +350,8 @@ dynamic_layer::get_output_local_tensor_specs()
 {
     std::vector<dynamic_local_tensor_spec> specs;
     for (auto v : op_->getResults()) {
-        if (module::isNone(v)) {
+        if (module::isNone(v))
             continue;
-        }
         dynamic_local_tensor_spec spec = {0};
         spec.id = get_tensor_id(v);
         spec.type = to_dynamic_tensor_type(v);

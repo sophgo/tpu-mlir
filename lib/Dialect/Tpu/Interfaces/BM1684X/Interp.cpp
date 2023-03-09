@@ -9,7 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
@@ -102,4 +102,36 @@ void tpu::InterpOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step) {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::InterpOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(interp_global_spec_t);
+  interp_global_spec_t param = {0};
+  auto &common = param.common;
+  common.pad_bag = 0;
+  common.pad_end = 0;
+  int coord = 0;
+  if (getCoordMode() == tpu::ResizeCoordMode::half_pixel)
+    coord = 0;
+  else if (getCoordMode() == tpu::ResizeCoordMode::pytorch_half_pixel)
+    coord = 1;
+  else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
+    coord = 2;
+  if (getMode() == tpu::ResizeMode::nearest) {
+    common.platform_sp = ONNX_NEAREST;
+    common.align_corners = true;
+    common.half_pixel_centers = false;
+  } else if (getMode() == tpu::ResizeMode::linear) {
+    common.platform_sp = PYTORCH_SUPPORT;
+    common.align_corners = (coord == 2) ? 1 : 0;
+    common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
+  }
+  param.shape_is_fixed = true;
+  auto out_shape = module::getShape(getOutput());
+  param.dims = out_shape.size();
+  for (int i=0; i < param.dims; i++)
+    param.shape[i] = out_shape[i];
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::InterpOp::get_layer_type() {
+  return FW_BMNET_INTERP;
+}

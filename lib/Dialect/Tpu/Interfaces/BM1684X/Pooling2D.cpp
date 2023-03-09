@@ -12,7 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -240,4 +240,8 @@ int64_t tpu::Pool2DOp::dyn_codegen_global_bm1684x(void *buffer) {
   }
 
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::Pool2DOp::get_layer_type() {
+  return FW_BMNET_POOL;
 }

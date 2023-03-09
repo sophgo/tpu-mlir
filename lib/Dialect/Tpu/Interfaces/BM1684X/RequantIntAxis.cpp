@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -99,12 +99,46 @@ void tpu::RequantIntAxisOp::codegen_local_bm1684x(int64_t n_step,
 
 // dynamic codegen
 int64_t tpu::RequantIntAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(dyn_requant_int_local_param_t);
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  auto quant_gi = LocalGenInterface::getGroupInfo(getQuant(), 0, 0);
+
+  dyn_requant_int_local_param_t param = {0};
+  param.buffer_local_addr = (uint32_t)gi.buffer_addr;
+  param.common.is_perchannel = true;
+  param.common.reshaped_coeff = false;
+  if (module::isUniformQuantized(getInput())) {
+    auto iqtype = module::getUniformQuantizedType(getInput());
+    param.common.zx_value = iqtype.getZeroPoint();
+  }
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.mode = static_cast<int>(getQuantMode());
+  param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::RequantIntAxisOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(dyn_requant_int_global_param_t);
+  dyn_requant_int_global_param_t param = {0};
+
+  param.common.is_perchannel = true;
+  param.common.reshaped_coeff = false;
+  param.common.mode = static_cast<int>(getQuantMode());
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.round_mode = getQuantMode() == tpu::RequantMode::MultiplierShift
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::RequantIntAxisOp::get_layer_type() {
+  return FW_BMNET_REQUANT_INT;
 }

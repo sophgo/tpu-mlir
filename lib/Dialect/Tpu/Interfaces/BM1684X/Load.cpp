@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
@@ -110,4 +110,8 @@ int64_t tpu::LoadOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::LoadOp::dyn_codegen_global_bm1684x(void *buffer) {
   // no need to implement it
   return 0;
+}
+
+int64_t tpu::LoadOp::get_layer_type() {
+  return FW_LAYER_UNKNOWN;
 }

@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -89,12 +89,48 @@ void tpu::RequantFpAxisOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 // dynamic codegen
 int64_t tpu::RequantFpAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(requant_fp_param_t);
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  auto quant_gi = LocalGenInterface::getGroupInfo(getQuant(), 0, 0);
+
+  requant_fp_param_t param = {0};
+  param.input_addr = (uint32_t)in_gi.out_addr;
+  param.requant_addr = (uint32_t)quant_gi.out_addr;
+  param.output_addr = (uint32_t)gi.out_addr;
+  param.buffer_local_addr = (uint32_t)gi.buffer_addr;
+
+  param.is_perchannel = true;
+  param.input_dtype = BM168x::getDataType(getInput());
+  param.output_dtype = BM168x::getDataType(getOutput());
+  if (getQuantMode() == RequantMode::MultiplierShift) {
+    param.mode = 1;
+  }
+  param.round_mode = ROUNDING_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::RequantFpAxisOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(requant_fp_param_t);
+  requant_fp_param_t param = {0};
+  param.input_addr = module::getAddress(getInput());
+  param.requant_addr = module::getAddress(getQuant());
+  param.output_addr = module::getAddress(getOutput());
+  param.is_perchannel = true;
+  if (getQuantMode() == RequantMode::MultiplierShift) {
+    param.mode = 1;
+  }
+  param.input_dtype = BM168x::getDataType(getInput());
+  param.output_dtype = BM168x::getDataType(getOutput());
+  param.round_mode = ROUNDING_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::RequantFpAxisOp::get_layer_type() {
+  return FW_BMNET_REQUANT_FP32;
 }

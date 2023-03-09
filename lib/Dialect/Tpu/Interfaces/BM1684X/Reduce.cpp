@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 void tpu::ReduceOp::codegen_global_bm1684x() {
@@ -41,4 +41,22 @@ void tpu::ReduceOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ReduceOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ReduceOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(reduce_full_global_spec_t);
+  reduce_full_global_spec_t spec = {0};
+  auto&& axes = getAxes();
+  spec.common.axis_num = axes.size();
+  for (int i = 0; i < axes.size(); i ++)
+    spec.common.axis[i] = (axes[i].cast<IntegerAttr>().getInt());
+  spec.common.method = BM168x::get_reduce_type(getMode());
+  spec.common.input_scale = 1.0f;
+  spec.common.output_scale = 1.0f;
+  spec.common.keep_dims = getKeepdims();
+  spec.buffer_addr = module::getAddress(getBuffer());
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::ReduceOp::get_layer_type() {
+  return FW_BMNET_REDUCE_FULL;
+}

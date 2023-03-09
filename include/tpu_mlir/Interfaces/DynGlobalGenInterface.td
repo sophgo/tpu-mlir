@@ -42,6 +42,12 @@ def DynGlobalGenInterface : OpInterface<"DynGlobalGenInterface"> {
           return 0;
         }]
       >,
+      InterfaceMethod<
+        /*desc=*/"Return the layer type.",
+        /*retType=*/"int64_t",
+        /*methodName=*/"get_layer_type",
+        /*args=*/(ins)
+      >,
   ];
 }
 #endif // TPU_MLIR_DYN_GLOBAL_CODEGEN_INTERFACE

@@ -9,6 +9,7 @@
 
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 #include "tpu_mlir/Support/Module.h"
 
 using namespace tpu_mlir::backend;
@@ -60,9 +61,27 @@ void tpu::ClipOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::ClipOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ClipOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(clip_spec_t);
+  clip_spec_t spec = {0};
+  spec.min = static_cast<float>(getMin().convertToDouble());
+  spec.max = static_cast<float>(getMax().convertToDouble());
+  spec.if_relu = 0;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ClipOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ClipOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(clip_spec_t);
+  clip_spec_t spec = {0};
+  spec.min = static_cast<float>(getMin().convertToDouble());
+  spec.max = static_cast<float>(getMax().convertToDouble());
+  spec.if_relu = 0;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::ClipOp::get_layer_type() {
+  return FW_BMNET_CLIP;
+}

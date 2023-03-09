@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -82,4 +82,8 @@ int64_t tpu::UpsampleOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.if_relu = getDoRelu();
 
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::UpsampleOp::get_layer_type() {
+  return FW_BMNET_UPSAMPLE;
 }

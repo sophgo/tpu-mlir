@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -96,9 +96,55 @@ void tpu::SubConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::SubConstOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::SubConstOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(constbinary_local_spec_t);
+  auto input_type = module::getStorageType(getInput());
+  constbinary_local_spec_t param = {0};
+  param.common.binary_type = BINARY_SUB;
+  param.common.if_relu = getDoRelu();
+  param.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.common.B_const_val = getConstVal().convertToDouble();
+  param.common.inversed = getIsReverse();
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
+  if (module::isUniformQuantized(getInput())) {
+    param.common.B_dtype = DTYPE_INT32;
+    param.common.scale_A = getMultiplier();
+    param.common.rshift_A = getRshift();
+  } else {
+    param.common.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::SubConstOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::SubConstOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(constbinary_global_spec_t);
+  auto input_type = module::getStorageType(getInput());
+  constbinary_global_spec_t param = {0};
+  param.common.binary_type = BINARY_SUB;
+  param.common.if_relu = getDoRelu();
+  param.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.common.B_const_val = getConstVal().convertToDouble();
+  param.common.inversed = getIsReverse();
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
+  if (module::isUniformQuantized(getInput())) {
+    param.common.B_dtype = DTYPE_INT32;
+    param.common.scale_A = getMultiplier();
+    param.common.rshift_A = getRshift();
+  } else {
+    param.common.B_dtype =
+        input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::SubConstOp::get_layer_type() {
+  return FW_BMNET_CONST_BINARY;
+}

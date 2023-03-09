@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -27,4 +27,8 @@ void tpu::PoolMaskOp::codegen_global_bm1684x() {
 // ======================================
 int64_t tpu::PoolMaskOp::dyn_codegen_global_bm1684x(void *buffer) {
   return 0;
+}
+
+int64_t tpu::PoolMaskOp::get_layer_type() {
+  return FW_LAYER_UNKNOWN;
 }

@@ -12,6 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include <strings.h>
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 
@@ -37,5 +38,13 @@ void tpu::GatherOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::GatherOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(index_select_global_spec_t);
+  index_select_global_spec_t param{0};
+  param.common.axis = getAxis();
+  param.common.index_is_coeff = false;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::GatherOp::get_layer_type() {
+  return FW_BMNET_INDEX_SELECT;
 }

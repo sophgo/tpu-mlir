@@ -720,8 +720,10 @@ void SubnetIr::generate_group_time_step_ir(
       //global layer
       LgInfo sub_group;
       sub_group.group_ops.push_back(op);
-      sub_group.update_group_io();
-      sub_group.group_outs.clear();
+      for (auto&& v: op->getOperands()) {
+        if (!isa_and_nonnull<top::WeightOp, top::NoneOp, tpu::BufferOp>(v.getDefiningOp()))
+          sub_group.group_ins.emplace_back(v);
+      }
       for (auto&& v: op->getResults())
         sub_group.group_outs.emplace_back(v);
       m_layer_groups_.push_back(sub_group);
@@ -1098,10 +1100,14 @@ int SubnetIr::write_ir_to_buffer(
         *(u32*)p_ir_buf = timestep_layers.size();
         p_ir_buf = (u32*)p_ir_buf + 1;
         for(u32 i = 0; i < timestep_layers.size(); ++i) {
-          if (get_dynamic_version() >= 2)
-          {
+          if (get_dynamic_version() >= 2) {
+            int64_t layer_type = -1;
+            if (auto castOp = dyn_cast<DynGlobalGenInterface>(timestep_layers[i])) {
+              layer_type = castOp.get_layer_type();
+            }
+            assert(layer_type >= 0);
             p_ir_buf = write_local_layer_info_buffer_v2(p_ir_buf, timestep_layers[i], \
-                         get_layer_type(timestep_layers[i]), m_time_step_groups_[group_idx]);
+                         (FW_LAYER_TYPE_T)layer_type, m_time_step_groups_[group_idx]);
           } else {
             ir_layer_info_t ir_layer_info = ir_group_timestep_layer_param[group_idx][ts_idx][i];
             p_ir_buf = write_local_layer_info_buffer(p_ir_buf, &ir_layer_info);
@@ -1133,7 +1139,12 @@ int SubnetIr::write_ir_to_buffer(
       if(layers.size() > 0) {
         if (get_dynamic_version() >= 2)
         {
-            p_ir_buf = write_global_layer_info_buffer_v2(p_ir_buf, layers[0], get_layer_type(layers[0]));
+            int64_t layer_type = -1;
+            if (auto castOp = dyn_cast<DynGlobalGenInterface>(layers[0])) {
+              layer_type = castOp.get_layer_type();
+            }
+            assert(layer_type >= 0);
+            p_ir_buf = write_global_layer_info_buffer_v2(p_ir_buf, layers[0], (FW_LAYER_TYPE_T)layer_type);
         } else {
             ir_layer_info_t ir_layer_info = ir_group_timestep_layer_param[group_idx][0][0];
             p_ir_buf = write_global_layer_info_buffer(p_ir_buf, &ir_layer_info);

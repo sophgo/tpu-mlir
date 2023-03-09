@@ -11,6 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 
@@ -30,7 +31,6 @@ void tpu::DequantIntAxisOp::codegen_global_bm1684x() {
   param.h = (int)h;
   param.w = (int)w;
 
-  param.dequant_addr = module::getAddress(getQuant());
   param.is_perchannel = true;
   param.lshift = getLshift();
   param.mode = static_cast<int>(getQuantMode());
@@ -83,19 +83,47 @@ void tpu::DequantIntAxisOp::codegen_local_bm1684x(int64_t n_step,
   param.round_mode = getQuantMode() == tpu::DequantMode::Normal
                          ? ROUNDING_HALF_UP
                          : ROUNDING_HALF_AWAY_FROM_ZERO;
-
   BM168x::call_local_func("backend_api_dequant_int_local", &param,
                           sizeof(param));
 }
 
 // dynamic codegen
 int64_t tpu::DequantIntAxisOp::dyn_codegen_local_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(dyn_dequant_int_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  auto dequant_gi = LocalGenInterface::getGroupInfo(getQuant(), 0, 0);
+
+  dyn_dequant_int_local_spec_t param = {0};
+  param.dequant_addr = (uint32_t)dequant_gi.out_addr;
+  param.buffer_local_addr = (uint32_t)gi.buffer_addr;
+  param.common.is_perchannel = true;
+  param.common.input_dtype = BM168x::getDataType(getInput());
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.lshift = getLshift();
+  param.common.mode = static_cast<int>(getQuantMode());
+  param.common.round_mode = getQuantMode() == tpu::DequantMode::Normal
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::DequantIntAxisOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(dyn_dequant_int_global_spec_t);
+  dyn_dequant_int_global_spec_t param = {0};
+  param.common.is_perchannel = true;
+  param.common.lshift = getLshift();
+  param.common.mode = static_cast<int>(getQuantMode());
+  param.common.input_dtype = BM168x::getDataType(getInput());
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.round_mode = getQuantMode() == tpu::DequantMode::Normal
+                         ? ROUNDING_HALF_UP
+                         : ROUNDING_HALF_AWAY_FROM_ZERO;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::DequantIntAxisOp::get_layer_type() {
+  return FW_BMNET_DEQUANT_INT;
 }

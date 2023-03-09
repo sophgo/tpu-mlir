@@ -929,6 +929,20 @@ typedef struct {
 } lut_param_t;
 
 typedef struct {
+  int output_dtype;
+  int is_local_layer;
+} lut_common_param_t;
+
+typedef struct {
+  lut_common_param_t common;
+  unsigned int buffer_addr; // used only for local layer
+} dyn_lut_local_param_t;
+
+typedef struct {
+  lut_common_param_t common;
+} dyn_lut_global_param_t;
+
+typedef struct {
   unsigned int buffer_addr; // used only for local layer
   int output_dtype;
   int is_local_layer;
@@ -1270,6 +1284,203 @@ typedef struct where_spec {
   uint64_t buffer_addr;
 } where_spec_t;
 
+typedef struct conv3d_common_spec {
+  int32_t groups;
+  int32_t output_c;
+  int32_t kernel[3];
+  int32_t stride[3];
+  int32_t dilation[3];
+  int32_t pad[6];
+  int32_t has_bias;
+  int32_t input_dtype;
+  int32_t weight_dtype;
+  int32_t bias_dtype;
+  int32_t output_dtype;
+  int32_t do_relu;
+  float relu_limit;
+  bool kzp_is_const;
+  bool pad_is_const;
+  int32_t kzp_val;
+  int32_t pad_val;
+  int32_t kzp_dtype;
+} conv3d_common_spec_t;
+
+typedef struct dyn_conv3d_local_spec
+{
+    conv3d_common_spec_t common;
+    uint32_t kzp_local_addr;
+    uint32_t pad_local_addr;
+    uint32_t buffer_local_addr;
+    // For dynamic inference
+    uint32_t concat_c;
+    int32_t concat_c_idx;
+    int32_t reference_id;
+} dyn_conv3d_local_spec_t;
+
+typedef struct dyn_conv3d_local_param
+{
+    dyn_conv3d_local_spec_t spec;
+} dyn_conv3d_local_param_t;
+
+typedef struct dyn_conv3d_global_spec
+{
+    conv3d_common_spec_t common;
+    uint64_t kzp_global_addr;
+    uint64_t pad_global_addr;
+    // For dynamic inference
+    uint32_t concat_c;
+    int32_t concat_c_idx;
+    int32_t reference_id;
+} dyn_conv3d_global_spec_t;
+
+typedef struct dyn_conv3d_global_param
+{
+    dyn_conv3d_global_spec_t spec;
+} dyn_conv3d_global_param_t;
+
+typedef struct dyn_deconv_common_spec
+{
+  int groups;
+  int output_c;
+  int kernel[2];     // (kh, kw)
+  int stride[2];     // (h, w)
+  int dilation[2];   // (h, w)
+  int pad[4];        // (h0, h1, w0, w1)
+  int output_pad[2]; // (h, w)
+  int has_bias;
+  int input_dtype;
+  int weight_dtype;
+  int bias_dtype;
+  /* param for float */
+  int output_dtype;
+  int if_relu;
+  float upper_limit;
+  /* param for quant */
+  bool is_asym;
+  unsigned char rshift;
+  bool kzp_is_const;
+  bool pad_insert_is_const;
+  int kzp_val;
+  int pad_val;
+  int insert_val;
+  int kzp_dtype;
+} dyn_deconv_common_spec_t;
+
+typedef struct dyn_deconv_local_spec
+{
+  dyn_deconv_common_spec_t common;
+  unsigned int buffer_local_addr;
+  unsigned int kzp_local_addr;
+  unsigned int pad_insert_local_addr;
+} dyn_deconv_local_spec_t;
+
+typedef struct dyn_deconv_global_spec
+{
+  dyn_deconv_common_spec_t common;
+  uint64_t kzp_global_addr;
+  uint64_t pad_insert_global_addr;
+  int output_pad[2]; // (h, w)
+} dyn_deconv_global_spec_t;
+
+typedef struct {
+  bool is_perchannel;
+  int scale_val;
+  int shift_val;
+  int offset_val;
+  int mode;
+  int lshift;
+  int input_dtype;
+  int output_dtype;
+  int round_mode;
+} dyn_dequant_int_common_spec_t;
+
+typedef struct {
+  dyn_dequant_int_common_spec_t common;
+  uint32_t buffer_local_addr;
+  uint32_t dequant_addr;
+} dyn_dequant_int_local_spec_t;
+
+typedef struct {
+  dyn_dequant_int_common_spec_t common;
+} dyn_dequant_int_global_spec_t;
+
+typedef struct {
+  bool bias;
+  bool outputY;
+  bool outputYh;
+  int sequence;
+  int batch;
+  int xSize;
+  int hSize;
+  int batchMode;
+  bool bidirectional;
+  int numLayers;
+  int dtype;
+} gru_common_param_t;
+
+typedef struct {
+    gru_common_param_t common;
+    uint64_t xGlobalAddr;
+    uint64_t h0GlobalAddr;
+    uint64_t yGlobalAddr;
+    uint64_t hnGlobalAddr;
+    uint64_t wGlobalAddr;
+    uint64_t bGlobalAddr;
+    uint64_t zGlobalAddr;
+} dyn_glu_global_spec_t;
+
+typedef struct {
+  int size;
+  float alpha;
+  float beta;
+  float k;
+  int dtype;
+} lrn_common_param_t;
+
+typedef struct {
+  lrn_common_param_t common;
+} dyn_lrn_global_param_t;
+
+typedef struct {
+  int top_c;
+  int top_h;
+  int top_w;
+} upsamplemask_common_param_t;
+
+typedef struct {
+  upsamplemask_common_param_t common;
+} dyn_upsamplemask_global_spec_t;
+
+typedef struct {
+  int32_t output_shape[5];
+  int32_t kernel[3];
+  int32_t stride[3];
+  int32_t dilation[3];
+  int32_t pad[6];
+  bool is_avg_pooling;
+  int32_t avg_pooling_mode;
+  int32_t avg_rd_mode;
+  /* for float */
+  int32_t if_relu;
+  float relu_limit;
+  int32_t in_dtype;
+  int32_t out_dtype;
+  /* for fix8b */
+  int32_t avg_pooling_quant_mode;
+  bool merge_requant;
+  float rq_scale;
+  float rq_offset;
+} pooling3d_common_param_t;
+
+typedef struct {
+  pooling3d_common_param_t common;
+  int32_t buffer_addr;
+} dyn_pooling3d_local_spec_t;
+
+typedef struct {
+  pooling3d_common_param_t common;
+  int64_t buffer_addr;
+} dyn_pooling3d_global_spec_t;
 #ifdef __cplusplus
 }
 #endif

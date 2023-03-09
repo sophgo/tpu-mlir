@@ -78,6 +78,11 @@ int static_ld_coeff_irgen_ctrl(
   }
 
   auto use_op = *op->getUsers().begin();
+  int64_t layer_type = -1;
+  if (auto castOp = dyn_cast<DynGlobalGenInterface>(use_op)) {
+    layer_type = castOp.get_layer_type();
+  }
+  assert(layer_type >= 0);
   if (auto conv_op = dyn_cast<tpu::Conv1DOp>(use_op)) {
     if (module::isUniformQuantized(conv_op.getInput())) {
       if (conv_op.getCoeffMerged()) {
@@ -85,7 +90,7 @@ int static_ld_coeff_irgen_ctrl(
       }
     }
     fw_gdma_coeff.groups = conv_op.getGroup();
-    fw_gdma_coeff.layer_type = get_layer_type(conv_op);
+    fw_gdma_coeff.layer_type = (FW_LAYER_TYPE_T)layer_type;
   } else if (auto conv_op = dyn_cast<tpu::Conv1DOp>(use_op)) {
     if (module::isUniformQuantized(conv_op.getInput())) {
       if (conv_op.getCoeffMerged()) {
@@ -93,10 +98,10 @@ int static_ld_coeff_irgen_ctrl(
       }
     }
     fw_gdma_coeff.groups = conv_op.getGroup();
-    fw_gdma_coeff.layer_type = get_layer_type(conv_op);
+    fw_gdma_coeff.layer_type = (FW_LAYER_TYPE_T)layer_type;
   } else if (auto conv_op = dyn_cast<tpu::Conv3DOp>(use_op)) {
     fw_gdma_coeff.groups = conv_op.getGroup();
-    fw_gdma_coeff.layer_type = get_layer_type(conv_op);
+    fw_gdma_coeff.layer_type = (FW_LAYER_TYPE_T)layer_type;
   }
 
   fw_gdma_coeff.depth = 1;

@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -74,4 +74,30 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::SliceOp::dyn_codegen_global_bm1684x(void *buffer) {
+#if 0
+  if (!buffer)
+    return sizeof(strideslice_common_spec_t);
+  strideslice_common_spec_t param = {0};
+  std::vector<int64_t> input_shape = module::getShape(getInput());
+  std::vector<int64_t> output_shape = module::getShape(getOutput());
+  param.begin_mask = 0;
+  param.end_mask = 0;
+  int num_dims = input_shape.size();
+  auto&& offset = getOffset();
+  auto&& step = getSteps();
+  for (int i = 0; i < num_dims; i++) {
+    param.begin_index[i] = offset[i].cast<IntegerAttr>().getInt();
+    param.end_index[i] = output_shape[i] * step[i].cast<IntegerAttr>().getInt()
+                  + offset[i].cast<IntegerAttr>().getInt();
+    param.strides[i] = step[i].cast<IntegerAttr>().getInt();
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+#endif
+  return 0;
+}
+
+int64_t tpu::SliceOp::get_layer_type() {
+  //return FW_BMNET_SLICE;
+  return FW_BMNET_STRIDESLICE;
+}

@@ -12,7 +12,8 @@
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
+#include <string.h>
 using namespace tpu_mlir::backend;
 
 
@@ -206,9 +207,110 @@ void tpu::Pool3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Pool3DOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(dyn_pooling3d_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  auto attr = parseParam();
+  dyn_pooling3d_local_spec_t spec = {0};
+  spec.buffer_addr = gi.buffer_addr;
+  spec.common.output_shape[0] = attr.n;
+  spec.common.output_shape[1] = attr.c;
+  spec.common.output_shape[2] = attr.od;
+  spec.common.output_shape[3] = attr.oh;
+  spec.common.output_shape[4] = attr.ow;
+  spec.common.in_dtype = BM168x::getDataType(getInput());
+  spec.common.out_dtype = BM168x::getDataType(getOutput());
+
+  int32_t kernel[3] = {(int32_t)attr.kd, (int32_t)attr.kh, (int32_t)attr.kw};
+  int32_t dilation[3] = {1, 1, 1};
+  int32_t strides[3] = {(int32_t)attr.sd, (int32_t)attr.sh, (int32_t)attr.sw};
+  int32_t pads[6] = {(int32_t)attr.pad_d, (int32_t)attr.pad_d_after,
+                     (int32_t)attr.pad_h, (int32_t)attr.pad_h_after,
+                     (int32_t)attr.pad_w, (int32_t)attr.pad_w_after};
+  memcpy(spec.common.kernel, kernel, sizeof(int32_t) * 3);
+  memcpy(spec.common.dilation, dilation, sizeof(int32_t) * 3);
+  memcpy(spec.common.stride, strides, sizeof(int32_t) * 3);
+  memcpy(spec.common.pad, pads, sizeof(int32_t) * 6);
+
+  spec.common.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
+  spec.common.avg_rd_mode = ROUND_UP;
+  spec.common.is_avg_pooling = false;
+
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    spec.common.is_avg_pooling = true;
+    if (module::isUniformQuantized(getInput())) {
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
+      spec.common.avg_pooling_quant_mode = with_pad ? 1 : 2;
+      if (spec.common.avg_pooling_quant_mode == 2) {
+        spec.common.merge_requant = true;
+        spec.common.rq_scale = getScale().has_value()
+                            ? (getScale().value().convertToDouble())
+                            : 1.;
+        spec.common.rq_offset = getOffset().has_value()
+                             ? (getOffset().value().convertToDouble())
+                             : 0.;
+      }
+    }
+  }
+
+  spec.common.if_relu = attr.do_relu;
+  spec.common.relu_limit = attr.relu_limit;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Pool3DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(dyn_pooling3d_global_spec_t);
+  auto attr = parseParam();
+  dyn_pooling3d_global_spec_t spec = {0};
+  spec.buffer_addr = -1;
+  spec.common.output_shape[0] = attr.n;
+  spec.common.output_shape[1] = attr.c;
+  spec.common.output_shape[2] = attr.od;
+  spec.common.output_shape[3] = attr.oh;
+  spec.common.output_shape[4] = attr.ow;
+  spec.common.in_dtype = BM168x::getDataType(getInput());
+  spec.common.out_dtype = BM168x::getDataType(getOutput());
+
+  int32_t kernel[3] = {(int32_t)attr.kd, (int32_t)attr.kh, (int32_t)attr.kw};
+  int32_t dilation[3] = {1, 1, 1};
+  int32_t strides[3] = {(int32_t)attr.sd, (int32_t)attr.sh, (int32_t)attr.sw};
+  int32_t pads[6] = {(int32_t)attr.pad_d, (int32_t)attr.pad_d_after,
+                     (int32_t)attr.pad_h, (int32_t)attr.pad_h_after,
+                     (int32_t)attr.pad_w, (int32_t)attr.pad_w_after};
+  memcpy(spec.common.kernel, kernel, sizeof(int32_t) * 3);
+  memcpy(spec.common.dilation, dilation, sizeof(int32_t) * 3);
+  memcpy(spec.common.stride, strides, sizeof(int32_t) * 3);
+  memcpy(spec.common.pad, pads, sizeof(int32_t) * 6);
+  spec.common.is_avg_pooling = false;
+  spec.common.avg_pooling_mode = attr.count_include_pad ? 0 : 1;
+  spec.common.avg_rd_mode = ROUND_UP;
+  spec.common.if_relu = attr.do_relu;
+  spec.common.relu_limit = attr.relu_limit;
+
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    spec.common.is_avg_pooling = true;
+    if (module::isUniformQuantized(getInput())) {
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
+      spec.common.avg_pooling_quant_mode = with_pad ? 1 : 2;
+      if (spec.common.avg_pooling_quant_mode == 2) {
+        spec.common.merge_requant = true;
+        spec.common.rq_scale = getScale().has_value()
+                            ? (getScale().value().convertToDouble())
+                            : 1.;
+        spec.common.rq_offset = getOffset().has_value()
+                             ? (getOffset().value().convertToDouble())
+                             : 0.;
+      }
+    }
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::Pool3DOp::get_layer_type() {
+  return FW_BMNET_POOL3D;
+}

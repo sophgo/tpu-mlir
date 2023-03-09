@@ -12,7 +12,7 @@
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -88,12 +88,29 @@ void tpu::MaxPoolWithMaskOp::codegen_local_bm1684x(int64_t n_step,
 
 // dynamic codegen
 int64_t tpu::MaxPoolWithMaskOp::dyn_codegen_local_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(pooling_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  auto attr = parseParam();
+  pooling_local_spec_t spec = {0};
+  auto &common = spec.common;
+  SpecAssign(attr, common);
+  spec.buffer_addr = gi.buffer_addr;
+  common.pad_h_t = attr.pad_h;
+  common.pad_h_b = attr.pad_h_after;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::MaxPoolWithMaskOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(pooling_common_spec_t);
+  auto attr = parseParam();
+  pooling_common_spec_t spec = {0};
+  SpecAssign(attr, spec);
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::MaxPoolWithMaskOp::get_layer_type() {
+  return FW_BMNET_POOL;
 }

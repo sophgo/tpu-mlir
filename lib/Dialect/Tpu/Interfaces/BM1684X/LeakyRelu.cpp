@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -73,9 +73,41 @@ void tpu::LeakyReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::LeakyReluOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::LeakyReluOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(prelu_spec_t);
+  prelu_spec_t spec = {0};
+  spec.is_channel_shared = true;
+  spec.upper_limit = -1;
+  spec.round_mode = ROUND_UP;
+  if (module::isUniformQuantized(getInput())) {
+    spec.slope_val = static_cast<float>(getMultiplier().value());
+    spec.rshift_bit = getRshift().value();
+  } else {
+    spec.slope_val = static_cast<float>(getAlpha().value().convertToDouble());
+    spec.rshift_bit = 0;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::LeakyReluOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::LeakyReluOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(prelu_spec_t);
+  prelu_spec_t spec = {0};
+  spec.is_channel_shared = true;
+  spec.upper_limit = -1;
+  spec.round_mode = ROUND_UP;
+  if (module::isUniformQuantized(getInput())) {
+    spec.slope_val = static_cast<float>(getMultiplier().value());
+    spec.rshift_bit = getRshift().value();
+  } else {
+    spec.slope_val = static_cast<float>(getAlpha().value().convertToDouble());
+    spec.rshift_bit = 0;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::LeakyReluOp::get_layer_type() {
+  return FW_BMNET_PRELU;
+}

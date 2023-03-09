@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -149,4 +149,8 @@ int64_t tpu::RequantIntOp::dyn_codegen_global_bm1684x(void *buffer) {
                                 ? ROUNDING_HALF_UP
                                 : ROUNDING_HALF_AWAY_FROM_ZERO;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::RequantIntOp::get_layer_type() {
+  return FW_BMNET_REQUANT_INT;
 }

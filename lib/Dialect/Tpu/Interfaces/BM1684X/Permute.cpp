@@ -11,7 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -59,4 +59,8 @@ int64_t tpu::PermuteOp::dyn_codegen_global_bm1684x(void *buffer) {
   }
   spec.is_dynamic = input_neuron_tensors > 1;
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::PermuteOp::get_layer_type() {
+  return FW_BMNET_TRANSPOSE;
 }

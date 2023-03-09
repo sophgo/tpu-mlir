@@ -165,6 +165,12 @@ typedef enum fw_layer_type {
   FW_BMNET_REQUANT_FP32   = 132,
   FW_BMNET_REQUANT_INT    = 133,
   FW_BMNET_DEQUANT_FP32   = 134,
+  FW_BMNET_CLIP           = 135,
+  FW_BMNET_DEQUANT_INT    = 136,
+  FW_BMNET_SWAP_DIM_INNER = 137,
+  FW_BMNET_SWAP_CHANNEL   = 138,
+  FW_BMNET_SCALE_LUT      = 139,
+  FW_BMNET_PIXEL_NORM     = 140,
   // global_dynamic step -2: declare FW_BMNET_XXXX
   FW_LAYER_UNKNOWN
 } FW_LAYER_TYPE_T;

@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -64,11 +64,31 @@ void tpu::MaskedFillOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::MaskedFillOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::MaskedFillOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(select_common_spec_t);
+  const float const_val_ = getConstVal().convertToDouble();
+  select_common_spec_t spec = {0};
+  spec.sel0_is_const = getInversed();
+  spec.sel1_is_const = !getInversed();
+  spec.sel0_const_val = getInversed() ? const_val_ : 0;
+  spec.sel1_const_val = getInversed() ? 0 : const_val_;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::MaskedFillOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(select_common_spec_t);
+  const float const_val_ = getConstVal().convertToDouble();
+  select_common_spec_t spec = {0};
+  spec.sel0_is_const = getInversed();
+  spec.sel1_is_const = !getInversed();
+  spec.sel0_const_val = getInversed() ? const_val_ : 0;
+  spec.sel1_const_val = getInversed() ? 0 : const_val_;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::MaskedFillOp::get_layer_type() {
+  return FW_BMNET_SELECT;
 }
