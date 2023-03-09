@@ -26,25 +26,30 @@ void common_shape_inference(mlir::Operation *op) {
 }
 
 void broadcast_shape_inference(mlir::Operation *op) {
-  if (op->getNumResults() != 1 && op->getNumOperands() != 2) {
+  if (op->getNumResults() != 1) {
     op->dump();
     llvm_unreachable("Only supports one output and two inputs.");
   }
   auto lhs_shape = module::getShape(op->getOperand(0));
-  auto rhs_shape = module::getShape(op->getOperand(1));
-  auto out_shape = llvm::SmallVector<int64_t>();
-  for (auto it :
-       llvm::zip_longest(llvm::reverse(lhs_shape), llvm::reverse(rhs_shape))) {
-    if (std::get<0>(it) && std::get<0>(it) != 1) {
-      out_shape.push_back(std::get<0>(it).value());
-    } else {
-      if (std::get<1>(it))
-        out_shape.push_back(std::get<1>(it).value());
-      else
-        out_shape.push_back(std::get<0>(it).value());
+  auto out_shape = llvm::SmallVector<int64_t>(lhs_shape);
+  if (op->getNumOperands() > 1) {
+    for (int i = 1; i < op->getNumOperands(); ++i) {
+      auto hs_shape = module::getShape(op->getOperand(i));
+      auto tmp_shape = llvm::SmallVector<int64_t>();
+      for (auto it :
+        llvm::zip_longest(llvm::reverse(out_shape), llvm::reverse(hs_shape))) {
+        if (std::get<0>(it) && std::get<0>(it) != 1) {
+          tmp_shape.push_back(std::get<0>(it).value());
+        } else {
+          if (std::get<1>(it))
+            tmp_shape.push_back(std::get<1>(it).value());
+          else
+            tmp_shape.push_back(std::get<0>(it).value());
+        }
+      }
+      out_shape = llvm::SmallVector<int64_t>(llvm::reverse(tmp_shape));
     }
   }
-  out_shape = llvm::SmallVector<int64_t>(llvm::reverse(out_shape));
   auto out = op->getResult(0);
   module::setShapeOrVerify(out, out_shape);
 }

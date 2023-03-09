@@ -1190,6 +1190,21 @@ def Top_TileOp: Top_Op<"Tile"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_TileExOp: Top_Op<"TileEx"> {
+  let summary = "TileEx operator";
+  let description = [{
+    Perform Tile operation on the given tensor. similar to numpy tile.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$repeats
+  );
+
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_AbsOp : Top_Op<"Abs"> {
   let summary = " Abs operator";
   let description = [{

@@ -24,6 +24,7 @@ import torch.jit as jit
 
 
 class TORCH_IR_TESTER(object):
+    ID = 0
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x", mode: str = "all"):
         Y, N = True, False
@@ -73,6 +74,7 @@ class TORCH_IR_TESTER(object):
             "Sub":              (self.test_Sub,         Y, N, N),
             "T":                (self.test_T,           Y, N, N),
             "Tanh":             (self.test_Activation,  Y, N, N),
+            "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
             "ZeroPad2d":        (self.test_Pad2d,       Y, N, N),
         }
@@ -102,6 +104,7 @@ class TORCH_IR_TESTER(object):
 
     def test_single(self, case: str):
         np.random.seed(0)
+        TORCH_IR_TESTER.ID = 0
         print("Test: {}".format(case))
         if case in self.test_cases:
             func, _, _, _ = self.test_cases[case]
@@ -243,6 +246,8 @@ class TORCH_IR_TESTER(object):
         torch_model,
     ):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
+        model_name = "{}_{}".format(model_name, TORCH_IR_TESTER.ID)
+        TORCH_IR_TESTER.ID += 1
         model_def = model_name + ".pt"
         inputs = self.create_random_input(in_shapes)
         jit.trace(torch_model, inputs).save(model_def)
@@ -663,6 +668,29 @@ class TORCH_IR_TESTER(object):
         _test_t((32, ))
 
     #######################################################################
+    # Tile
+    # ------------
+    def test_Tile(self, case_name):
+        """Tile"""
+
+        def _test_tile(in_shape, repeats):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.tile(x, repeats)
+                    return y1
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        _test_tile((1, 3, 32, 32), (1, 3, 1, 2))
+        _test_tile((2, 32, 16), (2, 1))
+        _test_tile((32, 16), (1, 2, 1))
+
+    #######################################################################
     # Transpose
     # ------------
     def test_Transpose(self, case_name):
@@ -684,6 +712,31 @@ class TORCH_IR_TESTER(object):
         _test_transpose((1, 3, 32, 32), (0, 3))
         _test_transpose((2, 32, 16), (2, 0))
         _test_transpose((32, 32), (1, 0))
+
+    #######################################################################
+    # Where
+    # ------------
+    def test_Where(self, case_name):
+        """Where"""
+
+        def _test_where(in0_shape, in1_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.weight = torch.randn(in1_shape)
+
+                def forward(self, x):
+                    y = torch.where(x > 0, 1, 0)
+                    y1 = torch.where(self.weight > 0, y, x)
+                    return y1
+
+            self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
+        _test_where((1, 3, 32, 32), (1, 3, 32, 32))
+        _test_where((2, 32, 16), (32, 1))
+        _test_where((32, 32), (1, 32))
 
     #######################################################################
     # Concat
