@@ -54,6 +54,19 @@ void CycleCalculator::set_local_sec_info(local_sec_info_t &sec_info,
     has_input = true;
   }
 
+  if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp, tpu::MinOp>(op)) {
+    Value in2 = op->getOperand(1);
+    auto iter = tensor_infos.find(in2);
+    if (iter != tensor_infos.end()) {
+      module::getNCDHW(in2, N, C, D, H, W, group_type);
+      auto &si = iter->second.slice_info;
+      sec_info.n_slice = std::max(si.n[0].second, (int64_t)sec_info.n_slice);
+      sec_info.h_slice = std::max(si.h[0].second, (int64_t)sec_info.h_slice);
+      sec_info.d_slice = std::max(D, (int64_t)sec_info.d_slice);
+      sec_info.w_slice = std::max(W, (int64_t)sec_info.w_slice);
+    }
+  }
+
   Value out = op->getResult(0);
   iter = tensor_infos.find(out);
   if (iter != tensor_infos.end()) {

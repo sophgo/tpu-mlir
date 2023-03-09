@@ -425,7 +425,7 @@ def Tpu_PoolMaskOp: Tpu_Op<"PoolMask"> {
 
 def Tpu_AddOp: Tpu_Op<"Add", [
   SupportFuseRelu, SupportEarlyStride,
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "BackwardH", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "add operator";
 
@@ -479,7 +479,7 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
 
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
      DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "sub operator";
 
@@ -531,7 +531,7 @@ def Tpu_SubConstOp: Tpu_Op<"SubConst",
 
 def Tpu_MulOp: Tpu_Op<"Mul",
     [SupportFuseRelu,
-    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+    DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
     DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul operator";
 
@@ -554,7 +554,7 @@ def Tpu_MulOp: Tpu_Op<"Mul",
 }
 
 def Tpu_MaxOp: Tpu_Op<"Max", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "max operator";
 
@@ -577,7 +577,7 @@ def Tpu_MaxOp: Tpu_Op<"Max", [
 }
 
 def Tpu_MinOp: Tpu_Op<"Min", [
-  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "min operator";
 
@@ -1208,7 +1208,8 @@ def Tpu_PadOp:Tpu_Op<"Pad", [
   let results = (outs AnyRankedTensor:$output);
 }
 
-def Tpu_DivOp: Tpu_Op<"Div"> {
+def Tpu_DivOp: Tpu_Op<"Div", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>]> {
   let summary = "div operator";
 
   let description = [{

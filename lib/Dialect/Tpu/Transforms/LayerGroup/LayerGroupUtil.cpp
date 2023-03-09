@@ -22,6 +22,11 @@ shape_secs_t get_group_max_secs(const LgInfo &lg_info) {
   module::getNCDHW(lg_info.group_ops[0]->getOperand(0), n, c, d, h, w,
                   lg_info.type);
   int64_t max_nsecs = n;
+  if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MaxOp, tpu::MinOp>(lg_info.group_ops[0])) {
+    module::getNCDHW(lg_info.group_ops[0]->getOperand(1), n, c, d, h, w,
+                    lg_info.type);
+    max_nsecs = std::max(n, max_nsecs);
+  }
   int64_t max_hsecs = llvm::maxIntN(64);
   // Need consider n_align if backend is BM1684
   int64_t n_align = 1;
@@ -238,6 +243,24 @@ bool is_same_slice_info(const slice_info_t &si0, const slice_info_t &si1) {
   return true;
 }
 
+bool is_broadcast_binary(Operation *op, Value in) {
+  if (!isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::MaxOp, tpu::MinOp>(op)) {
+    return false;
+  }
+  auto other = in == op->getOperand(0) ? op->getOperand(1): op->getOperand(0);
+  auto in_shape = in.getType().cast<RankedTensorType>().getShape();
+  auto other_shape = other.getType().cast<RankedTensorType>().getShape();
+  if (in_shape.size() != other_shape.size()) {
+    return false;
+  }
+  for (int i = 0; i < in_shape.size(); ++i) {
+    if (in_shape[i] != other_shape[i] && in_shape[i] == 1) {
+      return true;
+    }
+  }
+  return false;
+}
+
 slice_info_t get_out_slice_info(const shape_secs_t &shape_secs, int64_t n,
                                 int64_t h) {
   slice_info_t slice_info;
@@ -273,13 +296,19 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
 
   auto lg_op = cast<LocalGenInterface>(op);
   int64_t idx = 0, slice = 0;
+  bool is_broadcast_tensor = is_broadcast_binary(op, in);
   if (shape_secs.nsecs == 1) {
     in_si.n.emplace_back(slice_pair_t(0, n));
   } else {
     for (auto &s : out_si.n) {
       auto ret = lg_op.BackwardN(idx, slice, s.first, s.second);
-      if (failed(ret) || slice == 0) {
-        return false;
+      if (is_broadcast_tensor && n == 1) {
+        idx = 0;
+        slice = 1;
+      } else {
+        if (failed(ret) || slice == 0) {
+          return false;
+        }
       }
       in_si.n.emplace_back(slice_pair_t(idx, slice));
     }
@@ -293,9 +322,14 @@ bool get_backward_slice_info(slice_info_t &in_si, const slice_info_t &out_si,
     for (int i = 0; i < out_si.h.size(); i++) {
       auto &s = out_si.h[i];
       auto ret = lg_op.BackwardH(idx, slice, s.first, s.second);
-      bool end_reached = idx + slice == pre_end_idx;
-      if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
-        return false;
+      if (is_broadcast_tensor && h == 1) {
+        idx = 0;
+        slice = 1;
+      } else {
+        bool end_reached = idx + slice == pre_end_idx;
+        if (failed(ret) || slice == 0 || (idx == 0 && i > 0) || end_reached) {
+          return false;
+        }
       }
       pre_end_idx = idx + slice;
       in_si.h.emplace_back(slice_pair_t(idx, slice));
@@ -328,7 +362,8 @@ backward_update_slice(const LgInfo &lg_info, const shape_secs_t &shape_secs,
   // Don't backward when this out tensor is the input of the group
   if (std::find(lg_info.group_ins.begin(), lg_info.group_ins.end(), out) !=
       lg_info.group_ins.end()) {
-    return check_hsecs(out, tensor_infos[out].slice_info, lg_info.type);
+    // return check_hsecs(out, tensor_infos[out].slice_info, lg_info.type);
+    return true;
   }
   auto op = out.getDefiningOp();
   op_set.insert(op);

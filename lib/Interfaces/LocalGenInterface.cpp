@@ -92,11 +92,13 @@ group_info_t LocalGenInterface::getGroupInfo(mlir::Operation *op,
   return ginfo;
 }
 
+static int bcast_type(int s0, int s1){
+  if(s0==s1) return 0;
+  else if(s0>s1) return 1;
+  return -1;
+}
+
 LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
-  // "BackwardH" and "BackwardN" can not handle more than one input right now.
-  // The n_slice and h_slice share the same value and propagate to each inputs.
-  // Thus, the local layer is only safe when we do not need to slice n and h
-  // dimensions.
   auto out_shape = module::getShape(op->getResult(0));
   auto lhs_shape = module::getShape(op->getOperand(0));
   auto rhs_shape = module::getShape(op->getOperand(1));
@@ -105,22 +107,16 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
   if (module::isWeight(op->getOperand(0)) ||
       module::isWeight(op->getOperand(1)))
     return failure();
-  // left align
-  switch (out_shape.size()) {
-  case 2:
-    if (lhs_shape[0] != rhs_shape[0])
-      return failure();
-    break;
-  case 3:
-  case 4:
-    if (lhs_shape[0] != rhs_shape[0])
-      return failure();
-    if (lhs_shape[2] != rhs_shape[2])
-      return failure();
-    break;
-  default:
-    return success();
+  if (lhs_shape.size() >= 5) {
+    const int wdim = 3;
+    int bcast = bcast_type(lhs_shape[wdim], rhs_shape[wdim]);
+    for (int i=wdim+1; i < lhs_shape.size(); ++i) {
+      if (bcast != bcast_type(lhs_shape[i], rhs_shape[i])) {
+        return failure();
+      }
+    }
   }
+
   return success();
 }
 
