@@ -38,7 +38,9 @@ class TORCH_IR_TESTER(object):
             "Concat":           (self.test_Concat,      Y, N, N),
             "ConstantPad1d":    (self.test_Pad1d,       N, N, N),
             "ConstantPad2d":    (self.test_Pad2d,       N, N, N),
-            "Conv2d":           (self.test_Conv2d,      N, N, N),
+            "Conv1d":           (self.test_Conv1d,      Y, N, N),
+            "Conv2d":           (self.test_Conv2d,      Y, N, N),
+            "Conv3d":           (self.test_Conv3d,      Y, N, N),
             "Div":              (self.test_Div,         Y, N, N),
             "Elu":              (self.test_Elu,         N, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
@@ -261,45 +263,45 @@ class TORCH_IR_TESTER(object):
     #######################################################################
     # Convolution
     # ------------
-    def test_Conv2d(self, case_name):
-        """Conv 2D"""
-
-        def case1(suffix: str = ""):
+    def _test_Conv(self, case_name):
+        suffix = 0
+        def case1(conv_fun, input_shape):
 
             class Net(torch.nn.Module):
-
                 def __init__(self):
                     super(Net, self).__init__()
-                    self.conv1 = nn.Conv2d(8, 8, 3, 1, 1)
-                    self.conv2 = nn.Conv2d(8, 8, 3, 1, 1)
+                    self.conv1 = conv_fun(8, 8, 3, 1, 1)
+                    self.conv2 = conv_fun(8, 8, 3, 1, 1)
 
                 def forward(self, x):
                     y = self.conv1(x)
                     z = self.conv2(x)
                     return y + z
 
-            self.convert_torch_and_compare([(4, 8, 28, 28)], case_name + suffix, Net().eval())
+            nonlocal suffix
+            suffix += 1
+            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}" , Net().eval())
 
-        def case2(input_shape,
+        def case2(conv_fun,
+                  input_shape,
                   kernel_shape,
                   oc,
                   has_bias=False,
                   padding: Union[int, str, List[int]] = 0,
                   stride: Union[int, List[int]] = 1,
                   dilation: Union[int, List[int]] = 1,
-                  group=1,
-                  suffix: str = ""):
+                  group=1):
 
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    filter_shape = (oc, input_shape[1] // group, kernel_shape[0], kernel_shape[1])
+                    filter_shape = (oc, input_shape[1] // group, *kernel_shape)
                     self.filter = torch.randn(filter_shape)
                     self.bias = torch.randn(oc) if has_bias else None
 
                 def forward(self, x):
-                    y = F.conv2d(x,
+                    y = conv_fun(x,
                                  self.filter,
                                  bias=self.bias,
                                  padding=padding,
@@ -308,12 +310,40 @@ class TORCH_IR_TESTER(object):
                                  groups=group)
                     return y
 
-            self.convert_torch_and_compare([input_shape], case_name + suffix, Model().eval())
+            nonlocal suffix
+            suffix += 1
+            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Model().eval())
 
-        case1("_1")
-        case2((1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same", suffix="_2")
-        case2((2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1, suffix="_3")
-        case2((1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1), suffix="_4")
+        return dict(case1=case1, case2=case2)
+
+    def test_Conv1d(self, case_name):
+        """Conv 1D"""
+
+        test = self._test_Conv(case_name)
+        test["case1"](nn.Conv1d, (4, 8, 28))
+        test["case2"](F.conv1d, (1, 3, 32), [3], 12, has_bias=True, group=1, padding="same")
+        test["case2"](F.conv1d, (2, 32, 16), [5], 64, padding=2, stride=2, dilation=1)
+        # Tpu/Interfaces/BM1684X/Conv1D.cpp::152 Not supported yet.
+        # test["case2"](F.conv1d, (1, 3, 32), 3, 12, group=3, padding=1, stride=2)
+
+    def test_Conv2d(self, case_name):
+        """Conv 2D"""
+
+        test = self._test_Conv(case_name)
+        test["case1"](nn.Conv2d, (4, 8, 28, 28))
+        test["case2"](F.conv2d, (1, 3, 32, 32), (3, 3), 12, has_bias=True, group=1, padding="same")
+        test["case2"](F.conv2d, (2, 32, 16, 16), (5, 5), 64, padding=2, stride=2, dilation=1)
+        test["case2"](F.conv2d, (1, 3, 32, 32), (3, 3), 12, group=3, padding=(1, 1), stride=(2, 1))
+
+    def test_Conv3d(self, case_name):
+        """Conv 3D"""
+        # conv3d is a computationally intensive operation that uses a small kernel to reduce runtime.
+        test = self._test_Conv(case_name)
+        test["case1"](nn.Conv3d, (4, 8, 7, 10, 20))
+        test["case2"](F.conv3d, (1, 3, 6, 10, 12), (3, 3, 2), 12, has_bias=True, group=1, padding="same")
+        test["case2"](F.conv3d, (2, 32, 8, 10, 10), (5, 5, 3), 64, padding=2, stride=2, dilation=1)
+        # Tpu/Interfaces/BM1684X/Conv3D.cpp::94 Not supported yet.
+        # test["case2"](F.conv3d, (1, 3, 32, 32, 32), (3, 3, 3), 12, group=3, padding=(1, 1, 2), stride=(2, 1, 1))
 
     #######################################################################
     # Binary Base
