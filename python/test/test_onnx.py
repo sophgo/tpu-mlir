@@ -24,190 +24,184 @@ import torchvision
 import onnxruntime
 import multiprocessing
 
-BM1684X_Failed_Cases = [
-    "QDQ", "QDQConv", "TorchArgmax", "TorchActivation", "TorchChannelShuffle", "TorchNonZero"
-]
-CV18XX_Failed_Cases = [
-    "Conv3d", "Compare", "CompareConst", "Erf", "GRU3", "LeakyRelu", "LogSoftmax", "Reshape",
-    "ReshapeFuse", "PadEdge", "ScatterND", "Sqrt", "Sub2", "Where", "TopK", "TorchGelu", "TorchGRU",
-    "TorchLayerNorm", "TorchLogSoftmax", "Transpose2", "TorchMaskedFill", "TorchWhere", "TorchStd",
-    "QDQ", "QDQConv", "PermuteFuse", "SwapDimInner", "ChannelNorm", "TorchActivation",
-    "TorchArgmax", "TorchChannelShuffle", "PermuteToReshape"
-]
-
 
 class ONNX_IR_TESTER(object):
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x", mode: str = "all", dynamic: bool = True):
+        Y, N = True, False
+        # yapf: disable
         self.test_function = {
-            #############################
+            #########################################
             # ONNX Test Case, Alphabetically
-            #############################
-            "Abs": self.test_Abs,
-            "Add": self.test_Add,
-            "Arg": self.test_Arg,
-            "AddConst": self.test_AddConst,
-            "AvgPool1d": self.test_AvgPool1d,
-            "AvgPool2d": self.test_AvgPool2d,
-            # "AvgPool3d": self.test_AvgPool3d,
-            "AvgPoolOdd": self.test_AvgPoolOdd,
-            "PadAvgPool2d": self.test_PadAvgPool2d,
-            "BatchMatMul": self.test_BatchMatMul,
-            "BroadcastAdd": self.test_BroadcastAdd,
-            "BroadcastMul": self.test_BroadcastMul,
-            "BroadcastMulConst": self.test_BroadcastMulConst,
-            "CompareConst": self.test_CompareConst,
-            "Compare": self.test_Compare,
-            # "Compare2": self.test_Compare2,
-            "Concat": self.test_Concat,
-            "Concat2": self.test_Concat2,
-            "Conv1d": self.test_Conv1d,
-            "Conv2d": self.test_Conv2d,
-            "Conv3d": self.test_Conv3d,
-            "ConvStride": self.test_ConvStride,
-            "ConvDw": self.test_ConvDw,
-            "ConvTranspose": self.test_ConvTranspose,
-            "ConvTranspose2": self.test_ConvTranspose2,  #no pad
-            "Clip": self.test_Clip,
-            "DepthToSpace": self.test_DepthToSpace,
-            "Div": self.test_Div,
-            "Elu": self.test_Elu,
-            "Erf": self.test_Erf,
-            "Exp": self.test_Exp,
-            "Expand": self.test_Expand,
-            "Expand2": self.test_Expand2,
-            "Floor": self.test_floor,
-            "Gather": self.test_Gather,
-            "GatherToSlice": self.test_GatherToSlice,
-            "Gemm": self.test_Gemm,
-            "GroupFC": self.test_GroupFC,
-            "GRU": self.test_GRU,  # test gru output Y
-            "GRU2": self.test_GRU2,  # test gru output Yh
-            "GRU3": self.test_GRU3,  # test gru output Y and Yh
-            # "LayerNorm": self.test_LayerNorm,
-            "LeakyRelu": self.test_LeakyRelu,
-            "Log": self.test_Log,
-            "LogSoftmax": self.test_LogSoftmax,
-            "LRN": self.test_LRN,
-            "LSTM": self.test_LSTM,  # output_y
-            "LSTM2": self.test_LSTM2,  # output all
-            "LSTM3": self.test_LSTM3,  # output_yh and output_yc
-            "MaxPool1d": self.test_MaxPool1d,
-            "MaxPool2d": self.test_MaxPool2d,
-            # "MaxPool3d": self.test_MaxPool3d,
-            "MatMul": self.test_MatMul,
-            "MatMul2": self.test_MatMul2,
-            "Max": self.test_Max,
-            "Mul": self.test_Mul,
-            "Min": self.test_Min,
-            "MulConst": self.test_MulConst,
-            "Neg": self.test_Neg,
-            "Pad": self.test_Pad,  # zero pad
-            "Pad1": self.test_Pad1,  # pad val
-            "PadEdge": self.test_PadEdge,
-            "PadReflect": self.test_PadReflect,
-            "Pow1": self.test_Pow1,  # y = x ^ n
-            #"Pow2": self.test_Pow2, # y = n ^ x
-            "PRelu": self.test_PRelu,
-            "QDQConv": self.test_QDQConv,
-            "QDQ": self.test_QDQ,
-            "Resize": self.test_Resize,
-            "Resize2": self.test_Resize2,
-            "Reshape": self.test_Reshape,
-            "Reduce": self.test_Reduce,
-            "Reduce2": self.test_Reduce2,
-            "ReduceL2": self.test_ReduceL2,
-            "ReduceMean": self.test_ReduceMean,
-            "ReduceSum": self.test_ReduceSum,
-            "ReduceProd": self.test_ReduceProd,
-            "Reciprocal": self.test_Reciprocal,
-            "Relu": self.test_Relu,
-            "ScatterND": self.test_ScatterND,
-            "SiLU": self.test_SiLU,
-            "Softmax": self.test_Softmax,
-            "Softplus": self.test_Softplus,
-            "Squeeze": self.test_Squeeze,
-            "Sigmoid": self.test_Sigmoid,
-            "Slice": self.test_Slice,
-            "Slice2": self.test_Slice2,
-            "Split": self.test_Split,
-            "Scale": self.test_Scale,
-            "Sqrt": self.test_Sqrt,
-            "Sub": self.test_Sub,
-            "Sub2": self.test_Sub2,
-            "SubConst": self.test_SubConst,
-            "SubConst2": self.test_SubConst2,
-            "Sum": self.test_Sum,
-            "Tanh": self.test_Tanh,
-            "Tile": self.test_Tile,
-            "Transpose": self.test_Transpose,
-            "Transpose2": self.test_Transpose2,
-            "TopK": self.test_TopK,
-            "Where": self.test_Where,
-            #############################
+            #########################################
+            # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "Abs":          (self.test_Abs,         Y, N, Y),
+            "Add":          (self.test_Add,         Y, N, Y),
+            "Arg":          (self.test_Arg,         Y, N, N),
+            "AddConst":     (self.test_AddConst,    Y, N, Y),
+            "AvgPool1d":    (self.test_AvgPool1d,   Y, N, N),
+            "AvgPool2d":    (self.test_AvgPool2d,   Y, N, Y),
+            "AvgPool3d":    (self.test_AvgPool3d,   Y, N, Y),
+            "AvgPoolOdd":   (self.test_AvgPoolOdd,  Y, N, Y),
+            "PadAvgPool2d": (self.test_PadAvgPool2d,Y, N, Y),
+            "BatchMatMul":  (self.test_BatchMatMul, Y, N, Y),
+            "BCastAdd":     (self.test_BCastAdd,    Y, N, Y),
+            "BCastMul":     (self.test_BCastMul,    Y, N, Y),
+            "BCastMulCst":  (self.test_BCastMulCst, Y, N, Y),
+            "CompareCst":   (self.test_CompareCst,  Y, N, N),
+            "Compare":      (self.test_Compare,     Y, N, N),
+            "Compare2":     (self.test_Compare2,    N, N, N),
+            "Concat":       (self.test_Concat,      Y, N, Y),
+            "Concat2":      (self.test_Concat2,     Y, N, Y),
+            "Conv1d":       (self.test_Conv1d,      Y, N, Y),
+            "Conv2d":       (self.test_Conv2d,      Y, N, Y),
+            "Conv3d":       (self.test_Conv3d,      Y, N, Y),
+            "ConvStride":   (self.test_ConvStride,  Y, N, Y),
+            "ConvDw":       (self.test_ConvDw,      Y, N, N),
+            "ConvTrans":    (self.test_ConvTrans,   Y, N, Y),
+            "ConvTrans2":   (self.test_ConvTrans2,  Y, N, Y),  #no pad
+            "Clip":         (self.test_Clip,        Y, N, Y),
+            "DepthToSpace": (self.test_DepthToSpace,Y, N, Y),
+            "Div":          (self.test_Div,         Y, N, Y),
+            "Elu":          (self.test_Elu,         Y, N, N),
+            "Erf":          (self.test_Erf,         Y, N, N),
+            "Exp":          (self.test_Exp,         Y, N, Y),
+            "Expand":       (self.test_Expand,      Y, N, Y),
+            "Expand2":      (self.test_Expand2,     Y, N, Y),
+            "Floor":        (self.test_floor,       Y, N, N),
+            "Gather":       (self.test_Gather,      Y, N, Y),
+            "GaToSlice":    (self.test_GaToSlice,   Y, N, N),
+            "Gemm":         (self.test_Gemm,        Y, N, Y),
+            "GroupFC":      (self.test_GroupFC,     Y, N, Y),
+            "GRU":          (self.test_GRU,         Y, N, Y),  # test gru output Y
+            "GRU2":         (self.test_GRU2,        Y, N, Y),  # test gru output Yh
+            "GRU3":         (self.test_GRU3,        Y, N, N),  # test gru output Y and Yh
+            "LeakyRelu":    (self.test_LeakyRelu,   Y, N, N),
+            "Log":          (self.test_Log,         Y, N, Y),
+            "LogSoftmax":   (self.test_LogSoftmax,  Y, N, N),
+            "LRN":          (self.test_LRN,         Y, N, Y),
+            "LSTM":         (self.test_LSTM,        Y, N, Y),  # output_y
+            "LSTM2":        (self.test_LSTM2,       Y, N, Y),  # output all
+            "LSTM3":        (self.test_LSTM3,       Y, N, N),  # output_yh and output_yc
+            "MaxPool1d":    (self.test_MaxPool1d,   Y, N, Y),
+            "MaxPool2d":    (self.test_MaxPool2d,   Y, N, Y),
+            "MaxPool3d":    (self.test_MaxPool3d,   N, N, N),
+            "MatMul":       (self.test_MatMul,      Y, N, Y),
+            "MatMul2":      (self.test_MatMul2,     Y, N, Y),
+            "Max":          (self.test_Max,         Y, N, Y),
+            "Mul":          (self.test_Mul,         Y, N, Y),
+            "Min":          (self.test_Min,         Y, N, Y),
+            "MulConst":     (self.test_MulConst,    Y, N, Y),
+            "Neg":          (self.test_Neg,         Y, N, Y),
+            "Pad":          (self.test_Pad,         Y, N, Y),  # zero pad
+            "Pad1":         (self.test_Pad1,        Y, N, Y),  # pad val
+            "PadEdge":      (self.test_PadEdge,     Y, N, Y),
+            "PadReflect":   (self.test_PadReflect,  Y, N, Y),
+            "Pow1":         (self.test_Pow1,        Y, N, Y),  # y = x ^ n
+            "Pow2":         (self.test_Pow2,        N, N, N),  # y = n ^ x
+            "PRelu":        (self.test_PRelu,       Y, N, Y),
+            "QDQConv":      (self.test_QDQConv,     N, N, N),
+            "QDQ":          (self.test_QDQ,         N, N, N),
+            "Resize":       (self.test_Resize,      Y, N, Y),
+            "Resize2":      (self.test_Resize2,     Y, N, N),
+            "Reshape":      (self.test_Reshape,     Y, N, N),
+            "Reduce":       (self.test_Reduce,      Y, N, Y),
+            "Reduce2":      (self.test_Reduce2,     Y, N, Y),
+            "ReduceL2":     (self.test_ReduceL2,    Y, N, Y),
+            "ReduceMean":   (self.test_ReduceMean,  Y, N, Y),
+            "ReduceSum":    (self.test_ReduceSum,   Y, N, Y),
+            "ReduceProd":   (self.test_ReduceProd,  Y, N, N),
+            "Reciprocal":   (self.test_Reciprocal,  Y, N, Y),
+            "Relu":         (self.test_Relu,        Y, N, Y),
+            "ScatterND":    (self.test_ScatterND,   Y, N, N),
+            "SiLU":         (self.test_SiLU,        Y, N, Y),
+            "Softmax":      (self.test_Softmax,     Y, N, Y),
+            "Softplus":     (self.test_Softplus,    Y, N, N),
+            "Squeeze":      (self.test_Squeeze,     Y, N, Y),
+            "Sigmoid":      (self.test_Sigmoid,     Y, N, Y),
+            "Slice":        (self.test_Slice,       Y, N, Y),
+            "Slice2":       (self.test_Slice2,      Y, N, Y),
+            "Split":        (self.test_Split,       Y, N, Y),
+            "Scale":        (self.test_Scale,       Y, N, N),
+            "Sqrt":         (self.test_Sqrt,        Y, N, N),
+            "Sub":          (self.test_Sub,         Y, N, Y),
+            "Sub2":         (self.test_Sub2,        Y, N, N),
+            "SubConst":     (self.test_SubConst,    Y, N, N),
+            "SubConst2":    (self.test_SubConst2,   Y, N, N),
+            "Sum":          (self.test_Sum,         Y, N, N),
+            "Tanh":         (self.test_Tanh,        Y, N, Y),
+            "Tile":         (self.test_Tile,        Y, N, Y),
+            "Transpose":    (self.test_Transpose,   Y, N, Y),
+            "Transpose2":   (self.test_Transpose2,  Y, N, Y),
+            "TopK":         (self.test_TopK,        Y, N, N),
+            "Where":        (self.test_Where,       Y, N, N),
+            #####################################
             # Torch Test Case, Alphabetically
-            #############################
-            "TorchActivation": self.test_TorchActivation,
-            "TorchArgmax": self.test_TorchArgmax,
-            "TorchChannelShuffle": self.test_TorchChannelShuffle,
-            "TorchChunk": self.test_TorchChunk,
-            "TorchConv3dTranspose": self.test_TorchConv3dTranspose,
-            "TorchHardSwish": self.test_TorchHardSwish,
-            "TorchHardSigmoid": self.test_TorchHardSigmoid,
-            "TorchGelu": self.test_TorchGelu,
-            "TorchGroupNorm": self.test_TorchGroupNorm,
-            "TorchGroupNorm2": self.test_TorchGroupNorm2,
-            "TorchGRU": self.test_TorchGRU,
-            "TorchIdentity": self.test_TorchIdentity,
-            "TorchInstanceNorm": self.test_TorchInstanceNorm,
-            "TorchInstanceNorm2": self.test_TorchInstanceNorm2,
-            "TorchLayerGroup": self.test_TorchLayerGroup,
-            "TorchLayerNorm": self.test_TorchLayerNorm,
-            "TorchLayerNorm2": self.test_TorchLayerNorm2,
-            "TorchLogSoftmax": self.test_TorchLogSoftmax,
-            "TorchLSTM": self.test_TorchLSTM,
-            "TorchMaskedFill": self.test_TorchMaskedFill,
-            "TorchNonZero": self.test_TorchNonZero,
-            "TorchReflectionPad": self.test_TorchReflectionPad,
-            "TorchRoiAlign": self.test_TorchRoiAlign,
-            "TorchSize": self.test_TorchSize,
-            "TorchStd": self.test_TorchStd,
-            "TorchWhere": self.test_TorchWhere,
-            "TorchZeroPad": self.test_TorchZeroPad,
-            #############################
+            #####################################
+            # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "TorchActivation":      (self.test_TorchActivation,     N, N, N),
+            "TorchArgmax":          (self.test_TorchArgmax,         N, N, N),
+            "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N),
+            "TorchChunk":           (self.test_TorchChunk,          Y, N, Y),
+            "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    Y, N, Y),
+            "TorchHardSwish":       (self.test_TorchHardSwish,      Y, N, N),
+            "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, N, N),
+            "TorchGelu":            (self.test_TorchGelu,           Y, N, N),
+            "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, N, N),
+            "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, N, N),
+            "TorchGRU":             (self.test_TorchGRU,            Y, N, N),
+            "TorchIdentity":        (self.test_TorchIdentity,       Y, N, Y),
+            "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   Y, N, N),
+            "TorchInstanceNorm2":   (self.test_TorchInstanceNorm2,  Y, N, N),
+            "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, N, Y),
+            "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, N, Y),
+            "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, N, Y),
+            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, N, N),
+            "TorchLSTM":            (self.test_TorchLSTM,           Y, N, Y),
+            "TorchMaskedFill":      (self.test_TorchMaskedFill,     Y, N, N),
+            "TorchNonZero":         (self.test_TorchNonZero,        N, N, N),
+            "TorchReflectionPad":   (self.test_TorchReflectionPad,  Y, N, Y),
+            "TorchRoiAlign":        (self.test_TorchRoiAlign,       Y, N, N),
+            "TorchSize":            (self.test_TorchSize,           Y, N, Y),
+            "TorchStd":             (self.test_TorchStd,            Y, N, N),
+            "TorchWhere":           (self.test_TorchWhere,          Y, N, N),
+            "TorchZeroPad":         (self.test_TorchZeroPad,        Y, N, Y),
+            #########################################
             # Special Pass test case, Alphabetically
-            #############################
-            "ArgReducefull": self.test_ArgReducefull,
-            "ConcatFuse": self.test_ConcatFuse,
-            "ConcatToSpace": self.test_ConcatToSpace,
-            "Conv3dTo2d": self.test_Conv3dTo2d,
-            "Div2Mul": self.test_Div2Mul,
-            "GatherToSlice": self.test_GatherToSlice,
-            "Mul2Scale": self.test_Mul2Scale,
-            "MatMulTranspose": self.test_MatMulTranspose,
-            # "PadConv1d": self.test_PadConv1d,
-            "PadConv2d": self.test_PadConv2d,
-            # "PadConv3d": self.test_PadConv3d,
-            # "PadPool1d": self.test_PadPool1d,
-            # "PadPool2d": self.test_PadPool2d,
-            # "PadPool3d": self.test_PadPool3d,
-            "PixelNorm": self.test_PixelNorm,
-            "PixelNorm2": self.test_PixelNorm2,
-            "PermuteFuse": self.test_PermuteFuse,
-            "PermuteToReorg": self.test_PermuteToReorg,
-            "PermuteToReorg2": self.test_PermuteToReorg2,
-            "PermuteToReshape": self.test_PermuteToReshape,
-            "Permute5dSplit": self.test_Permute5dSplit,
-            "PoolSignError": self.test_PoolSignError,
-            "ReshapeFuse": self.test_ReshapeFuse,
-            "ReduceTranspose": self.test_ReduceTranspose,
-            "ReduceFusePattern": self.test_ReduceFusePattern,
-            "SwapDimInner": self.test_SwapDimInner,
-            "SliceToReverse": self.test_SliceToReverse,
-            "StaticDynMixed": self.test_StaticDynMixed,
-            "TransposeArg": self.test_TransposeArg,
-            "PoolAfterRelu": self.test_PoolAfterRelu,
+            #########################################
+            # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "ArgReducefull":    (self.test_ArgReducefull,   Y, N, N),
+            "ConcatFuse":       (self.test_ConcatFuse,      Y, N, Y),
+            "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
+            "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, N, Y),
+            "Div2Mul":          (self.test_Div2Mul,         Y, N, Y),
+            "GaToSlice":        (self.test_GaToSlice,       Y, N, N),
+            "Mul2Scale":        (self.test_Mul2Scale,       Y, N, N),
+            "MatMulTranspose":  (self.test_MatMulTranspose, Y, N, N),
+            "PadConv1d":        (self.test_PadConv1d,       N, N, N),
+            "PadConv2d":        (self.test_PadConv2d,       Y, N, Y),
+            "PadConv3d":        (self.test_PadConv3d,       N, N, N),
+            "PadPool1d":        (self.test_PadPool1d,       N, N, N),
+            "PadPool2d":        (self.test_PadPool2d,       N, N, N),
+            "PadPool3d":        (self.test_PadPool3d,       N, N, N),
+            "PixelNorm":        (self.test_PixelNorm,       Y, N, N),
+            "PixelNorm2":       (self.test_PixelNorm2,      Y, N, N),
+            "PermuteFuse":      (self.test_PermuteFuse,     Y, N, N),
+            "PermuteToReorg":   (self.test_PermuteToReorg,  Y, N, Y),
+            "PermuteToReorg2":  (self.test_PermuteToReorg2, Y, N, Y),
+            "PermuteToReshape": (self.test_PermuteToReshape,Y, N, N),
+            "Permute5dSplit":   (self.test_Permute5dSplit,  Y, N, Y),
+            "PoolAfterRelu":    (self.test_PoolAfterRelu,   Y, N, Y),
+            "PoolSignError":    (self.test_PoolSignError,   Y, N, Y),
+            "ReshapeFuse":      (self.test_ReshapeFuse,     Y, N, Y),
+            "ReduceTranspose":  (self.test_ReduceTranspose, Y, N, N),
+            "ReduceFuse":       (self.test_ReduceFuse,      Y, N, Y),
+            "SwapDimInner":     (self.test_SwapDimInner,    Y, N, N),
+            "SliceToReverse":   (self.test_SliceToReverse,  Y, N, N),
+            "StaticDynMixed":   (self.test_StaticDynMixed,  Y, N, N),
+            "TransposeArg":     (self.test_TransposeArg,    Y, N, N),
         }
+        # yapf: enable
 
         # no quantization when quant_mode == "f32"
         self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
@@ -236,19 +230,21 @@ class ONNX_IR_TESTER(object):
     def test_single(self, case: str):
         print("Test: {}".format(case))
         if case in self.test_function:
-            self.test_function[case](case)
+            func, _, _, _ = self.test_function[case]
+            func(case)
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        if self.is_cv18xx:
-            if case in CV18XX_Failed_Cases:
-                return False
-        elif self.chip == "bm1684x":
-            if case in BM1684X_Failed_Cases:
-                return False
-        return True
+        _, bm1684x_support, bm1686_support, cv183x_support = self.test_function[case]
+        if self.is_cv18xx and cv183x_support:
+            return True
+        if self.chip == "bm1684x" and bm1684x_support:
+            return True
+        if self.chip == "bm1686" and bm1686_support:
+            return True
+        return False
 
     def create_random_input(self, graph_def: onnx.GraphProto):
         inputs = {}
@@ -1633,7 +1629,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([div_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def, input_data=input_data)
 
-    def test_ConvTranspose(self, case_name):
+    def test_ConvTrans(self, case_name):
         oc, ic = 16, 8
         ih, iw = 16, 16
         kernel_shape = [3, 3]
@@ -1653,20 +1649,20 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, list(bias_data.shape), bias_data)
-        convtranspose_def = helper.make_node("ConvTranspose",
-                                             inputs=['input', 'weight', 'bias'],
-                                             outputs=['output'],
-                                             kernel_shape=kernel_shape,
-                                             pads=pads,
-                                             strides=strides,
-                                             dilations=dilations,
-                                             group=1)
-        graph_def = helper.make_graph([convtranspose_def],
+        ConvTrans_def = helper.make_node("ConvTranspose",
+                                         inputs=['input', 'weight', 'bias'],
+                                         outputs=['output'],
+                                         kernel_shape=kernel_shape,
+                                         pads=pads,
+                                         strides=strides,
+                                         dilations=dilations,
+                                         group=1)
+        graph_def = helper.make_graph([ConvTrans_def],
                                       case_name, [input], [output],
                                       initializer=[weight, bias])
         self.onnx_and_test(graph_def)
 
-    def test_ConvTranspose2(self, case_name):
+    def test_ConvTrans2(self, case_name):
         input_shape = [1, 64, 35, 35]
         filter_shape = [64, 32, 2, 2]
         bias_shape = [32]
@@ -1678,15 +1674,15 @@ class ONNX_IR_TESTER(object):
         output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
         weight = helper.make_tensor('weight', TensorProto.FLOAT, filter_shape, weight_data)
         bias = helper.make_tensor('bias', TensorProto.FLOAT, bias_shape, bias_data)
-        convtranspose_def = helper.make_node("ConvTranspose",
-                                             inputs=['input', 'weight', 'bias'],
-                                             outputs=['output'],
-                                             kernel_shape=[2, 2],
-                                             pads=[0, 0, 0, 0],
-                                             strides=[2, 2],
-                                             dilations=[1, 1],
-                                             group=1)
-        graph_def = helper.make_graph([convtranspose_def],
+        ConvTrans_def = helper.make_node("ConvTranspose",
+                                         inputs=['input', 'weight', 'bias'],
+                                         outputs=['output'],
+                                         kernel_shape=[2, 2],
+                                         pads=[0, 0, 0, 0],
+                                         strides=[2, 2],
+                                         dilations=[1, 1],
+                                         group=1)
+        graph_def = helper.make_graph([ConvTrans_def],
                                       case_name, [input], [output],
                                       initializer=[weight, bias])
         self.onnx_and_test(graph_def)
@@ -2301,6 +2297,9 @@ class ONNX_IR_TESTER(object):
                 z = y * self.scale + self.bias
                 return z
 
+        x = torch.randn(N, C, H, W).float()
+        self.torch_and_test(x, Net(), case_name)
+
     def test_PixelNorm2(self, case_name):
         N, C, H, W = 4, 8, 32, 32
 
@@ -2425,7 +2424,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(1, 3, 10, 640, 640).float()
         self.torch_and_test(x, Net(), case_name)
 
-    def test_GatherToSlice(self, case_name):
+    def test_GaToSlice(self, case_name):
 
         class Net(torch.nn.Module):
 
@@ -2655,7 +2654,7 @@ class ONNX_IR_TESTER(object):
         x = torch.randn(4, 3, 100, 100).float()
         self.torch_and_test(x, Net(), case_name)
 
-    def test_TorchConv3dTranspose(self, case_name):
+    def test_TorchConv3dTrans(self, case_name):
 
         class Net(torch.nn.Module):
 
@@ -2723,7 +2722,7 @@ class ONNX_IR_TESTER(object):
                                       initializer=[w_value])
         self.onnx_and_test(graph_def)
 
-    def test_BroadcastAdd(self, case_name):
+    def test_BCastAdd(self, case_name):
         # 18xx: only broadcast right opd and broadcast continuous axis is supported
         if self.is_cv18xx:
             input_shape = {"input1": [2, 3, 27, 27], "input2": [2, 1, 1, 27]}
@@ -2900,7 +2899,7 @@ class ONNX_IR_TESTER(object):
                                       initializer=[w_value, r_value, b_value])
         self.onnx_and_test(graph_def)
 
-    def test_BroadcastMul(self, case_name):
+    def test_BCastMul(self, case_name):
         input_shape = {"input1": [1, 3, 1, 27], "input2": [2, 1, 27, 1]}
         output_shape = [2, 3, 27, 27]
         if self.is_cv18xx:
@@ -2915,7 +2914,7 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([mul_def], case_name, inputs, [output])
         self.onnx_and_test(graph_def)
 
-    def test_BroadcastMulConst(self, case_name):
+    def test_BCastMulCst(self, case_name):
         input_shape = [1, 127, 270, 28]
         constant_shape = [2, 1, 1, 28]
         output_shape = [2, 127, 270, 28]
@@ -3283,7 +3282,7 @@ class ONNX_IR_TESTER(object):
                                       initializer=[constant])
         self.onnx_and_test(graph_def)
 
-    def test_CompareConst(self, case_name):
+    def test_CompareCst(self, case_name):
         shape = [1, 3, 27, 27]
         input = helper.make_tensor_value_info("input", TensorProto.FLOAT, shape)
         constant = helper.make_tensor("constant", TensorProto.FLOAT, [1],
@@ -3815,7 +3814,7 @@ class ONNX_IR_TESTER(object):
                                       initializer=[starts, ends, axes, steps])
         self.onnx_and_test(graph_def)
 
-    def test_ReduceFusePattern(self, case_name):
+    def test_ReduceFuse(self, case_name):
 
         class Net(torch.nn.Module):
 
@@ -3946,6 +3945,7 @@ class ONNX_IR_TESTER(object):
         self.torch_and_test(x, Net(), case_name)
 
     def test_PoolAfterRelu(self, case_name):
+
         class Net(torch.nn.Module):
 
             def __init__(self):
@@ -3958,10 +3958,11 @@ class ONNX_IR_TESTER(object):
                 a = self.relu(x)
                 b = self.pool(a)
                 c = self.matmul(x)
-                return b,c
+                return b, c
 
         x = torch.randn(4, 8, 32, 32).float()
         self.torch_and_test(x, Net(), case_name)
+
 
 def test_one_case_in_all(tester: ONNX_IR_TESTER, case, error_cases, success_cases):
     try:

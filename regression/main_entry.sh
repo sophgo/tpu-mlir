@@ -54,15 +54,18 @@ export -f run_regression_net
 
 run_onnx_op() {
   echo "======= test_onnx.py ====="
-  chip=bm1684x
-  test_onnx.py --chip $chip > test_onnx_${chip}.log 2>&1 | true
-  if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
-    echo "test_onnx.py --chip ${chip} FAILED" >>result.log
-    cat test_onnx_${chip}.log >>fail.log
-    return 1
-  fi
-  echo "test_onnx.py --chip ${chip} PASSED" >>result.log
-  return 0
+  chip_test=("bm1684x" "cv183x")
+  ERR=0
+  for chip in ${chip_test[@]}; do
+    test_onnx.py --chip $chip > test_onnx_${chip}.log 2>&1 | true
+    if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
+      echo "test_onnx.py --chip ${chip} FAILED" >>result.log
+      cat test_onnx_${chip}.log >>fail.log
+      ERR=1
+    fi
+    echo "test_onnx.py --chip ${chip} PASSED" >>result.log
+  done
+  return $ERR
 }
 
 run_tflite_op() {
