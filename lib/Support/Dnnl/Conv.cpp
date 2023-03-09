@@ -22,17 +22,34 @@ Conv::Conv() {
 
 Conv::~Conv() {}
 
-void Conv::pad_init(float *input, conv_attr_t &attr) {
+void Conv::activation_init(float *input, conv_attr_t &attr) {
   origin_input = input;
   memcpy(&_attr, &attr, sizeof(conv_attr_t));
+  src_shape = {attr.n, attr.ic, attr.id, attr.ih, attr.iw};
+  assert(!attr.ins_d);
+  bool need_dilate = false;
+  if (attr.ins_h || attr.ins_w) {
+    int64_t ih_after = (attr.ih - 1) * (attr.ins_h + 1) + 1;
+    int64_t iw_after = (attr.iw - 1) * (attr.ins_w + 1) + 1;
+    src_shape[3] = ih_after;
+    src_shape[4] = iw_after;
+    need_dilate = true;
+    attr.ins_h = 0;
+    attr.ins_w = 0;
+  }
   if (attr.pad_value != 0 && (attr.pdf > 0 || attr.pdb > 0 || attr.pht > 0 ||
                               attr.phb > 0 || attr.pwl > 0 || attr.pwr > 0)) {
-    src_shape = {attr.n, attr.ic, attr.id + attr.pdf + attr.pdb,
-                 attr.ih + attr.pht + attr.phb, attr.iw + attr.pwl + attr.pwr};
+    src_shape[2] += attr.pdf + attr.pdb;
+    src_shape[3] += attr.pht + attr.phb;
+    src_shape[4] += attr.pwl + attr.pwr;
+
+    need_dilate = true;
+    attr.pdf = attr.pdb = attr.pht = attr.phb = attr.pwl = attr.pwr = 0;
+  }
+  if (need_dilate) {
     int input_padded_size = src_shape[0] * src_shape[1] * src_shape[2] *
                             src_shape[3] * src_shape[4];
     input_after_pad = std::make_shared<std::vector<float>>(input_padded_size);
-    attr.pdf = attr.pdb = attr.pht = attr.phb = attr.pwl = attr.pwr = 0;
     p_input = input_after_pad->data();
   } else {
     src_shape = {attr.n, attr.ic, attr.id, attr.ih, attr.iw};
@@ -56,7 +73,7 @@ void Conv::filter_init(float *weight, conv_attr_t &attr) {
 
 void Conv::setup(float *input, float *weight, float *bias, float *output,
                  conv_attr_t attr) {
-  pad_init(input, attr);
+  activation_init(input, attr);
   filter_init(weight, attr);
   dst_shape = {attr.n, attr.oc, attr.od, attr.oh, attr.ow};
   memory::dims filter_shape =
@@ -165,9 +182,16 @@ void Conv::setup(float *input, float *weight, float *bias, float *output,
 
 void Conv::run() {
   if (input_after_pad) {
-    pad_tensor(input_after_pad->data(), origin_input, _attr.n, _attr.ic,
-               _attr.id, _attr.ih, _attr.iw, _attr.pdf, _attr.pdb, _attr.pht,
-               _attr.phb, _attr.pwl, _attr.pwr, _attr.pad_value);
+    if (_attr.pad_value) {
+      dilate_tensor(input_after_pad->data(), origin_input, _attr.n, _attr.ic,
+                    _attr.id, _attr.ih, _attr.iw, _attr.pdf, _attr.pdb,
+                    _attr.pht, _attr.phb, _attr.pwl, _attr.pwr, _attr.pad_value,
+                    _attr.ins_h, _attr.ins_w, 0);
+    } else {
+      dilate_tensor(input_after_pad->data(), origin_input, _attr.n, _attr.ic,
+                    _attr.id, _attr.ih, _attr.iw, 0, 0, 0, 0, 0, 0, 0,
+                    _attr.ins_h, _attr.ins_w, 0);
+    }
   }
 
   for (size_t i = 0; i < net.size(); ++i)

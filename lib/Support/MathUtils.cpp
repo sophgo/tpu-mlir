@@ -592,6 +592,43 @@ void pad_tensor_for_deconv(float *p_after_pad, float *src, int n, int c, int d,
   }
 }
 
+void dilate_tensor(float *p_after_pad, float *src, int n, int c, int d, int h,
+                   int w, int pdf, int pdb, int pht, int phb, int pwl, int pwr,
+                   float pad_value, int ins_h, int ins_w, float ins_value) {
+  int nc = n * c;
+  int od = d + pdf + pdb;
+  int oh_after_ins = (h - 1) * (ins_h + 1) + 1;
+  int ow_after_ins = (w - 1) * (ins_w + 1) + 1;
+  int oh = oh_after_ins + pht + phb;
+  int ow = ow_after_ins + pwl + pwr;
+  for (int i = 0; i < nc; i++) {
+    for (int m = 0; m < od; m++) {
+      for (int j = 0; j < oh; j++) {
+        for (int k = 0; k < ow; k++) {
+          int d_offset = (i * od * oh + m * oh + j) * ow + k;
+          if (m < pdf || m >= (pdf + d) || j < pht ||
+              j >= (pht + oh_after_ins) || k < pwl ||
+              k >= (pwl + ow_after_ins)) {
+            p_after_pad[d_offset] = pad_value;
+
+          } else {
+            int h_start = j - pht;
+            int w_start = k - pwl;
+            if (h_start % (ins_h + 1) == 0 && w_start % (ins_w + 1) == 0) {
+              int s_offset =
+                  ((i * d + m - pdf) * h + h_start / (ins_h + 1)) * w +
+                  w_start / (ins_w + 1);
+              p_after_pad[d_offset] = src[s_offset];
+            } else {
+              p_after_pad[d_offset] = ins_value;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point) {
 #pragma omp parallel for schedule(static, omp_schedule(length))

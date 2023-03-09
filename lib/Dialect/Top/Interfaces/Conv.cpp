@@ -82,7 +82,6 @@ conv_attr_t top::ConvOp::parseParam() {
     p.dh = dilation->at(0);
     p.ins_h = ins->at(0);
   }
-  assert(p.ins_d == 0 && p.ins_h == 0 && p.ins_w == 0);
   p.groups = getGroup();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
   return p;

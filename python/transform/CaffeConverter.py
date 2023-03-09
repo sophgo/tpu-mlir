@@ -732,7 +732,7 @@ class CaffeConverter(BaseConverter):
         p = layer.interp_param
 
         assert (len(input_shape) == 4 and "current only support 4 dims")
-        assert ((p.pad_beg >= 0 and p.pad_end >= 0) and "pad only support positive")
+        assert ((p.pad_beg == 0 and p.pad_end == 0) and "only support pad")
 
         # append pad
         after_h = input_shape[2] + p.pad_beg + p.pad_end
@@ -794,8 +794,8 @@ class CaffeConverter(BaseConverter):
             'shrink_factor': p.shrink_factor,
             'width': p.width,
             'zoom_factor': p.zoom_factor,
-            'scale_h': float(output_shape[2]) / input_shape[2],
-            'scale_w': float(output_shape[3]) / input_shape[3],
+            'scale_h': float(input_shape[2] - 1) / (output_shape[2] - 1),
+            'scale_w': float(input_shape[3] - 1) / (output_shape[3] - 1),
             'coordinate_transformation_mode': 'align_corners',
             'mode': 'linear',
         }

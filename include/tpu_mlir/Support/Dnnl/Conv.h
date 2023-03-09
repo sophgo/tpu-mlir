@@ -22,7 +22,7 @@ public:
              conv_attr_t attr);
   void run();
 private:
-  void pad_init(float *input, conv_attr_t &attr);
+  void activation_init(float *input, conv_attr_t &attr);
 private:
   engine eng;
   stream eng_stream;

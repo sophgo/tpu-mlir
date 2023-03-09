@@ -54,7 +54,6 @@ conv_attr_t tpu::Conv2DOp::parseParam() {
   auto ins = module::getI64Array(getInserts(), 2, 0);
   p.ins_h = ins->at(0);
   p.ins_w = ins->at(1);
-  assert(p.ins_h == 0 && p.ins_w == 0);
   p.groups = getGroup();
   p.is_dw = (p.oc == p.ic && p.oc == p.groups && p.groups > 1);
   return p;
