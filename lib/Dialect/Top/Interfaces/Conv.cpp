@@ -90,7 +90,7 @@ conv_attr_t top::ConvOp::parseParam() {
 
 int64_t top::ConvOp::getFLOPs() {
   auto attr = parseParam();
-  auto extra = attr.has_bias ? 1 : 0 + attr.do_relu ? 1 : 0;
+  auto extra = (attr.has_bias ? 1 : 0) + (attr.do_relu ? 1 : 0);
   return module::getNumElements(getOutput()) *
          (attr.kd * attr.kh * attr.kw * attr.ic / attr.groups * 2 + extra);
 }
@@ -120,5 +120,30 @@ LogicalResult top::ConvOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ConvOp::shape_inference() {}
-
+void top::ConvOp::shape_inference() {
+  // n, c, w | n, c, h, w | n, c, d, h, w
+  auto input_shape = module::getShape(getInput());
+  auto filter_shape = module::getShape(getFilter());
+  assert(input_shape.size() == filter_shape.size());
+  assert(input_shape.size() > 2);
+  int spacial_rank = input_shape.size() - 2;
+  assert(spacial_rank == getKernelShape().size());
+  assert(getPads().size() == spacial_rank * 2);
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(input_shape[0]);
+  out_shape.push_back(filter_shape[0]);
+  auto input_spacial_shape = llvm::ArrayRef(&input_shape[2], spacial_rank);
+  auto filter_spacial_shape = llvm::ArrayRef(&filter_shape[2], spacial_rank);
+  auto pads = module::getI64Array(getPads());
+  auto strides = module::getI64Array(getStrides());
+  auto dilation = module::getI64Array(getDilations(), spacial_rank, 1);
+  for (int i = 0; i < spacial_rank; i++) {
+    auto out =
+        (input_spacial_shape[i] + pads->at(i) + pads->at(i + spacial_rank) -
+         dilation->at(i) * (filter_spacial_shape[i] - 1) - 1) /
+            strides->at(i) +
+        1;
+    out_shape.push_back(out);
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

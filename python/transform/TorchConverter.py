@@ -345,10 +345,7 @@ class TorchConverter(BaseConverter):
         else:
             transposed = self.const_val[torch_node.inputs[6]]
             output_padding = self.const_val[torch_node.inputs[7]]
-            if isinstance(pads, int):
-                pads = [pads for i in range(4)]
-            elif len(pads) == 2:
-                pads = [pads[0], pads[0], pads[1], pads[1]]
+            pads = pads + pads # the pad of torch is symmetric
 
         operands = list()
         operands.append(op)
