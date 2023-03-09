@@ -36,8 +36,8 @@ class TORCH_IR_TESTER(object):
             "Add":              (self.test_Add,         Y, N, N),
             "Compare":          (self.test_Compare,     Y, N, N),
             "Concat":           (self.test_Concat,      Y, N, N),
-            "ConstantPad1d":    (self.test_Pad1d,       N, N, N),
-            "ConstantPad2d":    (self.test_Pad2d,       N, N, N),
+            "ConstantPad1d":    (self.test_Pad1d,       Y, N, N),
+            "ConstantPad2d":    (self.test_Pad2d,       Y, N, N),
             "Conv1d":           (self.test_Conv1d,      Y, N, N),
             "Conv2d":           (self.test_Conv2d,      Y, N, N),
             "Conv3d":           (self.test_Conv3d,      Y, N, N),
@@ -48,22 +48,27 @@ class TORCH_IR_TESTER(object):
             "Hardsigmoid":      (self.test_Activation,  Y, N, N),
             "Hardswish":        (self.test_Activation,  Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
+            "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
+            "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
+            "Mish":             (self.test_Activation,  N, N, N),
             "Mul":              (self.test_Mul,         Y, N, N),
             "PRelu":            (self.test_PRelu,       Y, N, N),
             "Permute":          (self.test_Permute,     Y, N, N),
-            "ReflectionPad1d":  (self.test_Pad1d,       N, N, N),
-            "ReflectionPad2d":  (self.test_Pad2d,       N, N, N),
+            "ReflectionPad1d":  (self.test_Pad1d,       Y, N, N),
+            "ReflectionPad2d":  (self.test_Pad2d,       Y, N, N),
             "Relu":             (self.test_Activation,  Y, N, N),
             "Relu6":            (self.test_Activation,  Y, N, N),
-            "ReplicationPad1d": (self.test_Pad1d,       N, N, N),
-            "ReplicationPad2d": (self.test_Pad2d,       N, N, N),
+            "ReplicationPad1d": (self.test_Pad1d,       Y, N, N),
+            "ReplicationPad2d": (self.test_Pad2d,       Y, N, N),
             "Sigmoid":          (self.test_Activation,  Y, N, N),
+            "Silu":             (self.test_Activation,  Y, N, N),
+            "Softmax":          (self.test_Softmax,     Y, N, N),
             "Softplus":         (self.test_Activation,  Y, N, N),
             "Sub":              (self.test_Sub,         Y, N, N),
             "T":                (self.test_T,           Y, N, N),
             "Tanh":             (self.test_Activation,  Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
-            "ZeroPad2d":        (self.test_Pad2d,       N, N, N),
+            "ZeroPad2d":        (self.test_Pad2d,       Y, N, N),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -398,7 +403,6 @@ class TORCH_IR_TESTER(object):
         self._test_binary(case_name + "_2", torch.multiply, (2, 32, 16), (2, 1, 16))
         self._test_binary(case_name + "_3", torch.multiply, (32, 32), (32))
 
-
     #######################################################################
     # Div
     # ------------
@@ -476,22 +480,27 @@ class TORCH_IR_TESTER(object):
     # Gather
     # ------------
     def test_Gather(self, case_name):
-      """Gather"""
-      def _test_gather(in0_shape, in1_shape, dim=None):
-        class Model(nn.Module):
-          def __init__(self):
-              super(Model, self).__init__()
-          def forward(self, x):
-              # if dim is None:
-              #   y1 = torch.concat((x, self.weight))
-              # else:
-              #   y1 = torch.concat((x, self.weight), dim=dim)
-              return
-        self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+        """Gather"""
 
-      _test_gather((1, 3, 32, 32), (1,6,32,32), 1)
-      _test_gather((2, 32, 16), (3, 32, 16))
-      _test_gather((32, 32), (1, 32), 0)
+        def _test_gather(in0_shape, in1_shape, dim=None):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    # if dim is None:
+                    #   y1 = torch.concat((x, self.weight))
+                    # else:
+                    #   y1 = torch.concat((x, self.weight), dim=dim)
+                    return
+
+            self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
+        _test_gather((1, 3, 32, 32), (1, 6, 32, 32), 1)
+        _test_gather((2, 32, 16), (3, 32, 16))
+        _test_gather((32, 32), (1, 32), 0)
 
     #######################################################################
     # Permute
@@ -628,9 +637,11 @@ class TORCH_IR_TESTER(object):
                         "Gelu": nn.GELU(),
                         "Hardsigmoid": nn.Hardsigmoid(),
                         "Hardswish": nn.Hardswish(),
+                        "Mish": nn.Mish(),
                         "Relu": nn.ReLU(),
                         "Relu6": nn.ReLU6(),
                         "Sigmoid": nn.Sigmoid(),
+                        "Silu": nn.SiLU(),
                         "Softplus": nn.Softplus(),
                         "Tanh": nn.Tanh(),
                     }
@@ -643,6 +654,75 @@ class TORCH_IR_TESTER(object):
         _test_activation((1, 3, 32, 32))
         _test_activation((3, 16, 32))
         _test_activation((64, 32))
+
+    #######################################################################
+    # LeakyRelu
+    # ------------
+    def test_LeakyRelu(self, case_name):
+        """LeakyRelu"""
+
+        def _test_leaky_relu(in_shape, alpha):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.leaky_relu(x, negative_slope=alpha)
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        for alpha in [0.67, -0.2]:
+            _test_leaky_relu((1, 3, 32, 32), alpha)
+            _test_leaky_relu((3, 16, 32), alpha)
+            _test_leaky_relu((64, 32), alpha)
+
+    #######################################################################
+    # Softmax
+    # ------------
+    def test_Softmax(self, case_name):
+        """Softmax"""
+
+        def _test_softmax(in_shape, dim):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.softmax(x, dim=dim)
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        for dim in [1, 2]:
+            _test_softmax((3, 100, 10, 1), dim)
+            _test_softmax((3, 100, 32), dim)
+            _test_softmax((3, 100, 32, 1), dim)
+
+    #######################################################################
+    # Softmax
+    # ------------
+    def test_LogSoftmax(self, case_name):
+        """LogSoftmax"""
+
+        def _test_log_softmax(in_shape, dim):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.log_softmax(x, dim=dim)
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        for dim in [1, 2]:
+            _test_log_softmax((3, 100, 10, 1), dim)
+            _test_log_softmax((3, 100, 32), dim)
+            _test_log_softmax((3, 100, 32, 1), dim)
 
     #######################################################################
     # Pad1D

@@ -76,6 +76,7 @@ class Top:
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
     SigmoidOp = 'top.Sigmoid'
+    SiLUOp = 'top.SiLU'
     SoftmaxOp = 'top.Softmax'
     SoftplusOp = 'top.Softplus'
     SqueezeOp = 'top.Squeeze'
@@ -1116,6 +1117,12 @@ class MLIRImporter(object):
             "align_corners": BoolAttr.get(kargs["align_corners"])
         }
         return self.buildOp(Top.RoiAlignOp, operands, [output_type], **param)
+
+    def create_silu_op(self, operands, output_shape, **kargs):
+        # get_value_type
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.SiLUOp, operands, [output_type], **param)
 
     def create_nonzero_op(self, operands, output_shape, **kargs):
         # get_value_type
