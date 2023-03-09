@@ -34,6 +34,9 @@ class TORCH_IR_TESTER(object):
             ##################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
             "Add":              (self.test_Add,         Y, N, N),
+            "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
+            "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
+            "AvgPool3d":        (self.test_AvgPool3d,   Y, N, N),
             "Compare":          (self.test_Compare,     Y, N, N),
             "Concat":           (self.test_Concat,      Y, N, N),
             "ConstantPad1d":    (self.test_Pad1d,       Y, N, N),
@@ -50,6 +53,9 @@ class TORCH_IR_TESTER(object):
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
             "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
+            "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
+            "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
+            "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
             "Mish":             (self.test_Activation,  N, N, N),
             "Mul":              (self.test_Mul,         Y, N, N),
             "PRelu":            (self.test_PRelu,       Y, N, N),
@@ -349,6 +355,113 @@ class TORCH_IR_TESTER(object):
         test["case2"](F.conv3d, (2, 32, 8, 10, 10), (5, 5, 3), 64, padding=2, stride=2, dilation=1)
         # Tpu/Interfaces/BM1684X/Conv3D.cpp::94 Not supported yet.
         # test["case2"](F.conv3d, (1, 3, 32, 32, 32), (3, 3, 3), 12, group=3, padding=(1, 1, 2), stride=(2, 1, 1))
+
+
+    #######################################################################
+    # AvgPooling
+    # ------------
+    def _test_AvgPool(self, case_name):
+        suffix = 0
+
+        def test_case(pool_funs,
+                      input_shape,
+                      kernel_size,
+                      stride,
+                      padding,
+                      count_include_pad=True):
+            fun1, fun2 = pool_funs
+
+            class Model(nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.pooling = fun1(5, 2)
+
+                def forward(self, x):
+                    y = self.pooling(x)
+                    z = fun2(y,
+                             kernel_size,
+                             stride=stride,
+                             padding=padding,
+                             count_include_pad=count_include_pad)
+                    return z
+
+            nonlocal suffix
+            suffix += 1
+            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Model().eval())
+
+        return test_case
+
+
+    def test_AvgPool1d(self, case_name):
+        test = self._test_AvgPool(case_name)
+        test((nn.AvgPool1d, F.avg_pool1d), (4, 8, 40), 4, 3, 2)
+        test((nn.AvgPool1d, F.avg_pool1d), (1, 8, 40), 2, 1, 1, False)
+
+
+    def test_AvgPool2d(self, case_name):
+        test = self._test_AvgPool(case_name)
+        test((nn.AvgPool2d, F.avg_pool2d), (4, 8, 40, 30), 4, 3, 2)
+        test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
+        test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (1, 1), False)
+
+
+    def test_AvgPool3d(self, case_name):
+        test = self._test_AvgPool(case_name)
+        test((nn.AvgPool3d, F.avg_pool3d), (4, 8, 64, 64, 64), 4, 3, 2)
+        test((nn.AvgPool3d, F.avg_pool3d), (1, 3, 20, 30, 40), (3, 3, 2), (1, 1, 1), (1, 0, 1))
+
+
+    #######################################################################
+    # MaxPooling
+    # ------------
+    def _test_MaxPool(self, case_name):
+        suffix = 0
+
+        def test_case(pool_funs,
+                      input_shape,
+                      kernel_size,
+                      stride,
+                      padding):
+            fun1, fun2 = pool_funs
+
+            class Model(nn.Module):
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.pooling = fun1(5, 2)
+
+                def forward(self, x):
+                    y = self.pooling(x)
+                    z = fun2(y,
+                             kernel_size,
+                             stride=stride,
+                             padding=padding)
+                    return z
+
+            nonlocal suffix
+            suffix += 1
+            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Model().eval())
+
+        return test_case
+
+
+    def test_MaxPool1d(self, case_name):
+        test = self._test_MaxPool(case_name)
+        test((nn.MaxPool1d, F.max_pool1d), (4, 8, 40), 4, 3, 2)
+        test((nn.MaxPool1d, F.max_pool1d), (1, 8, 40), 2, 1, 0)
+
+
+    def test_MaxPool2d(self, case_name):
+        test = self._test_MaxPool(case_name)
+        test((nn.MaxPool2d, F.max_pool2d), (4, 8, 40, 30), 4, 3, 2)
+        test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
+        test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (1, 1))
+
+
+    def test_MaxPool3d(self, case_name):
+        test = self._test_MaxPool(case_name)
+        test((nn.MaxPool3d, F.max_pool3d), (4, 8, 10, 64, 64), 2, 1, 1)
+        test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 2), (1, 2, 1), (1, 0, 1))
+
 
     #######################################################################
     # Binary Base

@@ -137,6 +137,9 @@ class TorchConverter(BaseConverter):
             # Torch Convert, Alphabetically
             #############################
             "aten::add": lambda node: self.convert_add_op(node),
+            "aten::avg_pool1d": lambda node: self.convert_avgpool_op(node),
+            "aten::avg_pool2d": lambda node: self.convert_avgpool_op(node),
+            "aten::avg_pool3d": lambda node: self.convert_avgpool_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
@@ -151,6 +154,9 @@ class TorchConverter(BaseConverter):
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
             "aten::log_softmax": lambda node: self.convert_logsoftmax_op(node),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
+            "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
+            "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
+            "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
             "aten::mish": lambda node: self.convert_mish_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
             "aten::pad": lambda node: self.convert_pad_op(node),
@@ -380,6 +386,50 @@ class TorchConverter(BaseConverter):
 
     def convert_conv_mode_op(self, torch_node: TorchNode):
         self.convert_base_conv_op(torch_node, True)
+
+    def convert_avgpool_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        kernel_shape = self.const_val[torch_node.inputs[1]]
+        strides = self.const_val[torch_node.inputs[2]]
+        pads = self.const_val[torch_node.inputs[3]]
+        ceil_mode = self.const_val[torch_node.inputs[4]]
+        count_include_pad = self.const_val[torch_node.inputs[5]]
+        assert ceil_mode == False
+        if len(torch_node.inputs) == 7:
+            # does not supports divisor_override
+            assert self.const_val[torch_node.inputs[6]] is None
+        pads = pads + pads  # the pad of torch is symmetric
+        p = {
+            "name": torch_node.name,
+            "kernel_shape": kernel_shape,
+            "strides": strides,
+            "pads": pads,
+            "do_relu": False,
+            "count_include_pad": count_include_pad,
+        }
+        new_op = self.mlir.create_avgpool_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+
+    def convert_maxpool_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        kernel_shape = self.const_val[torch_node.inputs[1]]
+        strides = self.const_val[torch_node.inputs[2]]
+        pads = self.const_val[torch_node.inputs[3]]
+        dilation = self.const_val[torch_node.inputs[4]]
+        ceil_mode = self.const_val[torch_node.inputs[5]]
+        assert ceil_mode == False
+        assert (np.array(dilation) == 1).all()
+        pads = pads + pads  # the pad of torch is symmetric
+        p = {
+            "name": torch_node.name,
+            "kernel_shape": kernel_shape,
+            "strides": strides,
+            "pads": pads,
+            "do_relu": False,
+        }
+        new_op = self.mlir.create_maxpool_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
 
     def _mul_scale(self, in_name, scale):
         in_op = self.getOp(in_name)
