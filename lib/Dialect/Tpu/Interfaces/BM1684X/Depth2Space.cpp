@@ -10,6 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 
@@ -39,5 +40,18 @@ void tpu::Depth2SpaceOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::Depth2SpaceOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(depth2space_global_spec_t);
+  depth2space_global_spec_t spec = {0};
+  spec.common.block_sizes[0] = getBlockH();
+  spec.common.block_sizes[1] = getBlockW();
+  spec.common.in_is_nchw = getInIs_NCHW();
+  spec.common.out_is_nchw = getOutIs_NCHW();
+  spec.common.is_inversed = getIsInversed();
+  spec.common.is_crd_mode = getIs_CRD();
+  spec.common.swap_cr = getSwapCr();
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::Depth2SpaceOp::get_layer_type() {
+  return FW_BMNET_DEPTH2SPACE;
 }

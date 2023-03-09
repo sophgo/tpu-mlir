@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -77,9 +77,33 @@ void tpu::PixelNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::PixelNormOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::PixelNormOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(pixel_norm_global_spec_t);
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
+  pixel_norm_global_spec_t param = {0};
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 // ======================================
 // Dynamic LocalGenInterface
 // ======================================
-int64_t tpu::PixelNormOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::PixelNormOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(pixel_norm_local_spec_t);
+  pixel_norm_local_spec_t param = {0};
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  const auto& gi = getGroupInfo(0, 0);
+  param.buffer_addr = gi.buffer_addr;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::PixelNormOp::get_layer_type() {
+  return FW_BMNET_PIXEL_NORM;
+}

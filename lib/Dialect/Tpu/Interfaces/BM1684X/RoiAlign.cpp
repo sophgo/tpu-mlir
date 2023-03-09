@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -37,4 +37,8 @@ int64_t tpu::RoiAlignOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.position_sensitive = false;
   spec.plat_sp = 0;
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::RoiAlignOp::get_layer_type() {
+  return FW_BMNET_ROI_ALIGN;
 }

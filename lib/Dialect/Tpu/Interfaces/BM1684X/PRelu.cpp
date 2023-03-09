@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -56,9 +56,33 @@ void tpu::PReluOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::PReluOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::PReluOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(prelu_spec_t);
+  prelu_spec_t spec={0};
+  spec.is_channel_shared = false;
+  spec.slope_val = 0.f;
+  spec.rshift_bit = getRshift();
+  spec.upper_limit = 0;
+  spec.round_mode = ROUND_UP;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::PReluOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::PReluOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(prelu_spec_t);
+  prelu_spec_t spec={0};
+  spec.is_channel_shared = false;
+  spec.slope_val = 0.f;
+  spec.rshift_bit = getRshift();
+  spec.upper_limit = -1;
+  spec.round_mode = ROUND_UP;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::PReluOp::get_layer_type() {
+  return FW_BMNET_PRELU;
+}

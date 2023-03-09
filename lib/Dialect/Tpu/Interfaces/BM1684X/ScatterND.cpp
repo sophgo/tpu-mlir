@@ -12,7 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include <strings.h>
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -39,4 +39,19 @@ void tpu::ScatterNDOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ScatterNDOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ScatterNDOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(scatter_nd_global_param_t);
+  scatter_nd_global_param_t param{0};
+  auto data_shape = module::getShape(getInputData());
+  auto indices_shape = module::getShape(getIndices());
+  auto updates_shape = module::getShape(getUpdates());
+  param.data_dims = data_shape.size();
+  param.indices_dims = indices_shape.size();
+  param.updates_dims = updates_shape.size();
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::ScatterNDOp::get_layer_type() {
+  return FW_BMNET_SCATTERND;
+}

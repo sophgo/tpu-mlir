@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -79,14 +79,24 @@ void tpu::LutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // dynamic codegen
 int64_t tpu::LutOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer)
-    return sizeof(dyn_lut_param_t);
-  dyn_lut_param_t param = {0};
-  param.output_dtype = BM168x::getDataType(getOutput());
-  param.is_local_layer = 1;
+    return sizeof(dyn_lut_local_param_t);
+  dyn_lut_local_param_t param = {0};
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.is_local_layer = 1;
   return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::LutOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::LutOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(dyn_lut_global_param_t);
+  dyn_lut_global_param_t p = {0};
+  p.common.output_dtype = BM168x::getDataType(getOutput());
+  p.common.is_local_layer = 0;
+  return BM168x::dynamic_spec_to_buffer(buffer, p);
+}
+
+int64_t tpu::LutOp::get_layer_type() {
+  return FW_BMNET_LUT;
+}

@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -43,4 +43,8 @@ int64_t tpu::TopKOp::dyn_codegen_global_bm1684x(void *buffer) {
   spec.dim = getAxis();
   spec.descending = getLargest();
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::TopKOp::get_layer_type() {
+  return FW_BMNET_TOPK;
 }

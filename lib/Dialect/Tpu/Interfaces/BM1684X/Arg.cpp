@@ -11,7 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 void tpu::ArgOp::codegen_global_bm1684x() {
@@ -36,4 +36,21 @@ void tpu::ArgOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ArgOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ArgOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(arg_global_spec_t);
+  const bool need_val = !getValues().getType().isa<NoneType>();
+  arg_global_spec_t spec = {0};
+  spec.common.axis = getAxis();
+  spec.common.method = StringSwitch<int>(getMode())
+                           .Case("ArgMax", 0)
+                           .Case("ArgMin", 1)
+                           .Default(-1);
+  spec.common.need_val = need_val;
+  spec.common.is_index_int32 = true;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+
+int64_t tpu::ArgOp::get_layer_type() {
+  return FW_BMNET_ARG;
+}

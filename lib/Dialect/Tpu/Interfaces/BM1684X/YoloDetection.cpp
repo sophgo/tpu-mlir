@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -75,4 +75,8 @@ int64_t tpu::YoloDetectionOp::dyn_codegen_global_bm1684x(void *buffer) {
     spec.bias[index++] = atof(s.c_str());
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::YoloDetectionOp::get_layer_type() {
+  return FW_BMNET_YOLOV3_DETECT_OUT;
 }

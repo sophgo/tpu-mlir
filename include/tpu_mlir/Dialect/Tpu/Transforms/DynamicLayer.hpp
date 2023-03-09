@@ -22,7 +22,6 @@ extern int get_tensor_id(Value v);
 extern bool is_net_input(Value v);
 extern bool is_net_output(Value v);
 extern vector<Value>& get_net_output();
-extern FW_LAYER_TYPE_T get_layer_type(Operation *op);
 enum DynamicTensorType
 {
     DYNAMIC_NEURON = 0,

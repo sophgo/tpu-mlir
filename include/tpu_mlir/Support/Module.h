@@ -35,6 +35,7 @@ typedef enum {
   GROUP_NORMAL = 0,
   GROUP_3D = 1,
   GROUP_SMALL_C = 2,
+  GROUP_UNSUPPORT
 } group_type_t;
 
 //-----------------------------------------------------------------

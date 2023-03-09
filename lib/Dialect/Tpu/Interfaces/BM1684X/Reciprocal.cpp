@@ -11,7 +11,7 @@
 #include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 #include <cassert>
 
 using namespace tpu_mlir::backend;
@@ -83,11 +83,52 @@ void tpu::ReciprocalOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::ReciprocalOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ReciprocalOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(constbinary_local_spec_t);
+  assert(!module::isUniformQuantized(getInput()));
+  group_type_t group_type = GROUP_UNSUPPORT;
+  auto op = getOperation();
+  if (auto gOp = dyn_cast<GroupOp>(op->getParentOp())) {
+    group_type = static_cast<group_type_t>(gOp.getGroupType());
+  }
+  assert(group_type < GROUP_UNSUPPORT);
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+
+  constbinary_local_spec_t param = {0};
+  param.common.binary_type = BINARY_DIV;
+  param.common.if_relu = getDoRelu();
+  param.common.relu_upper_limit = getReluLimit().convertToDouble();
+  param.common.inversed = true;
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
+  param.common.B_const_val = getConstVal().convertToDouble();
+  param.common.B_dtype = input_spec->at(0).dtype;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ReciprocalOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(constbinary_global_spec_t);
+  constbinary_global_spec_t param = {0};
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  param.common.binary_type = BINARY_DIV;
+  param.common.if_relu = getDoRelu();
+  param.common.relu_upper_limit = getReluLimit().convertToDouble();
+
+  param.common.inversed = 0;
+  param.common.scale_A = 1;
+  param.common.rshift_A = 0;
+  param.common.B_const_val = getConstVal().convertToDouble();
+  param.common.B_dtype = input_spec->at(0).dtype;
+  param.common.inversed = true;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::ReciprocalOp::get_layer_type() {
+  return FW_BMNET_CONST_BINARY;
 }

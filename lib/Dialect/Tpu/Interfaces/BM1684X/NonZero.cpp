@@ -12,7 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -34,4 +34,8 @@ int64_t tpu::NonZeroOp::dyn_codegen_global_bm1684x(void *buffer) {
   where_spec_t spec = {0};
   spec.buffer_addr = module::getAddress(getBuffer());
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::NonZeroOp::get_layer_type() {
+  return FW_BMNET_WHERE;
 }

@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -32,7 +32,15 @@ void tpu::SwapChannelOp::codegen_global_bm1684x() {
 }
 
 int64_t tpu::SwapChannelOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(swap_channel_param_t);
+  auto channel_order = module::getI64Array(this->getChannelOrder());
+  swap_channel_param_t param = {0};
+  param.shape_dim = 4;
+  for (int i = 0; i < channel_order->size(); i++) {
+    param.order[i] = channel_order->at(i);
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
 }
 
 // =========================================
@@ -50,4 +58,8 @@ void tpu::SwapChannelOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
                                                group_type_t group_type,
                                                local_sec_info_t &sec_info) {
   llvm_unreachable("Not Implemented");
+}
+
+int64_t tpu::SwapChannelOp::get_layer_type() {
+  return FW_BMNET_SWAP_CHANNEL;
 }

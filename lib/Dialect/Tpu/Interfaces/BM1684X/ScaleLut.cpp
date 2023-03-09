@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 // =========================================
 // GlobalGenInterface
 // =========================================
@@ -19,7 +19,7 @@ using namespace tpu_mlir::backend;
 
 void tpu::ScaleLutOp::codegen_global_bm1684x() {
   auto op = getOperation();
-  scalelut_param_t param = {0};
+  scalelut_param_t   param = {0};
   param.shape_dim = 4;
   param.table_length = 256;
   auto input_spec = BM168x::get_input_spec(op);
@@ -48,4 +48,15 @@ void tpu::ScaleLutOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // Dynamic GlobalGenInterface
 // ======================================
 
-int64_t tpu::ScaleLutOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ScaleLutOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(scalelut_param_t);
+  scalelut_param_t   param = {0};
+  param.shape_dim = 4;
+  param.table_length = 256;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::ScaleLutOp::get_layer_type() {
+  return FW_BMNET_SCALE_LUT;
+}

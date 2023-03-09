@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -32,4 +32,15 @@ void tpu::ReverseOp::codegen_global_bm1684x() {
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::ReverseOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::ReverseOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(reverse_global_param_t);
+  reverse_global_param_t param{0};
+  param.dims = module::getShape(getInput()).size();
+  param.axis = getAxis();
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::ReverseOp::get_layer_type() {
+  return FW_BMNET_REVERSE;
+}

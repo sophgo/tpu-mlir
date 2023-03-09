@@ -10,7 +10,7 @@
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -62,4 +62,18 @@ int64_t tpu::MaxUnpoolOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::MaxUnpoolOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::MaxUnpoolOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(dyn_upsamplemask_global_spec_t);
+  assert(getScaleH() == getScaleW());
+  int64_t on, oc, oh, ow;
+  module::getNCHW(getOutput(), on, oc, oh, ow);
+  dyn_upsamplemask_global_spec_t spec = {0};
+  spec.common.top_c = oc;
+  spec.common.top_h = oh;
+  spec.common.top_w = ow;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::MaxUnpoolOp::get_layer_type() {
+  return FW_BMNET_UPSAMPLEMASK;
+}

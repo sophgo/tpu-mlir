@@ -12,6 +12,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -209,5 +210,30 @@ void tpu::GRUOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::GRUOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(dyn_glu_global_spec_t);
+  auto attr = parseParam();
+  dyn_glu_global_spec_t p = {0};
+  p.xGlobalAddr = module::getAddress(getInput());
+  p.wGlobalAddr = module::getAddress(getFilter());
+  p.bGlobalAddr = module::getAddress(getBias());
+  p.h0GlobalAddr = module::getAddress(getInitialH());
+  p.yGlobalAddr = module::getAddress(getY());
+  p.hnGlobalAddr = module::getAddress(getYH());
+  p.zGlobalAddr = module::getAddress(getBuffer());
+  p.common.bias = attr.have_bias;
+  p.common.outputY = attr.output_y;
+  p.common.outputYh = attr.output_yh;
+  p.common.sequence = attr.seq_len;
+  p.common.batch = attr.batch_size;
+  p.common.xSize = attr.input_size;
+  p.common.hSize = attr.hidden_size;
+  p.common.batchMode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.common.bidirectional = (attr.num_direction == 2);
+  p.common.numLayers = 1;
+  p.common.dtype = BM168x::getDataType(getInput());
+  return BM168x::dynamic_spec_to_buffer(buffer, p);
+}
+
+int64_t tpu::GRUOp::get_layer_type() {
+  return FW_BMNET_GRU;
 }

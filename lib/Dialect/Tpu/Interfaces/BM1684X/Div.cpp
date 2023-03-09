@@ -9,6 +9,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 
@@ -39,5 +40,18 @@ void tpu::DivOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::DivOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(bcbinary_common_spec_t);
+  bcbinary_common_spec_t spec = {0};
+  spec.binary_type = BINARY_DIV;
+  spec.if_relu = (int)getDoRelu();
+  spec.relu_upper_limit = getReluLimit().convertToDouble();
+  spec.scale_A = 1;
+  spec.scale_B = 1;
+  spec.rshift_A = 0;
+  spec.rshift_B = 0;
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::DivOp::get_layer_type() {
+  return FW_BMNET_ELTWISE_BINARY;
 }

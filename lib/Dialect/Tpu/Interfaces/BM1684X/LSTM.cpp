@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
 
@@ -230,5 +230,39 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::LSTMOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer) return sizeof(pytorch_lstm_param_t);
+  auto attr = parseParam();
+  auto op = getOperation();
+  auto input_spec =
+      BM168x::get_spec(ValueRange{getInput(), getInitialH(), getInitialC(), getFilter()});
+  auto output_spec = BM168x::get_output_spec(op);
+  // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
+  pytorch_lstm_param_t p = {0};
+  p.x_global_addr = module::getAddress(getInput());
+  p.w_global_addr = module::getAddress(getFilter());
+  p.b_global_addr = module::getAddress(getBias());
+  p.h0_global_addr = module::getAddress(getInitialH());
+  p.c0_global_addr = module::getAddress(getInitialC());
+  p.y_global_addr = module::getAddress(getY());
+  p.hn_global_addr = module::getAddress(getYH());
+  p.cn_global_addr = module::getAddress(getYC());
+  p.z_global_addr = module::getAddress(getBuffer());
+
+  p.bias = attr.have_bias;
+  p.output_y = attr.output_y;
+  p.output_yh = attr.output_yh;
+  p.output_yc = attr.output_yc;
+  p.sequence = attr.seq_len;
+  p.batch = attr.batch_size;
+  p.x_size = attr.input_size;
+  p.h_size = attr.hidden_size;
+  p.batch_mode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.bidirection = (attr.num_direction == 2);
+  p.num_layers = 1;
+  p.dtype = BM168x::getDataType(getInput());
+  return BM168x::dynamic_spec_to_buffer(buffer, p);
+}
+
+int64_t tpu::LSTMOp::get_layer_type() {
+  return FW_BMNET_PYTORCH_LSTM;
 }

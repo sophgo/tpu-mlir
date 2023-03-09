@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -374,9 +375,101 @@ void tpu::Conv1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::Conv1DOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Conv1DOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(conv_local_param_t);
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  auto attr = parseParam();
+  conv_local_param_t p = {0};
+  p.spec.buffer_local_addr = gi.buffer_addr;
+  auto &common = p.spec.common;
+  common.input_c = attr.ic;
+  common.output_c = attr.oc;
+  common.if_relu = attr.do_relu;
+  common.upper_limit = attr.relu_limit;
+  common.kh = attr.kh;
+  common.kw = attr.kw;
+  common.dh = attr.dh;
+  common.dw = attr.dw;
+  common.stride_h = attr.sh;
+  common.stride_w = attr.sw;
+  common.groups = attr.groups;
+  common.pad_h_t = attr.pht;
+  common.pad_h_b = attr.phb;
+  common.pad_w_l = attr.pwl;
+  common.pad_w_r = attr.pwr;
+  common.round_mode = ROUNDING_HALF_UP;
+  common.has_bias = attr.has_bias;
+  common.bias_sign = true;
+  common.ipad_is_const = true;
+  common.kzp_is_const = true;
+  common.kzp_value = attr.kernel_zp;
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
+    if (getCoeffMerged()) {
+      p.spec.merge_coeff = 2;
+      p.spec.with_requant = 1;
+      auto out_etype = module::getStorageType(getOutput());
+      if (out_etype.isUnsignedInteger()) {
+        common.if_relu = true;
+      }
+    }
+    common.is_asym = true;
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.use_3ic_optimize = getUse_3icOptimize();
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, p);
+ }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::Conv1DOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Conv1DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  //now nodechip justsupport ndims = 4, Todo
+  assert((*input_spec)[0].dims == 4);
+  if (!buffer) return sizeof(conv_global_spec_t);
+  conv_global_spec_t spec = {0};
+  auto attr = parseParam();
+  auto &common = spec.common;
+  common.input_c = attr.ic;
+  common.output_c = attr.oc;
+  common.if_relu = attr.do_relu;
+  common.upper_limit = attr.relu_limit;
+  common.kh = attr.kh;
+  common.kw = attr.kw;
+  common.dh = attr.dh;
+  common.dw = attr.dw;
+  common.stride_h = attr.sh;
+  common.stride_w = attr.sw;
+  common.groups = attr.groups;
+  common.pad_h_t = attr.pht;
+  common.pad_h_b = attr.phb;
+  common.pad_w_l = attr.pwl;
+  common.pad_w_r = attr.pwr;
+  common.round_mode = ROUND_UP;
+  common.has_bias = attr.has_bias;
+  common.bias_sign = true;
+  common.ipad_is_const = true;
+  common.kzp_is_const = true;
+  common.kzp_value = attr.kernel_zp;
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
+    if (getCoeffMerged()) {
+      spec.merge_coeff = 2;
+      auto out_etype = module::getStorageType(getOutput());
+      if (out_etype.isUnsignedInteger()) {
+        common.if_relu = true;
+      }
+    }
+    common.is_asym = true;
+    common.ipad_value = in_qtype.getZeroPoint();
+    common.use_3ic_optimize = getUse_3icOptimize();
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::Conv1DOp::get_layer_type() {
+  return FW_BMNET_CONV;
+}

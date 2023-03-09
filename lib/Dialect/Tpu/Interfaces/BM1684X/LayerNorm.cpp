@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 
@@ -104,9 +104,51 @@ void tpu::LayerNormOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::LayerNormOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::LayerNormOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(layer_norm_global_spec_t);
+  layer_norm_global_spec_t param = {0};
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
+  const bool need_mean = !getMean().getType().isa<NoneType>();
+  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+  param.common.axis = (int)getAxis();
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  param.common.need_mean = need_mean;
+  param.common.need_rstd = need_rstd;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 // ======================================
 // Dynamic LocalGenInterface
 // ======================================
-int64_t tpu::LayerNormOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::LayerNormOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(layer_norm_local_spec_t);
+  layer_norm_local_spec_t param = {0};
+  group_type_t group_type = GROUP_UNSUPPORT;
+  auto op = getOperation();
+  if (auto gOp = dyn_cast<GroupOp>(op->getParentOp())) {
+    group_type = static_cast<group_type_t>(gOp.getGroupType());
+  }
+  assert(group_type < GROUP_UNSUPPORT);
+  const bool have_weight = !getWeight().getType().isa<NoneType>();
+  const bool have_bias = !getBias().getType().isa<NoneType>();
+  const bool need_mean = !getMean().getType().isa<NoneType>();
+  const bool need_rstd = !getRstd().getType().isa<NoneType>();
+  param.common.axis = (int)getAxis();
+  if (group_type == GROUP_SMALL_C) {
+    auto shape = module::getShape(getInput());
+    param.common.axis = 2;
+  }
+  param.common.eps = getEps().convertToDouble();
+  param.common.affine = (have_weight << 0) + (have_bias << 1);
+  param.common.need_mean = need_mean;
+  param.common.need_rstd = need_rstd;
+  const auto &gi = getGroupInfo(0, 0);
+  param.buffer_addr = gi.buffer_addr;
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::LayerNormOp::get_layer_type() {
+  return FW_BMNET_LAYER_NORM;
+}

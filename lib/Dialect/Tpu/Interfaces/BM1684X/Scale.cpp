@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Top/IR/TopOps.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -98,12 +98,65 @@ void tpu::ScaleOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 //dynamic codegen
 int64_t tpu::ScaleOp::dyn_codegen_local_bm1684x(void *buffer) {
-return 0;
+  if (!buffer)
+    return sizeof(scale_local_spec_t);
+  group_type_t group_type = GROUP_UNSUPPORT;
+  auto op = getOperation();
+  if (auto gOp = dyn_cast<GroupOp>(op->getParentOp())) {
+    group_type = static_cast<group_type_t>(gOp.getGroupType());
+  }
+  assert(group_type < GROUP_UNSUPPORT);
+  auto input_spec = BM168x::get_input_spec(op, group_type);
+  auto output_spec = BM168x::get_output_spec(op, group_type);
+  auto gi = getGroupInfo(0, 0);
+  scale_local_spec_t p{0};
+
+  p.if_relu = getDoRelu();
+  p.relu_upper_limit = getReluLimitAttr().getValueAsDouble();
+  p.is_scale_coeff = isa_and_nonnull<tpu::LoadOp>(getScale().getDefiningOp());
+  p.is_bias_coeff = isa_and_nonnull<tpu::LoadOp>(getBias().getDefiningOp());
+  p.input_num = input_spec->size();
+  p.merge_weight_bias = 0;
+  if (module::isUniformQuantized(getInput())) {
+    p.buffer_local_addr = gi.buffer_addr;
+    p.is_shift_coeff = 1;
+    p.round_mode = ROUND_UP;
+    p.version = 10; // 1684x:10 1684:0
+    p.bias_dtype = BM168x::getDataType(getBias());
+  } else {
+    for (int i = 0; i < 4; ++i) {
+      p.scale_shape[i] = 1;
+    }
+    auto shape = module::getShape(getScale());
+    for (auto v : llvm::enumerate(shape)) {
+      p.scale_shape[v.index()] = v.value();
+    }
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, p);
 }
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::ScaleOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(scale_global_spec_t);
+  scale_global_spec_t p = {0};
+  p.axis = 1;
+  p.axis_num = 1;
+  p.has_bias = true;
+  p.if_relu = getDoRelu();
+  p.relu_upper_limit = getReluLimit().convertToDouble();
+  p.merge_weight_bias = 0;
+  p.round_mode = ROUND_UP;
+  if (module::isUniformQuantized(getInput())) {
+    p.scale_sign = module::isSign(getScale());
+    p.bias_sign = module::isSign(getBias());
+    p.version = 10;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, p);
+}
+
+int64_t tpu::ScaleOp::get_layer_type() {
+  return FW_BMNET_SCALE;
 }

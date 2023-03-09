@@ -13,6 +13,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -316,9 +317,100 @@ void tpu::DeconvOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::DeconvOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(dyn_deconv_local_spec_t);
+  auto attr = parseParam();
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+  auto filter_gi = LocalGenInterface::getGroupInfo(getFilter(), 0, 0);
+  auto bias_gi = LocalGenInterface::getGroupInfo(getBias(), 0, 0);
+
+  dyn_deconv_local_spec_t param = {0};
+  param.buffer_local_addr = gi.buffer_addr;
+  param.common.groups = attr.g;
+  param.common.output_c = attr.oc;
+  param.common.kernel[0] = attr.kh;
+  param.common.kernel[1] = attr.kw;
+  param.common.stride[0] = attr.sh;
+  param.common.stride[1] = attr.sw;
+  param.common.dilation[0] = attr.dh;
+  param.common.dilation[1] = attr.dw;
+  param.common.pad[0] = attr.pad_h;
+  param.common.pad[1] = attr.pad_h_after;
+  param.common.pad[2] = attr.pad_w;
+  param.common.pad[3] = attr.pad_w_after;
+  param.common.has_bias = attr.with_bias;
+  param.common.input_dtype = BM168x::getDataType(getInput());
+  param.common.weight_dtype = BM168x::getDataType(getFilter());
+  if (getBias().getType().isa<RankedTensorType>()) {
+    param.common.bias_dtype = BM168x::getDataType(getBias());
+  }
+
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.if_relu = attr.do_relu;
+  param.common.upper_limit = attr.relu_limit;
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
+    param.common.is_asym = true;
+    param.common.rshift = 0;
+    param.kzp_local_addr = 0;
+    param.pad_insert_local_addr = 0;
+    param.common.kzp_is_const = true;
+    param.common.pad_insert_is_const = true;
+    param.common.kzp_val = 0;
+    param.common.pad_val = in_qtype.getZeroPoint();
+    param.common.insert_val = in_qtype.getZeroPoint();
+    param.common.kzp_dtype = param.common.weight_dtype;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::DeconvOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(dyn_deconv_global_spec_t);
+  auto attr = parseParam();
+  dyn_deconv_global_spec_t param = {0};
+  param.common.groups = attr.g;
+  param.common.output_c = attr.oc;
+  param.common.kernel[0] = attr.kh;
+  param.common.kernel[1] = attr.kw;
+  param.common.stride[0] = attr.sh;
+  param.common.stride[1] = attr.sw;
+  param.common.dilation[0] = attr.dh;
+  param.common.dilation[1] = attr.dw;
+  param.common.pad[0] = attr.pad_h;
+  param.common.pad[1] = attr.pad_h_after;
+  param.common.pad[2] = attr.pad_w;
+  param.common.pad[3] = attr.pad_w_after;
+  param.output_pad[0] = attr.output_pad_h;
+  param.output_pad[1] = attr.output_pad_w;
+  param.common.has_bias = attr.with_bias;
+  param.common.input_dtype = BM168x::getDataType(getInput());
+  param.common.weight_dtype = BM168x::getDataType(getFilter());
+  if (getBias().getType().isa<RankedTensorType>()) {
+    param.common.bias_dtype = BM168x::getDataType(getBias());
+  }
+  param.common.output_dtype = BM168x::getDataType(getOutput());
+  param.common.if_relu = attr.do_relu;
+  param.common.upper_limit = attr.relu_limit;
+  if (module::isUniformQuantized(getInput())) {
+    auto in_qtype = module::getUniformQuantizedType(getInput());
+    param.common.is_asym = true;
+    param.common.rshift = 0;
+    param.kzp_global_addr = 0;
+    param.pad_insert_global_addr = 0;
+    param.common.kzp_is_const = true;
+    param.common.pad_insert_is_const = true;
+    param.common.kzp_val = 0;
+    param.common.pad_val = in_qtype.getZeroPoint();
+    param.common.insert_val = in_qtype.getZeroPoint();
+    param.common.kzp_dtype = param.common.input_dtype;
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::DeconvOp::get_layer_type() {
+  return FW_BMNET_DECONV;
+}

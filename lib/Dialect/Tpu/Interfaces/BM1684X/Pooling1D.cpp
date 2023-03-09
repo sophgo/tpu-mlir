@@ -11,7 +11,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 #include "tpu_mlir/Support/MathUtils.h"
 
 using namespace tpu_mlir::backend;
@@ -155,9 +155,71 @@ void tpu::Pool1DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::Pool1DOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Pool1DOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer)
+    return sizeof(pooling_local_spec_t);
+  auto gi = getGroupInfo(0, 0);
+  auto attr = parseParam();
+  pooling_local_spec_t spec = {0};
+  auto &common = spec.common;
+  SpecAssign(attr, common);
+  spec.buffer_addr = gi.buffer_addr;
+  common.pad_h_t = attr.pad_h;
+  common.pad_h_b = attr.pad_h_after;
+
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    common.is_avg_pooling = true;
+    if (module::isUniformQuantized(getInput())) {
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
+      common.avg_pooling_quant_mode =
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+      if (common.avg_pooling_quant_mode == 0) {
+        common.multiplier = getMultiplier().value_or(0l);
+        common.rshiftbits = getRshift().value_or(0l);
+      } else if (common.avg_pooling_quant_mode == 2) {
+        common.merge_requant = true;
+        common.rq_scale = getScale().value_or(APFloat(0.)).convertToDouble();
+        common.rq_offset = getOffset().value_or(APFloat(0.)).convertToDouble();
+      }
+    }
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::Pool1DOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Pool1DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  //now nodechip just support ndims = 4, Todo
+  assert((*input_spec)[0].dims == 4);
+  if (!buffer)
+    return sizeof(pooling_common_spec_t);
+  auto attr = parseParam();
+  pooling_common_spec_t spec = {0};
+  SpecAssign(attr, spec);
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    spec.is_avg_pooling = true;
+    if (module::isUniformQuantized(getInput())) {
+      bool with_pad = has_pad(attr) && attr.count_include_pad == 0;
+      spec.avg_pooling_quant_mode =
+          module::isAsymmetric() ? (with_pad ? 1 : 2) : 0;
+      if (spec.avg_pooling_quant_mode == 0) {
+        spec.multiplier = getMultiplier().value_or((int64_t)1);
+        spec.rshiftbits = getRshift().value_or((int64_t)0);
+      } else if (spec.avg_pooling_quant_mode == 2) {
+        spec.merge_requant = true;
+        spec.rq_scale =
+            getScale().value_or(llvm::APFloat(1.)).convertToDouble();
+        spec.rq_offset =
+            getOffset().value_or(llvm::APFloat(0.)).convertToDouble();
+      }
+    }
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+}
+
+int64_t tpu::Pool1DOp::get_layer_type() {
+  return FW_BMNET_POOL;
+}

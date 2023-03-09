@@ -10,7 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Support/Module.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 using namespace tpu_mlir::backend;
 
 // =========================================
@@ -52,5 +52,31 @@ void tpu::StridedSliceOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::StridedSliceOp::dyn_codegen_global_bm1684x(void *buffer) {
-  return 0;
+  if (!buffer)
+    return sizeof(strideslice_common_spec_t);
+  strideslice_common_spec_t param = {0};
+  param.begin_mask = getBeginMask();
+  param.end_mask = getEndMask();
+
+  std::vector<int64_t> input_shape = module::getShape(getInput());
+  std::vector<int64_t> output_shape = module::getShape(getOutput());
+
+  auto in_dims = input_shape.size();
+  auto out_dims = output_shape.size();
+  assert(in_dims == out_dims);
+  auto start_v =
+      cast<top::WeightOp>(getStarts().getDefiningOp()).read<int32_t>();
+  auto stride_v =
+      cast<top::WeightOp>(getStrides().getDefiningOp()).read<int32_t>();
+  auto end_v = cast<top::WeightOp>(getEnds().getDefiningOp()).read<int32_t>();
+  for (int i = 0; i < in_dims; i++) {
+    param.begin_index[i] = start_v->at(i);
+    param.end_index[i] = end_v->at(i);
+    param.strides[i] = stride_v->at(i);
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::StridedSliceOp::get_layer_type() {
+  return FW_BMNET_STRIDESLICE;
 }

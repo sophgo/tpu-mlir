@@ -13,6 +13,7 @@
 #include "tpu_mlir/Support/Dnnl/Conv.h"
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::bm1684x;
@@ -323,9 +324,100 @@ void tpu::Conv3DOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 }
 
 // dynamic codegen
-int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Conv3DOp::dyn_codegen_local_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(dyn_conv3d_local_param_t);
+  auto attr = parseParam();
+  auto gi = getGroupInfo(0, 0);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), 0, 0);
+
+  dyn_conv3d_local_param_t param = {0};
+  if (attr.has_bias) {
+    param.spec.common.has_bias = true;
+    param.spec.common.bias_dtype = BM168x::getDataType(getBias());
+  }
+  param.spec.buffer_local_addr = gi.buffer_addr;
+  param.spec.common.groups = attr.groups;
+  param.spec.common.output_c = attr.oc;
+  param.spec.common.kernel[0] = attr.kd;
+  param.spec.common.kernel[1] = attr.kh;
+  param.spec.common.kernel[2] = attr.kw;
+  param.spec.common.stride[0] = attr.sd;
+  param.spec.common.stride[1] = attr.sh;
+  param.spec.common.stride[2] = attr.sw;
+  param.spec.common.dilation[0] = attr.dd;
+  param.spec.common.dilation[1] = attr.dh;
+  param.spec.common.dilation[2] = attr.dw;
+  param.spec.common.pad[0] = attr.pdf;
+  param.spec.common.pad[1] = attr.pdb;
+  param.spec.common.pad[2] = attr.pht;
+  param.spec.common.pad[3] = attr.phb;
+  param.spec.common.pad[4] = attr.pwl;
+  param.spec.common.pad[5] = attr.pwr;
+  param.spec.common.input_dtype = BM168x::getDataType(getInput());
+  param.spec.common.weight_dtype = BM168x::getDataType(getFilter());
+  param.spec.common.output_dtype = BM168x::getDataType(getOutput());
+  param.spec.common.do_relu = attr.do_relu;
+  param.spec.common.relu_limit = attr.relu_limit;
+  if (module::isUniformQuantized(getInput())) {
+    auto out_etype = module::getStorageType(getOutput());
+    param.spec.common.do_relu = out_etype.isUnsignedInteger(8);
+    auto in_qtype = module::getUniformQuantizedType(getInput());
+    param.spec.common.kzp_is_const = true;
+    param.spec.common.kzp_val = attr.kernel_zp;
+    param.spec.common.kzp_dtype = param.spec.common.weight_dtype;
+    param.spec.common.pad_is_const = true;
+    param.spec.common.pad_val = in_qtype.getZeroPoint();
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
 
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::Conv3DOp::dyn_codegen_global_bm1684x(void *buffer) {
+  if (!buffer) return sizeof(dyn_conv3d_global_param_t);
+  auto attr = parseParam();
+  dyn_conv3d_global_param_t param = {0};
+  if (attr.has_bias) {
+    param.spec.common.has_bias = 1;
+    param.spec.common.bias_dtype = BM168x::getDataType(getBias());
+  }
+
+  param.spec.common.groups = attr.groups;
+  param.spec.common.output_c = attr.oc;
+  param.spec.common.kernel[0] = attr.kd;
+  param.spec.common.kernel[1] = attr.kh;
+  param.spec.common.kernel[2] = attr.kw;
+  param.spec.common.stride[0] = attr.sd;
+  param.spec.common.stride[1] = attr.sh;
+  param.spec.common.stride[2] = attr.sw;
+  param.spec.common.dilation[0] = attr.dd;
+  param.spec.common.dilation[1] = attr.dh;
+  param.spec.common.dilation[2] = attr.dw;
+  param.spec.common.pad[0] = attr.pdf;
+  param.spec.common.pad[1] = attr.pdb;
+  param.spec.common.pad[2] = attr.pht;
+  param.spec.common.pad[3] = attr.phb;
+  param.spec.common.pad[4] = attr.pwl;
+  param.spec.common.pad[5] = attr.pwr;
+  param.spec.common.input_dtype = BM168x::getDataType(getInput());
+  param.spec.common.weight_dtype = BM168x::getDataType(getFilter());
+  param.spec.common.output_dtype = BM168x::getDataType(getOutput());
+  param.spec.common.do_relu = attr.do_relu;
+  param.spec.common.relu_limit = attr.relu_limit;
+  if (module::isUniformQuantized(getInput())) {
+    auto out_etype = module::getStorageType(getOutput());
+    param.spec.common.do_relu = out_etype.isUnsignedInteger();
+    auto in_qtype = module::getUniformQuantizedType(getInput());
+    param.spec.common.kzp_is_const = true;
+    param.spec.common.kzp_val = attr.kernel_zp;
+    param.spec.common.kzp_dtype = param.spec.common.weight_dtype;
+    param.spec.common.pad_is_const = true;
+    param.spec.common.pad_val = in_qtype.getZeroPoint();
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, param);
+}
+
+int64_t tpu::Conv3DOp::get_layer_type() {
+  return FW_BMNET_CONV3D;
+}

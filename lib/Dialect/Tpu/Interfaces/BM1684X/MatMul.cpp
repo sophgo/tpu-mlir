@@ -10,7 +10,7 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Backend/BM168x/BM1684X.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
-
+#include "tpu_mlir/Dialect/Tpu/Transforms/DynCompileCommon.hpp"
 #include "tpu_mlir/Dialect/Tpu/Transforms/BM168x/WeightReorder.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
@@ -289,4 +289,84 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // ======================================
 // Dynamic GlobalGenInterface
 // ======================================
-int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) { return 0; }
+int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
+  //
+  auto p = parseParam();
+  if (!buffer) return (p.batch != 1 ? sizeof(batch_matmul_common_spec_t) : sizeof(fc_global_spec_t));
+  auto op = getOperation();
+  auto input_spec = BM168x::get_input_spec(op);
+  auto output_spec = BM168x::get_output_spec(op);
+  if (p.batch != 1) {
+    BM168x::fix_shape(input_spec->at(0), {p.batch, p.M, p.K});
+    if (p.right_transpose == false) {
+      BM168x::fix_shape(input_spec->at(1), {p.batch, p.K, p.N});
+    } else {
+      BM168x::fix_shape(input_spec->at(1), {p.batch, p.N, p.K});
+    }
+    BM168x::fix_shape(output_spec->at(0), {p.batch, p.M, p.N});
+    batch_matmul_common_spec_t spec{0};
+    spec.Y_dtype = output_spec->at(0).dtype;
+    spec.L_trans = false;
+    spec.R_trans = p.right_transpose;
+    spec.has_bias = p.with_bias;
+    spec.hdim_is_batch = false;
+    spec.requant_mode = -1;
+    if (module::isUniformQuantized(getInput())) {
+      spec.R_zp_is_const = true;
+      spec.R_zp_const_val = p.right_zp;
+      spec.izp_const_val = p.input_zp;
+      if (module::isUniformQuantized(getOutput())) {
+        spec.requant_mode = static_cast<int>(getQuantMode());
+        auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+        auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
+        assert(rshift_v->size() == 1);
+        assert(multiplier_v->size() == 1);
+        spec.mul_val = multiplier_v->at(0);
+        spec.shift_val = -rshift_v->at(0);
+        auto output_type = module::getUniformQuantizedType(getOutput());
+        spec.offset_val = output_type.getZeroPoint();
+      }
+    }
+    return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  }
+  BM168x::fix_shape(input_spec->at(0), {p.M, p.K});
+  if (p.right_transpose == false) {
+    BM168x::fix_shape(input_spec->at(1), {p.K, p.N});
+  } else {
+    BM168x::fix_shape(input_spec->at(1), {p.N, p.K});
+  }
+  BM168x::fix_shape(output_spec->at(0), {p.M, p.N});
+  fc_global_spec_t spec;
+  memset(&spec, 0, sizeof(spec));
+  spec.if_relu = p.do_relu;
+  spec.relu_limit = p.relu_limit;
+  spec.have_bias = p.with_bias;
+  spec.requant_mode = -1;
+  spec.R_transpose = p.right_transpose;
+  if (module::isUniformQuantized(getInput())) {
+    spec.rshift = 0;
+    spec.is_asymmetric = 1;
+    spec.rzp_is_const = 1;
+    spec.rzp_const_val = p.right_zp;
+    spec.izp_const_val = p.input_zp;
+    if (module::isUniformQuantized(getOutput())) {
+      auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
+      auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
+      assert(rshift_v->size() == 1);
+      assert(multiplier_v->size() == 1);
+      spec.requant_mode = static_cast<int>(getQuantMode());
+      spec.mul_val = multiplier_v->at(0);
+      spec.shift_val = -rshift_v->at(0);
+      auto output_type = module::getUniformQuantizedType(getOutput());
+      spec.offset_val = output_type.getZeroPoint();
+      spec.round_mode = ROUNDING_HALF_AWAY_FROM_ZERO;
+    }
+  }
+  return BM168x::dynamic_spec_to_buffer(buffer, spec);
+  return 0;
+}
+
+int64_t tpu::MatMulOp::get_layer_type() {
+  auto p = parseParam();
+  return (p.batch != 1 ? FW_BMNET_BATCH_MATMUL : FW_BMNET_FC);
+}
