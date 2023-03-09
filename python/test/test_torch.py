@@ -46,7 +46,7 @@ class TORCH_IR_TESTER(object):
             "Conv2d":           (self.test_Conv2d,      Y, N, N),
             "Conv3d":           (self.test_Conv3d,      Y, N, N),
             "Div":              (self.test_Div,         Y, N, N),
-            "Elu":              (self.test_Elu,         N, N, N),
+            "Elu":              (self.test_Elu,         Y, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
             "Gelu":             (self.test_Activation,  Y, N, N),
             "Hardsigmoid":      (self.test_Activation,  Y, N, N),
@@ -80,8 +80,8 @@ class TORCH_IR_TESTER(object):
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
-        #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
-        self.support_asym = [True, False]
+        #self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
+        self.support_asym =  [True, False]
         self.model_file = ".bmodel"
         self.is_cv18xx = False
         self.chip = chip.lower()
@@ -965,32 +965,32 @@ def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cas
 
 
 def test_all(tester: TORCH_IR_TESTER):
-    # import multiprocessing
-    # process_number = multiprocessing.cpu_count() // 2 + 1
-    # processes = []
-    # error_cases = multiprocessing.Manager().list()
-    # success_cases = multiprocessing.Manager().list()
-    # for case in tester.test_cases:
-    #     if tester.check_support(case):
-    #         p = multiprocessing.Process(target=test_one_case_in_all,
-    #                                     args=(tester, case, error_cases, success_cases))
-    #         processes.append(p)
-    #     if len(processes) == process_number:
-    #         for p in processes:
-    #             p.start()
-    #         for j in processes:
-    #             j.join()
-    #         processes = []
-    # if processes:
-    #     for p in processes:
-    #         p.start()
-    #     for j in processes:
-    #         j.join()
-    error_cases = []
-    success_cases = []
+    import multiprocessing
+    process_number = multiprocessing.cpu_count() // 2 + 1
+    processes = []
+    error_cases = multiprocessing.Manager().list()
+    success_cases = multiprocessing.Manager().list()
     for case in tester.test_cases:
         if tester.check_support(case):
-            test_one_case_in_all(tester, case, error_cases, success_cases)
+            p = multiprocessing.Process(target=test_one_case_in_all,
+                                        args=(tester, case, error_cases, success_cases))
+            processes.append(p)
+        if len(processes) == process_number:
+            for p in processes:
+                p.start()
+            for j in processes:
+                j.join()
+            processes = []
+    if processes:
+        for p in processes:
+            p.start()
+        for j in processes:
+            j.join()
+    # error_cases = []
+    # success_cases = []
+    # for case in tester.test_cases:
+    #     if tester.check_support(case):
+    #         test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
     print("Failure: {}".format(error_cases))
     if error_cases:
@@ -1006,7 +1006,7 @@ if __name__ == "__main__":
     parser.add_argument("--chip", default="bm1684x", type=str,
                         choices=['bm1684x', 'bm1686', 'cv183x'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
-    parser.add_argument("--mode", default="all", type=str, choices=['all', 'int8'],
+    parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8'],
                         help="chip platform name")
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--show_all", action="store_true", help='show all cases')

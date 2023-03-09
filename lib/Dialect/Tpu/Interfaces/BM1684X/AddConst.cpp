@@ -38,6 +38,11 @@ void tpu::AddConstOp::codegen_global_bm1684x() {
     param.common.B_dtype = DTYPE_INT32;
     param.common.scale_A = getMultiplier();
     param.common.rshift_A = getRshift();
+    if (module::isSign(getInput()) == false &&
+        module::isSign(getOutput()) == false) {
+      param.common.B_dtype = DTYPE_UINT32;
+      assert(param.common.B_const_val >= 0);
+    }
   } else {
     param.common.B_dtype =
         input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
@@ -102,7 +107,8 @@ void tpu::AddConstOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
 // dynamic codegen
 int64_t tpu::AddConstOp::dyn_codegen_local_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(constbinary_local_param_t);
+  if (!buffer)
+    return sizeof(constbinary_local_param_t);
   auto op = getOperation();
   auto gi = LocalGenInterface::getGroupInfo(op, 0, 0);
   auto input_type = module::getStorageType(getInput());
@@ -131,7 +137,8 @@ int64_t tpu::AddConstOp::dyn_codegen_local_bm1684x(void *buffer) {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::AddConstOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(constbinary_global_spec_t);
+  if (!buffer)
+    return sizeof(constbinary_global_spec_t);
   auto input_type = module::getStorageType(getInput());
   constbinary_global_spec_t param = {0};
   param.common.binary_type = BINARY_ADD;
@@ -150,8 +157,6 @@ int64_t tpu::AddConstOp::dyn_codegen_global_bm1684x(void *buffer) {
         input_type.isa<FloatType>() ? DTYPE_FP32 : DTYPE_INT32;
   }
   return BM168x::dynamic_spec_to_buffer(buffer, param);
- }
-
-int64_t tpu::AddConstOp::get_fw_type_bm1684x() {
-  return FW_BMNET_CONST_BINARY;
 }
+
+int64_t tpu::AddConstOp::get_fw_type_bm1684x() { return FW_BMNET_CONST_BINARY; }
