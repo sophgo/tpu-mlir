@@ -31,4 +31,6 @@ LogicalResult top::WhereOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::WhereOp::shape_inference() {}
+void top::WhereOp::shape_inference() {
+  broadcast_shape_inference(getOperation());
+}

@@ -170,6 +170,7 @@ class TorchConverter(BaseConverter):
             "aten::sub": lambda node: self.convert_sub_op(node),
             "aten::t": lambda node: self.convert_transpose_op(node),
             "aten::tanh": lambda node: self.convert_tanh_op(node),
+            "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
             "aten::hardswish": lambda node: self.convert_hardswish(node),
@@ -508,6 +509,20 @@ class TorchConverter(BaseConverter):
             'order': order,
         }
         new_op = self.mlir.create_permute_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_tile_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        repeats = self.const_val[torch_node.inputs[1]]
+        if np.prod(repeats) == 1:
+            self.addOperand(torch_node.name, op)
+            return
+
+        attr = {
+            'name': torch_node.name,
+            'repeats': repeats,
+        }
+        new_op = self.mlir.create_tile_ex_op([op], None, **attr)
         self.addOperand(torch_node.name, new_op)
 
     def convert_transpose_op(self, torch_node: TorchNode):
