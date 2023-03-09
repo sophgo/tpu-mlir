@@ -22,7 +22,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
 
-Failed_Cases = ["Gather", "Conv2d", "Elu"]
+Failed_Cases = [
+    "Gather", "Conv2d", "Elu", "ConstantPad1d", "ConstantPad2d", "ZeroPad2d", "ReflectionPad1d",
+    "ReflectionPad2d", "ReplicationPad1d", "ReplicationPad2d"
+]
 
 
 class TORCH_IR_TESTER(object):
@@ -40,17 +43,24 @@ class TORCH_IR_TESTER(object):
             "Div": self.test_Div,
             "Elu": self.test_Elu,
             # "Gather": self.test_Gather,
+            "Gelu": self.test_Activation,
+            "Hardsigmoid": self.test_Activation,
+            "Hardswish": self.test_Activation,
             "LayerNorm": self.test_LayerNorm,
             "Mul": self.test_Mul,
             "PRelu": self.test_PRelu,
             "Permute": self.test_Permute,
             "ReflectionPad1d": self.test_Pad1d,
             "ReflectionPad2d": self.test_Pad2d,
-            "Relu": self.test_Relu,
+            "Relu": self.test_Activation,
+            "Relu6": self.test_Activation,
             "ReplicationPad1d": self.test_Pad1d,
             "ReplicationPad2d": self.test_Pad2d,
+            "Sigmoid": self.test_Activation,
+            "Softplus": self.test_Activation,
             "Sub": self.test_Sub,
             "T": self.test_T,
+            "Tanh": self.test_Activation,
             "Transpose": self.test_Transpose,
             "ZeroPad2d": self.test_Pad2d,
         }
@@ -555,26 +565,36 @@ class TORCH_IR_TESTER(object):
         _test_elu((64, 32))
 
     #######################################################################
-    # Relu
+    # Activation
     # ------------
-    def test_Relu(self, case_name):
-        """Relu"""
+    def test_Activation(self, case_name):
+        """Activation Functions Without Extra Arguments"""
 
-        def _test_relu(in_shape):
+        def _test_activation(in_shape):
 
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
+                    self.activations = {
+                        "Gelu": nn.GELU(),
+                        "Hardsigmoid": nn.Hardsigmoid(),
+                        "Hardswish": nn.Hardswish(),
+                        "Relu": nn.ReLU(),
+                        "Relu6": nn.ReLU6(),
+                        "Sigmoid": nn.Sigmoid(),
+                        "Softplus": nn.Softplus(),
+                        "Tanh": nn.Tanh(),
+                    }
 
                 def forward(self, x):
-                    return torch.relu(x)
+                    return self.activations[case_name](x)
 
             self.convert_torch_and_compare([in_shape], case_name, Model().eval())
 
-        _test_relu((1, 3, 32, 32))
-        _test_relu((3, 16, 32))
-        _test_relu((64, 32))
+        _test_activation((1, 3, 32, 32))
+        _test_activation((3, 16, 32))
+        _test_activation((64, 32))
 
     #######################################################################
     # Pad1D
@@ -591,14 +611,14 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    self.pad1d = nn.ConstantPad1d(padding, value)
-                    if case_name == "ReflectionPad1d":
-                        self.pad1d = nn.ReflectionPad1d(padding)
-                    elif case_name == "ReplicationPad1d":
-                        self.pad1d = nn.ReplicationPad1d(padding)
+                    self.pad1d = {
+                        "ReflectionPad1d": nn.ReflectionPad1d(padding),
+                        "ReplicationPad1d": nn.ReplicationPad1d(padding),
+                        "ConstantPad1d": nn.ConstantPad1d(padding, value),
+                    }
 
                 def forward(self, x):
-                    return self.pad1d(x)
+                    return self.pad1d[case_name](x)
 
             self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
@@ -623,16 +643,15 @@ class TORCH_IR_TESTER(object):
 
                 def __init__(self):
                     super(Model, self).__init__()
-                    self.pad2d = nn.ConstantPad2d(padding, value)
-                    if case_name == "ReflectionPad2d":
-                        self.pad2d = nn.ReflectionPad2d(padding)
-                    elif case_name == "ReplicationPad2d":
-                        self.pad2d = nn.ReplicationPad2d(padding)
-                    elif case_name == "ZeroPad2d":
-                        self.pad2d = nn.ZeroPad2d(padding)
+                    self.pad2d = {
+                        "ReflectionPad2d": nn.ReflectionPad2d(padding),
+                        "ReplicationPad2d": nn.ReplicationPad2d(padding),
+                        "ZeroPad2d": nn.ZeroPad2d(padding),
+                        "ConstantPad2d": nn.ConstantPad2d(padding, value),
+                    }
 
                 def forward(self, x):
-                    return self.pad2d(x)
+                    return self.pad2d[case_name](x)
 
             self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
