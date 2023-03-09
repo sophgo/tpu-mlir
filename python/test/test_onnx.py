@@ -7,7 +7,6 @@
 # ==============================================================================
 
 from copy import deepcopy
-from re import T
 import numpy as np
 import onnx
 from onnx import helper
@@ -15,6 +14,7 @@ from onnx import TensorProto
 from tools.model_runner import mlir_inference, model_inference, onnx_inference, show_fake_cmd
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
+from utils.auto_remove import file_mark, file_clean
 from utils.mlir_shell import *
 import os
 import torch
@@ -30,7 +30,7 @@ class ONNX_IR_TESTER(object):
     def __init__(self, chip: str = "bm1684x", mode: str = "all", dynamic: bool = True):
         Y, N = True, False
         # yapf: disable
-        self.test_function = {
+        self.test_cases = {
             #########################################
             # ONNX Test Case, Alphabetically
             #########################################
@@ -229,15 +229,15 @@ class ONNX_IR_TESTER(object):
 
     def test_single(self, case: str):
         print("Test: {}".format(case))
-        if case in self.test_function:
-            func, _, _, _ = self.test_function[case]
+        if case in self.test_cases:
+            func, _, _, _ = self.test_cases[case]
             func(case)
             print("====== TEST {} Success ======".format(case))
         else:
             raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        _, bm1684x_support, bm1686_support, cv183x_support = self.test_function[case]
+        _, bm1684x_support, bm1686_support, cv183x_support = self.test_cases[case]
         if self.is_cv18xx and cv183x_support:
             return True
         if self.chip == "bm1684x" and bm1684x_support:
@@ -268,6 +268,7 @@ class ONNX_IR_TESTER(object):
 
         onnx_model = "{}_opt.onnx".format(model_name)
         input_npz = "{}_in_fp32.npz".format(model_name)
+        file_mark(input_npz)
         for name in input_data:
             if input_data[name].dtype in [np.int64, np.int32]:
                 input_data[name] = input_data[name].astype(np.int32)
@@ -330,6 +331,7 @@ class ONNX_IR_TESTER(object):
         input_data = np.load(input_npz)
         # save ref
         ref_npz = "{}_top_out.npz".format(model_name)
+        file_mark(ref_npz)
         # tpu mlir inference and compare
         if quant_mode == "int8" or quant_mode == "qdq":
             ref_tpu_tolerance = "0.95,0.70" if not isAsym else "0.90,0.54"
@@ -338,6 +340,7 @@ class ONNX_IR_TESTER(object):
         elif quant_mode == "bf16":
             ref_tpu_tolerance = "0.95,0.85"
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        file_mark(tpu_npz)
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
         if quant_mode == "qdq":
@@ -351,6 +354,7 @@ class ONNX_IR_TESTER(object):
             np.savez(tpu_npz, **tpu_mlir_outs)
         # bmodel / cvimodel inference and compare
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
         show_fake_cmd(input_npz, bmodel, model_npz)
         model_outs = model_inference(input_data, bmodel)
         np.savez(model_npz, **model_outs)
@@ -3978,7 +3982,7 @@ def test_all(tester: ONNX_IR_TESTER):
     processes = []
     error_cases = multiprocessing.Manager().list()
     success_cases = multiprocessing.Manager().list()
-    for case in tester.test_function:
+    for case in tester.test_cases:
         if tester.check_support(case):
             p = multiprocessing.Process(target=test_one_case_in_all,
                                         args=(tester, case, error_cases, success_cases))
@@ -4013,13 +4017,14 @@ if __name__ == "__main__":
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'f32', 'f16', 'bf16', 'int8', 'int4'],
                         help="chip platform name")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
+    parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
     tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic)
     if args.show_all:
         print("====== Show All Cases ============")
-        for case in tester.test_function:
+        for case in tester.test_cases:
             print(case)
         exit(0)
     dir = "onnx_test_{}".format(args.chip)
@@ -4029,3 +4034,5 @@ if __name__ == "__main__":
         test_all(tester)
     else:
         tester.test_single(args.case)
+    if args.debug == False:
+        file_clean()

@@ -13,6 +13,7 @@ from tools.model_runner import mlir_inference, model_inference, tflite_inference
 from tools.npz_tool import npz_compare
 from tools.model_transform import *
 from utils.mlir_shell import *
+from utils.auto_remove import file_mark, file_clean
 import os
 
 # from tflite.BuiltinOperator import BuiltinOperator
@@ -50,9 +51,9 @@ class TFLITE_IR_TESTER(object):
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x", mode: str = "all"):
         self.test_function = {
-            #############################
+            #######################################
             # TfLite Test Case, Alphabetically
-            #############################
+            #######################################
             "Add": self.test_Add,
             "AveragePool2d": self.test_Average_Pool2d,
             "Cast": self.test_Cast,
@@ -164,6 +165,7 @@ class TFLITE_IR_TESTER(object):
         tool.model_transform(fp32_mlir)
 
         input_npz = "{}_ref_in_fp32.npz".format(model_name)
+        file_mark(input_npz)
         ref_npz = model_name + '_ref_outputs.npz'
         for name in input_data:
             if input_data[name].dtype in [np.int64, np.int32]:
@@ -177,8 +179,8 @@ class TFLITE_IR_TESTER(object):
         if not input_is_nchw:
           input_data = {k: nhwc2nchw(v) for k, v in input_data.items()}
           input_npz = "{}_in_fp32.npz".format(model_name)
+          file_mark(input_npz)
           np.savez(input_npz, **input_data)
-        # np.savez(ref_npz, **tflite_outs)
         return (tflite_outs, input_npz)
 
     def bmodel_generate(self,
@@ -217,8 +219,10 @@ class TFLITE_IR_TESTER(object):
         input_data = np.load(input_npz)
         # save ref
         ref_npz = "{}_ref_outputs.npz".format(model_name)
+        file_mark(ref_npz)
         # tpu mlir inference and compare
         tpu_npz = tpu_mlir.replace(".mlir", "_tpu_out.npz")
+        file_mark(tpu_npz)
         show_fake_cmd(input_npz, tpu_mlir, tpu_npz)
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
         np.savez(ref_npz, **tflite_output)
@@ -226,6 +230,7 @@ class TFLITE_IR_TESTER(object):
         npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
         # bmodel inference and compare
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
+        file_mark(model_npz)
         show_fake_cmd(input_npz, bmodel, model_npz)
         model_outs = model_inference(input_data, bmodel)
         np.savez(model_npz, **model_outs)
@@ -943,12 +948,16 @@ if __name__ == "__main__":
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'int8'],
                         help="chip platform name")
+    parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
     # yapf: enable
     args = parser.parse_args()
     tester = TFLITE_IR_TESTER(args.chip, args.mode)
-    os.makedirs("tflite_test", exist_ok=True)
-    os.chdir("tflite_test")
+    dir = "tflite_test_{}".format(args.chip)
+    os.makedirs(dir, exist_ok=True)
+    os.chdir(dir)
     if args.case == "" or args.case.lower() == "all":
         test_all(tester)
     else:
         tester.test_single(args.case)
+    if args.debug == False:
+        file_clean()

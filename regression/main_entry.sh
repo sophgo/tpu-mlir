@@ -62,6 +62,9 @@ run_onnx_op() {
       echo "test_onnx.py --chip ${chip} FAILED" >>result.log
       cat test_onnx_${chip}.log >>fail.log
       ERR=1
+      if [ x${test_type} == xbasic ]; then
+        return $ERR
+      fi
     fi
     echo "test_onnx.py --chip ${chip} PASSED" >>result.log
   done
