@@ -115,4 +115,25 @@ LogicalResult top::AvgPoolOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::AvgPoolOp::shape_inference() {}
+void top::AvgPoolOp::shape_inference() {
+  auto input_shape = module::getShape(getInput());
+  auto kernel_shape = module::getI64Array(getKernelShape());
+  assert(input_shape.size() > 2);
+  int spacial_rank = input_shape.size() - 2;
+  assert(spacial_rank == getKernelShape().size());
+  assert(getPads().size() == spacial_rank * 2);
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(input_shape[0]);
+  out_shape.push_back(input_shape[1]);
+  auto input_spacial_shape = llvm::ArrayRef(&input_shape[2], spacial_rank);
+  auto pads = module::getI64Array(getPads());
+  auto strides = module::getI64Array(getStrides());
+  for (int i = 0; i < spacial_rank; i++) {
+    auto out_dim = (input_spacial_shape[i] + pads->at(i) +
+                    pads->at(i + spacial_rank) - kernel_shape->at(i)) /
+                       strides->at(i) +
+                   1;
+    out_shape.push_back(out_dim);
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

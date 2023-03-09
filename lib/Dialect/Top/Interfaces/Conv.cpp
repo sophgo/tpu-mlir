@@ -138,12 +138,12 @@ void top::ConvOp::shape_inference() {
   auto strides = module::getI64Array(getStrides());
   auto dilation = module::getI64Array(getDilations(), spacial_rank, 1);
   for (int i = 0; i < spacial_rank; i++) {
-    auto out =
+    auto out_dim =
         (input_spacial_shape[i] + pads->at(i) + pads->at(i + spacial_rank) -
          dilation->at(i) * (filter_spacial_shape[i] - 1) - 1) /
             strides->at(i) +
         1;
-    out_shape.push_back(out);
+    out_shape.push_back(out_dim);
   }
   module::setShapeOrVerify(getOutput(), out_shape);
 }
