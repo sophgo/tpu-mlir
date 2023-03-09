@@ -196,5 +196,7 @@ void BM1684::load_functions() {
   CAST_FUNCTION(nodechip_const_binary_local);
   CAST_FUNCTION(nodechip_transpose);
   CAST_FUNCTION(nodechip_transpose_fix8b);
+  CAST_FUNCTION(nodechip_float2int8_local_keep_input);
+  CAST_FUNCTION(tensor_int8_to_float_local_v2);
   // clang-format on
 }
