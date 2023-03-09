@@ -79,6 +79,7 @@ typedef struct {
   int64_t M;
   int64_t K;
   int64_t N;
+  int64_t batch_low;
   bool with_bias;
   bool do_relu;
   double relu_limit;

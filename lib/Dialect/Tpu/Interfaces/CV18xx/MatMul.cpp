@@ -104,7 +104,7 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, rshift_int32, multiplier_int32,
           &weight_opt.old_data, &weight_opt.new_data, batch_high, batch_low,
-          false, false, false);
+          getLeftTranspose(), getRightTranspose(), false);
     } else {
       // TODO batch_high, batch_low, lstride, ostride, do_quant_bf16
       if (p.with_bias) {
@@ -133,12 +133,17 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
       cvi_backend_tg_bf16_fc_kernel(
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, &weight_opt.old_data, &weight_opt.new_data,
-          batch_high, batch_low, false, false, false, do_quant_bf16, ga_scale,
-          ga_zeropoint);
+          batch_high, batch_low, getLeftTranspose(), getRightTranspose(), false,
+          do_quant_bf16, ga_scale, ga_zeropoint);
     }
   } else {
     int batch_high = p.batch; // fixme
     int batch_low = 1;        // fixme
+    if (getRightTranspose() && getHdimIsBatch()) {
+      batch_low = p.batch_low;
+      batch_high = p.batch / batch_low;
+
+    }
     if (module::isUniformQuantized(getOutput())) {
       auto multiplier_v = module::getI64Array(getMultipliers(), 1, 1);
       auto rshift_v = module::getI64Array(getRshifts(), 1, 0);
@@ -150,13 +155,14 @@ void tpu::MatMulOp::codegen_global_cv18xx(int64_t layer_id) {
       cvi_backend_tg_fixed_fc_kernel(
           layer_id, ga_input, ga_filter, ga_bias, ga_output, p.M, p.K, p.N,
           p.with_bias, p.do_relu, rshift_int32, multiplier_int32, nullptr,
-          nullptr, batch_high, batch_low, false, false, false);
+          nullptr, batch_high, batch_low, getLeftTranspose(),
+          getRightTranspose(), false);
     } else {
       // TODO batch_high, batch_low, lt, rt, ot
       cvi_backend_tg_bf16_fc_kernel(layer_id, ga_input, ga_filter, GA_INVALID,
                                     ga_output, p.M, p.K, p.N, false, p.do_relu,
                                     nullptr, nullptr, batch_high, batch_low,
-                                    false, false, false);
+                                    getLeftTranspose(), getRightTranspose(), false);
     }
   }
 }

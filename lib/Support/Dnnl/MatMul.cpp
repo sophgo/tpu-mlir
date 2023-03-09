@@ -22,7 +22,8 @@ MatMul::MatMul() {
 }
 
 void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
-                        int64_t K, int64_t N, bool right_transpose) {
+                        int64_t K, int64_t N, bool right_transpose,
+                        bool hdim_is_batch, int64_t batch_low) {
   int64_t weight_len = batch * K * N;
   p_right = right;
   origin_right = right;
@@ -32,6 +33,8 @@ void MatMul::right_init(float *right, int64_t right_zp, int64_t batch,
     // tensor_sub_zp(right_after_init->data(), right, weight_len, right_zp);
     right_has_zp_ = right_zp != 0;
     has_transpose_ = right_transpose;
+    hdim_is_batch_ = hdim_is_batch;
+    batch_low_ = batch_low;
   }
 }
 
@@ -48,16 +51,17 @@ void MatMul::input_init(float *input, int64_t input_zp, int64_t batch,
 }
 
 void MatMul::setup(float *left, float *right, float *bias, float *output,
-                   int64_t batch, int64_t M, int64_t K, int64_t N,
-                   bool do_relu, double relu_limit, int64_t right_zp,
-                   bool right_transpose, int64_t input_zp) {
+                   int64_t batch, int64_t M, int64_t K, int64_t N, bool do_relu,
+                   double relu_limit, int64_t right_zp, bool right_transpose,
+                   int64_t input_zp, bool hdim_is_batch, int64_t batch_low) {
   // printf("MatMul ldt:%ld, rdt:%ld, bdt:%ld, odt:%ld, rshift:%ld\n", ldt, rdt,
   // bdt, odt, rshift);
   memory::dims src_dims = {batch, M, K};
   memory::dims weights_dims = {batch, K, N};
   memory::dims bias_dims = {1, 1, N};
   memory::dims dst_dims = {batch, M, N};
-  right_init(right, right_zp, batch, K, N, right_transpose);
+  right_init(right, right_zp, batch, K, N, right_transpose, hdim_is_batch,
+             batch_low);
   input_init(left, input_zp, batch, M, K);
   batch_ = batch;
   M_ = M;
@@ -81,8 +85,9 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
 
   matmul_pd = matmul::primitive_desc(matmul_d, matmul_attr, eng);
 
-  auto src_float_memory = memory(
-      {{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng, p_input);
+  auto src_float_memory =
+      memory({{src_dims}, memory::data_type::f32, memory::format_tag::abc}, eng,
+             p_input);
   auto prim_src_memory = src_float_memory;
   if (matmul_pd.src_desc() != src_float_memory.get_desc()) {
     prim_src_memory = memory(matmul_pd.src_desc(), eng);
@@ -111,8 +116,8 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
   if (matmul_pd.bias_desc() != bias_float_memory.get_desc()) {
     prim_bias_memory = memory(matmul_pd.bias_desc(), eng);
     net.push_back(reorder(bias_float_memory, prim_bias_memory));
-    net_args.push_back({{DNNL_ARG_FROM, bias_float_memory},
-                        {DNNL_ARG_TO, prim_bias_memory}});
+    net_args.push_back(
+        {{DNNL_ARG_FROM, bias_float_memory}, {DNNL_ARG_TO, prim_bias_memory}});
   }
 
   auto prim_dst_memory = memory(matmul_pd.dst_desc(), eng);
@@ -134,14 +139,22 @@ void MatMul::setup(float *left, float *right, float *bias, float *output,
 }
 
 void MatMul::run() {
-  float* p_input_after = origin_right;
+  float *p_input_after = origin_right;
   if (has_transpose_) {
-    tensor_hw_transpose(right_after_init->data(), origin_right, 1, batch_, N_, K_);
+    if (hdim_is_batch_) {
+      int64_t batch_high = batch_ / batch_low_;
+      tensor_hc_transpose(right_after_init->data(), origin_right, batch_high,
+                          K_, batch_low_, N_);
+    } else {
+      tensor_hw_transpose(right_after_init->data(), origin_right, 1, batch_, N_,
+                          K_);
+    }
     p_input_after = right_after_init->data();
   }
   if (right_has_zp_) {
     int64_t weight_len = batch_ * K_ * N_;
-    tensor_sub_zp(right_after_init->data(), p_input_after, weight_len, right_zp_);
+    tensor_sub_zp(right_after_init->data(), p_input_after, weight_len,
+                  right_zp_);
   }
   if (input_has_zp_) {
     int64_t input_len = batch_ * K_ * M_;

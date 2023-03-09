@@ -14,8 +14,12 @@ namespace tpu_mlir {
 namespace bm1684x {
 
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
-
+  // clang-format off
+  patterns->add<
+      ConvertMatMulWithRightTranspose
+  >(patterns->getContext());
+  // clang-format on
 }
 
-}
-}
+} // namespace bm1684x
+} // namespace tpu_mlir

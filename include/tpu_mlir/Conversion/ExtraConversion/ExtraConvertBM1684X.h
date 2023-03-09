@@ -19,6 +19,12 @@ using namespace llvm;
 namespace tpu_mlir {
 
 namespace bm1684x {
+class ConvertMatMulWithRightTranspose : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override;
+};
 
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 }

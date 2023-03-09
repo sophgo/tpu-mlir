@@ -136,6 +136,8 @@ void tensor_sub_zp(float *tensor_after_zp, float *src, int64_t length,
                    float zero_point);
 void tensor_hw_transpose(float *dst, float *src, int64_t N, int64_t C,
                          int64_t H, int64_t W);
+void tensor_hc_transpose(float *dst, float *src, int64_t N, int64_t C,
+                         int64_t H, int64_t W);
 void tensor_split(float *src_data, std::vector<std::vector<float>> &dst_data,
                   std::vector<int64_t> &shape, int slice_num, int axis);
 

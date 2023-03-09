@@ -83,7 +83,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
-void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
+class ConvertMatMulWithRightTranspose : public OpRewritePattern<top::MatMulOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MatMulOp op,
+                                PatternRewriter &rewriter) const override;
+};
 
+void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 } // namespace cv18xx
 } // namespace tpu_mlir
