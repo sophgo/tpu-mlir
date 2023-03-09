@@ -173,6 +173,8 @@ typedef void (*nodechip_const_binary)(uint64_t bottom_global_addr, uint64_t leng
 typedef void (*nodechip_global_int2float)(uint64_t bottom_global_offset, uint64_t top_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE mode, CMD_ID_NODE* id_node);
 typedef void (*nodechip_float2int8_v2)(uint64_t A_global_offset, uint64_t R_global_offset, int input_n, int input_c, int input_h, int input_w, int sign_unsign, TENSOR_STORAGE_MODE stmode, ROUND_MODE_T round_mode, CMD_ID_NODE* id_node);
 typedef void (*nodechip_const_binary_local)(uint32_t bottom0_lo, uint32_t *bottom0_shape, float bottom1_val, uint32_t top_lo, int binary_op, int inversed, int if_relu, float relu_limit, CMD_ID_NODE *pid_node);
+typedef void (*nodechip_transpose)(uint64_t input_global_addr, uint64_t output_global_addr, const uint32_t* input_shape, const int* order, int dims, int type_len, int store_mode, uint64_t buffer_global_addr, uint64_t *buffer_size, CMD_ID_NODE* pid_node);
+typedef void (*nodechip_transpose_fix8b)(uint64_t input_global_addr, uint64_t output_global_addr, const uint32_t* input_shape, const int* order, int dims, int in_store_mode, int out_store_mode, uint64_t buffer_global_addr, uint64_t* buffer_size, CMD_ID_NODE* pid_node);
 
 // clang-format on
 namespace tpu_mlir {
@@ -351,6 +353,8 @@ public:
   nodechip_global_int2float dl_nodechip_global_int2float;
   nodechip_float2int8_v2 dl_nodechip_float2int8_v2;
   nodechip_const_binary_local dl_nodechip_const_binary_local;
+  nodechip_transpose dl_nodechip_transpose;
+  nodechip_transpose_fix8b dl_nodechip_transpose_fix8b;
   // clang-format on
 public:
   virtual uint32_t get_bdc_len(int bdc_num, int group_id) override;
