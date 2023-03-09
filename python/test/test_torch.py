@@ -22,50 +22,48 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
 
-Failed_Cases = [
-    "Gather", "Conv2d", "Elu", "ConstantPad1d", "ConstantPad2d", "ZeroPad2d", "ReflectionPad1d",
-    "ReflectionPad2d", "ReplicationPad1d", "ReplicationPad2d"
-]
-
 
 class TORCH_IR_TESTER(object):
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x", mode: str = "all"):
-        self.test_function = {
-            #############################
+        Y, N = True, False
+        # yapf: disable
+        self.test_cases = {
+            ##################################
             # Torch Test Case, Alphabetically
-            #############################
-            "Add": self.test_Add,
-            "Compare": self.test_Compare,
-            "Concat": self.test_Concat,
-            "ConstantPad1d": self.test_Pad1d,
-            "ConstantPad2d": self.test_Pad2d,
-            "Conv2d": self.test_Conv2d,
-            "Div": self.test_Div,
-            "Elu": self.test_Elu,
-            # "Gather": self.test_Gather,
-            "Gelu": self.test_Activation,
-            "Hardsigmoid": self.test_Activation,
-            "Hardswish": self.test_Activation,
-            "LayerNorm": self.test_LayerNorm,
-            "Mul": self.test_Mul,
-            "PRelu": self.test_PRelu,
-            "Permute": self.test_Permute,
-            "ReflectionPad1d": self.test_Pad1d,
-            "ReflectionPad2d": self.test_Pad2d,
-            "Relu": self.test_Activation,
-            "Relu6": self.test_Activation,
-            "ReplicationPad1d": self.test_Pad1d,
-            "ReplicationPad2d": self.test_Pad2d,
-            "Sigmoid": self.test_Activation,
-            "Softplus": self.test_Activation,
-            "Sub": self.test_Sub,
-            "T": self.test_T,
-            "Tanh": self.test_Activation,
-            "Transpose": self.test_Transpose,
-            "ZeroPad2d": self.test_Pad2d,
-
+            ##################################
+            # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "Add":              (self.test_Add,         Y, N, N),
+            "Compare":          (self.test_Compare,     Y, N, N),
+            "Concat":           (self.test_Concat,      Y, N, N),
+            "ConstantPad1d":    (self.test_Pad1d,       N, N, N),
+            "ConstantPad2d":    (self.test_Pad2d,       N, N, N),
+            "Conv2d":           (self.test_Conv2d,      N, N, N),
+            "Div":              (self.test_Div,         Y, N, N),
+            "Elu":              (self.test_Elu,         N, N, N),
+            "Gather":           (self.test_Gather,      N, N, N),
+            "Gelu":             (self.test_Activation,  Y, N, N),
+            "Hardsigmoid":      (self.test_Activation,  Y, N, N),
+            "Hardswish":        (self.test_Activation,  Y, N, N),
+            "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
+            "Mul":              (self.test_Mul,         Y, N, N),
+            "PRelu":            (self.test_PRelu,       Y, N, N),
+            "Permute":          (self.test_Permute,     Y, N, N),
+            "ReflectionPad1d":  (self.test_Pad1d,       N, N, N),
+            "ReflectionPad2d":  (self.test_Pad2d,       N, N, N),
+            "Relu":             (self.test_Activation,  Y, N, N),
+            "Relu6":            (self.test_Activation,  Y, N, N),
+            "ReplicationPad1d": (self.test_Pad1d,       N, N, N),
+            "ReplicationPad2d": (self.test_Pad2d,       N, N, N),
+            "Sigmoid":          (self.test_Activation,  Y, N, N),
+            "Softplus":         (self.test_Activation,  Y, N, N),
+            "Sub":              (self.test_Sub,         Y, N, N),
+            "T":                (self.test_T,           Y, N, N),
+            "Tanh":             (self.test_Activation,  Y, N, N),
+            "Transpose":        (self.test_Transpose,   Y, N, N),
+            "ZeroPad2d":        (self.test_Pad2d,       N, N, N),
         }
+        # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8", "int4"]
         self.support_asym = [True, False]
@@ -91,27 +89,23 @@ class TORCH_IR_TESTER(object):
 
     def test_single(self, case: str):
         np.random.seed(0)
-        if case in self.test_function:
-            print("Test: {}".format(case))
-            self.test_function[case](case)
+        print("Test: {}".format(case))
+        if case in self.test_cases:
+            func, _, _, _ = self.test_cases[case]
+            func(case)
             print("====== TEST {} Success ======".format(case))
         else:
-            self.list()
+            raise RuntimeError("case [{}] is not exist".format(case))
 
     def check_support(self, case):
-        if case in Failed_Cases:
-            return False
-        return True
-
-    def list(self):
-        print("====== All Support Ops ======")
-        for case in self.test_function:
-            if case not in Failed_Cases:
-                print(case)
-        print("====== Error Ops ======")
-        for case in self.test_function:
-            if case in Failed_Cases:
-                print(case)
+        _, bm1684x_support, bm1686_support, cv183x_support = self.test_cases[case]
+        if self.is_cv18xx and cv183x_support:
+            return True
+        if self.chip == "bm1684x" and bm1684x_support:
+            return True
+        if self.chip == "bm1686" and bm1686_support:
+            return True
+        return False
 
     def square_rooted(self, x):
         return np.sqrt(sum([a * a for a in x]))
@@ -157,10 +151,12 @@ class TORCH_IR_TESTER(object):
         for idx, name in enumerate(tool.converter.input_names):
             input_data[name] = np.random.random(size=in_shapes[idx]).astype(np.float32)
         np.savez(input_npz, **input_data)
+        file_mark(input_npz)
         # # top mlir outputs will be inferenced first in case the quant mode is int8
         show_fake_cmd(input_npz, torch_model, ref_npz)
         torch_outs = torch_inference(input_data, torch_model, True)
         np.savez(ref_npz, **torch_outs)
+        file_mark(ref_npz)
         show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
         return (torch_outs, top_mlir_outs, input_npz)
@@ -211,12 +207,15 @@ class TORCH_IR_TESTER(object):
         tpu_mlir_outs = mlir_inference(input_data, tpu_mlir, dump_all=True)
         np.savez(ref_npz, **torch_output)
         np.savez(tpu_npz, **tpu_mlir_outs)
+        file_mark(ref_npz)
+        file_mark(tpu_npz)
         npz_compare([ref_npz, tpu_npz, "--tolerance", ref_tpu_tolerance, "-v"])
         # bmodel inference and compare
         model_npz = bmodel.replace("." + bmodel.split(".")[-1], "_model_out.npz")
         show_fake_cmd(input_npz, bmodel, model_npz)
         model_outs = model_inference(input_data, bmodel)
         np.savez(model_npz, **model_outs)
+        file_mark(model_npz)
         npz_compare([tpu_npz, model_npz, "--tolerance", "0.95,0.80", "-v"])
 
         msg = quant_mode.upper()
@@ -446,23 +445,23 @@ class TORCH_IR_TESTER(object):
     #######################################################################
     # Gather
     # ------------
-    # def test_Gather(self, case_name):
-    #   """Gather"""
-    #   def _test_gather(in0_shape, in1_shape, dim=None):
-    #     class Model(nn.Module):
-    #       def __init__(self):
-    #           super(Model, self).__init__()
-    #       def forward(self, x):
-    #           # if dim is None:
-    #           #   y1 = torch.concat((x, self.weight))
-    #           # else:
-    #           #   y1 = torch.concat((x, self.weight), dim=dim)
-    #           return
-    #     self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+    def test_Gather(self, case_name):
+      """Gather"""
+      def _test_gather(in0_shape, in1_shape, dim=None):
+        class Model(nn.Module):
+          def __init__(self):
+              super(Model, self).__init__()
+          def forward(self, x):
+              # if dim is None:
+              #   y1 = torch.concat((x, self.weight))
+              # else:
+              #   y1 = torch.concat((x, self.weight), dim=dim)
+              return
+        self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
 
-    #   _test_gather((1, 3, 32, 32), (1,6,32,32), 1)
-    #   _test_gather((2, 32, 16), (3, 32, 16))
-    #   _test_gather((32, 32), (1, 32), 0)
+      _test_gather((1, 3, 32, 32), (1,6,32,32), 1)
+      _test_gather((2, 32, 16), (3, 32, 16))
+      _test_gather((32, 32), (1, 32), 0)
 
     #######################################################################
     # Permute
@@ -695,7 +694,7 @@ def test_all(tester: TORCH_IR_TESTER):
     # processes = []
     # error_cases = multiprocessing.Manager().list()
     # success_cases = multiprocessing.Manager().list()
-    # for case in tester.test_function:
+    # for case in tester.test_cases:
     #     if tester.check_support(case):
     #         p = multiprocessing.Process(target=test_one_case_in_all,
     #                                     args=(tester, case, error_cases, success_cases))
@@ -713,7 +712,7 @@ def test_all(tester: TORCH_IR_TESTER):
     #         j.join()
     error_cases = []
     success_cases = []
-    for case in tester.test_function:
+    for case in tester.test_cases:
         if tester.check_support(case):
             test_one_case_in_all(tester, case, error_cases, success_cases)
     print("Success: {}".format(success_cases))
@@ -729,14 +728,20 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     # yapf: disable
     parser.add_argument("--chip", default="bm1684x", type=str,
-                        choices=['bm1684x'],
-                        help="chip platform name")
+                        choices=['bm1684x', 'bm1686', 'cv183x'], help="chip platform name")
     parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
     parser.add_argument("--mode", default="all", type=str, choices=['all', 'int8'],
                         help="chip platform name")
+    parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
+    parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
     tester = TORCH_IR_TESTER(args.chip, args.mode)
+    if args.show_all:
+        print("====== Show All Cases ============")
+        for case in tester.test_cases:
+            print(case)
+        exit(0)
     dir = "torch_test_{}".format(args.chip)
     os.makedirs(dir, exist_ok=True)
     os.chdir(dir)
@@ -744,3 +749,5 @@ if __name__ == "__main__":
         test_all(tester)
     else:
         tester.test_single(args.case)
+    if args.debug == False:
+        file_clean()
