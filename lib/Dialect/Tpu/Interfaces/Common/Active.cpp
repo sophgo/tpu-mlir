@@ -10,10 +10,11 @@
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 
-#include "tpu_mlir/Support/Module.h"
+#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "tpu_mlir/Support/Float16.h"
+#include "tpu_mlir/Support/Module.h"
 
 static mlir::Type t;
 
@@ -59,9 +60,8 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::ELU: {
     const auto coeffs_ = module::getF64Array(getCoeffs(), 1, 0);
     const double alpha = coeffs_->at(0);
-    active_func(p, num_element, [alpha](double val) {
-      return elu(val, alpha);
-    });
+    active_func(p, num_element,
+                [alpha](double val) { return elu(val, alpha); });
     break;
   }
   case ActiveMode::ERF:
@@ -116,6 +116,9 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
   case ActiveMode::SOFT_SIGN:
     active_func(p, num_element,
                 [](double val) { return val / (1 + std::abs(val)); });
+    break;
+  case ActiveMode::MISH:
+    active_func(p, num_element, activate_f(my_mish_activate));
     break;
   default:
     llvm_unreachable("Not Implemented");

@@ -60,6 +60,7 @@ int64_t tpu::ActiveOp::getBufferSize_bm1684x(
   case ActiveMode::MISH:
   case ActiveMode::EXP:
   case ActiveMode::ELU:
+  case ActiveMode::LOG_SIGMOID:
   case ActiveMode::SOFT_PLUS:
   case ActiveMode::SILU:
   case ActiveMode::SIGMOID:

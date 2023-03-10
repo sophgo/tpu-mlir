@@ -64,7 +64,34 @@ struct DivToMul : public OpRewritePattern<DivOp> {
   }
 };
 
+struct DivToSoftSign : public OpRewritePattern<DivOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(DivOp op,
+                                PatternRewriter &rewriter) const override {
+
+    if (op.getInputs().size() != 2) {
+      return failure();
+    }
+    auto left = op.getOperands()[0];
+    auto addConstOp = dyn_cast<AddConstOp>(op.getOperands()[1].getDefiningOp());
+    if (!addConstOp || addConstOp.getConstVal().convertToDouble() != 1.0) {
+      return failure();
+    }
+
+    auto absOp = dyn_cast<AbsOp>(addConstOp.getOperand().getDefiningOp());
+    if (!absOp || left != absOp.getOperand()) {
+      return failure();
+    }
+
+    std::vector<NamedAttribute> attrs;
+    rewriter.replaceOpWithNewOp<SoftsignOp>(op, op.getOutput().getType(),
+                                            ValueRange{left}, attrs);
+    return success();
+  }
+};
+
 void DivOp::getCanonicalizationPatterns(RewritePatternSet &results,
                                         MLIRContext *context) {
-  results.insert<DivToMul>(context);
+  results.insert<DivToSoftSign, DivToMul>(context);
 }
