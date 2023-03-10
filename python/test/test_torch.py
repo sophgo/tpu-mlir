@@ -58,6 +58,7 @@ class TORCH_IR_TESTER(object):
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
             "LogSigmoid":       (self.test_Activation,  Y, N, N),
             "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
+            "LSTM":             (self.test_LSTM,        N, N, N),
             "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
             "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
@@ -88,7 +89,7 @@ class TORCH_IR_TESTER(object):
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
         #self.support_quant_modes = ["f32", "f16", "bf16", "int8"]
-        self.support_asym =  [True, False]
+        self.support_asym = [True, False]
         self.model_file = ".bmodel"
         self.is_cv18xx = False
         self.chip = chip.lower()
@@ -567,7 +568,7 @@ class TORCH_IR_TESTER(object):
             def forward(self, x):
                 x = self.layer_norm(x)
                 y = self.prelu(x)
-                return y
+                return x, y
 
         input_shape = [14, 25] + normalize_shape
         self.convert_torch_and_compare([input_shape], case_name, Net().eval())
@@ -875,6 +876,24 @@ class TORCH_IR_TESTER(object):
             _test_leaky_relu((1, 3, 32, 32), alpha)
             _test_leaky_relu((3, 16, 32), alpha)
             _test_leaky_relu((64, 32), alpha)
+
+    #######################################################################
+    # LSTM
+    # ------------
+    def test_LSTM(self, case_name):
+
+        class Net(torch.nn.Module):
+
+            def __init__(self):
+                super(Net, self).__init__()
+                self.rnn = nn.LSTM(input_size=100, hidden_size=128, bidirectional=True)
+
+            def forward(self, x, h_0, c_0):
+                Y, (Y_h, Y_c) = self.rnn(x, (h_0, c_0))
+                return Y, Y_h, Y_c
+
+        input_shapes = [(81, 1, 100), (2, 1, 128), (2, 1, 128)]
+        self.convert_torch_and_compare(input_shapes, case_name, Net().eval())
 
     #######################################################################
     # Softmax

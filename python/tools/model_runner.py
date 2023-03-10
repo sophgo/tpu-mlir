@@ -346,17 +346,35 @@ def tflite_inference(
     else:
         return {k["name"]: out_tensor_process((k, v)) for k, v in outputs}
 
-
 def torch_inference(inputs: dict, model: str, dump_all: bool = True) -> dict:
     import torch
+    idx = 0
+    def torch_outputs(outputs:dict, names:list, tensors):
+        nonlocal idx
+        if isinstance(tensors, torch.Tensor):
+            outputs[names[idx]] = tensors.numpy()
+            idx += 1
+            return
+        if isinstance(tensors, tuple) or isinstance(tensors, list):
+            for t in tensors:
+                torch_outputs(outputs, names, t)
+        else:
+            raise RuntimeError("Not Implemented")
+
     net = torch.jit.load(model, map_location=torch.device('cpu'))
     net.eval()
     in_tensors = [torch.from_numpy(v) for k, v in inputs.items()]
     with torch.no_grad():
         out_tensors = net(*in_tensors)
     outputs = {}
-    if len(list(net.inlined_graph.outputs())) == 1:
-        outputs[list(net.inlined_graph.outputs())[0].debugName()] = out_tensors.numpy()
+    names = []
+    for out in net.inlined_graph.outputs():
+        if out.node().kind() == 'prim::TupleConstruct':
+            ins = out.node().inputs()
+            names.extend([i.debugName() for i in ins])
+        else:
+            names.append(out.debugName())
+    torch_outputs(outputs, names, out_tensors)
     return outputs
 
 

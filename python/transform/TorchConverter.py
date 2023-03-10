@@ -7,14 +7,9 @@
 
 from .MLIRImporter import MLIRImporter
 from .BaseConverter import BaseConverter
-from numbers import Number
-from typing import Union, Iterable, List
 from mlir.ir import *
 import numpy as np
-import random
-import copy
 import torch
-import torch.nn as nn
 
 
 def _get_constant(node):
@@ -90,10 +85,10 @@ class TorchNode(BaseNode):
 
     def __init__(self, node):
         info = dict()
-        info["name"] = node.output().debugName()
         info["op_type"] = node.kind()
         info["inputs"] = [inp.debugName() for inp in node.inputs()]
         info["outputs"] = [outp.debugName() for outp in node.outputs()]
+        info["name"] = info["outputs"][0]
         super().__init__(info)
         self.node_proto = node
 
@@ -132,6 +127,7 @@ class TorchConverter(BaseConverter):
         self.init_MLIRImporter()
         self.preprocess_args = preprocess_args
         self.converted_nodes = list()
+        # yapf: disable
         self.op_factory = {
             #############################
             # Torch Convert, Alphabetically
@@ -156,6 +152,7 @@ class TorchConverter(BaseConverter):
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
             "aten::log_sigmoid": lambda node: self.convert_sigmoid_op(node, log=True),
             "aten::log_softmax": lambda node: self.convert_softmax_op(node, log=True),
+            "aten::lstm": lambda node: self.convert_lstm_op(node),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
             "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
@@ -182,9 +179,10 @@ class TorchConverter(BaseConverter):
             "aten::where": lambda node: self.convert_where_op(node),
             "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
             "aten::hardswish": lambda node: self.convert_hardswish(node),
-            "aten::hardtanh":
-            lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
+            "aten::hardtanh": lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
+            "prim::TupleConstruct": lambda node: self.convert_tuple_op(node),
         }
+        # yapf : enable
         self.check_op_names()
 
     def __del__(self):
@@ -243,7 +241,6 @@ class TorchConverter(BaseConverter):
         for idx, inp in enumerate(inputs):
             self.input_names.append(inp.debugName())
             self.addShape(inp.debugName(), input_shapes[idx])
-
         self.output_names = []
         if output_names:
             self.output_names = output_names
@@ -253,7 +250,6 @@ class TorchConverter(BaseConverter):
         # weight
         # for name, data in self.model.state_dict().items():
         #     self.addWeight(name, data.numpy().astype(np.float32))
-
         self.weight_names = []
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
@@ -295,6 +291,10 @@ class TorchConverter(BaseConverter):
                 self.const_val[name] = data
             else:
                 self.tensor_list[name] = data
+            return
+        if node.kind() == 'prim::TupleConstruct':
+            nd = TorchNode(node)
+            self.converted_nodes.append(nd)
             return
         if node.kind() == 'prim::GetAttr':
             if node.output().type().kind() != 'TensorType':
@@ -683,6 +683,14 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_relu_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_tuple_op(self, torch_node: TorchNode):
+        ops = [self.getOp(n) for n in torch_node.inputs]
+        p = {
+            'name': torch_node.name,
+        }
+        new_op = self.mlir.create_tuple_op(ops, None, **p)
+        self.addOperand(torch_node.name, new_op)
+
     def convert_gelu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_gelu_op([op], None, **{'name': torch_node.name})
@@ -739,6 +747,9 @@ class TorchConverter(BaseConverter):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_mish_op([op], None, **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
+
+    def convert_lstm_op(self, torch_node: TorchNode):
+        raise RuntimeError("Not Implemented")
 
     def convert_abs_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])

@@ -90,6 +90,7 @@ class Top:
     TanhOp = 'top.Tanh'
     TopKOp = 'top.TopK'
     TransposeOp = 'top.Transpose'
+    TupleOp = 'top.Tuple'
     UnpackOp = 'top.Unpack'
     UpsampleOp = 'top.Upsample'
     WeightOp = 'top.Weight'
@@ -498,6 +499,13 @@ class MLIRImporter(object):
         if 'relu_limit' in kargs:
             param['relu_limit'] = FloatAttr.get_f64(kargs['relu_limit'])
         return self.buildOp(Top.ReluOp, operands, [output_type], **param)
+
+    def create_tuple_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.TupleOp, operands, [output_type], **param)
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])

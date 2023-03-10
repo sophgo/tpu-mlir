@@ -84,14 +84,9 @@ def AnyTensorOrNone: AnyTypeOf<[AnyTensor, NoneType]>;
 // TOP Op Definition.
 //===----------------------------------------------------------------------===//
 
+// === BaseOp =====
 class Top_BaseOp<string mnemonic, list<Trait> traits = []> :
     Op<Top_Dialect, mnemonic, traits> ;
-
-class Top_Op<string mnemonic, list<Trait> traits = []> :
-    Top_BaseOp<mnemonic, !listconcat(traits,
-       [DeclareOpInterfaceMethods<InferenceInterface>,
-        DeclareOpInterfaceMethods<FlopsInterface>,
-        DeclareOpInterfaceMethods<ShapeInterface>])>;
 
 def Top_NoneOp : Top_BaseOp<"None"> {
   let summary = "none operator";
@@ -160,6 +155,26 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Top_TupleOp: Top_BaseOp<"Tuple"> {
+  let summary = "Tuple operator";
+  let description = [{
+    gen by torch prim::TupleConstruct
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+// === Function Op =====
+class Top_Op<string mnemonic, list<Trait> traits = []> :
+    Top_BaseOp<mnemonic, !listconcat(traits,
+       [DeclareOpInterfaceMethods<InferenceInterface>,
+        DeclareOpInterfaceMethods<FlopsInterface>,
+        DeclareOpInterfaceMethods<ShapeInterface>])>;
 
 def Top_BatchNormOp: Top_Op<"BatchNorm", [SupportFuseRelu]> {
   let summary = "BatchNormalization operation";
