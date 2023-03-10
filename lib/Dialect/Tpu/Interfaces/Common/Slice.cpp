@@ -156,21 +156,23 @@ LogicalResult tpu::SliceOp::inference(InferenceParameter &p) {
 
 LogicalResult tpu::SliceOp::BackwardN(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
+  const auto offset = module::getI64Array(getOffset());
+  const auto steps = module::getI64Array(getSteps());
   auto &p = getSliceParam(*this);
-  auto crop_offset = module::getI64Array(getOffset());
-  in_idx = out_idx;
-  in_slice = out_slice + crop_offset->at(2);
-  bool is_last = (out_idx + out_slice == p.os_4[0]);
+  in_idx = out_idx * steps->at(0);
+  in_slice = out_slice * steps->at(0);
+  bool is_last = (out_idx + out_slice == p.os_4[2]);
   LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[0], is_last);
   return success();
 }
 
 LogicalResult tpu::SliceOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
                                       int64_t out_idx, int64_t out_slice) {
+  const auto offset = module::getI64Array(getOffset());
+  const auto steps = module::getI64Array(getSteps());
   auto &p = getSliceParam(*this);
-  auto crop_offset = module::getI64Array(getOffset());
-  in_idx = out_idx;
-  in_slice = out_slice + crop_offset->at(2);
+  in_idx = out_idx * steps->at(2);
+  in_slice = out_slice * steps->at(2);
   bool is_last = (out_idx + out_slice == p.os_4[2]);
   LocalGenInterface::fixSlice(in_idx, in_slice, p.is_4[2], is_last);
   return success();
@@ -191,9 +193,11 @@ LogicalResult tpu::SliceOp::LocalGenSupport() {
   } else {
     const auto offset = module::getI64Array(getOffset());
     const auto steps = module::getI64Array(getSteps());
-    if (steps->at(1) != 1) return failure();
+    // TODO: force layer group to allow that offset->at(0) != 0
+    if (offset->at(0) != 0) return failure();
     if (num_dims > 1) {
-      if (offset->at(1) % BM1684X::NPU_NUM != 0) return failure();
+      // TODO: force layer group to allow that offset->at(2) != 0
+      if (offset->at(2) != 0) return failure();
       if (steps->at(1) != 1) return failure();
     }
     return success();

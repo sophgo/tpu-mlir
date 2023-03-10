@@ -133,6 +133,7 @@ class ONNX_IR_TESTER(object):
             "Sigmoid":      (self.test_Sigmoid,     Y, N, Y),
             "Slice":        (self.test_Slice,       Y, N, Y),
             "Slice2":       (self.test_Slice2,      Y, N, Y),
+            "Slice3":       (self.test_Slice3,      Y, N, Y),
             "Split":        (self.test_Split,       Y, N, Y),
             "Scale":        (self.test_Scale,       Y, N, Y),
             "Sqrt":         (self.test_Sqrt,        Y, N, Y),
@@ -1929,6 +1930,22 @@ class ONNX_IR_TESTER(object):
                 return y
 
         x = torch.randn(4, 8, 60, 80).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_Slice3(self, case_name):
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                y1 = x[:, :16, :, :]
+                y2 = x[:, 16:, :, :]
+                y = y1 * y2
+                return y
+
+        x = torch.randn(1, 32, 64, 88).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_Split(self, case_name):
