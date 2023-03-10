@@ -44,8 +44,7 @@ LogicalResult tpu::AddConstOp::inference(InferenceParameter &p) {
       }
       p.outputs[0][i] = saturate(sum, out_type);
     }
-  }
-  else {
+  } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
       p.outputs[0][i] = p.inputs[0][i] + getConstVal().convertToDouble();
