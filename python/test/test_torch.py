@@ -285,7 +285,6 @@ class TORCH_IR_TESTER(object):
     # Convolution
     # ------------
     def _test_Conv(self, case_name):
-        suffix = 0
 
         def case1(conv_fun, input_shape):
 
@@ -301,9 +300,7 @@ class TORCH_IR_TESTER(object):
                     z = self.conv2(x)
                     return y + z
 
-            nonlocal suffix
-            suffix += 1
-            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Net().eval())
+            self.convert_torch_and_compare([input_shape], case_name, Net().eval())
 
         def case2(conv_fun,
                   input_shape,
@@ -333,9 +330,7 @@ class TORCH_IR_TESTER(object):
                                  groups=group)
                     return y
 
-            nonlocal suffix
-            suffix += 1
-            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Model().eval())
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
         return dict(case1=case1, case2=case2)
 
@@ -376,8 +371,6 @@ class TORCH_IR_TESTER(object):
     # AvgPooling
     # ------------
     def _test_AvgPool(self, case_name):
-        suffix = 0
-
         def test_case(pool_funs, input_shape, kernel_size, stride, padding, count_include_pad=True):
             fun1, fun2 = pool_funs
 
@@ -396,9 +389,7 @@ class TORCH_IR_TESTER(object):
                              count_include_pad=count_include_pad)
                     return z
 
-            nonlocal suffix
-            suffix += 1
-            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Model().eval())
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
         return test_case
 
@@ -422,7 +413,6 @@ class TORCH_IR_TESTER(object):
     # MaxPooling
     # ------------
     def _test_MaxPool(self, case_name):
-        suffix = 0
 
         def test_case(pool_funs, input_shape, kernel_size, stride, padding):
             fun1, fun2 = pool_funs
@@ -438,9 +428,7 @@ class TORCH_IR_TESTER(object):
                     z = fun2(y, kernel_size, stride=stride, padding=padding)
                     return z
 
-            nonlocal suffix
-            suffix += 1
-            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Model().eval())
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
         return test_case
 
@@ -489,9 +477,9 @@ class TORCH_IR_TESTER(object):
     def test_Add(self, case_name):
         """Add"""
 
-        self._test_binary(case_name + "_1", torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
-        self._test_binary(case_name + "_2", torch.add, (2, 32, 16), (2, 1, 16), 3)
-        self._test_binary(case_name + "_3", torch.add, (32, 32), (32))
+        self._test_binary(case_name, torch.add, (1, 3, 32, 32), (1, 3, 32, 32), 3)
+        self._test_binary(case_name, torch.add, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(case_name, torch.add, (32, 32), (32))
 
     #######################################################################
     # Sub
@@ -499,9 +487,9 @@ class TORCH_IR_TESTER(object):
     def test_Sub(self, case_name):
         """Sub"""
 
-        self._test_binary(case_name + "_1", torch.sub, (1, 3, 32, 31), (1, 3, 32, 1), 3)
-        self._test_binary(case_name + "_2", torch.sub, (2, 32, 16), (2, 1, 16), 3)
-        self._test_binary(case_name + "_3", torch.sub, (32, 32), (32))
+        self._test_binary(case_name, torch.sub, (1, 3, 32, 31), (1, 3, 32, 1), 3)
+        self._test_binary(case_name, torch.sub, (2, 32, 16), (2, 1, 16), 3)
+        self._test_binary(case_name, torch.sub, (32, 32), (32))
 
     #######################################################################
     # Mul
@@ -509,9 +497,9 @@ class TORCH_IR_TESTER(object):
     def test_Mul(self, case_name):
         """Mul"""
 
-        self._test_binary(case_name + "_1", torch.multiply, (1, 3, 32, 31), (1, 3, 32, 1))
-        self._test_binary(case_name + "_2", torch.multiply, (2, 32, 16), (2, 1, 16))
-        self._test_binary(case_name + "_3", torch.multiply, (32, 32), (32))
+        self._test_binary(case_name, torch.multiply, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name, torch.multiply, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name, torch.multiply, (32, 32), (32))
 
     #######################################################################
     # Div
@@ -519,9 +507,9 @@ class TORCH_IR_TESTER(object):
     def test_Div(self, case_name):
         """Div"""
 
-        self._test_binary(case_name + "_1", torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
-        self._test_binary(case_name + "_2", torch.div, (2, 32, 16), (2, 1, 16))
-        self._test_binary(case_name + "_3", torch.div, (32, 32), (32))
+        self._test_binary(case_name, torch.div, (1, 3, 32, 31), (1, 3, 32, 1))
+        self._test_binary(case_name, torch.div, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name, torch.div, (32, 32), (32))
 
     #######################################################################
     # Compare
@@ -531,13 +519,35 @@ class TORCH_IR_TESTER(object):
         greater, greater_equal, less, less_equal, equal
 
         """
+        def test_cmp_const(name, cmp_fun, input_shape, const):
+            class Net(torch.nn.Module):
+                def __init__(self):
+                    super(Net, self).__init__()
+
+                def forward(self, x):
+                    y = cmp_fun(x, const)
+                    return y
+
+            self.convert_torch_and_compare([input_shape], name, Net().eval())
+
         self._test_binary(case_name + "GT", torch.greater, (1, 3, 32, 31), (1, 3, 32, 1))
-        self._test_binary(case_name + "GT1", torch.greater, (2, 32, 16), (2, 1, 16))
-        self._test_binary(case_name + "GT2", torch.greater, (32, 32), (32))
+        self._test_binary(case_name + "GT", torch.greater, (2, 32, 16), (2, 1, 16))
+        self._test_binary(case_name + "GT", torch.greater, (32, 32), (32))
         self._test_binary(case_name + "GE", torch.greater_equal, (1, 3, 32, 31), (1, 3, 32, 1))
         self._test_binary(case_name + "LT", torch.less, (1, 3, 32, 31), (1, 3, 32, 1))
         self._test_binary(case_name + "LE", torch.less_equal, (1, 3, 32, 31), (1, 3, 32, 1))
         self._test_binary(case_name + "EQ", torch.eq, (1, 3, 32, 31), (1, 3, 32, 1))
+        case_name = case_name + "_const_"
+        test_cmp_const(case_name + "GT", torch.greater, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "GT", lambda x, y: y > x, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "GE", torch.greater_equal, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "GE", lambda x, y: y >= x, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "LT", torch.less, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "LT", lambda x, y: y < x, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "LE", torch.less_equal, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "LE", lambda x, y: y <= x, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "EQ", torch.eq, (1, 2, 3, 4), 0)
+        test_cmp_const(case_name + "EQ", lambda x, y: y == x, (1, 2, 3, 4), 0)
 
     #######################################################################
     # LayerNorm
