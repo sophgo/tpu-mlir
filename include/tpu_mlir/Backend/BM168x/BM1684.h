@@ -38,6 +38,7 @@ typedef void (*nodechip_broadcast_binary_fix8b_forward_parallel)(uint64_t bottom
 typedef void (*nodechip_broadcast_binary)(uint64_t bottom0_global_addr, int* bottom0_shape, uint64_t bottom1_global_addr, int* bottom1_shape, uint64_t top_global_addr, int binary_op, int if_relu, float relu_limit, CMD_ID_NODE* pid_node, int calc_from_int32);
 typedef void (*nodechip_broadcast_binary_local)(uint32_t bottom0_lo, int *bottom0_shape, int *bottom0_stride, uint32_t bottom1_lo, int *bottom1_shape, int *bottom1_stride, uint32_t top_lo, int* top_stride, int binary_op, int if_relu, float relu_limit, uint32_t cdim_lo, void* pid_node);
 typedef void (*nodechip_broadcast_binary_fix8b_forward_local)(uint32_t bottom0_lo, uint32_t bottom1_lo, uint32_t top_lo, uint32_t buffer_local_offset, int* b0_shape, int* b1_shape, int tensor_dim, int a_is_coeff, int b_is_coeff, int op_code, int scale_A, int scale_B, int rshift_A, int rshift_B, int* is_int8, int* is_sign, int if_relu, void* id_node);
+typedef void (*nodechip_broadcast_binary_full)(uint64_t bottom0_global_addr, uint32_t *bottom0_shape, int bottom0_dim, uint64_t bottom1_global_addr, uint32_t *bottom1_shape, int bottom1_dim, uint64_t top_global_addr, uint64_t buffer_global_addr, int binary_op, int if_relu, float relu_limit, int data_format, CMD_ID_NODE* pid_node, int calc_from_int32);
 typedef void (*nodechip_fc_forward_local)(int bottom_local_offset, int weight_local_offset, int bias_local_offset, int top_local_offset, int slope_local_offset, int imm_buffer_offset, int *bottom_dim, int output_num, int using_bias, int active_type, int channel_shared, float shared_slope, void *id_node);
 typedef void (*nodechip_prelu_forward_local_v2)(int bottom_local_offset, int top_local_offset, int slope_local_offset, int buffer_local_offset, int channel_shared, float shared_slope, int *tensor_dim, int st_by_fcway, void *id_node);
 typedef void (*nodechip_relu_forward_local)(int bottom_local_offset, int top_local_offset, int *tensor_dim, float upper_limit, void *id_node);
@@ -231,6 +232,7 @@ public:
   nodechip_broadcast_binary dl_nodechip_broadcast_binary;
   nodechip_broadcast_binary_local dl_nodechip_broadcast_binary_local;
   nodechip_broadcast_binary_fix8b_forward_local dl_nodechip_broadcast_binary_fix8b_forward_local;
+  nodechip_broadcast_binary_full dl_nodechip_broadcast_binary_full;
   nodechip_concat_md dl_nodechip_concat_md;
   nodechip_concat_md_fix8b dl_nodechip_concat_md_fix8b;
   nodechip_stride_slice_forward_local dl_nodechip_stride_slice_forward_local;

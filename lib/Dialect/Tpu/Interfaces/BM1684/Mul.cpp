@@ -30,14 +30,16 @@ void tpu::MulOp::codegen_global_bm1684() {
   auto a_addr = module::getAddress(getInputs()[0]);
   auto b_addr = module::getAddress(getInputs()[1]);
   auto o_addr = module::getAddress(getOutput());
-  int a_shape[MAX_SHAPE_DIMS] = {0};
-  int b_shape[MAX_SHAPE_DIMS] = {0};
+  int a_shape[MAX_SHAPE_DIMS] = {1};
+  int b_shape[MAX_SHAPE_DIMS] = {1};
   module::getGlobalShape(getInputs()[0], a_shape);
   module::getGlobalShape(getInputs()[1], b_shape);
+  auto a_dims = module::getShape(getInputs()[0]).size();
+  auto b_dims = module::getShape(getInputs()[1]).size();
   if (false == module::isUniformQuantized(getOutput())) {
-    BM1684::instance().dl_nodechip_broadcast_binary(
-        a_addr, a_shape, b_addr, b_shape, o_addr, op_code, getDoRelu() ? 1 : 0,
-        -1.f, (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
+    BM1684::instance().dl_nodechip_broadcast_binary_full(
+        a_addr, (uint32_t*)a_shape, a_dims, b_addr, (uint32_t*)b_shape, b_dims, o_addr, 0, op_code,
+        getDoRelu(), -1.f, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
   } else {
     int sign[3] = {0};
     int is_int8[3] = {0};
