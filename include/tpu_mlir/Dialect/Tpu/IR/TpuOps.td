@@ -599,6 +599,52 @@ def Tpu_MinOp: Tpu_Op<"Min", [
   let results = (outs AnyRankedTensor:$output);
 }
 
+def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+  let summary = "max_const operator";
+
+  let description = [{
+    max of one input and one const.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Tpu_MinConstOp: Tpu_Op<"MinConst", [
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
+  DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
+  let summary = "min_const operator";
+
+  let description = [{
+    min of one input and one const.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    F64Attr:$const_val,
+    DefaultValuedAttr<BoolAttr, "false">:$do_relu,
+    DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
+    // quant param
+    OptionalAttr<I64ArrayAttr>:$multipliers,
+    OptionalAttr<I64ArrayAttr>:$rshifts,
+    OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_ActiveOp: Tpu_Op<"Active",
   [DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>, InOutSameShape]>{
@@ -637,7 +683,7 @@ def Tpu_ClipOp: Tpu_Op<"Clip",
 }
 
 def Tpu_MulConstOp: Tpu_Op<"MulConst", [SupportFuseRelu, InOutSameShape,
-  DeclareOpInterfaceMethods<LocalGenInterface>,
+  DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport"]>,
   DeclareOpInterfaceMethods<DynLocalGenInterface>]> {
   let summary = "mul const operator";
 

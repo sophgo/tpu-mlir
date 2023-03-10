@@ -43,5 +43,9 @@ LOWERING_BM1684(Tile)
 LOWERING_BM1684(Upsample)
 LOWERING_BM1684(Interp)
 LOWERING_BM1684(Reduce)
+LOWERING_BM1684(HardSigmoid)
+LOWERING_BM1684(HardSwish)
+LOWERING_BM1684(AddConst)
+LOWERING_BM1684(MulConst)
 } // namespace bm1684
 } // namespace tpu_mlir
