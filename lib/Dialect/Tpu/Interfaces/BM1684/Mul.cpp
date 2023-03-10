@@ -38,8 +38,9 @@ void tpu::MulOp::codegen_global_bm1684() {
   auto b_dims = module::getShape(getInputs()[1]).size();
   if (false == module::isUniformQuantized(getOutput())) {
     BM1684::instance().dl_nodechip_broadcast_binary_full(
-        a_addr, (uint32_t*)a_shape, a_dims, b_addr, (uint32_t*)b_shape, b_dims, o_addr, 0, op_code,
-        getDoRelu(), -1.f, 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
+        a_addr, (uint32_t *)a_shape, a_dims, b_addr, (uint32_t *)b_shape,
+        b_dims, o_addr, 0, op_code, getDoRelu(), -1.f, 0,
+        (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
   } else {
     int sign[3] = {0};
     int is_int8[3] = {0};
@@ -92,10 +93,18 @@ void tpu::MulOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
     auto in_ginfo = LocalGenInterface::getGroupInfo(in);
     input_addrs.push_back(in_ginfo.out_addr);
   }
-  int b0_shape[MAX_SHAPE_DIMS] = {0};
-  int b1_shape[MAX_SHAPE_DIMS] = {0};
-  module::getLocalShape(getInputs()[0], n_step, h_step, b0_shape);
-  module::getLocalShape(getInputs()[1], n_step, h_step, b1_shape);
+  auto in0_g_info =
+      LocalGenInterface::getGroupInfo(getInputs()[0], n_step, h_step);
+  int64_t n0, c0, h0, w0;
+  module::getNCHW(getOutput(), n0, c0, h0, w0);
+  int b0_shape[MAX_SHAPE_DIMS] = {(int)in0_g_info.n_slice, (int)c0,
+                                  (int)in0_g_info.h_slice, (int)w0};
+  auto in1_g_info =
+      LocalGenInterface::getGroupInfo(getInputs()[1], n_step, h_step);
+  int64_t n1, c1, h1, w1;
+  module::getNCHW(getOutput(), n1, c1, h1, w1);
+  int b1_shape[MAX_SHAPE_DIMS] = {(int)in1_g_info.n_slice, (int)c1,
+                                  (int)in1_g_info.h_slice, (int)w1};
   if (module::isUniformQuantized(getOutput())) {
     int sign[3] = {0};
     int is_int8[3] = {0};
