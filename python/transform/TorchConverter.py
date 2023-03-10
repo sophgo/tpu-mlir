@@ -136,6 +136,7 @@ class TorchConverter(BaseConverter):
             #############################
             # Torch Convert, Alphabetically
             #############################
+            "aten::abs": lambda node: self.convert_abs_op(node),
             "aten::add": lambda node: self.convert_add_op(node),
             "aten::avg_pool1d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool2d": lambda node: self.convert_avgpool_op(node),
@@ -143,6 +144,7 @@ class TorchConverter(BaseConverter):
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
+            "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
@@ -152,17 +154,22 @@ class TorchConverter(BaseConverter):
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
-            "aten::log_softmax": lambda node: self.convert_logsoftmax_op(node),
+            "aten::log_sigmoid": lambda node: self.convert_sigmoid_op(node, log=True),
+            "aten::log_softmax": lambda node: self.convert_softmax_op(node, log=True),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
             "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
             "aten::mish": lambda node: self.convert_mish_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
-            "aten::pad": lambda node: self.convert_pad_op(node),
+            "aten::pad": lambda node: self.convert_pad_op(node, mode='unknown'),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
+            "aten::reflection_pad1d": lambda node: self.convert_pad_op(node, mode='reflect'),
+            "aten::reflection_pad2d": lambda node: self.convert_pad_op(node, mode='reflect'),
             "aten::relu": lambda node: self.convert_relu_op(node),
+            "aten::replication_pad1d": lambda node: self.convert_pad_op(node, mode='replicate'),
+            "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
             "aten::silu": lambda node: self.convert_silu_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
@@ -357,7 +364,7 @@ class TorchConverter(BaseConverter):
         else:
             transposed = self.const_val[torch_node.inputs[6]]
             output_padding = self.const_val[torch_node.inputs[7]]
-            pads = pads + pads # the pad of torch is symmetric
+            pads = pads + pads  # the pad of torch is symmetric
 
         operands = list()
         operands.append(op)
@@ -410,7 +417,6 @@ class TorchConverter(BaseConverter):
         }
         new_op = self.mlir.create_avgpool_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
-
 
     def convert_maxpool_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
@@ -585,9 +591,21 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_elu_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
 
-    def convert_pad_op(self, torch_node: TorchNode):
+    def convert_pad_op(self, torch_node: TorchNode, mode: str = 'unknown'):
         op = self.getOp(torch_node.inputs[0])
-        pads_origin = list(self.const_val[torch_node.inputs[1]])
+        pads_origin = self.const_val[torch_node.inputs[1]]
+        val = 0.0
+        pad_modes = {"constant": 0, "reflect": 1, "replicate": 3}
+        if (mode == 'reflect' or mode == 'replicate'):
+            pad_mode = pad_modes[mode]
+        elif (mode == 'constant'):
+            pad_mode = pad_modes[mode]
+            val = self.const_val[torch_node.inputs[2]]
+        else:
+            pad_mode = pad_modes[self.const_val[torch_node.inputs[2]]]
+            if pad_mode == 0:
+                val = self.const_val[torch_node.inputs[3]]
+
         input_dim = len(self.getShape(torch_node.inputs[0]))
         pads = [0] * input_dim * 2
         if (len(pads_origin) >= 2):
@@ -599,13 +617,10 @@ class TorchConverter(BaseConverter):
             pads[input_dim - 2] = pads_origin[2]
             pads[-2] = pads_origin[3]
 
-        pad_mode = {"constant": 0, "reflect": 1, "replicate": 3}
-        mode = pad_mode[self.const_val[torch_node.inputs[2]]]
-        val = 0. if mode != 0 else self.const_val[torch_node.inputs[3]]
         p = {
             'name': torch_node.name,
             'paddings': pads,
-            'mode': mode,
+            'mode': pad_mode,
             'val': val,
         }
         new_op = self.mlir.create_pad_op([op], None, **p)
@@ -643,13 +658,14 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_gelu_op([op], None, **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
-    def convert_sigmoid_op(self, torch_node: TorchNode):
+    def convert_sigmoid_op(self, torch_node: TorchNode, log: bool = False):
         op = self.getOp(torch_node.inputs[0])
         p = {
             'name': torch_node.name,
             'scale': 1,
             'bias': 0,
         }
+        if log: p['log'] = True
         new_op = self.mlir.create_sigmoid_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
 
@@ -678,28 +694,23 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_silu_op([op], None, **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
-    def convert_softmax_op(self, torch_node: TorchNode):
+    def convert_softmax_op(self, torch_node: TorchNode, log: bool = False):
         op = self.getOp(torch_node.inputs[0])
         dim = self.const_val[torch_node.inputs[1]]
         p = {
             'name': torch_node.name,
             'axis': dim,
         }
-        new_op = self.mlir.create_softmax_op([op], None, **p)
-        self.addOperand(torch_node.name, new_op)
-
-    def convert_logsoftmax_op(self, torch_node: TorchNode):
-        op = self.getOp(torch_node.inputs[0])
-        dim = self.const_val[torch_node.inputs[1]]
-        p = {
-            'name': torch_node.name,
-            'axis': dim,
-            'log': True,
-        }
+        if log: p['log'] = True
         new_op = self.mlir.create_softmax_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_mish_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_mish_op([op], None, **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_abs_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        new_op = self.mlir.create_abs_op([op], None, **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)

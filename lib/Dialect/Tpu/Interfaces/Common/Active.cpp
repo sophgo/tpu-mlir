@@ -84,6 +84,10 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     active_func(p, num_element,
                 [](double val) { return 1 / (1 + std::exp(-val)); });
     break;
+  case ActiveMode::LOG_SIGMOID:
+    active_func(p, num_element,
+                [](double val) { return std::log(1 / (1 + std::exp(-val))); });
+    break;
   case ActiveMode::HSIGMOID: {
     const auto coeffs_ = module::getF64Array(getCoeffs(), 2, 0);
     const double alpha = coeffs_->at(1);
@@ -108,6 +112,10 @@ LogicalResult tpu::ActiveOp::inference(InferenceParameter &p) {
     break;
   case ActiveMode::FLOOR:
     active_func(p, num_element, [](double val) { return std::floor(val); });
+    break;
+  case ActiveMode::SOFT_SIGN:
+    active_func(p, num_element,
+                [](double val) { return val / (1 + std::abs(val)); });
     break;
   default:
     llvm_unreachable("Not Implemented");

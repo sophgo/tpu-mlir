@@ -12,25 +12,23 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
 
-int64_t top::SigmoidOp::getFLOPs() {
-  return module::getNumElements(getInput()) * 4;
+int64_t top::SoftsignOp::getFLOPs() {
+  return module::getNumElements(getInput()) * 3;
 }
 
-LogicalResult top::SigmoidOp::init(InferenceParameter &p) { return success(); }
-void top::SigmoidOp::deinit(InferenceParameter &p) {}
+LogicalResult top::SoftsignOp::init(InferenceParameter &p) { return success(); }
+void top::SoftsignOp::deinit(InferenceParameter &p) {}
 
-LogicalResult top::SigmoidOp::inference(InferenceParameter &p) {
+LogicalResult top::SoftsignOp::inference(InferenceParameter &p) {
   auto num_element = module::getNumElements(getInput());
-  bool log = getLog();
 #pragma omp parallel for schedule(static, omp_schedule(num_element))
   for (int i = 0; i < num_element; ++i) {
     auto val = p.inputs[0][i];
-    p.outputs[0][i] =
-        log ? std::log(1 / (1 + std::exp(-val))) : 1 / (1 + std::exp(-val));
+    p.outputs[0][i] = val / (1 + std::abs(val));
   }
   return success();
 }
 
-void top::SigmoidOp::shape_inference() {
+void top::SoftsignOp::shape_inference() {
   common_shape_inference(getOperation());
 }

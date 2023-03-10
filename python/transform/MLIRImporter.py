@@ -538,6 +538,8 @@ class MLIRImporter(object):
             'scale': FloatAttr.get_f64(kargs['scale']),
             'bias': FloatAttr.get_f64(kargs['bias']),
         }
+        if 'log' in kargs:
+            param['log'] = BoolAttr.get(kargs['log'])
         return self.buildOp(Top.SigmoidOp, operands, [output_type], **param)
 
     def create_upsample_op(self, operands, output_shape, **kargs):
@@ -1085,23 +1087,26 @@ class MLIRImporter(object):
     def create_instance_norm_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
-        param = {'name': kargs['name'],
-                 'eps': FloatAttr.get_f64(kargs['eps'])}
+        param = {'name': kargs['name'], 'eps': FloatAttr.get_f64(kargs['eps'])}
         return self.buildOp(Top.InstanceNormOp, operands, [output_type], **param)
 
     def create_group_norm_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
-        param = {'name': kargs['name'],
-                 "num_groups": IntegerAttr.get(self.mlir_type['INT64'], kargs['num_groups']),
-                 'eps': FloatAttr.get_f64(kargs['eps'])}
+        param = {
+            'name': kargs['name'],
+            "num_groups": IntegerAttr.get(self.mlir_type['INT64'], kargs['num_groups']),
+            'eps': FloatAttr.get_f64(kargs['eps'])
+        }
         return self.buildOp(Top.GroupNormOp, operands, [output_type], **param)
 
     def create_scatter_elements_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
-        param = {'name': kargs['name'],
-                 'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis'])}
+        param = {
+            'name': kargs['name'],
+            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis'])
+        }
         if kargs['reduction'] != None:
             param['reduction'] = kargs['reduction']
         return self.buildOp(Top.ScatterElementsOp, operands, [output_type], **param)
