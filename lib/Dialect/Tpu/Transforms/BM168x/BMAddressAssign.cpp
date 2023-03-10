@@ -225,6 +225,12 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       }
     }
   };
+  auto updateSOLOLiveRange = [&](Operation *op, ValueInfo v_info, uint32_t endPosition) {
+    liveRange[v_info].start = ops_loc[op];
+    liveRange[v_info].end = endPosition;
+    liveRange[v_info].out_index = v_info.index;
+    liveRange[v_info].tensor_size = getTensorGmemSize(op, v_info.index, alignment);
+  };
   ValueInfo v(op, index);
   uint32_t loc = ops_loc[op];
   uint32_t endPosition = loc + 1;
@@ -275,13 +281,12 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       inplace_ops.emplace_back(v);
     }
   } else if (op->getDialect()->getNamespace() == "tpu") {
-    for (int i = 0; i < op->getNumResults(); ++i) {
-      ValueInfo cur_info(op, i);
-      if (!module::isNone(op->getResult(i))) {
-        if (liveRange.find(cur_info) == liveRange.end()) {
-          op->dump();
-        }
-        assert(liveRange.find(cur_info) != liveRange.end());
+    ValueInfo cur_info(op, index);
+    if (!module::isNone(op->getResult(index))) {
+      if (liveRange.find(cur_info) == liveRange.end()) {
+        updateSOLOLiveRange(op, cur_info, endPosition);
+        common_ops.emplace_back(v);
+        return;
       }
     }
     updateOperandsLiveRange(op, endPosition);
