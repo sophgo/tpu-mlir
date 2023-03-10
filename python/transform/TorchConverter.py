@@ -496,9 +496,19 @@ class TorchConverter(BaseConverter):
     def convert_compare_op(self, torch_node: TorchNode, mode):
         assert mode in ("Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual")
         op0 = self.getOp(torch_node.inputs[0])
-        op1 = self.getOp(torch_node.inputs[1])
-        p = {"name": torch_node.name, "mode": mode}
-        new_op = self.mlir.create_compare_op([op0, op1], None, **p)
+        if torch_node.inputs[1] in self.const_val:
+            const_val = self.const_val[torch_node.inputs[1]]
+            p = {
+                "name": torch_node.name,
+                "mode": mode,
+                "const_val": const_val,
+                "inversed": False,
+            }
+            new_op = self.mlir.create_compare_const_op([op0], None, **p)
+        else:
+            op1 = self.getOp(torch_node.inputs[1])
+            p = {"name": torch_node.name, "mode": mode}
+            new_op = self.mlir.create_compare_op([op0, op1], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_prelu_op(self, torch_node: TorchNode):
