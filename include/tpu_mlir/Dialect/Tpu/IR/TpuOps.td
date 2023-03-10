@@ -1645,8 +1645,12 @@ def Tpu_WhereOp: Tpu_Op<"Where", [
   }];
   let arguments = (ins
     AnyRankedTensor:$cond,
-    AnyRankedTensor:$tbrn,
-    AnyRankedTensor:$fbrn
+    AnyTensorOrNone:$tbrn,
+    AnyTensorOrNone:$fbrn,
+    DefaultValuedAttr<BoolAttr, "false">:$x_is_const,
+    DefaultValuedAttr<BoolAttr, "false">:$y_is_const,
+    DefaultValuedAttr<F64Attr, "0.0">:$x_const_val,
+    DefaultValuedAttr<F64Attr, "0.0">:$y_const_val
   );
   let results = (outs AnyRankedTensor:$output);
 }

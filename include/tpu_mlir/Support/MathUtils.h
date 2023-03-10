@@ -273,4 +273,32 @@ uint8_t to_uint4(T value,
 void swap_dim_data(float *input, float *output, std::vector<int64_t> &ishape,
                    std::vector<int64_t> &offsets);
 
+inline void idx_to_list(int64_t idx, const std::vector<int64_t>& dim, std::vector<int64_t>& idx_res) {
+  int l = dim.size();
+  idx_res.resize(l, 0);
+  for (int i=l-1; i>=0; --i) {
+    idx_res[i] = idx % dim[i];
+    idx /= dim[i];
+  }
+}
+
+// convert shape to index for gaven stride
+inline int64_t list_to_idx(const std::vector<int64_t>& list,
+                           const std::vector<int64_t>& stride) {
+  return std::inner_product(list.begin(), list.end(), stride.begin(), 0);
+}
+
+// get the stride for the gaven shape
+inline void get_stride(const std::vector<int64_t>& shape, std::vector<int64_t>& stride) {
+  stride.clear();
+  stride.resize(shape.size(), 1);
+  for (int i = shape.size() - 2; i >= 0; --i) {
+    stride[i] = stride[i + 1] * shape[i + 1];
+  }
+  // set stride to 0 if shape need broadcast
+  for (int i = 0; i < shape.size(); ++i) {
+    stride[i] = shape[i] != 1 ? stride[i] : 0;
+  }
+}
+
 } // namespace tpu_mlir

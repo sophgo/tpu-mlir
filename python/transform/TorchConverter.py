@@ -179,6 +179,7 @@ class TorchConverter(BaseConverter):
             "aten::tanh": lambda node: self.convert_tanh_op(node),
             "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
+            "aten::where": lambda node: self.convert_where_op(node),
             "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
             "aten::hardswish": lambda node: self.convert_hardswish(node),
             "aten::hardtanh":
@@ -552,6 +553,25 @@ class TorchConverter(BaseConverter):
             'dim1': dim1,
         }
         new_op = self.mlir.create_transpose_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_where_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        x_is_const = torch_node.inputs[1] in self.const_val.keys()
+        y_is_const = torch_node.inputs[2] in self.const_val.keys()
+        x_const_val = self.const_val[torch_node.inputs[1]] if x_is_const else 0
+        y_const_val = self.const_val[torch_node.inputs[1]] if x_is_const else 0
+        p = {
+            'name': torch_node.name,
+            'x_is_const': x_is_const,
+            'y_is_const': y_is_const,
+            'x_const_val': x_const_val,
+            'y_const_val': y_const_val
+        }
+
+        op1 = self.getOp(torch_node.inputs[1]) if not x_is_const else self.mlir.none_op
+        op2 = self.getOp(torch_node.inputs[2]) if not y_is_const else self.mlir.none_op
+        new_op = self.mlir.create_where_op([op0, op1, op2], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_layer_norm_op(self, torch_node: TorchNode):

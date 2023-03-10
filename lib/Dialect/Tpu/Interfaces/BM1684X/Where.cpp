@@ -20,8 +20,10 @@ using namespace tpu_mlir::backend;
 void tpu::WhereOp::codegen_global_bm1684x() {
   select_common_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.sel0_is_const = false;
-  spec.sel1_is_const = false;
+  spec.sel0_is_const = getXIsConst();
+  spec.sel1_is_const = getYIsConst();
+  spec.sel0_const_val = getXConstVal().convertToDouble();
+  spec.sel1_const_val = getYConstVal().convertToDouble();
   auto op = getOperation();
   auto input_spec = BM168x::get_input_spec(op);
   auto output_spec = BM168x::get_output_spec(op);
@@ -49,8 +51,10 @@ void tpu::WhereOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   select_common_spec_t spec;
   memset(&spec, 0, sizeof(spec));
-  spec.sel0_is_const = false;
-  spec.sel1_is_const = false;
+  spec.sel0_is_const = getXIsConst();
+  spec.sel1_is_const = getYIsConst();
+  spec.sel0_const_val = getXConstVal().convertToDouble();
+  spec.sel1_const_val = getYConstVal().convertToDouble();
 
   BM168x::call_local_func("backend_api_select_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
@@ -60,8 +64,10 @@ void tpu::WhereOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 int64_t tpu::WhereOp::dyn_codegen_local_bm1684x(void *buffer) {
   if (!buffer) return sizeof(select_common_spec_t);
   select_common_spec_t spec = {0};
-  spec.sel0_is_const = false;
-  spec.sel1_is_const = false;
+  spec.sel0_is_const = getXIsConst();
+  spec.sel1_is_const = getYIsConst();
+  spec.sel0_const_val = getXConstVal().convertToDouble();
+  spec.sel1_const_val = getYConstVal().convertToDouble();
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
@@ -71,8 +77,10 @@ int64_t tpu::WhereOp::dyn_codegen_local_bm1684x(void *buffer) {
 int64_t tpu::WhereOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer) return sizeof(select_common_spec_t);
   select_common_spec_t spec = {0};
-  spec.sel0_is_const = false;
-  spec.sel1_is_const = false;
+  spec.sel0_is_const = getXIsConst();
+  spec.sel1_is_const = getYIsConst();
+  spec.sel0_const_val = getXConstVal().convertToDouble();
+  spec.sel1_const_val = getYConstVal().convertToDouble();
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 

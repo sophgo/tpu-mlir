@@ -71,6 +71,7 @@ class TORCH_IR_TESTER(object):
             "Relu6":            (self.test_Activation,  Y, N, N),
             "ReplicationPad1d": (self.test_Pad1d,       Y, N, N),
             "ReplicationPad2d": (self.test_Pad2d,       Y, N, N),
+            "Select":           (self.test_Select,      N, N, N),
             "Sigmoid":          (self.test_Activation,  Y, N, N),
             "Silu":             (self.test_Activation,  Y, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
@@ -81,6 +82,7 @@ class TORCH_IR_TESTER(object):
             "Tanh":             (self.test_Activation,  Y, N, N),
             "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
+            "Where":            (self.test_Where,       Y, N, N),
             "ZeroPad2d":        (self.test_Pad2d,       Y, N, N),
         }
         # yapf: enable
@@ -737,8 +739,34 @@ class TORCH_IR_TESTER(object):
             self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
 
         _test_where((1, 3, 32, 32), (1, 3, 32, 32))
-        _test_where((2, 32, 16), (32, 1))
-        _test_where((32, 32), (1, 32))
+        _test_where((3, 32, 16), (3, 32, 16))
+        # TODO: where backend do not support broadcast
+        # _test_where((2, 32, 16), (32, 1))
+        # _test_where((32, 32), (1, 32))
+
+    #######################################################################
+    # Select
+    # ------------
+    def test_Select(self, case_name):
+        """Select"""
+
+        def _test_select(in0_shape, dim, index):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.select(x, dim, index)
+                    return y1
+
+            self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+
+        _test_select((1, 3, 32, 32), 2, 24)
+        _test_select((2, 32, 16), 0, 1)
+        _test_select((32, 1), 1, 0)
+
 
     #######################################################################
     # Concat
