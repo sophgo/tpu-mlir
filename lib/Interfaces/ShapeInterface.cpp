@@ -34,6 +34,8 @@ void broadcast_shape_inference(mlir::Operation *op) {
   auto out_shape = llvm::SmallVector<int64_t>(lhs_shape);
   if (op->getNumOperands() > 1) {
     for (int i = 1; i < op->getNumOperands(); ++i) {
+      if (module::isNone(op->getOperand(i)))
+        continue;
       auto hs_shape = module::getShape(op->getOperand(i));
       auto tmp_shape = llvm::SmallVector<int64_t>();
       for (auto it :

@@ -1913,6 +1913,10 @@ class OnnxConverter(BaseConverter):
                     )  # do not support broadcastable case recently
         output_shape = self.getShape(onnx_node.name)
         if num_const == 0:
+            p['x_is_const'] = False
+            p['y_is_const'] = False
+            p['x_const_val'] = 0
+            p['y_const_val'] = 0
             new_op = self.mlir.create_where_op([cond_opd, tbrn_opd, fbrn_opd], output_shape, **p)
         elif num_const == 1:
             brn_opd = fbrn_opd if self.isScalar(tbrn) else tbrn_opd
