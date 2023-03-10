@@ -43,6 +43,7 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       MaxPoolWithMaskLowering,
       MaxUnpoolLowering,
       MinLowering,
+      MishLowering,
       MulLowering,
       MulConstLowering,
       NonZeroLowering,
