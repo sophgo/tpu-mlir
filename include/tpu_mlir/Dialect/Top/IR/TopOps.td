@@ -728,11 +728,25 @@ def Top_SigmoidOp : Top_Op<"Sigmoid"> {
   let summary = " Exp operator,  scale * Sigmoid + bias";
   let description = [{
      Y = scale * Sigmoid(x) + bias
+     if log --> Y = Log(scale * Sigmoid(x) + bias)
   }];
   let arguments = (ins
     AnyTensor:$input,
     DefaultValuedAttr<F64Attr, "1">:$scale,
-    DefaultValuedAttr<F64Attr, "0">:$bias
+    DefaultValuedAttr<F64Attr, "0">:$bias,
+    DefaultValuedAttr<BoolAttr, "false">:$log
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_SoftsignOp: Top_Op<"Softsign"> {
+  let summary = " Softsign Operator";
+  let description = [{
+     Y = x / (1 + |x|)
+  }];
+  let arguments = (
+    ins AnyTensor:$input
   );
 
   let results = (outs AnyTensor:$output);

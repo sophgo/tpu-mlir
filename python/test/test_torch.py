@@ -21,10 +21,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.jit as jit
+import traceback
 
 
 class TORCH_IR_TESTER(object):
     ID = 0
+
     # This class is built for testing single operator transform.
     def __init__(self, chip: str = "bm1684x", mode: str = "all"):
         Y, N = True, False
@@ -34,6 +36,7 @@ class TORCH_IR_TESTER(object):
             # Torch Test Case, Alphabetically
             ##################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
+            "Abs":              (self.test_Abs,         Y, N, N),
             "Add":              (self.test_Add,         Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
             "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
@@ -53,6 +56,7 @@ class TORCH_IR_TESTER(object):
             "Hardswish":        (self.test_Activation,  Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
+            "LogSigmoid":       (self.test_Activation,  Y, N, N),
             "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
             "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
@@ -71,6 +75,7 @@ class TORCH_IR_TESTER(object):
             "Silu":             (self.test_Activation,  Y, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
             "Softplus":         (self.test_Activation,  Y, N, N),
+            "Softsign":         (self.test_Activation,  N, N, N),
             "Sub":              (self.test_Sub,         Y, N, N),
             "T":                (self.test_T,           Y, N, N),
             "Tanh":             (self.test_Activation,  Y, N, N),
@@ -281,9 +286,11 @@ class TORCH_IR_TESTER(object):
     # ------------
     def _test_Conv(self, case_name):
         suffix = 0
+
         def case1(conv_fun, input_shape):
 
             class Net(torch.nn.Module):
+
                 def __init__(self):
                     super(Net, self).__init__()
                     self.conv1 = conv_fun(8, 8, 3, 1, 1)
@@ -296,7 +303,7 @@ class TORCH_IR_TESTER(object):
 
             nonlocal suffix
             suffix += 1
-            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}" , Net().eval())
+            self.convert_torch_and_compare([input_shape], f"{case_name}_{suffix}", Net().eval())
 
         def case2(conv_fun,
                   input_shape,
@@ -356,11 +363,14 @@ class TORCH_IR_TESTER(object):
         # conv3d is a computationally intensive operation that uses a small kernel to reduce runtime.
         test = self._test_Conv(case_name)
         test["case1"](nn.Conv3d, (4, 8, 7, 10, 20))
-        test["case2"](F.conv3d, (1, 3, 6, 10, 12), (3, 3, 2), 12, has_bias=True, group=1, padding="same")
+        test["case2"](F.conv3d, (1, 3, 6, 10, 12), (3, 3, 2),
+                      12,
+                      has_bias=True,
+                      group=1,
+                      padding="same")
         test["case2"](F.conv3d, (2, 32, 8, 10, 10), (5, 5, 3), 64, padding=2, stride=2, dilation=1)
         # Tpu/Interfaces/BM1684X/Conv3D.cpp::94 Not supported yet.
         # test["case2"](F.conv3d, (1, 3, 32, 32, 32), (3, 3, 3), 12, group=3, padding=(1, 1, 2), stride=(2, 1, 1))
-
 
     #######################################################################
     # AvgPooling
@@ -368,15 +378,11 @@ class TORCH_IR_TESTER(object):
     def _test_AvgPool(self, case_name):
         suffix = 0
 
-        def test_case(pool_funs,
-                      input_shape,
-                      kernel_size,
-                      stride,
-                      padding,
-                      count_include_pad=True):
+        def test_case(pool_funs, input_shape, kernel_size, stride, padding, count_include_pad=True):
             fun1, fun2 = pool_funs
 
             class Model(nn.Module):
+
                 def __init__(self):
                     super(Model, self).__init__()
                     self.pooling = fun1(5, 2)
@@ -396,12 +402,10 @@ class TORCH_IR_TESTER(object):
 
         return test_case
 
-
     def test_AvgPool1d(self, case_name):
         test = self._test_AvgPool(case_name)
         test((nn.AvgPool1d, F.avg_pool1d), (4, 8, 40), 4, 3, 2)
         test((nn.AvgPool1d, F.avg_pool1d), (1, 8, 40), 2, 1, 1, False)
-
 
     def test_AvgPool2d(self, case_name):
         test = self._test_AvgPool(case_name)
@@ -409,12 +413,10 @@ class TORCH_IR_TESTER(object):
         test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
         test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (1, 1), False)
 
-
     def test_AvgPool3d(self, case_name):
         test = self._test_AvgPool(case_name)
         test((nn.AvgPool3d, F.avg_pool3d), (4, 8, 64, 64, 64), 4, 3, 2)
         test((nn.AvgPool3d, F.avg_pool3d), (1, 3, 20, 30, 40), (3, 3, 2), (1, 1, 1), (1, 0, 1))
-
 
     #######################################################################
     # MaxPooling
@@ -422,24 +424,18 @@ class TORCH_IR_TESTER(object):
     def _test_MaxPool(self, case_name):
         suffix = 0
 
-        def test_case(pool_funs,
-                      input_shape,
-                      kernel_size,
-                      stride,
-                      padding):
+        def test_case(pool_funs, input_shape, kernel_size, stride, padding):
             fun1, fun2 = pool_funs
 
             class Model(nn.Module):
+
                 def __init__(self):
                     super(Model, self).__init__()
                     self.pooling = fun1(5, 2)
 
                 def forward(self, x):
                     y = self.pooling(x)
-                    z = fun2(y,
-                             kernel_size,
-                             stride=stride,
-                             padding=padding)
+                    z = fun2(y, kernel_size, stride=stride, padding=padding)
                     return z
 
             nonlocal suffix
@@ -448,12 +444,10 @@ class TORCH_IR_TESTER(object):
 
         return test_case
 
-
     def test_MaxPool1d(self, case_name):
         test = self._test_MaxPool(case_name)
         test((nn.MaxPool1d, F.max_pool1d), (4, 8, 40), 4, 3, 2)
         test((nn.MaxPool1d, F.max_pool1d), (1, 8, 40), 2, 1, 0)
-
 
     def test_MaxPool2d(self, case_name):
         test = self._test_MaxPool(case_name)
@@ -461,12 +455,10 @@ class TORCH_IR_TESTER(object):
         test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
         test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (1, 1))
 
-
     def test_MaxPool3d(self, case_name):
         test = self._test_MaxPool(case_name)
         test((nn.MaxPool3d, F.max_pool3d), (4, 8, 10, 64, 64), 2, 1, 1)
         test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 2), (1, 2, 1), (1, 0, 1))
-
 
     #######################################################################
     # Binary Base
@@ -803,12 +795,14 @@ class TORCH_IR_TESTER(object):
                         "Gelu": nn.GELU(),
                         "Hardsigmoid": nn.Hardsigmoid(),
                         "Hardswish": nn.Hardswish(),
+                        "LogSigmoid": nn.LogSigmoid(),
                         "Mish": nn.Mish(),
                         "Relu": nn.ReLU(),
                         "Relu6": nn.ReLU6(),
                         "Sigmoid": nn.Sigmoid(),
                         "Silu": nn.SiLU(),
                         "Softplus": nn.Softplus(),
+                        "Softsign": nn.Softsign(),
                         "Tanh": nn.Tanh(),
                     }
 
@@ -954,12 +948,30 @@ class TORCH_IR_TESTER(object):
         _test_pad2d((1, 3, 16, 32), 3, 4.0)
         _test_pad2d((2, 4, 16, 32), (3, 4, 5, 6), 6.0)
 
+    def test_Abs(self, case_name):
+        """Abs"""
+
+        def _test_abs(input_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return torch.abs(x)
+
+            self.convert_torch_and_compare([input_shape], case_name, Model().eval())
+
+        _test_abs((1, 16, 32, 32))
+
 
 def test_one_case_in_all(tester: TORCH_IR_TESTER, case, error_cases, success_cases):
     try:
         tester.test_single(case)
     except:
         error_cases.append(case)
+        traceback.print_exc()
         return
     success_cases.append(case)
 
