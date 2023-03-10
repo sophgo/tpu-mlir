@@ -1092,6 +1092,7 @@ typedef struct strideslice_global_spec {
 
 typedef struct strideslice_local_spec {
   strideslice_common_spec_t common;
+  int buffer_addr;
 } strideslice_local_spec_t;
 
 typedef struct {
