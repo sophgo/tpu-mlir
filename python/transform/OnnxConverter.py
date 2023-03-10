@@ -1682,18 +1682,22 @@ class OnnxConverter(BaseConverter):
         output_shape = self.getShape(onnx_node.name)
         input_shape = self.getShape(onnx_node.inputs[0])
         assert len(output_shape) >= len(input_shape)
-        # tile one axis each time to avoid gmem buffer
-        count = sum([input_shape[-i] != output_shape[-i] for i in range(1, len(input_shape) + 1)])
         # remove leading 1
         len_diff = len(output_shape) - len(input_shape)
-        for i in range(len_diff):
-            if output_shape[i] == 1:
-                len_diff -= 1
-            else:
-                break
-        count += len_diff
-        assert count > 0
+
         out_shape = copy.deepcopy(input_shape)
+        new_op = in0
+        if len_diff != 0:
+            p = {'name': '{}_{}_reshape'.format(onnx_node.name, onnx_node.op_type)}
+            input_shape_ex = [1] * len_diff
+            for s in (input_shape):
+                input_shape_ex.append(s)
+            new_op = self.mlir.create_reshape_op([new_op], input_shape_ex, **p)
+            out_shape = input_shape_ex
+        # tile one axis each time to avoid gmem buffer
+        count = sum([input_shape[-i] != output_shape[-i] for i in range(1, len(input_shape) + 1)])
+        assert count > 0
+
         for i in range(1, len(output_shape) + 1):
             axis = len(out_shape) - i
             if axis < 0:
@@ -1706,8 +1710,7 @@ class OnnxConverter(BaseConverter):
                 else:
                     p["name"] = "{}_{}_{}".format(onnx_node.name, onnx_node.op_type, count)
                     out_shape[-i] = output_shape[-i]
-                new_op = self.mlir.create_tile_op([in0], out_shape, **p)
-                in0 = new_op
+                new_op = self.mlir.create_tile_op([new_op], out_shape, **p)
                 count -= 1
             if count == 0:
                 break
