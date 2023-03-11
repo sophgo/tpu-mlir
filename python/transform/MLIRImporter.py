@@ -348,6 +348,8 @@ class MLIRImporter(object):
             'do_relu': BoolAttr.get(kargs['do_relu']),
             'count_include_pad': BoolAttr.get(kargs['count_include_pad']),
         }
+        if 'keep_dim' in kargs:
+            param['keep_dim'] = BoolAttr.get(kargs['keep_dim'])
         return self.buildOp(Top.AvgPoolOp, operands, [output_type], **param)
 
     def create_batchnorm_op(self, operands, output_shape, **kargs):
@@ -880,7 +882,7 @@ class MLIRImporter(object):
             'y_is_const': BoolAttr.get(kargs['x_is_const']),
             'x_const_val': FloatAttr.get_f64(kargs['x_const_val']),
             'y_const_val': FloatAttr.get_f64(kargs['y_const_val'])
-            }
+        }
         return self.buildOp(Top.WhereOp, operands, [output_type], **param)
 
     def create_masked_fill_op(self, operands, output_shape, **kargs):

@@ -870,6 +870,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "GlobalAveragePool")
         op = self.getOperand(onnx_node.inputs[0])
         input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
         num_dim = len(input_shape) - 2
         assert (num_dim > 0)
         p = {
@@ -879,8 +880,8 @@ class OnnxConverter(BaseConverter):
             'pads': num_dim * 2 * [0],
             'count_include_pad': True,
             'do_relu': False,
+            'keep_dim': len(input_shape) == len(output_shape),
         }
-        output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -891,6 +892,7 @@ class OnnxConverter(BaseConverter):
         count_include_pad = onnx_node.attrs.get('count_include_pad', False)
         dim = len(kernel_shape)
         input_shape = self.getShape(onnx_node.inputs[0])
+        output_shape = self.getShape(onnx_node.name)
         strides = onnx_node.attrs.get("strides", kernel_shape)
         auto_pad = onnx_node.attrs.get("auto_pad", b"NOTSET")
         pads = []
@@ -908,8 +910,8 @@ class OnnxConverter(BaseConverter):
             'pads': pads,
             'count_include_pad': count_include_pad,
             'do_relu': False,
+            'keep_dim': len(input_shape) == len(output_shape),
         }
-        output_shape = self.getShape(onnx_node.name)
         new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
 
@@ -1507,6 +1509,7 @@ class OnnxConverter(BaseConverter):
                 'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
                 'do_relu': False,
+                'keep_dim': len(input_shape) == len(output_shape),
             }
             new_op = self.mlir.create_avgpool_op(
                 [op], output_shape, **
@@ -2118,7 +2121,8 @@ class OnnxConverter(BaseConverter):
             if not self.isScalar_(onnx_node.inputs[2], 0):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
         output_shape = self.getShape(onnx_node.name)
-        new_op = self.mlir.create_instance_norm_op([input_opd, scale_opd, bias_opd], output_shape, **p)
+        new_op = self.mlir.create_instance_norm_op([input_opd, scale_opd, bias_opd], output_shape,
+                                                   **p)
         self.addOperand(onnx_node.name, new_op)
 
     def convert_group_norm_op(self, onnx_node):
@@ -2127,11 +2131,13 @@ class OnnxConverter(BaseConverter):
         input_shape = self.getShape(onnx_node.inputs[0])
         num_dims = len(input_shape)
         assert (num_dims > 1)
-        num_groups = onnx_node.attrs.get("num_groups") # required
+        num_groups = onnx_node.attrs.get("num_groups")  # required
         eps = onnx_node.attrs.get("epsilon", 1e-05)
-        p = {"name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
-             "num_groups": num_groups,
-             "eps": eps}
+        p = {
+            "name": "{}_{}".format(onnx_node.name, onnx_node.op_type),
+            "num_groups": num_groups,
+            "eps": eps
+        }
         wb_shape = [1] * num_dims
         wb_shape[1] = input_shape[1]
         input_opd = self.getOperand(onnx_node.inputs[0])
@@ -2149,9 +2155,9 @@ class OnnxConverter(BaseConverter):
 
     def convert_scatter_elements_op(self, onnx_node):
         assert (onnx_node.op_type == "ScatterElements")
-        assert(len(onnx_node.inputs) == 3)
+        assert (len(onnx_node.inputs) == 3)
         input = self.getOp(onnx_node.inputs[0])
-        indices =self.getOp(onnx_node.inputs[1])
+        indices = self.getOp(onnx_node.inputs[1])
         updates = self.getOp(onnx_node.inputs[2])
         output_shape = self.getShape(onnx_node.name)
         axis = onnx_node.attrs.get("axis", 0)
@@ -2223,7 +2229,7 @@ class OnnxConverter(BaseConverter):
 
     def convert_nonzero_op(self, onnx_node):
         assert (onnx_node.op_type == "NonZero")
-        assert(len(onnx_node.inputs) == 1)
+        assert (len(onnx_node.inputs) == 1)
         input_data = self.getOp(onnx_node.inputs[0])
         output_shape = self.getShape(onnx_node.name)
         p = {
