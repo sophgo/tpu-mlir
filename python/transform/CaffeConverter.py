@@ -113,7 +113,6 @@ class CaffeConverter(BaseConverter):
             'MatMul': lambda layer: self.convert_matmul_op(layer),
         }
 
-
     def __del__(self):
         if self.mlir != None:
             del self.mlir
@@ -426,6 +425,7 @@ class CaffeConverter(BaseConverter):
                 self.addOperand(layer.top[1], mask_op)
                 return
         elif method == 1:  # AVE
+            attrs['keep_dim'] = len(output_shape) == len(input_shape)
             new_op = self.mlir.create_avgpool_op([op], output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
             return
