@@ -183,6 +183,7 @@ class TorchConverter(BaseConverter):
             "aten::hardswish": lambda node: self.convert_hardswish(node),
             "aten::hardtanh": lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
             "prim::TupleConstruct": lambda node: self.convert_tuple_op(node),
+            "prim::TupleUnpack": lambda node: self.convert_untuple_op(node),
         }
         # yapf : enable
         self.check_op_names()
@@ -294,10 +295,6 @@ class TorchConverter(BaseConverter):
             else:
                 self.tensor_list[name] = data
             return
-        if node.kind() == 'prim::TupleConstruct':
-            nd = TorchNode(node)
-            self.converted_nodes.append(nd)
-            return
         if node.kind() == 'prim::GetAttr':
             if node.output().type().kind() != 'TensorType':
                 return
@@ -308,7 +305,7 @@ class TorchConverter(BaseConverter):
             weight_name = node.output().debugName()
             self.addWeight(weight_name, data)
             return
-        if node.kind().startswith("aten::"):
+        if node.kind().startswith("aten::") or node.kind() in ['prim::TupleConstruct', 'prim::TupleUnpack']:
             nd = TorchNode(node)
             self.converted_nodes.append(nd)
             return
@@ -701,6 +698,17 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_tuple_op(ops, None, **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_untuple_op(self, torch_node: TorchNode):
+        ops = [self.getOp(n) for n in torch_node.inputs]
+        p = {
+            'name': torch_node.outputs,
+        }
+        num = len(torch_node.outputs)
+        assert(num == len(torch_node.outputs))
+        out_ops = self.mlir.create_untuple_op(ops, [None]*num, **p)
+        for out,op in zip(torch_node.outputs, out_ops):
+            self.addOperand(out, op)
+
     def convert_gelu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_gelu_op([op], None, **{'name': torch_node.name})
@@ -758,8 +766,62 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_mish_op([op], None, **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
+    def ifgo2iofg(self, data):
+        shape = data.shape
+        d = data.reshape(4, -1)
+        d = np.concatenate((d[:1,:],d[3:,:], d[1:3,:]), axis=0)
+        return d.reshape(*shape)
+
     def convert_lstm_op(self, torch_node: TorchNode):
-        raise RuntimeError("Not Implemented")
+        in_op = self.getOp(torch_node.inputs[0])
+        h0,c0 = self.tensor_list[torch_node.inputs[1]]
+        weights = self.tensor_list[torch_node.inputs[2]]
+        has_bias = self.const_val[torch_node.inputs[3]]
+        num_layers = self.const_val[torch_node.inputs[4]]
+        bidirectional = self.const_val[torch_node.inputs[7]]
+        batch_first = self.const_val[torch_node.inputs[8]]
+        h0_op = self.getOp(h0)
+        c0_op = self.getOp(c0)
+        if bidirectional:
+            assert(len(weights) == 8)
+        else:
+            assert(len(weights) == 4)
+        datas = []
+        for w in weights:
+            d = self.getWeight(w)
+            d = self.ifgo2iofg(d)
+            datas.append(d)
+        # filter
+        filter = datas[0]
+        if bidirectional:
+            filter = np.concatenate((datas[0],datas[4]), axis = 0)
+        filter_name = torch_node.name+"_filter"
+        self.addWeight(filter_name, filter)
+        filter_op = self.getWeightOp(filter_name)
+        # recurrence
+        recurrence = datas[1]
+        rshape = recurrence.shape
+        if bidirectional:
+            recurrence = np.concatenate((datas[1], datas[5]), axis=0)
+        recurrence_name = torch_node.name+"_recurrence"
+        self.addWeight(recurrence_name, recurrence)
+        recurrence_op = self.getWeightOp(recurrence_name)
+        # bias
+        bias = np.concatenate((datas[2],datas[3],datas[6],datas[7]), axis = 0) if bidirectional else np.concatenate((datas[2],datas[3]), axis = 0)
+        bias_name = torch_node.name + "_bias"
+        self.addWeight(bias_name, bias)
+        bias_op = self.getWeightOp(bias_name)
+        p = {
+            "name": torch_node.outputs,
+            "hidden_size": rshape[-1],
+            "bidirectional": bidirectional,
+            "batch_first": batch_first,
+        }
+        operands = [in_op, filter_op, recurrence_op, bias_op, h0_op, c0_op]
+        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, [None,None,None], **p)
+        self.addOperand(torch_node.outputs[0], new_op)
+        self.addOperand(torch_node.outputs[1], h_op)
+        self.addOperand(torch_node.outputs[2], c_op)
 
     def convert_abs_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])

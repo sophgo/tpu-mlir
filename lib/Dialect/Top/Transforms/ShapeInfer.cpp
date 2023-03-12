@@ -17,6 +17,29 @@ using namespace mlir;
 namespace tpu_mlir {
 namespace top {
 
+class UnTupleFusePattern : public OpRewritePattern<UnTupleOp> {
+public:
+  using OpRewritePattern<UnTupleOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(UnTupleOp op,
+                                PatternRewriter &rewriter) const override {
+    auto outs = op.getOutputs();
+    auto ins = op.getInputs();
+    if (outs.size() != ins.size()) {
+      return failure();
+    }
+    for (auto it:llvm::zip(ins, outs)) {
+      auto in = std::get<0>(it);
+      auto out = std::get<1>(it);
+      auto loc = module::getLoc(out);
+      out.replaceAllUsesWith(in);
+      module::setLoc(in, loc);
+    }
+    op.erase();
+    return success();
+  }
+};
+
 class TupleFusePattern : public OpRewritePattern<TupleOp> {
 public:
   using OpRewritePattern<TupleOp>::OpRewritePattern;
@@ -50,6 +73,9 @@ public:
     auto ctx = &getContext();
     RewritePatternSet patterns(ctx);
     patterns.add<TupleFusePattern>(ctx);
+    applyPatternsAndFoldGreedily(mOp, std::move(patterns));
+    patterns.clear();
+    patterns.add<UnTupleFusePattern>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](ShapeInterface op) { op.shape_inference(); });
