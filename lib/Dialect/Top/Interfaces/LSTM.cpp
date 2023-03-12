@@ -220,4 +220,41 @@ LogicalResult top::LSTMOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::LSTMOp::shape_inference() {}
+void top::LSTMOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  assert(in_shape.size() == 3);
+  int64_t num_dir = 1;
+  if (getBidirectional()) {
+    num_dir = 2;
+  }
+  int64_t seq_len, batch_size;
+  if (getBatchFirst()) {
+    batch_size = in_shape[0];
+    seq_len = in_shape[1];
+  } else {
+    seq_len = in_shape[0];
+    batch_size = in_shape[1];
+  }
+  int64_t hidden_size = getHiddenSize();
+  std::vector<int64_t> shape0;
+  std::vector<int64_t> shape1;
+  std::vector<int64_t> shape2;
+  if (getBatchFirst()) {
+    shape0 = {batch_size, seq_len, num_dir, hidden_size};
+    shape1 = {batch_size, num_dir, hidden_size};
+    shape2 = {batch_size, num_dir, hidden_size};
+  } else {
+    shape0 = {seq_len, num_dir, batch_size, hidden_size};
+    shape1 = {num_dir, batch_size, hidden_size};
+    shape2 = {num_dir, batch_size, hidden_size};
+  }
+  if (module::isNone(getY()) == false) {
+    module::setShapeOrVerify(getY(), shape0);
+  }
+  if (module::isNone(getYH()) == false) {
+    module::setShapeOrVerify(getYH(), shape1);
+  }
+  if (module::isNone(getYC()) == false) {
+    module::setShapeOrVerify(getYC(), shape2);
+  }
+}

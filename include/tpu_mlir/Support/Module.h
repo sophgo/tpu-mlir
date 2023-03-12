@@ -146,7 +146,9 @@ func::CallOp getCallOp(FuncOp func);
 llvm::StringRef getModuleName();
 llvm::StringRef getName(Operation *op, int index = 0);
 llvm::StringRef getName(Value v);
+uint32_t getIdx(Value v);
 NameLoc getLoc(Value v);
+void setLoc(Value v, NameLoc loc);
 void getInputsOutputs(std::vector<Value> &inputs, std::vector<Value> &outputs);
 void getInputsOutputs(func::CallOp call, std::vector<Value> &inputs,
                       std::vector<Value> &outputs);

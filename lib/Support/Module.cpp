@@ -555,20 +555,20 @@ void getNCHW(Value v, int64_t &n, int64_t &c, int64_t &h, int64_t &w,
 }
 
 void getNCDHW(Value v, int64_t &n, int64_t &c, int64_t &d, int64_t &h,
-             int64_t &w, group_type_t group_type) {
+              int64_t &w, group_type_t group_type) {
   auto shape = v.getType().cast<RankedTensorType>().getShape();
   int num_dims = shape.size();
-  if(GROUP_3D == group_type && isBM1684XFamily()){
-    n = num_dims>0?shape[0]:1;
-    c = num_dims>1?shape[1]:1;
-    d = num_dims>2?shape[2]:1;
-    h = num_dims>3?shape[3]:1;
+  if (GROUP_3D == group_type && isBM1684XFamily()) {
+    n = num_dims > 0 ? shape[0] : 1;
+    c = num_dims > 1 ? shape[1] : 1;
+    d = num_dims > 2 ? shape[2] : 1;
+    h = num_dims > 3 ? shape[3] : 1;
     w = 1;
     for (size_t i = 4; i < num_dims; ++i) {
       w *= shape[i];
     }
     return;
-  } else{
+  } else {
     d = 1;
     getNCHW(shape, n, c, h, w, group_type);
   }
@@ -580,7 +580,7 @@ bool isOpInGroup(Operation *Op, int64_t *group_type) {
   }
   auto parent = Op->getParentOp();
   if (parent != nullptr && isa<tpu::GroupOp>(parent)) {
-    if(group_type){
+    if (group_type) {
       if (auto groupop = dyn_cast<tpu::GroupOp>(Op)) {
         *group_type = groupop.getGroupType();
       }
@@ -778,19 +778,57 @@ double getThreshold(Value v) {
   return type.getMax();
 }
 
+uint32_t getIdx(Value v) {
+  uint32_t idx = 0;
+  if (auto r = v.dyn_cast<OpResult>()) {
+    idx = r.getResultNumber();
+  } else if (auto r = v.dyn_cast<BlockArgument>()) {
+    idx = r.getArgNumber();
+  } else {
+    v.dump();
+    llvm_unreachable("Not Implemented");
+  }
+  return idx;
+}
+
+void setLoc(Value v, NameLoc loc) {
+  if (v.getLoc().isa<NameLoc>()) {
+    v.setLoc(loc);
+    return;
+  }
+  if (auto fuse_loc = v.getLoc().dyn_cast<FusedLoc>()) {
+    std::vector<mlir::Location> locs = fuse_loc.getLocations();
+    uint32_t idx = getIdx(v);
+    locs[idx] = loc;
+    auto new_loc = FusedLoc::get(v.getContext(), locs);
+    v.setLoc(new_loc);
+    return;
+  }
+  if (auto op = v.getDefiningOp()) {
+    auto op_loc = op->getLoc();
+    if (op_loc.isa<NameLoc>()) {
+      op->setLoc(loc);
+      return;
+    }
+    if (auto fuse_loc = op->getLoc().dyn_cast<FusedLoc>()) {
+      std::vector<mlir::Location> locs = fuse_loc.getLocations();
+      auto idx = getIdx(v);
+      locs[idx] = loc;
+      auto new_loc = FusedLoc::get(v.getContext(), locs);
+      op->setLoc(new_loc);
+      return;
+    }
+  }
+  v.dump();
+  llvm_unreachable("Not Implemented");
+}
+
 NameLoc getLoc(Value v) {
   if (auto loc = v.getLoc().dyn_cast<NameLoc>()) {
     return loc;
   } else if (auto fuse_loc = v.getLoc().dyn_cast<FusedLoc>()) {
     auto locs = fuse_loc.getLocations();
-    uint32_t idx = 0;
-    if (auto r = v.dyn_cast<OpResult>()) {
-      idx = r.getResultNumber();
-    } else if (auto r = v.dyn_cast<BlockArgument>()) {
-      idx = r.getArgNumber();
-    } else {
-      llvm_unreachable("Not Implemented");
-    }
+    uint32_t idx = getIdx(v);
     if (auto name_loc = locs[idx].dyn_cast<NameLoc>()) {
       return name_loc;
     }
@@ -800,9 +838,9 @@ NameLoc getLoc(Value v) {
       return name_loc;
     }
     if (auto fuse_loc = loc.dyn_cast<FusedLoc>()) {
-      auto r = v.cast<OpResult>();
+      uint32_t idx = getIdx(v);
       auto locs = fuse_loc.getLocations();
-      if (auto name_loc = locs[r.getResultNumber()].dyn_cast<NameLoc>()) {
+      if (auto name_loc = locs[idx].dyn_cast<NameLoc>()) {
         return name_loc;
       }
     }

@@ -160,7 +160,7 @@ def Top_InputOp: Top_BaseOp<"Input"> {
 def Top_TupleOp: Top_BaseOp<"Tuple"> {
   let summary = "Tuple operator";
   let description = [{
-    gen by torch prim::TupleConstruct
+    gen by torch prim::TupleConstruct, y = (a, b)
   }];
 
   let arguments = (ins
@@ -168,6 +168,21 @@ def Top_TupleOp: Top_BaseOp<"Tuple"> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_UnTupleOp: Top_BaseOp<"UnTuple"> {
+  let summary = "UnTuple operator";
+  let description = [{
+    gen by torch prim::TupleUnpack, a, b = y
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs
+    Variadic<AnyTensor>:$outputs
+  );
 }
 
 // === Function Op =====

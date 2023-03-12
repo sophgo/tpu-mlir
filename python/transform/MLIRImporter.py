@@ -91,6 +91,7 @@ class Top:
     TopKOp = 'top.TopK'
     TransposeOp = 'top.Transpose'
     TupleOp = 'top.Tuple'
+    UnTupleOp = 'top.UnTuple'
     UnpackOp = 'top.Unpack'
     UpsampleOp = 'top.Upsample'
     WeightOp = 'top.Weight'
@@ -508,6 +509,18 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.TupleOp, operands, [output_type], **param)
+
+    def create_untuple_op(self, operands, output_shapes, **kargs):
+        out_types = list()
+        for s in output_shapes:
+            if s is not None and len(s) == 0:
+                out_types.append(NoneType.get())
+            else:
+                out_types.append(self.get_tensor_type(s))
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.UnTupleOp, operands, out_types, **param)
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])
