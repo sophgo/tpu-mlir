@@ -690,7 +690,7 @@ class TFLiteConverter(BaseConverter):
                 "kernel_shape": self.mlir.ArrayAttr(kernel_shape),
                 "strides": self.mlir.ArrayAttr([1, 1]),
                 "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
-                "keep_dim": BoolAttr.get(False),
+                "keep_dim": BoolAttr.get(len(op.inputs[0].shape) == len(op.outputs[0].shape)),
             }
             return Top.AvgPoolOp, attr, True
         else:
