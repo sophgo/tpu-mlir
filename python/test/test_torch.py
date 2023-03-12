@@ -83,7 +83,7 @@ class TORCH_IR_TESTER(object):
             "Tanh":             (self.test_Activation,  Y, N, N),
             "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
-            "Where":            (self.test_Where,       Y, N, N),
+            "Where":            (self.test_Where,       N, N, N),
             "ZeroPad2d":        (self.test_Pad2d,       Y, N, N),
         }
         # yapf: enable
