@@ -159,6 +159,7 @@ class TorchConverter(BaseConverter):
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
             "aten::mish": lambda node: self.convert_mish_op(node),
             "aten::mul": lambda node: self.convert_mul_op(node),
+            "aten::neg": lambda node: self.convert_neg_op(node),
             "aten::pad": lambda node: self.convert_pad_op(node, mode='unknown'),
             "aten::prelu": lambda node: self.convert_prelu_op(node),
             "aten::permute": lambda node: self.convert_permute_op(node),
@@ -754,4 +755,13 @@ class TorchConverter(BaseConverter):
     def convert_abs_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_abs_op([op], None, **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_neg_op(self, torch_node: TorchNode):
+        op = self.getOp(torch_node.inputs[0])
+        p = {
+            'name': torch_node.name,
+            'const_val': -1,
+        }
+        new_op = self.mlir.create_mul_const_op([op], None, **p)
         self.addOperand(torch_node.name, new_op)
