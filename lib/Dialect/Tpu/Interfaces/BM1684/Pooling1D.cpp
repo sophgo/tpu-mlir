@@ -33,5 +33,21 @@ int64_t tpu::Pool1DOp::getBufferSize_bm1684(
 
 void tpu::Pool1DOp::codegen_local_bm1684(int64_t n_step, int64_t h_step,
                                          local_sec_info_t &sec_info) {
-  llvm_unreachable("Not Implemented");
+  auto out_gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto p = parseParam();
+  int bottom_dim[4] = {(int)in_gi.n_slice, (int)p.c, (int)in_gi.h_slice,
+                       (int)p.iw};
+  int top_dim[4] = {(int)out_gi.n_slice, (int)p.c, (int)out_gi.h_slice,
+                    (int)p.ow};
+  bool is_avg_pooling = getPoolMode() == tpu::PoolMode::Avg;
+  if (module::isUniformQuantized(getInput())) {
+    llvm_unreachable("Not Implemented");
+  } else {
+    BM1684::instance().dl_nodechip_pooling_forward_local(
+        in_gi.out_addr, out_gi.out_addr, bottom_dim, top_dim, p.kh, p.kw,
+        p.pad_h, p.pad_h_after, p.pad_w, p.pad_w_after, p.sh, p.sw,
+        is_avg_pooling ? 1 : 0, p.count_include_pad ? 0 : 1,
+        (CMD_ID_NODE *)BM1684::instance().bdc_node, p.do_relu);
+  }
 }
