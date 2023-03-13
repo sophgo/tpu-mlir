@@ -54,6 +54,7 @@ class TORCH_IR_TESTER(object):
             "Gelu":             (self.test_Activation,  Y, N, N),
             "Hardsigmoid":      (self.test_Activation,  Y, N, N),
             "Hardswish":        (self.test_Activation,  Y, N, N),
+            "IndexSelect":      (self.test_IndexSelect, Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
             "LogSigmoid":       (self.test_Activation,  Y, N, N),
@@ -72,7 +73,6 @@ class TORCH_IR_TESTER(object):
             "Relu6":            (self.test_Activation,  Y, N, N),
             "ReplicationPad1d": (self.test_Pad1d,       Y, N, N),
             "ReplicationPad2d": (self.test_Pad2d,       Y, N, N),
-            "Select":           (self.test_Select,      N, N, N),
             "Sigmoid":          (self.test_Activation,  Y, N, N),
             "Silu":             (self.test_Activation,  Y, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
@@ -113,6 +113,7 @@ class TORCH_IR_TESTER(object):
 
     def test_single(self, case: str):
         np.random.seed(0)
+        torch.manual_seed(7)
         TORCH_IR_TESTER.ID = 0
         print("Test: {}".format(case))
         if case in self.test_cases:
@@ -751,27 +752,29 @@ class TORCH_IR_TESTER(object):
         # _test_where((32, 32), (1, 32))
 
     #######################################################################
-    # Select
+    # IndexSelect
     # ------------
-    def test_Select(self, case_name):
-        """Select"""
+    def test_IndexSelect(self, case_name):
+        """IndexSelect"""
 
-        def _test_select(in0_shape, dim, index):
+        def _test_index_select(in_shape, dim, index_shape):
 
             class Model(nn.Module):
 
                 def __init__(self):
                     super(Model, self).__init__()
+                    high = in_shape[dim]
+                    self.index = torch.randint(0, high, index_shape)
 
                 def forward(self, x):
-                    y1 = torch.select(x, dim, index)
+                    y1 = torch.index_select(x, dim, self.index)
                     return y1
 
-            self.convert_torch_and_compare([in0_shape], case_name, Model().eval())
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
 
-        _test_select((1, 3, 32, 32), 2, 24)
-        _test_select((2, 32, 16), 0, 1)
-        _test_select((32, 1), 1, 0)
+        _test_index_select((1, 3, 32, 32), 2, (5,))
+        _test_index_select((2, 32, 16), 0, (3,))
+        _test_index_select((32, 5), 1, (6,))
 
 
     #######################################################################

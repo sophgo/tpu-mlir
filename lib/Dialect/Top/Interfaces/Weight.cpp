@@ -272,3 +272,34 @@ Value WeightOp::clone_f16(Operation *OwnerOp) {
                                              ValueRange{});
   return newOp.getResult();
 };
+
+// template <typename Ty>
+Value WeightOp::clone_int(Operation *OwnerOp) {
+  auto type = getType().cast<RankedTensorType>();
+  auto dtype = type.getElementType();
+  assert(dtype.isF32());
+  auto data = read<float>();
+  auto count = data->size();
+  auto data_f16 = std::make_shared<std::vector<int32_t>>(count);
+
+#pragma omp parallel for schedule(static, omp_schedule(count))
+  for (uint32_t i = 0; i < count; i++) {
+    data_f16->at(i) = static_cast<int32_t>(data->at(i));
+  }
+  auto ctx = OwnerOp->getContext();
+  OpBuilder builder(ctx);
+  builder.setInsertionPoint(OwnerOp);
+  auto dialect = ctx->getLoadedDialect("top");
+  auto topDialect = llvm::cast<TopDialect>(dialect);
+  assert(topDialect->wFile != nullptr);
+  // if the weightop will be used by 2 ops, it need to create a new WeightOp
+  std::string new_name = module::getName(OwnerOp).str() +
+                         module::getName(getOperation()).str() + "_int";
+  auto new_type = RankedTensorType::get(type.getShape(), builder.getI32Type());
+  auto ret = topDialect->wFile->addTensor(new_name, data_f16->data(), new_type);
+  assert(succeeded(ret));
+  auto nameAttr = builder.getStringAttr(new_name);
+  auto newOp = builder.create<top::WeightOp>(NameLoc::get(nameAttr), new_type,
+                                             ValueRange{});
+  return newOp.getResult();
+};

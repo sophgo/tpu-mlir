@@ -51,4 +51,19 @@ LogicalResult top::GatherOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::GatherOp::shape_inference() {}
+void top::GatherOp::shape_inference() {
+  auto indices_shape = module::getShape(getIndices());
+  auto ax = getAxis();
+  auto input_shape = module::getShape(getInput());
+  std::vector<int64_t> out_shape;
+  for (int i = 0; i < ax; ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
+  for (int s : indices_shape) {
+    out_shape.push_back(s);
+  }
+  for (int i = ax + 1; i < input_shape.size(); ++i) {
+    out_shape.push_back(input_shape[i]);
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}
