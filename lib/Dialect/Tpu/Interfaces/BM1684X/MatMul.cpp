@@ -290,7 +290,6 @@ void tpu::MatMulOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
-  //
   auto p = parseParam();
   if (!buffer) return (p.batch != 1 ? sizeof(batch_matmul_common_spec_t) : sizeof(fc_global_spec_t));
   auto op = getOperation();
@@ -363,7 +362,6 @@ int64_t tpu::MatMulOp::dyn_codegen_global_bm1684x(void *buffer) {
     }
   }
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
-  return 0;
 }
 
 int64_t tpu::MatMulOp::get_fw_type_bm1684x() {
