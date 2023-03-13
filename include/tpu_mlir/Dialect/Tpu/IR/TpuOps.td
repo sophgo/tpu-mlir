@@ -1285,6 +1285,7 @@ def Tpu_SliceOp: Tpu_Op<"Slice", [
 
   let arguments = (
     ins AnyRankedTensor:$input,
+    AnyTensorOrNone:$buffer,
     I64ArrayAttr:$offset,
     I64ArrayAttr:$steps
   );
