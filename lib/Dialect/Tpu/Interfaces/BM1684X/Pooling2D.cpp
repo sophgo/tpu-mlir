@@ -178,9 +178,8 @@ int64_t tpu::Pool2DOp::dyn_codegen_local_bm1684x(void *buffer) {
   auto gi = getGroupInfo(0, 0);
 
   spec.buffer_addr = gi.buffer_addr;
-  common.pad_h_t = (in_gi.h_idx == 0 ? attrs.pad_h : 0);
-  common.pad_h_b =
-      (in_gi.h_idx + in_gi.h_slice == attrs.ih ? attrs.pad_h_after : 0);
+  common.pad_h_t = attrs.pad_h;
+  common.pad_h_b = attrs.pad_h_after;
 
   if (getPoolMode() == tpu::PoolMode::Avg) {
     bool with_pad = has_pad(attrs) && attrs.count_include_pad == 0;
