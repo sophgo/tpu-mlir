@@ -14,12 +14,12 @@ namespace bm1684 {
 
 void SliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  lowering_common_f32<tpu::SliceOp>(rewriter, op);
+  lowering_common_f32<tpu::SliceOp>(rewriter, op, 2);
 }
 
 void SliceLowering::LoweringINT8(PatternRewriter &rewriter, top::SliceOp op,
                                  bool asymmetric) const {
-  lowering_common_int8<tpu::SliceOp>(rewriter, op, false);
+  lowering_common_int8<tpu::SliceOp>(rewriter, op, false, 2);
 }
 
 } // namespace bm1684

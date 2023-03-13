@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void SliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  lowering_common_f32<tpu::SliceOp>(rewriter, op);
+  lowering_common_f32<tpu::SliceOp>(rewriter, op, 2);
 }
 void SliceLowering::LoweringINT4(PatternRewriter &rewriter, top::SliceOp op,
                                    bool asymmetric) const {
@@ -22,7 +22,7 @@ void SliceLowering::LoweringINT4(PatternRewriter &rewriter, top::SliceOp op,
 }
 void SliceLowering::LoweringINT8(PatternRewriter &rewriter, top::SliceOp op,
                                  bool asymmetric) const {
-  lowering_common_int8<tpu::SliceOp>(rewriter, op, asymmetric);
+  lowering_common_int8<tpu::SliceOp>(rewriter, op, asymmetric, 2);
 }
 
 void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
@@ -38,17 +38,17 @@ void SliceLowering::LoweringBF16(PatternRewriter &rewriter,
       return;
     }
   }
-  lowering_common_bf16<tpu::SliceOp>(rewriter, op);
+  lowering_common_bf16<tpu::SliceOp>(rewriter, op, 2);
 }
 
 void SliceLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::SliceOp op) const {
-  lowering_common_f16<tpu::SliceOp>(rewriter, op);
+  lowering_common_f16<tpu::SliceOp>(rewriter, op, 2);
 }
 
 void SliceLowering::LoweringQuantized(PatternRewriter &rewriter,
                                       top::SliceOp op) const {
-  lowering_common<tpu::SliceOp>(rewriter, op, op.getOutput().getType());
+  lowering_common<tpu::SliceOp>(rewriter, op, op.getOutput().getType(), 2);
 }
 
 } // namespace bm1684x

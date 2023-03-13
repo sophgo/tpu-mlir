@@ -111,6 +111,59 @@ public:
   }
 };
 
+class SliceGlobalBuffer : public OpRewritePattern<tpu::SliceOp> {
+public:
+  using OpRewritePattern<tpu::SliceOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(tpu::SliceOp sliceOp,
+                                PatternRewriter &rewriter) const override {
+    if (!module::isNone(sliceOp.getBuffer())) {
+      return failure();
+    }
+    if (!module::isBM1684Family()) {
+      return failure();
+    }
+    if (!module::isUniformQuantized(sliceOp.getInput())) {
+      return failure();
+    }
+    if (!module::isUniformQuantized(sliceOp.getOutput())) {
+      return failure();
+    }
+    auto p = sliceOp.parseParam();
+    uint64_t buffer_size = 0;
+    int shape_dim = module::getShape(sliceOp.getInput()).size();
+    // melloc
+    int *input_shape = new int[MAX_SHAPE_DIMS];
+    int *begin_index = new int[MAX_SHAPE_DIMS];
+    int *end_index = new int[MAX_SHAPE_DIMS];
+    int *stride = new int[MAX_SHAPE_DIMS];
+    // assign param and call func to get buffer size
+    module::getGlobalShape(sliceOp.getInput(), input_shape);
+    for (int i = 0; i < shape_dim; ++i) {
+      begin_index[i] = p.offset_4[i];
+      end_index[i] = p.os_4[i] * p.step_4[i] + p.offset_4[i];
+      stride[i] = p.step_4[i];
+    }
+    BM1684::instance().dl_nodechip_stride_slice_fix8b(
+        0, 0, 0, 0, &buffer_size, input_shape, shape_dim, STORE_MODE_4N,
+        STORE_MODE_4N, 0, 0, begin_index, end_index, stride, 0, NULL);
+    // release
+    delete[] input_shape;
+    delete[] begin_index;
+    delete[] end_index;
+    delete[] stride;
+    // create bufferOp
+    std::vector<int64_t> buffer_shape = {(int64_t)buffer_size};
+    auto type = module::getStorageType(sliceOp.getOutput());
+    auto buffer_type = RankedTensorType::get(buffer_shape, type);
+    auto buffer = tpu::BufferOp::create(sliceOp, buffer_type);
+    sliceOp.getBuffer().replaceUsesWithIf(buffer, [&](OpOperand &operand) {
+      return operand.get() == sliceOp.getBuffer();
+    });
+    return success();
+  }
+};
+
 class SoftmaxGlobalBuffer : public OpRewritePattern<tpu::SoftmaxOp> {
 public:
   using OpRewritePattern<tpu::SoftmaxOp>::OpRewritePattern;
@@ -248,6 +301,7 @@ void populateGlobalBufferPatterns(RewritePatternSet *patterns) {
       GRUGlobalBuffer,
       LSTMGlobalBuffer,
       ReduceGlobalBuffer,
+      SliceGlobalBuffer,
       SoftmaxGlobalBuffer,
       PermuteGlobalBuffer,
       NonZeroGlobalBuffer
