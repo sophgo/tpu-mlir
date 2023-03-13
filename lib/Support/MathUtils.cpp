@@ -1239,4 +1239,31 @@ binary_add(float *a, float *b, const llvm::ArrayRef<int64_t> &a_shape,
   return std::move(output);
 }
 
+//Accoring to output_index, get thr broadcast input_index
+int getBcastIndex(int out_index, std::vector<int64_t> &output_shape, std::vector<int64_t> &input_shape) {
+  int dim = output_shape.size();
+  std::vector<int64_t> out_slice_index(dim);
+  std::vector<int64_t> input_slice_index(dim);
+  //calculate each dim index from out_index
+  int multiplies = 1;
+  //int mod = 1;
+  int input_index = 0;
+  for (int i = dim - 1; i >= 0; i--) {
+    //mod = output_shape[i];
+    out_slice_index[i] = out_index / multiplies % output_shape[i];
+    if (input_shape[i] == 1) {
+      input_slice_index[i] = 0;
+    } else {
+      input_slice_index[i] = out_slice_index[i];
+    }
+    multiplies *= output_shape[i];
+  }
+  multiplies = 1;
+  for (int i = dim - 1; i >= 0; i--) {
+    input_index += (input_slice_index[i] * multiplies);
+    multiplies *= input_shape[i];
+  }
+  return input_index;
+}
+
 } // namespace tpu_mlir

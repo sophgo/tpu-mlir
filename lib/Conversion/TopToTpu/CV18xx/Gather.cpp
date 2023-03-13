@@ -22,12 +22,17 @@ void GatherLowering::LoweringINT8(PatternRewriter &rewriter, top::GatherOp op,
 void GatherLowering::LoweringBF16(PatternRewriter &rewriter,
                                   top::GatherOp op) const {
   std::vector<Value> operands;
-  auto inputOp = cast<top::WeightOp>(op.getInput().getDefiningOp());
-  operands.push_back(op.getIndices());
-  operands.push_back(inputOp.clone_bf16(op));
+  //auto inputOp = cast<top::WeightOp>(op.getInput().getDefiningOp());
+  operands.emplace_back(op.getIndices());
+  //operands.emplace_back(inputOp.clone_bf16(op));
+  if (auto inputOp = dyn_cast_or_null<top::WeightOp>(op.getInput().getDefiningOp())) {
+    operands.emplace_back(inputOp.clone_bf16(op));
+  } else {
+    operands.emplace_back(op.getInput());
+  }
   std::vector<NamedAttribute> attrs;
-  attrs.push_back(rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("embedding")));
-  attrs.push_back(rewriter.getNamedAttr("param", rewriter.getDictionaryAttr({})));
+  attrs.emplace_back(rewriter.getNamedAttr("cpu_op_name", rewriter.getStringAttr("embedding")));
+  attrs.emplace_back(rewriter.getNamedAttr("param", rewriter.getDictionaryAttr({})));
   auto newType = getQuantBF16Type(op.getOutput());
   rewriter.replaceOpWithNewOp<tpu::GenericCpuOp>(op.getOperation(), newType,
                                              operands, attrs);

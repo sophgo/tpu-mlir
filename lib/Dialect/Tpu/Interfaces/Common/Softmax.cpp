@@ -193,6 +193,9 @@ mlir::Type tpu::SoftmaxOp::type_verify(uint64_t opd_idx, TypeCastMode &mode) {
 }
 
 LogicalResult tpu::SoftmaxOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    return failure();
+  }
   int axis = getAxis();
   auto shape = module::getShape(getOutput());
   if (shape.size() == 4 && (axis == 2 || axis == 3)) {

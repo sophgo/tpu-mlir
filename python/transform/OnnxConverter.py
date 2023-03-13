@@ -1906,14 +1906,14 @@ class OnnxConverter(BaseConverter):
         num_const = 0
         if self.isScalar(tbrn):
             num_const += 1
-        else:
-            assert (self.getShape(cond) == self.getShape(tbrn)
-                    )  # do not support broadcastable case recently
+        # else:
+        #     assert (self.getShape(cond) == self.getShape(tbrn)
+        #             )  # do not support broadcastable case recently
         if self.isScalar(fbrn):
             num_const += 1
-        else:
-            assert (self.getShape(cond) == self.getShape(fbrn)
-                    )  # do not support broadcastable case recently
+        # else:
+        #     assert (self.getShape(cond) == self.getShape(fbrn)
+        #             )  # do not support broadcastable case recently
         output_shape = self.getShape(onnx_node.name)
         if num_const == 0:
             p['x_is_const'] = False
