@@ -147,6 +147,7 @@ class TorchConverter(BaseConverter):
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
             "aten::gt": lambda node: self.convert_compare_op(node, "Greater"),
+            "aten::index_select": lambda node: self.convert_index_select_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
@@ -554,6 +555,14 @@ class TorchConverter(BaseConverter):
             'dim1': dim1,
         }
         new_op = self.mlir.create_transpose_op([op], None, **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_index_select_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[2])
+        axis = self.const_val[torch_node.inputs[1]]
+        p = {'name': torch_node.name, 'axis': axis}
+        new_op = self.mlir.create_gather_op([op0, op1], None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):

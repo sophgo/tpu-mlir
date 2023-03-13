@@ -83,6 +83,8 @@ struct TopGatherToSlice : public OpRewritePattern<GatherOp> {
           return failure();
         }
       }
+      if (step == 0)
+        return failure();
 
       NamedAttrList attrs;
       auto input_shape = module::getShape(op.getInput());

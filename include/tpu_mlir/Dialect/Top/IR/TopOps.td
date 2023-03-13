@@ -128,6 +128,7 @@ def Top_WeightOp : Top_BaseOp<"Weight"> {
                             mlir::RankedTensorType& type);
   mlir::Value clone_bf16(mlir::Operation * OwnerOp);
   mlir::Value clone_f16(mlir::Operation * OwnerOp);
+  mlir::Value clone_int(mlir::Operation *OwnerOp);
   }];
 }
 
