@@ -41,9 +41,6 @@ deconv_attr_t tpu::DeconvOp::parseParam() {
   auto dilation = module::getI64Array(getDilations(), 2, 1);
   p.dh = dilation->at(0);
   p.dw = dilation->at(1);
-  auto ins = module::getI64Array(getInserts(), 2, 0);
-  p.ins_h = ins->at(0);
-  p.ins_w = ins->at(1);
   p.g = getGroup();
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();

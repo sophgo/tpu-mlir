@@ -48,6 +48,7 @@ class TORCH_IR_TESTER(object):
             "Conv1d":           (self.test_Conv1d,      Y, N, N),
             "Conv2d":           (self.test_Conv2d,      Y, N, N),
             "Conv3d":           (self.test_Conv3d,      Y, N, N),
+            "ConvTrans":        (self.test_ConvTrans,   Y, N, N),
             "Div":              (self.test_Div,         Y, N, N),
             "Elu":              (self.test_Elu,         Y, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
@@ -371,6 +372,45 @@ class TORCH_IR_TESTER(object):
         test["case2"](F.conv3d, (2, 32, 8, 10, 10), (5, 5, 3), 64, padding=2, stride=2, dilation=1)
         # Tpu/Interfaces/BM1684X/Conv3D.cpp::94 Not supported yet.
         # test["case2"](F.conv3d, (1, 3, 32, 32, 32), (3, 3, 3), 12, group=3, padding=(1, 1, 2), stride=(2, 1, 1))
+
+    #######################################################################
+    # Transposed Convolution
+    # ------------
+    def test_ConvTrans(self, case_name):
+
+        def test_deconv(
+            name,
+            input_shape,
+            kernel_shape,
+            stride=1,
+            padding=0,
+            output_padding=0,
+            groups=1,
+            dilation=1,
+        ):
+            class Net(torch.nn.Module):
+                def __init__(self):
+                    super(Net, self).__init__()
+                    self.deconv = nn.ConvTranspose2d(16, 32, 3, stride=2)
+                    self.weight = torch.randn(kernel_shape)
+
+                def forward(self, x):
+                    y = self.deconv(x)
+                    z = nn.functional.conv_transpose2d(
+                        y,
+                        self.weight,
+                        stride=stride,
+                        padding=padding,
+                        output_padding=output_padding,
+                        groups=groups,
+                        dilation=dilation,
+                    )
+                    return z
+
+            self.convert_torch_and_compare([input_shape], name, Net().eval())
+
+        test_deconv(case_name, (2, 16, 8, 8), (32, 8, 3, 5))
+        test_deconv(case_name, (2, 16, 8, 8), (32, 4, 3, 4), (2, 3), (1, 1), (0, 0), groups=2)
 
     #######################################################################
     # AvgPooling
