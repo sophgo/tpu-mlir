@@ -76,6 +76,7 @@ class TORCH_IR_TESTER(object):
             "Sigmoid":          (self.test_Activation,  Y, N, N),
             "Silu":             (self.test_Activation,  Y, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
+            "Softmin":          (self.test_Softmin,     Y, N, N),
             "Softplus":         (self.test_Activation,  Y, N, N),
             "Softsign":         (self.test_Activation,  Y, N, N),
             "Sub":              (self.test_Sub,         Y, N, N),
@@ -375,6 +376,7 @@ class TORCH_IR_TESTER(object):
     # ------------
     def _test_AvgPool(self, case_name):
         def test_case(pool_funs, input_shape, kernel_size, stride, padding, count_include_pad=True):
+
             fun1, fun2 = pool_funs
 
             class Model(nn.Module):
@@ -523,8 +525,11 @@ class TORCH_IR_TESTER(object):
 
         """
         def test_cmp_const(name, cmp_fun, input_shape, const):
+
             class Net(torch.nn.Module):
+
                 def __init__(self):
+
                     super(Net, self).__init__()
 
                 def forward(self, x):
@@ -919,7 +924,7 @@ class TORCH_IR_TESTER(object):
             _test_softmax((3, 100, 32, 1), dim)
 
     #######################################################################
-    # Softmax
+    # LogSoftmax
     # ------------
     def test_LogSoftmax(self, case_name):
         """LogSoftmax"""
@@ -940,6 +945,29 @@ class TORCH_IR_TESTER(object):
             _test_log_softmax((3, 100, 10, 1), dim)
             _test_log_softmax((3, 100, 32), dim)
             _test_log_softmax((3, 100, 32, 1), dim)
+
+    #######################################################################
+    # Softmin
+    # ------------
+    def test_Softmin(self, case_name):
+        """Softmin"""
+
+        def _test_softmin(in_shape, dim):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    return F.softmin(x, dim=dim)
+
+            self.convert_torch_and_compare([in_shape], case_name, Model().eval())
+
+        for dim in [1, 2]:
+            _test_softmin((3, 100, 10, 1), dim)
+            _test_softmin((3, 100, 32), dim)
+            _test_softmin((3, 100, 32, 1), dim)
 
     #######################################################################
     # Pad1D
