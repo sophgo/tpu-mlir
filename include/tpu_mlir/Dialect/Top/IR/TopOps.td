@@ -1115,7 +1115,7 @@ def Top_DeconvOp: Top_Op<"Deconv", [SupportFuseRelu]> {
     I64ArrayAttr:$pads,
     DefaultValuedAttr<I64Attr, "1">:$group,
     OptionalAttr<I64ArrayAttr>:$dilations,
-    OptionalAttr<I64ArrayAttr>:$inserts,
+    OptionalAttr<I64ArrayAttr>:$output_padding,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );

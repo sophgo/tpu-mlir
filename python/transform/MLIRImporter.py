@@ -712,13 +712,13 @@ class MLIRImporter(object):
             'name': kargs['name'],
             'kernel_shape': self.ArrayAttr(kargs['kernel_shape']),
             'strides': self.ArrayAttr(kargs['strides']),
-            # 'dilations': self.ArrayAttr(kargs['dilations']),
+            'dilations': self.ArrayAttr(kargs['dilations']),
             'pads': self.ArrayAttr(kargs['pads']),
             'group': IntegerAttr.get(self.mlir_type['INT64'], kargs['group']),
             'do_relu': BoolAttr.get(kargs['do_relu']),
         }
-        if 'inserts' in kargs:
-            param['inserts'] = self.ArrayAttr(kargs['inserts'])
+        if "output_padding" in kargs:
+            param['output_padding'] = self.ArrayAttr(kargs['output_padding'])
         return self.buildOp(Top.DeconvOp, operands, [output_type], **param)
 
     def create_scale_op(self, operands, output_shape, **kargs):

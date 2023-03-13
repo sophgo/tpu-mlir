@@ -646,7 +646,6 @@ class CaffeConverter(BaseConverter):
             'pads': padding * dim,
             'group': g,
             'do_relu': False,
-            'ins': [],
         }
         output_shape = self.getShape(layer.top[0])
         new_op = self.mlir.create_conv_transpose_op([in_op, filter_op, bias_op], output_shape,

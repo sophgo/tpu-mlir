@@ -20,9 +20,9 @@ deconv_attr_t top::DeconvOp::parseParam() {
   auto oshape = getOutput().getType().cast<RankedTensorType>().getShape();
   auto kernel = module::getI64Array(getKernelShape());
   auto stride = module::getI64Array(getStrides());
-  auto dilation = module::getI64Array(getDilations(), getKernelShape().size(), 1);
+  auto dilation =
+      module::getI64Array(getDilations(), getKernelShape().size(), 1);
   auto pad = module::getI64Array(getPads());
-  auto ins = module::getI64Array(getInserts(), getKernelShape().size(), 0);
   p.do_relu = getDoRelu();
   p.relu_limit = getReluLimit().convertToDouble();
   p.with_bias = !getBias().getType().isa<NoneType>();
@@ -46,9 +46,6 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.dd = dilation->at(0);
     p.dh = dilation->at(1);
     p.dw = dilation->at(2);
-    p.ins_d = ins->at(0);
-    p.ins_h = ins->at(1);
-    p.ins_w = ins->at(2);
     p.pad_d = pad->at(0);
     p.pad_h = pad->at(1);
     p.pad_w = pad->at(2);
@@ -69,8 +66,6 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.sw = stride->at(1);
     p.dh = dilation->at(0);
     p.dw = dilation->at(1);
-    p.ins_h = ins->at(0);
-    p.ins_w = ins->at(1);
     p.pad_h = pad->at(0);
     p.pad_w = pad->at(1);
     p.pad_h_after = pad->at(2);
@@ -80,7 +75,6 @@ deconv_attr_t top::DeconvOp::parseParam() {
     p.kd = 1;
     p.sd = 1;
     p.dd = 1;
-    p.ins_d = 0;
   }
   p.is_dw = (p.oc == p.ic && p.oc == p.g && p.g > 1);
   return p;
@@ -118,4 +112,34 @@ LogicalResult top::DeconvOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::DeconvOp::shape_inference() {}
+void top::DeconvOp::shape_inference() {
+  // n, c, w | n, c, h, w | n, c, d, h, w
+  auto input_shape = module::getShape(getInput());
+  auto filter_shape = module::getShape(getFilter());
+  assert(input_shape.size() == filter_shape.size());
+  assert(input_shape.size() > 2);
+  int spacial_rank = input_shape.size() - 2;
+  assert(spacial_rank == getKernelShape().size());
+  assert(getPads().size() == spacial_rank * 2);
+
+  llvm::SmallVector<int64_t> out_shape;
+  out_shape.push_back(input_shape[0]);
+  out_shape.push_back(filter_shape[0] * getGroup());
+
+  auto input_spacial_shape = &input_shape[2];
+  auto filter_spacial_shape = &filter_shape[2];
+  auto pads = module::getI64Array(getPads());
+  auto strides = module::getI64Array(getStrides());
+  auto dilation = module::getI64Array(getDilations(), spacial_rank, 1);
+  auto output_paddding =
+      module::getI64Array(getOutputPadding(), spacial_rank, 0);
+  for (int i = 0; i < spacial_rank; i++) {
+    auto out_dim = (input_spacial_shape[i] - 1) * strides->at(i) - pads->at(i) -
+                   pads->at(i + spacial_rank) +
+                   dilation->at(i) * (filter_spacial_shape[i] - 1) +
+                   output_paddding->at(i) + 1;
+    out_shape.push_back(out_dim);
+  }
+  removeOutputPaddingAttr();
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

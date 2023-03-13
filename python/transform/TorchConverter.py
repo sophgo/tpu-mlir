@@ -358,17 +358,27 @@ class TorchConverter(BaseConverter):
         group = self.const_val[torch_node.inputs[6 if mode else 8]]
         kernel_shape = self.getShape(torch_node.inputs[1])
         kernel_shape = kernel_shape[2:]
+        transposed = False
         if mode == True:
             input_size = self.getShape(torch_node.inputs[0])[2:]
             pads = _compute_pad(strides, dilations, input_size, kernel_shape, pads)
         else:
             transposed = self.const_val[torch_node.inputs[6]]
-            output_padding = self.const_val[torch_node.inputs[7]]
             pads = pads + pads  # the pad of torch is symmetric
-
         operands = list()
         operands.append(op)
-        filter_op = self.getOp(torch_node.inputs[1])
+        if transposed:
+            # the dim of weight in pytorch is [ic, oc, ... ]
+            name = torch_node.inputs[1]
+            data = self.getWeight(name)
+            shape = data.shape
+            data = data.reshape(group, shape[0]//group, *shape[1:])
+            data = data.swapaxes(1, 2).reshape(shape[1], shape[0], *shape[2:])
+            new_name = name + "_transposed"
+            self.addWeight(new_name, data)
+            filter_op = self.getOp(new_name)
+        else:
+            filter_op = self.getOp(torch_node.inputs[1])
         operands.append(filter_op)
         if torch_node.inputs[2] not in self.const_val.keys() or self.const_val[
                 torch_node.inputs[2]] is not None:
@@ -384,15 +394,21 @@ class TorchConverter(BaseConverter):
             'pads': pads,
             'group': group,
             'do_relu': False,
-            'ins': [],
         }
+        if transposed:
+            output_padding = self.const_val[torch_node.inputs[7]]
+            p["output_padding"] = output_padding
+            new_op = self.mlir.create_conv_transpose_op(operands, None, **p)
+            return self.addOperand(torch_node.name, new_op)
         new_op = self.mlir.create_conv_op(operands, None, **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_conv_op(self, torch_node: TorchNode):
+        # convolution or transposed_convolution
         self.convert_base_conv_op(torch_node)
 
     def convert_conv_mode_op(self, torch_node: TorchNode):
+        # only for convolution
         self.convert_base_conv_op(torch_node, True)
 
     def convert_avgpool_op(self, torch_node: TorchNode):

@@ -1432,7 +1432,6 @@ class OnnxConverter(BaseConverter):
             'pads': pads,
             'group': group,
             'do_relu': False,
-            'ins': [],
         }
 
         new_op = self.mlir.create_conv_transpose_op(operands, output_shape, **p)
