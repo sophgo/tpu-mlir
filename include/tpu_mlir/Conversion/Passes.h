@@ -12,6 +12,8 @@
 
 #include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
 #include "tpu_mlir/Conversion/TopToTosa/TopToTosa.h"
+#include "tpu_mlir/Conversion/TopToTpu/DoExtraConversion.h"
+
 
 namespace mlir {
 

@@ -13,6 +13,19 @@
 include "mlir/Pass/PassBase.td"
 
 //===----------------------------------------------------------------------===//
+// before TopToTpu, do some extra conversion
+//===----------------------------------------------------------------------===//
+def DoExtraConversion : Pass<"do-extra-converison", "ModuleOp"> {
+  let summary = "Before lowering, do some extra Op conversions for different chips";
+  let constructor = "tpu_mlir::createDoExtraConversion()";
+  let dependentDialects = ["tpu_mlir::top::TopDialect", "tpu_mlir::tpu::TpuDialect"];
+  let options = [
+    Option<"chip", "chip", "std::string", /*default=*/"",
+           "chip: cv183x/cv182x/bm1684/bm1684x">,
+  ];
+}
+
+//===----------------------------------------------------------------------===//
 // TopToTpu
 //===----------------------------------------------------------------------===//
 

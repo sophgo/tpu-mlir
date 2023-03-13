@@ -137,7 +137,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         elif i.dtype == "bf16" and input.dtype == np.float32:
             i.data[:] = fp32_to_bf16(input)
         elif i.dtype == "i32" and input.dtype == np.float32:
-            i.data[:] = input.astype(np.int32)
+            i.data[:] = input.astype(np.int32).reshape(i.data.shape)
         elif i.dtype == "i4" and input.dtype == np.float32:
             data = round_away_from_zero(input * i.qscale + zp)
             i.data[:] = np.clip(data, -8, 7).astype(np.int8).reshape(i.data.shape)

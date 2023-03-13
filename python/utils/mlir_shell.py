@@ -40,7 +40,7 @@ def mlir_lowering(top_mlir: str,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
-    cmd = ["tpuc-opt", top_mlir, "--init"]
+    cmd = ["tpuc-opt", top_mlir, "--init", "--do-extra-converison=\"chip={}\"".format(chip)]
     mode = mode.upper()
     if mode == 'QDQ':
         assert cali_table == None, "qdq cannot work with cali_table"

@@ -195,7 +195,8 @@ flatbuffers::Offset<Routine> CviCpuRoutine::build() {
   // For some cpu functions, weightOp maybe the operand and the weightOp's name
   // should be added to the inputs.
   inputs.clear();
-  for (auto v : this->op_->getOperands()) {
+  for (uint32_t i = 0; i < op_->getNumOperands(); i++) {
+    auto v = module::getOperand(op_, i);
     inputs.push_back(v);
   }
   buildInputsOutputs(fbb_, inputs, outputs, fbInputs, fbOutputs);

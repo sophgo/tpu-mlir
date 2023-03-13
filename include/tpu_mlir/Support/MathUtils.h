@@ -301,4 +301,7 @@ inline void get_stride(const std::vector<int64_t>& shape, std::vector<int64_t>& 
   }
 }
 
+int getBcastIndex(int out_index, std::vector<int64_t> &output_shape,
+                  std::vector<int64_t> &input_shape);
+
 } // namespace tpu_mlir
