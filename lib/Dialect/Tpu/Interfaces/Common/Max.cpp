@@ -48,6 +48,9 @@ LogicalResult tpu::MaxOp::inference(InferenceParameter &p) {
 }
 
 LogicalResult tpu::MaxOp::LocalGenSupport() {
+  if (module::isCV18xx()) {
+    return failure();
+  }
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
 
