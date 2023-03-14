@@ -1536,7 +1536,7 @@ class OnnxConverter(BaseConverter):
             "keepdims": keepdims,
             "mode": onnx_node.op_type
         }
-        out_shapes = [[], []]
+        out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
             need = len(out) > 0 and self.check_need(out)
@@ -1593,7 +1593,7 @@ class OnnxConverter(BaseConverter):
             "bidirectional": direction == b'bidirectional',
             "batch_first": batch_first,
         }
-        out_shapes = [[], []]
+        out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
             need = len(out) > 0 and self.check_need(out)
@@ -1601,8 +1601,7 @@ class OnnxConverter(BaseConverter):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
-        new_op, h_op = self.mlir.create_gru_op(operands, out_shapes, **p)
-        out_ops = [new_op, h_op]
+        out_ops = self.mlir.create_gru_op(operands, out_shapes, **p)
         for idx, need in enumerate(out_needs):
             if need:
                 self.addOperand(onnx_node.outputs[idx], out_ops[idx])
@@ -1634,7 +1633,7 @@ class OnnxConverter(BaseConverter):
             "bidirectional": direction == b'bidirectional',
             "batch_first": batch_first,
         }
-        out_shapes = [[], [], []]
+        out_shapes = [None, None, None]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
             need = len(out) > 0 and self.check_need(out)
@@ -1642,8 +1641,7 @@ class OnnxConverter(BaseConverter):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
-        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, out_shapes, **p)
-        out_ops = [new_op, h_op, c_op]
+        out_ops = self.mlir.create_lstm_op(operands, out_shapes, **p)
         for idx, need in enumerate(out_needs):
             if need:
                 self.addOperand(onnx_node.outputs[idx], out_ops[idx])
@@ -1764,7 +1762,7 @@ class OnnxConverter(BaseConverter):
             "largest": largest,
             "sorted": sorted,
         }
-        out_shapes = [[], []]
+        out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
             need = len(out) > 0 and self.check_need(out)
@@ -1772,8 +1770,7 @@ class OnnxConverter(BaseConverter):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
-        idx_op, val_op = self.mlir.create_topk_op([in_op], out_shapes, **p)
-        out_ops = [idx_op, val_op]
+        out_ops = self.mlir.create_topk_op([in_op], out_shapes, **p)
         for idx, need in enumerate(out_needs):
             if need:
                 self.addOperand(onnx_node.outputs[idx], out_ops[idx])
@@ -2064,7 +2061,7 @@ class OnnxConverter(BaseConverter):
         if len(onnx_node.inputs) > 2:
             if not self.isScalar_(onnx_node.inputs[2], 0):
                 bias_opd = self.getWeightOp(onnx_node.inputs[2], wb_shape)
-        out_shapes = [[], [], []]
+        out_shapes = [None, None, None]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
             need = len(out) > 0 and self.check_need(out)

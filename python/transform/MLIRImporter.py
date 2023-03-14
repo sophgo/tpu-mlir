@@ -187,12 +187,31 @@ class MLIRImporter(object):
             return ArrayAttr.get([FloatAttr.get_f64(x) for x in data])
         raise RuntimeError("unsupport data type:{}".format(data_type))
 
-    def get_tensor_type(self, output_shape: list, type=None):
-        type = F32Type.get() if type is None else type
-        if output_shape is None:
+    # shape: [] => [* x f32]; None => NoneType; [None, None] => [NoneType, NoneType]
+    # type: None => f32; or type
+    def get_tensor_type(self, output_shapes, type = None):
+        if type is None:
+            type = self.F32Type
+        if output_shapes == []:
             return UnrankedTensorType.get(type)
-        else:
-            return RankedTensorType.get(tuple(output_shape), type)
+        if output_shapes is None:
+            return NoneType.get()
+        if isinstance(output_shapes, tuple):
+            output_shapes = list(output_shapes)
+        assert (isinstance(output_shapes, list))
+        assert (len(output_shapes) > 0)
+        if not isinstance(output_shapes[0], list) and output_shapes[0] is not None:
+            return RankedTensorType.get(tuple(output_shapes), type)
+        # multi output
+        out_types = []
+        for s in output_shapes:
+            if s == []:
+                out_types.append(UnrankedTensorType.get(type))
+            elif s is None:
+                out_types.append(NoneType.get())
+            else:
+                out_types.append(RankedTensorType.get(tuple(s), type))
+        return out_types
 
     def get_value_type(self, value):
         _type = str(value.type)
@@ -511,12 +530,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.TupleOp, operands, [output_type], **param)
 
     def create_untuple_op(self, operands, output_shapes, **kargs):
-        out_types = list()
-        for s in output_shapes:
-            if s is not None and len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                out_types.append(self.get_tensor_type(s))
+        out_types = self.get_tensor_type(output_shapes)
         param = {
             'name': kargs['name'],
         }
@@ -746,12 +760,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.LRNOp, operands, [output_type], **param)
 
     def create_gru_op(self, operands, out_shapes, **kargs):
-        out_types = list()
-        for s in out_shapes:
-            if s is not None and len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                out_types.append(self.get_tensor_type(s))
+        out_types = self.get_tensor_type(out_shapes)
         param = {
             'name': kargs['name'],
             'hidden_size': IntegerAttr.get(self.mlir_type["INT64"], kargs["hidden_size"]),
@@ -761,12 +770,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.GRUOp, operands, out_types, **param)
 
     def create_lstm_op(self, operands, out_shapes, **kargs):
-        out_types = list()
-        for s in out_shapes:
-            if s is not None and len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                out_types.append(self.get_tensor_type(s))
+        out_types = self.get_tensor_type(out_shapes)
         param = {
             'name': kargs['name'],
             'hidden_size': IntegerAttr.get(self.mlir_type["INT64"], kargs["hidden_size"]),
@@ -776,12 +780,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.LSTMOp, operands, out_types, **param)
 
     def create_topk_op(self, operands, out_shapes, **kargs):
-        out_types = list()
-        for s in out_shapes:
-            if s is not None and len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                out_types.append(self.get_tensor_type(s))
+        out_types = self.get_tensor_type(out_shapes)
         param = {
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type["INT64"], kargs["axis"]),
@@ -859,19 +858,13 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
 
-    def create_arg_op(self, operands, output_shape, **kargs):
+    def create_arg_op(self, operands, output_shapes, **kargs):
         """
             operands: List[pybind.op]
             output_tensorshape: List[int] output tensor type
             attrs: Dict, about op attrs
         """
-        # get_value_type
-        out_types = list()
-        for s in output_shape:
-            if s is not None and len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                out_types.append(self.get_tensor_type(s))
+        out_types = self.get_tensor_type(output_shapes)
         param = {
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
@@ -1092,13 +1085,7 @@ class MLIRImporter(object):
         return self.buildOp(Top.DequantizeLinearOp, operands, [output_type], **param)
 
     def create_layer_norm_op(self, operands, output_shapes, **kargs):
-        # get_value_type
-        out_types = list()
-        for s in output_shapes:
-            if s is not None and len(s) == 0:
-                out_types.append(NoneType.get())
-            else:
-                out_types.append(self.get_tensor_type(s))
+        out_types = self.get_tensor_type(output_shapes)
         param = {
             'name': kargs['name'],
             'normalized_shape': self.ArrayAttr(kargs['normalized_shape']),

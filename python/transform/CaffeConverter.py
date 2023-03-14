@@ -863,7 +863,7 @@ class CaffeConverter(BaseConverter):
             "batch_first": bool(False),
         }
         out_shape = [seq_length, 1, batch_size, hidden_size]
-        out_shapes = [out_shape, [], []]
+        out_shapes = [out_shape, None, None]
         new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
         # reshape back
         attrs = {'name': name}
@@ -917,7 +917,7 @@ class CaffeConverter(BaseConverter):
             "batch_first": bool(False),
         }
         out_shape = [seq_length, 1, batch_size, hidden_size]
-        out_shapes = [out_shape, [], []]
+        out_shapes = [out_shape, None, None]
         new_op, _, _ = self.mlir.create_lstm_op(operands, out_shapes, **param)
         # reshape back
         attrs = {'name': name}
