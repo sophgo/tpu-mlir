@@ -24,6 +24,18 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
   std::vector<int64_t> output_shape = module::getShape(ori_out);
   std::vector<int64_t> input0_shape = module::getShape(input0);
   std::vector<int64_t> input1_shape = module::getShape(input1);
+  auto out_type = ori_out.getType().cast<RankedTensorType>();
+  bool isCali = false;
+  double out_thr, in0_thr, in1_thr;
+  if (module::isCalibratedType(out_type)) {
+    isCali = true;
+    auto otype = module::getCalibratedType(ori_out);
+    auto in0_type = module::getCalibratedType(input0);
+    auto in1_type = module::getCalibratedType(input1);
+    out_thr = otype.getMax();
+    in0_thr = in0_type.getMax();
+    in1_thr = in1_type.getMax();
+  }
   //cv18xx only support one operand broadcast now.
   assert((input0_shape == output_shape || input1_shape == output_shape));
   std::vector<Value> operands;
@@ -36,7 +48,14 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     operands.emplace_back(input0);
     attrs.emplace_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(const_val)));
     auto loc1 = NameLoc::get(rewriter.getStringAttr(name + "_mulconst1"));
-    auto type1 = RankedTensorType::get(input0_shape, rewriter.getF32Type());
+    RankedTensorType type1;
+    if (isCali) {
+      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                      -std::abs(const_val) * in0_thr, std::abs(const_val) * in0_thr);
+      type1 = RankedTensorType::get(input0_shape, caliType);
+    } else {
+      type1 = RankedTensorType::get(input0_shape, rewriter.getF32Type());
+    }
     auto mulconstOp1 = rewriter.create<top::MulConstOp>(loc1, type1, operands, attrs);
     auto out1 = mulconstOp1.getOutput();
 
@@ -47,7 +66,14 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     operands.emplace_back(input0);
     operands.emplace_back(input1);
     auto loc2 = NameLoc::get(rewriter.getStringAttr(name + "_mul1"));
-    auto type2 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+    RankedTensorType type2;
+    if (isCali) {
+      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                      -in1_thr, in1_thr);
+      type2 = RankedTensorType::get(output_shape, caliType);
+    } else {
+      type2 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+    }
     auto mulOp1 = rewriter.create<top::MulOp>(loc2, type2, operands, attrs);
     auto out2 = mulOp1.getOutput();
 
@@ -69,8 +95,16 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     rewriter.setInsertionPointAfterValue(out3);
     operands.emplace_back(out3);
     operands.emplace_back(out1);
+    RankedTensorType type4;
+    if (isCali) {
+      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                      -out_thr, out_thr);
+      type4 = RankedTensorType::get(output_shape, caliType);
+    } else {
+      type4 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+    }
     auto loc4 = NameLoc::get(rewriter.getStringAttr(name));
-    auto addOp2 = rewriter.create<top::AddOp>(loc4, type2, operands, attrs);
+    auto addOp2 = rewriter.create<top::AddOp>(loc4, type4, operands, attrs);
     rewriter.replaceAllUsesWith(ori_out, addOp2.getOutput());
     rewriter.eraseOp(op);
 
@@ -81,7 +115,14 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     operands.emplace_back(input0);
     operands.emplace_back(input1);
     auto loc1 = NameLoc::get(rewriter.getStringAttr(name + "_mul1"));
-    auto type1 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+    RankedTensorType type1;
+    if (isCali) {
+      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                      -in1_thr, in1_thr);
+      type1 = RankedTensorType::get(output_shape, caliType);
+    } else {
+      type1 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+    }
     auto mulOp1 = rewriter.create<top::MulOp>(loc1, type1, operands, attrs);
     auto out1 = mulOp1.getOutput();
     //out1.setLoc(op.getLoc());
@@ -91,7 +132,14 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     attrs.emplace_back(rewriter.getNamedAttr("const_val", rewriter.getF64FloatAttr(-const_val)));
     operands.emplace_back(input0);
     auto loc2 = NameLoc::get(rewriter.getStringAttr(name + "mulconst1"));
-    auto type2 = RankedTensorType::get(input0_shape, rewriter.getF32Type());
+    RankedTensorType type2;
+    if (isCali) {
+      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                      -std::abs(const_val) * in0_thr, std::abs(const_val) * in0_thr);
+      type2 = RankedTensorType::get(input0_shape, caliType);
+    } else {
+      type2 = RankedTensorType::get(input0_shape, rewriter.getF32Type());
+    }
     rewriter.setInsertionPointAfterValue(out1);
     auto mulconstOp1 = rewriter.create<top::MulConstOp>(loc2, type2, operands, attrs);
     auto out2 = mulconstOp1.getOutput();
@@ -112,8 +160,16 @@ LogicalResult ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     operands.emplace_back(out1);
     operands.emplace_back(out3);
     auto loc4 = NameLoc::get(rewriter.getStringAttr(name));
+    RankedTensorType type4;
+    if (isCali) {
+      auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                      -out_thr, out_thr);
+      type4 = RankedTensorType::get(output_shape, caliType);
+    } else {
+      type4 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+    }
     rewriter.setInsertionPointAfterValue(out3);
-    auto addOp1 = rewriter.create<top::AddOp>(loc4, type1, operands, attrs);
+    auto addOp1 = rewriter.create<top::AddOp>(loc4, type4, operands, attrs);
     rewriter.replaceAllUsesWith(ori_out, addOp1.getOutput());
     rewriter.eraseOp(op);
   }
@@ -137,6 +193,17 @@ LogicalResult ConvertWhereOp::matchAndRewrite(top::WhereOp op,
   int64_t num_input2 = module::getNumElements(input2);
   //cv18xx only support one operand broadcast now.
   assert((input0_shape == output_shape || input1_shape == output_shape || input2_shape == output_shape));
+  bool isCali = false;
+  double out_thr, in1_thr, in2_thr;
+  if (module::isCalibratedType(ori_out)) {
+    isCali = true;
+    auto otype = module::getCalibratedType(ori_out);
+    auto in1_type = module::getCalibratedType(input1);
+    auto in2_type = module::getCalibratedType(input2);
+    out_thr = otype.getMax();
+    in1_thr = in1_type.getMax();
+    in2_thr = in2_type.getMax();
+  }
   std::vector<Value> operands;
   std::vector<NamedAttribute> attrs;
   rewriter.setInsertionPointAfterValue(ori_out);
@@ -146,7 +213,14 @@ LogicalResult ConvertWhereOp::matchAndRewrite(top::WhereOp op,
   operands.emplace_back(input1);
   std::vector<int64_t> out1_shape = (num_input0 > num_input1) ? input0_shape : input1_shape;
   auto loc1 = NameLoc::get(rewriter.getStringAttr(name + "_mul1"));
-  auto type1 = RankedTensorType::get(out1_shape, rewriter.getF32Type());
+  RankedTensorType type1;
+  if (isCali) {
+    auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                    -in1_thr, in1_thr);
+    type1 = RankedTensorType::get(out1_shape, caliType);
+  } else {
+    type1 = RankedTensorType::get(out1_shape, rewriter.getF32Type());
+  }
   auto mulOp1 = rewriter.create<top::MulOp>(loc1, type1, operands, attrs);
   auto out1 = mulOp1.getOutput();
 
@@ -159,7 +233,14 @@ LogicalResult ConvertWhereOp::matchAndRewrite(top::WhereOp op,
   rewriter.setInsertionPointAfterValue(out1);
   std::vector<int64_t> out2_shape = (num_input0 > num_input2) ? input0_shape : input2_shape;
   auto loc2 = NameLoc::get(rewriter.getStringAttr(name + "mul2"));
-  auto type2 = RankedTensorType::get(out2_shape, rewriter.getF32Type());
+  RankedTensorType type2;
+  if (isCali) {
+    auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                    -in2_thr, in2_thr);
+    type2 = RankedTensorType::get(out2_shape, caliType);
+  } else {
+    type2 = RankedTensorType::get(out2_shape, rewriter.getF32Type());
+  }
   auto mulOp2 = rewriter.create<top::MulOp>(loc2, type2, operands, attrs);
   auto out2 = mulOp2.getOutput();
 
@@ -181,7 +262,14 @@ LogicalResult ConvertWhereOp::matchAndRewrite(top::WhereOp op,
   operands.emplace_back(out3);
   rewriter.setInsertionPointAfterValue(out3);
   auto loc4 = NameLoc::get(rewriter.getStringAttr(name));
-  auto type4 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+  RankedTensorType type4;
+  if (isCali) {
+    auto caliType = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                    -out_thr, out_thr);
+    type4 = RankedTensorType::get(output_shape, caliType);
+  } else {
+    type4 = RankedTensorType::get(output_shape, rewriter.getF32Type());
+  }
   auto add2Op = rewriter.create<top::AddOp>(loc4, type4, operands, attrs);
   auto out4 = add2Op.getOutput();
   rewriter.replaceAllUsesWith(ori_out, out4);
@@ -200,17 +288,32 @@ LogicalResult ConvertGatherOp::matchAndRewrite(top::GatherOp op,
   std::string name = module::getName(ori_out).str();
   uint64_t axis = op.getAxis();
   std::vector<int64_t> input_shape = module::getShape(input);
+  std::vector<int64_t> output_shape = module::getShape(ori_out);
   std::vector<int64_t> indices_shape = module::getShape(indices);
   bool need_convert = (axis == 1 && indices_shape.size() == 0 && input_shape.size() == 3 && input_shape[0] == 1
                           && !(isa<top::WeightOp>(input.getDefiningOp())));
   if (need_convert) {
     //conver to reshapeOp + new GatherOp
     rewriter.setInsertionPointAfterValue(ori_out);
+    double in_thr, out_thr;
+    RankedTensorType type1, type2;
+    if (module::isCalibratedType(ori_out)) {
+      auto itype = module::getCalibratedType(input);
+      auto otype = module::getCalibratedType(ori_out);
+      auto caliType1 = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                        -in_thr, in_thr);
+      auto caliType2 = quant::CalibratedQuantizedType::get(rewriter.getF32Type(),
+                        -out_thr, out_thr);
+      type1 = RankedTensorType::get({input_shape[1], input_shape[2]}, caliType1);
+      type2 = RankedTensorType::get(output_shape, caliType2);
+    } else {
+      type1 = RankedTensorType::get({input_shape[1], input_shape[2]}, rewriter.getF32Type());
+      type2 = ori_out.getType().cast<RankedTensorType>();
+    }
     std::vector<Value> operands;
     std::vector<NamedAttribute> attrs;
     operands.emplace_back(input);
     auto loc1 = NameLoc::get(rewriter.getStringAttr(name + "_reshape"));
-    auto type1 = RankedTensorType::get({input_shape[1], input_shape[2]}, rewriter.getF32Type());
     auto reshapeOp = rewriter.create<top::ReshapeOp>(loc1, type1, operands, attrs);
     auto out1 = reshapeOp.getOutput();
     operands.clear();
@@ -218,7 +321,6 @@ LogicalResult ConvertGatherOp::matchAndRewrite(top::GatherOp op,
     operands.emplace_back(indices);
     attrs.emplace_back(rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(0)));
     auto loc2 = NameLoc::get(rewriter.getStringAttr(name));
-    auto type2 = ori_out.getType().cast<RankedTensorType>();
     auto newOp = rewriter.create<top::GatherOp>(loc2, type2, operands, attrs);
     auto newOut = newOp.getOutput();
     rewriter.replaceAllUsesWith(ori_out, newOut);
