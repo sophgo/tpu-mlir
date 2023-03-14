@@ -56,7 +56,7 @@ int64_t tpu::CastOp::getBufferSize_cv18xx(int64_t in_lmem_bytes,
                                           int64_t out_nslice,
                                           int64_t out_hslice) {
   auto in_type = module::getStorageType(getInput());
-  if (in_type.isBF16() && !getOperation()->hasOneUse()) {
+  if (in_type.isBF16() && !getInput().hasOneUse()) {
     // to avoid quant input been override
     // check if quant's input has multi-usage
     int64_t n, c, h, w;

@@ -107,6 +107,12 @@ LogicalResult BroadCastBinaryLocalGenSupport(Operation *op) {
   if (module::isWeight(op->getOperand(0)) ||
       module::isWeight(op->getOperand(1)))
     return failure();
+  if (module::isCV18xx()) {
+    if (lhs_shape != rhs_shape) {
+      return failure();
+    }
+    return success();
+  }
   if (lhs_shape.size() >= 5) {
     const int wdim = 3;
     int bcast = bcast_type(lhs_shape[wdim], rhs_shape[wdim]);
