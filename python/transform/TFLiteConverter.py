@@ -315,7 +315,7 @@ class TFLiteConverter(BaseConverter):
             TensorType.BOOL: IntegerType.get_signless(1, mlir_ctx),
             TensorType.INT16: IntegerType.get_signless(16, mlir_ctx),
             TensorType.COMPLEX64: ComplexType.get(F32Type.get(mlir_ctx)),
-            TensorType.INT8: IntegerType.get_unsigned(8, mlir_ctx),
+            TensorType.INT8: IntegerType.get_signless(8, mlir_ctx),
             TensorType.FLOAT64: F64Type.get(mlir_ctx),
             TensorType.COMPLEX128: ComplexType.get(F64Type.get(mlir_ctx)),
             TensorType.UINT64: IntegerType.get_unsigned(64, mlir_ctx),

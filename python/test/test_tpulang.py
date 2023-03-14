@@ -28,33 +28,37 @@ def tpulang(func):
 Failed_Cases = []
 
 class TPULANG_IR_TESTER(object):
+    ID = 0
     # This class is built for testing single operator transform.
-    def __init__(self):
+    def __init__(self, chip: str = "bm1684x"):
+        Y, N = True, False
         self.test_function = {
             #############################
             # TpuLang Test Case, Alphabetically
             #############################
-            "Conv2d": self.test_Conv2d,
-            "HModel": self.test_Model,
+            # case:                 (test,          bm1684x_support)
+            "Conv2d":               (self.test_Conv2d,      Y),
+            "HModel":               (self.test_Model,       N),
         }
         # no quantization when quant_mode == "f32"
         self.quant_modes = ["int8"]
-        self.chip = self.get_chip_name()
-
-    def get_chip_name(self):
-        runchip = os.environ.get('SET_CHIP_NAME', None)
-        if not runchip:
-            print("no found SET_CHIP_NAME environment value, set bm1684x as default")
-            runchip = "bm1684x"
-        return runchip.lower()
+        self.chip = chip.lower()
 
     def test_single(self, case: str):
+        TPULANG_IR_TESTER.ID = 0
+        print("Test: {}".format(case))
         if case in self.test_function:
-            print("Test: {}".format(case))
-            self.test_function[case](case)
+            func, _ = self.test_function[case]
+            func(case)
             print("====== TEST {} Success ======".format(case))
         else:
-            self.list()
+            raise RuntimeError("case [{}] is not exist".format(case))
+
+    def check_support(self, case):
+        _, bm1684x_support = self.test_function[case]
+        if self.chip == "bm1684x" and bm1684x_support:
+            return True
+        return False
 
     def test_all(self):
         for case in self.test_function:
@@ -101,7 +105,8 @@ class TPULANG_IR_TESTER(object):
             x = tpul.Tensor(dtype=dtype, shape=input_shape, data=x_data)
             conv = self.conv_op(x, kernel_shape, stride, pad, group=group, dilation=dilation,
                     zp=zp, dtype=dtype)
-            tpul.compile(case_name, [x], [conv], False, 2)
+            tpul.compile("{}_{}".format(case_name, TPULANG_IR_TESTER.ID), [x], [conv], False, 2)
+            TPULANG_IR_TESTER.ID += 1
 
         _test_convolution([1, 3, 28, 28], [12, 3, 1, 1], group=3)
         _test_convolution([1, 3, 32, 32], [12, 3, 3, 3], stride=[2,2], pad=[1,1,1,1])
@@ -157,11 +162,75 @@ class TPULANG_IR_TESTER(object):
 
         _test_model_def([1, 3, 28, 28])
 
-if __name__ == "__main__":
-    tester = TPULANG_IR_TESTER()
-    os.makedirs("tpulang_test", exist_ok=True)
-    os.chdir("tpulang_test")
-    if len(sys.argv) == 2:
-        tester.test_single(sys.argv[1])
+
+def test_one_case_in_all(tester: TPULANG_IR_TESTER, case, error_cases, success_cases):
+    import traceback
+    try:
+        tester.test_single(case)
+    except:
+        error_cases.append(case)
+        traceback.print_exc()
+        return
+    success_cases.append(case)
+
+
+def test_all(tester: TPULANG_IR_TESTER):
+    import multiprocessing
+    process_number = multiprocessing.cpu_count() // 2 + 1
+    processes = []
+    error_cases = multiprocessing.Manager().list()
+    success_cases = multiprocessing.Manager().list()
+    for case in tester.test_function:
+        if tester.check_support(case):
+            p = multiprocessing.Process(target=test_one_case_in_all,
+                                        args=(tester, case, error_cases, success_cases))
+            processes.append(p)
+        if len(processes) == process_number:
+            for p in processes:
+                p.start()
+            for j in processes:
+                j.join()
+            processes = []
+    if processes:
+        for p in processes:
+            p.start()
+        for j in processes:
+            j.join()
+    # error_cases = []
+    # success_cases = []
+    # for case in tester.test_cases:
+    #     if tester.check_support(case):
+    #         test_one_case_in_all(tester, case, error_cases, success_cases)
+    print("Success: {}".format(success_cases))
+    print("Failure: {}".format(error_cases))
+    if error_cases:
+        print("====== test_tpulang.py --chip {} TEST Failed ======".format(tester.chip))
+        exit(1)
     else:
-        tester.test_all()
+        print("====== test_tpulang.py --chip {} TEST Success ======".format(tester.chip))
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    # yapf: disable
+    parser.add_argument("--chip", default="bm1684x", type=str,
+                        choices=['bm1684x'], help="chip platform name")
+    parser.add_argument("--case", default="all", type=str, help="test one case, if all, then test all cases")
+    parser.add_argument("--show_all", action="store_true", help='show all cases')
+    # yapf: enable
+    args = parser.parse_args()
+    tester = TPULANG_IR_TESTER(args.chip)
+    if args.show_all:
+        print("====== Show All Cases ============")
+        for case in tester.test_function:
+            print(case)
+        exit(0)
+    dir = "tpulang_test_{}".format(args.chip)
+    os.makedirs(dir, exist_ok=True)
+    os.chdir(dir)
+    if args.case == "" or args.case.lower() == "all":
+        test_all(tester)
+    else:
+        tester.test_single(args.case)
+

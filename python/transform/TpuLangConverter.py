@@ -225,7 +225,7 @@ class TpuLangConverter(BaseConverter):
             "float32": F32Type.get(mlir_ctx),
             "float16": F16Type.get(mlir_ctx),
             "int64": IntegerType.get_signless(64, mlir_ctx),
-            "int32": IntegerType.get_signless(32, mlir_ctx),
+            "int32": IntegerType.get_signed(32, mlir_ctx),
             "int16": IntegerType.get_signless(16, mlir_ctx),
             "int8": IntegerType.get_signless(8, mlir_ctx),
             "uint32": IntegerType.get_unsigned(32, mlir_ctx),

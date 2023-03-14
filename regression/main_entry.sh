@@ -95,6 +95,18 @@ run_torch_op() {
   return 0
 }
 
+run_tpulang_op() {
+  echo "======= test_tpulang.py ====="
+  test_tpulang.py --chip bm1684x > test_tpulang_bm1684x.log 2>&1 | true
+  if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
+    echo "test_tpulang.py --chip bm1684x FAILED" >>result.log
+    cat test_tpulang_bm1684x.log >>fail.log
+    return 1
+  fi
+  echo "test_tpulang.py --chip bm1684x PASSED" >>result.log
+  return 0
+}
+
 run_script_test() {
   echo "======= script test ====="
   $REGRESSION_PATH/script_test/run.sh > script_test.log 2>&1 | true
@@ -127,6 +139,13 @@ run_all() {
     fi
   fi
   run_torch_op
+  if [[ "$?" -ne 0 ]]; then
+    ERR=1
+    if [ x${test_type} == xbasic ]; then
+      return $ERR
+    fi
+  fi
+  run_tpulang_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
     if [ x${test_type} == xbasic ]; then
