@@ -998,10 +998,10 @@ class TORCH_IR_TESTER(object):
 
             self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
-        _test_pad1d((1, 3, 32), 5, 3.0)
+        _test_pad1d((1, 3, 32), 5, 0.6)
         _test_pad1d((2, 3, 32), (5, 3))
-        _test_pad1d((64, 32), (3, 6), 5.0)
-        _test_pad1d((64, 32), 7, 6.0)
+        _test_pad1d((64, 32), (3, 6), 0.6)
+        _test_pad1d((64, 32), 7, 0.4)
 
     #######################################################################
     # Pad2D
@@ -1031,10 +1031,10 @@ class TORCH_IR_TESTER(object):
 
             self.convert_torch_and_compare([input_shape], case_name, Model().eval())
 
-        _test_pad2d((1, 16, 32), 7, 3.0)
+        _test_pad2d((1, 16, 32), 7, 0.6)
         _test_pad2d((3, 16, 32), (4, 6, 7, 8))
-        _test_pad2d((1, 3, 16, 32), 3, 4.0)
-        _test_pad2d((2, 4, 16, 32), (3, 4, 5, 6), 6.0)
+        _test_pad2d((1, 3, 16, 32), 3, 0.5)
+        _test_pad2d((2, 4, 16, 32), (3, 4, 5, 6), 0.4)
 
     def test_Abs(self, case_name):
         """Abs"""
