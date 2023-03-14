@@ -253,7 +253,7 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   // need_info:
   // - n_slice, h_slice, eu_align, g_addr, l_addr
   // - need_bcast, use_3ic
-  // TODO: CONCAT COEFF_NEURON
+  // TODO: CONCAT
   auto bm168x = BM168x::instance();
   int64_t n_slice, h_slice;
   auto &si = tensor_info.slice_info;
@@ -261,15 +261,12 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   int64_t use_3ic = tensor_info.use_3ic_opt;
   bool need_bcast = tensor_info.need_bcast;
   bool eu_align = tensor_info.eu_align;
-  bool is_weight = module::isWeight(v);
   auto pid_node = (CMD_ID_NODE *)bm168x->dl_create_cmd_id_node();
   bm168x->dl_reset_cmd_id(pid_node);
   auto data_type = BM168x::getDataType(v);
   int64_t gdma_format;
   int64_t N, C, D, H, W;
-  module::getNCDHW(v, N, C, D, H, W,
-                   (is_weight && GROUP_3D == group_type) ? GROUP_NORMAL
-                                                         : group_type);
+  module::getNCDHW(v, N, C, D, H, W, group_type);
   if (data_type == DTYPE_UINT4 || data_type == DTYPE_INT4) {
     gdma_format = BM168x::GDMA_VALUE_FORMAT_INT8;
     data_type = DTYPE_INT8;
@@ -281,22 +278,6 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   auto g_addr = module::getAddress(v);
   auto l_addr = 0;
 
-  if (is_weight) {
-    if (eu_align) {
-      // corresponding to COEFF_ALIGN
-      bm168x->dl_tensor_align_move_gen_cmd(l_addr, 0, g_addr, N, C, H, W,
-                                           gdma_format, GDMA_VALUE_DIR_S2L, 0,
-                                           pid_node);
-    } else {
-      // corresponding to COEFF
-      bm168x->dl_tensor_compact_move_gen_cmd(l_addr, 0, g_addr, N, C, H, W,
-                                             gdma_format, GDMA_VALUE_DIR_S2L, 0,
-                                             pid_node);
-    }
-    int64_t gdma_cycle = bm168x->dl_get_cmd_id_cycle(pid_node);
-    bm168x->dl_destroy_cmd_id_node(pid_node);
-    return gdma_cycle;
-  }
   if (use_3ic < 4 && use_3ic > 0) {
     // correspoding to NEURON_3IC
     auto g_stride = bm168x->getGlobalStride(N, C, H, W);
@@ -324,7 +305,9 @@ int64_t Bm168xCycleCalculator::getLoadCycle(Value v,
   } else {
     // correspoding to NEURON
     int64_t c_num_local = ceiling_func(C, Arch::NPU_NUM);
-    int64_t c_stride = align_up(h_slice * W, Arch::eu_num(fmt_bytes));
+    int64_t c_stride = eu_align ?
+                       align_up(h_slice * W, Arch::eu_num(fmt_bytes)) :
+                       h_slice * W;
     int64_t channel_num = C;
     const int64_t csecs = ceiling_func(channel_num, (int64_t)GDMA_MAX_C);
     if (D <= n_slice) {

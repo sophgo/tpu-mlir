@@ -38,10 +38,7 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
 
   int64_t N, C, D, H, W, real_hslice;
   int64_t gdma_format;
-  bool is_weight = (0 == getLmemType());
-  module::getNCDHW(getOutput(), N, C, D, H, W,
-                   (is_weight && GROUP_3D == group_type) ? GROUP_NORMAL
-                                                         : group_type);
+  module::getNCDHW(getOutput(), N, C, D, H, W, group_type);
   auto data_type = BM168x::getDataType(getOutput());
 
   real_hslice = gi.h_slice;
@@ -66,20 +63,6 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
   gdma_format = BM168x::getGdmaFormat(data_type);
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   auto g_addr = module::getAddress(getInput());
-  if (is_weight) {
-    if (gi.eu_align) {
-      // corresponding to COEFF_ALIGN
-      BM168x::instance()->dl_tensor_align_move_gen_cmd(
-          gi.out_addr, 0, g_addr, N, C, H, W, gdma_format, GDMA_VALUE_DIR_S2L,
-          0, pid_node);
-    } else {
-      // corresponding to COEFF
-      BM168x::instance()->dl_tensor_compact_move_gen_cmd(
-          gi.out_addr, 0, g_addr, N, C, H, W, gdma_format, GDMA_VALUE_DIR_S2L,
-          0, pid_node);
-    }
-    return;
-  }
   int64_t use_3ic = getUse_3icOptimize();
   if (use_3ic < 4 && use_3ic > 0) {
     auto g_stride = BM168x::getGlobalStride(N, C, H, W);
@@ -108,7 +91,9 @@ void tpu::LoadOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     }
   } else {
     int64_t c_num_local = ceiling_func(C, Arch::NPU_NUM);
-    int64_t c_stride = align_up(real_hslice * W, Arch::eu_num(fmt_bytes));
+    int64_t c_stride = gi.eu_align ?
+                       align_up(real_hslice * W, Arch::eu_num(fmt_bytes)) :
+                       real_hslice * W;
     int64_t channel_num = C;
     const int64_t csecs = ceiling_func(channel_num, (int64_t)GDMA_MAX_C);
     if (D <= gi.n_slice) {

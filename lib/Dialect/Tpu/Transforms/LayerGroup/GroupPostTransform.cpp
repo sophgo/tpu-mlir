@@ -46,20 +46,34 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
   std::vector<int64_t> ori_filter_shape = {OC, IC, KT, KH, KW};
   auto ori_type = RankedTensorType::get(ori_filter_shape, filter_type);
   conv3d_op.getFilter().setType(ori_type);
+  if (attr.has_bias) {
+    auto biasOp = conv3d_op.getBias().getDefiningOp<top::WeightOp>();
+    llvm::SmallVector<int64_t> bias_shape = {1, attr.oc, 1, 1, 1};
+    auto bias_type = module::getStorageType(conv3d_op.getBias());
+    auto new_type = RankedTensorType::get(bias_shape, bias_type);
+    conv3d_op.getBias().setType(new_type);
+  }
 
   if (filter_type.isF32() && lg_info.group_ops.size() > 1) {
-    // (oc, ic, kt, kh, kw) -> (kt, oc, ic, kh, kw)
+    // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic, kh*kw)
     auto filter_f32 = filter_op.read<float>();
-    std::vector<int64_t> filter_shape = {KT, OC, IC, KH, KW};
+    std::vector<int64_t> filter_shape = {1, OC, KT, IC, KH * KW};
     auto filter_new =
         std::make_shared<std::vector<float>>(get_shape_size(filter_shape));
-    for (int64_t ioc = 0; ioc < OC * IC; ++ioc) {
-      for (int64_t kt = 0; kt < KT; ++kt) {
-        for (int64_t khw = 0; khw < KH * KW; ++khw) {
-          long long src_offset = ioc * (KT * KH * KW) + kt * (KH * KW) + khw;
-          long long dst_offset =
-              kt * (OC * IC * KH * KW) + ioc * (KH * KW) + khw;
+    for (int64_t oc = 0; oc < OC; oc++) {
+      for (int64_t ic = 0; ic < IC; ic++) {
+        for (int64_t kt = 0; kt < KT; kt++) {
+          for (int64_t khw = 0; khw < KH * KW; khw++) {
+            long long src_offset = oc * (IC * KT * KH * KW) +
+                                   ic * (KT * KH * KW) +
+                                   kt * (KH * KW) +
+                                   khw;
+          long long dst_offset = oc * (IC * KT * KH * KW) +
+                                 kt * (IC * KH * KW) +
+                                 ic * (KH * KW) +
+                                 khw;
           filter_new->at(dst_offset) = filter_f32->at(src_offset);
+          }
         }
       }
     }
@@ -70,10 +84,10 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
     op->setOperand(1, new_filter);
   } else if ((filter_type.isF16() || filter_type.isBF16()) &&
              lg_info.group_ops.size() > 1) {
-    // (oc, ic, kt, kh, kw) -> (kt, oc, ic/IC_PARALLEL, kh, kw, IC_PARALLEL)
+    // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
     auto filter_u16 = filter_op.read<uint16_t>();
-    std::vector<int64_t> filter_shape = {KT, OC, ceiling_func(IC, IC_PARALLEL),
-                                         KH * KW, IC_PARALLEL};
+    std::vector<int64_t> filter_shape = {1, OC, KT, ceiling_func(IC, IC_PARALLEL),
+                                         KH * KW * IC_PARALLEL};
     auto filter_new =
         std::make_shared<std::vector<uint16_t>>(get_shape_size(filter_shape));
     for (int oc = 0; oc < OC; ++oc) {
@@ -86,9 +100,9 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
               long long src = oc * IC * KT * KH * KW +
                               (ic * IC_PARALLEL + inner) * KT * KH * KW +
                               kt * (KH * KW) + khw;
-              long long dst = kt * OC * align_up(IC, IC_PARALLEL) * KH * KW +
-                              oc * align_up(IC, IC_PARALLEL) * KH * KW +
-                              ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
+              long long dst = oc * KT * align_up(IC, IC_PARALLEL) * KH * KW +
+                              kt *  align_up(IC, IC_PARALLEL) * KH * KW +
+                              ic *IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
                               inner;
               filter_new->at(dst) = filter_u16->at(src);
             }
@@ -131,10 +145,10 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
                                             filter_ranked_type);
     op->setOperand(1, new_filter);
   } else if (filter_type.isInteger(8) && lg_info.group_ops.size() > 1) {
-    // (oc, ic, kt, kh, kw) -> (kt, oc, ic/IC_PARALLEL, kh, kw, IC_PARALLEL)
+    // (oc, ic, kt, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
     auto filter_i8 = filter_op.read<int8_t>();
-    std::vector<int64_t> filter_shape = {KT, OC, ceiling_func(IC, IC_PARALLEL),
-                                         KH * KW, IC_PARALLEL};
+    std::vector<int64_t> filter_shape = {1, OC, KT, ceiling_func(IC, IC_PARALLEL),
+                                         KH * KW * IC_PARALLEL};
     auto filter_new =
         std::make_shared<std::vector<int8_t>>(get_shape_size(filter_shape));
     for (int oc = 0; oc < OC; ++oc) {
@@ -147,8 +161,8 @@ static void conv3d_post_transform(Operation *op, const LgInfo &lg_info) {
               long long src = oc * IC * KT * KH * KW +
                               (ic * IC_PARALLEL + inner) * KT * KH * KW +
                               kt * (KH * KW) + khw;
-              long long dst = kt * OC * align_up(IC, IC_PARALLEL) * KH * KW +
-                              oc * align_up(IC, IC_PARALLEL) * KH * KW +
+              long long dst = oc * KT * align_up(IC, IC_PARALLEL) * KH * KW +
+                              kt *  align_up(IC, IC_PARALLEL) * KH * KW +
                               ic * IC_PARALLEL * KH * KW + khw * IC_PARALLEL +
                               inner;
               filter_new->at(dst) = filter_i8->at(src);

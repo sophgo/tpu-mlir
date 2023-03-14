@@ -69,13 +69,13 @@ LogicalResult WeightReorder<tpu::Conv3DOp, int8_t>::matchAndRewrite(
   auto fmt_bytes = BM168x::getFmtBytes(data_type);
   int64_t IC_PARALLEL = BM168x::ic_num(fmt_bytes);
   int64_t filter_shape[5];
-  // (oc, ic, kd, kh, kw) -> (kd, oc, CEIL(ic,IC_PARALLEL), kh*kw, IC_PARALLEL)
+  // (oc, ic, kd, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
   // int8/uint8 local layer shape, only change shape info for layer group
-  filter_shape[0] = attr.kd;
+  filter_shape[0] = 1;
   filter_shape[1] = attr.oc;
-  filter_shape[2] = ceiling_func((attr.ic / attr.groups), IC_PARALLEL);
-  filter_shape[3] = attr.kh * attr.kw;
-  filter_shape[4] = IC_PARALLEL;
+  filter_shape[2] = attr.kd;
+  filter_shape[3] = ceiling_func((attr.ic / attr.groups), IC_PARALLEL);
+  filter_shape[4] = attr.kh * attr.kw * IC_PARALLEL;
   auto new_type = RankedTensorType::get(filter_shape, filter_type);
   op.getFilter().setType(new_type);
 
@@ -103,13 +103,13 @@ LogicalResult weight_reorder_bf16_bm1684x(tpu::Conv3DOp op,
   int64_t IC_PARALLEL = BM168x::ic_num(fmt_bytes);
   int64_t filter_shape[5];
   if (filter_type.isF16() || filter_type.isBF16()) {
-    // (oc, ic, kd, kh, kw) -> (kd, oc, CEIL(ic,IC_PARALLEL), kh*kw, IC_PARALLEL)
+    // (oc, ic, kd, kh, kw) -> (1, oc, kt, ic/IC_PARALLEL, kh*kw * IC_PARALLEL)
     // f16/bf16 local layer shape, only change shape info for layer group
-    filter_shape[0] = attr.kd;
+    filter_shape[0] = 1;
     filter_shape[1] = attr.oc;
-    filter_shape[2] = ceiling_func((attr.ic / attr.groups), IC_PARALLEL);
-    filter_shape[3] = attr.kh * attr.kw;
-    filter_shape[4] = IC_PARALLEL;
+    filter_shape[2] = attr.kd;
+    filter_shape[3] = ceiling_func((attr.ic / attr.groups), IC_PARALLEL);
+    filter_shape[4] = attr.kh * attr.kw * IC_PARALLEL;
     auto new_type = RankedTensorType::get(filter_shape, filter_type);
     op.getFilter().setType(new_type);
   } else {
@@ -158,11 +158,11 @@ LogicalResult WeightReorder<tpu::Conv3DOp, Float32Type>::matchAndRewrite(
   if (out_type.isF32()) {
     // (oc, ic, kd, kh, kw) -> (kd, oc,ic, kh, kw)
     // f32 local layer shape, only change shape info for layer group
-    filter_shape[0] = attr.kd;
+    filter_shape[0] = 1;
     filter_shape[1] = attr.oc;
-    filter_shape[2] = attr.ic / attr.groups;
-    filter_shape[3] = attr.kh;
-    filter_shape[4] = attr.kw;
+    filter_shape[2] = attr.kd;
+    filter_shape[3] = attr.ic / attr.groups;
+    filter_shape[4] = attr.kh * attr.kw;
     auto new_type = RankedTensorType::get(filter_shape, out_type);
     op.getFilter().setType(new_type);
   } else {
