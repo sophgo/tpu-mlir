@@ -258,7 +258,7 @@ class TorchConverter(BaseConverter):
         self.num_output = len(self.output_names)
         self.input_shapes = input_shapes
         self.input_types = [self.TypeMap["float32"] for i in range(self.num_input)]
-        self.output_shapes = [None] * self.num_output
+        self.output_shapes = [[]] * self.num_output
 
     def init_MLIRImporter(self):
         input_shapes = list()
@@ -398,9 +398,9 @@ class TorchConverter(BaseConverter):
         if transposed:
             output_padding = self.const_val[torch_node.inputs[7]]
             p["output_padding"] = output_padding
-            new_op = self.mlir.create_conv_transpose_op(operands, None, **p)
+            new_op = self.mlir.create_conv_transpose_op(operands, [], **p)
             return self.addOperand(torch_node.name, new_op)
-        new_op = self.mlir.create_conv_op(operands, None, **p)
+        new_op = self.mlir.create_conv_op(operands, [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_conv_op(self, torch_node: TorchNode):
@@ -431,7 +431,7 @@ class TorchConverter(BaseConverter):
             "do_relu": False,
             "count_include_pad": count_include_pad,
         }
-        new_op = self.mlir.create_avgpool_op([op], None, **p)
+        new_op = self.mlir.create_avgpool_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_maxpool_op(self, torch_node: TorchNode):
@@ -451,7 +451,7 @@ class TorchConverter(BaseConverter):
             "pads": pads,
             "do_relu": False,
         }
-        new_op = self.mlir.create_maxpool_op([op], None, **p)
+        new_op = self.mlir.create_maxpool_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def _mul_scale(self, in_name, scale):
@@ -461,7 +461,7 @@ class TorchConverter(BaseConverter):
             'name': op_name,
             'const_val': scale,
         }
-        new_op = self.mlir.create_mul_const_op([in_op], None, **p)
+        new_op = self.mlir.create_mul_const_op([in_op], [], **p)
         self.addOperand(op_name, new_op)
         return new_op
 
@@ -474,7 +474,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'do_relu': False,
         }
-        new_op = self.mlir.create_add_op([op0, op1], None, **p)
+        new_op = self.mlir.create_add_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_sub_op(self, torch_node: TorchNode):
@@ -486,7 +486,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'do_relu': False,
         }
-        new_op = self.mlir.create_sub_op([op0, op1], None, **p)
+        new_op = self.mlir.create_sub_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_mul_op(self, torch_node: TorchNode):
@@ -496,7 +496,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'do_relu': False,
         }
-        new_op = self.mlir.create_mul_op([op0, op1], None, **p)
+        new_op = self.mlir.create_mul_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_div_op(self, torch_node: TorchNode):
@@ -506,7 +506,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'do_relu': False,
         }
-        new_op = self.mlir.create_div_op([op0, op1], None, **p)
+        new_op = self.mlir.create_div_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
@@ -520,17 +520,17 @@ class TorchConverter(BaseConverter):
                 "const_val": const_val,
                 "inversed": False,
             }
-            new_op = self.mlir.create_compare_const_op([op0], None, **p)
+            new_op = self.mlir.create_compare_const_op([op0], [], **p)
         else:
             op1 = self.getOp(torch_node.inputs[1])
             p = {"name": torch_node.name, "mode": mode}
-            new_op = self.mlir.create_compare_op([op0, op1], None, **p)
+            new_op = self.mlir.create_compare_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_prelu_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
         op1 = self.getOp(torch_node.inputs[1])
-        new_op = self.mlir.create_prelu_op([op0, op1], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_prelu_op([op0, op1], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_permute_op(self, torch_node: TorchNode):
@@ -540,7 +540,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'order': order,
         }
-        new_op = self.mlir.create_permute_op([op], None, **p)
+        new_op = self.mlir.create_permute_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_tile_op(self, torch_node: TorchNode):
@@ -554,7 +554,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'repeats': repeats,
         }
-        new_op = self.mlir.create_tile_ex_op([op], None, **attr)
+        new_op = self.mlir.create_tile_ex_op([op], [], **attr)
         self.addOperand(torch_node.name, new_op)
 
     def convert_transpose_op(self, torch_node: TorchNode):
@@ -567,7 +567,7 @@ class TorchConverter(BaseConverter):
             'dim0': dim0,
             'dim1': dim1,
         }
-        new_op = self.mlir.create_transpose_op([op], None, **p)
+        new_op = self.mlir.create_transpose_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_index_select_op(self, torch_node: TorchNode):
@@ -575,7 +575,7 @@ class TorchConverter(BaseConverter):
         op1 = self.getOp(torch_node.inputs[2])
         axis = self.const_val[torch_node.inputs[1]]
         p = {'name': torch_node.name, 'axis': axis}
-        new_op = self.mlir.create_gather_op([op0, op1], None, **p)
+        new_op = self.mlir.create_gather_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):
@@ -594,7 +594,7 @@ class TorchConverter(BaseConverter):
 
         op1 = self.getOp(torch_node.inputs[1]) if not x_is_const else self.mlir.none_op
         op2 = self.getOp(torch_node.inputs[2]) if not y_is_const else self.mlir.none_op
-        new_op = self.mlir.create_where_op([op0, op1, op2], None, **p)
+        new_op = self.mlir.create_where_op([op0, op1, op2], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_layer_norm_op(self, torch_node: TorchNode):
@@ -613,7 +613,7 @@ class TorchConverter(BaseConverter):
             'axis': -len(normalized_shape),
             'eps': eps,
         }
-        outs = self.mlir.create_layer_norm_op([op0, scale_opd, bias_opd], [None, [], []], **p)
+        outs = self.mlir.create_layer_norm_op([op0, scale_opd, bias_opd], [[], None, None], **p)
         self.addOperand(torch_node.name, outs[0])
 
     def convert_concat_op(self, torch_node: TorchNode):
@@ -626,12 +626,12 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'axis': axis,
         }
-        new_op = self.mlir.create_concat_op(operands, None, **p)
+        new_op = self.mlir.create_concat_op(operands, [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_relu_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_relu_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_elu_op(self, torch_node: TorchNode):
@@ -641,7 +641,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'alpha': alpha,
         }
-        new_op = self.mlir.create_elu_op([op], None, **p)
+        new_op = self.mlir.create_elu_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_pad_op(self, torch_node: TorchNode, mode: str = 'unknown'):
@@ -676,7 +676,7 @@ class TorchConverter(BaseConverter):
             'mode': pad_mode,
             'val': val,
         }
-        new_op = self.mlir.create_pad_op([op], None, **p)
+        new_op = self.mlir.create_pad_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_hardsigmoid(self, torch_node: TorchNode):
@@ -686,12 +686,12 @@ class TorchConverter(BaseConverter):
             'alpha': 1 / 6,
             'beta': 1 / 2,
         }
-        new_op = self.mlir.create_hsigmoid_op([op], None, **p)
+        new_op = self.mlir.create_hsigmoid_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_hardswish(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_hswish_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_hswish_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_hardtanh(self, torch_node: TorchNode):
@@ -703,7 +703,7 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'relu_limit': max_val,
         }
-        new_op = self.mlir.create_relu_op([op], None, **p)
+        new_op = self.mlir.create_relu_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_tuple_op(self, torch_node: TorchNode):
@@ -711,7 +711,7 @@ class TorchConverter(BaseConverter):
         p = {
             'name': torch_node.name,
         }
-        new_op = self.mlir.create_tuple_op(ops, None, **p)
+        new_op = self.mlir.create_tuple_op(ops, [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_untuple_op(self, torch_node: TorchNode):
@@ -721,13 +721,14 @@ class TorchConverter(BaseConverter):
         }
         num = len(torch_node.outputs)
         assert(num == len(torch_node.outputs))
-        out_ops = self.mlir.create_untuple_op(ops, [None]*num, **p)
+        shape = [[]] *  num
+        out_ops = self.mlir.create_untuple_op(ops, shape, **p)
         for out,op in zip(torch_node.outputs, out_ops):
             self.addOperand(out, op)
 
     def convert_gelu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_gelu_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_gelu_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_sigmoid_op(self, torch_node: TorchNode, log: bool = False):
@@ -738,17 +739,17 @@ class TorchConverter(BaseConverter):
             'bias': 0,
         }
         if log: p['log'] = True
-        new_op = self.mlir.create_sigmoid_op([op], None, **p)
+        new_op = self.mlir.create_sigmoid_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_tanh_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_tanh_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_tanh_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_softplus_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_softplus_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_softplus_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_leaky_relu_op(self, torch_node: TorchNode):
@@ -758,12 +759,12 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'alpha': alpha,
         }
-        new_op = self.mlir.create_leaky_relu_op([op], None, **p)
+        new_op = self.mlir.create_leaky_relu_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_silu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_silu_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_silu_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_softmax_op(self, torch_node: TorchNode, log: bool = False):
@@ -774,12 +775,12 @@ class TorchConverter(BaseConverter):
             'axis': dim,
         }
         if log: p['log'] = True
-        new_op = self.mlir.create_softmax_op([op], None, **p)
+        new_op = self.mlir.create_softmax_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_mish_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_mish_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_mish_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def ifgo2iofg(self, data):
@@ -834,14 +835,14 @@ class TorchConverter(BaseConverter):
             "batch_first": batch_first,
         }
         operands = [in_op, filter_op, recurrence_op, bias_op, h0_op, c0_op]
-        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, [None,None,None], **p)
+        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, [[],[],[]], **p)
         self.addOperand(torch_node.outputs[0], new_op)
         self.addOperand(torch_node.outputs[1], h_op)
         self.addOperand(torch_node.outputs[2], c_op)
 
     def convert_abs_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
-        new_op = self.mlir.create_abs_op([op], None, **{'name': torch_node.name})
+        new_op = self.mlir.create_abs_op([op], [], **{'name': torch_node.name})
         self.addOperand(torch_node.name, new_op)
 
     def convert_neg_op(self, torch_node: TorchNode):
@@ -850,5 +851,5 @@ class TorchConverter(BaseConverter):
             'name': torch_node.name,
             'const_val': -1,
         }
-        new_op = self.mlir.create_mul_const_op([op], None, **p)
+        new_op = self.mlir.create_mul_const_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
