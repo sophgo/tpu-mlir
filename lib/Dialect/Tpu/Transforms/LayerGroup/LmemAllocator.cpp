@@ -196,26 +196,161 @@ bool LmemAllocator::update_avail_lmems(std::list<MemBlock> &avail_lmems,
   return space_split;
 }
 
-// void insert_inplace_lmem(const mem_buffer_key_t &buffer_key,
-//                          const vector<mem_buffer_key_t> &ts_overlap_buffer,
-//                          std::<BasicTimeStep>time_step,
-//                          std::list<MemBlock> &avail_lmems)
-//                          {
-//   if (buffer_key.type != LMEM_ACTIVATION)
-//     return;
-//   auto &buffer_value = time_step->get_mem_buffer_value(buffer_key);
-//   int64_t buffer_idx = 0;
-//   MemBlock lmem_locate(0, 0);
-//   bool inplace_valid;
-//   std::list<MemBlock>::iterator list_it;
-//   auto src_layer = value.getDefiningOp();
-//   if (src_layer) {
-//   }
-//
-//   auto dst_layers = value.getUsers();
-//   if (!dst_layers.empty()) {
-//   }
-// }
+static bool can_membuf_inplace_alloc(int pre_start, int pre_end, int post_start, int post_end) {
+  bool flag = false;
+  if (post_start == pre_end) {
+    if (pre_end > pre_start && post_end > post_start) {
+      flag = true;
+    } else if ( (pre_end < pre_start && post_end > post_start) ||
+                (pre_end > pre_start && post_end < post_start) ) {
+      flag = post_end < pre_start;
+    }
+  }
+  return flag;
+}
+
+static bool isInplaceOp(Operation *op) {
+  if (module::isCV18xx()) return false;
+  bool flag = false;
+  if (isa<tpu::ScaleOp>(op)) {
+    flag = module::getStorageType(op->getOperand(0)).isF32();
+  } else if (isa<tpu::AddOp, tpu::SubOp, tpu::MulOp, tpu::DivOp, tpu::MinOp, tpu::MaxOp>(op)) {
+    flag = true;
+    auto ins = op->getOperands();
+    ValueSet ins_set(ins.begin(), ins.end());
+    if (ins.size() > 2 && ins.size() != ins_set.size()) flag = false;
+  } else if (isa<tpu::MulShiftOp>(op)) {
+    flag = true;
+    auto in = op->getOperand(0);
+    if (module::isUniformQuantized(in)) {
+      auto in_qtype = module::getUniformQuantizedType(in);
+      auto out_qtype = module::getUniformQuantizedType(op->getResult(0));
+      auto in_zp = in_qtype.getZeroPoint();
+      auto out_zp = out_qtype.getZeroPoint();
+      if (in_zp != 0 || out_zp != 0) flag = false;
+    }
+    flag = flag && !module::getStorageType(in).isF32();
+  } else if (isa<tpu::ReshapeOp>(op)) {
+    flag = true;
+  }
+  return flag && module::getBytes(op->getOperand(0)) >= module::getBytes(op->getResult(0));
+}
+
+static void insert_inplace_local_mem(const mem_buffer_key_t &buffer_key,
+                                     const std::vector<mem_buffer_key_t> &ts_overlap_buffer,
+                                     BasicTimeStepPtr &time_step,
+                                     std::list<MemBlock> &avail_lmems) {
+  // llvm::errs() << "-----------------insert_inplace_local_mem "<< buffer_key.type << "----------------------------------\n";
+  if (buffer_key.type == LMEM_OPERATION)
+    return;
+  auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
+  auto value = buffer_key.value;
+  int64_t buffer_idx = 0;
+  MemBlock lmem_locate(0, 0);
+  bool inplace_valid;
+  auto src_layer = value.getDefiningOp();
+  if (src_layer) {
+    if (isa<top::WeightOp>(src_layer)) {
+      // llvm::errs() << "-----------------Oh no it is a weight----------------------------------\n";
+      return;
+    }
+    if (isInplaceOp(src_layer)) {
+      // llvm::errs() << "-----------------src-" << src_layer->getName() <<"----------------------------------\n";
+      auto src_in = src_layer->getOperand(0);
+      for(buffer_idx = 0; buffer_idx < ts_overlap_buffer.size(); ++buffer_idx) {
+        auto &src_buffer_value = time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
+        if (ts_overlap_buffer[buffer_idx].type != LMEM_OPERATION &&
+            ts_overlap_buffer[buffer_idx].value == src_in &&
+            src_buffer_value.end_ts == buffer_value.start_ts) {
+          // llvm::errs() << "-----------------if-----------------------------------\n";
+          if (can_membuf_inplace_alloc(src_buffer_value.start_ts, src_buffer_value.end_ts, buffer_value.start_ts, buffer_value.end_ts)) {
+            lmem_locate.first = src_buffer_value.addr;
+            lmem_locate.second = src_buffer_value.size;
+            // llvm::errs() << "-----------------can alloc-----------------------------------\n";
+          } else {
+            // llvm::errs() << "-----------------no can alloc-----------------------------------\n";
+            buffer_idx = ts_overlap_buffer.size();
+          }
+          break;
+        }
+      }
+
+      if (buffer_idx != ts_overlap_buffer.size()) {
+        inplace_valid = true;
+        for(int64_t i = 0; i < ts_overlap_buffer.size(); ++i) {
+          if (buffer_idx == i) continue;
+          auto &buffer_value0 = time_step->get_lmem_buffer_value(ts_overlap_buffer[i]);
+          if ( !(buffer_value0.addr >= (lmem_locate.first + lmem_locate.second) ||
+                (buffer_value0.addr + buffer_value0.size) <= lmem_locate.first) ) {
+            inplace_valid = false;
+            break;
+            // llvm::errs() << "-----------------invalid-----------------------------------\n";
+          }
+        }
+        if (inplace_valid) {
+          auto list_it = avail_lmems.begin();
+          for(; list_it != avail_lmems.end(); ++list_it) {
+            if (list_it->first > lmem_locate.first) {
+              break;
+            }
+          }
+          // llvm::errs() << "+++++++++++++++++++++++++" << lmem_locate.first << ", " << lmem_locate.second <<"----------------------------------\n";
+          avail_lmems.insert(list_it, lmem_locate);
+        }
+      }
+    }
+  }
+
+  auto dst_layers = value.getUsers();
+  if (!dst_layers.empty()) {
+    auto dst_layer = *dst_layers.begin();
+    if (isInplaceOp(dst_layer) && value == dst_layer->getOperand(0)) {
+      // llvm::errs() << "-----------------dst-" << dst_layer->getName() <<"----------------------------------\n";
+      auto dst_out = dst_layer->getResult(0);
+      for (buffer_idx = 0; buffer_idx < ts_overlap_buffer.size(); ++buffer_idx) {
+        auto &dst_buffer_value = time_step->get_lmem_buffer_value(ts_overlap_buffer[buffer_idx]);
+        if (ts_overlap_buffer[buffer_idx].type != LMEM_OPERATION &&
+            ts_overlap_buffer[buffer_idx].value == dst_out &&
+            dst_buffer_value.start_ts == buffer_value.end_ts) {
+          // llvm::errs() << "-----------------if-----------------------------------\n";
+          if (can_membuf_inplace_alloc(buffer_value.start_ts, buffer_value.end_ts, dst_buffer_value.start_ts, dst_buffer_value.end_ts)) {
+            lmem_locate.first = dst_buffer_value.addr;
+            lmem_locate.second = dst_buffer_value.size;
+            // llvm::errs() << "-----------------can alloc-----------------------------------\n";
+          } else {
+            // llvm::errs() << "-----------------no can alloc-----------------------------------\n";
+            buffer_idx = ts_overlap_buffer.size();
+          }
+          break;
+        }
+      }
+
+      if (buffer_idx != ts_overlap_buffer.size()) {
+        inplace_valid = true;
+        for(int64_t i = 0; i < ts_overlap_buffer.size(); ++i) {
+          if (buffer_idx == i) continue;
+          auto &buffer_value1 = time_step->get_lmem_buffer_value(ts_overlap_buffer[i]);
+          if ( !(buffer_value1.addr >= (lmem_locate.first + lmem_locate.second) ||
+                (buffer_value1.addr + buffer_value1.size) <= lmem_locate.first) ) {
+            inplace_valid = false;
+            // llvm::errs() << "-----------------invalid-----------------------------------\n";
+            break;
+          }
+        }
+        if (inplace_valid) {
+          auto list_it = avail_lmems.begin();
+          for(; list_it != avail_lmems.end(); ++list_it) {
+            if (list_it->first > lmem_locate.first) {
+              break;
+            }
+          }
+          // llvm::errs() << "++++++++++++++++++++++++++" << lmem_locate.first << ", " << lmem_locate.second <<"----------------------------------\n";
+          avail_lmems.insert(list_it, lmem_locate);
+        }
+      }
+    }
+  }
+}
 
 void LmemAllocator::update_avail_lmems(
     std::list<MemBlock> &avail_lmems, const mem_buffer_key_t &buffer_key,
@@ -249,11 +384,13 @@ void LmemAllocator::update_avail_lmems(
     bool space_split = update_avail_lmems(avail_lmems, used_overlap_buffer);
 
     if (consider_inplace && space_split) {
-      // // TODO
-      // std::vector<mem_buffer_key_t> ts_overlap_buffer(1,
-      //                                                 recent_buffer_allocated);
-      // insert_inplace_local_mem(buffer_key, ts_overlap_buffer,
-      // time_step, avail_lmems);
+      // EXPERIMENTAL FEATURE
+      // may cause performance up or down simultaneously
+      // comment out the following lines if encounter performance issues
+      std::vector<mem_buffer_key_t> ts_overlap_buffer(1,
+                                                      recent_buffer_allocated);
+      insert_inplace_local_mem(buffer_key, ts_overlap_buffer,
+                               time_step, avail_lmems);
     }
   }
 
