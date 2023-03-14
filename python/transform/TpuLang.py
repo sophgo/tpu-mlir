@@ -8,7 +8,7 @@
 from typing import List, Union
 from .MLIRImporter import Top
 from .TpuLangConverter import TpuLangConverter, Graph, Tensor, Operator
-from deprecated.sphinx import deprecated
+# from deprecated.sphinx import deprecated
 from utils.mlir_shell import *
 
 import numpy as np
@@ -165,7 +165,7 @@ def conv_v2(input: Tensor,
     return output
 
 
-@deprecated(version=1.0, reason="This function will be removed soon")
+# @deprecated(version=1.0, reason="This function will be removed soon")
 def conv(input: Tensor,
          weight: Tensor,
          bias: Tensor = None,
