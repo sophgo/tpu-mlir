@@ -12,11 +12,11 @@
 #include "tpu_mlir/Support/Module.h"
 
 #include "mlir/IR/PatternMatch.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Format.h"
-#include <sstream>
+#include "llvm/Support/raw_ostream.h"
 #include <fstream>
 #include <regex>
+#include <sstream>
 
 using namespace llvm;
 
@@ -203,7 +203,9 @@ public:
     if (isa<top::AbsOp>(op)) {
       min = -info.threshold;
       max = info.threshold;
-    } else if (isa<top::SigmoidOp, top::SoftmaxOp>(op)) {
+    } else if ((isa<top::SigmoidOp>(op) &&
+                !dyn_cast<top::SigmoidOp>(op).getLog()) ||
+               isa<top::SoftmaxOp>(op)) {
       min = 0;
       max = 1;
     } else if (isAsymmetric == false) {
