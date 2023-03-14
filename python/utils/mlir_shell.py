@@ -40,7 +40,7 @@ def mlir_lowering(top_mlir: str,
                   customization_format: str = None,
                   fuse_preprocess: bool = False,
                   aligned_input: bool = False):
-    cmd = ["tpuc-opt", top_mlir, "--init", "--do-extra-converison=\"chip={}\"".format(chip)]
+    cmd = ["tpuc-opt", top_mlir, "--init"]
     mode = mode.upper()
     if mode == 'QDQ':
         assert cali_table == None, "qdq cannot work with cali_table"
@@ -53,6 +53,9 @@ def mlir_lowering(top_mlir: str,
         cali_param = "--import-calibration-table=\"file={} asymmetric={}\"".format(
             cali_table, asymmetric)
         cmd.extend([cali_param])
+    #do extra conversion for differnet chips
+    extra_conversion_param = "--do-extra-converison=\"chip={}\"".format(chip)
+    cmd.extend([extra_conversion_param])
     if fuse_preprocess:
         fuse_pre_param = "--fuse-preprocess=\"mode={} customization_format={}\"".format(
             mode, customization_format)
