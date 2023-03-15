@@ -31,6 +31,7 @@ class Top:
     ErfOp = 'top.Erf'
     ExpOp = 'top.Exp'
     FloorOp = 'top.Floor'
+    FrcnDetection = 'top.FrcnDetection'
     GatherOp = 'top.Gather'
     GELUOp = 'top.GELU'
     GroupNormOp = 'top.GroupNorm'
@@ -64,6 +65,7 @@ class Top:
     PowOp = 'top.Pow'
     PriorBoxOp = 'top.PriorBox'
     PReluOp = 'top.PRelu'
+    Proposal = 'top.Proposal'
     QuantizeLinearOp = 'top.QuantizeLinear'
     Reciprocal = 'top.Reciprocal'
     ReshapeOp = 'top.Reshape'
@@ -71,6 +73,8 @@ class Top:
     ReduceOp = 'top.Reduce'
     ReverseOp = 'top.Reverse'
     RoiAlignOp = 'top.RoiAlign'
+    ROIPooling = 'top.ROIPooling'
+    RetinaFaceDetection = 'top.RetinaFaceDetection'
     ScatterElementsOp = 'top.ScatterElements'
     ScatterNDOp = 'top.ScatterND'
     SubOp = 'top.Sub'
@@ -97,11 +101,7 @@ class Top:
     WeightOp = 'top.Weight'
     WhereOp = 'top.Where'
     YoloDetection = 'top.YoloDetection'
-    Proposal = 'top.Proposal'
-    ROIPooling = 'top.ROIPooling'
-    FrcnDetection = 'top.FrcnDetection'
-    RetinaFaceDetection = 'top.RetinaFaceDetection'
-
+    ZerosOp = 'top.Zeros'
 
 class State:
     TOP_F32 = 'TOP_F32'
@@ -545,6 +545,13 @@ class MLIRImporter(object):
             'name': kargs['name'],
         }
         return self.buildOp(Top.UnTupleOp, operands, out_types, **param)
+
+    def create_zeros_op(self, output_shape, **kargs):
+        out_type = self.get_tensor_type(output_shape)
+        param = {
+            'name': kargs['name'],
+        }
+        return self.buildOp(Top.ZerosOp, [], [out_type], **param)
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])

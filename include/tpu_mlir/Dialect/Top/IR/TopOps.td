@@ -185,6 +185,17 @@ def Top_UnTupleOp: Top_BaseOp<"UnTuple"> {
   );
 }
 
+def Top_ZerosOp: Top_BaseOp<"Zeros"> {
+  let summary = "zeros operator";
+  let description = [{
+    gen by torch aten::zeros
+  }];
+
+  let results = (outs
+    AnyTensor:$output
+  );
+}
+
 // === Function Op =====
 class Top_Op<string mnemonic, list<Trait> traits = []> :
     Top_BaseOp<mnemonic, !listconcat(traits,
