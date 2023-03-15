@@ -67,7 +67,7 @@ def CompareModeAttr: AnyStrAttrOf<["Equal","Greater","GreaterOrEqual","Less","Le
 def ReduceModeAttr: AnyStrAttrOf<["ReduceMin","ReduceMax","ReduceMean","ReduceL2","ReduceL1","ReduceSum","ReduceProd"]>;
 def RoiAlignModeAttr: AnyStrAttrOf<["Avg","Max"]>;
 def NonZeroOrderAttr: AnyStrAttrOf<["ColMajor","RowMajor"]>;
-
+def DetectionOutputCodeTypeAttr: AnyStrAttrOf<["CORNER", "CENTER_SIZE", "CORNER_SIZE"]>;
 def Tpu_LayerGroupAttr : Tpu_Attr<"LayerGroup", "lg"> {
   let summary = "Structure of layer group parameters";
   let parameters = (ins
@@ -2094,5 +2094,27 @@ def Tpu_YoloDetectionOp : Tpu_Op<"YoloDetection"> {
   );
 
   let results = (outs AnyRankedTensor:$output);
+}
+
+def Tpu_DetectionOutputOp : Tpu_Op<"DetectionOutput"> {
+  let summary = "DetectionOutput operation";
+  let description = [{
+    Intended for use with MultiBox detection method to generate prior.
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs,
+    I64Attr:$num_classes,
+    DefaultValuedAttr<I64Attr, "0">:$background_label_id,
+    F64Attr:$nms_threshold,
+    I64Attr:$top_k,
+    DetectionOutputCodeTypeAttr:$code_type,
+    I64Attr:$keep_top_k,
+    F64Attr:$confidence_threshold,
+    DefaultValuedAttr<BoolAttr, "true">:$share_location,
+    DefaultValuedAttr<F64Attr, "0">:$variance_encoded_in_target,
+    DefaultValuedAttr<F64Attr, "1">:$eta,
+    DefaultValuedAttr<I64Attr, "1">:$onnx_nms
+  );
+  let results = (outs AnyTensor:$output);
 }
 #endif // TPU_OPS
