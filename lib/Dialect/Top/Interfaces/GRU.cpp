@@ -60,8 +60,28 @@ gru_attr_t top::GRUOp::parseParam() {
   return attr;
 }
 
-LogicalResult top::GRUOp::init(InferenceParameter &p) { return success(); }
-void top::GRUOp::deinit(InferenceParameter &p) {}
+LogicalResult top::GRUOp::init(InferenceParameter &p) {
+  if (!module::isPlatform(module::Platform::TORCH)) {
+    return success();
+  }
+  auto attr = parseParam();
+  if (attr.output_y == false || attr.batch_size == 1 ||
+      attr.num_direction == 1) {
+    return success();
+  }
+  auto num = module::getNumElements(getY());
+  float *buffer = new float[num];
+  p.handle = (void *)buffer;
+  return success();
+}
+
+void top::GRUOp::deinit(InferenceParameter &p) {
+  if (p.handle) {
+    float *buffer = (float *)p.handle;
+    delete[] buffer;
+    p.handle = nullptr;
+  }
+}
 
 static inline float sigmoid_(float x) {
   // return static_cast<float>(1.f / (1.f + std::exp(-x)));
@@ -75,7 +95,7 @@ static void gru_compute(InferenceParameter &p, const gru_attr_t &attr,
   //(TODO) num_layers > 1
   // input += seq_length * batch * input_size * num_layer; //(TODO check!)
   float *input = p.inputs[0];
-  float *output = p.outputs[0];
+  float *output = p.handle != nullptr ? (float *)p.handle : p.outputs[0];
   float *x_wz = p.inputs[1];
   float *h_wz = p.inputs[2];
   float *x_bz = bias;
@@ -191,8 +211,49 @@ LogicalResult top::GRUOp::inference(InferenceParameter &p) {
   if (attr.num_direction == 2) {
     gru_compute(p, attr, B, initial_h, false);
   }
-
+  if (p.handle) {
+    float *buffer = (float *)p.handle;
+    function_permute(buffer, p.outputs[0],
+                     {1, attr.seq_len, attr.num_direction, attr.batch_size,
+                      attr.hidden_size},
+                     {0, 1, 3, 2, 4});
+  }
   return success();
 }
 
-void top::GRUOp::shape_inference() {}
+void top::GRUOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  assert(in_shape.size() == 3);
+  int64_t num_dir = 1;
+  if (getBidirectional()) {
+    num_dir = 2;
+  }
+  int64_t seq_len, batch_size;
+  if (getBatchFirst()) {
+    batch_size = in_shape[0];
+    seq_len = in_shape[1];
+  } else {
+    seq_len = in_shape[0];
+    batch_size = in_shape[1];
+  }
+  int64_t hidden_size = getHiddenSize();
+  std::vector<int64_t> shape0;
+  std::vector<int64_t> shape1;
+  if (getBatchFirst()) {
+    shape0 = {batch_size, seq_len, num_dir, hidden_size};
+    shape1 = {batch_size, num_dir, hidden_size};
+  } else {
+    if (module::isPlatform(module::Platform::TORCH)) {
+      shape0 = {seq_len, batch_size, num_dir, hidden_size};
+    } else {
+      shape0 = {seq_len, num_dir, batch_size, hidden_size};
+    }
+    shape1 = {num_dir, batch_size, hidden_size};
+  }
+  if (module::isNone(getY()) == false) {
+    module::setShapeOrVerify(getY(), shape0);
+  }
+  if (module::isNone(getYH()) == false) {
+    module::setShapeOrVerify(getYH(), shape1);
+  }
+}

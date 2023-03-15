@@ -146,6 +146,7 @@ class TorchConverter(BaseConverter):
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
+            "aten::gru": lambda node: self.convert_gru_op(node),
             "aten::gt": lambda node: self.convert_compare_op(node, "Greater"),
             "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
             "aten::hardswish": lambda node: self.convert_hardswish(node),
@@ -850,6 +851,63 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.outputs[0], new_op)
         self.addOperand(torch_node.outputs[1], h_op)
         self.addOperand(torch_node.outputs[2], c_op)
+
+    def rzh2zrh(self, data):
+        shape = data.shape
+        d = data.reshape(3, -1)
+        d = np.concatenate((d[1:2,:],d[:1,:], d[2:,:]), axis=0)
+        return d.reshape(*shape)
+
+    def convert_gru_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        h0_op = self.getOp(torch_node.inputs[1])
+        weights = self.tensor_list[torch_node.inputs[2]]
+        has_bias = self.const_val[torch_node.inputs[3]]
+        assert(has_bias) # no bias Not Implemented
+        num_layers = self.const_val[torch_node.inputs[4]]
+        assert(num_layers == 1) # Not Implemented
+        bidirectional = self.const_val[torch_node.inputs[7]]
+        batch_first = self.const_val[torch_node.inputs[8]]
+        assert(batch_first == False) # Not Implemented
+        if bidirectional:
+            assert(len(weights) == 8)
+        else:
+            assert(len(weights) == 4)
+        datas = []
+        for w in weights:
+            d = self.getWeight(w)
+            d = self.rzh2zrh(d)
+            datas.append(d)
+        # filter
+        filter = datas[0]
+        if bidirectional:
+            filter = np.concatenate((datas[0],datas[4]), axis = 0)
+        filter_name = torch_node.name+"_filter"
+        self.addWeight(filter_name, filter)
+        filter_op = self.getWeightOp(filter_name)
+        # recurrence
+        recurrence = datas[1]
+        rshape = recurrence.shape
+        if bidirectional:
+            recurrence = np.concatenate((datas[1], datas[5]), axis=0)
+        recurrence_name = torch_node.name+"_recurrence"
+        self.addWeight(recurrence_name, recurrence)
+        recurrence_op = self.getWeightOp(recurrence_name)
+        # bias
+        bias = np.concatenate((datas[2],datas[3],datas[6],datas[7]), axis = 0) if bidirectional else np.concatenate((datas[2],datas[3]), axis = 0)
+        bias_name = torch_node.name + "_bias"
+        self.addWeight(bias_name, bias)
+        bias_op = self.getWeightOp(bias_name)
+        p = {
+            "name": torch_node.outputs,
+            "hidden_size": rshape[-1],
+            "bidirectional": bidirectional,
+            "batch_first": batch_first,
+        }
+        operands = [in_op, filter_op, recurrence_op, bias_op, h0_op]
+        new_op, h_op = self.mlir.create_gru_op(operands, [[],[]], **p)
+        self.addOperand(torch_node.outputs[0], new_op)
+        self.addOperand(torch_node.outputs[1], h_op)
 
     def convert_abs_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])

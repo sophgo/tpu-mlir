@@ -25,7 +25,7 @@ def mlir_opt_for_top(mlirfile, opt_mlirfile, post_handle_type=""):
     if len(post_handle_type) > 0:
         cmd.extend([f"--post-handle=\"type={post_handle_type}\""])
     cmd.extend(
-        ["--mark-FLOPs", "--save-weight", "--mlir-print-debuginfo", mlirfile, "-o", opt_mlirfile])
+        ["--after-optimize", "--save-weight", "--mlir-print-debuginfo", mlirfile, "-o", opt_mlirfile])
     _os_system(cmd)
 
 
