@@ -6,10 +6,10 @@
 // third-party components.
 //
 //===----------------------------------------------------------------------===//
-#include "tpu_mlir/Conversion/TopToTpu/DoExtraConversion.h"
-#include "tpu_mlir/Conversion/TopToTpu/ExtraConvertBM1684.h"
-#include "tpu_mlir/Conversion/TopToTpu/ExtraConvertBM1684X.h"
-#include "tpu_mlir/Conversion/TopToTpu/ExtraConvertCV18XX.h"
+#include "tpu_mlir/Conversion/ExtraConversion/DoExtraConversion.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertBM1684.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertBM1684X.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertCV18XX.h"
 #include "tpu_mlir/Conversion/Passes.h"
 #include "tpu_mlir/Support/Module.h"
 #include "mlir/IR/BlockAndValueMapping.h"

@@ -7,11 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/ExtraConvertBM1684X.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertBM1684.h"
 
 namespace tpu_mlir {
 
-namespace bm1684x {
+namespace bm1684 {
 
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
 
