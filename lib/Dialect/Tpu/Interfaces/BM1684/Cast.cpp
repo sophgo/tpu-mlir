@@ -22,10 +22,11 @@ void tpu::CastOp::codegen_global_bm1684() {
   module::getNCHW(getOutput(), n, c, h, w);
   if (qInput && !qOutput) {
     // int8 => fp32
+    auto input_dtype = BM1684::getDataType(getInput());
     auto scale = module::getUniformQuantizedType(getInput()).getScale();
     BM1684::instance().dl_nodechip_global_int2float(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
-        h, w, 1, STORAGE_MODE_4N_INT8,
+        h, w, input_dtype == DTYPE_INT8 ? 1 : 0, STORAGE_MODE_4N_INT8,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
     BM1684::instance().dl_nodechip_const_binary(
         module::getAddress(getOutput()), n * c * h * w, scale,
@@ -33,6 +34,7 @@ void tpu::CastOp::codegen_global_bm1684() {
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
   } else if (qOutput && !qInput) {
     // fp32 => int8
+    auto output_dtype = BM1684::getDataType(getOutput());
     auto scale = 1.f / module::getUniformQuantizedType(getOutput()).getScale();
     BM1684::instance().dl_nodechip_const_binary(
         module::getAddress(getInput()), n * c * h * w, scale,
@@ -40,7 +42,7 @@ void tpu::CastOp::codegen_global_bm1684() {
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
     BM1684::instance().dl_nodechip_float2int8_v2(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
-        h, w, 1, STORAGE_MODE_4N_INT8, ROUND_INF,
+        h, w, output_dtype == DTYPE_INT8 ? 1 : 0, STORAGE_MODE_4N_INT8, ROUND_INF,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   } else {
     dump();
