@@ -21,4 +21,5 @@ add_mlir_library(TPUMLIRInitAll
   TPUMLIRTopToTpu
   MLIRTosaDialect
   TPUMLIRTopToTosa
+  TPUMLIRExtraConversion
 )

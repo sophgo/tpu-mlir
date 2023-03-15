@@ -41,6 +41,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ConvertAddConstOp : public OpRewritePattern<top::AddConstOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::AddConstOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 }
 }

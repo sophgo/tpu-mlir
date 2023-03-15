@@ -7,15 +7,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/ExtraConvertBM1684.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertCV18XX.h"
 
 namespace tpu_mlir {
 
-namespace bm1684 {
+namespace cv18xx {
 
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
-
+  // clang-format off
+  patterns->add<
+      ConvertAddConstOp,
+      ConvertMaskedFillOp,
+      ConvertWhereOp,
+      ConvertGatherOp
+  >(patterns->getContext());
+  // clang-format on
 }
-
-}
-}
+} // namespace cv18xx
+} // namespace tpu_mlir
