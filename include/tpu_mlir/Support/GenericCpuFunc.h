@@ -90,6 +90,7 @@ struct DetParam {
   double confidence_threshold;
   bool share_location;
   Decode_CodeType code_type;
+  int onnx_nms;
 };
 
 class DetectionOutputFunc {

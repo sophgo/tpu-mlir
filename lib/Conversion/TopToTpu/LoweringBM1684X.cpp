@@ -93,7 +93,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       PixelNormLowering,
       YoloDetectionLowering,
       InstanceNormLowering,
-      GroupNormLowering
+      GroupNormLowering,
+      DetectionOutputLowering
       // clang-format on
       >(patterns->getContext());
 }

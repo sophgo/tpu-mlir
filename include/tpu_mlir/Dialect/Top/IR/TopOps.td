@@ -1491,13 +1491,15 @@ def Top_DetectionOutputOp : Top_Op<"DetectionOutput"> {
   let arguments = (ins
     Variadic<AnyTensor>:$inputs,
     I64Attr:$num_classes,
-    I64Attr:$background_label_id,
+    DefaultValuedAttr<I64Attr, "0">:$background_label_id,
     F64Attr:$nms_threshold,
     I64Attr:$top_k,
     DetectionOutputCodeTypeAttr:$code_type,
     I64Attr:$keep_top_k,
     F64Attr:$confidence_threshold,
-    DefaultValuedAttr<BoolAttr, "true">:$share_location
+    DefaultValuedAttr<BoolAttr, "true">:$share_location,
+    DefaultValuedAttr<F64Attr, "0">:$variance_encoded_in_target,
+    DefaultValuedAttr<F64Attr, "1">:$eta
   );
   let results = (outs AnyTensor:$output);
 }

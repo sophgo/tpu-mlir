@@ -180,11 +180,7 @@ public:
     if (isa<GenericCpuOp>(op)) {
       seperate = true;
       return RunMode::CPU;
-    } else if (isa<TopKOp>(op) || isa<YoloDetectionOp>(op)) {
-      return RunMode::TPU_DYNAMIC;
-    } else if (isa<RoiAlignOp>(op)) {
-      return RunMode::TPU_DYNAMIC;
-    } else if (isa<NonZeroOp>(op)) {
+    } else if (isa<TopKOp, YoloDetectionOp, DetectionOutputOp, RoiAlignOp, NonZeroOp>(op)) {
       return RunMode::TPU_DYNAMIC;
     }
     if (dynamic) {

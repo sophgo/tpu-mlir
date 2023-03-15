@@ -199,6 +199,85 @@ static void DecodeBBoxesAll_opt(const std::vector<LabelBBox_l> &all_loc_preds,
   }
 }
 
+static void GetConfidenceScores_v2_opt(
+    const float *conf_data, const int num, const int num_preds_per_class,
+    const int num_classes, const float score_threshold,
+    std::vector<std::map<int, std::vector<std::pair<float, int>>>>
+        *conf_preds) {
+  conf_preds->clear();
+  conf_preds->resize(num);
+  for (int i = 0; i < num; ++i) {
+    std::map<int, std::vector<std::pair<float, int>>> &label_scores =
+        (*conf_preds)[i];
+    for (int p = 0; p < num_classes; ++p) {
+      int start_idx = p * num_preds_per_class;
+      for (int c = 0; c < num_preds_per_class; ++c) {
+        if (conf_data[start_idx + c] > score_threshold) {
+          label_scores[p].push_back(
+              std::make_pair(conf_data[start_idx + c], c));
+        }
+      }
+    }
+    conf_data += num_preds_per_class * num_classes;
+  }
+}
+
+static void DecodeBBoxesAll_v2_opt(const std::vector<LabelBBox_l> &all_loc_preds,
+                                int num_priors, const float *prior_data,
+                                const int num, const bool share_location,
+                                const int num_loc_classes,
+                                const int background_label_id,
+                                const CodeType code_type,
+                                const bool variance_encoded_in_target,
+                                const bool clip, float *decode_index,
+                                std::vector<LabelBBox_l> *all_decode_bboxes) {
+  assert(all_loc_preds.size() == (size_t)num);
+  all_decode_bboxes->clear();
+  all_decode_bboxes->resize(num);
+  float *decode_pos = decode_index;
+  for (int i = 0; i < num; ++i) {
+    if (share_location) {
+      decode_pos = decode_index + i * num_priors;
+    }
+    // Decode predictions into bboxes.
+    for (int c = 0; c < num_loc_classes; ++c) {
+      int label = share_location ? -1 : c;
+      if (label == background_label_id) {
+        // Ignore background class.
+        continue;
+      }
+      if (all_loc_preds[i].find(label) == all_loc_preds[i].end()) {
+        llvm::errs() << "Could not find location predictions for label "
+                     << label;
+      }
+      const std::vector<BBox_l> &bboxes = all_loc_preds[i].find(label)->second;
+      LabelBBox_l &decode_bboxes = (*all_decode_bboxes)[i];
+      std::vector<BBox_l> *p = &(decode_bboxes[label]);
+      p->clear();
+
+      if (!share_location) {
+        decode_pos =
+            decode_index + num_priors * num_loc_classes * i + num_priors * c;
+      }
+      for (int k = 0; k < num_priors; ++k) {
+        // NormalizedBBox decode_bbox;
+        BBox_l decode_bbox;
+        if (decode_pos[k] != 1) {
+          p->push_back(decode_bbox);
+          continue;
+        }
+
+        decode_bbox.xmin = bboxes[k].xmin;
+        decode_bbox.ymin = bboxes[k].ymin;
+        decode_bbox.xmax = bboxes[k].xmax;
+        decode_bbox.ymax = bboxes[k].ymax;
+        decode_bbox.CalcSize();
+        p->push_back(decode_bbox);
+      }
+    }
+  }
+}
+
 static void
 ApplyNMSFast_opt(const std::vector<BBox_l> &bboxes,
                  const std::vector<std::pair<float, int>> &conf_score,
@@ -455,14 +534,19 @@ DetectionOutputFunc::DetectionOutputFunc(DetParam &param) : param_(param) {}
 
 void DetectionOutputFunc::invoke() {
   int num = param_.loc_shape[0];
-  int num_priors = param_.prior_shape[2] / 4;
+  int num_priors = param_.onnx_nms ? param_.loc_shape[1]: param_.prior_shape[2] / 4;
   int num_loc_classes = param_.share_location ? 1 : param_.num_classes;
   float eta = 1.0;
   bool variance_encoded_in_target = false;
   std::vector<std::map<int, std::vector<std::pair<float, int>>>>
       all_conf_scores;
-  GetConfidenceScores_opt(param_.conf_data, num, num_priors, param_.num_classes,
-                          param_.confidence_threshold, &all_conf_scores);
+  if (!param_.onnx_nms) {
+    GetConfidenceScores_opt(param_.conf_data, num, num_priors, param_.num_classes,
+                            param_.confidence_threshold, &all_conf_scores);
+  } else {
+    GetConfidenceScores_v2_opt(param_.conf_data, num, num_priors, param_.num_classes,
+                            param_.confidence_threshold, &all_conf_scores);
+  }
   for (int i = 0; i < num; ++i) {
     for (int c = 0; c < param_.num_classes; ++c) {
       if (all_conf_scores[i].find(c) == all_conf_scores[i].end()) {
@@ -526,11 +610,19 @@ void DetectionOutputFunc::invoke() {
   // Decode all loc predictions to bboxes.
   std::vector<LabelBBox_l> all_decode_bboxes;
   const bool clip_bbox = false;
-  DecodeBBoxesAll_opt(all_loc_preds, num_priors, param_.prior_data, num,
-                      param_.share_location, num_loc_classes,
-                      param_.background_label_id, param_.code_type,
-                      variance_encoded_in_target, clip_bbox, decode_keep_index,
-                      &all_decode_bboxes);
+  if (!param_.onnx_nms) {
+    DecodeBBoxesAll_opt(all_loc_preds, num_priors, param_.prior_data, num,
+                        param_.share_location, num_loc_classes,
+                        param_.background_label_id, param_.code_type,
+                        variance_encoded_in_target, clip_bbox, decode_keep_index,
+                        &all_decode_bboxes);
+  } else {
+    DecodeBBoxesAll_v2_opt(all_loc_preds, num_priors, param_.prior_data, num,
+                        param_.share_location, num_loc_classes,
+                        param_.background_label_id, param_.code_type,
+                        variance_encoded_in_target, clip_bbox, decode_keep_index,
+                        &all_decode_bboxes);
+  }
   delete[] decode_keep_index;
 
   int num_kept = 0;
@@ -599,7 +691,6 @@ void DetectionOutputFunc::invoke() {
     }
   }
   float *top_data = (float *)param_.output_data;
-
   int output_size = num * param_.keep_top_k * 1 * 1 * 7;
   // init output buf
   for (int i = 0; i < output_size; ++i) {
