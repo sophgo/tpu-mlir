@@ -1119,13 +1119,13 @@ class MLIRImporter(object):
 
     def create_instance_norm_op(self, operands, output_shape, **kargs):
         # get_value_type
-        output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
+        output_type = self.get_tensor_type(output_shape)
         param = {'name': kargs['name'], 'eps': FloatAttr.get_f64(kargs['eps'])}
         return self.buildOp(Top.InstanceNormOp, operands, [output_type], **param)
 
     def create_group_norm_op(self, operands, output_shape, **kargs):
         # get_value_type
-        output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
+        output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
             "num_groups": IntegerAttr.get(self.mlir_type['INT64'], kargs['num_groups']),
@@ -1135,7 +1135,7 @@ class MLIRImporter(object):
 
     def create_scatter_elements_op(self, operands, output_shape, **kargs):
         # get_value_type
-        output_type = RankedTensorType.get(tuple(output_shape), self.mlir_type['F32'])
+        output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis'])
@@ -1173,7 +1173,7 @@ class MLIRImporter(object):
 
     def create_nonzero_op(self, operands, output_shape, **kargs):
         # get_value_type
-        output_type = RankedTensorType.get(tuple(output_shape), self.F32Type)
+        output_type = self.get_tensor_type(output_shape)
         param = {'name': kargs['name'], 'order': StringAttr.get(kargs["order"])}
         return self.buildOp(Top.NonZeroOp, operands, [output_type], **param)
 

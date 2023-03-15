@@ -65,6 +65,7 @@ class TORCH_IR_TESTER(object):
             "Permute":          (self.test_Permute,     Y, N, N),
             "Pad1d":            (self.test_Pad1d,       Y, N, N),
             "Pad2d":            (self.test_Pad2d,       Y, N, N),
+            "Scatter":          (self.test_Scatter,     N, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
             "Softmin":          (self.test_Softmin,     Y, N, N),
             "Sub":              (self.test_Sub,         Y, N, N),
@@ -801,6 +802,32 @@ class TORCH_IR_TESTER(object):
         _test_index_select((1, 3, 32, 32), 2, (5, ))
         _test_index_select((2, 32, 16), 0, (3, ))
         _test_index_select((32, 5), 1, (6, ))
+
+    #######################################################################
+    # Scatter
+    # ------------
+    def test_Scatter(self, case_name):
+        """Scatter"""
+
+        # in_shape.dims == index_shape.dims && in_shape[i] >=
+        def _test_scatter(in_shape, dim, index_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    high = in_shape[dim]
+                    self.index = torch.randint(0, high, index_shape)
+
+                def forward(self, x, updates):
+                    y1 = torch.scatter(x, dim, self.index, updates)
+                    return y1
+
+            self.trace_and_test([in_shape, index_shape], Model())
+
+        _test_scatter((1, 3, 32, 32), 2, (1, 3, 24, 12))
+        # _test_scatter((2, 32, 16), 1, (2, 12, 4))
+        _test_scatter((32, 5), 0, (13, 5))
 
     #######################################################################
     # Concat

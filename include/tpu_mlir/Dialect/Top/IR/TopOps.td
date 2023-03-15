@@ -1837,7 +1837,7 @@ def Top_SwapDimInnerOp: Top_Op<"SwapDimInner"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_ScatterElementsOp: Top_Op<"ScatterElements", [InOutSameShape]> {
+def Top_ScatterElementsOp: Top_Op<"ScatterElements"> {
   let summary = "ScatterElements op";
   let description = [{
     ScatterElements takes three inputs data, updates, and indices
