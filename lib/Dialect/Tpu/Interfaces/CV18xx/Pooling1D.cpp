@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "tpu_mlir/Backend/CV18xx/CV18xx.h"
+#include "tpu_mlir/Backend/CV18xx/CV18xx_local_api.h"
 #include "tpu_mlir/Backend/CV18xx/CV18xx_global_api.h"
 #include "tpu_mlir/Dialect/Tpu/IR/TpuOps.h"
 #include "tpu_mlir/Support/Dnnl/Pool.h"
@@ -95,10 +96,55 @@ void tpu::Pool1DOp::codegen_global_cv18xx(int64_t layer_id) {
 int64_t tpu::Pool1DOp::getBufferSize_cv18xx(
     int64_t in_lmem_bytes, int64_t out_lmem_bytes, int64_t in_nslice,
     int64_t in_hslice, int64_t out_nslice, int64_t out_hslice) {
-  llvm_unreachable("Not supported now");
   return 0;
 }
 
 void tpu::Pool1DOp::codegen_local_cv18xx(int64_t n_step, int64_t h_step, int64_t layer_id) {
-  llvm_unreachable("Not supported now");
+  auto attr = parseParam();
+
+  auto gi = getGroupInfo(n_step, h_step);
+  auto in_gi = LocalGenInterface::getGroupInfo(getInput(), n_step, h_step);
+  auto out_gi = LocalGenInterface::getGroupInfo(getOutput(), n_step, h_step);
+  laddr_t la_input = in_gi.out_addr;
+  laddr_t la_output = out_gi.out_addr;
+
+  int64_t pad_h_t = in_gi.h_idx == 0 ? attr.pad_h : 0;
+  int64_t pad_h_b =
+      in_gi.h_idx + in_gi.h_slice == attr.ih ? attr.pad_h_after : 0;
+
+  if (getPoolMode() == tpu::PoolMode::Avg) {
+    if (module::isUniformQuantized(getOutput())) {
+      cvi_backend_tl_pooling(
+          layer_id, la_input, la_output, in_gi.n_slice, attr.c, in_gi.h_slice,
+          attr.iw, out_gi.n_slice, attr.c, out_gi.h_slice, attr.ow, attr.kh,
+          attr.kw, attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
+          attr.pad_w_after, true, /*is_avg_pooling,*/
+          (int8_t)getRshift().value(), (int8_t)getMultiplier().value());
+    } else {
+      cvi_backend_tl_bf16_pooling(layer_id, la_input, la_output, in_gi.n_slice,
+                             attr.c, in_gi.h_slice, attr.iw, out_gi.n_slice,
+                             attr.c, out_gi.h_slice, attr.ow, attr.kh, attr.kw,
+                             attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
+                             attr.pad_w_after, true /*is_avg_pooling,*/);
+    }
+  } else if (getPoolMode() == tpu::PoolMode::Max) {
+    if (module::isUniformQuantized(getOutput())) {
+      int8_t rshift_i8 = 0;
+      int8_t multiplier_i8 = 1;
+      cvi_backend_tl_pooling(
+          layer_id, la_input, la_output, in_gi.n_slice, attr.c, in_gi.h_slice,
+          attr.iw, out_gi.n_slice, attr.c, out_gi.h_slice, attr.ow, attr.kh,
+          attr.kw, attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
+          attr.pad_w_after, false, /*is_avg_pooling,*/
+          rshift_i8, multiplier_i8);
+    } else {
+      cvi_backend_tl_bf16_pooling(layer_id, la_input, la_output, in_gi.n_slice,
+                             attr.c, in_gi.h_slice, attr.iw, out_gi.n_slice,
+                             attr.c, out_gi.h_slice, attr.ow, attr.kh, attr.kw,
+                             attr.sh, attr.sw, pad_h_t, pad_h_b, attr.pad_w,
+                             attr.pad_w_after, false /*is_avg_pooling,*/);
+    }
+  } else {
+    llvm_unreachable("Not supported now");
+  }
 }

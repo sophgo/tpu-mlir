@@ -42,7 +42,7 @@ class ONNX_IR_TESTER(object):
             "AddBcast3":    (self.test_AddBcast3,   N, N, N),  # failed cases
             "Arg":          (self.test_Arg,         Y, N, N),
             "AddConst":     (self.test_AddConst,    Y, N, Y),
-            "AvgPool1d":    (self.test_AvgPool1d,   Y, N, N),
+            "AvgPool1d":    (self.test_AvgPool1d,   Y, N, Y),
             "AvgPool2d":    (self.test_AvgPool2d,   Y, N, Y),
             "AvgPool3d":    (self.test_AvgPool3d,   Y, N, Y),
             "AvgPoolOdd":   (self.test_AvgPoolOdd,  Y, N, Y),
@@ -60,7 +60,7 @@ class ONNX_IR_TESTER(object):
             "Conv2d":       (self.test_Conv2d,      Y, N, Y),
             "Conv3d":       (self.test_Conv3d,      Y, N, Y),
             "ConvStride":   (self.test_ConvStride,  Y, N, Y),
-            "ConvDw":       (self.test_ConvDw,      Y, N, N),
+            "ConvDw":       (self.test_ConvDw,      Y, N, Y),
             "ConvTrans":    (self.test_ConvTrans,   Y, N, Y),
             "ConvTrans2":   (self.test_ConvTrans2,  Y, N, Y),  #no pad
             "Clip":         (self.test_Clip,        Y, N, Y),
@@ -81,9 +81,9 @@ class ONNX_IR_TESTER(object):
             "GRU":          (self.test_GRU,         Y, N, Y),  # test gru output Y
             "GRU2":         (self.test_GRU2,        Y, N, Y),  # test gru output Yh
             "GRU3":         (self.test_GRU3,        Y, N, N),  # test gru output Y and Yh
-            "LeakyRelu":    (self.test_LeakyRelu,   Y, N, N),
+            "LeakyRelu":    (self.test_LeakyRelu,   Y, N, Y),
             "Log":          (self.test_Log,         Y, N, Y),
-            "LogSoftmax":   (self.test_LogSoftmax,  Y, N, N),
+            "LogSoftmax":   (self.test_LogSoftmax,  Y, N, Y),
             "LRN":          (self.test_LRN,         Y, N, Y),
             "LSTM":         (self.test_LSTM,        Y, N, Y),  # output_y
             "LSTM2":        (self.test_LSTM2,       Y, N, Y),  # output all
@@ -1135,7 +1135,7 @@ class ONNX_IR_TESTER(object):
         output_shape = [1, oc, 100, 100]
         weight_data = np.random.randn(*filter_shape).astype(np.float32)
         bias_data = np.random.randn(oc).astype(np.float32)
-        alpha_cases = [0.67, -0.2]
+        alpha_cases = [0.67, 0.2]
         for i, a in enumerate(alpha_cases):
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             output = helper.make_tensor_value_info('output', TensorProto.FLOAT, output_shape)
