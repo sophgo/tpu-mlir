@@ -794,9 +794,12 @@ class TorchConverter(BaseConverter):
         h0,c0 = self.tensor_list[torch_node.inputs[1]]
         weights = self.tensor_list[torch_node.inputs[2]]
         has_bias = self.const_val[torch_node.inputs[3]]
+        assert(has_bias) # no bias Not Implemented
         num_layers = self.const_val[torch_node.inputs[4]]
+        assert(num_layers == 1) # Not Implemented
         bidirectional = self.const_val[torch_node.inputs[7]]
         batch_first = self.const_val[torch_node.inputs[8]]
+        assert(batch_first == False) # Not Implemented
         h0_op = self.getOp(h0)
         c0_op = self.getOp(c0)
         if bidirectional:

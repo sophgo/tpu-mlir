@@ -906,18 +906,38 @@ class TORCH_IR_TESTER(object):
     # ------------
     def test_LSTM(self):
 
-        class Model(torch.nn.Module):
+        def _test_lstm0(batch, bidir):
+            class Model(torch.nn.Module):
 
-            def __init__(self):
-                super(Model, self).__init__()
-                self.rnn = nn.LSTM(input_size=100, hidden_size=128, bidirectional=True)
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.rnn = nn.LSTM(input_size=100, hidden_size=128, bidirectional=bidir)
 
-            def forward(self, x, h_0, c_0):
-                Y, (Y_h, Y_c) = self.rnn(x, (h_0, c_0))
-                return Y, Y_h, Y_c
+                def forward(self, x, h_0, c_0):
+                    Y, (Y_h, Y_c) = self.rnn(x, (h_0, c_0))
+                    return Y, Y_h, Y_c
+            num_dir = 2 if bidir else 1
+            input_shapes = [(81, batch, 100), (num_dir, batch, 128), (num_dir, batch, 128)]
+            self.trace_and_test(input_shapes, Model())
 
-        input_shapes = [(81, 1, 100), (2, 1, 128), (2, 1, 128)]
-        self.trace_and_test(input_shapes, Model())
+        def _test_lstm1(batch, bidir):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.rnn = nn.LSTM(input_size=100, hidden_size=128, bidirectional=bidir)
+
+                def forward(self, x):
+                    Y, _ = self.rnn(x)
+                    return Y
+            num_dir = 2 if bidir else 1
+            input_shapes = [(81, batch, 100)]
+            self.trace_and_test(input_shapes, Model())
+
+        for bidir in [True, False]:
+            for batch in [1, 2, 4]:
+                _test_lstm0(batch, bidir)
+                #_test_lstm1(batch, bidir)
 
     #######################################################################
     # Softmax

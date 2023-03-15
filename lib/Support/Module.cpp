@@ -42,12 +42,19 @@ struct Attr {
 static ModuleOp m = nullptr;
 static MLIRContext *ctx = nullptr;
 static Chip chip = Chip::ALL;
+static Platform platform = Platform::ONNX;
 
 void init(ModuleOp module) {
   m = module;
   ctx = m.getContext();
   auto chip_ = m->getAttrOfType<StringAttr>(Attr::CHIP);
   chip = symbolizeChip(chip_).value_or(Chip::ALL);
+  if (m->hasAttrOfType<StringAttr>(Attr::PLATFORM)) {
+    auto p = m->getAttrOfType<StringAttr>(Attr::PLATFORM);
+    platform = symbolizePlatform(p).value_or(Platform::ONNX);
+  } else {
+    platform = Platform::ONNX;
+  }
 }
 
 top::NoneOp getNoneOp(Operation *op) {
@@ -735,13 +742,9 @@ State getState() {
   return symbolizeState(s).value_or(State::TOP_F32);
 }
 
-Platform getPlatform() {
-  if (m->hasAttrOfType<StringAttr>(Attr::PLATFORM)) {
-    auto p = m->getAttrOfType<StringAttr>(Attr::PLATFORM);
-    return symbolizePlatform(p).value_or(Platform::ONNX);
-  }
-  return Platform::ONNX;
-}
+Platform getPlatform() { return platform; }
+
+bool isPlatform(Platform plt) { return platform == plt; }
 
 void setState(State state) {
   auto s = stringifyState(state);
