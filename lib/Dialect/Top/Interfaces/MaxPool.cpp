@@ -132,11 +132,28 @@ void top::MaxPoolOp::shape_inference() {
   auto pads = module::getI64Array(getPads());
   auto strides = module::getI64Array(getStrides());
   for (int i = 0; i < spacial_rank; i++) {
-    auto out_dim = (input_spacial_shape[i] + pads->at(i) +
-                    pads->at(i + spacial_rank) - kernel_shape->at(i)) /
-                       strides->at(i) +
-                   1;
+    auto input_dim_expanded = input_spacial_shape[i] + pads->at(i) +
+                              pads->at(i + spacial_rank) - kernel_shape->at(i);
+    auto out_dim = input_dim_expanded / strides->at(i) + 1;
+
+    // move ceil_mode to padding
+    auto need_fix_pad = input_dim_expanded % strides->at(i);
+    if (getCeilMode() && getCeilMode().value() && need_fix_pad) {
+      // https://pytorch.org/docs/stable/generated/torch.nn.AvgPool1d.html#torch.nn.AvgPool1d
+      // When ceil_mode=True, sliding windows are allowed to go off-bounds if
+      // they start within the left padding or the input. Sliding windows that
+      // would start in the right padded region are ignored.
+      auto new_pad = pads->at(i + spacial_rank) + strides->at(i) - need_fix_pad;
+      if (new_pad < kernel_shape->at(i)) {
+        pads->at(i + spacial_rank) = new_pad;
+        out_dim += 1;
+      }
+    }
+
     out_shape.push_back(out_dim);
   }
+  if (getCeilMode() && getCeilMode().value())
+    setPadsAttr(Builder(getContext()).getI64ArrayAttr(*pads));
+  removeCeilModeAttr();
   module::setShapeOrVerify(getOutput(), out_shape);
 }

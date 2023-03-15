@@ -439,19 +439,19 @@ class TORCH_IR_TESTER(object):
         test = self._test_AvgPool()
         test((nn.AvgPool2d, F.avg_pool2d), (4, 8, 40, 30), 4, 3, 2)
         test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
-        test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (1, 1), False)
+        test((nn.AvgPool2d, F.avg_pool2d), (1, 64, 32, 32), (3, 2), (2, 3), (1, 1), False)
 
     def test_AvgPool3d(self):
         test = self._test_AvgPool()
-        test((nn.AvgPool3d, F.avg_pool3d), (4, 8, 64, 64, 64), 4, 3, 2)
-        test((nn.AvgPool3d, F.avg_pool3d), (1, 3, 20, 30, 40), (3, 3, 2), (1, 1, 1), (1, 0, 1))
+        test((nn.AvgPool3d, F.avg_pool3d), (4, 8, 12, 20, 24), 4, 3, 2)
+        test((nn.AvgPool3d, F.avg_pool3d), (1, 3, 12, 20, 24), (3, 3, 2), (1, 1, 1), (1, 0, 1))
 
     #######################################################################
     # MaxPooling
     # ------------
     def _test_MaxPool(self):
 
-        def test_case(pool_funs, input_shape, kernel_size, stride, padding):
+        def test_case(pool_funs, input_shape, kernel_size, stride, padding, ceil_mode=False):
             fun1, fun2 = pool_funs
 
             class Model(nn.Module):
@@ -462,7 +462,13 @@ class TORCH_IR_TESTER(object):
 
                 def forward(self, x):
                     y = self.pooling(x)
-                    z = fun2(y, kernel_size, stride=stride, padding=padding)
+                    z = fun2(
+                        y,
+                        kernel_size,
+                        stride=stride,
+                        padding=padding,
+                        ceil_mode=ceil_mode,
+                    )
                     return z
 
             self.trace_and_test([input_shape], Model())
@@ -478,12 +484,14 @@ class TORCH_IR_TESTER(object):
         test = self._test_MaxPool()
         test((nn.MaxPool2d, F.max_pool2d), (4, 8, 40, 30), 4, 3, 2)
         test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (0, 1))
-        test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 2), (1, 2), (1, 1))
+        test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (3, 5), (1, 2), (1, 1))
+        test((nn.MaxPool2d, F.max_pool2d), (1, 64, 32, 32), (4, 3), (3, 2), (1, 1), True)
 
     def test_MaxPool3d(self):
         test = self._test_MaxPool()
         test((nn.MaxPool3d, F.max_pool3d), (4, 8, 10, 64, 64), 2, 1, 1)
         test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 2), (1, 2, 1), (1, 0, 1))
+        test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 5), (1, 2, 2), (1, 0, 1), True)
 
     #######################################################################
     # Binary Base

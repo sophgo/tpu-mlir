@@ -381,6 +381,8 @@ class MLIRImporter(object):
         }
         if 'keep_dim' in kargs:
             param['keep_dim'] = BoolAttr.get(kargs['keep_dim'])
+        if "ceil_mode" in kargs:
+            param["ceil_mode"] = BoolAttr.get(kargs["ceil_mode"])
         return self.buildOp(Top.AvgPoolOp, operands, [output_type], **param)
 
     def create_batchnorm_op(self, operands, output_shape, **kargs):
@@ -466,6 +468,8 @@ class MLIRImporter(object):
             'pads': self.ArrayAttr(kargs['pads']),
             'do_relu': BoolAttr.get(kargs['do_relu']),
         }
+        if "ceil_mode" in kargs:
+            param["ceil_mode"] = BoolAttr.get(kargs["ceil_mode"])
         return self.buildOp(Top.MaxPoolOp, operands, [output_type], **param)
 
     def create_maxpool_with_mask_op(self, operands, output_shape, **kargs):
