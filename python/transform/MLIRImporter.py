@@ -108,6 +108,14 @@ class State:
     TOP_QUANTIZED = 'TOP_QUANTIZED'
 
 
+class Platform:
+    ONNX = "ONNX"
+    TORCH = "TORCH"
+    TFLITE = "TFLITE"
+    CAFFE = "CAFFE"
+    TPULANG = "TPULANG"
+
+
 def get_weight_file(model_name: str, state: str, chip: str):
     name = "{}_{}_{}_origin_weight.npz".format(model_name, state, chip)
     return name.lower()
@@ -124,6 +132,7 @@ class MLIRImporter(object):
                  input_shapes: list,
                  output_shapes: list,
                  model_name: str,
+                 platform: str = Platform.ONNX,
                  input_types: list = [],
                  output_types: list = [],
                  state: str = State.TOP_F32,
@@ -136,6 +145,7 @@ class MLIRImporter(object):
         self.model_name = model_name
         self.state = state
         self.chip = "ALL"
+        self.platform = platform
         self.weight_file = get_weight_file(self.model_name, self.state, self.chip)
         self.ctx = Context()
         self.ctx.allow_unregistered_dialects = True
@@ -189,7 +199,7 @@ class MLIRImporter(object):
 
     # shape: [] => [* x f32]; None => NoneType; [None, None] => [NoneType, NoneType]
     # type: None => f32; or type
-    def get_tensor_type(self, output_shapes, type = None):
+    def get_tensor_type(self, output_shapes, type=None):
         if type is None:
             type = self.F32Type
         if output_shapes == []:
@@ -1196,13 +1206,14 @@ class MLIRImporter(object):
         if self.num_output > 1:
             output_txt = "({})".format(output_txt)
         main_func = """
-            module attributes {{module.name = \"{name}\", module.weight_file= \"{weight_file}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
+            module attributes {{module.name = \"{name}\", module.weight_file= \"{weight_file}\", module.platform=\"{platform}\", module.state=\"{state}\", module.chip=\"{chip}\"}} {{
                 func.func @main({args}) -> {output} {{
                     %0 = \"top.None\"() : () -> none loc(unknown)
                 }} loc(unknown)
             }} loc(unknown)
         """.format(name=self.model_name,
                    weight_file=self.weight_file,
+                   platform=self.platform,
                    state=self.state,
                    chip=self.chip,
                    args=args_txt,

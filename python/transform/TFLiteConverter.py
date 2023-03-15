@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from typing import Union, Iterable, List
-from .MLIRImporter import MLIRImporter, Top, State
+from .MLIRImporter import MLIRImporter, Top, State, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import mlir.dialects.quant as quant
@@ -248,6 +248,7 @@ class TFLiteConverter(BaseConverter):
             self.input_shapes,
             self.output_shapes,
             model_name=self.model_name,
+            platform=Platform.TFLITE,
             state=State.TOP_QUANTIZED,
             do_declare=False,
         )

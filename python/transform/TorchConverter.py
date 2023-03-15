@@ -5,7 +5,7 @@
 #
 # ==============================================================================
 
-from .MLIRImporter import MLIRImporter
+from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import numpy as np
@@ -266,7 +266,7 @@ class TorchConverter(BaseConverter):
             input_shapes.append(self.getShape(_name))
         # init importer
         self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name,
-                                 self.input_types)
+                                 Platform.TORCH, self.input_types)
         self.weight_file = self.mlir.weight_file
 
     def get_list(self, node):

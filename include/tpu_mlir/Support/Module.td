@@ -60,4 +60,15 @@ def Module_Mode: I32EnumAttr<"Mode", "module mode",[
   let cppNamespace = "::tpu_mlir::module";
 }
 
+def Module_Platform: I32EnumAttr<"Platform", "module platform",[
+      I32EnumAttrCase<"ONNX",    0>,
+      I32EnumAttrCase<"TORCH",   1>,
+      I32EnumAttrCase<"TFLITE",  2>,
+      I32EnumAttrCase<"CAFFE",   3>,
+      I32EnumAttrCase<"TPULANG", 4>,
+    ]> {
+  let genSpecializedAttr = 0;
+  let cppNamespace = "::tpu_mlir::module";
+}
+
 #endif // TPU_MLIR_MODULE_ATTR
