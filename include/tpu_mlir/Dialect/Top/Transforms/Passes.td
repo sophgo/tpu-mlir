@@ -40,9 +40,9 @@ def QDQConvert : Pass<"convert-qdq-to-calibrated-dialect", "ModuleOp"> {
   let dependentDialects = ["top::TopDialect", "mlir::quant::QuantizationDialect"];
 }
 
-def MarkFLOPs : Pass<"mark-FLOPs", "ModuleOp"> {
-  let summary = "mark FLOPs in mlir by tpuc-opt";
-  let constructor = "createMarkFLOPsPass()";
+def AfterOptimize : Pass<"after-optimize", "ModuleOp"> {
+  let summary = "after top optimize in mlir by tpuc-opt";
+  let constructor = "createAfterOptimizePass()";
   let dependentDialects = ["TopDialect"];
 }
 

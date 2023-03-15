@@ -14,8 +14,6 @@
 #include "tpu_mlir/Support/LutFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 gru_attr_t tpu::GRUOp::parseParam() {
   gru_attr_t attr = {0};
   auto in_shape = module::getShape(getInput());
@@ -65,6 +63,13 @@ public:
     if (attr.num_direction == 2) {
       gru_compute(p, attr, B, initial_h, false);
     }
+    if (p.handle) {
+      float *buffer = (float *)p.handle;
+      function_permute(buffer, p.outputs[0],
+                       {1, attr.seq_len, attr.num_direction, attr.batch_size,
+                        attr.hidden_size},
+                       {0, 1, 3, 2, 4});
+    }
   }
 
 private:
@@ -73,7 +78,7 @@ private:
     //(TODO) num_layers > 1
     // input += seq_length * batch * input_size * num_layer; //(TODO check!)
     float *input = p.inputs[0];
-    float *output = p.outputs[0];
+    float *output = p.handle != nullptr ? (float *)p.handle : p.outputs[0];
     float *x_wz = p.inputs[1];
     float *h_wz = p.inputs[2];
     float *x_bz = bias;
@@ -356,8 +361,28 @@ private:
   }
 };
 
-LogicalResult tpu::GRUOp::init(InferenceParameter &p) { return success(); }
-void tpu::GRUOp::deinit(InferenceParameter &p) {}
+LogicalResult tpu::GRUOp::init(InferenceParameter &p) {
+  if (!module::isPlatform(module::Platform::TORCH)) {
+    return success();
+  }
+  auto attr = parseParam();
+  if (attr.output_y == false || attr.batch_size == 1 ||
+      attr.num_direction == 1) {
+    return success();
+  }
+  auto num = module::getNumElements(getY());
+  float *buffer = new float[num];
+  p.handle = (void *)buffer;
+  return success();
+}
+
+void tpu::GRUOp::deinit(InferenceParameter &p) {
+  if (p.handle) {
+    float *buffer = (float *)p.handle;
+    delete[] buffer;
+    p.handle = nullptr;
+  }
+}
 
 LogicalResult tpu::GRUOp::inference(InferenceParameter &p) {
   if (module::isCV18xx()) {

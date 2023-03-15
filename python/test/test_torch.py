@@ -52,6 +52,7 @@ class TORCH_IR_TESTER(object):
             "Div":              (self.test_Div,         Y, N, N),
             "Elu":              (self.test_Elu,         Y, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
+            "GRU":              (self.test_GRU,         Y, N, N),
             "IndexSelect":      (self.test_IndexSelect, Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
@@ -964,6 +965,43 @@ class TORCH_IR_TESTER(object):
             for batch in [1, 4]:
                 _test_lstm0(batch, bidir)
                 _test_lstm1(batch, bidir)
+
+    #######################################################################
+    # GRU
+    # ------------
+    def test_GRU(self):
+
+        def _test_gru0(batch, bidir):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.rnn = nn.GRU(input_size=100, hidden_size=128, bidirectional=bidir)
+
+                def forward(self, x, h_0):
+                    Y, Y_h = self.rnn(x, h_0)
+                    return Y, Y_h
+            num_dir = 2 if bidir else 1
+            input_shapes = [(81, batch, 100), (num_dir, batch, 128)]
+            self.trace_and_test(input_shapes, Model())
+
+        def _test_gru1(batch, bidir):
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.rnn = nn.GRU(input_size=100, hidden_size=128, bidirectional=bidir)
+
+                def forward(self, x):
+                    Y, _ = self.rnn(x)
+                    return Y
+            input_shapes = [(81, batch, 100)]
+            self.trace_and_test(input_shapes, Model())
+
+        for bidir in [True, False]:
+            for batch in [1, 4]:
+                _test_gru0(batch, bidir)
+                _test_gru1(batch, bidir)
 
     #######################################################################
     # Softmax

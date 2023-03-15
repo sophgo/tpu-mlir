@@ -199,7 +199,10 @@ void tpu::GRUOp::codegen_global_bm1684x() {
   p.batch = attr.batch_size;
   p.xSize = attr.input_size;
   p.hSize = attr.hidden_size;
-  p.batchMode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.batchMode = attr.batch_first ? BATCH_FIRST
+                                 : (module::isPlatform(module::Platform::TORCH)
+                                        ? BATCH_TORCH
+                                        : BATCH_ONNX);
   p.bidirectional = (attr.num_direction == 2);
   p.numLayers = 1;
   p.dtype = BM168x::getDataType(getInput());
@@ -210,7 +213,8 @@ void tpu::GRUOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::GRUOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(dyn_glu_global_spec_t);
+  if (!buffer)
+    return sizeof(dyn_glu_global_spec_t);
   auto attr = parseParam();
   dyn_glu_global_spec_t p = {0};
   p.xGlobalAddr = module::getAddress(getInput());
@@ -227,13 +231,15 @@ int64_t tpu::GRUOp::dyn_codegen_global_bm1684x(void *buffer) {
   p.common.batch = attr.batch_size;
   p.common.xSize = attr.input_size;
   p.common.hSize = attr.hidden_size;
-  p.common.batchMode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.common.batchMode =
+      attr.batch_first
+          ? BATCH_FIRST
+          : (module::isPlatform(module::Platform::TORCH) ? BATCH_TORCH
+                                                         : BATCH_ONNX);
   p.common.bidirectional = (attr.num_direction == 2);
   p.common.numLayers = 1;
   p.common.dtype = BM168x::getDataType(getInput());
   return BM168x::dynamic_spec_to_buffer(buffer, p);
 }
 
-int64_t tpu::GRUOp::get_fw_type_bm1684x() {
-  return FW_BMNET_GRU;
-}
+int64_t tpu::GRUOp::get_fw_type_bm1684x() { return FW_BMNET_GRU; }

@@ -1540,8 +1540,7 @@ class OnnxConverter(BaseConverter):
         out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
-            need = len(out) > 0 and self.check_need(out)
-            if need:
+            if len(out) > 0 and self.check_need(out):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
@@ -1597,8 +1596,7 @@ class OnnxConverter(BaseConverter):
         out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
-            need = len(out) > 0 and self.check_need(out)
-            if need:
+            if len(out) > 0 and self.check_need(out):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
@@ -1637,8 +1635,7 @@ class OnnxConverter(BaseConverter):
         out_shapes = [None, None, None]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
-            need = len(out) > 0 and self.check_need(out)
-            if need:
+            if len(out) > 0 and self.check_need(out):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
@@ -1766,8 +1763,7 @@ class OnnxConverter(BaseConverter):
         out_shapes = [None, None]
         out_needs = [False, False]
         for idx, out in enumerate(onnx_node.outputs):
-            need = len(out) > 0 and self.check_need(out)
-            if need:
+            if len(out) > 0 and self.check_need(out):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
@@ -2065,15 +2061,14 @@ class OnnxConverter(BaseConverter):
         out_shapes = [None, None, None]
         out_needs = [False, False, False]
         for idx, out in enumerate(onnx_node.outputs):
-            need = len(out) > 0 and self.check_need(out)
-            if need:
+            if len(out) > 0 and self.check_need(out):
                 p['name'][idx] = "{}_{}".format(out, onnx_node.op_type)
                 out_needs[idx] = True
                 out_shapes[idx] = self.getShape(out)
         out_ops = self.mlir.create_layer_norm_op([input_opd, scale_opd, bias_opd], out_shapes, **p)
         for idx, need in enumerate(out_needs):
-            if not need: continue
-            self.addOperand(onnx_node.outputs[idx], out_ops[idx])
+            if need:
+                self.addOperand(onnx_node.outputs[idx], out_ops[idx])
 
     def convert_pixel_norm_op(self, onnx_node):
         assert (onnx_node.op_type == "PixelNormalization")
