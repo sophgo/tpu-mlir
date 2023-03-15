@@ -74,6 +74,7 @@ State getState();
 void setState(State state);
 bool isState(State state);
 Platform getPlatform();
+bool isPlatform(Platform plt);
 
 StringRef getWeightFile();
 void setWeightFile(StringRef weight_file);

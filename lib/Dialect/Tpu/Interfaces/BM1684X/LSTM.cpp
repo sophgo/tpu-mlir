@@ -194,8 +194,8 @@ typedef struct {
 void tpu::LSTMOp::codegen_global_bm1684x() {
   auto attr = parseParam();
   auto op = getOperation();
-  auto input_spec =
-      BM168x::get_spec(ValueRange{getInput(), getInitialH(), getInitialC(), getFilter()});
+  auto input_spec = BM168x::get_spec(
+      ValueRange{getInput(), getInitialH(), getInitialC(), getFilter()});
   auto output_spec = BM168x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
   pytorch_lstm_param_t p = {0};
@@ -217,7 +217,10 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
   p.batch = attr.batch_size;
   p.x_size = attr.input_size;
   p.h_size = attr.hidden_size;
-  p.batch_mode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.batch_mode = attr.batch_first ? BATCH_FIRST
+                                  : (module::isPlatform(module::Platform::TORCH)
+                                         ? BATCH_TORCH
+                                         : BATCH_ONNX);
   p.bidirection = (attr.num_direction == 2);
   p.num_layers = 1;
   p.dtype = BM168x::getDataType(getInput());
@@ -230,11 +233,12 @@ void tpu::LSTMOp::codegen_global_bm1684x() {
 // Dynamic GlobalGenInterface
 // ======================================
 int64_t tpu::LSTMOp::dyn_codegen_global_bm1684x(void *buffer) {
-  if (!buffer) return sizeof(pytorch_lstm_param_t);
+  if (!buffer)
+    return sizeof(pytorch_lstm_param_t);
   auto attr = parseParam();
   auto op = getOperation();
-  auto input_spec =
-      BM168x::get_spec(ValueRange{getInput(), getInitialH(), getInitialC(), getFilter()});
+  auto input_spec = BM168x::get_spec(
+      ValueRange{getInput(), getInitialH(), getInitialC(), getFilter()});
   auto output_spec = BM168x::get_output_spec(op);
   // 1684x pytorch lstm out is [seq_length, batch_size, num_dir * hidden_size]
   pytorch_lstm_param_t p = {0};
@@ -256,13 +260,14 @@ int64_t tpu::LSTMOp::dyn_codegen_global_bm1684x(void *buffer) {
   p.batch = attr.batch_size;
   p.x_size = attr.input_size;
   p.h_size = attr.hidden_size;
-  p.batch_mode = attr.batch_first ? BATCH_FIRST : BATCH_ONNX;
+  p.batch_mode = attr.batch_first ? BATCH_FIRST
+                                  : (module::isPlatform(module::Platform::TORCH)
+                                         ? BATCH_TORCH
+                                         : BATCH_ONNX);
   p.bidirection = (attr.num_direction == 2);
   p.num_layers = 1;
   p.dtype = BM168x::getDataType(getInput());
   return BM168x::dynamic_spec_to_buffer(buffer, p);
 }
 
-int64_t tpu::LSTMOp::get_fw_type_bm1684x() {
-  return FW_BMNET_PYTORCH_LSTM;
-}
+int64_t tpu::LSTMOp::get_fw_type_bm1684x() { return FW_BMNET_PYTORCH_LSTM; }

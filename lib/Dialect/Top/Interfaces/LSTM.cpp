@@ -62,8 +62,28 @@ lstm_attr_t top::LSTMOp::parseParam() {
   return attr;
 }
 
-LogicalResult top::LSTMOp::init(InferenceParameter &p) { return success(); }
-void top::LSTMOp::deinit(InferenceParameter &p) {}
+LogicalResult top::LSTMOp::init(InferenceParameter &p) {
+  if (!module::isPlatform(module::Platform::TORCH)) {
+    return success();
+  }
+  auto attr = parseParam();
+  if (attr.output_y == false || attr.batch_size == 1 ||
+      attr.num_direction == 1) {
+    return success();
+  }
+  auto num = module::getNumElements(getY());
+  float *buffer = new float[num];
+  p.handle = (void *)buffer;
+  return success();
+}
+
+void top::LSTMOp::deinit(InferenceParameter &p) {
+  if (p.handle) {
+    float *buffer = (float *)p.handle;
+    delete[] buffer;
+    p.handle = nullptr;
+  }
+}
 
 static inline float sigmoid_(float x) {
   // return static_cast<float>(1.f / (1.f + std::exp(-x)));
@@ -77,7 +97,7 @@ static void lstm_compute(InferenceParameter &p, const lstm_attr_t &attr,
   //(TODO) num_layers > 1
   // input += seq_length * batch * input_size * num_layer; //(TODO check!)
   float *input = p.inputs[0];
-  float *output = p.outputs[0];
+  float *output = p.handle != nullptr ? (float *)p.handle : p.outputs[0];
   float *x_wi = p.inputs[1];
   float *h_wi = p.inputs[2];
   float *x_bi = bias;
@@ -216,7 +236,13 @@ LogicalResult top::LSTMOp::inference(InferenceParameter &p) {
   if (attr.num_direction == 2) {
     lstm_compute(p, attr, B, initial_h, initial_c, false);
   }
-
+  if (p.handle) {
+    float *buffer = (float *)p.handle;
+    function_permute(buffer, p.outputs[0],
+                     {1, attr.seq_len, attr.num_direction, attr.batch_size,
+                      attr.hidden_size},
+                     {0, 1, 3, 2, 4});
+  }
   return success();
 }
 
@@ -244,7 +270,11 @@ void top::LSTMOp::shape_inference() {
     shape1 = {batch_size, num_dir, hidden_size};
     shape2 = {batch_size, num_dir, hidden_size};
   } else {
-    shape0 = {seq_len, num_dir, batch_size, hidden_size};
+    if (module::isPlatform(module::Platform::TORCH)) {
+      shape0 = {seq_len, batch_size, num_dir, hidden_size};
+    } else {
+      shape0 = {seq_len, num_dir, batch_size, hidden_size};
+    }
     shape1 = {num_dir, batch_size, hidden_size};
     shape2 = {num_dir, batch_size, hidden_size};
   }
