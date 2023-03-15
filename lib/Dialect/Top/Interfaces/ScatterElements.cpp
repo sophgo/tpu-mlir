@@ -35,45 +35,35 @@ LogicalResult top::ScatterElementsOp::inference(InferenceParameter &p) {
 
   for (int i = 0; i < r; ++i) {
     if (i != axis) {
-      assert(input_shape[i] == indices_shape[i]);
-      assert(input_shape[i] == updates_shape[i]);
+      assert(input_shape[i] >= indices_shape[i]);
+      assert(input_shape[i] >= updates_shape[i]);
     } else {
       assert(indices_shape[i] == updates_shape[i]);
     }
   }
 
-  int64_t outer_dim = 1;
-  for (int i = 0; i < axis; ++i) {
-    outer_dim *= input_shape[i];
-  }
-  int64_t inner_dim = 1;
-  for (int i = axis + 1; i < r; ++i) {
-    inner_dim *= input_shape[i];
-  }
-  const int64_t s = input_shape[axis];
-  const int64_t c = indices_shape[axis];
-  const int64_t sstride = s * inner_dim;
-  const int64_t cstride = c * inner_dim;
-  const int64_t hstride = inner_dim;
-  const int64_t all_num_elem = outer_dim * sstride;
-  const int64_t upd_num_elem = outer_dim * cstride;
+  auto all_num_elem = module::getNumElements(getInput());
+  auto upd_num_elem = module::getNumElements(getUpdates());
   memcpy(output, input, all_num_elem * sizeof(float));
-// #pragma omp parallel for schedule(static, omp_schedule(o_num_elem))
+  const int64_t s = input_shape[axis];
+
+  std::vector<int64_t> in_stride;
+  get_stride(input_shape, in_stride);
+#pragma omp parallel for schedule(static, omp_schedule(upd_num_elem))
   for (int n = 0; n < upd_num_elem; ++n) {
-    const int64_t i = n / sstride;
-    const int64_t jk = n % sstride;
-    const int64_t j = jk / hstride;
-    const int64_t k = jk % hstride;
-    const float* indices_ik = indices + i * cstride + k;
-    const float* updates_ik = updates + i * cstride + k;
-    float* output_ik = output + i * sstride + k;
-    const int64_t p = (int64_t)indices_ik[j * hstride];
+    std::vector<int64_t> list_(r);
+    idx_to_list(n, updates_shape, list_);
+    const int64_t p = (int64_t)indices[n];
     assert(-s <= p && p < s);
-    output_ik[p * hstride] = updates_ik[j * hstride];
+    list_[axis] = p;
+    int64_t in_idx = list_to_idx(list_, in_stride);
+    output[in_idx] = updates[n];
   }
 
   return success();
 }
 
 void top::ScatterElementsOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  module::setShapeOrVerify(getOutput(), in_shape);
 }

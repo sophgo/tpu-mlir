@@ -172,6 +172,7 @@ class TorchConverter(BaseConverter):
             "aten::relu": lambda node: self.convert_relu_op(node),
             "aten::replication_pad1d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
+            "aten::scatter": lambda node: self.convert_scatter_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
             "aten::silu": lambda node: self.convert_silu_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
@@ -574,6 +575,15 @@ class TorchConverter(BaseConverter):
         axis = self.const_val[torch_node.inputs[1]]
         p = {'name': torch_node.name, 'axis': axis}
         new_op = self.mlir.create_gather_op([op0, op1], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_scatter_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[2])
+        op2 = self.getOp(torch_node.inputs[3])
+        axis = self.const_val[torch_node.inputs[1]]
+        p = {'name': torch_node.name, 'axis': axis, "reduction": None}
+        new_op = self.mlir.create_scatter_elements_op([op0, op1, op2], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):
