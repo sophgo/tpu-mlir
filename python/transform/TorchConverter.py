@@ -336,7 +336,7 @@ class TorchConverter(BaseConverter):
             name = torch_node.inputs[1]
             data = self.getWeight(name)
             shape = data.shape
-            data = data.reshape(group, shape[0]//group, *shape[1:])
+            data = data.reshape(group, shape[0] // group, *shape[1:])
             data = data.swapaxes(1, 2).reshape(shape[1], shape[0], *shape[2:])
             new_name = name + "_transposed"
             self.addWeight(new_name, data)
