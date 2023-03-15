@@ -33,10 +33,10 @@ void tpu::CastOp::codegen_global_bm1684() {
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
   } else if (qOutput && !qInput) {
     // fp32 => int8
-    auto scale = module::getUniformQuantizedType(getOutput()).getScale();
+    auto scale = 1.f / module::getUniformQuantizedType(getOutput()).getScale();
     BM1684::instance().dl_nodechip_const_binary(
         module::getAddress(getInput()), n * c * h * w, scale,
-        module::getAddress(getInput()), BINARY_DIV, 0, 0, 0,
+        module::getAddress(getInput()), BINARY_MUL, 0, 0, 0,
         (CMD_ID_NODE *)BM1684::instance().cmdid_node, 0);
     BM1684::instance().dl_nodechip_float2int8_v2(
         module::getAddress(getInput()), module::getAddress(getOutput()), n, c,
