@@ -8,7 +8,7 @@
 # ONNX Node define:
 # https://github.com/onnx/onnx/blob/main/docs/Operators.md
 
-from .MLIRImporter import MLIRImporter
+from .MLIRImporter import MLIRImporter, Platform
 from .BaseConverter import BaseConverter
 from .OnnxOpt import onnx_opt
 from onnx import numpy_helper, mapping
@@ -516,7 +516,8 @@ class OnnxConverter(BaseConverter):
         for _name in self.output_names:
             output_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, self.input_types)
+        self.mlir = MLIRImporter(input_shapes, output_shapes, self.model_name, Platform.ONNX,
+                                 self.input_types)
         self.weight_file = self.mlir.weight_file
 
     def generate_mlir(self, mlir_file: str):

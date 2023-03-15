@@ -36,6 +36,7 @@ struct Attr {
   static constexpr llvm::StringRef GMEM_PRIVATE_SIZE = "module.private_size";
   static constexpr llvm::StringRef ASYMMETRIC = "module.asymmetric";
   static constexpr llvm::StringRef MODE = "module.mode";
+  static constexpr llvm::StringRef PLATFORM = "module.platform";
 };
 
 static ModuleOp m = nullptr;
@@ -732,6 +733,14 @@ void setAsymmetric(bool is_asymmetric) {
 State getState() {
   auto s = m->getAttrOfType<StringAttr>(Attr::STATE);
   return symbolizeState(s).value_or(State::TOP_F32);
+}
+
+Platform getPlatform() {
+  if (m->hasAttrOfType<StringAttr>(Attr::PLATFORM)) {
+    auto p = m->getAttrOfType<StringAttr>(Attr::PLATFORM);
+    return symbolizePlatform(p).value_or(Platform::ONNX);
+  }
+  return Platform::ONNX;
 }
 
 void setState(State state) {

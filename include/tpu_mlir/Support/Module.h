@@ -39,7 +39,7 @@ typedef enum {
 } group_type_t;
 
 #define GDMA_MAX_C 65535
-
+#define MAX_SHAPE_DIMS 8
 //-----------------------------------------------------------------
 // Types
 //-----------------------------------------------------------------
@@ -73,6 +73,7 @@ void setMode(Mode mode);
 State getState();
 void setState(State state);
 bool isState(State state);
+Platform getPlatform();
 
 StringRef getWeightFile();
 void setWeightFile(StringRef weight_file);
@@ -117,7 +118,6 @@ Type getStorageType(Value v); // storage type
 Type getStorageType(Type type);
 Type getElementType(Value v);
 llvm::ArrayRef<int64_t> getShape(Value v);
-#define MAX_SHAPE_DIMS 8
 void getGlobalShape(Value v, int* shape);
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int* shape);
 void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int* shape);

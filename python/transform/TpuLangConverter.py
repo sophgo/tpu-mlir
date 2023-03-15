@@ -6,7 +6,7 @@
 # ==============================================================================
 
 from typing import Union, Iterable, List
-from .MLIRImporter import MLIRImporter, Top, State
+from .MLIRImporter import MLIRImporter, Top, State, Platform
 from .BaseConverter import BaseConverter
 from mlir.ir import *
 import mlir.dialects.quant as quant
@@ -194,6 +194,7 @@ class TpuLangConverter(BaseConverter):
         self.mlir = MLIRImporter(input_shapes,
                                  output_shapes,
                                  self.model_name,
+                                 platform=Platform.TPULANG,
                                  state=State.TOP_F32,
                                  do_declare=False)
 
