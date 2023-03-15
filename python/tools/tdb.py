@@ -14,7 +14,7 @@ from utils.cmodel import lib, gen_lookup_table
 import cmd, sys, pprint, code, traceback, ctypes
 import numpy as np
 from rich import print
-from rich.text import Text
+from os import path
 
 # common cases
 def bind_compute():
@@ -81,9 +81,13 @@ class Tdb(cmd.Cmd):
     ddr_size = 2**30
     prompt = "(Tdb) "
     """
-    TPU debuuger
+    TPU debugger.
 
-    Usage:
+    1. Use as an interactive tool:
+    >> tdb.py the/path/of/bmodel/context
+
+    2. Use as a package:
+    from tdb import Tdb
     tdb = Tdb()
     tdb.load_file("./onnx_test/AddConst_f32.bmodel")
     tdb.start()
@@ -114,8 +118,8 @@ class Tdb(cmd.Cmd):
         lib.cmodel_deinit(0)
 
     def reset(self):
-        self.ddr[...] = 0
-        self.lmem[...] = 0
+        self.ddr.fill(0)
+        self.lmem.fill(0)
         self.status = {}
         self.current_line = 0
         self.current_function = None
@@ -129,8 +133,8 @@ class Tdb(cmd.Cmd):
             lib.get_local_mem(0).contents.raw_ptr, (64, 16, 1024 * 16)
         )
         self.smem = c_array_to_ndarray(lib.get_static_memaddr_by_node(0), (16 * 1024,))
-        self.ddr[...] = 0
-        self.lmem[...] = 0
+        self.ddr.fill(0)
+        self.lmem.fill(0)
         lut = np.array(gen_lookup_table(), np.uint32).view(np.uint8)
         self.smem[: len(lut)] = lut[...]
         self.mem_manager = Memory(self.lmem, self.ddr)
@@ -151,7 +155,7 @@ class Tdb(cmd.Cmd):
                 self.breakpoint.extend(bb)
                 self.message(f"Add breakpoint at line: {bb}")
         else:
-            self.message("Nothing Added.")
+            self.message(f"{self.breakpoint}")
 
     do_b = do_break
 
@@ -199,15 +203,20 @@ class Tdb(cmd.Cmd):
             else:
                 self.print_line(i - self.current_line, width + 4)
 
-    def do_l(self, arg):
-        if arg:
-            if arg == "a":
-                op_len = len(self.current_function.regions[0].blocks[0].operations)
-                self.print_context(op_len)
-        else:
-            self.print_context()
+    def do_l(self, _):
+        """l(list)
+        show +/-5 lines code around the current line.
+        """
+        self.print_context()
 
-    def do_next(self, arg):
+    def do_ll(self, _):
+        """list all
+        show all the instruction in bmodel.
+        """
+        op_len = len(self.current_function.regions[0].blocks[0].operations)
+        self.print_context(op_len)
+
+    def do_next(self, _):
         """n(ext)
         Continue execution until the next line in the current function
         is reached or it returns.
@@ -437,7 +446,7 @@ def __main():
 
     parser = argparse.ArgumentParser(description="TPU Debugger.")
     parser.add_argument(
-        "bmodels",
+        "bmodel",
         type=str,
         nargs="?",
         help="The path of BModel.",
@@ -455,10 +464,21 @@ if __name__ == "__main__":
 
     args = __main()
     tdb = Tdb()
-    if args.bmodels:
-        print(f"load bmodel: {args.inputs}")
-        tdb.load_file(args.bmodels)
-        tdb.start()
+    if args.bmodel:
+        if path.isfile(args.bmodel):
+            print(f"load bmodel: {args.inputs}")
+            tdb.load_file(args.bmodel)
+            tdb.start()
+        elif path.isdir(args.bmodel):
+            inputs = path.join(args.bmodel, "input_ref_data.dat")
+            bmodel = path.join(args.bmodel, "compilation.bmodel")
+            assert path.isfile(bmodel)
+            assert path.isfile(inputs)
+            assert args.inputs == None
+            args.inputs = inputs
+            print(f"load bmodel: {args.inputs}")
+            tdb.load_file(bmodel)
+            tdb.start()
     if args.inputs:
         print(f"load input: {args.inputs}")
         tdb.load_data(args.inputs)
@@ -483,8 +503,11 @@ if __name__ == "__main__":
         return tdb.get_data(value)
 
     class op:
-        def __init__(self, index) -> None:
+        def __init__(self, index=0) -> None:
             self.index = index
+
+        def __repr__(self) -> str:
+            print(tdb.get_op(self.index))
 
         def ins(self, index):
             op = tdb.get_op(self.index)
@@ -497,7 +520,5 @@ if __name__ == "__main__":
             value = op.results[index]
             print(value)
             return tdb.get_data(value)
-
-    b = tdb.breakpoint
 
     tdb.cmdloop()
