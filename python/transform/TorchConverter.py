@@ -407,7 +407,6 @@ class TorchConverter(BaseConverter):
         pads = self.const_val[torch_node.inputs[3]]
         dilation = self.const_val[torch_node.inputs[4]]
         ceil_mode = self.const_val[torch_node.inputs[5]]
-        assert ceil_mode == False
         assert (np.array(dilation) == 1).all()
         pads = pads + pads  # the pad of torch is symmetric
         p = {
@@ -416,6 +415,7 @@ class TorchConverter(BaseConverter):
             "strides": strides,
             "pads": pads,
             "do_relu": False,
+            "ceil_mode": ceil_mode,
         }
         new_op = self.mlir.create_maxpool_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
