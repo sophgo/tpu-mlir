@@ -65,18 +65,37 @@ public:
   }
 };
 
+// Warning: Maybe some zeros can't convert to NoneOp
+class ZerosToNonePattern : public OpRewritePattern<ZerosOp> {
+public:
+  using OpRewritePattern<ZerosOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(ZerosOp op,
+                                PatternRewriter &rewriter) const override {
+    auto none_op = module::getNoneOp(op);
+    op->replaceAllUsesWith(none_op);
+    op.erase();
+    return success();
+  }
+};
+
 class ShapeInferPass : public ShapeInferBase<ShapeInferPass> {
 public:
   ShapeInferPass() {}
   void runOnOperation() override {
     auto mOp = getOperation();
     auto ctx = &getContext();
+    // Before shape infer
     RewritePatternSet patterns(ctx);
     patterns.add<TupleFusePattern>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     patterns.clear();
     patterns.add<UnTupleFusePattern>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
+    patterns.clear();
+    patterns.add<ZerosToNonePattern>(ctx);
+    applyPatternsAndFoldGreedily(mOp, std::move(patterns));
+    // Do shape infer
     for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](ShapeInterface op) { op.shape_inference(); });
     }

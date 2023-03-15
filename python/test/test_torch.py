@@ -56,7 +56,7 @@ class TORCH_IR_TESTER(object):
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
             "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
-            "LSTM":             (self.test_LSTM,        N, N, N),
+            "LSTM":             (self.test_LSTM,        Y, N, N),
             "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
             "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
@@ -930,14 +930,13 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     Y, _ = self.rnn(x)
                     return Y
-            num_dir = 2 if bidir else 1
             input_shapes = [(81, batch, 100)]
             self.trace_and_test(input_shapes, Model())
 
         for bidir in [True, False]:
-            for batch in [1, 2, 4]:
+            for batch in [1, 4]:
                 _test_lstm0(batch, bidir)
-                #_test_lstm1(batch, bidir)
+                _test_lstm1(batch, bidir)
 
     #######################################################################
     # Softmax

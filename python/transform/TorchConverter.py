@@ -147,6 +147,9 @@ class TorchConverter(BaseConverter):
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
             "aten::gt": lambda node: self.convert_compare_op(node, "Greater"),
+            "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
+            "aten::hardswish": lambda node: self.convert_hardswish(node),
+            "aten::hardtanh": lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
             "aten::index_select": lambda node: self.convert_index_select_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
@@ -174,16 +177,19 @@ class TorchConverter(BaseConverter):
             "aten::softmax": lambda node: self.convert_softmax_op(node),
             "aten::softplus": lambda node: self.convert_softplus_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
+            "aten::size": lambda node: self.convert_size_op(node),
             "aten::t": lambda node: self.convert_transpose_op(node),
             "aten::tanh": lambda node: self.convert_tanh_op(node),
             "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
-            "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
-            "aten::hardswish": lambda node: self.convert_hardswish(node),
-            "aten::hardtanh": lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
-            "prim::TupleConstruct": lambda node: self.convert_tuple_op(node),
-            "prim::TupleUnpack": lambda node: self.convert_untuple_op(node),
+            "aten::zeros": lambda node: self.convert_zeros_op(node),
+            ###### prim #####
+            "prim::Constant": lambda node: self.convert_constant(node),
+            "prim::GetAttr": lambda node: self.convert_get_attr(node),
+            "prim::ListConstruct": lambda node: self.convert_list(node),
+            "prim::TupleConstruct": lambda node: self.convert_tuple(node),
+            "prim::TupleUnpack": lambda node: self.convert_tuple_unpack(node),
         }
         # yapf : enable
         self.check_op_names()
@@ -206,19 +212,7 @@ class TorchConverter(BaseConverter):
 
     def check_op_names(self):
         op_names = self.get_all_op_names()
-        known_ops = [
-            "prim::CallMethod",
-            "prim::Constant",
-            "prim::GetAttr",
-            "prim::If",
-            "prim::ListConstruct",
-            "prim::ListUnpack",
-            "prim::Loop",
-            "prim::RaiseException",
-            "prim::TupleConstruct",
-            "prim::TupleUnpack",
-        ]
-        known_ops += list(self.op_factory.keys())
+        known_ops = list(self.op_factory.keys())
 
         unknown_ops = []
         for op_name in op_names:
@@ -280,38 +274,6 @@ class TorchConverter(BaseConverter):
                 is_const = False
         return node.output().debugName(), data, is_const
 
-    def collect_nodes(self, node):
-        if node.kind() == 'prim::Constant':
-            name, data, is_tensor = _get_constant(node)
-            if not is_tensor:
-                self.const_val[name] = data
-            else:
-                self.addWeight(name, data)
-            return
-        if node.kind() == 'prim::ListConstruct':
-            name, data, is_const = self.get_list(node)
-            if is_const:
-                self.const_val[name] = data
-            else:
-                self.tensor_list[name] = data
-            return
-        if node.kind() == 'prim::GetAttr':
-            if node.output().type().kind() != 'TensorType':
-                return
-            folder = node.input().node().s('name')
-            name = node.s('name')
-            dict_name = "{}.{}".format(folder, name)
-            data = self.state_dict[dict_name].numpy().astype(np.float32)
-            weight_name = node.output().debugName()
-            self.addWeight(weight_name, data)
-            return
-        if node.kind().startswith("aten::") or node.kind() in ['prim::TupleConstruct', 'prim::TupleUnpack']:
-            nd = TorchNode(node)
-            self.converted_nodes.append(nd)
-            return
-        print(node)
-        raise RuntimeError("Not Implemented")
-
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
         # add input op
@@ -325,7 +287,7 @@ class TorchConverter(BaseConverter):
         self.tensor_list = {}
         self.converted_nodes.clear()
         for node in self.graph.nodes():
-            self.collect_nodes(node)
+            self.converted_nodes.append(TorchNode(node))
         # checkout all type is supported
         unsupported = set()
         for n in self.converted_nodes:
@@ -488,6 +450,42 @@ class TorchConverter(BaseConverter):
         }
         new_op = self.mlir.create_sub_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
+
+    def convert_size_op(self, torch_node: TorchNode):
+        # do nothing
+        pass
+
+    def convert_zeros_op(self, torch_node: TorchNode):
+        p = {
+            'name': torch_node.name,
+        }
+        new_op = self.mlir.create_zeros_op([], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_constant(self, torch_node: TorchNode):
+        name, data, is_tensor = _get_constant(torch_node.node_proto)
+        if not is_tensor:
+            self.const_val[name] = data
+        else:
+            self.addWeight(name, data)
+
+    def convert_list(self, torch_node: TorchNode):
+        name, data, is_const = self.get_list(torch_node.node_proto)
+        if is_const:
+            self.const_val[name] = data
+        else:
+            self.tensor_list[name] = data
+
+    def convert_get_attr(self, torch_node: TorchNode):
+        node = torch_node.node_proto
+        if node.output().type().kind() != 'TensorType':
+            return
+        folder = node.input().node().s('name')
+        name = node.s('name')
+        dict_name = "{}.{}".format(folder, name)
+        data = self.state_dict[dict_name].numpy().astype(np.float32)
+        weight_name = node.output().debugName()
+        self.addWeight(weight_name, data)
 
     def convert_mul_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
@@ -706,7 +704,7 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_relu_op([op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
-    def convert_tuple_op(self, torch_node: TorchNode):
+    def convert_tuple(self, torch_node: TorchNode):
         ops = [self.getOp(n) for n in torch_node.inputs]
         p = {
             'name': torch_node.name,
@@ -714,7 +712,7 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_tuple_op(ops, [], **p)
         self.addOperand(torch_node.name, new_op)
 
-    def convert_untuple_op(self, torch_node: TorchNode):
+    def convert_tuple_unpack(self, torch_node: TorchNode):
         ops = [self.getOp(n) for n in torch_node.inputs]
         p = {
             'name': torch_node.outputs,
