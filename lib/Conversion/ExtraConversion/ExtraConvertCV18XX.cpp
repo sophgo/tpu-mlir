@@ -17,9 +17,14 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
       ConvertAddConstOp,
+      ConvertDivOp,
+      ConvertGatherOp,
       ConvertMaskedFillOp,
-      ConvertWhereOp,
-      ConvertGatherOp
+      ConvertMaxPoolWithMaskOp,
+      ConvertMaxUnpoolOp,
+      ConvertScaleOp,
+      ConvertUpsampleOp,
+      ConvertWhereOp
   >(patterns->getContext());
   // clang-format on
 }

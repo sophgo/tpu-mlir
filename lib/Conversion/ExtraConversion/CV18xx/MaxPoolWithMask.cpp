@@ -7,15 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertCV18XX.h"
 #include "tpu_mlir/Support/MathUtils.h"
-#include "llvm/Support/Debug.h"
 
 namespace tpu_mlir {
 namespace cv18xx {
 
-void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
-                            top::MaxPoolWithMaskOp &op) {
+LogicalResult
+ConvertMaxPoolWithMaskOp::matchAndRewrite(top::MaxPoolWithMaskOp op,
+                                   PatternRewriter &rewriter) const {
   auto kernel_shape = module::getI64Array(op.getKernelShape());
   assert(kernel_shape->size() == 2 &&
          kernel_shape->at(0) == kernel_shape->at(1));
@@ -47,17 +47,7 @@ void MaxPoolWithMaskConvert(PatternRewriter &rewriter,
       loc, pool_mask_type, ValueRange{op.getInput()}, attrs);
   op.getMask().replaceAllUsesWith(pool_mask_op.getOutput());
   rewriter.replaceOp(op, {max_pool_op, pool_mask_op});
-}
-
-void MaxPoolWithMaskLowering::LoweringINT8(PatternRewriter &rewriter,
-                                           top::MaxPoolWithMaskOp op,
-                                           bool asymmetric) const {
-  MaxPoolWithMaskConvert(rewriter, op);
-}
-
-void MaxPoolWithMaskLowering::LoweringBF16(PatternRewriter &rewriter,
-                                           top::MaxPoolWithMaskOp op) const {
-  MaxPoolWithMaskConvert(rewriter, op);
+  return success();
 }
 
 } // namespace cv18xx

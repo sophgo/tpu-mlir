@@ -7,32 +7,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "llvm/Support/Debug.h"
+#include "tpu_mlir/Conversion/ExtraConversion/ExtraConvertCV18XX.h"
 
 namespace tpu_mlir {
 namespace cv18xx {
 
-void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
+LogicalResult
+ConvertMaxUnpoolOp::matchAndRewrite(top::MaxUnpoolOp op,
+                                   PatternRewriter &rewriter) const {
   auto mask_op = op.getMask().getDefiningOp();
-  if (!isa<top::MaxPoolWithMaskOp>(mask_op) && !isa<top::PoolMaskOp>(mask_op) &&
-      !isa<tpu::PoolMaskOp>(mask_op)) {
-    mask_op->dump();
-    llvm_unreachable("not supported!");
+  if (!isa<top::PoolMaskOp>(mask_op)) {
+    return failure();
   }
   auto output_shape = module::getShape(op.getOutput());
   std::vector<int64_t> mask_shape;
-  if (isa<top::MaxPoolWithMaskOp>(mask_op)) {
-    // if MaxPoolWithMaskOp' input shape not equal to maxUnpool's output shape
-    // may cause error
-    mask_shape = output_shape.vec();
-    mask_shape[2] =
-        align_up(mask_shape[2], static_cast<int64_t>(op.getScaleH()));
-    mask_shape[3] =
-        align_up(mask_shape[3], static_cast<int64_t>(op.getScaleW()));
-  } else {
-    mask_shape = module::getShape(op.getMask());
-  }
+  mask_shape = module::getShape(op.getMask());
   bool need_crop = false;
   if (mask_shape[3] != output_shape[3] || mask_shape[2] != output_shape[2]) {
     need_crop = true;
@@ -86,17 +75,7 @@ void MaxUnpoolConvert(PatternRewriter &rewriter, top::MaxUnpoolOp &op) {
   } else {
     rewriter.replaceOp(op, {mul_op});
   }
-}
-
-void MaxUnpoolLowering::LoweringINT8(PatternRewriter &rewriter,
-                                     top::MaxUnpoolOp op,
-                                     bool asymmetric) const {
-  MaxUnpoolConvert(rewriter, op);
-}
-
-void MaxUnpoolLowering::LoweringBF16(PatternRewriter &rewriter,
-                                     top::MaxUnpoolOp op) const {
-  MaxUnpoolConvert(rewriter, op);
+  return success();
 }
 
 } // namespace cv18xx
