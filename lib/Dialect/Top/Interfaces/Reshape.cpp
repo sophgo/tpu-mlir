@@ -12,8 +12,6 @@
 #include "tpu_mlir/Support/Module.h"
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 int64_t top::ReshapeOp::getFLOPs() { return 0; }
 
 LogicalResult top::ReshapeOp::init(InferenceParameter &p) { return success(); }
@@ -28,4 +26,35 @@ LogicalResult top::ReshapeOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ReshapeOp::shape_inference() {}
+void top::ReshapeOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  auto num = module::getNumElements(getInput());
+  std::vector<int64_t> out_shape;
+  if (getShape().has_value()) {
+    auto shape = module::getI64Array(getShape().value());
+    int x = -1;
+    for (int i = 0; i < shape->size(); i++) {
+      auto s = shape->at(i);
+      if (s > 0) {
+        out_shape.push_back(s);
+        num /= s;
+      } else if (s == 0) {
+        out_shape.push_back(in_shape[i]);
+        num /= in_shape[i];
+      } else if (s == -1) {
+        out_shape.push_back(-1);
+        x = i;
+      } else {
+        dump();
+        llvm_unreachable("shape is illegal");
+      }
+    }
+    if (x >= 0) {
+      out_shape[x] = num;
+    }
+    module::setShapeOrVerify(getOutput(), out_shape);
+  } else {
+    assert(module::isUnranked(getOutput()) == false);
+  }
+
+}

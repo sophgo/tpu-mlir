@@ -103,6 +103,7 @@ class Top:
     YoloDetection = 'top.YoloDetection'
     ZerosOp = 'top.Zeros'
 
+
 class State:
     TOP_F32 = 'TOP_F32'
     TOP_QUANTIZED = 'TOP_QUANTIZED'
@@ -560,7 +561,10 @@ class MLIRImporter(object):
 
     def create_reshape_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        return self.buildOp(Top.ReshapeOp, operands, [output_type], name=kargs['name'])
+        p = {'name': kargs['name']}
+        if 'shape' in kargs:
+            p['shape'] = self.ArrayAttr(kargs['shape'])
+        return self.buildOp(Top.ReshapeOp, operands, [output_type], **p)
 
     def create_unsqueeze_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)

@@ -10,6 +10,8 @@
 #include "tpu_mlir/Dialect/Top/Transforms/Passes.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "mlir/IR/PatternMatch.h"
+#include <llvm/Support/Debug.h>
+#define DEBUG_TYPE "shape_infer"
 
 using namespace llvm;
 using namespace mlir;
@@ -28,7 +30,7 @@ public:
     if (outs.size() != ins.size()) {
       return failure();
     }
-    for (auto it:llvm::zip(ins, outs)) {
+    for (auto it : llvm::zip(ins, outs)) {
       auto in = std::get<0>(it);
       auto out = std::get<1>(it);
       auto loc = module::getLoc(out);
@@ -97,7 +99,10 @@ public:
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     // Do shape infer
     for (auto func : mOp.getOps<FuncOp>()) {
-      func.walk([&](ShapeInterface op) { op.shape_inference(); });
+      func.walk([&](ShapeInterface op) {
+        LLVM_DEBUG(llvm::dbgs() << "shape infer: " << op << "\n";);
+        op.shape_inference();
+      });
     }
     module::updateModuleTypes();
   }

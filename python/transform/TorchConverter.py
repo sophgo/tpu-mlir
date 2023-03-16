@@ -142,6 +142,7 @@ class TorchConverter(BaseConverter):
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
             "aten::div": lambda node: self.convert_div_op(node),
+            "aten::dropout": lambda node: self.convert_skip_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
@@ -184,6 +185,7 @@ class TorchConverter(BaseConverter):
             "aten::tanh": lambda node: self.convert_tanh_op(node),
             "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
+            "aten::view": lambda node: self.convert_view_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
             "aten::zeros": lambda node: self.convert_zeros_op(node),
             ###### prim #####
@@ -509,6 +511,10 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_div_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_skip_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        self.addOperand(torch_node.name, in_op)
+
     def convert_compare_op(self, torch_node: TorchNode, mode):
         assert mode in ("Equal", "Greater", "GreaterOrEqual", "Less", "LessOrEqual")
         op0 = self.getOp(torch_node.inputs[0])
@@ -585,6 +591,16 @@ class TorchConverter(BaseConverter):
         axis = self.const_val[torch_node.inputs[1]]
         p = {'name': torch_node.name, 'axis': axis, "reduction": None}
         new_op = self.mlir.create_scatter_elements_op([op0, op1, op2], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_view_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        shape = self.const_val[torch_node.inputs[1]]
+        p = {
+            'name': torch_node.name,
+            'shape': shape
+        }
+        new_op = self.mlir.create_reshape_op([in_op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):
