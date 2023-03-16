@@ -16,6 +16,10 @@ namespace cv18xx {
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
+      ConvertConv1dOp,
+      ConvertConvPading,
+      ConvertConvDilation,
+      ConvertConv2dToMatMul,
       ConvertAddConstOp,
       ConvertDivOp,
       ConvertGatherOp,
@@ -25,7 +29,8 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
       ConvertScaleOp,
       ConvertUpsampleOp,
       ConvertWhereOp,
-      ConvertMatMulWithRightTranspose
+      ConvertMatMulWithRightTranspose,
+      convertMaxPool3D
   >(patterns->getContext());
   // clang-format on
 }
