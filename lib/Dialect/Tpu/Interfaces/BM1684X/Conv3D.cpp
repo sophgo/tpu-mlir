@@ -250,8 +250,8 @@ int64_t tpu::Conv3DOp::getBufferSize_bm1684x(
                  ceiling_func(i * attr.groups % npu_num + attr.oc / attr.groups,
                               npu_num));
   }
-  auto in_type = getInput().getType();
-  auto out_type = getOutput().getType();
+  auto in_type = getInput().getType().getElementType();
+  auto out_type = getOutput().getType().getElementType();
   // output start npu id must be same with weight start npu id
   if ((in_type.isF16() || in_type.isBF16()) && !out_type.isF32() &&
       attr.kd > 1) {
