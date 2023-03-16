@@ -87,7 +87,7 @@ class ONNX_IR_TESTER(object):
             "LRN":          (self.test_LRN,         Y, N, Y),
             "LSTM":         (self.test_LSTM,        Y, N, Y),  # output_y
             "LSTM2":        (self.test_LSTM2,       Y, N, Y),  # output all
-            "LSTM3":        (self.test_LSTM3,       Y, N, N),  # output_yh and output_yc
+            "LSTM3":        (self.test_LSTM3,       Y, N, Y),  # output_yh and output_yc
             "MaxPool1d":    (self.test_MaxPool1d,   Y, N, Y),
             "MaxPool2d":    (self.test_MaxPool2d,   Y, N, Y),
             "MaxPool3d":    (self.test_MaxPool3d,   N, N, N),

@@ -390,8 +390,10 @@ void TgLstmKernel::compute(int idx, bool forward) {
     // new Hidden = o * tanh(new Cell)
     tanh(ml_result, ml_cell, ml_work0);
     eltwise_mul(ml_result, ml_xo);
-    CV18xx::tdma_store_stride(&ml_result, ga_store + s_offset + goffset,
-                              h_gstride);
+    if (with_final_y) {
+      CV18xx::tdma_store_stride(&ml_result, ga_store + s_offset + goffset,
+                                h_gstride);
+    }
     if (idx == seq_length - 1) {
       if (with_final_h) {
         CV18xx::tdma_store_stride(&ml_result, ga_store_h, h_gstride);
@@ -543,7 +545,9 @@ void TgLstmKernel::compute_without_tiling(bool forward) {
     eltwise_mul(ml_hidden, ml_xo);
 
     int s_offset = seq_idx * num_dir * x_bytes;
-    CV18xx::tdma_store_stride(&ml_hidden, ga_store + s_offset, h_gstride);
+    if (with_final_y) {
+      CV18xx::tdma_store_stride(&ml_hidden, ga_store + s_offset, h_gstride);
+    }
     if (i == seq_length - 1) {
       if (with_final_h) {
         CV18xx::tdma_store_stride(&ml_hidden, ga_store_h, h_gstride);
@@ -596,7 +600,7 @@ void TgLstmKernel::init(uint32_t layer_id, gaddr_t ga_input,
                         int seq_length, int num_dir, int batch_size,
                         int hidden_size, bool do_bias, bool with_initial_h,
                         bool with_initial_c, bool with_cont, bool bidirectional,
-                        bool with_final_h, bool with_final_c) {
+                        bool with_final_h, bool with_final_c, bool with_final_y) {
   this->layer_id = layer_id;
   this->ga_input = ga_input;
   this->ga_recurrence = ga_recurrence;
@@ -622,6 +626,7 @@ void TgLstmKernel::init(uint32_t layer_id, gaddr_t ga_input,
   this->bidirectional = bidirectional;
   this->with_final_h = with_final_h;
   this->with_final_c = with_final_c;
+  this->with_final_y = with_final_y;
   this->fmt = CVK_FMT_BF16;
   this->fmt_size = CV18xx::bytesize_of_fmt(fmt);
   this->lmem_used = 0;
@@ -668,13 +673,13 @@ void cvi_backend_tg_bf16_lstm_kernel(
     gaddr_t ga_last_c, int seq_len, int num_dir, int batch_size,
     int hidden_size, bool do_bias, bool with_initial_h, bool with_initial_c,
     bool with_cont, bool is_bidirectional, bool with_final_h,
-    bool with_final_c) {
+    bool with_final_c, bool output_y) {
   TgLstmKernel kernel;
   kernel.init(layer_id, ga_input, ga_recurrence, ga_bias, ga_initial_h,
               ga_initial_c, ga_cont, ga_sigmoid_lut, ga_sigmoid_slope_lut,
               ga_tanh_lut, ga_tanh_slope_lut, ga_output, ga_last_h, ga_last_c,seq_len, num_dir,
               batch_size, hidden_size, do_bias, with_initial_h, with_initial_c,
-              with_cont, is_bidirectional, with_final_h, with_final_c);
+              with_cont, is_bidirectional, with_final_h, with_final_c, output_y);
   kernel.schedule();
 }
 
