@@ -63,6 +63,7 @@ class TORCH_IR_TESTER(object):
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
             "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
             "Mul":              (self.test_Mul,         Y, N, N),
+            "Reshape":          (self.test_Reshape,     Y, N, N),
             "PRelu":            (self.test_PRelu,       Y, N, N),
             "Permute":          (self.test_Permute,     Y, N, N),
             "Pad1d":            (self.test_Pad1d,       Y, N, N),
@@ -618,6 +619,28 @@ class TORCH_IR_TESTER(object):
         self.trace_and_test([input_shape], Model())
 
     #######################################################################
+    # Reshape
+    # ------------
+    def test_Reshape(self):
+        """Reshape"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                a = torch.reshape(x, (64, -1, 1024))  # 64, 8, 1024
+                b = a.transpose(0, 1).contiguous()  # 8, 64, 1024
+                c = torch.reshape(b, (8, 64, 64, 16))  # 64, 8, 64, 16
+                d = c.to(torch.float32)
+                e = d.transpose(1, 2)  # 64, 64, 8, 16
+                return e
+
+        in_shape = (512, 1024)
+        self.trace_and_test([in_shape], Model())
+
+    #######################################################################
     # PRelu
     # ------------
     def test_PRelu(self):
@@ -774,15 +797,14 @@ class TORCH_IR_TESTER(object):
                 super(Model, self).__init__()
 
             def forward(self, x):
-                a = x.view(64, -1, 1024) # 64, 8, 1024
-                b = a.transpose(0, 1) # 8, 64, 1024
-                c = b.view(8, 64, 64, 16) # 64, 8, 64, 16
-                d = c.transpose(1, 2) # 64, 64, 8, 16
+                a = x.view(64, -1, 1024)  # 64, 8, 1024
+                b = a.transpose(0, 1)  # 8, 64, 1024
+                c = b.view(8, 64, 64, 16)  # 64, 8, 64, 16
+                d = c.transpose(1, 2)  # 64, 64, 8, 16
                 return d
 
-        in_shape = (512,1024)
+        in_shape = (512, 1024)
         self.trace_and_test([in_shape], Model())
-
 
     #######################################################################
     # Where
@@ -902,13 +924,13 @@ class TORCH_IR_TESTER(object):
                 self.dropout = nn.Dropout(0)
 
             def forward(self, x):
-                a = x.view(64, -1, 1024) # 64, 8, 1024
-                b = a.transpose(0, 1) # 8, 64, 1024
+                a = x.view(64, -1, 1024)  # 64, 8, 1024
+                b = a.transpose(0, 1)  # 8, 64, 1024
                 c = self.dropout(b)
-                d = c.transpose(1, 2) # 8, 1024, 64
+                d = c.transpose(1, 2)  # 8, 1024, 64
                 return d
 
-        in_shape = (512,1024)
+        in_shape = (512, 1024)
         self.trace_and_test([in_shape], Model())
 
     #######################################################################
@@ -989,6 +1011,7 @@ class TORCH_IR_TESTER(object):
     def test_LSTM(self):
 
         def _test_lstm0(batch, bidir):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -998,11 +1021,13 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x, h_0, c_0):
                     Y, (Y_h, Y_c) = self.rnn(x, (h_0, c_0))
                     return Y, Y_h, Y_c
+
             num_dir = 2 if bidir else 1
             input_shapes = [(81, batch, 100), (num_dir, batch, 128), (num_dir, batch, 128)]
             self.trace_and_test(input_shapes, Model())
 
         def _test_lstm1(batch, bidir):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -1012,6 +1037,7 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     Y, _ = self.rnn(x)
                     return Y
+
             input_shapes = [(81, batch, 100)]
             self.trace_and_test(input_shapes, Model())
 
@@ -1026,6 +1052,7 @@ class TORCH_IR_TESTER(object):
     def test_GRU(self):
 
         def _test_gru0(batch, bidir):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -1035,11 +1062,13 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x, h_0):
                     Y, Y_h = self.rnn(x, h_0)
                     return Y, Y_h
+
             num_dir = 2 if bidir else 1
             input_shapes = [(81, batch, 100), (num_dir, batch, 128)]
             self.trace_and_test(input_shapes, Model())
 
         def _test_gru1(batch, bidir):
+
             class Model(torch.nn.Module):
 
                 def __init__(self):
@@ -1049,6 +1078,7 @@ class TORCH_IR_TESTER(object):
                 def forward(self, x):
                     Y, _ = self.rnn(x)
                     return Y
+
             input_shapes = [(81, batch, 100)]
             self.trace_and_test(input_shapes, Model())
 
