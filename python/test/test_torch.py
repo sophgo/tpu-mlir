@@ -70,6 +70,7 @@ class TORCH_IR_TESTER(object):
             "Pad1d":            (self.test_Pad1d,       Y, N, N),
             "Pad2d":            (self.test_Pad2d,       Y, N, N),
             "Scatter":          (self.test_Scatter,     N, N, N),
+            "Select":           (self.test_Select,      Y, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
             "Softmin":          (self.test_Softmin,     Y, N, N),
             "Sub":              (self.test_Sub,         Y, N, N),
@@ -77,7 +78,7 @@ class TORCH_IR_TESTER(object):
             "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
             "View":             (self.test_View,        Y, N, N),
-            "Where":            (self.test_Where,       N, N, N),
+            "Where":            (self.test_Where,       Y, N, N),
         }
         # yapf: enable
         self.support_quant_modes = ["f32", "f16", "bf16"]
@@ -838,7 +839,7 @@ class TORCH_IR_TESTER(object):
                     self.weight = torch.randn(in1_shape)
 
                 def forward(self, x):
-                    y = torch.where(x > 0, 1, 0)
+                    y = torch.where(x > 0, 1.0, 0.0)
                     y1 = torch.where(self.weight > 0, y, x)
                     return y1
 
@@ -849,6 +850,30 @@ class TORCH_IR_TESTER(object):
         # TODO: where backend do not support broadcast
         # _test_where((2, 32, 16), (32, 1))
         # _test_where((32, 32), (1, 32))
+
+    #######################################################################
+    # Select
+    # ------------
+    def test_Select(self):
+        """Select"""
+
+        def _test_select(in0_shape, dim, index):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = torch.select(x, dim=dim, index=index)
+                    return y1
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_select((1, 3, 32, 32), 2, 13)
+        _test_select((3, 32, 16), 0, 2)
+        _test_select((32, 16), 1, 4)
+
 
     #######################################################################
     # IndexSelect

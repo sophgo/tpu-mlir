@@ -178,6 +178,7 @@ class TorchConverter(BaseConverter):
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::reshape": lambda node: self.convert_reshape_op(node),
             "aten::scatter": lambda node: self.convert_scatter_op(node),
+            "aten::select": lambda node: self.convert_select_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
             "aten::silu": lambda node: self.convert_silu_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
@@ -616,6 +617,14 @@ class TorchConverter(BaseConverter):
         shape = self.const_val[torch_node.inputs[1]]
         p = {'name': torch_node.name, 'shape': shape}
         new_op = self.mlir.create_reshape_op([in_op], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_select_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[1]]
+        index = self.const_val[torch_node.inputs[2]]
+        p = {'name': torch_node.name, 'axis': axis, "index": index}
+        new_op = self.mlir.create_select_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):
