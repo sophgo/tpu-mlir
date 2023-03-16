@@ -148,6 +148,7 @@ class TorchConverter(BaseConverter):
             "aten::eq": lambda node: self.convert_compare_op(node, "Equal"),
             "aten::ge": lambda node: self.convert_compare_op(node, "GreaterOrEqual"),
             "aten::gelu": lambda node: self.convert_gelu_op(node),
+            "aten::group_norm": lambda node: self.convert_group_norm_op(node),
             "aten::gru": lambda node: self.convert_gru_op(node),
             "aten::gt": lambda node: self.convert_compare_op(node, "Greater"),
             "aten::hardsigmoid": lambda node: self.convert_hardsigmoid(node),
@@ -522,7 +523,7 @@ class TorchConverter(BaseConverter):
     def convert_to_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
         out_type = self.const_val[torch_node.inputs[1]]
-        assert(out_type in [5, 6, 7, 15]) # float
+        assert (out_type in [5, 6, 7, 15])  # float
         self.addOperand(torch_node.name, in_op)
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
@@ -883,6 +884,16 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.outputs[0], new_op)
         self.addOperand(torch_node.outputs[1], h_op)
         self.addOperand(torch_node.outputs[2], c_op)
+
+    def convert_group_norm_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        num_groups = self.const_val[torch_node.inputs[1]]
+        weight_op = self.getOp(torch_node.inputs[2])
+        bias_op = self.getOp(torch_node.inputs[3])
+        eps = self.const_val[torch_node.inputs[4]]
+        p = {'name': torch_node.name, 'num_groups': num_groups, 'eps': eps}
+        new_op = self.mlir.create_group_norm_op([in_op, weight_op, bias_op], [], **p)
+        self.addOperand(torch_node.name, new_op)
 
     def rzh2zrh(self, data):
         shape = data.shape
