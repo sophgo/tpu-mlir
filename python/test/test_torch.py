@@ -43,6 +43,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
             "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
             "AvgPool3d":        (self.test_AvgPool3d,   Y, N, N),
+            "BMM":              (self.test_BatchMatMul, Y, N, N),
             "Compare":          (self.test_Compare,     Y, N, N),
             "Concat":           (self.test_Concat,      Y, N, N),
             "Conv1d":           (self.test_Conv1d,      Y, N, N),
@@ -65,6 +66,7 @@ class TORCH_IR_TESTER(object):
             "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
             "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
+            "MM":               (self.test_MM,          Y, N, N),
             "Mul":              (self.test_Mul,         Y, N, N),
             "Reshape":          (self.test_Reshape,     Y, N, N),
             "PRelu":            (self.test_PRelu,       Y, N, N),
@@ -690,6 +692,61 @@ class TORCH_IR_TESTER(object):
         _test_prelu((1, 3, 32, 32))
         _test_prelu((2, 32, 16))
         _test_prelu((32, 32))
+
+    #######################################################################
+    # BMM
+    # ------------
+    def test_BatchMatMul(self):
+        """BatchMatMul"""
+
+        def _test_batchmatmul(input_shape, right_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.weight0 = torch.randn(input_shape)
+                    self.weight1 = torch.randn(right_shape)
+
+                def forward(self, x, y):
+                    z1 = torch.bmm(x, self.weight1)
+                    z2 = torch.bmm(self.weight0, y)
+                    z3 = torch.transpose(z2, 1, 2)
+                    z4 = torch.bmm(z1, z3)
+                    return z4
+
+            self.trace_and_test([input_shape, right_shape], Model())
+
+        _test_batchmatmul((3, 32, 32), (3, 32, 64))
+        _test_batchmatmul((2, 32, 16), (2, 16, 34))
+
+    #######################################################################
+    # MM
+    # ------------
+    def test_MM(self):
+        """MM"""
+
+        def _test_mm(input_shape, right_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.weight0 = torch.randn(input_shape)
+                    self.weight1 = torch.randn(right_shape)
+                    self.dim = len(input_shape)
+
+                def forward(self, x, y):
+                    z1 = torch.mm(x, self.weight1)
+                    z2 = torch.mm(self.weight0, y)
+                    z3 = torch.transpose(z1, 1, 0)
+                    z4 = torch.mm(z3, z2)
+                    return z4
+
+            self.trace_and_test([input_shape, right_shape], Model())
+
+        _test_mm((32, 32), (32, 64))
+        _test_mm((32, 16), (16, 34))
 
     #######################################################################
     # Gather
