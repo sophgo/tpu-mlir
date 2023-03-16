@@ -42,8 +42,8 @@ void tpu::AddOp::codegen_global_cv18xx(int64_t layer_id) {
   auto coeffs_ = module::getF64Array(getCoeff(), input_num, 1);
   std::vector<int64_t> shape0(4, 1);
   std::vector<int64_t> shape1(4, 1);
-  module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3]);
-  module::getNCHW(getInputs()[1], shape1[0], shape1[1], shape1[2], shape1[3]);
+  module::getNCHW(getInputs()[0], shape0[0], shape0[1], shape0[2], shape0[3], false);
+  module::getNCHW(getInputs()[1], shape1[0], shape1[1], shape1[2], shape1[3], false);
   auto prod0 = std::accumulate(shape0.begin(), shape0.end(), 1,
                                std::multiplies<int64_t>());
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
