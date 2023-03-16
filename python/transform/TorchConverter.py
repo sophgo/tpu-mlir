@@ -141,6 +141,7 @@ class TorchConverter(BaseConverter):
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
+            "aten::contiguous": lambda node: self.convert_skip_op(node),
             "aten::div": lambda node: self.convert_div_op(node),
             "aten::dropout": lambda node: self.convert_skip_op(node),
             "aten::elu": lambda node: self.convert_elu_op(node),
@@ -174,6 +175,7 @@ class TorchConverter(BaseConverter):
             "aten::relu": lambda node: self.convert_relu_op(node),
             "aten::replication_pad1d": lambda node: self.convert_pad_op(node, mode='replicate'),
             "aten::replication_pad2d": lambda node: self.convert_pad_op(node, mode='replicate'),
+            "aten::reshape": lambda node: self.convert_reshape_op(node),
             "aten::scatter": lambda node: self.convert_scatter_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
             "aten::silu": lambda node: self.convert_silu_op(node),
@@ -185,6 +187,7 @@ class TorchConverter(BaseConverter):
             "aten::tanh": lambda node: self.convert_tanh_op(node),
             "aten::tile": lambda node: self.convert_tile_op(node),
             "aten::transpose": lambda node: self.convert_transpose_op(node),
+            "aten::to": lambda node: self.convert_to_op(node),
             "aten::view": lambda node: self.convert_view_op(node),
             "aten::where": lambda node: self.convert_where_op(node),
             "aten::zeros": lambda node: self.convert_zeros_op(node),
@@ -195,7 +198,7 @@ class TorchConverter(BaseConverter):
             "prim::TupleConstruct": lambda node: self.convert_tuple(node),
             "prim::TupleUnpack": lambda node: self.convert_tuple_unpack(node),
         }
-        # yapf : enable
+        # yapf: enable
         self.check_op_names()
 
     def __del__(self):
@@ -263,8 +266,8 @@ class TorchConverter(BaseConverter):
         for _name in self.input_names:
             input_shapes.append(self.getShape(_name))
         # init importer
-        self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name,
-                                 Platform.TORCH, self.input_types)
+        self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH,
+                                 self.input_types)
         self.weight_file = self.mlir.weight_file
 
     def get_list(self, node):
@@ -512,7 +515,14 @@ class TorchConverter(BaseConverter):
         self.addOperand(torch_node.name, new_op)
 
     def convert_skip_op(self, torch_node: TorchNode):
+        # warning: in_op.output name shoud change to torch_node name
         in_op = self.getOp(torch_node.inputs[0])
+        self.addOperand(torch_node.name, in_op)
+
+    def convert_to_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        out_type = self.const_val[torch_node.inputs[1]]
+        assert(out_type in [5, 6, 7, 15]) # float
         self.addOperand(torch_node.name, in_op)
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
@@ -584,6 +594,13 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_gather_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_reshape_op(self, torch_node: TorchNode):
+        in_op = self.getOp(torch_node.inputs[0])
+        shape = self.const_val[torch_node.inputs[1]]
+        p = {'name': torch_node.name, 'shape': shape}
+        new_op = self.mlir.create_reshape_op([in_op], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
     def convert_scatter_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
         op1 = self.getOp(torch_node.inputs[2])
@@ -596,10 +613,7 @@ class TorchConverter(BaseConverter):
     def convert_view_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
         shape = self.const_val[torch_node.inputs[1]]
-        p = {
-            'name': torch_node.name,
-            'shape': shape
-        }
+        p = {'name': torch_node.name, 'shape': shape}
         new_op = self.mlir.create_reshape_op([in_op], [], **p)
         self.addOperand(torch_node.name, new_op)
 
@@ -745,10 +759,10 @@ class TorchConverter(BaseConverter):
             'name': torch_node.outputs,
         }
         num = len(torch_node.outputs)
-        assert(num == len(torch_node.outputs))
-        shape = [[]] *  num
+        assert (num == len(torch_node.outputs))
+        shape = [[]] * num
         out_ops = self.mlir.create_untuple_op(ops, shape, **p)
-        for out,op in zip(torch_node.outputs, out_ops):
+        for out, op in zip(torch_node.outputs, out_ops):
             self.addOperand(out, op)
 
     def convert_gelu_op(self, torch_node: TorchNode):
@@ -811,26 +825,26 @@ class TorchConverter(BaseConverter):
     def ifgo2iofg(self, data):
         shape = data.shape
         d = data.reshape(4, -1)
-        d = np.concatenate((d[:1,:],d[3:,:], d[1:3,:]), axis=0)
+        d = np.concatenate((d[:1, :], d[3:, :], d[1:3, :]), axis=0)
         return d.reshape(*shape)
 
     def convert_lstm_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
-        h0,c0 = self.tensor_list[torch_node.inputs[1]]
+        h0, c0 = self.tensor_list[torch_node.inputs[1]]
         weights = self.tensor_list[torch_node.inputs[2]]
         has_bias = self.const_val[torch_node.inputs[3]]
-        assert(has_bias) # no bias Not Implemented
+        assert (has_bias)  # no bias Not Implemented
         num_layers = self.const_val[torch_node.inputs[4]]
-        assert(num_layers == 1) # Not Implemented
+        assert (num_layers == 1)  # Not Implemented
         bidirectional = self.const_val[torch_node.inputs[7]]
         batch_first = self.const_val[torch_node.inputs[8]]
-        assert(batch_first == False) # Not Implemented
+        assert (batch_first == False)  # Not Implemented
         h0_op = self.getOp(h0)
         c0_op = self.getOp(c0)
         if bidirectional:
-            assert(len(weights) == 8)
+            assert (len(weights) == 8)
         else:
-            assert(len(weights) == 4)
+            assert (len(weights) == 4)
         datas = []
         for w in weights:
             d = self.getWeight(w)
@@ -839,8 +853,8 @@ class TorchConverter(BaseConverter):
         # filter
         filter = datas[0]
         if bidirectional:
-            filter = np.concatenate((datas[0],datas[4]), axis = 0)
-        filter_name = torch_node.name+"_filter"
+            filter = np.concatenate((datas[0], datas[4]), axis=0)
+        filter_name = torch_node.name + "_filter"
         self.addWeight(filter_name, filter)
         filter_op = self.getWeightOp(filter_name)
         # recurrence
@@ -848,11 +862,13 @@ class TorchConverter(BaseConverter):
         rshape = recurrence.shape
         if bidirectional:
             recurrence = np.concatenate((datas[1], datas[5]), axis=0)
-        recurrence_name = torch_node.name+"_recurrence"
+        recurrence_name = torch_node.name + "_recurrence"
         self.addWeight(recurrence_name, recurrence)
         recurrence_op = self.getWeightOp(recurrence_name)
         # bias
-        bias = np.concatenate((datas[2],datas[3],datas[6],datas[7]), axis = 0) if bidirectional else np.concatenate((datas[2],datas[3]), axis = 0)
+        bias = np.concatenate(
+            (datas[2], datas[3], datas[6], datas[7]), axis=0) if bidirectional else np.concatenate(
+                (datas[2], datas[3]), axis=0)
         bias_name = torch_node.name + "_bias"
         self.addWeight(bias_name, bias)
         bias_op = self.getWeightOp(bias_name)
@@ -863,7 +879,7 @@ class TorchConverter(BaseConverter):
             "batch_first": batch_first,
         }
         operands = [in_op, filter_op, recurrence_op, bias_op, h0_op, c0_op]
-        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, [[],[],[]], **p)
+        new_op, h_op, c_op = self.mlir.create_lstm_op(operands, [[], [], []], **p)
         self.addOperand(torch_node.outputs[0], new_op)
         self.addOperand(torch_node.outputs[1], h_op)
         self.addOperand(torch_node.outputs[2], c_op)
@@ -871,7 +887,7 @@ class TorchConverter(BaseConverter):
     def rzh2zrh(self, data):
         shape = data.shape
         d = data.reshape(3, -1)
-        d = np.concatenate((d[1:2,:],d[:1,:], d[2:,:]), axis=0)
+        d = np.concatenate((d[1:2, :], d[:1, :], d[2:, :]), axis=0)
         return d.reshape(*shape)
 
     def convert_gru_op(self, torch_node: TorchNode):
@@ -879,16 +895,16 @@ class TorchConverter(BaseConverter):
         h0_op = self.getOp(torch_node.inputs[1])
         weights = self.tensor_list[torch_node.inputs[2]]
         has_bias = self.const_val[torch_node.inputs[3]]
-        assert(has_bias) # no bias Not Implemented
+        assert (has_bias)  # no bias Not Implemented
         num_layers = self.const_val[torch_node.inputs[4]]
-        assert(num_layers == 1) # Not Implemented
+        assert (num_layers == 1)  # Not Implemented
         bidirectional = self.const_val[torch_node.inputs[7]]
         batch_first = self.const_val[torch_node.inputs[8]]
-        assert(batch_first == False) # Not Implemented
+        assert (batch_first == False)  # Not Implemented
         if bidirectional:
-            assert(len(weights) == 8)
+            assert (len(weights) == 8)
         else:
-            assert(len(weights) == 4)
+            assert (len(weights) == 4)
         datas = []
         for w in weights:
             d = self.getWeight(w)
@@ -897,8 +913,8 @@ class TorchConverter(BaseConverter):
         # filter
         filter = datas[0]
         if bidirectional:
-            filter = np.concatenate((datas[0],datas[4]), axis = 0)
-        filter_name = torch_node.name+"_filter"
+            filter = np.concatenate((datas[0], datas[4]), axis=0)
+        filter_name = torch_node.name + "_filter"
         self.addWeight(filter_name, filter)
         filter_op = self.getWeightOp(filter_name)
         # recurrence
@@ -906,11 +922,13 @@ class TorchConverter(BaseConverter):
         rshape = recurrence.shape
         if bidirectional:
             recurrence = np.concatenate((datas[1], datas[5]), axis=0)
-        recurrence_name = torch_node.name+"_recurrence"
+        recurrence_name = torch_node.name + "_recurrence"
         self.addWeight(recurrence_name, recurrence)
         recurrence_op = self.getWeightOp(recurrence_name)
         # bias
-        bias = np.concatenate((datas[2],datas[3],datas[6],datas[7]), axis = 0) if bidirectional else np.concatenate((datas[2],datas[3]), axis = 0)
+        bias = np.concatenate(
+            (datas[2], datas[3], datas[6], datas[7]), axis=0) if bidirectional else np.concatenate(
+                (datas[2], datas[3]), axis=0)
         bias_name = torch_node.name + "_bias"
         self.addWeight(bias_name, bias)
         bias_op = self.getWeightOp(bias_name)
@@ -921,7 +939,7 @@ class TorchConverter(BaseConverter):
             "batch_first": batch_first,
         }
         operands = [in_op, filter_op, recurrence_op, bias_op, h0_op]
-        new_op, h_op = self.mlir.create_gru_op(operands, [[],[]], **p)
+        new_op, h_op = self.mlir.create_gru_op(operands, [[], []], **p)
         self.addOperand(torch_node.outputs[0], new_op)
         self.addOperand(torch_node.outputs[1], h_op)
 
