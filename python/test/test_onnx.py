@@ -2585,7 +2585,6 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.bias = torch.randn(96).float()
 
             def forward(self, x, y):
                 a = torch.transpose(y, 2, 3)
@@ -2602,7 +2601,6 @@ class ONNX_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.bias = torch.randn(96).float()
 
             def forward(self, x, y):
                 a = torch.transpose(y, 2, 1)

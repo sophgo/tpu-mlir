@@ -86,4 +86,38 @@ LogicalResult top::MatMulOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::MatMulOp::shape_inference() {}
+// shape case:
+// case 1: [5, 6] * [6, 7] = [5, 7]
+// case 2: [1, 512, 7, 7] * [25088, 4096] = [1, 4096]
+// case 3: [3, 4, 5, 6] * [3, 4, 6, 7] = [3, 4, 5, 7]
+// case 4: [4, 5, 6] * [6, 7] = [4, 5, 7]
+// case 5: [4, 5, 6] * [6] = [4, 5]
+void top::MatMulOp::shape_inference() {
+  std::vector<int64_t> in0_shape = module::getShape(getInput());
+  int in0_dims = in0_shape.size();
+  auto k = in0_shape[in0_dims - 1];
+  std::vector<int64_t> in1_shape = module::getShape(getRight());
+  int in1_dims = in1_shape.size();
+  auto n = in1_shape[in1_dims - 1];
+  std::vector<int64_t> out_shape = in0_shape;
+  if (in1_dims == 1) {
+    assert(in1_shape[0] == k);
+    out_shape.pop_back();
+  } else if (in1_shape[in1_dims - 2] == k) {
+    out_shape[in0_dims - 1] = n;
+  } else if (in1_dims == 2) {
+    auto sum = in1_shape[in1_dims - 2];
+    while (out_shape.size() > 0 && sum % out_shape.back() == 0 && sum != 1) {
+      sum = sum / out_shape.back();
+      out_shape.pop_back();
+    }
+    if (sum != 1) {
+      dump();
+      llvm_unreachable("shape is illegal");
+    }
+    out_shape.push_back(n);
+  } else {
+    out_shape[in0_dims - 1] = n;
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

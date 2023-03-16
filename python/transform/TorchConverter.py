@@ -21,7 +21,7 @@ def _get_constant(node):
     type = node.output().type().kind()
 
     if type == "NoneType":
-        return name, None, False
+        return name, None, True
     elif num_attributes == 1:
         attr_name = attribute_names[0]
         if type == "IntType":
@@ -158,10 +158,12 @@ class TorchConverter(BaseConverter):
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
+            "aten::linear": lambda node: self.convert_linear_op(node),
             "aten::log_sigmoid": lambda node: self.convert_sigmoid_op(node, log=True),
             "aten::log_softmax": lambda node: self.convert_softmax_op(node, log=True),
             "aten::lstm": lambda node: self.convert_lstm_op(node),
             "aten::lt": lambda node: self.convert_compare_op(node, "Less"),
+            "aten::matmul": lambda node: self.convert_matmul_op(node),
             "aten::max_pool1d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool2d": lambda node: self.convert_maxpool_op(node),
             "aten::max_pool3d": lambda node: self.convert_maxpool_op(node),
@@ -392,7 +394,8 @@ class TorchConverter(BaseConverter):
         assert ceil_mode == False
         if len(torch_node.inputs) == 7:
             # does not supports divisor_override
-            assert self.const_val[torch_node.inputs[6]] is None
+            op6 = self.getOp(torch_node.inputs[6])
+            assert op6 == self.mlir.none_op
         pads = pads + pads  # the pad of torch is symmetric
         p = {
             "name": torch_node.name,
@@ -475,6 +478,8 @@ class TorchConverter(BaseConverter):
         name, data, is_tensor = _get_constant(torch_node.node_proto)
         if not is_tensor:
             self.const_val[name] = data
+        elif data is None:
+            self.addOperand(name, self.mlir.none_op)
         else:
             self.addWeight(name, data)
 
@@ -778,6 +783,35 @@ class TorchConverter(BaseConverter):
     def convert_gelu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
         new_op = self.mlir.create_gelu_op([op], [], **{'name': torch_node.name})
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_matmul_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op1 = self.getOp(torch_node.inputs[1])
+        p = {'name': torch_node.name, 'do_relu': False}
+        new_op = self.mlir.create_matmul_op([op0, op1, self.mlir.none_op], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_linear_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        op2 = self.getOp(torch_node.inputs[2])
+        p = {'name': torch_node.name, 'do_relu': False}
+        if self.isWeight(torch_node.inputs[1]):
+            data = self.getWeight(torch_node.inputs[1])
+            num_dims = len(data.shape)
+            if num_dims == 1:
+                op1 = self.getWeightOp(torch_node.inputs[1])
+            else:
+                order = list(range(num_dims))
+                order[-1], order[-2] = order[-2], order[-1]
+                data = np.ascontiguousarray(data.transpose(*order))
+                new_weight = torch_node.name + "_filter"
+                self.addWeight(new_weight, data)
+                op1 = self.getWeightOp(new_weight)
+        else:
+            op1 = self.getOperand(torch_node.inputs[1])
+            p['right_transpose'] = True
+        new_op = self.mlir.create_matmul_op([op0, op1, op2], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_sigmoid_op(self, torch_node: TorchNode, log: bool = False):

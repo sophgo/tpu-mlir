@@ -58,8 +58,10 @@ class TORCH_IR_TESTER(object):
             "IndexSelect":      (self.test_IndexSelect, Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
+            "Linear":           (self.test_Linear,      Y, N, N),
             "LogSoftmax":       (self.test_LogSoftmax,  Y, N, N),
             "LSTM":             (self.test_LSTM,        Y, N, N),
+            "MatMul":           (self.test_MatMul,      Y, N, N),
             "MaxPool1d":        (self.test_MaxPool1d,   Y, N, N),
             "MaxPool2d":        (self.test_MaxPool2d,   Y, N, N),
             "MaxPool3d":        (self.test_MaxPool3d,   Y, N, N),
@@ -494,7 +496,8 @@ class TORCH_IR_TESTER(object):
         test = self._test_MaxPool()
         test((nn.MaxPool3d, F.max_pool3d), (4, 8, 10, 64, 64), 2, 1, 1)
         test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 2), (1, 2, 1), (1, 0, 1))
-        test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 5), (1, 2, 2), (1, 0, 1), True)
+        test((nn.MaxPool3d, F.max_pool3d), (1, 3, 10, 30, 40), (3, 3, 5), (1, 2, 2), (1, 0, 1),
+             True)
 
     #######################################################################
     # Binary Base
@@ -619,6 +622,22 @@ class TORCH_IR_TESTER(object):
 
         input_shape = [14, 25] + normalize_shape
         self.trace_and_test([input_shape], Model())
+
+    #######################################################################
+    # MatMul
+    # ------------
+    def test_MatMul(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x, y):
+                z = torch.matmul(x, y)
+                return z
+
+        self.trace_and_test([(4, 8, 49, 32), (4, 8, 32, 49)], Model())
 
     #######################################################################
     # Reshape
@@ -1151,6 +1170,28 @@ class TORCH_IR_TESTER(object):
             _test_softmax((3, 100, 10, 1), dim)
             _test_softmax((3, 100, 32), dim)
             _test_softmax((3, 100, 32, 1), dim)
+
+    #######################################################################
+    # Linear
+    # ------------
+    def test_Linear(self):
+
+        def _test_linear(in_shape, has_bias):
+
+            class Model(torch.nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.linear = nn.Linear(32, 72, bias=has_bias)
+
+                def forward(self, x):
+                    y = self.linear(x)
+                    return y
+
+            self.trace_and_test([in_shape], Model())
+
+        _test_linear((3, 100, 32), True)
+        _test_linear((64, 32), False)
 
     #######################################################################
     # LogSoftmax
