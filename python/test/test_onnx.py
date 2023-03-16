@@ -2549,7 +2549,7 @@ class ONNX_IR_TESTER(object):
                 y = self.conv3d(x)
                 return y
 
-        x = torch.randn(1, 3, 10, 640, 640).float()
+        x = torch.randn(1, 3, 10, 320, 320).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_GaToSlice(self, case_name):

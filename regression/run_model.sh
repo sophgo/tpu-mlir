@@ -1,6 +1,5 @@
 #!/bin/bash
 set -ex
-
 # all test (f32/f16/bf16/int8): run_model.sh mobilenet_v2 bm1684x all 1/0
 # basic test (f32/int8): run_model.sh mobilenet_v2 bm1684x basic 1/0
 
@@ -47,13 +46,6 @@ if [ x${model_type} == x ]; then
   exit 1
 fi
 
-# basic test don't run bf16/f32/asymmetric
-if [ x${test_type} == xbasic ]; then
-  do_f32=0
-  do_bf16=0
-  do_asymmetric=0
-fi
-
 cfg_file=$REGRESSION_PATH/config/${model_name}.cfg
 
 if [ ! -f $cfg_file ]; then
@@ -66,6 +58,13 @@ if [ x$do_dynamic == x1 ] && [ x$support_dynamic == x1 ]; then
   do_dynamic=1
 else
   do_dynamic=0
+fi
+
+# basic test don't run bf16/f32/asymmetric
+if [ x${test_type} == xbasic ]; then
+  do_f32=0
+  do_bf16=0
+  do_asymmetric=0
 fi
 
 do_post_opt=

@@ -1,5 +1,5 @@
 #!/bin/bash
-# set -ex
+set -e
 
 # full test (f32/f16/bf16/int8): main_entry.sh all
 # basic test (f32/int8): main_entry.sh basic
@@ -132,6 +132,7 @@ run_all() {
   echo "" >fail.log
   echo "" >result.log
   ERR=0
+  time0=`date +%s`
   run_onnx_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
@@ -139,6 +140,9 @@ run_all() {
       return $ERR
     fi
   fi
+  time1=`date +%s`
+  sumTime=$[ $time1 - $time0 ]
+  echo "run_onnx: $sumTime seconds"
   run_tflite_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
@@ -146,6 +150,9 @@ run_all() {
       return $ERR
     fi
   fi
+  time2=`date +%s`
+  sumTime=$[ $time2 - $time1 ]
+  echo "run_tflite: $sumTime seconds"
   run_torch_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
@@ -153,6 +160,9 @@ run_all() {
       return $ERR
     fi
   fi
+  time3=`date +%s`
+  sumTime=$[ $time3 - $time2 ]
+  echo "run_torch: $sumTime seconds"
   run_tpulang_op
   if [[ "$?" -ne 0 ]]; then
     ERR=1
@@ -160,6 +170,9 @@ run_all() {
       return $ERR
     fi
   fi
+  time4=`date +%s`
+  sumTime=$[ $time4 - $time3 ]
+  echo "run_tpulang: $sumTime seconds"
   run_script_test
   if [[ "$?" -ne 0 ]]; then
     ERR=1
@@ -167,7 +180,11 @@ run_all() {
       return $ERR
     fi
   fi
+  time5=`date +%s`
+  sumTime=$[ $time5 - $time4 ]
+  echo "run_script: $sumTime seconds"
   for chip in ${chip_support[@]}; do
+    time6=`date +%s`
     echo "" >cmd.txt
     declare -n list="${chip}_model_list_${test_type}"
     for net in ${list[@]}; do
@@ -181,7 +198,13 @@ run_all() {
         return $ERR
       fi
     fi
+    time7=`date +%s`
+    sumTime=$[ $time7 - $time6 ]
+    echo "run models for $chip: $sumTime seconds"
   done
+  time8=`date +%s`
+  sumTime=$[ $time8 - $time0 ]
+  echo "total time: $sumTime seconds"
   return $ERR
 }
 
