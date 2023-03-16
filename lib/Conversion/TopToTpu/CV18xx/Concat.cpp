@@ -62,6 +62,17 @@ static bool fusible(top::ConcatOp concatOp) {
       }
     }
   }
+  // check next Op
+  if (only_merge) {
+    for (auto &use : concatOp->getResult(0).getUses()) {
+      auto useOp = use.getOwner();
+      if (auto concatOp = dyn_cast<tpu::ConcatOp>(useOp)) {
+        if (concatOp.getOnlyMerge()) {
+          return false;
+        }
+      }
+    }
+  }
   return only_merge;
 }
 

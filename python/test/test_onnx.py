@@ -154,6 +154,7 @@ class ONNX_IR_TESTER(object):
             "TorchArgmax":          (self.test_TorchArgmax,         N, N, N),
             "TorchChannelShuffle":  (self.test_TorchChannelShuffle, N, N, N),
             "TorchChunk":           (self.test_TorchChunk,          Y, N, Y),
+            "TorchConv2d":          (self.test_TorchConv2d,           N, N, Y),
             "TorchConv3dTrans":     (self.test_TorchConv3dTrans,    Y, N, Y),
             "TorchHardSwish":       (self.test_TorchHardSwish,      Y, N, N),
             "TorchHardSigmoid":     (self.test_TorchHardSigmoid,    Y, N, N),
@@ -2786,6 +2787,25 @@ class ONNX_IR_TESTER(object):
                 return x
 
         x = torch.randn(4, 3, 100, 100).float()
+        self.torch_and_test(x, Model(), case_name)
+
+    def test_TorchConv2d(self, case_name):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.conv2d = nn.Conv2d(in_channels=10,
+                                        out_channels=10,
+                                        kernel_size=3,
+                                        stride=1,
+                                        padding=16,
+                                        dilation=16)
+
+            def forward(self, x):
+                return self.conv2d(x)
+
+        x = torch.randn(1, 10, 64, 64).float()
         self.torch_and_test(x, Model(), case_name)
 
     def test_TorchConv3dTrans(self, case_name):

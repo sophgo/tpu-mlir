@@ -27,6 +27,41 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ConvertConv1dOp : public OpRewritePattern<top::ConvOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ConvOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+class ConvertConvPading : public OpRewritePattern<top::ConvOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ConvOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+class convertMaxPool3D : public OpRewritePattern<top::MaxPoolOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::MaxPoolOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+class ConvertConvDilation : public OpRewritePattern<top::ConvOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ConvOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
+class ConvertConv2dToMatMul : public OpRewritePattern<top::ConvOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::ConvOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 class ConvertWhereOp : public OpRewritePattern<top::WhereOp> {
 public:
   using OpRewritePattern::OpRewritePattern;

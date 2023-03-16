@@ -642,30 +642,25 @@ void tensor_hw_transpose(float *dst, float *src, int64_t N, int64_t C,
 #pragma omp parallel for schedule(static, omp_schedule(N *C))
   for (int64_t nc = 0; nc < N * C; ++nc) {
     int64_t nc_offset = nc * H * W;
-    for (int w = 0; w < W; ++w) {  // k
-      for (int h = 0; h < H; ++h) {  // n
-        int64_t d_offset = nc_offset + w * H + h; // b k n
-        int64_t s_offset = nc_offset + h * W + w; // b n k
+    for (int w = 0; w < W; ++w) {
+      for (int h = 0; h < H; ++h) {
+        int64_t d_offset = nc_offset + w * H + h;
+        int64_t s_offset = nc_offset + h * W + w;
         dst[d_offset] = src[s_offset];
       }
     }
   }
 }
 
-//      tensor_hc_transpose(right_after_init->data(), origin_right,
-                          // batch_high, K_, batch_low_, N_);
-
 void tensor_hc_transpose(float *dst, float *src, int64_t N, int64_t C,
                          int64_t H, int64_t W) {
 #pragma omp parallel for schedule(static, omp_schedule(N))
-  for (int64_t n = 0; n < N; ++n) {        // batch_high
-    for (int64_t h = 0; h < H; ++h) {      // batch_low_
-      for (int64_t c = 0; c < C; ++c) {    // K_
-        for (int64_t w = 0; w < W; ++w) {  // N_
-          int64_t s_offset = w + h * W + c * H * W + n * C * H * W; // bh k batch_low_ n
-          int64_t d_offset = w + c * W + h * C * W + n * C * H * W; //bh batch_low_ k  n
-          // int64_t d_offset = w + h * W + c * H * W + n * C * H * W; // bh bl k n
-          // int64_t s_offset = w + c * W + h * C * W + n * C * H * W; //bh k bl  n
+  for (int64_t n = 0; n < N; ++n) {
+    for (int64_t h = 0; h < H; ++h) {
+      for (int64_t c = 0; c < C; ++c) {
+        for (int64_t w = 0; w < W; ++w) {
+          int64_t s_offset = w + h * W + c * H * W + n * C * H * W;
+          int64_t d_offset = w + c * W + h * C * W + n * C * H * W;
           dst[d_offset] = src[s_offset];
         }
       }
