@@ -747,9 +747,12 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
     Returns a tensor with the same type/values as the input, with a new shape
     specified by the shape argument. Reshape may operate on tensors of any rank.
     No data conversion happens during a reshape operation.
+    0: keep dim from input
+    -1: left dim from input
   }];
   let arguments = (ins
-    AnyTensor:$input
+    AnyTensor:$input,
+    OptionalAttr<I64ArrayAttr>:$shape
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;

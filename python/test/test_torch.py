@@ -50,6 +50,7 @@ class TORCH_IR_TESTER(object):
             "Conv3d":           (self.test_Conv3d,      Y, N, N),
             "ConvTrans":        (self.test_ConvTrans,   Y, N, N),
             "Div":              (self.test_Div,         Y, N, N),
+            "Dropout":          (self.test_Dropout,     Y, N, N),
             "Elu":              (self.test_Elu,         Y, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
             "GRU":              (self.test_GRU,         Y, N, N),
@@ -73,6 +74,7 @@ class TORCH_IR_TESTER(object):
             "T":                (self.test_T,           Y, N, N),
             "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
+            "View":             (self.test_View,        Y, N, N),
             "Where":            (self.test_Where,       N, N, N),
         }
         # yapf: enable
@@ -753,6 +755,28 @@ class TORCH_IR_TESTER(object):
         _test_transpose((32, 32), (1, 0))
 
     #######################################################################
+    # View
+    # ------------
+    def test_View(self):
+        """View"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+
+            def forward(self, x):
+                a = x.view(64, -1, 1024) # 64, 8, 1024
+                b = a.transpose(0, 1) # 8, 64, 1024
+                c = b.view(8, 64, 64, 16) # 64, 8, 64, 16
+                d = c.transpose(1, 2) # 64, 64, 8, 16
+                return d
+
+        in_shape = (512,1024)
+        self.trace_and_test([in_shape], Model())
+
+
+    #######################################################################
     # Where
     # ------------
     def test_Where(self):
@@ -856,6 +880,28 @@ class TORCH_IR_TESTER(object):
         _test_concat((1, 3, 32, 32), (1, 6, 32, 32), 1)
         _test_concat((2, 32, 16), (3, 32, 16))
         _test_concat((32, 32), (1, 32), 0)
+
+    #######################################################################
+    # Dropout
+    # ------------
+    def test_Dropout(self):
+        """Dropout"""
+
+        class Model(nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.dropout = nn.Dropout(0)
+
+            def forward(self, x):
+                a = x.view(64, -1, 1024) # 64, 8, 1024
+                b = a.transpose(0, 1) # 8, 64, 1024
+                c = self.dropout(b)
+                d = c.transpose(1, 2) # 8, 1024, 64
+                return d
+
+        in_shape = (512,1024)
+        self.trace_and_test([in_shape], Model())
 
     #######################################################################
     # Elu
