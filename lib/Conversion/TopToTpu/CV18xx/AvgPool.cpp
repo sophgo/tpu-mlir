@@ -52,6 +52,7 @@ static void splitPool(PatternRewriter &rewriter, Operation *op,
   for (auto &slice : h_slices) {
     std::vector<Value> slice_operands;
     slice_operands.emplace_back(input_val);
+    slice_operands.emplace_back(module::getNoneOp(op));
     std::vector<NamedAttribute> slice_attrs;
     slice_attrs.emplace_back(rewriter.getNamedAttr(
         "offset", rewriter.getI64ArrayAttr({0, 0, offset, 0})));

@@ -460,6 +460,7 @@ void cvi_backend_tg_bf16_conv3d_kernel(
   assert(stride_d == 1 && "Only support stride_d 1");
   assert(dilation_h == 1 && dilation_w == 1 && "Only support dilation_h/w = 1");
   assert(dilation_d == 1 && "Only support dilation_d = 1");
+  assert(pad_d0 < kd && pad_d1 < kd && "Only support pad < kernel in d axis");
 
   cvk_fmt_t fmt = CVK_FMT_BF16;
 
