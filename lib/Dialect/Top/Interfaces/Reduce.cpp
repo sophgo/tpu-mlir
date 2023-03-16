@@ -4,8 +4,9 @@
 #include "tpu_mlir/Support/MathUtils.h"
 #include <float.h>
 
-
-int64_t top::ReduceOp::getFLOPs() { return module::getNumElements(getOutput()); }
+int64_t top::ReduceOp::getFLOPs() {
+  return module::getNumElements(getOutput());
+}
 
 LogicalResult top::ReduceOp::init(InferenceParameter &p) { return success(); }
 void top::ReduceOp::deinit(InferenceParameter &p) {}
@@ -91,4 +92,24 @@ LogicalResult top::ReduceOp::inference(InferenceParameter &p) {
   return success();
 }
 
-void top::ReduceOp::shape_inference() {}
+void top::ReduceOp::shape_inference() {
+  auto in_shape = module::getShape(getInput());
+  auto num_dims = in_shape.size();
+  auto axes = module::getI64Array(getAxes());
+  std::vector<int64_t> out_shape;
+  for (auto &idx : *axes) {
+    if (idx < 0) {
+      idx += num_dims;
+    }
+  }
+  for (int i = 0; i < num_dims; i++) {
+    if (std::find(axes->begin(), axes->end(), i) != axes->end()) {
+      if (getKeepdims()) {
+        out_shape.push_back(1);
+      }
+    } else {
+      out_shape.push_back(in_shape[i]);
+    }
+  }
+  module::setShapeOrVerify(getOutput(), out_shape);
+}

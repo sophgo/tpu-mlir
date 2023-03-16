@@ -1085,7 +1085,7 @@ def Tpu_SoftmaxOp: Tpu_Op<"Softmax",[
     AnyTensorOrNone:$reciprocal_table,
     AnyTensorOrNone:$reciprocal_mantissa_table,
     AnyTensorOrNone:$buffer,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta
   );

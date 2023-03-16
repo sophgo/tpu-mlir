@@ -308,7 +308,7 @@ class TFLiteConverter(BaseConverter):
         return {
             TensorType.FLOAT32: F32Type.get(mlir_ctx),
             TensorType.FLOAT16: F16Type.get(mlir_ctx),
-            TensorType.INT32: IntegerType.get_signless(32, mlir_ctx),
+            TensorType.INT32: IntegerType.get_signed(32, mlir_ctx),
             # tensorflow/tensorflow/compiler/mlir/lite/flatbuffer_import.cc::155
             TensorType.UINT8: IntegerType.get_unsigned(8, mlir_ctx),
             TensorType.INT64: IntegerType.get_signless(64, mlir_ctx),
@@ -734,7 +734,7 @@ class TFLiteConverter(BaseConverter):
         axis = 1 if self.need_transpose else len(op.inputs[0].shape) - 1
         # axis = self.__axis_transpose(op, len(op.inputs[0].shape) - 1)
         return "top.Softmax", {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], axis),
             "beta": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], beta)
         }, self.need_transpose
 

@@ -56,5 +56,7 @@ void top::ReshapeOp::shape_inference() {
   } else {
     assert(module::isUnranked(getOutput()) == false);
   }
-
+  auto num_input = module::getNumElements(getInput());
+  auto num_output = module::getNumElements(getOutput());
+  assert(num_input == num_output);
 }

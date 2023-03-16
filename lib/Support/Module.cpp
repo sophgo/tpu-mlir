@@ -632,6 +632,16 @@ bool isWeight(Value v) {
   return false;
 }
 
+bool isAllWeight(Operation *op) {
+  for (auto in : op->getOperands()) {
+    if (isNone(in) || isWeight(in)) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
 bool isNone(Value v) { return v.getType().isa<mlir::NoneType>(); }
 
 bool isUnranked(Value v) { return v.getType().isa<mlir::UnrankedTensorType>(); }

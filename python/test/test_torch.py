@@ -40,6 +40,7 @@ class TORCH_IR_TESTER(object):
             "Abs":              (self.test_Abs,         Y, N, N),
             "Activation":       (self.test_Activation,  Y, N, N),
             "Add":              (self.test_Add,         Y, N, N),
+            "Attention":        (self.test_Attention,   Y, N, N),
             "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
             "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
             "AvgPool3d":        (self.test_AvgPool3d,   Y, N, N),
@@ -992,6 +993,22 @@ class TORCH_IR_TESTER(object):
         # TODO: where backend do not support broadcast
         # _test_where((2, 32, 16), (32, 1))
         # _test_where((32, 32), (1, 32))
+
+
+    #######################################################################
+    # Attention
+    # ------------
+    def test_Attention(self):
+        class Model(torch.nn.Module):
+            def __init__(self):
+                super(Model, self).__init__()
+                self.attention = nn.MultiheadAttention(embed_dim=64, num_heads=4)
+
+            def forward(self, x, y, z):
+                out, out_w = self.attention(x,y,z)
+                return out, out_w
+        self.trace_and_test([(1, 4, 64), (1, 4, 64), (1, 4, 64)], Model())
+
 
     #######################################################################
     # Select

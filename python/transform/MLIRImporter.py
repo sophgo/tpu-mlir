@@ -43,6 +43,7 @@ class Top:
     InterpOp = 'top.Interp'
     LayerNormOp = 'top.LayerNorm'
     LeakyReluOp = 'top.LeakyRelu'
+    ListOp = 'top.List'
     LRNOp = 'top.LRN'
     LSTMOp = 'top.LSTM'
     LogOp = 'top.Log'
@@ -82,6 +83,7 @@ class Top:
     SliceOp = 'top.Slice'
     SigmoidOp = 'top.Sigmoid'
     SiLUOp = 'top.SiLU'
+    SizeOp = 'top.Size'
     SoftmaxOp = 'top.Softmax'
     SoftplusOp = 'top.Softplus'
     SqueezeOp = 'top.Squeeze'
@@ -99,6 +101,7 @@ class Top:
     UnTupleOp = 'top.UnTuple'
     UnpackOp = 'top.Unpack'
     UpsampleOp = 'top.Upsample'
+    ViewOp = 'top.View'
     WeightOp = 'top.Weight'
     WhereOp = 'top.Where'
     YoloDetection = 'top.YoloDetection'
@@ -505,19 +508,19 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
-            'dim0': IntegerAttr.get(self.mlir_type['INT64'], kargs['dim0']),
-            'dim1': IntegerAttr.get(self.mlir_type['INT64'], kargs['dim1']),
+            'dim0': IntegerAttr.get(self.mlir_type['INT32'], kargs['dim0']),
+            'dim1': IntegerAttr.get(self.mlir_type['INT32'], kargs['dim1']),
         }
         return self.buildOp(Top.TransposeOp, operands, [output_type], **param)
 
     def create_matmul_op(self, operands, output_shape, **kargs):
-        # get_value_type
         output_type = self.get_tensor_type(output_shape)
-
         param = {
             'name': kargs['name'],
             'do_relu': BoolAttr.get(kargs['do_relu']),
         }
+        if 'right_transpose' in kargs:
+            param['right_transpose'] = BoolAttr.get(kargs['right_transpose'])
         return self.buildOp(Top.MatMulOp, operands, [output_type], **param)
 
     def create_normalize_op(self, operands, output_shape, **kargs):
@@ -538,26 +541,30 @@ class MLIRImporter(object):
             param['relu_limit'] = FloatAttr.get_f64(kargs['relu_limit'])
         return self.buildOp(Top.ReluOp, operands, [output_type], **param)
 
+    def create_list_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        p = {'name': kargs['name']}
+        return self.buildOp(Top.ListOp, operands, [output_type], **p)
+
     def create_tuple_op(self, operands, output_shape, **kargs):
         output_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.TupleOp, operands, [output_type], **param)
 
     def create_untuple_op(self, operands, output_shapes, **kargs):
         out_types = self.get_tensor_type(output_shapes)
-        param = {
-            'name': kargs['name'],
-        }
+        param = {'name': kargs['name']}
         return self.buildOp(Top.UnTupleOp, operands, out_types, **param)
 
-    def create_zeros_op(self, output_shape, **kargs):
+    def create_view_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.ViewOp, operands, [output_type], **param)
+
+    def create_zeros_op(self, operands, output_shape, **kargs):
         out_type = self.get_tensor_type(output_shape)
-        param = {
-            'name': kargs['name'],
-        }
-        return self.buildOp(Top.ZerosOp, [], [out_type], **param)
+        param = {'name': kargs['name']}
+        return self.buildOp(Top.ZerosOp, operands, [out_type], **param)
 
     def create_return_op(self, Operands):
         return_op = Operation.create("func.return", operands=Operands, results=[])
@@ -582,6 +589,15 @@ class MLIRImporter(object):
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis'])
         }
         return self.buildOp(Top.ReverseOp, operands, [output_type], **param)
+
+    def create_size_op(self, operands, output_shape, **kargs):
+        output_type = self.get_tensor_type(output_shape)
+        p = {
+            'name': kargs['name'],
+        }
+        if 'axis' in kargs:
+            p['axis'] = IntegerAttr.get(self.mlir_type['INT32'], kargs['axis'])
+        return self.buildOp(Top.SizeOp, operands, [output_type], **p)
 
     def create_slice_op(self, operands, output_shape, **kargs):
         # get_value_type
@@ -648,7 +664,7 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
-            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
         }
         if 'log' in kargs:
             param['log'] = BoolAttr.get(kargs['log'])

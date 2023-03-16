@@ -141,6 +141,7 @@ class TorchConverter(BaseConverter):
             "aten::batch_norm": lambda node: self.convert_batch_norm_op(node),
             "aten::bmm": lambda node: self.convert_matmul_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
+            "aten::chunk": lambda node: self.convert_chunk_op(node),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
             "aten::_convolution_mode": lambda node: self.convert_conv_mode_op(node),
             "aten::constant_pad_nd": lambda node: self.convert_pad_op(node, mode='constant'),
@@ -159,6 +160,7 @@ class TorchConverter(BaseConverter):
             "aten::hardtanh": lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
             "aten::index_select": lambda node: self.convert_index_select_op(node),
             "aten::instance_norm": lambda node: self.convert_instance_norm_op(node),
+            "aten::Int": lambda node: self.convert_skip_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
@@ -191,6 +193,7 @@ class TorchConverter(BaseConverter):
             "aten::softmax": lambda node: self.convert_softmax_op(node),
             "aten::softplus": lambda node: self.convert_softplus_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
+            "aten::sum": lambda node: self.convert_sum_op(node),
             "aten::size": lambda node: self.convert_size_op(node),
             "aten::t": lambda node: self.convert_transpose_op(node),
             "aten::tanh": lambda node: self.convert_tanh_op(node),
@@ -203,7 +206,9 @@ class TorchConverter(BaseConverter):
             ###### prim #####
             "prim::Constant": lambda node: self.convert_constant(node),
             "prim::GetAttr": lambda node: self.convert_get_attr(node),
-            "prim::ListConstruct": lambda node: self.convert_list(node),
+            "prim::ListConstruct": lambda node: self.convert_list_construct(node),
+            "prim::ListUnpack": lambda node: self.convert_list_unpack(node),
+            "prim::NumToTensor": lambda node: self.convert_skip_op(node),
             "prim::TupleConstruct": lambda node: self.convert_tuple(node),
             "prim::TupleUnpack": lambda node: self.convert_tuple_unpack(node),
         }
@@ -278,17 +283,6 @@ class TorchConverter(BaseConverter):
         self.mlir = MLIRImporter(input_shapes, self.output_shapes, self.model_name, Platform.TORCH,
                                  self.input_types)
         self.weight_file = self.mlir.weight_file
-
-    def get_list(self, node):
-        data = []
-        is_const = True
-        for input in node.inputs():
-            if input.debugName() in self.const_val.keys():
-                data.append(self.const_val[input.debugName()])
-            else:
-                data.append(input.debugName())
-                is_const = False
-        return node.output().debugName(), data, is_const
 
     def generate_mlir(self, mlir_file: str):
         """convert all to mlir"""
@@ -468,15 +462,31 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_sub_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
 
-    def convert_size_op(self, torch_node: TorchNode):
-        # do nothing
-        pass
-
-    def convert_zeros_op(self, torch_node: TorchNode):
+    def convert_sum_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axes = self.const_val[torch_node.inputs[1]]
+        keep_dim = self.const_val[torch_node.inputs[2]]
         p = {
             'name': torch_node.name,
+            'axes': axes,
+            'keepdims': keep_dim,
+            'mode': 'ReduceSum',
         }
-        new_op = self.mlir.create_zeros_op([], **p)
+        new_op = self.mlir.create_reduce_op([op0], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_size_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        p = {'name': torch_node.name}
+        if len(torch_node.inputs) > 1:
+            p['axis'] = self.const_val[torch_node.inputs[1]]
+        new_op = self.mlir.create_size_op([op0], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_zeros_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        p = {'name': torch_node.name}
+        new_op = self.mlir.create_zeros_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_constant(self, torch_node: TorchNode):
@@ -488,21 +498,47 @@ class TorchConverter(BaseConverter):
         else:
             self.addWeight(name, data)
 
-    def convert_list(self, torch_node: TorchNode):
-        name, data, is_const = self.get_list(torch_node.node_proto)
-        if is_const:
+    def convert_list_construct(self, torch_node: TorchNode):
+        name = torch_node.outputs[0]
+        all_const = True
+        for input in torch_node.inputs:
+            if input not in self.const_val:
+                all_const = False
+                break
+        # all const
+        data = []
+        if all_const:
+            for input in torch_node.inputs:
+                data.append(self.const_val[input])
             self.const_val[name] = data
-        else:
-            self.tensor_list[name] = data
+            return
+        ops = []
+        # to list op
+        for input in torch_node.inputs:
+            if input in self.const_val:
+                val = self.const_val[input]
+                t = np.array([val], np.float32)
+                self.addWeight(input, t)
+                data.append(input)
+                ops.append(self.getWeightOp(input))
+            else:
+                data.append(input)
+                ops.append(self.getOp(input))
+        self.tensor_list[name] = data
+        p = {'name': name}
+        new_op = self.mlir.create_list_op(ops, [], **p)
+        self.addOperand(name, new_op)
 
     def convert_get_attr(self, torch_node: TorchNode):
         node = torch_node.node_proto
         if node.output().type().kind() != 'TensorType':
             return
-        folder = node.input().node().s('name')
         name = node.s('name')
-        dict_name = "{}.{}".format(folder, name)
-        data = self.state_dict[dict_name].numpy().astype(np.float32)
+        pre_node = node.input().node()
+        while pre_node.kind() == 'prim::GetAttr':
+            name = "{}.{}".format(pre_node.s('name'), name)
+            pre_node = pre_node.input().node()
+        data = self.state_dict[name].numpy().astype(np.float32)
         weight_name = node.output().debugName()
         self.addWeight(weight_name, data)
 
@@ -525,6 +561,7 @@ class TorchConverter(BaseConverter):
         }
         new_op = self.mlir.create_div_op([op0, op1], [], **p)
         self.addOperand(torch_node.name, new_op)
+        return
 
     def convert_skip_op(self, torch_node: TorchNode):
         # warning: in_op.output name shoud change to torch_node name
@@ -624,10 +661,17 @@ class TorchConverter(BaseConverter):
 
     def convert_view_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
-        shape = self.const_val[torch_node.inputs[1]]
-        p = {'name': torch_node.name, 'shape': shape}
-        new_op = self.mlir.create_reshape_op([in_op], [], **p)
+        if torch_node.inputs[1] in self.const_val:
+            shape = self.const_val[torch_node.inputs[1]]
+            p = {'name': torch_node.name, 'shape': shape}
+            new_op = self.mlir.create_reshape_op([in_op], [], **p)
+            self.addOperand(torch_node.name, new_op)
+            return
+        shape_op = self.getOp(torch_node.inputs[1])
+        p = {'name': torch_node.name}
+        new_op = self.mlir.create_view_op([in_op, shape_op], [], **p)
         self.addOperand(torch_node.name, new_op)
+        return
 
     def convert_select_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
@@ -707,6 +751,18 @@ class TorchConverter(BaseConverter):
         }
         new_op = self.mlir.create_concat_op(operands, [], **p)
         self.addOperand(torch_node.name, new_op)
+
+    def convert_chunk_op(self, torch_node: TorchNode):
+        num = self.const_val[torch_node.inputs[1]]
+        assert (self.isWeight(torch_node.inputs[0]))
+        data = self.getWeight(torch_node.inputs[0])
+        new_data = np.split(data, num, axis=0)
+        tensors = []
+        for i in range(num):
+            name = "{}_{}".format(torch_node.name, i)
+            self.addWeight(name, new_data[i])
+            tensors.append(name)
+        self.tensor_list[torch_node.name] = tensors
 
     def convert_relu_op(self, torch_node: TorchNode):
         op = self.getOp(torch_node.inputs[0])
@@ -792,6 +848,14 @@ class TorchConverter(BaseConverter):
         }
         new_op = self.mlir.create_tuple_op(ops, [], **p)
         self.addOperand(torch_node.name, new_op)
+
+    def convert_list_unpack(self, torch_node: TorchNode):
+        tensors = self.tensor_list[torch_node.inputs[0]]
+        for out, tensor in zip(torch_node.outputs, tensors):
+            if (self.isWeight(tensor)):
+                self.addWeight(out, self.getWeight(tensor))
+            else:
+                self.addOperand(out, self.getOperand(tensor))
 
     def convert_tuple_unpack(self, torch_node: TorchNode):
         ops = [self.getOp(n) for n in torch_node.inputs]

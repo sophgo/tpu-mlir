@@ -96,7 +96,7 @@ void SoftmaxLowering::LoweringINT8(PatternRewriter &rewriter, top::SoftmaxOp op,
   for (auto &attr : op->getAttrs()) {
     if (attr.getName() == "axis" && op.getAxis() != 1) {
       attrs.push_back(
-          rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(1)));
+          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(1)));
     } else
       attrs.push_back(attr);
   }
@@ -231,7 +231,7 @@ void SoftmaxLowering::LoweringQuantized(PatternRewriter &rewriter,
   for (auto &attr : op->getAttrs()) {
     if (attr.getName() == "axis" && op.getAxis() != 1) {
       attrs.push_back(
-          rewriter.getNamedAttr("axis", rewriter.getI64IntegerAttr(1)));
+          rewriter.getNamedAttr("axis", rewriter.getSI32IntegerAttr(1)));
     } else
       attrs.push_back(attr);
   }
