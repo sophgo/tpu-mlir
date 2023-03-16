@@ -98,15 +98,18 @@ void top::MatMulOp::shape_inference() {
   auto k = in0_shape[in0_dims - 1];
   std::vector<int64_t> in1_shape = module::getShape(getRight());
   int in1_dims = in1_shape.size();
-  auto n = in1_shape[in1_dims - 1];
+  bool r_transpose = getRightTranspose();
+  int k_idx = in1_dims -  (r_transpose ? 1 : 2);
+  int n_idx = in1_dims -  (r_transpose ? 2 : 1);
+  auto n = in1_shape[n_idx];
   std::vector<int64_t> out_shape = in0_shape;
   if (in1_dims == 1) {
     assert(in1_shape[0] == k);
     out_shape.pop_back();
-  } else if (in1_shape[in1_dims - 2] == k) {
+  } else if (in1_shape[k_idx] == k) {
     out_shape[in0_dims - 1] = n;
   } else if (in1_dims == 2) {
-    auto sum = in1_shape[in1_dims - 2];
+    auto sum = in1_shape[k_idx];
     while (out_shape.size() > 0 && sum % out_shape.back() == 0 && sum != 1) {
       sum = sum / out_shape.back();
       out_shape.pop_back();
