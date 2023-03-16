@@ -185,17 +185,6 @@ def Top_UnTupleOp: Top_BaseOp<"UnTuple"> {
   );
 }
 
-def Top_ZerosOp: Top_BaseOp<"Zeros"> {
-  let summary = "zeros operator";
-  let description = [{
-    gen by torch aten::zeros
-  }];
-
-  let results = (outs
-    AnyTensor:$output
-  );
-}
-
 // === Function Op =====
 class Top_Op<string mnemonic, list<Trait> traits = []> :
     Top_BaseOp<mnemonic, !listconcat(traits,
@@ -703,11 +692,10 @@ def Top_TransposeOp: Top_Op<"Transpose"> {
 
   let arguments = (
     ins AnyTensor:$input,
-    I64Attr:$dim0,
-    I64Attr:$dim1
+    SI32Attr:$dim0,
+    SI32Attr:$dim1
   );
   let results = (outs AnyTensor:$output);
-  let hasCanonicalizer = 1;
 }
 
 def Top_ShuffleChannelOp: Top_Op<"ShuffleChannel"> {
@@ -742,6 +730,20 @@ def Top_ReluOp: Top_Op<"Relu"> {
   let hasCanonicalizer = 1;
 }
 
+def Top_ListOp: Top_Op<"List"> {
+  let summary = "List operator";
+  let description = [{
+    gen by torch prim::ListConstruct, y = [a, b]
+    output shape is [1]
+  }];
+
+  let arguments = (ins
+    Variadic<AnyTensor>:$inputs
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_ReshapeOp:Top_Op<"Reshape"> {
   let summary = "Reshape operation";
   let description = [{
@@ -757,6 +759,20 @@ def Top_ReshapeOp:Top_Op<"Reshape"> {
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
+}
+
+def Top_ViewOp:Top_Op<"View"> {
+  let summary = "View operation";
+  let description = [{
+    gen by torch aten::view
+    0: keep dim from input
+    -1: left dim from input
+  }];
+  let arguments = (ins
+    AnyTensor:$input,
+    AnyTensor:$shape
+  );
+  let results = (outs AnyTensor:$output);
 }
 
 def Top_ReverseOp:Top_Op<"Reverse"> {
@@ -797,6 +813,34 @@ def Top_SoftsignOp: Top_Op<"Softsign"> {
   );
 
   let results = (outs AnyTensor:$output);
+}
+
+def Top_SizeOp: Top_Op<"Size"> {
+  let summary = "Size operator";
+  let description = [{
+    gen by torch aten::Size
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    OptionalAttr<SI32Attr>:$axis
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
+def Top_ZerosOp: Top_Op<"Zeros"> {
+  let summary = "zeros operator";
+  let description = [{
+    gen by torch aten::zeros
+  }];
+  let arguments = (ins
+    AnyTensor:$input
+  );
+
+  let results = (outs
+    AnyTensor:$output
+  );
 }
 
 def Top_SiLUOp : Top_Op<"SiLU"> {
@@ -898,7 +942,7 @@ def Top_SoftmaxOp:Top_Op<"Softmax"> {
   }];
   let arguments = (ins
     AnyTensor:$input,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$log,
     DefaultValuedAttr<F64Attr, "1.0">:$beta
   );

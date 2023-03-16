@@ -67,19 +67,65 @@ public:
   }
 };
 
-// Warning: Maybe some zeros can't convert to NoneOp
-class ZerosToNonePattern : public OpRewritePattern<ZerosOp> {
-public:
-  using OpRewritePattern<ZerosOp>::OpRewritePattern;
-
-  LogicalResult matchAndRewrite(ZerosOp op,
-                                PatternRewriter &rewriter) const override {
-    auto none_op = module::getNoneOp(op);
-    op->replaceAllUsesWith(none_op);
-    op.erase();
-    return success();
+// if all inputs is weight, convert to weight op
+static void WeightFolder(Operation *op) {
+  if (module::isAllWeight(op) == false) {
+    return;
   }
-};
+  auto infer = dyn_cast<InferenceInterface>(op);
+  if (!infer) {
+    return;
+  }
+  auto ins = op->getOperands();
+  auto outs = op->getResults();
+  auto num_in = ins.size();
+  auto num_out = outs.size();
+  std::vector<float> datas[num_out];
+  for (int i = 0; i < num_out; i++) {
+    if (module::isNone(outs[i])) {
+      continue;
+    }
+    auto num_elem = module::getNumElements(outs[i]);
+    datas[i].assign(num_elem, 0.0f);
+  }
+  std::vector<std::shared_ptr<std::vector<float>>> inputs;
+  for (int i = 0; i < num_in; i++) {
+    if (false == module::isWeight(ins[i])) {
+      inputs.push_back(nullptr);
+    }
+    auto in_op = cast<top::WeightOp>(ins[i].getDefiningOp());
+    auto d = in_op.read<float>();
+    inputs.push_back(d);
+  }
+  InferenceParameter p;
+  for (int i = 0; i < num_in; i++) {
+    if (inputs[i] == nullptr) {
+      p.inputs.push_back(nullptr);
+    } else {
+      p.inputs.push_back(inputs[i]->data());
+    }
+  }
+  for (int i = 0; i < num_out; i++) {
+    p.outputs.push_back(datas[i].data());
+  }
+  auto ret = infer.init(p);
+  assert(mlir::succeeded(ret));
+  ret = infer.inference(p);
+  assert(mlir::succeeded(ret));
+  infer.deinit(p);
+  OpBuilder builder(module::getCtx());
+  builder.setInsertionPointAfter(op);
+  for (int i = 0; i < num_out; i++) {
+    if (datas[i].empty()) {
+      continue;
+    }
+    std::string suffix = std::string("folder_") + std::to_string(i);
+    auto out = outs[i];
+    auto out_type = out.getType().cast<RankedTensorType>();
+    auto new_op = top::WeightOp::create(op, "folder", datas[i], out_type);
+    out.replaceAllUsesWith(new_op);
+  }
+}
 
 class ShapeInferPass : public ShapeInferBase<ShapeInferPass> {
 public:
@@ -94,14 +140,12 @@ public:
     patterns.clear();
     patterns.add<UnTupleFusePattern>(ctx);
     applyPatternsAndFoldGreedily(mOp, std::move(patterns));
-    patterns.clear();
-    patterns.add<ZerosToNonePattern>(ctx);
-    applyPatternsAndFoldGreedily(mOp, std::move(patterns));
     // Do shape infer
     for (auto func : mOp.getOps<FuncOp>()) {
       func.walk([&](ShapeInterface op) {
         LLVM_DEBUG(llvm::dbgs() << "shape infer: " << op << "\n";);
         op.shape_inference();
+        WeightFolder(op);
       });
     }
     module::updateModuleTypes();

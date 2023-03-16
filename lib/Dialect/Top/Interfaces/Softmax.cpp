@@ -63,4 +63,10 @@ LogicalResult top::SoftmaxOp::inference(InferenceParameter &p) {
 
 void top::SoftmaxOp::shape_inference() {
   common_shape_inference(getOperation());
+  auto axis = getAxis();
+  if (axis < 0) {
+    auto in_shape = module::getShape(getInput());
+    axis += in_shape.size();
+    setAxis(axis);
+  }
 }

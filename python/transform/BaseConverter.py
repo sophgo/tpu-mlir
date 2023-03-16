@@ -54,12 +54,14 @@ class BaseConverter(object):
 
     def addWeight(self, name, data):
         if name in self.tensors:
+            if self.tensors[name] == data:
+                return
             raise KeyError("tensor {} conflict".format(name))
         if not isinstance(data, np.ndarray):
             raise KeyError("tensor data must be numpy array")
         if len(data.shape) == 0:
             data = data.reshape([1])
-        if data.dtype == np.int64:
+        if data.dtype in [np.int64, np.float64]:
             self.tensors[name] = data.astype(np.float32)
         else:
             self.tensors[name] = data
