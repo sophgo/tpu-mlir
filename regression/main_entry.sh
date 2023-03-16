@@ -56,8 +56,12 @@ run_onnx_op() {
   echo "======= test_onnx.py ====="
   chip_test=("bm1684x" "cv183x")
   ERR=0
+  SIMPLE=
+  if [ x${test_type} == xbasic ]; then
+    SIMPLE="--simple"
+  fi
   for chip in ${chip_test[@]}; do
-    test_onnx.py --chip $chip > test_onnx_${chip}.log 2>&1 | true
+    test_onnx.py --chip $chip $SIMPLE > test_onnx_${chip}.log 2>&1 | true
     if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
       echo "test_onnx.py --chip ${chip} FAILED" >>result.log
       cat test_onnx_${chip}.log >>fail.log
@@ -84,8 +88,12 @@ run_tflite_op() {
 }
 
 run_torch_op() {
+  SIMPLE=
+  if [ x${test_type} == xbasic ]; then
+    SIMPLE="--simple"
+  fi
   echo "======= test_torch.py ====="
-  test_torch.py --chip bm1684x > test_torch_bm1684x.log 2>&1 | true
+  test_torch.py --chip bm1684x $SIMPLE > test_torch_bm1684x.log 2>&1 | true
   if [[ "${PIPESTATUS[0]}" -ne 0 ]]; then
     echo "test_torch.py --chip bm1684x FAILED" >>result.log
     cat test_torch_bm1684x.log >>fail.log

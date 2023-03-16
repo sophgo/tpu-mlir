@@ -47,10 +47,11 @@ if [ x${model_type} == x ]; then
   exit 1
 fi
 
-# basic test don't run bf16/f16
+# basic test don't run bf16/f32/asymmetric
 if [ x${test_type} == xbasic ]; then
-  do_f16=0
+  do_f32=0
   do_bf16=0
+  do_asymmetric=0
 fi
 
 cfg_file=$REGRESSION_PATH/config/${model_name}.cfg
