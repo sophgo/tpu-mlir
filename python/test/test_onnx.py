@@ -27,7 +27,11 @@ import multiprocessing
 
 class ONNX_IR_TESTER(object):
     # This class is built for testing single operator transform.
-    def __init__(self, chip: str = "bm1684x", mode: str = "all", dynamic: bool = True):
+    def __init__(self,
+                 chip: str = "bm1684x",
+                 mode: str = "all",
+                 dynamic: bool = True,
+                 simple: bool = False):
         Y, N = True, False
         # yapf: disable
         self.test_cases = {
@@ -225,6 +229,10 @@ class ONNX_IR_TESTER(object):
         self.is_cv18xx = False
         self.chip = chip.lower()
         self.dynamic = dynamic
+        self.simple = simple
+        if self.simple:
+            self.support_quant_modes = ["f16", "int8"]
+            self.support_asym = [False]
         if self.chip.startswith("cv18"):
             self.support_quant_modes = ["bf16", "int8"]
             self.support_asym = [False]
@@ -4358,10 +4366,11 @@ if __name__ == "__main__":
                         help="chip platform name")
     parser.add_argument("--dynamic", action="store_true", help='do dynamic compile')
     parser.add_argument("--debug", action="store_true", help='keep middle file if debug')
+    parser.add_argument("--simple", action="store_true", help='do simple test for commit test')
     parser.add_argument("--show_all", action="store_true", help='show all cases')
     # yapf: enable
     args = parser.parse_args()
-    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic)
+    tester = ONNX_IR_TESTER(args.chip, args.mode, args.dynamic, args.simple)
     if args.show_all:
         print("====== Show All Cases ============")
         for case in tester.test_cases:
