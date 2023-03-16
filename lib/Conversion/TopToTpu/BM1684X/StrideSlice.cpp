@@ -14,7 +14,7 @@ namespace bm1684x {
 
 void StridedSliceLowering::LoweringF32(PatternRewriter &rewriter,
                                 top::StridedSliceOp op) const {
-  lowering_common_f32<tpu::StridedSliceOp>(rewriter, op);
+  lowering_common_f32<tpu::StridedSliceOp>(rewriter, op, 0, 1);
 }
 
 void StridedSliceLowering::LoweringINT8(PatternRewriter &rewriter, top::StridedSliceOp op,
@@ -27,12 +27,12 @@ void StridedSliceLowering::LoweringINT4(PatternRewriter &rewriter, top::StridedS
 }
 void StridedSliceLowering::LoweringBF16(PatternRewriter &rewriter,
                                  top::StridedSliceOp op) const {
-  lowering_common_bf16<tpu::StridedSliceOp>(rewriter, op);
+  lowering_common_bf16<tpu::StridedSliceOp>(rewriter, op, 0, 1);
 }
 
 void StridedSliceLowering::LoweringF16(PatternRewriter &rewriter,
                                 top::StridedSliceOp op) const {
-  lowering_common_f16<tpu::StridedSliceOp>(rewriter, op);
+  lowering_common_f16<tpu::StridedSliceOp>(rewriter, op, 0, 1);
 }
 
 void StridedSliceLowering::LoweringQuantized(PatternRewriter &rewriter,

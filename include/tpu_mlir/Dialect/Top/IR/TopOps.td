@@ -875,6 +875,22 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
   let results = (outs AnyTensor:$output);
 }
 
+def Top_SelectOp: Top_Op<"Select"> {
+  let summary = "Select operator";
+
+  let description = [{
+    Select Operation on input.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64Attr:$axis,
+    I64Attr:$index
+  );
+  let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
+}
+
 def Top_SoftmaxOp:Top_Op<"Softmax"> {
   let summary = "Softmax operation";
   let description = [{

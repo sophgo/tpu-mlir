@@ -114,14 +114,17 @@ mlir::Type getQuantBoolType(Value v);
 // newType
 template <typename OpTy>
 static void lowering_common(PatternRewriter &rewriter, Operation *from,
-                            Type newType, int num_operands = 0) {
+                            Type newType, int num_operands = 0, int idx_operands = -1) {
   auto stype = module::getStorageType(newType);
   std::vector<Value> operands;
-  for (auto in : from->getOperands()) {
+  for (int i = 0; i < from->getNumOperands(); ++i) {
+    auto in = from->getOperand(i);
     if (isa<top::WeightOp>(in.getDefiningOp())) {
       auto wOp = in.getDefiningOp<top::WeightOp>();
       auto wtype = module::getStorageType(in);
-      if (stype.isF16()) {
+      if (idx_operands >= 0 && i >= idx_operands) {
+        operands.push_back(wOp.clone_int(from));
+      } else if (stype.isF16()) {
         operands.push_back(wOp.clone_f16(from));
       } else if (stype.isBF16()) {
         operands.push_back(wOp.clone_bf16(from));
@@ -146,7 +149,8 @@ static void lowering_common(PatternRewriter &rewriter, Operation *from,
 template <typename OpTy>
 static void lowering_common_int8(PatternRewriter &rewriter, Operation *from,
                                  bool asymmetric = false,
-                                 int num_operands = 0) {
+                                 int num_operands = 0,
+                                 int idx_operands = -1) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantInt8Type(from->getResult(0), asymmetric);
   lowering_common<OpTy>(rewriter, from, newType, num_operands);
@@ -185,28 +189,28 @@ static mlir::Type getQuantF16Type(Value v) {
 // lowering to f32/f16/bf16
 template <typename OpTy, typename ElemTy>
 static void lowering_common_float(PatternRewriter &rewriter, Operation *from,
-                                  int num_operands = 0) {
+                                  int num_operands = 0, int idx_operands = -1) {
   assert(from->getNumResults() == 1);
   auto newType = getQuantFloatType<ElemTy>(from->getResult(0));
-  lowering_common<OpTy>(rewriter, from, newType, num_operands);
+  lowering_common<OpTy>(rewriter, from, newType, num_operands, idx_operands);
 }
 
 template <typename OpTy>
 static void lowering_common_f32(PatternRewriter &rewriter, Operation *from,
-                                int num_operands = 0) {
-  lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands);
+                                int num_operands = 0, int idx_operands = -1) {
+  lowering_common_float<OpTy, Float32Type>(rewriter, from, num_operands, idx_operands);
 }
 
 template <typename OpTy>
 static void lowering_common_bf16(PatternRewriter &rewriter, Operation *from,
-                                 int num_operands = 0) {
-  lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands);
+                                 int num_operands = 0, int idx_operands = -1) {
+  lowering_common_float<OpTy, BFloat16Type>(rewriter, from, num_operands, idx_operands);
 }
 
 template <typename OpTy>
 static void lowering_common_f16(PatternRewriter &rewriter, Operation *from,
-                                int num_operands = 0) {
-  lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands);
+                                int num_operands = 0, int idx_operands = -1) {
+  lowering_common_float<OpTy, Float16Type>(rewriter, from, num_operands, idx_operands);
 }
 
 // from int8 to int8, convert one (scale zp) to another (scale zp)
