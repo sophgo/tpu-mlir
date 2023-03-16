@@ -53,6 +53,7 @@ class TORCH_IR_TESTER(object):
             "Dropout":          (self.test_Dropout,     Y, N, N),
             "Elu":              (self.test_Elu,         Y, N, N),
             "Gather":           (self.test_Gather,      N, N, N),
+            "GroupNorm":        (self.test_GroupNorm,   Y, N, N),
             "GRU":              (self.test_GRU,         Y, N, N),
             "IndexSelect":      (self.test_IndexSelect, Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
@@ -691,6 +692,22 @@ class TORCH_IR_TESTER(object):
         _test_gather((1, 3, 32, 32), (1, 6, 32, 32), 1)
         _test_gather((2, 32, 16), (3, 32, 16))
         _test_gather((32, 32), (1, 32), 0)
+
+    #######################################################################
+    # GroupNorm
+    # ------------
+    def test_GroupNorm(self):
+
+        class Model(torch.nn.Module):
+
+            def __init__(self):
+                super(Model, self).__init__()
+                self.group_norm = nn.GroupNorm(3, 6)
+
+            def forward(self, x):
+                return self.group_norm(x)
+
+        self.trace_and_test([(20, 6, 10, 10)], Model())
 
     #######################################################################
     # Permute
