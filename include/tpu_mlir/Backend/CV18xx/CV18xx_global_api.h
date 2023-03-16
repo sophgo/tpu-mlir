@@ -241,7 +241,7 @@ void cvi_backend_tg_bf16_lstm_kernel(
     gaddr_t ga_output, gaddr_t ga_last_h, gaddr_t ga_last_c, int seq_len,
     int num_dir, int batch_size, int hidden_size, bool do_bias,
     bool with_initial_h, bool with_initial_c, bool with_cont,
-    bool is_bidirectional, bool with_final_h, bool with_final_c);
+    bool is_bidirectional, bool with_final_h, bool with_final_c, bool with_final_y);
 
 void cvi_backend_tg_bf16_reduce_mean_kernel(uint32_t layer_id, gaddr_t ga_input,
                                             gaddr_t ga_output,
