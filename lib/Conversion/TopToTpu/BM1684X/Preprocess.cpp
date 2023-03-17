@@ -47,7 +47,8 @@ void swapInputChannelOfFilter(std::vector<T> &filter_data,
 
 template <typename T>
 LogicalResult FoldSwapAxisOp(Operation *op, PatternRewriter &rewriter,
-                             tpu::Conv2DOp &convOp, RankedTensorType &filter_type) {
+                             tpu::Conv2DOp &convOp,
+                             RankedTensorType &filter_type) {
   assert(convOp.getNumOperands() == 3 && "Conv2D op should have 3 operands");
   // filter
   auto filterOp = cast<top::WeightOp>(convOp.getFilter().getDefiningOp());
@@ -219,10 +220,20 @@ private:
       std::swap(bias[0], bias[2]);
     }
     // quant
+    bool in_out_equal = true;
     for (int i = 0; i < c; i++) {
       scales[i] /= qscale;
       bias[i] /= qscale;
+      if (to_uint8(255 * scales[i]) != 255) {
+        in_out_equal = false;
+      }
     }
+
+    // no need to insert scalelut when scale = 1 and bias = 0
+    if (in_out_equal && !this->sign) {
+      return opd;
+    }
+
     std::vector<NamedAttribute> attrs;
     attrs.emplace_back(
         rewriter.getNamedAttr("scale", rewriter.getF64ArrayAttr(scales)));
