@@ -145,6 +145,8 @@ class DeployTool:
                         "pixel_format": ppa.pixel_format,
                         'customization_format': self.customization_format,
                         'aligned': self.aligned_input,
+                        'pad_type': ppa.pad_type,
+                        'pad_value': ppa.pad_value,
                         'chip': self.chip,
                     }
                     print("Add preprocess, set the following params:")
