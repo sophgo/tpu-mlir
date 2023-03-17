@@ -76,6 +76,7 @@ class TFLITE_IR_TESTER(object):
             "Softmax": self.test_Softmax,
             "Split": self.test_Split,
             "StridedSlice": self.test_Strided_slice,
+            "StridedSliceMerge": self.test_Strided_slice_merge,
             "Sub": self.test_Sub,
             "Sum": self.test_Sum,
             "Transpose": self.test_Transpose,
@@ -899,6 +900,24 @@ class TFLITE_IR_TESTER(object):
 
       _test_strided_slice(((3, 6, 5),), [0,1,0], [2,6,4], [1,2,1])
       _test_strided_slice(((6, 5),), [0,1], [2,0], emask=2)
+
+    #######################################################################
+    # StridedSliceMerge
+    # -------
+    def test_Strided_slice_merge(self, case_name):
+      """StridedSliceMerge"""
+      def _test_strided_slice_merge(shapes, a_begin, b_begin, a_end, b_end, a_strides=None,
+          b_strides=None, a_bmask=0, b_bmask=0, a_emask=0, b_emask=0, range=(-5, 32)):
+        with tf.Graph().as_default():
+          datas, inputs, in_range = self.gen_input(shapes=shapes, range=range)
+          middle = array_ops.strided_slice(inputs[0], a_begin, a_end, strides=a_strides, begin_mask=a_bmask,
+              end_mask=a_emask)
+          out = array_ops.strided_slice(middle, b_begin, b_end, strides=b_strides, begin_mask=b_bmask,
+              end_mask=b_emask)
+          model_def = self._quantize_sess_model(inputs, [out], quantized=True, input_range=in_range)
+          self.convert_tflite_and_compare(datas, case_name, model_def)
+
+      _test_strided_slice_merge(((3, 6, 5),), [0,0,0], [0,0,1], [3,4,5], [3,4,3], [1,1,1], [1,1,1])
 
 
 def test_one_case_in_all(tester: TFLITE_IR_TESTER, case, error_cases, success_cases):
