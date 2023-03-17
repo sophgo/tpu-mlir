@@ -1854,11 +1854,27 @@ BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op): op_(op) {
 
 int BMCpuOp::getCpuOpType() {
   return StringSwitch<int>(op_.getCpuOpName())
+      .Case("topk", CPU_TOPK)
       .Default(CPU_LAYER_UNKNOW);
 }
 
+void BMCpuOp::get_topk_param() {
+  cpu_topk_param_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.k = paramDic.get("K").cast<IntegerAttr>().getInt();
+  cpu_param.axis = paramDic.get("axis").cast<IntegerAttr>().getInt();
+  cpu_param.sorted = paramDic.get("sorted").cast<BoolAttr>().getValue();
+  cpu_param.descending = paramDic.get("largest").cast<BoolAttr>().getValue();
+  this->param_size = sizeof (cpu_topk_param_t);
+  this->param = (void *)&cpu_param;
+}
+
+
 void BMCpuOp::getCpuParam() {
   switch (this->op_type) {
+  case CPU_TOPK:
+    get_topk_param();
+    break ;
   case CPU_LAYER_UNKNOW:
     llvm_unreachable("wrong cpu layer type");
   }
