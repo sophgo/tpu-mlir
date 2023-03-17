@@ -40,7 +40,8 @@ void populateTopToTpuConversionPatterns(RewritePatternSet *patterns) {
       HardSwishLowering,
       AddConstLowering,
       MulConstLowering,
-      SubLowering
+      SubLowering,
+      LRNLowering
       // clang-format on
       >(patterns->getContext());
 }
