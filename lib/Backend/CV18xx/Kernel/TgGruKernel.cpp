@@ -345,11 +345,12 @@ void TgGruKernel::compute(int idx, bool forward) {
     eltwise_add(ml_work1, ml_xh);
     eltwise_mul(ml_xz, ml_xh);
     eltwise_sub(ml_result, ml_work1, ml_xz);
-    if (!only_last) {
-      CV18xx::tdma_store_stride(&ml_result, ga_store + s_offset + goffset,
+    if (has_y) {
+      CV18xx::tdma_store_stride(&ml_result, ga_store_y + s_offset + goffset,
                                 h_gstride);
-    } else if (idx == seq_length - 1) {
-      CV18xx::tdma_store_stride(&ml_result, ga_store + goffset, h_gstride);
+    }
+    if (has_yh && idx == seq_length - 1) {
+      CV18xx::tdma_store_stride(&ml_result, ga_store_yh + goffset, h_gstride);
     }
   }
 }
@@ -419,13 +420,13 @@ void TgGruKernel::compute_without_tiling(bool forward) {
     eltwise_add(ml_hidden, ml_xh);
     eltwise_mul(ml_xz, ml_xh);
     eltwise_sub(ml_hidden, ml_xz);
-    if (only_last == false) {
+    if (has_y) {
       int s_offset = seq_idx * num_dir * x_bytes;
-      CV18xx::tdma_store_stride(&ml_hidden, ga_store + s_offset, h_gstride);
+      CV18xx::tdma_store_stride(&ml_hidden, ga_store_y + s_offset, h_gstride);
     }
   }
-  if (only_last) {
-    CV18xx::tdma_store_stride(&ml_hidden, ga_store, h_gstride);
+  if (has_yh) {
+    CV18xx::tdma_store_stride(&ml_hidden, ga_store_yh, h_gstride);
   }
   lmem_used = lmem_used_backup;
 }
@@ -435,13 +436,23 @@ void TgGruKernel::init_gaddr(bool forward) {
     ga_xz = ga_input;
     ga_rz = ga_recurrence;
     ga_rbz = ga_bias;
-    ga_store = ga_output;
+    if (has_y) {
+      ga_store_y = ga_output_y;
+    }
+    if (has_yh) {
+      ga_store_yh = ga_output_yh;
+    }
     ga_h0 = ga_init_h;
   } else {
     ga_xz = ga_input + hidden_bytes * 3;
     ga_rz = ga_recurrence + recurrence_bytes * 3;
     ga_rbz = ga_bias + hidden_bytes * 3;
-    ga_store = ga_output + x_bytes;
+    if (has_y) {
+      ga_store_y = ga_output_y + x_bytes;
+    }
+    if (has_yh) {
+      ga_store_yh = ga_output_yh + x_bytes;
+    }
     ga_h0 = ga_init_h + x_bytes;
   }
   ga_xr = ga_xz + hidden_bytes;
@@ -456,11 +467,11 @@ void TgGruKernel::init(uint32_t layer_id, gaddr_t ga_input,
                        gaddr_t ga_recurrence, gaddr_t ga_bias,
                        gaddr_t ga_init_h, gaddr_t ga_sigmoid_lut,
                        gaddr_t ga_sigmoid_slope_lut, gaddr_t ga_tanh_lut,
-                       gaddr_t ga_tanh_slope_lut, gaddr_t ga_output,
-                       int seq_length, int num_dir, int batch_size,
-                       int hidden_size, bool do_bias, bool with_initial_h,
-                       bool linear_before_reset, bool bidirectional,
-                       bool only_last) {
+                       gaddr_t ga_tanh_slope_lut, gaddr_t ga_output_y,
+                       gaddr_t ga_output_yh, int seq_length, int num_dir,
+                       int batch_size, int hidden_size, bool do_bias,
+                       bool with_initial_h, bool linear_before_reset,
+                       bool bidirectional, bool has_y, bool has_yh) {
   this->layer_id = layer_id;
   this->ga_input = ga_input;
   this->ga_recurrence = ga_recurrence;
@@ -470,7 +481,8 @@ void TgGruKernel::init(uint32_t layer_id, gaddr_t ga_input,
   this->ga_sigmoid_slope_lut = ga_sigmoid_slope_lut;
   this->ga_tanh_lut = ga_tanh_lut;
   this->ga_tanh_slope_lut = ga_tanh_slope_lut;
-  this->ga_output = ga_output;
+  this->ga_output_y = ga_output_y;
+  this->ga_output_yh = ga_output_yh;
   this->seq_length = seq_length;
   this->batch_size = batch_size;
   this->num_dir = num_dir;
@@ -479,7 +491,8 @@ void TgGruKernel::init(uint32_t layer_id, gaddr_t ga_input,
   this->with_initial_h = with_initial_h;
   this->linear_before_reset = linear_before_reset;
   this->bidirectional = bidirectional;
-  this->only_last = only_last;
+  this->has_y = has_y;
+  this->has_yh = has_yh;
   this->fmt = CVK_FMT_BF16;
   this->fmt_size = CV18xx::bytesize_of_fmt(fmt);
   this->lmem_used = 0;
@@ -519,16 +532,17 @@ void TgGruKernel::schedule() {
 void cvi_backend_tg_bf16_gru_kernel(
     uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_recurrence, gaddr_t ga_bias,
     gaddr_t ga_initial_h, gaddr_t ga_sigmoid_lut, gaddr_t ga_sigmoid_slope_lut,
-    gaddr_t ga_tanh_lut, gaddr_t ga_tanh_slope_lut, gaddr_t ga_output,
-    int seq_len, int num_dir, int batch_size, int hidden_size, bool do_bias,
-    bool with_initial_h, bool is_linear_before_reset, bool is_bidirectional,
-    bool only_last) {
+    gaddr_t ga_tanh_lut, gaddr_t ga_tanh_slope_lut, gaddr_t ga_output_y,
+    gaddr_t ga_output_yh, int seq_len, int num_dir, int batch_size,
+    int hidden_size, bool do_bias, bool with_initial_h,
+    bool is_linear_before_reset, bool is_bidirectional, bool has_y,
+    bool has_yh) {
   TgGruKernel kernel;
   kernel.init(layer_id, ga_input, ga_recurrence, ga_bias, ga_initial_h,
               ga_sigmoid_lut, ga_sigmoid_slope_lut, ga_tanh_lut,
-              ga_tanh_slope_lut, ga_output, seq_len, num_dir, batch_size,
-              hidden_size, do_bias, with_initial_h, is_linear_before_reset,
-              is_bidirectional, only_last);
+              ga_tanh_slope_lut, ga_output_y, ga_output_yh, seq_len, num_dir,
+              batch_size, hidden_size, do_bias, with_initial_h,
+              is_linear_before_reset, is_bidirectional, has_y, has_yh);
   kernel.schedule();
 }
 } // namespace backend
