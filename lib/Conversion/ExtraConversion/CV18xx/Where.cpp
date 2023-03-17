@@ -62,11 +62,9 @@ LogicalResult ConvertWhereOp::matchAndRewrite(top::WhereOp op,
   operands.clear();
   operands.emplace_back(input2);
   operands.emplace_back(out2);
-  attrs.emplace_back(
-      rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1.0, -1.0})));
   rewriter.setInsertionPointAfterValue(out2);
-  auto loc3 = NameLoc::get(rewriter.getStringAttr(name + "_add1"));
-  auto addOp1 = rewriter.create<top::AddOp>(loc3, type2, operands, attrs);
+  auto loc3 = NameLoc::get(rewriter.getStringAttr(name + "_sub1"));
+  auto addOp1 = rewriter.create<top::SubOp>(loc3, type2, operands, attrs);
   auto out3 = addOp1.getOutput();
 
   // create (input[0] * input[1]) + (input[2] - input[0] * input[2])

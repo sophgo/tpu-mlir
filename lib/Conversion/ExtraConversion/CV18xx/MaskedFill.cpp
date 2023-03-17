@@ -59,11 +59,9 @@ ConvertMaskedFillOp::matchAndRewrite(top::MaskedFillOp op,
     rewriter.setInsertionPointAfterValue(out2);
     operands.emplace_back(input1);
     operands.emplace_back(out2);
-    attrs.emplace_back(
-        rewriter.getNamedAttr("coeff", rewriter.getF64ArrayAttr({1.0, -1.0})));
-    auto loc3 = NameLoc::get(rewriter.getStringAttr(name + "_add1"));
+    auto loc3 = NameLoc::get(rewriter.getStringAttr(name + "_sub1"));
     // auto type4 = RankedTensorType::get(output_shape, rewriter.getF32Type());
-    auto addOp1 = rewriter.create<top::AddOp>(loc3, type2, operands, attrs);
+    auto addOp1 = rewriter.create<top::SubOp>(loc3, type2, operands, attrs);
     auto out3 = addOp1.getOutput();
 
     // create (input[0] * const_val)+ (input[1] - input[0] * input[1])

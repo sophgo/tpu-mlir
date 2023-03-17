@@ -23,7 +23,7 @@ static int is_bcast(top::SubOp op) {
   auto prod1 = std::accumulate(shape1.begin(), shape1.end(), 1,
                                std::multiplies<int64_t>());
   auto sub = prod0 - prod1;
-  if (shape0.size() == shape1.size() && sub == 0) {
+  if (shape0.size() == shape1.size() && sub != 0) {
     for (int i = 0; i < shape0.size(); i++) {
       if (shape0[i] != shape1[i]) {
         bcast = 1;
@@ -36,7 +36,7 @@ static int is_bcast(top::SubOp op) {
     for (int i = 0; i < len; i++) {
       int dim_a = shape0[shape0.size() - 1 - i];
       int dim_b = shape1[shape1.size() - 1 - i];
-      if (dim_b != dim_b &&
+      if (dim_a != dim_b &&
           ((sub > 0 && dim_b != 1) || (sub < 0 && dim_a != 1))) {
         llvm_unreachable("Only broadcast right operand supported.");
       }

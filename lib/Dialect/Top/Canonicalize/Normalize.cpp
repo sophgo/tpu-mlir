@@ -106,21 +106,19 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
     std::string name_scale = name + "_scale";
     auto loc_scale = NameLoc::get(rewriter.getStringAttr(name_scale));
     std::vector<Value> operands_scale;
+    std::vector<NamedAttribute> attrs_scale;
     std::vector<float> scale_weight(c);
+    std::vector<float> scale_bias(c, 0.0);
     std::copy(scale_data->begin(), scale_data->end(), scale_weight.begin());
-    auto scale_type = RankedTensorType::get({c, 1, 1, 1}, rewriter.getF32Type());
+    auto scale_type = RankedTensorType::get({1, c, 1, 1}, rewriter.getF32Type());
     operands_scale.push_back(mul_result_var);
     operands_scale.push_back(none);
     operands_scale.push_back(none);
-    NamedAttrList attrs_scale;
-    attrs_scale.set("kernel_shape", rewriter.getI64ArrayAttr({1, 1}));
-    attrs_scale.set("strides", rewriter.getI64ArrayAttr({1, 1}));
-    attrs_scale.set("pads", rewriter.getI64ArrayAttr({0, 0, 0, 0}));
-    attrs_scale.set("group", rewriter.getI64IntegerAttr(c));
-    attrs_scale.set("relu_limit", rewriter.getF64FloatAttr(-1.0));
-    auto scale_op = rewriter.create<ConvOp>(loc_scale, result_type, operands_scale, attrs_scale);
+    auto scale_op = rewriter.create<ScaleOp>(loc_scale, result_type, operands_scale, attrs_scale);
     auto scale_weight_op = WeightOp::create(scale_op, name_scale + "_scaleWeight", scale_weight, scale_type);
+    auto scale_bias_op = WeightOp::create(scale_op, name_scale + "_scaleBias", scale_bias, scale_type);
     scale_op.setOperand(1, scale_weight_op);
+    scale_op.setOperand(2, scale_bias_op);
     //replace the origin NormalizeOp
     rewriter.replaceOp(op, {scale_op});
     return success();

@@ -30,8 +30,9 @@ void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
       ConvertUpsampleOp,
       ConvertWhereOp,
       ConvertMatMulWithRightTranspose,
-      convertMaxPool3D
-  >(patterns->getContext());
+      convertMaxPool3D,
+      ConvertSqrtOp
+      >(patterns->getContext());
   // clang-format on
 }
 } // namespace cv18xx
