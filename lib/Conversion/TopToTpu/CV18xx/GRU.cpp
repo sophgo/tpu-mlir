@@ -89,7 +89,7 @@ void GRULowering::LoweringBF16(PatternRewriter &rewriter, top::GRUOp op) const {
   gru_operands.emplace_back(none_op);
   gru_operands.emplace_back(gru_r_weight_op.clone_bf16(op));
   gru_operands.emplace_back(gru_bias_operand);
-  gru_operands.emplace_back(gru_h_weight_op.clone_bf16(op));
+  gru_operands.emplace_back(gru_h_weight_op ? gru_h_weight_op.clone_bf16(op) : op.getInitialH());
   gru_operands.emplace_back(none_op);
 
   // create lut

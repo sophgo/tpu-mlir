@@ -16,8 +16,6 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 using namespace tpu_mlir::cv18xx;
 
@@ -133,35 +131,13 @@ LogicalResult WeightReorder<tpu::GRUOp, int8_t>::matchAndRewrite(
 // GlobalGenInterface
 // =========================================
 void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
-  bool only_last = false;
-  int64_t seq_len, batch_size, input_size, garbage;
-  int64_t seq_len2, num_dir, batch_size2, hidden_size;
-  auto in_shape = module::getShape(getInput());
-  module::getNCHW(in_shape, seq_len, batch_size, input_size, garbage);
-  Value output;
-  if (!module::isNone(getResults()[0])) {
-    output = getResults()[0];
-  } else {
-    output = getResults()[1];
-  }
-  auto out_shape = module::getShape(output);
-  if (out_shape.size() == 4) {
-    module::getNCHW(out_shape, seq_len2, num_dir, batch_size2, hidden_size);
-    assert(seq_len == seq_len2);
-  } else {
-    module::getNCHW(out_shape, num_dir, batch_size2, hidden_size, garbage);
-    only_last = true;
-  }
+  auto attr = parseParam();
 
-  assert(batch_size == batch_size2);
-  assert(input_size == num_dir * 3 * hidden_size);
-
-  bool with_bias = !module::isNone(getBias());
-  bool with_h0 = !module::isNone(getInitialH());
   gaddr_t ga_input = module::getAddress(getInput());
-  gaddr_t ga_output = module::getAddress(output);
-  gaddr_t ga_bias = with_bias ? module::getAddress(getBias()) : 0;
-  gaddr_t ga_initial_h = with_h0 ? module::getAddress(getInitialH()) : 0;
+  gaddr_t ga_output_y = attr.output_y ? module::getAddress(getY()) : 0;
+  gaddr_t ga_output_yh = attr.output_yh ? module::getAddress(getYH()) : 0;
+  gaddr_t ga_bias = attr.have_bias? module::getAddress(getBias()) : 0;
+  gaddr_t ga_initial_h = attr.have_h0 ? module::getAddress(getInitialH()) : 0;
   gaddr_t ga_recurrence = module::getAddress(getRecurrence());
   gaddr_t ga_sigmoid_table = module::getAddress(getSigmoidTable());
   gaddr_t ga_sigmoid_slope = module::getAddress(getSigmoidSlopeTable());
@@ -171,13 +147,14 @@ void tpu::GRUOp::codegen_global_cv18xx(int64_t layer_id) {
   bool is_linear_before_reset = getLinearBeforeReset();
   bool is_bidirectional = getBidirectional();
 
-  if (module::isUniformQuantized(output)) {
+  if (module::isUniformQuantized(getInput())) {
     llvm_unreachable("Not supported now");
   } else {
     cvi_backend_tg_bf16_gru_kernel(
         layer_id, ga_input, ga_recurrence, ga_bias, ga_initial_h,
         ga_sigmoid_table, ga_sigmoid_slope, ga_tanh_table, ga_tanh_slope,
-        ga_output, seq_len, num_dir, batch_size, hidden_size, with_bias,
-        with_h0, is_linear_before_reset, is_bidirectional, only_last);
+        ga_output_y, ga_output_yh, attr.seq_len, attr.num_direction, attr.batch_size, attr.hidden_size,
+        attr.have_bias, attr.have_h0, is_linear_before_reset, is_bidirectional, attr.output_y,
+        attr.output_yh);
   }
 }

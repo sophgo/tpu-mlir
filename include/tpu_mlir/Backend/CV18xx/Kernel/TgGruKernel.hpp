@@ -20,14 +20,14 @@ namespace backend {
 class TgGruKernel {
 public:
   TgGruKernel() {}
-
   void init(uint32_t layer_id, gaddr_t ga_input, gaddr_t ga_recurrence,
-            gaddr_t ga_bias, gaddr_t ga_initial_h, gaddr_t ga_sigmoid_lut,
+            gaddr_t ga_bias, gaddr_t ga_init_h, gaddr_t ga_sigmoid_lut,
             gaddr_t ga_sigmoid_slope_lut, gaddr_t ga_tanh_lut,
-            gaddr_t ga_tanh_slope_lut, gaddr_t ga_output, int seq_length,
-            int num_dir, int batch_size, int hidden_size, bool do_bias,
-            bool with_initial_h, bool linear_before_reset, bool bidirectional,
-            bool only_last);
+            gaddr_t ga_tanh_slope_lut, gaddr_t ga_output_y,
+            gaddr_t ga_output_yh, int seq_length, int num_dir, int batch_size,
+            int hidden_size, bool do_bias, bool with_initial_h,
+            bool linear_before_reset, bool bidirectional, bool has_y,
+            bool has_yh);
 
   void schedule();
 
@@ -78,9 +78,10 @@ protected:
   gaddr_t ga_sigmoid_slope_lut;
   gaddr_t ga_tanh_lut;
   gaddr_t ga_tanh_slope_lut;
-  gaddr_t ga_output;
+  gaddr_t ga_output_y;
+  gaddr_t ga_output_yh;
   // for bidirectional
-  gaddr_t ga_store, ga_h0;
+  gaddr_t ga_store_y, ga_store_yh, ga_h0;
   gaddr_t ga_xz, ga_xr, ga_xh, ga_rz, ga_rr, ga_rh, ga_rbz, ga_rbr, ga_rbh;
   int seq_length;
   int batch_size;
@@ -94,7 +95,8 @@ protected:
   bool with_initial_h;
   bool linear_before_reset;
   bool bidirectional;
-  bool only_last;
+  bool has_y;
+  bool has_yh;
   cvk_fmt_t fmt;
   int fmt_size;
 

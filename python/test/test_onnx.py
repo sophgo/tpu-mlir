@@ -83,7 +83,7 @@ class ONNX_IR_TESTER(object):
             "GroupFC":      (self.test_GroupFC,     Y, N, Y),
             "GRU":          (self.test_GRU,         Y, N, Y),  # test gru output Y
             "GRU2":         (self.test_GRU2,        Y, N, Y),  # test gru output Yh
-            "GRU3":         (self.test_GRU3,        Y, N, N),  # test gru output Y and Yh
+            "GRU3":         (self.test_GRU3,        Y, N, Y),  # test gru output Y and Yh
             "LeakyRelu":    (self.test_LeakyRelu,   Y, N, Y),
             "Log":          (self.test_Log,         Y, N, Y),
             "LogSoftmax":   (self.test_LogSoftmax,  Y, N, Y),
@@ -164,7 +164,7 @@ class ONNX_IR_TESTER(object):
             "TorchGelu":            (self.test_TorchGelu,           Y, N, Y),
             "TorchGroupNorm":       (self.test_TorchGroupNorm,      Y, N, N),
             "TorchGroupNorm2":      (self.test_TorchGroupNorm2,     Y, N, N),
-            "TorchGRU":             (self.test_TorchGRU,            Y, N, N),
+            "TorchGRU":             (self.test_TorchGRU,            Y, N, Y),
             "TorchIdentity":        (self.test_TorchIdentity,       Y, N, Y),
             "TorchIndexCopy":       (self.test_TorchIndexCopy,      N, N, N),
             "TorchInstanceNorm":    (self.test_TorchInstanceNorm,   Y, N, N),
@@ -172,14 +172,14 @@ class ONNX_IR_TESTER(object):
             "TorchLayerGroup":      (self.test_TorchLayerGroup,     Y, N, Y),
             "TorchLayerNorm":       (self.test_TorchLayerNorm,      Y, N, Y),
             "TorchLayerNorm2":      (self.test_TorchLayerNorm2,     Y, N, Y),
-            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, N, N),
+            "TorchLogSoftmax":      (self.test_TorchLogSoftmax,     Y, N, Y),
             "TorchLSTM":            (self.test_TorchLSTM,           Y, N, Y),
             "TorchMaskedFill":      (self.test_TorchMaskedFill,     Y, N, N),
             "TorchNonZero":         (self.test_TorchNonZero,        N, N, N),
             "TorchReflectionPad":   (self.test_TorchReflectionPad,  Y, N, Y),
             "TorchRoiAlign":        (self.test_TorchRoiAlign,       Y, N, N),
             "TorchSize":            (self.test_TorchSize,           Y, N, Y),
-            "TorchStd":             (self.test_TorchStd,            Y, N, N),
+            "TorchStd":             (self.test_TorchStd,            Y, N, Y),
             "TorchWhere":           (self.test_TorchWhere,          Y, N, N),
             "TorchZeroPad":         (self.test_TorchZeroPad,        Y, N, Y),
             #########################################
@@ -847,6 +847,12 @@ class ONNX_IR_TESTER(object):
         graph_def = helper.make_graph([gru_def],
                                       case_name, [input], [Y, Y_h],
                                       initializer=[w_value, r_value, b_value, h_value])
+        if self.is_cv18xx:
+            input_data = {}
+            input_data["input"] = np.random.rand(seq_length, batch_size,
+                                                 input_size).astype(np.float32)
+            self.onnx_and_test(graph_def, input_data=input_data)
+            return
         self.onnx_and_test(graph_def)
 
     def test_MaxPool1d(self, case_name):
