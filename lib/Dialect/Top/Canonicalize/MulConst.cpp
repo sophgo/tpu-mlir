@@ -45,7 +45,6 @@ struct MergeMulConst : public OpRewritePattern<MulConstOp> {
     if (!formerOp->getResult(0).hasOneUse()) {
       return failure();
     }
-    formerOp->dump();
     if (auto convOp = dyn_cast_or_null<top::ConvOp>(formerOp)) {
       if (convOp.getKernelShape().size() != 2) {
         return failure();

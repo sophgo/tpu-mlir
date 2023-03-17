@@ -99,7 +99,6 @@ struct NormalizeConvert : public OpRewritePattern<NormalizeOp> {
     attrs_mul.push_back(rewriter.getNamedAttr("rshift", rewriter.getI64IntegerAttr(0)));
     auto mul_op = rewriter.create<MulOp>(loc_mul, result_type, operands_mul, attrs_mul);
     auto mul_result_var = mul_op.getResult();
-    mul_result_var.dump();
 
     //6.Scale Op (depthwise convolution)
     rewriter.setInsertionPointAfterValue(mul_result_var);
