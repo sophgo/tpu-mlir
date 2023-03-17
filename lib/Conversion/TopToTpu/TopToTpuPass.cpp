@@ -125,12 +125,51 @@ struct KeepSignPattern : public OpRewritePattern<TyOp> {
       if (out_qtype.getMin() < 0) {
         return failure();
       }
-      min = -out_qtype.getMax();
+      min = -out_qtype.getMax() * 0.1;
     } else {
       if (out_qtype.getMin() >= 0) {
         return failure();
       }
       min = 0;
+    }
+    auto etype = module::getStorageType(out);
+    auto new_qtype =
+        quant::CalibratedQuantizedType::get(etype, min, out_qtype.getMax());
+    auto new_type = RankedTensorType::get(module::getShape(out), new_qtype);
+    out.setType(new_type);
+    return success();
+  }
+};
+
+struct KeepAddSignPattern : public OpRewritePattern<top::AddOp> {
+  using OpRewritePattern<top::AddOp>::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(top::AddOp op,
+                                PatternRewriter &rewriter) const override {
+    bool is_sign = false;
+    auto num_inputs = op.getInputs().size();
+    auto coeffs = module::getF64Array(op.getCoeff(), num_inputs, 1.0);
+    for (int i = 0; i < num_inputs; i++) {
+      auto in = op.getInputs()[i];
+      auto coeff = coeffs->at(i);
+      if (!module::isCalibratedType(in)) {
+        return failure();
+      }
+      auto in_qtype = module::getCalibratedType(in);
+      if (in_qtype.getMin() * coeff < 0 || in_qtype.getMax() * coeff < 0) {
+        is_sign = true;
+        break;
+      }
+    }
+    auto out = op.getOutput();
+    auto out_qtype = module::getCalibratedType(out);
+    double min = out_qtype.getMin();
+    if (is_sign && min >= 0) {
+      min = -out_qtype.getMax() * 0.1;
+    } else if (is_sign == false && min < 0) {
+      min = 0;
+    } else {
+      return failure();
     }
     auto etype = module::getStorageType(out);
     auto new_qtype =
@@ -413,7 +452,7 @@ protected:
     // keep sign for some ops
     // backend not support in out not the same sign
     patterns.clear();
-    patterns.add<KeepSignPattern<top::AvgPoolOp>>(ctx_);
+    patterns.add<KeepSignPattern<top::AvgPoolOp>, KeepAddSignPattern>(ctx_);
     applyPatternsAndFoldGreedily(module_, std::move(patterns));
   }
 
