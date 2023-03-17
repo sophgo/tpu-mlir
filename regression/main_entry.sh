@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+# set -e
 
 # full test (f32/f16/bf16/int8): main_entry.sh all
 # basic test (f32/int8): main_entry.sh basic
