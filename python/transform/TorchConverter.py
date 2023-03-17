@@ -85,7 +85,8 @@ class TorchNode(BaseNode):
 
     def __init__(self, node):
         info = dict()
-        info["op_type"] = node.kind()
+        op_type = node.kind()
+        info["op_type"] = op_type if not op_type.endswith("_") else op_type[:-1]
         info["inputs"] = [inp.debugName() for inp in node.inputs()]
         info["outputs"] = [outp.debugName() for outp in node.outputs()]
         info["name"] = info["outputs"][0]
@@ -137,6 +138,7 @@ class TorchConverter(BaseConverter):
             "aten::avg_pool1d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool2d": lambda node: self.convert_avgpool_op(node),
             "aten::avg_pool3d": lambda node: self.convert_avgpool_op(node),
+            "aten::batch_norm": lambda node: self.convert_batch_norm_op(node),
             "aten::bmm": lambda node: self.convert_matmul_op(node),
             "aten::cat": lambda node: self.convert_concat_op(node),
             "aten::_convolution": lambda node: self.convert_conv_op(node),
@@ -156,6 +158,7 @@ class TorchConverter(BaseConverter):
             "aten::hardswish": lambda node: self.convert_hardswish(node),
             "aten::hardtanh": lambda node: self.convert_hardtanh(node),  # relu6 is treated as hardtanh
             "aten::index_select": lambda node: self.convert_index_select_op(node),
+            "aten::instance_norm": lambda node: self.convert_instance_norm_op(node),
             "aten::layer_norm": lambda node: self.convert_layer_norm_op(node),
             "aten::le": lambda node: self.convert_compare_op(node, "LessOrEqual"),
             "aten::leaky_relu": lambda node: self.convert_leaky_relu_op(node),
@@ -205,14 +208,14 @@ class TorchConverter(BaseConverter):
             "prim::TupleUnpack": lambda node: self.convert_tuple_unpack(node),
         }
         # yapf: enable
-        self.check_op_names()
+        self.check_op_types()
 
     def __del__(self):
         if self.mlir != None:
             del self.mlir
             self.mlir = None
 
-    def get_all_op_names(self):
+    def get_all_op_types(self):
         """Return all operator names in the input graph"""
         self.nodes = list(self.graph.nodes())
         prim_blocks = ["prim::If", "prim::Loop"]
@@ -223,15 +226,15 @@ class TorchConverter(BaseConverter):
                     self.nodes += block.nodes()
         return set(node.kind() for node in self.nodes)
 
-    def check_op_names(self):
-        op_names = self.get_all_op_names()
+    def check_op_types(self):
+        op_types = self.get_all_op_types()
         known_ops = list(self.op_factory.keys())
 
         unknown_ops = []
-        for op_name in op_names:
-            if op_name not in known_ops:
-                if not (op_name.endswith("_") and op_name[:-1] in known_ops):
-                    unknown_ops.append(op_name)
+        for op_type in op_types:
+            if op_type not in known_ops:
+                if not (op_type.endswith("_") and op_type[:-1] in known_ops):
+                    unknown_ops.append(op_type)
         if len(unknown_ops) != 0:
             raise RuntimeError(
                 "The following operators are not implemented: {}".format(unknown_ops))
@@ -652,6 +655,26 @@ class TorchConverter(BaseConverter):
         op2 = self.getOp(torch_node.inputs[2]) if not y_is_const else self.mlir.none_op
         new_op = self.mlir.create_where_op([op0, op1, op2], [], **p)
         self.addOperand(torch_node.name, new_op)
+
+    def convert_instance_norm_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        weight = self.getOp(torch_node.inputs[1])
+        bias = self.getOp(torch_node.inputs[2])
+        eps = self.const_val[torch_node.inputs[7]]
+        p = {'name': torch_node.name, 'eps': eps}
+        out = self.mlir.create_instance_norm_op([op0, weight, bias], [], **p)
+        self.addOperand(torch_node.name, out)
+
+    def convert_batch_norm_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        weight = self.getOp(torch_node.inputs[1])
+        bias = self.getOp(torch_node.inputs[2])
+        mean = self.getOp(torch_node.inputs[3])
+        var = self.getOp(torch_node.inputs[4])
+        eps = self.const_val[torch_node.inputs[7]]
+        p = {'name': torch_node.name, 'epsilon': eps}
+        out = self.mlir.create_batchnorm_op([op0, mean, var, weight, bias], [], **p)
+        self.addOperand(torch_node.name, out)
 
     def convert_layer_norm_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
