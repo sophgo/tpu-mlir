@@ -43,6 +43,7 @@ class TORCH_IR_TESTER(object):
             "AvgPool1d":        (self.test_AvgPool1d,   Y, N, N),
             "AvgPool2d":        (self.test_AvgPool2d,   Y, N, N),
             "AvgPool3d":        (self.test_AvgPool3d,   Y, N, N),
+            "BatchNorm":        (self.test_BatchNorm,   Y, N, N),
             "BMM":              (self.test_BatchMatMul, Y, N, N),
             "Compare":          (self.test_Compare,     Y, N, N),
             "Concat":           (self.test_Concat,      Y, N, N),
@@ -57,6 +58,7 @@ class TORCH_IR_TESTER(object):
             "GroupNorm":        (self.test_GroupNorm,   Y, N, N),
             "GRU":              (self.test_GRU,         Y, N, N),
             "IndexSelect":      (self.test_IndexSelect, Y, N, N),
+            "InstanceNorm":     (self.test_InstanceNorm,Y, N, N),
             "LayerNorm":        (self.test_LayerNorm,   Y, N, N),
             "LeakyRelu":        (self.test_LeakyRelu,   Y, N, N),
             "Linear":           (self.test_Linear,      Y, N, N),
@@ -175,6 +177,7 @@ class TORCH_IR_TESTER(object):
 
         input_npz = "{}_ref_in_fp32.npz".format(model_name)
         ref_npz = model_name + '_ref_outputs.npz'
+        top_npz = model_name + "_top_outputs.npz"
         input_data = {}
         for idx, name in enumerate(tool.converter.input_names):
             input_data[name] = np.random.random(size=in_shapes[idx]).astype(np.float32)
@@ -185,8 +188,9 @@ class TORCH_IR_TESTER(object):
         torch_outs = torch_inference(input_data, torch_model, True)
         np.savez(ref_npz, **torch_outs)
         file_mark(ref_npz)
-        show_fake_cmd(input_npz, fp32_mlir, "top_out.npz")
+        show_fake_cmd(input_npz, fp32_mlir, top_npz)
         top_mlir_outs = mlir_inference(input_data, fp32_mlir, True)
+        np.savez(top_npz, **top_mlir_outs)
         return (torch_outs, top_mlir_outs, input_npz)
 
     def bmodel_generate(self,
@@ -254,14 +258,14 @@ class TORCH_IR_TESTER(object):
     def trace_and_test(
         self,
         in_shapes,
-        torch_model,
+        torch_model:nn.Module,
     ):
         """Generic function to generate and compare torch and Tpu-Mlir output"""
         model_name = "{}_{}".format(self.CURRENT_CASE, TORCH_IR_TESTER.ID)
         TORCH_IR_TESTER.ID += 1
         model_def = model_name + ".pt"
         inputs = self.create_random_input(in_shapes)
-        jit.trace(torch_model, inputs).save(model_def)
+        jit.trace(torch_model.eval(), inputs).save(model_def)
         torch_outs, top_mlir_outs, input_npz = self.torch_convert(in_shapes, model_def, model_name)
         # test onnx and mlir outputs
         counter = 0
@@ -692,6 +696,64 @@ class TORCH_IR_TESTER(object):
         _test_prelu((1, 3, 32, 32))
         _test_prelu((2, 32, 16))
         _test_prelu((32, 32))
+
+    #######################################################################
+    # BatchNorm
+    # ------------
+    def test_BatchNorm(self):
+        """BatchNorm"""
+
+        def _test_batchnorm(op_type, input_shape, eps=1e-5, affine=True):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    c = input_shape[1]
+                    self.bm = op_type(c, affine=affine, eps=eps)
+
+                def forward(self, x):
+                    y = self.bm(x)
+
+                    return y
+
+            self.trace_and_test([input_shape], Model())
+
+        _test_batchnorm(nn.BatchNorm2d, (3, 4, 32, 32), 3e-5)
+        _test_batchnorm(nn.BatchNorm2d, (2, 32, 16, 16), affine=False)
+        _test_batchnorm(nn.BatchNorm1d, (3, 32), 3e-5)
+        _test_batchnorm(nn.BatchNorm1d, (3, 32, 32), affine=False)
+        _test_batchnorm(nn.BatchNorm3d, (3, 4, 5, 32, 32), 3e-5)
+        _test_batchnorm(nn.BatchNorm3d, (2, 32, 16, 16, 3), affine=False)
+
+    #######################################################################
+    # InstanceNorm
+    # ------------
+    def test_InstanceNorm(self):
+        """InstanceNorm"""
+
+        def _test_instancenorm(op_type, input_shape, feature, eps=1e-5, affine=True):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+                    self.im = op_type(feature, affine=affine, eps=eps)
+
+                def forward(self, x):
+                    y = self.im(x)
+
+                    return y
+
+            self.trace_and_test([input_shape], Model())
+
+        _test_instancenorm(nn.InstanceNorm2d, (3, 4, 32, 32), 4, 3e-5)
+        # TODO: support squeeze & unsqueeze
+        # _test_instancenorm(nn.InstanceNorm2d, (32, 16, 16), 16, affine=False)
+        # _test_instancenorm(nn.InstanceNorm1d, (3, 32), 3, 3e-5)
+        _test_instancenorm(nn.InstanceNorm1d, (3, 32, 32), 32, affine=False)
+        # _test_instancenorm(nn.InstanceNorm3d, (4, 5, 32, 32), 4, 3e-5)
+        _test_instancenorm(nn.InstanceNorm3d, (2, 32, 16, 16, 3), 32, affine=False)
 
     #######################################################################
     # BMM

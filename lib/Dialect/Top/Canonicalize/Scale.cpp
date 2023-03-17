@@ -272,7 +272,9 @@ struct TopScaleToDwConv : public OpRewritePattern<ScaleOp> {
   LogicalResult matchAndRewrite(ScaleOp op,
                                 PatternRewriter &rewriter) const override {
     auto input_shape =module::getShape(op.getInput());
-
+    if (input_shape.size() > 4) {
+      return failure();
+    }
     auto cur_scale = dyn_cast<WeightOp>(op.getScale().getDefiningOp());
     auto cur_bias = dyn_cast<WeightOp>(op.getBias().getDefiningOp());
     if (!(cur_scale && cur_bias) || input_shape.size() < 4) {
