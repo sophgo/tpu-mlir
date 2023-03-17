@@ -526,6 +526,7 @@ private:
   int getCpuOpType();
   void getCpuParam();
   tpu::GenericCpuOp op_;
+  void get_topk_param();
 };
 
 struct InstanceNormParam {
