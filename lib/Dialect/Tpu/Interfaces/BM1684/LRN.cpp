@@ -13,10 +13,24 @@
 
 #include "tpu_mlir/Support/MathUtils.h"
 
-
-
 using namespace tpu_mlir::backend;
 
 void tpu::LRNOp::codegen_global_bm1684() {
-  llvm_unreachable("LSTM unsupported");
+  
+  auto in_addr = module::getAddress(getInput());
+  auto out_addr = module::getAddress(getOutput());
+  int64_t n, c, h, w;
+  module::getNCHW(getOutput(), n, c, h, w);
+  if(false == module::isUniformQuantized(getInput())){
+  BM1684::instance().dl_nodechip_lrn_forward_parallel(
+      in_addr, out_addr, n, c, h, w, getAlpha().convertToDouble(), getSize(),
+      getBeta().convertToDouble(), getBias().convertToDouble(),
+      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  } else {
+    int in_sign = module::isSign(getInput());
+    BM1684::instance().dl_nodechip_lrn_fix8b_forward_parallel(
+      in_addr, out_addr, n, c, h, w, in_sign, getAlpha().convertToDouble(), getSize(),
+      getBeta().convertToDouble(), getBias().convertToDouble(), 1, 1,
+      (CMD_ID_NODE *)BM1684::instance().cmdid_node);
+  }
 }
