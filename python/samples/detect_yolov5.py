@@ -12,6 +12,7 @@ import sys
 import argparse
 import cv2
 from tools.model_runner import mlir_inference, model_inference, onnx_inference
+from utils.preprocess import supported_customization_format
 
 COCO_CLASSES = ("person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
                 "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
@@ -58,6 +59,18 @@ ANCHORS = {  # stride: anchor
     8: [[1.25000, 1.62500], [2.00000, 3.75000], [4.12500, 2.87500]],
     16: [[1.87500, 3.81250], [3.87500, 2.81250], [3.68750, 7.43750]],
     32: [[3.62500, 2.81250], [4.87500, 6.18750], [11.65625, 10.18750]]
+}
+
+customization_format_attributes = {
+    'RGB_PLANAR': ('rgb', 'nchw'),
+    'RGB_PACKED': ('rgb', 'nhwc'),
+    'BGR_PLANAR': ('bgr', 'nchw'),
+    'BGR_PACKED': ('bgr', 'nhwc'),
+    'GRAYSCALE': ('bgr', 'nchw'),
+    'YUV420_PLANAR': ('bgr', 'nchw'),
+    'YUV_NV12': ('bgr', 'nchw'),
+    'YUV_NV21': ('bgr', 'nchw'),
+    'RGBA_PLANAR': ('rgba', 'nchw')
 }
 
 
@@ -168,7 +181,7 @@ def multiclass_nms(boxes, scores, iou_thres, score_thres, class_agnostic=False):
     return nms_method(boxes, scores, iou_thres, score_thres)
 
 
-def preproc(img, input_size, swap=(2, 0, 1)):
+def preproc(img, input_size, pixel_format, channel_format, fuse_pre, swap=(2, 0, 1)):
     if len(img.shape) == 3:
         padded_img = np.ones((input_size[0], input_size[1], 3), dtype=np.uint8) * 114  # 114
     else:
@@ -183,8 +196,14 @@ def preproc(img, input_size, swap=(2, 0, 1)):
     top = int((input_size[0] - int(img.shape[0] * r)) / 2)
     left = int((input_size[1] - int(img.shape[1] * r)) / 2)
     padded_img[top:int(img.shape[0] * r) + top, left:int(img.shape[1] * r) + left] = resized_img
-    padded_img = padded_img.transpose(swap)[::-1]  # HWC to CHW, BGR to RGB
-    padded_img = np.ascontiguousarray(padded_img, dtype=np.float32)
+
+    if (channel_format == 'nchw'):
+        padded_img = padded_img.transpose(swap)  # HWC to CHW
+    if (pixel_format == 'rgb'):
+        padded_img = padded_img[::-1]  # BGR to RGB
+
+    padded_img = np.ascontiguousarray(padded_img, dtype=np.float32 if not fuse_pre else np.uint8)
+
     return padded_img, r, top, left
 
 
@@ -207,10 +226,10 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
         if out.ndim != 5 or (out.shape[0], out.shape[1], out.shape[4]) != (1, 3, 85):
             if out.ndim == 4 and (out.shape[0], out.shape[1]) == (1, 255):
                 out = out.reshape(1, 3, 85, out.shape[2], out.shape[3])
-                out = out.transpose(0,1,3,4,2)
+                out = out.transpose(0, 1, 3, 4, 2)
             elif out.ndim == 4 and (out.shape[0], out.shape[3]) == (1, 255):
                 out = out.reshape(1, out.shape[1], out.shape[2], 3, 85)
-                out = out.transpose(0,3,1,2,4)
+                out = out.transpose(0, 3, 1, 2, 4)
             else:
                 continue
         # 1, 3, y, x, 85
@@ -236,6 +255,7 @@ def postproc(outputs, imsize, top, left, anchors=ANCHORS):
     boxes_xyxy[:, 3] = boxes[:, 1] + boxes[:, 3] / 2.
     return scores, boxes_xyxy
 
+
 def refine_cvi_output(output):
     new_output = {}
     for k in output.keys():
@@ -256,6 +276,14 @@ def parse_args():
     parser.add_argument("--conf_thres", type=float, default=0.001, help="Confidence threshold")
     parser.add_argument("--iou_thres", type=float, default=0.6, help="NMS IOU threshold")
     parser.add_argument("--score_thres", type=float, default=0.5, help="Score of the result")
+    parser.add_argument("--fuse_preprocess",
+                        action='store_true',
+                        help="if the model fused prerpocess")
+    parser.add_argument("--customization_format",
+                        default='',
+                        type=str.upper,
+                        choices=supported_customization_format,
+                        help="pixel and channel format of original input data")
     args = parser.parse_args()
     return args
 
@@ -263,9 +291,19 @@ def parse_args():
 def main():
     args = parse_args()
     input_shape = tuple(map(int, args.net_input_dims.split(',')))
+    fuse_pre = args.fuse_preprocess
+    customization_format = args.customization_format
+    pixel_format = 'rgb'
+    channel_format = 'nchw'
+    if (fuse_pre and customization_format):
+        pixel_format = customization_format_attributes[customization_format][0]
+        channel_format = customization_format_attributes[customization_format][1]
+
     origin_img = cv2.imread(args.input)
-    img, ratio, top, left = preproc(origin_img, input_shape)
-    img = np.expand_dims(img, axis=0) / 255.  # 0 - 255 to 0.0 - 1.0
+    img, ratio, top, left = preproc(origin_img, input_shape, pixel_format, channel_format, fuse_pre)
+    img = np.expand_dims(img, axis=0)
+    if (not fuse_pre):
+        img /= 255.  # 0 - 255 to 0.0 - 1.0
     data = {args.input_names: img}  # input name from model
     output = dict()
     if args.model.endswith('.onnx'):
@@ -279,7 +317,11 @@ def main():
     else:
         raise RuntimeError("not support modle file:{}".format(args.model))
     scores, boxes_xyxy = postproc(output, input_shape, top, left)
-    dets = multiclass_nms(boxes_xyxy, scores, iou_thres=args.iou_thres, score_thres=args.conf_thres, class_agnostic=True)
+    dets = multiclass_nms(boxes_xyxy,
+                          scores,
+                          iou_thres=args.iou_thres,
+                          score_thres=args.conf_thres,
+                          class_agnostic=True)
     if dets is not None:
         final_boxes, final_scores, final_cls_inds = dets[:, :4], dets[:, 4], dets[:, 5]
         final_boxes /= ratio
