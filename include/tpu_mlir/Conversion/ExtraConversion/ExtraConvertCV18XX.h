@@ -125,6 +125,13 @@ public:
                                 PatternRewriter &rewriter) const override;
 };
 
+class ConvertSqrtOp : public OpRewritePattern<top::SqrtOp> {
+public:
+  using OpRewritePattern::OpRewritePattern;
+  LogicalResult matchAndRewrite(top::SqrtOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns);
 } // namespace cv18xx
 } // namespace tpu_mlir
