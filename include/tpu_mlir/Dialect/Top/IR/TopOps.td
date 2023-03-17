@@ -918,6 +918,7 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
     I64Attr:$shrink_axis_mask
   );
   let results = (outs AnyTensor:$output);
+  let hasCanonicalizer = 1;
 }
 
 def Top_SelectOp: Top_Op<"Select"> {
