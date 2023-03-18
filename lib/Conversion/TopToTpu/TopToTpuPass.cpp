@@ -22,51 +22,43 @@ namespace mlir {
 
 namespace tpu_mlir {
 
-static void BackwardReshape(top::ReshapeOp op) {
-  auto in = op.getInput();
-  auto out = op.getOutput();
+template <typename OpTy> static void BackwardOp(OpTy op) {
+  Value in = op.getInput();
+  Value out = op.getOutput();
   auto in_type = in.getType().cast<RankedTensorType>();
   auto out_qtype = module::getCalibratedType(out);
   auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
   in.setType(new_type);
+}
+
+static void Backward(Value in) {
   if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
-    BackwardReshape(reshapeOp);
+    BackwardOp(reshapeOp);
+    //Backward(reshapeOp.getInput());
+  } else if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
+    BackwardOp(permuteOp);
+    //Backward(permuteOp.getInput());
   }
 }
 
-static void ForwardReshape(top::ReshapeOp op) {
-  auto in = op.getInput();
-  auto out = op.getOutput();
+template <typename OpTy> static void ForwardOp(OpTy op) {
+  Value in = op.getInput();
+  Value out = op.getOutput();
   auto out_type = out.getType().cast<RankedTensorType>();
   auto in_qtype = module::getCalibratedType(in);
   auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
   out.setType(new_type);
-  if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
-    ForwardReshape(reshapeOp);
-  }
 }
 
-static void BackwardPermute(top::PermuteOp op) {
-  auto in = op.getInput();
-  auto out = op.getOutput();
-  auto in_type = in.getType().cast<RankedTensorType>();
-  auto out_qtype = module::getCalibratedType(out);
-  auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
-  in.setType(new_type);
-  if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
-    BackwardPermute(permuteOp);
-  }
-}
-
-static void ForwardPermute(top::PermuteOp op) {
-  auto in = op.getInput();
-  auto out = op.getOutput();
-  auto out_type = out.getType().cast<RankedTensorType>();
-  auto in_qtype = module::getCalibratedType(in);
-  auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
-  out.setType(new_type);
-  if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
-    ForwardPermute(permuteOp);
+static void Forward(Value out) {
+  for (auto user : out.getUsers()) {
+    if (auto reshapeOp = dyn_cast<top::ReshapeOp>(user)) {
+      ForwardOp(reshapeOp);
+      //Forward(reshapeOp.getOutput());
+    } else if (auto permuteOp = dyn_cast<top::PermuteOp>(user)) {
+      ForwardOp(permuteOp);
+      //Forward(permuteOp.getOutput());
+    }
   }
 }
 
@@ -98,11 +90,7 @@ struct ForwardCalibartion : public OpRewritePattern<TyOp> {
     auto out_type = out.getType().cast<RankedTensorType>();
     auto new_type = RankedTensorType::get(out_type.getShape(), in_qtype);
     out.setType(new_type);
-    if (auto reshapeOp = dyn_cast<top::ReshapeOp>(out.getDefiningOp())) {
-      ForwardReshape(reshapeOp);
-    } else if (auto permuteOp = dyn_cast<top::PermuteOp>(out.getDefiningOp())) {
-      ForwardPermute(permuteOp);
-    }
+    Forward(out);
     return success();
   }
 };
@@ -137,6 +125,7 @@ struct KeepSignPattern : public OpRewritePattern<TyOp> {
         quant::CalibratedQuantizedType::get(etype, min, out_qtype.getMax());
     auto new_type = RankedTensorType::get(module::getShape(out), new_qtype);
     out.setType(new_type);
+    Forward(out);
     return success();
   }
 };
@@ -211,11 +200,7 @@ struct BackwardCalibartion : public OpRewritePattern<TyOp> {
     }
     auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
     in.setType(new_type);
-    if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
-      BackwardReshape(reshapeOp);
-    } else if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
-      BackwardPermute(permuteOp);
-    }
+    Backward(in);
     return success();
   }
 };
@@ -325,12 +310,7 @@ struct BackwardMutiInSingleOut : public OpRewritePattern<TyOp> {
       auto in_type = in.getType().cast<RankedTensorType>();
       auto new_type = RankedTensorType::get(in_type.getShape(), out_qtype);
       in.setType(new_type);
-      if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
-        BackwardReshape(reshapeOp);
-      } else if (auto permuteOp =
-                     dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
-        BackwardPermute(permuteOp);
-      }
+      Backward(in);
     }
     return success();
   }
