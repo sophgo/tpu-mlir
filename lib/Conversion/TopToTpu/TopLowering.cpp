@@ -19,7 +19,8 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
   int64_t in_zp, out_zp;
   module::getScaleAndZeroPoint(in, in_scale, in_zp, asymmetric);
   module::getScaleAndZeroPoint(out, out_scale, out_zp, asymmetric);
-  if (in_scale == out_scale && in_zp == out_zp) {
+  if (module::isSign(in) == module::isSign(out) && in_scale == out_scale &&
+      in_zp == out_zp) {
     return in;
   }
   auto in_shape = module::getShape(in);
@@ -56,7 +57,8 @@ Value do_transfer(Value in, Value out, bool asymmetric) {
         builder.getNamedAttr("rshift", builder.getI64IntegerAttr(rshift)));
     attrs.push_back(builder.getNamedAttr(
         "quant_mode",
-        tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::MultiplierShift)));
+        tpu::RequantModeAttr::get(op->getContext(),
+                                  tpu::RequantMode::MultiplierShift)));
     builder.setInsertionPointAfterValue(in);
     auto rqOp = builder.create<tpu::RequantIntOp>(name_loc, new_type,
                                                   ValueRange{in}, attrs);
@@ -105,8 +107,8 @@ Value do_transfer_fp(Value in, Value out, bool asymmetric) {
   attrs.push_back(
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
   attrs.push_back(builder.getNamedAttr(
-      "quant_mode",
-      tpu::RequantModeAttr::get(op->getContext(), tpu::RequantMode::MultiplierShift)));
+      "quant_mode", tpu::RequantModeAttr::get(
+                        op->getContext(), tpu::RequantMode::MultiplierShift)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, rq_type,
                                                ValueRange{rq_in}, attrs);
   if (out_zp == 0) {
@@ -192,7 +194,6 @@ Value do_requant(Location name_loc, Value input, Value quant, Type to_type,
   return newOp.getOutput();
 }
 
-
 Value do_requantFp(Value input, double scale, double offset, Type to_type,
                    std::string &to_name, tpu::RequantMode mode) {
   auto from_stype = module::getStorageType(input);
@@ -206,8 +207,8 @@ Value do_requantFp(Value input, double scale, double offset, Type to_type,
       builder.getNamedAttr("scale", builder.getF64FloatAttr(scale)));
   attrs.push_back(
       builder.getNamedAttr("offset", builder.getF64FloatAttr(offset)));
-  attrs.push_back(builder.getNamedAttr(
-      "quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
+  attrs.push_back(
+      builder.getNamedAttr("quant_mode", tpu::RequantModeAttr::get(ctx, mode)));
   auto rqOp = builder.create<tpu::RequantFpOp>(name_loc, to_type,
                                                ValueRange{input}, attrs);
 
