@@ -46,13 +46,17 @@ public:
     std::string quant_mode = this->mode;
     std::string pixel_format = this->customization_format;
     fn.walk([&](top::InputOp inputOp) {
-      double threshold;
-      if (quant_mode == "INT8") {
+      double max, min;
+      // check if there is calibration table (for mix precision case)
+      if (module::isCalibratedType(inputOp.getOutput())) {
         auto itype = module::getCalibratedType(inputOp.getOutput());
-        threshold = itype.getMax();
+        max = itype.getMax();
+        min = itype.getMin();
       } else {
-        threshold = 127; // a random threshold value for Type
+        max = 127; // a random threshold value for Type
+        min = -128;
       }
+
       auto name = module::getName(inputOp.getOutput()).str();
       auto resized_dims = module::getI64Array(inputOp.getResizeDims().value());
       // Get the original channel_order(rgb,bgr,etc..) and save it to
@@ -126,9 +130,10 @@ public:
           break;
         }
       }
-      attrs.emplace_back(builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
+      attrs.emplace_back(
+          builder.getNamedAttr("sign", builder.getBoolAttr(sign)));
       auto cali_type = quant::CalibratedQuantizedType::get(
-          builder.getF32Type(), sign ? -threshold : 0, threshold);
+          builder.getF32Type(), min, max);
       auto type = RankedTensorType::get({n, c, h, w}, cali_type);
       auto newOp = builder.create<top::PreprocessOp>(
           loc, type, ArrayRef<Value>{currentOut}, attrs);

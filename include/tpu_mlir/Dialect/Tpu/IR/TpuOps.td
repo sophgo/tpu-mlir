@@ -477,6 +477,25 @@ def Tpu_AddConstOp: Tpu_Op<"AddConst",
   let hasCanonicalizeMethod = 1;
 }
 
+def Tpu_PreprocessOp: Tpu_Op<"Preprocess"> {
+  let summary = "FusePreprcess, it's just a placeholder op.";
+  let description = [{
+    It may be divided to permute + slice + scale/scale_lut ops.
+  }];
+  let arguments = (
+    ins AnyTensor:$input,
+    StrAttr:$quant_mode,
+    StrAttr:$customization_format,
+    StrAttr:$channel_order,
+    I64ArrayAttr:$resize_dims,
+    F64ArrayAttr:$scale,
+    F64ArrayAttr:$mean,
+    DefaultValuedAttr<BoolAttr, "true">:$sign
+  );
+  let hasCanonicalizeMethod = 1;
+  let results = (outs AnyTensor:$output);
+}
+
 def Tpu_SubOp: Tpu_Op<"Sub",
     [SupportFuseRelu,
     DeclareOpInterfaceMethods<LocalGenInterface, ["LocalGenSupport", "assign_sec_info"]>,

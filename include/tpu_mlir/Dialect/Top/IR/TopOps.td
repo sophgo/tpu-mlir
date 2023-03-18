@@ -2016,7 +2016,7 @@ def Top_RoiAlignOp: Top_Op<"RoiAlign"> {
 }
 
 def Top_PreprocessOp: Top_Op<"Preprocess"> {
-  let summary = "FusePreprcess for cv18xx chip, it's just a placeholder op.";
+  let summary = "FusePreprcess, it's just a placeholder op.";
   let description = [{
     It may be divided to permute + slice + scale/scale_lut ops.
   }];
