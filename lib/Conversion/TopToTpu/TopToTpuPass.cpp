@@ -165,6 +165,7 @@ struct KeepAddSignPattern : public OpRewritePattern<top::AddOp> {
         quant::CalibratedQuantizedType::get(etype, min, out_qtype.getMax());
     auto new_type = RankedTensorType::get(module::getShape(out), new_qtype);
     out.setType(new_type);
+    Forward(out);
     return success();
   }
 };
