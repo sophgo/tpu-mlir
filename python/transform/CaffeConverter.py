@@ -425,7 +425,7 @@ class CaffeConverter(BaseConverter):
                 self.addOperand(layer.top[1], mask_op)
                 return
         elif method == 1:  # AVE
-            attrs['keep_dim'] = len(output_shape) == len(input_shape)
+            attrs['keepdims'] = len(output_shape) == len(input_shape)
             new_op = self.mlir.create_avgpool_op([op], output_shape, **attrs)
             self.addOperand(layer.top[0], new_op)
             return

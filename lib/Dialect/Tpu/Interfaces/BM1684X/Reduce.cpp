@@ -45,18 +45,16 @@ int64_t tpu::ReduceOp::dyn_codegen_global_bm1684x(void *buffer) {
   if (!buffer)
     return sizeof(reduce_full_global_spec_t);
   reduce_full_global_spec_t spec = {0};
-  auto&& axes = getAxes();
+  auto &&axes = getAxes();
   spec.common.axis_num = axes.size();
-  for (int i = 0; i < axes.size(); i ++)
+  for (int i = 0; i < axes.size(); i++)
     spec.common.axis[i] = (axes[i].cast<IntegerAttr>().getInt());
   spec.common.method = BM168x::get_reduce_type(getMode());
   spec.common.input_scale = 1.0f;
   spec.common.output_scale = 1.0f;
-  spec.common.keep_dims = getKeepdims();
+  spec.common.keep_dims = getKeepdims() ? 1 : 0;
   spec.buffer_addr = module::getAddress(getBuffer());
   return BM168x::dynamic_spec_to_buffer(buffer, spec);
 }
 
-int64_t tpu::ReduceOp::get_fw_type_bm1684x() {
-  return FW_BMNET_REDUCE_FULL;
-}
+int64_t tpu::ReduceOp::get_fw_type_bm1684x() { return FW_BMNET_REDUCE_FULL; }

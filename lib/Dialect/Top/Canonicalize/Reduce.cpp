@@ -28,8 +28,9 @@ struct TopReduceTranspose : public OpRewritePattern<ReduceOp> {
       return failure();
     }
     auto permuteOp = cast<PermuteOp>(formerOp);
-    if (0 != op->getAttr("keepdims").dyn_cast<IntegerAttr>().getInt())
+    if (op.getKeepdims()) {
       return failure();
+    }
     auto reduce_axes = module::getI64Array(op.getAxes());
     auto permute_order = module::getI64Array(permuteOp.getOrder());
     auto input_shape = module::getShape(op.getInput());
@@ -116,40 +117,38 @@ struct ReduceFusePattern : public OpRewritePattern<ReduceOp> {
 
     int mask[MAX_SHAPE_DIMS] = {0};
     int new_axis_num = 0;
-    for (int i=0; i< axis_num_former; i++) {
+    for (int i = 0; i < axis_num_former; i++) {
       mask[axis_list_former->at(i)] = 1;
       new_axis_num += 1;
     }
-    for (int i=0; i< axis_num_current; i++) {
+    for (int i = 0; i < axis_num_current; i++) {
       int offset = 0;
-      while(mask[axis_list_current->at(i)+offset]) {
-          offset += 1;
+      while (mask[axis_list_current->at(i) + offset]) {
+        offset += 1;
       }
-      mask[axis_list_current->at(i)+offset] = 1;
+      mask[axis_list_current->at(i) + offset] = 1;
       new_axis_num += 1;
     }
     int offset_start = 0;
-    while(!mask[offset_start]) {
-          offset_start += 1;
+    while (!mask[offset_start]) {
+      offset_start += 1;
     }
     std::vector<int64_t> new_axis(new_axis_num, 0);
     for (int i = 0; i < new_axis_num; i++) {
-        int offset_insert = offset_start;
-        while(!mask[offset_insert]) {
-          offset_insert += 1;
-        }
-        new_axis[i] = offset_insert;
-        offset_start = offset_insert + 1;
+      int offset_insert = offset_start;
+      while (!mask[offset_insert]) {
+        offset_insert += 1;
+      }
+      new_axis[i] = offset_insert;
+      offset_start = offset_insert + 1;
     }
     std::vector<NamedAttribute> attrs;
     attrs.push_back(
         rewriter.getNamedAttr("axes", rewriter.getI64ArrayAttr(new_axis)));
-    attrs.push_back(
-        rewriter.getNamedAttr("keepdims", op->getAttr("keepdims")));
-    attrs.push_back(
-        rewriter.getNamedAttr("mode", op->getAttr("mode")));
-    rewriter.replaceOpWithNewOp<ReduceOp>(
-        op, op.getResult().getType(), new_input, attrs);
+    attrs.push_back(rewriter.getNamedAttr("keepdims", op.getKeepdimsAttr()));
+    attrs.push_back(rewriter.getNamedAttr("mode", op.getModeAttr()));
+    rewriter.replaceOpWithNewOp<ReduceOp>(op, op.getResult().getType(),
+                                          new_input, attrs);
     return success();
   }
 };

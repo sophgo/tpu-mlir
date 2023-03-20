@@ -384,7 +384,7 @@ class Top_PoolOp <string mnemonic> : Top_Op<mnemonic,[SupportFuseRelu]> {
     I64ArrayAttr:$strides,
     I64ArrayAttr:$pads,
     OptionalAttr<BoolAttr>:$ceil_mode,
-    DefaultValuedAttr<BoolAttr, "true">:$keep_dim,
+    DefaultValuedAttr<BoolAttr, "true">:$keepdims,
     DefaultValuedAttr<I64Attr, "0">:$pad_value,
     DefaultValuedAttr<BoolAttr, "false">:$count_include_pad,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
@@ -1376,7 +1376,7 @@ def Top_ReduceOp : Top_Op<"Reduce"> {
   let arguments = (ins
     AnyTensor:$input,
     I64ArrayAttr:$axes,
-    I64Attr:$keepdims,
+    BoolAttr:$keepdims,
     ReduceModeAttr:$mode
   );
   let results = (outs AnyTensor:$output);
@@ -1391,7 +1391,7 @@ def Top_ArgOp : Top_Op<"Arg"> {
   let arguments = (ins
     AnyTensor:$input,
     I64Attr:$axis,
-    I64Attr:$keepdims,
+    BoolAttr:$keepdims,
     ArgModeAttr:$mode
   );
   let results = (outs

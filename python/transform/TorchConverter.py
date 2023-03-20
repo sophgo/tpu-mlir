@@ -462,11 +462,11 @@ class TorchConverter(BaseConverter):
     def convert_sum_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])
         axes = self.const_val[torch_node.inputs[1]]
-        keep_dim = self.const_val[torch_node.inputs[2]]
+        keepdims = self.const_val[torch_node.inputs[2]]
         p = {
             'name': torch_node.name,
             'axes': axes,
-            'keepdims': keep_dim,
+            'keepdims': keepdims,
             'mode': 'ReduceSum',
         }
         new_op = self.mlir.create_reduce_op([op0], [], **p)

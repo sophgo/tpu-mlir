@@ -1651,7 +1651,7 @@ def Tpu_ReduceOp: Tpu_Op<"Reduce"> {
     AnyTensorOrNone:$buffer, // cv18xx reciprocal_table
     AnyTensorOrNone:$reciprocal_mantissa_table,
     I64ArrayAttr:$axes,
-    I64Attr:$keepdims,
+    BoolAttr:$keepdims,
     ReduceModeAttr:$mode,
     // for cv18xx
     OptionalAttr<I64ArrayAttr>:$multiplier,
@@ -1673,7 +1673,7 @@ def Tpu_ArgOp: Tpu_Op<"Arg", [DeclareOpInterfaceMethods<TypeInterface>]>  {
   let arguments = (ins
     AnyRankedTensor:$input,
     I64Attr:$axis,
-    I64Attr:$keepdims,
+    BoolAttr:$keepdims,
     ArgModeAttr:$mode
   );
 

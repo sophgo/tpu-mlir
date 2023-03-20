@@ -691,7 +691,7 @@ class TFLiteConverter(BaseConverter):
                 "kernel_shape": self.mlir.ArrayAttr(kernel_shape),
                 "strides": self.mlir.ArrayAttr([1, 1]),
                 "pads": self.mlir.ArrayAttr([0, 0, 0, 0]),
-                "keep_dim": BoolAttr.get(len(op.inputs[0].shape) == len(op.outputs[0].shape)),
+                "keepdims": BoolAttr.get(len(op.inputs[0].shape) == len(op.outputs[0].shape)),
             }
             return Top.AvgPoolOp, attr, True
         else:
@@ -708,7 +708,7 @@ class TFLiteConverter(BaseConverter):
         axes = [self.__axis_transpose(op, i) for i in args]
         attr = {
             "axes": self.mlir.ArrayAttr(axes),
-            "keepdims": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.KeepDims()),
+            "keepdims": BoolAttr.get(param.KeepDims()),
             "mode": StringAttr.get(mode),
         }
         return Top.ReduceOp, attr, True
