@@ -243,7 +243,7 @@ def Top_ConcatOp: Top_Op<"Concat", [SupportFuseRelu]> {
 
   let arguments = (
     ins Variadic<AnyTensor>:$inputs,
-    DefaultValuedAttr<I64Attr, "1">:$axis,
+    DefaultValuedAttr<SI32Attr, "1">:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit
   );
@@ -262,7 +262,7 @@ def Top_PackOp: Top_Op<"Pack", [SupportFuseRelu]> {
 
   let arguments = (
     ins Variadic<AnyTensor>:$inputs,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     I64Attr:$values_count,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit

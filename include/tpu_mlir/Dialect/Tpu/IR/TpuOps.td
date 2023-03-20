@@ -1126,7 +1126,7 @@ def Tpu_ConcatOp:Tpu_Op<"Concat", [
   }];
   let arguments = (ins
     Variadic<AnyRankedTensor>:$inputs,
-    I64Attr:$axis,
+    SI32Attr:$axis,
     DefaultValuedAttr<BoolAttr, "false">:$only_merge,
     // param for cv18xx
     OptionalAttr<I64ArrayAttr>:$multipliers,

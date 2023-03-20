@@ -750,7 +750,7 @@ class TFLiteConverter(BaseConverter):
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         return "top.Concat", {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], axis),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], axis),
             "do_relu": BoolAttr.get(fused_active == 1),
         }, False
 
@@ -821,7 +821,7 @@ class TFLiteConverter(BaseConverter):
         param = PackOptions()
         param.Init(op_options.Bytes, op_options.Pos)
         attr = {
-            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT64], param.Axis()),
+            "axis": IntegerAttr.get(self.type_to_mlir[TensorType.INT32], param.Axis()),
             "values_count": IntegerAttr.get(self.type_to_mlir[TensorType.INT64],
                                             param.ValuesCount()),
         }
