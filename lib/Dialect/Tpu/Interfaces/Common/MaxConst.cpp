@@ -13,9 +13,7 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/MathUtils.h"
 #include "tpu_mlir/Support/Module.h"
-
-#define MIN(x, y) (((x)) < ((y)) ? (x) : (y))
-#define MAX(x, y) (((x)) > ((y)) ? (x) : (y))
+#include <algorithm>
 
 LogicalResult tpu::MaxConstOp::init(InferenceParameter &p) { return success(); }
 
@@ -24,14 +22,33 @@ void tpu::MaxConstOp::deinit(InferenceParameter &p) {}
 LogicalResult tpu::MaxConstOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
   auto out_type = module::getStorageType(getOutput());
-  // auto asym = module::isAsymmetric();
-  auto const_val = getConstVal().convertToDouble();
+  auto asym = module::isAsymmetric();
+  auto const_val = (float)getConstVal().convertToDouble();
   if (module::isUniformQuantized(getOutput())) {
-    llvm_unreachable("Not Implemented");
+    auto i_qtype = module::getUniformQuantizedType(getInput());
+    double izp = 0;
+    if (module::isUniformQuantized(getInput()))
+      izp = i_qtype.getZeroPoint();
+    auto out_qtype = module::getUniformQuantizedType(getOutput());
+    double ozp = 0;
+    auto out_type = module::getStorageType(getOutput());
+    if (asym)
+      ozp = out_qtype.getZeroPoint();
+// #pragma omp parallel for schedule(static, omp_schedule(num_elem))
+    for (int64_t i = 0; i < num_elem; i++) {
+      float p_val = p.inputs[0][i] - izp;
+      p_val = applyMultiplierAndRShift(p_val, getMultiplier(), 0);
+      p.outputs[0][i] = std::max(p_val, const_val);
+      p_val = applyMultiplierAndRShift(p_val, 1, getRshift());
+      if (getDoRelu() && p_val < 0) {
+        p_val = 0;
+      }
+      p.outputs[0][i] = saturate(p_val, out_type);
+    }
   } else {
 #pragma omp parallel for schedule(static, omp_schedule(num_elem))
     for (int64_t i = 0; i < num_elem; i++) {
-      p.outputs[0][i] = MAX(p.inputs[0][i], const_val);
+      p.outputs[0][i] = std::max(p.inputs[0][i], const_val);
     }
     if (getDoRelu()) {
       auto limit = getReluLimit().convertToDouble();
@@ -46,4 +63,4 @@ LogicalResult tpu::MaxConstOp::inference(InferenceParameter &p) {
   return success();
 }
 
-LogicalResult tpu::MaxConstOp::LocalGenSupport() {return success();}
+LogicalResult tpu::MaxConstOp::LocalGenSupport() { return success(); }

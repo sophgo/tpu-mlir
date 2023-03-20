@@ -13,38 +13,64 @@
 namespace tpu_mlir {
 
 Value create_lookup_table(Value in, Value out, bool asymmetric,
-                          activate_f &&func) {
+                          activate_f &&func, int bit_width) {
   double in_scale, out_scale;
   int64_t in_zp, out_zp;
   bool in_sign, out_sign;
   module::getScaleAndZeroPoint(in, in_scale, in_zp, in_sign, asymmetric);
   module::getScaleAndZeroPoint(out, out_scale, out_zp, out_sign, asymmetric);
-  int64_t min = in_sign ? -128 : 0;
-  int64_t max = in_sign ? 127 : 255;
+  int64_t min_th = in_sign ? -128 : 0;
+  int64_t max_th = in_sign ? 127 : 255;
   auto op = out.getDefiningOp();
   OpBuilder builder(op->getContext());
-  auto table_type = RankedTensorType::get({1, 1, 1, 256},
-                                          builder.getIntegerType(8, out_sign));
-  if (out_sign) {
-    std::vector<int8_t> table(256, 0);
-    for (auto i = min; i <= max; i++) {
-      double data = (i - in_zp) * in_scale;
-      data = func(data) / out_scale + out_zp;
-      int index = i < 0 ? 256 + i : i;
-      table[index] = to_int8(data);
+  auto table_type = RankedTensorType::get(
+      {1, 1, 1, 256}, builder.getIntegerType(bit_width, out_sign));
+  if (bit_width == 8) {
+    if (out_sign) {
+      std::vector<int8_t> table(256, 0);
+      for (auto i = min_th; i <= max_th; i++) {
+        double data = (i - in_zp) * in_scale;
+        data = func(data) / out_scale + out_zp;
+        int index = i < 0 ? 256 + i : i;
+        table[index] = to_int8(data);
+      }
+      return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                   table_type);
+    } else {
+      std::vector<uint8_t> table(256, 0);
+      for (auto i = min_th; i <= max_th; i++) {
+        double data = (i - in_zp) * in_scale;
+        data = func(data) / out_scale + out_zp;
+        int index = i < 0 ? 256 + i : i;
+        table[index] = to_uint8(data);
+      }
+      return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                   table_type);
     }
-    return top::WeightOp::create(out.getDefiningOp(), "table", table,
-                                 table_type);
+  } else if (bit_width == 32) {
+    if (out_sign) {
+      std::vector<int32_t> table(256, 0);
+      for (auto i = min_th; i <= max_th; i++) {
+        double data = (i - in_zp) * in_scale;
+        data = func(data) / out_scale + out_zp;
+        int index = i < 0 ? 256 + i : i;
+        table[index] = to_int8(data);
+      }
+      return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                   table_type);
+    } else {
+      std::vector<uint32_t> table(256, 0);
+      for (auto i = min_th; i <= max_th; i++) {
+        double data = (i - in_zp) * in_scale;
+        data = func(data) / out_scale + out_zp;
+        int index = i < 0 ? 256 + i : i;
+        table[index] = to_uint8(data);
+      }
+      return top::WeightOp::create(out.getDefiningOp(), "table", table,
+                                   table_type);
+    }
   } else {
-    std::vector<uint8_t> table(256, 0);
-    for (auto i = min; i <= max; i++) {
-      double data = (i - in_zp) * in_scale;
-      data = func(data) / out_scale + out_zp;
-      int index = i < 0 ? 256 + i : i;
-      table[index] = to_uint8(data);
-    }
-    return top::WeightOp::create(out.getDefiningOp(), "table", table,
-                                 table_type);
+    assert(0 && "only support bit_width 8 & 32");
   }
 }
 
