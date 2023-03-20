@@ -661,11 +661,12 @@ class TFLiteConverter(BaseConverter):
         param = FullyConnectedOptions()
         param.Init(op_options.Bytes, op_options.Pos)
         fused_active = param.FusedActivationFunction()
+        keep_dims = param.KeepNumDims()
         if fused_active not in [0, 1]:
             raise Exception("Not supported ActivationFunctionType: {}!".format(fused_active))
         attr = {
             "do_relu": BoolAttr.get(fused_active == 1),
-            # "right_transpose": BoolAttr.get(True),
+            "keep_dims": BoolAttr.get(keep_dims),
         }
         if op.inputs[2] is not None:
             bias_shape = [1] * len(op.inputs[0].shape)
