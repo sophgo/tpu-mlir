@@ -25,14 +25,16 @@ int v_is_int8_s(Value v) {
 void tpu::SubOp::codegen_global_bm1684() {
   int input_num = getInputs().size();
   assert(input_num == 2);
-  int64_t n, c, h, w;
-  module::getNCHW(getOutput(), n, c, h, w);
+  int64_t na, ca, ha, wa;
+  module::getNCHW(getInputs()[0], na, ca, ha, wa);
+  int64_t nb, cb, hb, wb;
+  module::getNCHW(getInputs()[1], nb, cb, hb, wb);
   int op_code = 1;
   auto a_addr = module::getAddress(getInputs()[0]);
   auto b_addr = module::getAddress(getInputs()[1]);
   auto o_addr = module::getAddress(getOutput());
-  int a_shape[4] = {(int)n, (int)c, (int)h, (int)w};
-  int b_shape[4] = {(int)n, (int)c, (int)h, (int)w};
+  int a_shape[4] = {(int)na, (int)ca, (int)ha, (int)wa};
+  int b_shape[4] = {(int)nb, (int)cb, (int)hb, (int)wb};
   auto a_dims = module::getShape(getInputs()[0]).size();
   auto b_dims = module::getShape(getInputs()[1]).size();
   if (false == module::isUniformQuantized(getOutput())) {
@@ -58,7 +60,6 @@ void tpu::SubOp::codegen_global_bm1684() {
         op_code, (int)multiplier_v->at(0), (int)multiplier_v->at(1), (uint8_t)rshift_v->at(0), (uint8_t)rshift_v->at(1), is_int8, sign,
         getDoRelu() ? 1 : 0, (CMD_ID_NODE *)BM1684::instance().cmdid_node);
   }
-  // llvm_unreachable("Not Implemented");
 }
 
 int64_t tpu::SubOp::getBufferSize_bm1684(int64_t in_lmem_bytes,
