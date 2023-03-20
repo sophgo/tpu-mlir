@@ -401,7 +401,7 @@ class MLIRImporter(object):
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
-            'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
+            'axis': IntegerAttr.get(self.mlir_type['INT32'], kargs['axis']),
         }
         return self.buildOp(Top.ConcatOp, operands, [output_type], **param)
 

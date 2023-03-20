@@ -568,7 +568,7 @@ class TorchConverter(BaseConverter):
     def convert_to_op(self, torch_node: TorchNode):
         in_op = self.getOp(torch_node.inputs[0])
         out_type = self.const_val[torch_node.inputs[1]]
-        assert (out_type in [5, 6, 7, 15])  # float
+        assert (out_type in [5, 6, 7, 15, 'cpu'])  # float
         self.addOperand(torch_node.name, in_op)
 
     def convert_compare_op(self, torch_node: TorchNode, mode):
@@ -778,7 +778,7 @@ class TorchConverter(BaseConverter):
 
     def convert_pad_op(self, torch_node: TorchNode, mode: str = 'unknown'):
         op = self.getOp(torch_node.inputs[0])
-        pads_origin = self.const_val[torch_node.inputs[1]]
+        pads = self.const_val[torch_node.inputs[1]]
         val = 0.0
         pad_modes = {"constant": 0, "reflect": 1, "replicate": 3}
         if (mode == 'reflect' or mode == 'replicate'):
@@ -790,17 +790,6 @@ class TorchConverter(BaseConverter):
             pad_mode = pad_modes[self.const_val[torch_node.inputs[2]]]
             if pad_mode == 0:
                 val = self.const_val[torch_node.inputs[3]]
-
-        input_dim = len(self.getShape(torch_node.inputs[0]))
-        pads = [0] * input_dim * 2
-        if (len(pads_origin) >= 2):
-            # w pad
-            pads[input_dim - 1] = pads_origin[0]
-            pads[-1] = pads_origin[1]
-        if (len(pads_origin) > 2):
-            # h pad
-            pads[input_dim - 2] = pads_origin[2]
-            pads[-2] = pads_origin[3]
 
         p = {
             'name': torch_node.name,
