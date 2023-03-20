@@ -145,7 +145,11 @@ public:
       func.walk([&](ShapeInterface op) {
         LLVM_DEBUG(llvm::dbgs() << "shape infer: " << op << "\n";);
         op.shape_inference();
-        WeightFolder(op);
+        if (op->getUsers().empty()) {
+          op->erase();
+        } else{
+          WeightFolder(op);
+        }
       });
     }
     module::updateModuleTypes();

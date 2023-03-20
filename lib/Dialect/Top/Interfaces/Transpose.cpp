@@ -21,6 +21,7 @@ void top::TransposeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult top::TransposeOp::inference(InferenceParameter &p) {
   llvm_unreachable("Not Implemented");
+  return success();
 }
 
 void top::TransposeOp::shape_inference() {
