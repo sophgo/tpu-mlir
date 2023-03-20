@@ -52,5 +52,7 @@ LOWERING_BM1684(HardSwish)
 LOWERING_BM1684(AddConst)
 LOWERING_BM1684(MulConst)
 LOWERING_BM1684(LRN)
+LOWERING_BM1684(Min)
+LOWERING_BM1684(Max)
 } // namespace bm1684
 } // namespace tpu_mlir

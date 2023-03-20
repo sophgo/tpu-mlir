@@ -633,8 +633,8 @@ def Tpu_MaxConstOp: Tpu_Op<"MaxConst", [
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    OptionalAttr<I64ArrayAttr>:$multipliers,
-    OptionalAttr<I64ArrayAttr>:$rshifts,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 
@@ -656,8 +656,8 @@ def Tpu_MinConstOp: Tpu_Op<"MinConst", [
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     // quant param
-    OptionalAttr<I64ArrayAttr>:$multipliers,
-    OptionalAttr<I64ArrayAttr>:$rshifts,
+    DefaultValuedAttr<SI32Attr, "1">:$multiplier,
+    DefaultValuedAttr<I64Attr, "0">:$rshift,
     OptionalAttr<Tpu_LayerGroupAttr>:$ginfo
   );
 

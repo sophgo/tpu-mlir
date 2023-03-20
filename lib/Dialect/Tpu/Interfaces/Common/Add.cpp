@@ -191,6 +191,8 @@ LogicalResult tpu::AddOp::BackwardH(int64_t &in_idx, int64_t &in_slice,
 }
 
 LogicalResult tpu::AddOp::LocalGenSupport() {
+  // for onnx AddConst
+  if(getNumOperands() == 1) return success();
   return BroadCastBinaryLocalGenSupport(getOperation());
 }
 
