@@ -52,6 +52,12 @@ static void set_group_type(LgInfo &lg_info) {
     }
   }
 
+  if (module::isCV18xx()) {
+    //cv18xx only support GROUP_NORMAL
+    lg_info.type = GROUP_NORMAL;
+    return;
+  }
+
   // set GROUP_NORMAL if not all ops should meet the conditions
   // 1. op is eltwise-op or only the last dim cannot split
   // 2. C is too small to fully utilize NPU and H is better
