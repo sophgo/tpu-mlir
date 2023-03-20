@@ -815,6 +815,7 @@ def Tpu_MatMulOp: Tpu_Op<"MatMul", [
     DefaultValuedAttr<BoolAttr, "false">:$left_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$right_transpose,
     DefaultValuedAttr<BoolAttr, "false">:$hdim_is_batch,
+    DefaultValuedAttr<BoolAttr, "true">:$keep_dims,
     DefaultValuedAttr<BoolAttr, "false">:$do_relu,
     DefaultValuedAttr<F64Attr, "-1.0">:$relu_limit,
     DefaultValuedAttr<I64ArrayAttr, "{1}">:$multipliers,
