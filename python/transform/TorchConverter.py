@@ -265,9 +265,6 @@ class TorchConverter(BaseConverter):
         else:
             for outp in self.graph.outputs():
                 self.output_names.append(outp.debugName())
-        # weight
-        # for name, data in self.model.state_dict().items():
-        #     self.addWeight(name, data.numpy().astype(np.float32))
         self.weight_names = []
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)

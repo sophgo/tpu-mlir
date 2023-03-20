@@ -384,7 +384,6 @@ class OnnxConverter(BaseConverter):
         # add all weight
         for tensor in self.model.graph.initializer:
             name = tensor.name
-            # all weight convert to f32.
             data = numpy_helper.to_array(tensor).astype(np.float32)
             self.addWeight(name, data)
             # TODO: for quantized onnx, keep the same type
@@ -653,18 +652,7 @@ class OnnxConverter(BaseConverter):
     def convert_cast_op(self, onnx_node):
         assert (onnx_node.op_type == "Cast")
         if self.isWeight(onnx_node.inputs[0]):
-            dtype = onnx_node.attrs.get('to')
             data = self.getWeight(onnx_node.inputs[0])
-            if dtype == "int64":
-                data = data.astype(np.int64)
-            elif dtype == "int32":
-                data = data.astype(np.int32)
-            elif dtype == "float32":
-                data = data.astype(np.float32)
-            elif dtype == "bool":
-                data = data.astype(np.bool)
-            else:
-                raise RuntimeError("{} dtype not support, please add".format(dtype))
             self.addWeight(onnx_node.name, data)
         else:
             op = self.getOperand(onnx_node.inputs[0])
@@ -722,11 +710,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type == "Constant")
         onnx_tensor = onnx_node.attrs['value']
         np_tensor = numpy_helper.to_array(onnx_tensor)
-        data_type = onnx_dtype(onnx_tensor.data_type)
-        if data_type in [np.float32, np.float64, np.int32, np.int64, np.uint8, np.bool]:
-            self.addWeight(onnx_node.name, np_tensor.astype(data_type))
-        else:
-            raise ValueError("Not Support {} type".format(data_type))
+        self.addWeight(onnx_node.name, np_tensor)
 
     def convert_conv_op(self, onnx_node):
         assert (onnx_node.op_type == "Conv")
