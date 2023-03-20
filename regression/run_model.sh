@@ -65,6 +65,7 @@ if [ x${test_type} == xbasic ]; then
   do_f32=0
   do_bf16=0
   do_asymmetric=0
+  app=
 fi
 
 do_post_opt=
