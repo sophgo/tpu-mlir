@@ -865,7 +865,7 @@ class OnnxConverter(BaseConverter):
             'pads': num_dim * 2 * [0],
             'count_include_pad': True,
             'do_relu': False,
-            'keep_dim': len(input_shape) == len(output_shape),
+            'keepdims': len(input_shape) == len(output_shape),
         }
         new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -895,7 +895,7 @@ class OnnxConverter(BaseConverter):
             'pads': pads,
             'count_include_pad': count_include_pad,
             'do_relu': False,
-            'keep_dim': len(input_shape) == len(output_shape),
+            'keepdims': len(input_shape) == len(output_shape),
         }
         new_op = self.mlir.create_avgpool_op([op], output_shape, **p)
         self.addOperand(onnx_node.name, new_op)
@@ -1480,7 +1480,7 @@ class OnnxConverter(BaseConverter):
         num_dims = len(input_shape)
         axes = onnx_node.attrs.get('axes', list(range(num_dims))) \
             if len(onnx_node.inputs) == 1 else self.getWeight(onnx_node.inputs[1])
-        keepdims = onnx_node.attrs.get('keepdims', 1)
+        keepdims = onnx_node.attrs.get('keepdims', 1) != 0
         for idx, ax in enumerate(axes):
             if ax < 0:
                 axes[idx] += num_dims
@@ -1493,7 +1493,7 @@ class OnnxConverter(BaseConverter):
                 'pads': [0, 0, 0, 0],
                 'count_include_pad': True,
                 'do_relu': False,
-                'keep_dim': len(input_shape) == len(output_shape),
+                'keepdims': len(input_shape) == len(output_shape),
             }
             new_op = self.mlir.create_avgpool_op(
                 [op], output_shape, **
@@ -1514,7 +1514,7 @@ class OnnxConverter(BaseConverter):
         assert (onnx_node.op_type in ["ArgMin", "ArgMax"])
         op = self.getOperand(onnx_node.inputs[0])
         axis = onnx_node.attrs.get('axis', 0)
-        keepdims = onnx_node.attrs.get('keepdims', 1)
+        keepdims = onnx_node.attrs.get('keepdims', 1) != 0
         p = {
             "name": [onnx_node.name + '_indices', onnx_node.name + '_values'],
             "axis": axis,

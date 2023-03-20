@@ -135,7 +135,7 @@ void top::AvgPoolOp::shape_inference() {
                    1;
     out_shape.push_back(out_dim);
   }
-  if (getKeepDim() == false) {
+  if (getKeepdims() == false) {
     while (out_shape.size() > 2) {
       if (out_shape.back() == 1) {
         out_shape.pop_back();

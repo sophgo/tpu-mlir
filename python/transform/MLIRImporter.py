@@ -383,8 +383,8 @@ class MLIRImporter(object):
             'do_relu': BoolAttr.get(kargs['do_relu']),
             'count_include_pad': BoolAttr.get(kargs['count_include_pad']),
         }
-        if 'keep_dim' in kargs:
-            param['keep_dim'] = BoolAttr.get(kargs['keep_dim'])
+        if 'keepdims' in kargs:
+            param['keepdims'] = BoolAttr.get(kargs['keepdims'])
         if "ceil_mode" in kargs:
             param["ceil_mode"] = BoolAttr.get(kargs["ceil_mode"])
         return self.buildOp(Top.AvgPoolOp, operands, [output_type], **param)
@@ -905,7 +905,7 @@ class MLIRImporter(object):
         param = {
             'name': kargs['name'],
             'axes': self.ArrayAttr(kargs['axes']),
-            'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
+            'keepdims': BoolAttr.get(kargs['keepdims']),
             'mode': StringAttr.get(kargs['mode']),
         }
         return self.buildOp(Top.ReduceOp, operands, [output_type], **param)
@@ -920,7 +920,7 @@ class MLIRImporter(object):
         param = {
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
-            'keepdims': IntegerAttr.get(self.mlir_type['INT64'], kargs['keepdims']),
+            'keepdims': BoolAttr.get(kargs['keepdims']),
             'mode': StringAttr.get(kargs['mode']),
         }
         return self.buildOp(Top.ArgOp, operands, out_types, **param)
