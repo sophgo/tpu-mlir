@@ -119,7 +119,7 @@ Type getStorageType(Value v); // storage type
 Type getStorageType(Type type);
 Type getElementType(Value v);
 llvm::ArrayRef<int64_t> getShape(Value v);
-void getGlobalShape(Value v, int* shape);
+void getGlobalShape(Value v, int* shape, int dim=4);
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int* shape);
 void getLocalShape(Operation *op, int64_t n_step, int64_t h_step, int* shape);
 void get128BtyeAlignedStrideForNBit(int* stride, int* shape, int npu_num, int bit);

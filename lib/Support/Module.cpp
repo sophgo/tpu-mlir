@@ -295,9 +295,11 @@ llvm::ArrayRef<int64_t> getShape(Value v) {
   return type.getShape();
 }
 
-void getGlobalShape(Value v, int *shape) {
+void getGlobalShape(Value v, int *shape, int dim) {
   for (auto v : llvm::enumerate(getShape(v)))
     shape[v.index()] = (int)v.value();
+  for (int i = getShape(v).size(); i < dim; ++i)
+    shape[i] = 1;
 }
 
 void getLocalShape(Value v, int64_t n_step, int64_t h_step, int *shape) {
