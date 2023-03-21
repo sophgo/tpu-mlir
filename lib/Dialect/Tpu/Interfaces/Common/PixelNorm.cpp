@@ -170,7 +170,7 @@ LogicalResult tpu::PixelNormOp::inference(InferenceParameter &p) {
   float *output_data = p.outputs[0];
 
   const int num_iter = outer_dim * inner_dim;
-// #pragma omp parallel for schedule(static, omp_schedule(num_iter))
+#pragma omp parallel for schedule(static, omp_schedule(num_iter))
   for (int i = 0; i < num_iter; ++i) {
     const int p = i / inner_dim;
     const int q = i % inner_dim;
