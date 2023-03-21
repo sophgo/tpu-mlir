@@ -161,7 +161,7 @@ void ModuleInterpreter::invoke(bool express_type) {
   for (auto func : module.getOps<FuncOp>()) {
     func.walk([&](InferenceInterface infer_op) {
       auto name = module::getName(infer_op.getOperation()).str();
-      LLVM_DEBUG(llvm::dbgs() << "compute: '" << name << "'\n");
+      LLVM_DEBUG(llvm::dbgs() << "compute: '" << infer_op << "'\n");
       if (failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();
         llvm_unreachable("invoke failed!!");
@@ -196,7 +196,7 @@ ModuleInterpreter::invoke_at(const std::string op_name) {
     llvm_unreachable("invoke_at infer error");
   }
   auto infer_op = cast<InferenceInterface>(op);
-  LLVM_DEBUG(llvm::dbgs() << "invoke at: '" << op_name << "'\n");
+  LLVM_DEBUG(llvm::dbgs() << "invoke at: '" << infer_op << "'\n");
   if (failed(infer_op.inference(*inference_map[op_name]))) {
     infer_op.dump();
     llvm_unreachable("infer_op.inference failed!!");
@@ -214,7 +214,7 @@ void ModuleInterpreter::invoke_from(const std::string op_name) {
       if (name == op_name) {
         start_run = true;
       }
-      LLVM_DEBUG(llvm::dbgs() << "invoke: '" << name << "'\n");
+      LLVM_DEBUG(llvm::dbgs() << "invoke: '" << infer_op << "'\n");
       if (start_run && failed(infer_op.inference(*inference_map[name]))) {
         infer_op.dump();
         llvm_unreachable("invoke failed!!");

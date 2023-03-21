@@ -846,12 +846,12 @@ class TORCH_IR_TESTER(object):
 
             def __init__(self):
                 super(Model, self).__init__()
-                self.group_norm = nn.GroupNorm(3, 6)
+                self.group_norm = nn.GroupNorm(8, 64)
 
             def forward(self, x):
                 return self.group_norm(x)
 
-        self.trace_and_test([(20, 6, 10, 10)], Model())
+        self.trace_and_test([(4, 64, 16, 16)], Model())
 
     #######################################################################
     # Permute
