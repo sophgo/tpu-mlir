@@ -345,6 +345,33 @@ int64_t BasicTimeStep::get_lmem_size(const mem_buffer_key_t &buffer_key) {
   return lmem_buffer_[buffer_key].size;
 }
 
+MemBlock BasicTimeStep::find_buffer_locate(Value value, int64_t ts,
+                                           const MemBuff &buffer) {
+  MemBlock lmem_locate(-1, -1);
+  mem_buffer_key_t buffer_key;
+  buffer_key.value = value;
+  buffer_key.type = module::isWeight(value) ? LMEM_WEIGHT : LMEM_ACTIVATION;
+  auto iter = buffer.find(buffer_key);
+  assert(iter != buffer.end());
+  auto &buffer_value = iter->second;
+  int64_t start_ts = buffer_value.start_ts;
+  int64_t end_ts = buffer_value.end_ts;
+  if ((start_ts <= end_ts && ts >= start_ts && ts <= end_ts) ||
+      (start_ts > end_ts && (ts >= start_ts || ts <= end_ts))) {
+    lmem_locate.first = buffer_value.addr;
+    lmem_locate.second = buffer_value.size;
+  }
+  return lmem_locate;
+}
+
+MemBlock BasicTimeStep::get_lmem_locate(Value value, int64_t ts) {
+  MemBlock buffer_locate = find_buffer_locate(value, ts, this->lmem_buffer_);
+  if (buffer_locate.first == -1) {
+    llvm_unreachable("cannot find local memory for this tensor.");
+  }
+  return buffer_locate;
+}
+
 bool BasicTimeStep::is_tensor_hold_in_lmem(Value v) {
   std::map<Value, int64_t, value_compare>::iterator iter =
       this->hold_coeff_.find(v);
@@ -622,6 +649,38 @@ bool BasicTimeStep::layer_can_merge_backward(int64_t ts,
   }
 
   return true;
+}
+
+//==============================================
+// functions for group overlap
+//==============================================
+
+// down_to_up overlap, update cur_time_step overlap info
+void BasicTimeStep::insert_self_up_op(Value value) {
+  self_up_overlap_ops_.insert(value);
+}
+
+// up_to_down overlap, update cur_time_step overlap info
+void BasicTimeStep::insert_self_down_op(Value value) {
+  self_down_overlap_ops_.insert(value);
+}
+
+// down_to_up overlap, update dst_time_step overlap info
+void BasicTimeStep::insert_other_up_op(Value value, int64_t dst_ts) {
+  if (other_up_overlap_ops_.find(dst_ts) == other_up_overlap_ops_.end()) {
+    std::vector<Value> values;
+    other_up_overlap_ops_.insert(std::make_pair(dst_ts, values));
+  }
+  other_up_overlap_ops_[dst_ts].push_back(value);
+}
+
+// up_to_group overlap, update dst_time_step overlap info
+void BasicTimeStep::insert_other_down_op(Value value, int64_t dst_ts) {
+  if (other_down_overlap_ops_.find(dst_ts) == other_down_overlap_ops_.end()) {
+    std::vector<Value> values;
+    other_down_overlap_ops_.insert(std::make_pair(dst_ts, values));
+  }
+  other_down_overlap_ops_[dst_ts].push_back(value);
 }
 
 } // namespace tpu

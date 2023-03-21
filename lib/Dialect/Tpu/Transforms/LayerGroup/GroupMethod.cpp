@@ -338,12 +338,11 @@ void GroupMethod::dynamic_programming_layer_group_with_cluster(
                << "=======================================================\n"
                << "***** Dynamic Programming layer group with cluster ****\n"
                << "=======================================================\n";
-  cut_results_.clear();
-  LgInfo sub_group;
-  std::vector<std::vector<Operation *>> base_groups;
-  get_base_groups(base_groups, subnet_ops);
-  llvm::errs() << llvm::format("total num of base_group is %d\n",
-                               base_groups.size());
+ LgInfo sub_group;
+ std::vector<std::vector<Operation *>> base_groups;
+ get_base_groups(base_groups, subnet_ops);
+ llvm::errs() << llvm::format("total num of base_group is %d\n",
+                              base_groups.size());
   for (size_t i = 0; i < base_groups.size(); ++i) {
     std::vector<std::pair<int64_t, int64_t>> clusters;
     get_group_clusters(clusters, base_groups[i]);

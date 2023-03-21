@@ -13,6 +13,7 @@
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepMethod.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/LmemAllocator.h"
 #include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/TimeStepCombine.h"
+#include "tpu_mlir/Dialect/Tpu/Transforms/LayerGroup/GroupOverlap.h"
 
 // static bool use_partial_coeff_reload = true;
 
@@ -50,7 +51,9 @@ void InternalLgOptimizer::manage_passes(std::shared_ptr<LgPassManager> pm,
 }
 
 void InternalLgOptimizer::manage_post_passes(std::shared_ptr<LgPassManager> pm,
-                                             const LgOptions &options) {}
+                                             const LgOptions &options) {
+  pm->add_pass(CreateGroupDataMoveOverlapPass());
+                                             }
 
 } // namespace tpu
 } // namespace tpu_mlir

@@ -113,6 +113,7 @@ using MemBuffElt = std::pair<mem_buffer_key_t, mem_buffer_value_t>;
 using TpuTsField = std::vector<Operation *>;
 using GdmaElt = std::pair<Value, tensor_info_t>;
 using GdmaTsField = std::vector<GdmaElt>;
+using MemBlock = std::pair<int64_t, int64_t>; // <addr, size>
 
 typedef struct {
   TpuTsField tpu0_ts_field;

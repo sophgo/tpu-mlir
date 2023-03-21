@@ -69,6 +69,7 @@ void GroupOps::buildGroups(int64_t opt) {
   auto pm = std::make_shared<LgPassManager>();
   auto inner_optimizer = std::make_unique<InternalLgOptimizer>();
   inner_optimizer->manage_passes(pm, options);
+  inner_optimizer->manage_post_passes(pm, options);
   pm->run(lg_pass_ir_);
 }
 
@@ -77,6 +78,9 @@ void GroupOps::buildMlir() {
   if (lg_infos.empty()) {
     return;
   }
+
+  groups_.clear();
+  overlap_ops_.clear();
   int64_t group_num = lg_infos.size();
   for (int64_t i = group_num - 1; i >= 0; --i) {
     if (lg_infos[i].group_ops.size() > 1) {
@@ -84,6 +88,15 @@ void GroupOps::buildMlir() {
       buildGroupOp(lg_infos[i], lg_pass_ir_->shape_secs[i]);
     }
   }
+  // update group overlap info
+  int64_t idx = 0;
+  for (int64_t i = group_num - 1; i >= 0; --i) {
+    if (lg_infos[i].group_ops.size() > 1) {
+      time_step = lg_pass_ir_->time_steps[i];
+      UpdateGroupOverlapInfo(groups_[idx++]);
+    }
+  }
+
 }
 
 void GroupOps::buildGroupOp(const LgInfo &lg_info,
@@ -93,7 +106,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   llvm::SmallVector<Value, 8> outputs;
   llvm::SmallVector<NamedAttribute, 8> attrs;
   llvm::SmallVector<Type, 8> in_types;
-  //llvm::SmallVector<Location, 8> in_locs;
+  // llvm::SmallVector<Location, 8> in_locs;
   llvm::SmallVector<Type, 8> ret_types;
   auto &ops = lg_info.group_ops;
   auto &tensor_infos = time_step->get_tensor_infos();
@@ -102,7 +115,7 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
   int64_t hsecs = shape_secs.hsecs;
   for (auto in : lg_info.group_ins) {
     in_types.push_back(in.getType());
-    //in_locs.push_back(module::getLoc(in));
+    // in_locs.push_back(module::getLoc(in));
     operands.push_back(in);
   }
   llvm::SmallVector<Location, 8> locs;
@@ -118,8 +131,8 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       builder.getNamedAttr("hsecs", builder.getI64IntegerAttr(hsecs)));
   attrs.push_back(
       builder.getNamedAttr("swpipl_stage_num", builder.getI64IntegerAttr(3)));
-  attrs.push_back(
-      builder.getNamedAttr("group_type", builder.getI64IntegerAttr((int64_t)lg_info.type)));
+  attrs.push_back(builder.getNamedAttr(
+      "group_type", builder.getI64IntegerAttr((int64_t)lg_info.type)));
   builder.setInsertionPointAfter(ops.back());
   auto groupOp =
       builder.create<tpu::GroupOp>(group_loc, ret_types, operands, attrs);
@@ -132,6 +145,17 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       Operation *user = operand.getOwner();
       return find(ops.begin(), ops.end(), user) == ops.end();
     });
+  }
+
+  // record current group overlap_ops and its op id in GroupOp
+  ValueSet cur_overlap_ops;
+  auto &self_up_overlap_ops = time_step->get_self_up_overlap_ops();
+  auto &self_down_overlap_ops = time_step->get_self_down_overlap_ops();
+  for (auto v : self_up_overlap_ops) {
+    cur_overlap_ops.insert(v);
+  }
+  for (auto v : self_down_overlap_ops) {
+    cur_overlap_ops.insert(v);
   }
 
   current_op_ = nullptr;
@@ -151,6 +175,9 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
       auto cur_ts_tensors = time_step->getTensors(ts);
       for (auto tensor : cur_ts_tensors) {
         if (time_step->get_tensor_swpipl_stage(tensor.first) == stg) {
+          if (cur_overlap_ops.find(tensor.first) != cur_overlap_ops.end()) {
+            overlap_ops_[tensor.first] = id;
+          }
           if (tensor.second.mode == TIMESTEP_LOAD) {
             CreateLoadOp(tensor, id++, ops, lg_info.type);
           } else if (tensor.second.mode == TIMESTEP_STORE) {
@@ -212,8 +239,52 @@ void GroupOps::buildGroupOp(const LgInfo &lg_info,
     } // cur_tensors
     timestep--;
   }
-
   groupOp->setAttr("flow", builder.getI64ArrayAttr(flow));
+  groups_.push_back(groupOp.getOperation());
+}
+
+void GroupOps::UpdateGroupOverlapInfo(Operation *op){
+  auto builder = OpBuilder(ctx_);
+  auto groupOp = dyn_cast<tpu::GroupOp>(op);
+  auto &self_up_overlap_ops = time_step->get_self_up_overlap_ops();
+  auto &self_down_overlap_ops = time_step->get_self_down_overlap_ops();
+  auto &other_up_overlap_ops = time_step->get_other_up_overlap_ops();
+  auto &other_down_overlap_ops = time_step->get_other_down_overlap_ops();
+
+  // update group_overlap op info of this group
+  std::vector<int64_t> self_down_overlap_op;
+  for (auto v : self_down_overlap_ops) {
+    self_down_overlap_op.push_back(overlap_ops_[v]);
+  }
+  groupOp->setAttr("self_down_overlap_op",
+                   builder.getI64ArrayAttr(self_down_overlap_op));
+
+  std::vector<int64_t> self_up_overlap_op;
+  for (auto v : self_up_overlap_ops) {
+    self_up_overlap_op.push_back(overlap_ops_[v]);
+  }
+  groupOp->setAttr("self_up_overlap_op",
+                   builder.getI64ArrayAttr(self_up_overlap_op));
+
+  std::vector<int64_t> other_down_overlap_op;
+  for (auto &elt : other_down_overlap_ops) {
+    other_down_overlap_op.push_back(-(elt.first + 1));
+    for (auto v : elt.second) {
+      other_down_overlap_op.push_back(overlap_ops_[v]);
+    }
+  }
+  groupOp->setAttr("other_down_overlap_op",
+                   builder.getI64ArrayAttr(other_down_overlap_op));
+
+  std::vector<int64_t> other_up_overlap_op;
+  for (auto &elt : other_up_overlap_ops) {
+    other_up_overlap_op.push_back(-(elt.first + 1));
+    for (auto v : elt.second) {
+      other_up_overlap_op.push_back(overlap_ops_[v]);
+    }
+  }
+  groupOp->setAttr("other_up_overlap_op",
+                   builder.getI64ArrayAttr(other_up_overlap_op));
 }
 
 void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
@@ -244,11 +315,11 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   mem_buffer_key_t buffer_key = {LMEM_ACTIVATION, input, nullptr};
   if (dyn_cast_or_null<top::WeightOp>(inputOp)) {
     buffer_key.type = LMEM_WEIGHT;
-    attrs.push_back(
-        builder.getNamedAttr("lmem_type", builder.getI64IntegerAttr(LMEM_WEIGHT)));
+    attrs.push_back(builder.getNamedAttr(
+        "lmem_type", builder.getI64IntegerAttr(LMEM_WEIGHT)));
   } else {
-    attrs.push_back(
-        builder.getNamedAttr("lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
+    attrs.push_back(builder.getNamedAttr(
+        "lmem_type", builder.getI64IntegerAttr(LMEM_ACTIVATION)));
   }
   auto &buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   attrs.push_back(builder.getNamedAttr(
@@ -273,7 +344,8 @@ void GroupOps::CreateLoadOp(GdmaElt &tensor, int64_t id,
   }
 }
 
-StoreOp GroupOps::CreateStoreOp(GdmaElt &tensor, int64_t id, group_type_t group_type) {
+StoreOp GroupOps::CreateStoreOp(GdmaElt &tensor, int64_t id,
+                                group_type_t group_type) {
   auto builder = OpBuilder(ctx_);
   auto output = tensor.first;
   auto &ti = tensor.second;
@@ -306,14 +378,14 @@ void GroupOps::UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos,
   auto &out_buffer_value = time_step->get_lmem_buffer_value(buffer_key);
   op->setAttr(LocalGenInterface::kLayerGroupAttrName,
               getLgParam(ti, (int64_t)id, out_buffer_value.addr,
-                         out_buffer_value.size, group_type, imm_buffer_value.addr,
-                         imm_buffer_value.size));
+                         out_buffer_value.size, group_type,
+                         imm_buffer_value.addr, imm_buffer_value.size));
 }
 
 LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
                                     int64_t out_addr, int64_t out_size,
-                                    int64_t group_type,
-                                    int64_t buffer_addr, int64_t buffer_size) {
+                                    int64_t group_type, int64_t buffer_addr,
+                                    int64_t buffer_size) {
   auto builder = OpBuilder(ctx_);
   auto &si = tensor_info.slice_info;
   std::vector<int64_t> h_idxs;
@@ -331,41 +403,11 @@ LayerGroupAttr GroupOps::getLgParam(tensor_info_t &tensor_info, int64_t id,
   if (buffer_size == 0) {
     buffer_addr = 0;
   }
-  return LayerGroupAttr::get(
-      ctx_, out_addr, out_size, buffer_addr, buffer_size, tensor_info.eu_align,
-      builder.getDenseI64ArrayAttr(h_idxs),
-      builder.getDenseI64ArrayAttr(h_slices),
-      builder.getDenseI64ArrayAttr(n_idxs),
-      builder.getDenseI64ArrayAttr(n_slices), id, tensor_info.stage, group_type);
+  return LayerGroupAttr::get(ctx_, out_addr, out_size, buffer_addr, buffer_size,
+                             tensor_info.eu_align,
+                             builder.getDenseI64ArrayAttr(h_idxs),
+                             builder.getDenseI64ArrayAttr(h_slices),
+                             builder.getDenseI64ArrayAttr(n_idxs),
+                             builder.getDenseI64ArrayAttr(n_slices), id,
+                             tensor_info.stage, group_type);
 }
-
-/*
-bool GroupOps::need_none(group_lmem_t &group_lmem) {
-  for (auto &linfo : *group_lmem) {
-    if (linfo.type == LMEM_OPERATION) {
-      for (auto opd : linfo.op->getOperands()) {
-        if (opd.getType().isa<NoneType>()) {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-bool GroupOps::check_hsecs(lmem_info_t &lmem_info) {
-  assert(lmem_info.type == LMEM_ACTIVATION);
-  auto &si_h = lmem_info.slice_info.h;
-  assert(lmem_info.slice_info.h.size() > 0);
-  int64_t n, c, h, w;
-  module::getNCHW(lmem_info.value, n, c, h, w);
-  int64_t total_h = 0;
-  for (auto &it : si_h) {
-    total_h += it.second;
-  }
-  if (total_h * 2 > h * 3) { // h increase 1.5 times
-    return false;
-  }
-  return true;
-}
-*/

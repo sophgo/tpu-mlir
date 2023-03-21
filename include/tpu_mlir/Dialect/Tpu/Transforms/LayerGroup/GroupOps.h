@@ -42,6 +42,7 @@ protected:
                     const std::vector<Operation *> &ops, group_type_t group_type);
 
   tpu::StoreOp CreateStoreOp(GdmaElt &tensor, int64_t id, group_type_t group_type);
+  void UpdateGroupOverlapInfo(Operation *op);
   void UpdateOpLgParam(Operation *op, TensorInfo &tensor_infos, int64_t id,
                        group_type_t group_type);
   tpu::LayerGroupAttr getLgParam(tensor_info_t &tensor_info, int64_t id,
@@ -66,6 +67,10 @@ protected:
   Operation *current_op_;
   Block *body_;
   int64_t MAX_ID_;
+
+  // used for group overlap
+  ValueIntMap overlap_ops_;
+  std::vector<Operation*> groups_;
 };
 
 } // namespace tpu
