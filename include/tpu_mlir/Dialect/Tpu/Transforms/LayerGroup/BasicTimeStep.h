@@ -48,18 +48,22 @@ public:
   int64_t get_layer_swpipl_stage(Operation *op);
   int64_t get_tensor_swpipl_stage(Value v);
   int64_t get_swpipl_stage_num() { return swpipl_stage_num_; }
-  void set_swpipl_stage_num(int num) { swpipl_stage_num_ = num;} //just for ir gen
+  void set_swpipl_stage_num(int num) {
+    swpipl_stage_num_ = num;
+  } // just for ir gen
   void software_pipeline();
 
   // getter
-  const TpuTsField &getLayers(int64_t ts) {
+  TpuTsField &getLayers(int64_t ts) {
     return timestep_table_[ts].tpu0_ts_field;
   }
-  const GdmaTsField &getTensors(int64_t ts) {
+  GdmaTsField &getTensors(int64_t ts) {
     return timestep_table_[ts].gdma0_ts_field;
   }
+  MemBlock find_buffer_locate(Value value, int64_t ts, const MemBuff &buffer);
   int64_t get_lmem_addr(const mem_buffer_key_t &buffer_key);
   int64_t get_lmem_size(const mem_buffer_key_t &buffer_key);
+  MemBlock get_lmem_locate(Value value, int64_t ts);
   MemBuff &get_lmem_buffer() { return lmem_buffer_; }
 
   const mem_buffer_value_t &
@@ -101,11 +105,27 @@ public:
   void set_layer_cycle(Operation *op, int64_t cycle_count) {
     layer_cycle_count_[op] = cycle_count;
   }
-  ValueIntMap& get_gdma_cycle() { return gdma_cycle_count_; }
-  std::map<Operation *, int64_t>& get_layer_cycle() {
+  ValueIntMap &get_gdma_cycle() { return gdma_cycle_count_; }
+  std::map<Operation *, int64_t> &get_layer_cycle() {
     return layer_cycle_count_;
   }
   bool tensor_can_move(GdmaElt &tensor, int64_t src_ts, int64_t dst_ts);
+
+  //==============================================
+  // functions for group overlap
+  //==============================================
+  void insert_self_up_op(Value value);
+  void insert_self_down_op(Value value);
+  void insert_other_up_op(Value value, int64_t dst_ts);
+  void insert_other_down_op(Value value, int64_t dst_ts);
+  ValueSet &get_self_up_overlap_ops() { return self_up_overlap_ops_; }
+  ValueSet &get_self_down_overlap_ops() { return self_down_overlap_ops_; }
+  std::map<int64_t, std::vector<Value>> &get_other_up_overlap_ops() {
+    return other_up_overlap_ops_;
+  }
+  std::map<int64_t, std::vector<Value>> &get_other_down_overlap_ops() {
+    return other_down_overlap_ops_;
+  }
 
 protected:
   std::shared_ptr<TimeStepMethod> timestep_method_;
@@ -122,7 +142,13 @@ protected:
 
   // members for timestep combine
   ValueIntMap gdma_cycle_count_;
-  std::map<Operation*, int64_t> layer_cycle_count_;
+  std::map<Operation *, int64_t> layer_cycle_count_;
+
+  // used for group overlap
+  ValueSet self_up_overlap_ops_;
+  ValueSet self_down_overlap_ops_;
+  std::map<int64_t, std::vector<Value>> other_up_overlap_ops_;
+  std::map<int64_t, std::vector<Value>> other_down_overlap_ops_;
 };
 
 using BasicTimeStepPtr = std::shared_ptr<BasicTimeStep>;

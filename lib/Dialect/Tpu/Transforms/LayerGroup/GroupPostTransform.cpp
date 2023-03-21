@@ -217,7 +217,7 @@ static void _3D_group_post_transform(const LgInfo &lg_info) {
     }
   }
 }
-/// The pass of layer group searching
+/// The pass of group post transform
 class GroupPostTransformPass : public LgPass {
 public:
   GroupPostTransformPass() {}

@@ -106,7 +106,7 @@ select_valid_dst_timesteps(BasicTimeStepPtr &time_step,
 }
 
 static void update_mem_buffer_by_timestep_merge(
-    BasicTimeStepPtr &time_step, std::vector<GdmaTsField> ts_tensors_v,
+    BasicTimeStepPtr &time_step, std::vector<GdmaTsField> &ts_tensors_v,
     const MemBuff &src_mem_buffer, MemBuff &dst_mem_buffer, int64_t ts,
     bool consider_hold_in_tensor) {
   mem_buffer_key_t mem_key;

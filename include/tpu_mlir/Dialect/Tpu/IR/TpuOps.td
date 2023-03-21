@@ -1069,7 +1069,14 @@ def Tpu_GroupOp:Tpu_BaseOp<"Group"> {
     I64Attr:$hsecs,
     I64Attr:$swpipl_stage_num,
     I64Attr:$group_type,
-    DefaultValuedAttr<I64ArrayAttr, "{0}">:$flow
+    // store timestep_idx(negative) and op_id(positive)
+    DefaultValuedAttr<I64ArrayAttr, "{0}">:$flow,
+    // only store op_id
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$self_up_overlap_op,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$self_down_overlap_op,
+    // store timestep_idx(negative) and op_id(positive)
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$other_up_overlap_op,
+    DefaultValuedAttr<I64ArrayAttr, "{}">:$other_down_overlap_op
   );
   let results = (outs Variadic<AnyRankedTensor>:$outputs);
   let regions = (region SizedRegion<1>:$body);
