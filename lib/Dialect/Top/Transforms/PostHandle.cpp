@@ -82,7 +82,7 @@ public:
           attrs.emplace_back(builder.getNamedAttr("eta",builder.getF64FloatAttr(eta)));
         }
 
-        llvm::ArrayRef<int64_t> shape = {1, 1, keep_topk * batch_num, 7};
+        llvm::SmallVector<int64_t> shape = {1, 1, keep_topk * batch_num, 7};
         auto new_type = RankedTensorType::get(shape, module::getElementType(inputs[0]));
         [&]() {
           if (type == "yolo") {

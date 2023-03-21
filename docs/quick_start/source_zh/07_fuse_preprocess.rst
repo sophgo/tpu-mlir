@@ -82,7 +82,7 @@
 
 模型部署样例
 ------------
-以mobilenet_v2模型为例, 参考“编译ONNX模型”章节, 在tpu-mlir/regression/regression_out/目录下使用model_transform工具生成原始mlir, 并通过run_calibration工具生成校准表。
+以mobilenet_v2模型为例, 参考“编译Caffe模型”章节, 在tpu-mlir/regression/regression_out/目录下使用model_transform工具生成原始mlir, 并通过run_calibration工具生成校准表。
 
 
 BM1684X部署
@@ -143,5 +143,3 @@ CV18xx部署
 
 上述指令中,aligned_input指定了模型需要做输入的对齐。需要注意的是,YUV格式的输入数据fuse_preprocess和aligned_input需要都做,其它格式的fuse_preprocess和aligned_input的操作可选择只做其中一个或两个都做,
 若只做aligned_input操作,则需要设置test_input为做过预处理的 ``${model_name}_in_f32.npz`` 格式,和“编译ONNX模型”的章节设置是一致的。
-
-
