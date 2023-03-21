@@ -190,8 +190,10 @@ class TorchConverter(BaseConverter):
             "aten::select": lambda node: self.convert_select_op(node),
             "aten::sigmoid": lambda node: self.convert_sigmoid_op(node),
             "aten::silu": lambda node: self.convert_silu_op(node),
+            "aten::slice": lambda node: self.convert_slice_op(node),
             "aten::softmax": lambda node: self.convert_softmax_op(node),
             "aten::softplus": lambda node: self.convert_softplus_op(node),
+            "aten::squeeze": lambda node: self.convert_squeeze_op(node),
             "aten::sub": lambda node: self.convert_sub_op(node),
             "aten::sum": lambda node: self.convert_sum_op(node),
             "aten::size": lambda node: self.convert_size_op(node),
@@ -667,8 +669,30 @@ class TorchConverter(BaseConverter):
         op0 = self.getOp(torch_node.inputs[0])
         axis = self.const_val[torch_node.inputs[1]]
         index = self.const_val[torch_node.inputs[2]]
-        p = {'name': torch_node.name, 'axis': axis, "index": index}
-        new_op = self.mlir.create_select_op([op0], [], **p)
+        p = {
+            'name': torch_node.name,
+            'axis': axis,
+            "start": index,
+            "end": index,
+            "step": 1
+        }
+        new_op = self.mlir.create_slice_ex_op([op0], [], **p)
+        self.addOperand(torch_node.name, new_op)
+
+    def convert_slice_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axis = self.const_val[torch_node.inputs[1]]
+        start = self.const_val[torch_node.inputs[2]]
+        end = self.const_val[torch_node.inputs[3]]
+        step = self.const_val[torch_node.inputs[4]]
+        p = {
+            'name': torch_node.name,
+            'axis': axis,
+            "start": start,
+            "end": end,
+            "step": step
+        }
+        new_op = self.mlir.create_slice_ex_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
     def convert_upsample_op(self, torch_node: TorchNode, mode: str):
@@ -688,6 +712,12 @@ class TorchConverter(BaseConverter):
         new_op = self.mlir.create_interp_op([op0], [], **p)
         self.addOperand(torch_node.name, new_op)
 
+    def convert_squeeze_op(self, torch_node: TorchNode):
+        op0 = self.getOp(torch_node.inputs[0])
+        axes = [self.const_val[torch_node.inputs[1]]] if len(torch_node.inputs) == 2 else []
+        p = {'name': torch_node.name, 'axes': axes}
+        new_op = self.mlir.create_squeeze_op([op0], [], **p)
+        self.addOperand(torch_node.name, new_op)
 
     def convert_where_op(self, torch_node: TorchNode):
         op0 = self.getOp(torch_node.inputs[0])

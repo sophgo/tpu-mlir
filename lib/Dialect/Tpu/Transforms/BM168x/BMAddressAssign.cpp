@@ -138,6 +138,9 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
       if (auto rop = dyn_cast<tpu::ReshapeOp>(in0.getDefiningOp())) {
         in0 = rop.getInput();
       }
+      if (auto rop = dyn_cast<tpu::SqueezeOp>(in0.getDefiningOp())) {
+        in0 = rop.getInputs();
+      }
       int64_t addr = module::getAddress(in0);
       module::setAddress(concatOp.getOutput(), addr);
       int64_t offset = module::getBytes(in0);
@@ -146,12 +149,18 @@ void BMAddressAssign::assign(mlir::ModuleOp &module, bool reuse_addr) {
         if (auto rop = dyn_cast<tpu::ReshapeOp>(input.getDefiningOp())) {
           module::setAddress(input, addr + offset);
           input = rop.getInput();
+        } else if (auto rop = dyn_cast<tpu::SqueezeOp>(input.getDefiningOp())) {
+          module::setAddress(input, addr + offset);
+          input = rop.getInputs();
         }
         module::setAddress(input, addr + offset);
         offset += module::getBytes(input);
       }
     } else if (auto reshapeOp = dyn_cast<tpu::ReshapeOp>(op)) {
       auto addr = module::getAddress(reshapeOp.getInput());
+      module::setAddress(reshapeOp.getOutput(), addr);
+    } else if (auto reshapeOp = dyn_cast<tpu::SqueezeOp>(op)) {
+      auto addr = module::getAddress(reshapeOp.getInputs());
       module::setAddress(reshapeOp.getOutput(), addr);
     } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
       auto addr = module::getAddress(sliceOp.getInput());
@@ -256,13 +265,18 @@ void BMAddressAssign::updateLiveRangeofBMOps(
       for (int i = 0; i < op->getNumOperands(); ++i) {
         auto opd = module::getOperand(op, i);
         auto preOp = opd.getDefiningOp();
-        if (auto rop = dyn_cast<tpu::ReshapeOp>(preOp)) {
+        if (isa<tpu::ReshapeOp, tpu::SqueezeOp>(preOp)) {
           ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
           liveRange[pre_v].start = concatLive[0];
           liveRange[pre_v].end = concatLive[1];
           liveRange[pre_v].tensor_size = 0;
-          opd = rop.getInput();
-          preOp = opd.getDefiningOp();
+          if (auto rop = dyn_cast<tpu::ReshapeOp>(preOp)) {
+            opd = rop.getInput();
+            preOp = opd.getDefiningOp();
+          } else if (auto rop = dyn_cast<tpu::SqueezeOp>(preOp)) {
+            opd = rop.getInputs();
+            preOp = opd.getDefiningOp();
+          }
         }
         ValueInfo pre_v(preOp, opd.cast<OpResult>().getResultNumber());
         liveRange[pre_v].start = concatLive[0];
@@ -313,7 +327,7 @@ void BMAddressAssign::findInPlaceOpMaxUsePosition(
 }
 
 bool BMAddressAssign::isInPlaceOp(Operation *op) {
-  if (isa<tpu::ReshapeOp>(op)) {
+  if (isa<tpu::ReshapeOp, tpu::SqueezeOp>(op)) {
     return true;
   } else if (auto sliceOp = dyn_cast<tpu::SliceOp>(op)) {
     auto p = sliceOp.parseParam();

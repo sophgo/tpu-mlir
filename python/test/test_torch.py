@@ -78,8 +78,10 @@ class TORCH_IR_TESTER(object):
             "Pad2d":            (self.test_Pad2d,       Y, N, N),
             "Scatter":          (self.test_Scatter,     N, N, N),
             "Select":           (self.test_Select,      Y, N, N),
+            "Slice":            (self.test_Slice,       Y, N, N),
             "Softmax":          (self.test_Softmax,     Y, N, N),
             "Softmin":          (self.test_Softmin,     Y, N, N),
+            "Squeeze":          (self.test_Squeeze,     Y, N, N),
             "Sub":              (self.test_Sub,         Y, N, N),
             "T":                (self.test_T,           Y, N, N),
             "Tile":             (self.test_Tile,        Y, N, N),
@@ -1035,6 +1037,56 @@ class TORCH_IR_TESTER(object):
         _test_select((1, 3, 32, 32), 2, 13)
         _test_select((3, 32, 16), 0, 2)
         _test_select((32, 16), 1, 4)
+
+    #######################################################################
+    # Slice
+    # ------------
+    def test_Slice(self):
+        """Slice"""
+
+        def _test_slice(in0_shape):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = x[:,2::2]
+                    return y1
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_slice((1, 3, 32, 32))
+        _test_slice((3, 32, 16))
+        _test_slice((32, 16))
+
+    #######################################################################
+    # Squeeze
+    # ------------
+    def test_Squeeze(self):
+        """Squeeze"""
+
+        def _test_squeeze(in0_shape, dim=None):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    x = x + 1
+                    if dim is None:
+                        y1 = torch.squeeze(x)
+                    else:
+                        y1 = torch.squeeze(x, dim=dim)
+                    return y1
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_squeeze((1, 3, 1, 32), 0)
+        _test_squeeze((1, 3, 1, 16))
+        _test_squeeze((32, 1))
 
     #######################################################################
     # Upsample

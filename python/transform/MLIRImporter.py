@@ -78,9 +78,9 @@ class Top:
     RetinaFaceDetection = 'top.RetinaFaceDetection'
     ScatterElementsOp = 'top.ScatterElements'
     ScatterNDOp = 'top.ScatterND'
-    SelectOp = 'top.Select'
     SubOp = 'top.Sub'
     SliceOp = 'top.Slice'
+    SliceExOp = 'top.SliceEx'
     SigmoidOp = 'top.Sigmoid'
     SiLUOp = 'top.SiLU'
     SizeOp = 'top.Size'
@@ -609,15 +609,17 @@ class MLIRImporter(object):
         }
         return self.buildOp(Top.SliceOp, operands, [output_type], **param)
 
-    def create_select_op(self, operands, output_shape, **kargs):
+    def create_slice_ex_op(self, operands, output_shape, **kargs):
         # get_value_type
         output_type = self.get_tensor_type(output_shape)
         param = {
             'name': kargs['name'],
             'axis': IntegerAttr.get(self.mlir_type['INT64'], kargs['axis']),
-            'index': IntegerAttr.get(self.mlir_type['INT64'], kargs['index']),
+            'start': IntegerAttr.get(self.mlir_type['INT64'], kargs['start']),
+            'end': IntegerAttr.get(self.mlir_type['INT64'], kargs['end']),
+            'step': IntegerAttr.get(self.mlir_type['INT64'], kargs['step']),
         }
-        return self.buildOp(Top.SelectOp, operands, [output_type], **param)
+        return self.buildOp(Top.SliceExOp, operands, [output_type], **param)
 
     def create_sigmoid_op(self, operands, output_shape, **kargs):
         # get_value_type

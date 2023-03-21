@@ -921,7 +921,7 @@ def Top_StridedSliceOp: Top_Op<"StridedSlice"> {
   let hasCanonicalizer = 1;
 }
 
-def Top_SelectOp: Top_Op<"Select"> {
+def Top_SliceExOp: Top_Op<"SliceEx"> {
   let summary = "Select operator";
 
   let description = [{
@@ -931,7 +931,9 @@ def Top_SelectOp: Top_Op<"Select"> {
   let arguments = (ins
     AnyTensor:$input,
     I64Attr:$axis,
-    I64Attr:$index
+    I64Attr:$start,
+    I64Attr:$step,
+    I64Attr:$end
   );
   let results = (outs AnyTensor:$output);
   let hasCanonicalizer = 1;
@@ -1159,6 +1161,22 @@ def Top_SqueezeOp: Top_Op<"Squeeze"> {
 
   let results = (outs AnyTensor:$output);
 }
+
+def Top_UnsqueezeOp: Top_Op<"Unsqueeze"> {
+  let summary = "Unsqueeze operator";
+
+  let description = [{
+    The operator unsqueeze the input shapes by given axis.
+  }];
+
+  let arguments = (ins
+    AnyTensor:$input,
+    I64ArrayAttr:$axes
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 
 def Top_ClipOp: Top_Op<"Clip"> {
   let summary = "Clip operator";
