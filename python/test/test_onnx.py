@@ -44,7 +44,7 @@ class ONNX_IR_TESTER(object):
             "AddBcast":     (self.test_AddBcast,    Y, N, N),
             "AddBcast2":    (self.test_AddBcast2,   Y, N, N),
             "AddBcast3":    (self.test_AddBcast3,   N, N, N),  # failed cases
-            "Arg":          (self.test_Arg,         Y, N, N),
+            "Arg":          (self.test_Arg,         Y, N, Y),
             "AddConst":     (self.test_AddConst,    Y, N, Y),
             "AvgPool1d":    (self.test_AvgPool1d,   Y, N, Y),
             "AvgPool2d":    (self.test_AvgPool2d,   Y, N, Y),
@@ -187,7 +187,7 @@ class ONNX_IR_TESTER(object):
             # Special Pass test case, Alphabetically
             #########################################
             # case: (test, bm1684x_support, bm1686_support, cv183x_support)
-            "ArgReducefull":    (self.test_ArgReducefull,   Y, N, N),
+            "ArgReducefull":    (self.test_ArgReducefull,   Y, N, Y),
             "ConcatFuse":       (self.test_ConcatFuse,      Y, N, Y),
             "ConcatToSpace":    (self.test_ConcatToSpace,   Y, N, N),
             "Conv3dTo2d":       (self.test_Conv3dTo2d,      Y, N, Y),
@@ -218,7 +218,7 @@ class ONNX_IR_TESTER(object):
             "SwapDimInner":     (self.test_SwapDimInner,    Y, N, N),
             "SliceToReverse":   (self.test_SliceToReverse,  Y, N, N),
             "StaticDynMixed":   (self.test_StaticDynMixed,  Y, N, N),
-            "TransposeArg":     (self.test_TransposeArg,    Y, N, N),
+            "TransposeArg":     (self.test_TransposeArg,    Y, N, Y),
         }
         # yapf: enable
 
@@ -1978,7 +1978,6 @@ class ONNX_IR_TESTER(object):
 
             input = helper.make_tensor_value_info('input', TensorProto.FLOAT, input_shape)
             output1 = helper.make_tensor_value_info('o_max', TensorProto.INT64, output_shape)
-            output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
             arg_max = helper.make_node(
                 'ArgMax',
                 ['input'],
@@ -1986,6 +1985,13 @@ class ONNX_IR_TESTER(object):
                 keepdims=keep,
                 axis=1,
             )
+            if self.is_cv18xx:
+              graph_def = helper.make_graph([arg_max], "{}_{}".format(case_name, keep),
+                                          [input], [output1])
+              self.onnx_and_test(graph_def)
+              return
+
+            output2 = helper.make_tensor_value_info('o_min', TensorProto.INT64, output_shape)
             arg_min = helper.make_node(
                 'ArgMin',
                 ['input'],
