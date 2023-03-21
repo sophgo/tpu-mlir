@@ -53,6 +53,10 @@ def ConvertTopToTosa : Pass<"convert-top-to-tosa", "ModuleOp"> {
   let summary = "Convert top-level Top Ops to Tosa Ops";
   let constructor = "tpu_mlir::createConvertTopToTosa()";
   let dependentDialects = ["tpu_mlir::top::TopDialect", "mlir::tosa::TosaDialect"];
+  let options = [
+    Option<"includeWeight", "includeWeight", "bool", /*default=*/"false",
+           "true for including weight datas in tosa.mlir, or false for not">,
+  ];
 }
 
 #endif // TPU_MLIR_CONVERSION_PASSES

@@ -10,10 +10,8 @@
 #ifndef TPU_MLIR_CONVERSION_PASSES_H
 #define TPU_MLIR_CONVERSION_PASSES_H
 
-#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
-#include "tpu_mlir/Conversion/TopToTosa/TopToTosa.h"
+#include "tpu_mlir/Conversion/Conversion.h"
 #include "tpu_mlir/Conversion/ExtraConversion/DoExtraConversion.h"
-
 
 namespace mlir {
 

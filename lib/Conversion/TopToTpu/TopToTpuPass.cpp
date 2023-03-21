@@ -9,7 +9,7 @@
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringBM1684X.h"
 #include "tpu_mlir/Conversion/TopToTpu/LoweringCV18xx.h"
-#include "tpu_mlir/Conversion/TopToTpu/TopToTpu.h"
+#include "tpu_mlir/Conversion/Conversion.h"
 #include "tpu_mlir/Support/Module.h"
 #include <fstream>
 #include <regex>
@@ -34,10 +34,10 @@ template <typename OpTy> static void BackwardOp(OpTy op) {
 static void Backward(Value in) {
   if (auto reshapeOp = dyn_cast<top::ReshapeOp>(in.getDefiningOp())) {
     BackwardOp(reshapeOp);
-    //Backward(reshapeOp.getInput());
+    // Backward(reshapeOp.getInput());
   } else if (auto permuteOp = dyn_cast<top::PermuteOp>(in.getDefiningOp())) {
     BackwardOp(permuteOp);
-    //Backward(permuteOp.getInput());
+    // Backward(permuteOp.getInput());
   }
 }
 
@@ -54,10 +54,10 @@ static void Forward(Value out) {
   for (auto user : out.getUsers()) {
     if (auto reshapeOp = dyn_cast<top::ReshapeOp>(user)) {
       ForwardOp(reshapeOp);
-      //Forward(reshapeOp.getOutput());
+      // Forward(reshapeOp.getOutput());
     } else if (auto permuteOp = dyn_cast<top::PermuteOp>(user)) {
       ForwardOp(permuteOp);
-      //Forward(permuteOp.getOutput());
+      // Forward(permuteOp.getOutput());
     }
   }
 }

@@ -7,22 +7,22 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef TPU_MLIR_CONVERSION_TOPTOTOSA_H
-#define TPU_MLIR_CONVERSION_TOPTOTOSA_H
+#ifndef TPU_MLIR_CONVERSION_H
+#define TPU_MLIR_CONVERSION_H
 
+#include "tpu_mlir/Conversion/TopToTpu/TopLowering.h"
 #include "tpu_mlir/Conversion/TopToTosa/TopLowering.h"
-/*
+
 namespace mlir {
-#ifndef GEN_PASS_DECL
 #define GEN_PASS_DECL
 #include "tpu_mlir/Conversion/Passes.h.inc"
-#endif
 } // namespace mlir
-*/
+
 namespace tpu_mlir {
 
+std::unique_ptr<Pass> createConvertTopToTpu();
 std::unique_ptr<Pass> createConvertTopToTosa();
 
 } // namespace tpu_mlir
 
-#endif // TPU_MLIR_CONVERSION_TOPTOTOSA_H
+#endif // TPU_MLIR_CONVERSION_H

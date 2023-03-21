@@ -10,7 +10,6 @@
 #include "tpu_mlir/Support/Dnnl/Dnnl.h"
 #include "tpu_mlir/Support/Module.h"
 
-
 using namespace dnnl;
 
 namespace tpu_mlir {

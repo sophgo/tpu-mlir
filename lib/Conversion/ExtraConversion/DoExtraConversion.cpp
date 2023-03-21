@@ -33,7 +33,8 @@ namespace mlir {
 
 namespace tpu_mlir {
 
-struct DoExtraConversion : public ::impl::DoExtraConversionBase<DoExtraConversion> {
+struct DoExtraConversion
+    : public ::impl::DoExtraConversionBase<DoExtraConversion> {
 public:
   DoExtraConversion() {}
   void runOnOperation() override {
@@ -57,4 +58,4 @@ public:
 std::unique_ptr<Pass> createDoExtraConversion() {
   return std::make_unique<DoExtraConversion>();
 }
-}
+} // namespace tpu_mlir
