@@ -34,11 +34,35 @@ void tpu::InterpOp::codegen_global_bm1684x() {
   else if (getCoordMode() == tpu::ResizeCoordMode::align_corners)
     coord = 2;
   if (getMode() == tpu::ResizeMode::nearest) {
-    common.platform_sp = ONNX_NEAREST;
+    auto platform = module::getPlatform();
+    switch (platform)
+    {
+    case module::Platform::ONNX:
+        common.platform_sp = ONNX_NEAREST;
+        break;
+    case module::Platform::TORCH:
+        common.platform_sp = PYTORCH_NEAREST;
+        break;
+    default:
+        common.platform_sp = ONNX_NEAREST;
+        break;
+    }
     common.align_corners = true;
     common.half_pixel_centers = false;
   } else if (getMode() == tpu::ResizeMode::linear) {
-    common.platform_sp = PYTORCH_SUPPORT;
+    auto platform = module::getPlatform();
+    switch (platform)
+    {
+    case module::Platform::TORCH:
+        common.platform_sp = PYTORCH_SUPPORT;
+        break;
+    case module::Platform::CAFFE:
+        common.platform_sp = CAFFE_SUPPORT;
+        break;
+    default:
+        common.platform_sp = PYTORCH_SUPPORT;
+        break;
+    }
     common.align_corners = (coord == 2) ? 1 : 0;
     common.half_pixel_centers = (coord == 0 || coord == 1) ? 1 : 0;
   }
