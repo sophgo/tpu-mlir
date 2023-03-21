@@ -90,6 +90,8 @@ def align_type_and_shape(d1, d2):
     # print(t2, d2.size, d2.shape)
     if t1 == np.int8 or t2 == np.int8:
         t = np.int8
+    elif t1 == np.int32 or t2 == np.int32:
+        t = np.int32
     else:
         t = np.float32
     if t1 == np.uint16:
@@ -115,6 +117,13 @@ def compare_one_array(tc, npz1, npz2, name, verbose, lock, dic, int8_tensor_clos
     d2 = npz2.get(name)
     lock.release()
     try:
+        # dirty hack for NonMaxSuppression
+        # onnx and bmodel can get correct shape, but top/tpu always get largest shape
+        # so we need to align shape
+        if "NonMaxSuppression" in name:
+            min_v = min(d1.shape[0], d2.shape[0])
+            d2 = d2[:min_v, :]
+            d1 = d1[:min_v, :]
         d1, d2 = align_type_and_shape(d1, d2)
     except:
         print("Error: {} in two npz file is not same shape. {} v.s. {}".format(

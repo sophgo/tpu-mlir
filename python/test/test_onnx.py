@@ -1704,6 +1704,30 @@ class ONNX_IR_TESTER(object):
         )
         self.onnx_and_test(graph_def)
 
+    def test_Nms(self, case_name):
+        num_batches = 1
+        num_classes = 80
+        spatial_dimension = 15200
+        max_out = 200
+        in_shape = [num_batches,spatial_dimension,4]
+        score_shape = [num_batches, num_classes, spatial_dimension]
+        boxes = helper.make_tensor_value_info('boxes', TensorProto.FLOAT, in_shape)
+        scores = helper.make_tensor_value_info('scores', TensorProto.FLOAT, score_shape)
+        max_output = helper.make_tensor(name = 'max_output_boxes_per_class', data_type=onnx.TensorProto.INT64, dims = [1],vals= 200*np.ones(1).astype(np.int64))
+        iou_threshold = helper.make_tensor(name = 'iou_threshold',data_type = TensorProto.FLOAT, dims=[1],  vals= 0.5*np.ones(1))
+        score_threshold = helper.make_tensor(name = 'score_threshold',data_type = TensorProto.FLOAT, dims=[1], vals =  0.05*np.ones(1))
+        y_shape = [max_out*num_classes, 3]
+        selected_indices = helper.make_tensor_value_info('selected_indices', TensorProto.INT64, y_shape)
+        nms_def = helper.make_node(
+            'NonMaxSuppression',
+            inputs=['boxes', 'scores', 'max_output_boxes_per_class', 'iou_threshold', 'score_threshold'],
+            outputs=['selected_indices'],
+        )
+        graph_def = helper.make_graph([nms_def],
+                                      "{}".format(case_name), [boxes, scores], [selected_indices],
+                                      initializer=[max_output, iou_threshold, score_threshold])
+        self.onnx_and_test(graph_def)
+
     def test_Pad(self, case_name):
         case0 = [[3, 8, 32, 32], [3, 8, 44, 46], [0, 0, 5, 6, 0, 0, 7, 8]]
         case1 = [[4, 8, 10], [4, 9, 11], [0, 1, 0, 0, 0, 1]]

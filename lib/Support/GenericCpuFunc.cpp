@@ -18,6 +18,7 @@
 #include <cstring>
 #include <map>
 #include <math.h>
+#include <queue>
 #include <sstream>
 
 namespace tpu_mlir {
@@ -1845,6 +1846,116 @@ void Yolo_v2_DetectionFunc::invoke() {
   }
 }
 
+NmsFunc::NmsFunc(NmsParam &param) : param_(param) {}
+
+float NmsFunc::iou(const float *box, const int i, const int j) {
+  // box:[y1, x1, y2, x2]
+  const float *box_i = box + i * 4;
+  const float *box_j = box + j * 4;
+  const float ymax_i = (box_i[0] > box_i[2]) ? box_i[0] : box_i[2];
+  const float ymin_i = (box_i[0] < box_i[2]) ? box_i[0] : box_i[2];
+  const float xmax_i = (box_i[1] > box_i[3]) ? box_i[1] : box_i[3];
+  const float xmin_i = (box_i[1] < box_i[3]) ? box_i[1] : box_i[3];
+  const float ymax_j = (box_j[0] > box_j[2]) ? box_j[0] : box_j[2];
+  const float ymin_j = (box_j[0] < box_j[2]) ? box_j[0] : box_j[2];
+  const float xmax_j = (box_j[1] > box_j[3]) ? box_j[1] : box_j[3];
+  const float xmin_j = (box_j[1] < box_j[3]) ? box_j[1] : box_j[3];
+  const float area_i = (ymax_i - ymin_i) * (xmax_i - xmin_i);
+  if (area_i <= 0.f)
+    return 0.f;
+  const float area_j = (ymax_j - ymin_j) * (xmax_j - xmin_j);
+  if (area_j <= 0.f)
+    return 0.f;
+  const float ymax_inter = (ymax_i < ymax_j) ? ymax_i : ymax_j;
+  const float ymin_inter = (ymin_i > ymin_j) ? ymin_i : ymin_j;
+  const float y_inter =
+      (ymax_inter > ymin_inter) ? (ymax_inter - ymin_inter) : 0;
+  if (y_inter == 0.f)
+    return 0.f;
+  const float xmax_inter = (xmax_i < xmax_j) ? xmax_i : xmax_j;
+  const float xmin_inter = (xmin_i > xmin_j) ? xmin_i : xmin_j;
+  const float x_inter =
+      (xmax_inter > xmin_inter) ? (xmax_inter - xmin_inter) : 0;
+  if (x_inter == 0.f)
+    return 0.f;
+  const float area_inter = y_inter * x_inter;
+  const float iou = area_inter / (area_i + area_j - area_inter);
+  return iou;
+}
+
+int NmsFunc::invoke() {
+  // boxes: [num_batches, spatial_dimension, 4]
+  // scores: [num_batches, num_classes, spatial_dimension]
+  assert(5==param_.inputs.size());
+  float *box = param_.box;
+  float *score = param_.score;
+  const int num_boxes = param_.inputs[0].shape[1];
+  assert(4 == param_.inputs[0].shape[2]);
+  assert(num_boxes == param_.inputs[1].shape[2]);
+  const int batch_num = param_.inputs[1].shape[0];
+  const int num_class = param_.inputs[1].shape[1];
+  float iou_threshold = param_.iou_threshold;
+  float score_threshold = param_.score_threshold;
+  int max_output_size = param_.max_output_boxes_per_class;
+  max_output_size = (max_output_size > num_boxes) ? num_boxes : max_output_size;
+  struct Candidate {
+    int box_index;
+    float score;
+    int begin_index;
+  };
+  auto cmp = [](const Candidate i, const Candidate j) {
+    return i.score < j.score;
+  };
+
+  int num_selected_indices = 0;
+  for (int n = 0; n < batch_num; ++n) {
+    for (int c = 0; c < num_class; ++c) {
+      const int score_offset = (n * num_class + c) * num_boxes;
+      const int box_offset = (n * num_boxes * 4);
+      std::priority_queue<Candidate, std::deque<Candidate>, decltype(cmp)>
+          candicate_prior_queue(cmp);
+      for (int i = 0; i < num_boxes; ++i) {
+        if (score[score_offset + i] > score_threshold) {
+          candicate_prior_queue.emplace(
+              Candidate({i, score[score_offset + i], 0}));
+        }
+      }
+
+      std::vector<int> selected_index;
+      Candidate next_cand;
+      float iou;
+      while (selected_index.size() < max_output_size &&
+             (!candicate_prior_queue.empty())) {
+        next_cand = candicate_prior_queue.top();
+        candicate_prior_queue.pop();
+
+        bool selected = true;
+        for (int i = static_cast<int>(selected_index.size()) - 1; i >= 0; --i) {
+          iou = NmsFunc::iou((box + box_offset), next_cand.box_index,
+                             selected_index[i]);
+          if ((iou > iou_threshold) && iou != 0.f) {
+            selected = false;
+            break;
+          }
+        }
+
+        if (selected == true) {
+          selected_index.push_back(next_cand.box_index);
+        }
+      }
+      int *output =
+          reinterpret_cast<int *>(param_.output) + (num_selected_indices * 3);
+      for (int i = 0; i < selected_index.size(); i++) {
+        output[i * 3] = n;
+        output[i * 3 + 1] = c;
+        output[i * 3 + 2] = selected_index[i];
+      }
+      num_selected_indices += static_cast<int>(selected_index.size());
+    }
+  }
+  return num_selected_indices * 3;
+}
+
 BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op) : op_(op) {
   this->op_name = op.getCpuOpName().str();
   this->op_type = this->getCpuOpType();
@@ -1854,6 +1965,7 @@ BMCpuOp::BMCpuOp(tpu::GenericCpuOp &op) : op_(op) {
 int BMCpuOp::getCpuOpType() {
   return StringSwitch<int>(op_.getCpuOpName())
       .Case("topk", CPU_TOPK)
+      .Case("onnx_nms", CPU_ONNX_NMS)
       .Default(CPU_LAYER_UNKNOW);
 }
 
@@ -1865,7 +1977,20 @@ void BMCpuOp::get_topk_param() {
   cpu_param.sorted = paramDic.get("sorted").cast<BoolAttr>().getValue();
   cpu_param.descending = paramDic.get("largest").cast<BoolAttr>().getValue();
   this->param_size = sizeof(cpu_topk_param_t);
-  this->param = (void *)&cpu_param;
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
+}
+
+void BMCpuOp::get_onnx_nms_param() {
+  cpu_onnx_nms_param_t cpu_param{};
+  mlir::DictionaryAttr paramDic = op_.getParam().value();
+  cpu_param.max_output_size =
+      paramDic.get("max_output_size").cast<IntegerAttr>().getInt();
+  cpu_param.center_point_box =
+      paramDic.get("center_point_box").cast<IntegerAttr>().getInt();
+  this->param_size = sizeof(cpu_onnx_nms_param_t);
+  this->param = (void *)malloc(this->param_size);
+  memcpy(this->param, &cpu_param, this->param_size);
 }
 
 void BMCpuOp::getCpuParam() {
@@ -1873,8 +1998,11 @@ void BMCpuOp::getCpuParam() {
   case CPU_TOPK:
     get_topk_param();
     break;
+  case CPU_ONNX_NMS:
+    get_onnx_nms_param();
+    break;
   case CPU_LAYER_UNKNOW:
-    llvm_unreachable("wrong cpu layer type");
+    llvm_unreachable("Unknow CPU Op");
   }
 }
 

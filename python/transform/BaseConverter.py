@@ -37,6 +37,11 @@ class BaseConverter(object):
             raise KeyError("shape {} not found".format(name))
         return self.shapes[name]
 
+    def setShape(self, name, shape):
+        if name not in self.shapes:
+            raise KeyError("shape {} not found".format(name))
+        self.shapes[name] = shape
+
     def addOperand(self, name, op):
         if name in self.operands:
             if self.operands[name] != op:

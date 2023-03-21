@@ -516,7 +516,10 @@ private:
 class BMCpuOp {
 public:
   BMCpuOp(tpu::GenericCpuOp &op);
-  ~BMCpuOp() { param = NULL; }
+  ~BMCpuOp() {
+    free(param);
+    param = nullptr;
+  }
   int op_type;
   int param_size;
   void *param;
@@ -527,6 +530,28 @@ private:
   void getCpuParam();
   tpu::GenericCpuOp op_;
   void get_topk_param();
+  void get_onnx_nms_param();
+};
+
+struct NmsParam {
+  std::vector<tensor_list_t> inputs;
+  float *box;
+  float *score;
+  float *output;
+  int max_output_boxes_per_class;
+  int center_point_box;
+  float iou_threshold;
+  float score_threshold;
+};
+
+class NmsFunc {
+public:
+  NmsFunc(NmsParam &param);
+  int invoke();
+  float iou(const float *box, const int i, const int j);
+
+private:
+  NmsParam param_;
 };
 
 struct InstanceNormParam {
