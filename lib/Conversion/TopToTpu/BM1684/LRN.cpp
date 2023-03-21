@@ -14,7 +14,8 @@ namespace bm1684 {
 
 void LRNLowering::LoweringINT8(PatternRewriter &rewriter, top::LRNOp op,
                                bool asymmetric) const {
-  llvm_unreachable("Not supported now");
+  
+  LoweringF32(rewriter, op);
 }
 
 void LRNLowering::LoweringF32(PatternRewriter &rewriter, top::LRNOp op) const {
