@@ -118,13 +118,14 @@ def model_inference(inputs: dict, model_file: str) -> dict:
         overflow = np.prod(i.data.shape) - np.prod(input.shape)
         if is_cv18xx and i.aligned:
             overflow = i.size - np.prod(input.shape)
-        if is_dynamic:
+        if not is_cv18xx:
             assert (len(i.data.shape) == len(input.shape))
             for max, dim in zip(i.data.shape, input.shape):
                 if dim > max:
                     raise RuntimeError("Error shape: form {} to {}".format(
                         i.data.shape, input.shape))
             dyn_input_shapes.append(input.shape)
+        if is_dynamic:
             input = np.concatenate([input.flatten(),
                                     np.zeros([overflow]).astype(input.dtype)]).reshape(i.data.shape)
         elif overflow != 0:
@@ -156,9 +157,11 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             i.data[:] = input.astype(np.float32)
         else:
             raise ValueError(f"unknown type: form {input.dtype} to {i.data.dtype}")
-    if not is_dynamic:
+    if is_cv18xx:
         net.forward()
     else:
+        # always use forward_dynamic to get output shape, because some static model may have dynamic output
+        # for example: last layer is NonMaxSuppression, NonZero, etc.
         dyn_output_shapes = net.forward_dynamic(dyn_input_shapes)
     dyn_idx = 0
     for i in net.outputs:
@@ -178,7 +181,7 @@ def model_inference(inputs: dict, model_file: str) -> dict:
             outputs[i.name] = bf16_to_fp32(i.data)
         else:
             outputs[i.name] = np.array(i.data)
-        if is_dynamic:
+        if not is_cv18xx:
             if outputs[i.name].shape != dyn_output_shapes[dyn_idx]:
                 dyn_len = np.prod(dyn_output_shapes[dyn_idx])
                 outputs[i.name] = outputs[i.name].flatten()[:dyn_len].reshape(

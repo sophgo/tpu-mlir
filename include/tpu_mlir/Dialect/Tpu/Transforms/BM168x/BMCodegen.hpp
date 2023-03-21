@@ -30,8 +30,7 @@ private:
   CreateShapeVector(const ArrayRef<int64_t> &shape);
   Offset<Vector<Offset<bmodel::Tensor>>>
   CreateTensorVector(const std::vector<Value> &values,
-                     std::vector<bool> cpu_type = {},
-                     std::vector<uint32_t> cpu_addr = {});
+                     std::vector<bool> cpu_type = {});
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call);
   Offset<bmodel::SubNet> CreateSubNet(func::CallOp call,
                                       std::unique_ptr<SubnetIr> subnet_ir_,

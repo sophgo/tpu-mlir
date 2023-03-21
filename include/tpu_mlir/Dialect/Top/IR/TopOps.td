@@ -1420,6 +1420,20 @@ def Top_LSTMOp: Top_Op<"LSTM"> {
   }];
 }
 
+def Top_NmsOp : Top_Op<"Nms"> {
+  let summary = " NMS operator";
+  let description = [{
+      onnx nms
+  }];
+  let arguments = (ins
+    Variadic<AnyTensor>: $inputs,
+    I64Attr: $center_point_box,
+    I64Attr: $max_output_size
+  );
+
+  let results = (outs AnyTensor:$output);
+}
+
 def Top_GatherOp: Top_Op<"Gather"> {
   let summary = "Gather operator";
   let description = [{

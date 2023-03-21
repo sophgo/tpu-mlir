@@ -62,6 +62,7 @@ class Top:
     MishOp = 'top.Mish'
     MulOp = 'top.Mul'
     MulConstOp = 'top.MulConst'
+    NmsOp = 'top.Nms'
     NonZeroOp = 'top.NonZero'
     NormalizeOp = 'top.Normalize'
     PermuteOp = 'top.Permute'

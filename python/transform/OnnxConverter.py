@@ -172,6 +172,7 @@ class OnnxConverter(BaseConverter):
             "Min": lambda node: self.convert_min_op(node),
             "Mul": lambda node: self.convert_mul_op(node),
             "Neg": lambda node: self.convert_neg_op(node),
+            "NonMaxSuppression": lambda node: self.convert_nms_op(node),
             "NonZero": lambda node: self.convert_nonzero_op(node),
             "Pad": lambda node: self.convert_pad_op(node),
             "PixelNormalization": lambda node: self.convert_pixel_norm_op(node),
@@ -457,7 +458,7 @@ class OnnxConverter(BaseConverter):
                 nodes_with_shape.append(output.name)
         # get unknow shape
         full_nodes = []
-        no_list = ["Cast", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK"]
+        no_list = ["Cast", "Constant", "Unsqueeze", "Dropout", "Loop", "TopK", "NonMaxSuppression"]
         for n in graph.node:
             if n.op_type == 'Loop':
                 #special handle: get the shape of loop op
@@ -509,6 +510,14 @@ class OnnxConverter(BaseConverter):
             inputs[name] = np.ones(shape).astype(dtype)
         outs = session.run(None, inputs)
         outs_shape = [o.shape for o in outs]
+        for i, v in enumerate(unk_op):
+            for idx, n in enumerate(model.graph.node):
+                if v in n.output:
+                    # dirty trick for NonMaxSuppression
+                    if n.op_type == "NonMaxSuppression":
+                        node = OnnxNode(n)
+                        max_output_size = self.getWeight(node.inputs[2]).astype(np.int64)
+                        outs_shape[i] = [max_output_size[0]*self.getShape(node.inputs[1])[1], 3]
         assert (len(outs_shape) == len(unk_op))
         return zip(unk_op, outs_shape)
 
@@ -2173,6 +2182,41 @@ class OnnxConverter(BaseConverter):
                                       loc=self.get_loc(name),
                                       ip=self.mlir.insert_point).output
         self.addOperand(onnx_node.name, mul_const_op)
+
+    def convert_nms_op(self, onnx_node):
+        assert (onnx_node.op_type == "NonMaxSuppression")
+        name = "{}_{}".format(onnx_node.name, onnx_node.op_type)
+        operands = []
+        for i, x in enumerate(onnx_node.inputs):
+            x_shape = self.getShape(x)
+            num_elem = np.prod(x_shape)
+            if num_elem == 0:
+                print("WARNING:{}'s shape is strange {}".format(x, x_shape))
+                continue
+            if self.isWeight(x):
+                data = self.getWeight(x)
+                self.addWeight(x, data)
+                operands.append(self.getWeightOp(x))
+                if i == 2:
+                    max_output_size = data.astype(np.int64)
+            else:
+                operands.append(self.getOperand(x))
+        classes = self.getShape(onnx_node.inputs[1])[1]
+        tmp = [max_output_size[0]*classes, 3]
+        self.setShape(onnx_node.name, tmp)
+        output_shape = self.getShape(onnx_node.name)
+        p = {'name': name, 'center_point_box': 0}
+        if len(onnx_node.inputs) < 3:
+            p['max_output_size'] = 0
+        else:
+            p['max_output_size'] =self.getWeight(onnx_node.inputs[2]).astype(np.int64)
+        nms_op = top.NmsOp(self.mlir.get_tensor_type(output_shape),
+                                         operands,
+                                         center_point_box = 0,
+                                         max_output_size = self.getWeight(onnx_node.inputs[2]).astype(np.int64),
+                                         loc=self.get_loc(name),
+                                         ip=self.mlir.insert_point).output
+        self.addOperand(onnx_node.name, nms_op)
 
     def convert_prelu_op(self, onnx_node):
         assert (onnx_node.op_type == "PRelu")

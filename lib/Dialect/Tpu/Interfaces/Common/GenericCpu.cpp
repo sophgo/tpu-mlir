@@ -12,67 +12,8 @@
 #include "tpu_mlir/Support/Float16.h"
 #include "tpu_mlir/Support/Module.h"
 
-#include "bmcpu_common.h"
-#include "tpu_mlir/Backend/BM168x/BM1684.h"
-#include "tpu_mlir/Backend/BM168x/BM168x.h"
 #include "tpu_mlir/Support/GenericCpuFunc.h"
 #include "tpu_mlir/Support/MathUtils.h"
-using namespace tpu_mlir::backend;
-
-LogicalResult bmcpu_inference(tpu::GenericCpuOp &op, InferenceParameter &p) {
-  std::vector<std::vector<int>> input_shapes_v;
-  std::vector<std::vector<int>> output_shapes_v;
-  std::vector<float *> input_tensor_data_v;
-  std::vector<float *> output_tensor_data_v;
-  for (int i = 0; i < op.getInputs().size(); ++i) {
-    int shape[MAX_SHAPE_DIMS] = {1};
-    module::getGlobalShape(op.getInputs()[i], shape);
-    std::vector<int> shapev(shape,
-                            shape + module::getShape(op.getInputs()[i]).size());
-    input_shapes_v.push_back(shapev);
-    input_tensor_data_v.push_back(p.inputs[i]);
-  }
-  for (int i = 0; i < op.getOutputs().size(); ++i) {
-    int shape[MAX_SHAPE_DIMS] = {1};
-    module::getGlobalShape(op.getOutputs()[i], shape);
-    std::vector<int> shapev(
-        shape, shape + module::getShape(op.getOutputs()[i]).size());
-    output_shapes_v.push_back(shapev);
-    output_tensor_data_v.push_back(p.outputs[i]);
-  }
-  BMCpuOp cpuOp(op);
-  void *param = malloc(cpuOp.param_size);
-  memcpy(param, cpuOp.param, cpuOp.param_size);
-  BM1684::instance().dl_bmcpu_reshape(BM1684::instance().bmcpu_handle,
-                                      cpuOp.op_type, param, cpuOp.param_size,
-                                      input_shapes_v, output_shapes_v);
-  BM1684::instance().dl_bmcpu_process(BM1684::instance().bmcpu_handle,
-                                      cpuOp.op_type, param, cpuOp.param_size,
-                                      input_tensor_data_v, input_shapes_v,
-                                      output_tensor_data_v, output_shapes_v);
-  for (int i = 0; i < op.getOutputs().size(); ++i) {
-    auto dtype = BM168x::getDataType(op.getOutputs()[i]);
-    if (dtype == DTYPE_FP32) {
-      p.outputs[i] = output_tensor_data_v[i];
-    } else if (dtype == DTYPE_INT32) {
-      // The output of the CPU layer is a float pointer
-      // when the actual output data type is int32
-      // we need to first convert the float pointer to an int pointer in order
-      // to obtain the correct output value.
-      auto tmp = (int *)output_tensor_data_v[i];
-      int64_t num_element = module::getNumElements(op.getOutputs()[i]);
-#pragma omp parallel for schedule(static, omp_schedule(num_element))
-      for (int64_t j = 0; j < num_element; ++j) {
-        // p.output always need float
-        p.outputs[i][j] = (float)tmp[j];
-      }
-    } else {
-      llvm_unreachable("not support dtype");
-    }
-  }
-  free(param);
-  return success();
-}
 
 LogicalResult tpu::GenericCpuOp::init(InferenceParameter &p) {
   return success();
@@ -81,9 +22,6 @@ void tpu::GenericCpuOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
   std::string func_name = getCpuOpName().str();
-  if (module::isBM1684Family()) {
-    return bmcpu_inference(*this, p);
-  }
   if (func_name == "quant") {
     assert(getInputs().size() == 1);
     auto num_elem = module::getNumElements(getOutputs()[0]);
@@ -343,6 +281,65 @@ LogicalResult tpu::GenericCpuOp::inference(InferenceParameter &p) {
     }
     ArgMaxFunc argmax_func(argmax_param);
     argmax_func.invoke();
+  } else if (func_name == "onnx_nms") {
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    NmsParam param;
+    param.max_output_boxes_per_class =
+        dic_param.get("max_output_size").cast<IntegerAttr>().getInt();
+    param.center_point_box = 0;
+    int input_size = getInputs().size();
+    std::vector<tensor_list_t> input_list(input_size);
+    for (int i = 0; i < getInputs().size(); ++i) {
+      tensor_list_t input;
+      input.ptr = p.inputs[0];
+      input.size = module::getNumElements(getInputs()[i]);
+      input.shape = module::getShape(getInputs()[i]);
+      input_list[i] = input;
+    }
+    param.box = p.inputs[0];
+    param.score = p.inputs[1];
+    int output_size = module::getNumElements(getOutputs()[0]);
+    float output_tensor_data[output_size] = {0};
+    param.inputs = input_list;
+    param.output = output_tensor_data;
+    param.iou_threshold = p.inputs[3][0];
+    param.score_threshold = p.inputs[4][0];
+    NmsFunc func(param);
+    auto true_num = func.invoke();
+    auto tmp = (int *)output_tensor_data;
+    for (int64_t j = 0; j < true_num; ++j) {
+      p.outputs[0][j] = (float)tmp[j];
+    }
+  } else if (func_name == "topk") {
+    mlir::DictionaryAttr dic_param = this->getParam().value();
+    int axis = dic_param.get("axis").cast<IntegerAttr>().getInt();
+    int K = dic_param.get("K").cast<IntegerAttr>().getInt();
+    int is_sorted = dic_param.get("sorted").cast<IntegerAttr>().getInt();
+    if (is_sorted == false) {
+      llvm_unreachable("Not supported");
+    }
+    int is_largest = dic_param.get("largest").cast<IntegerAttr>().getInt();
+    auto input_shape = module::getShape(getInputs()[0]);
+    if (axis != input_shape.size() - 1) {
+      llvm_unreachable("Not supported");
+    }
+    int axis_dim = input_shape[axis];
+    int outer_dim = 1;
+    for (int i = 0; i < axis; i++) {
+      outer_dim *= input_shape[i];
+    }
+#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
+    for (int i = 0; i < outer_dim; i++) {
+      auto *ptr = p.inputs[0] + i * axis_dim;
+      std::vector<std::pair<int, float>> result;
+      topk_indices(result, ptr, axis_dim, K, is_largest);
+      for (int k = 0; k < K; k++) {
+        auto indices_ptr = p.outputs[1] + i * K + k;
+        *indices_ptr = (float)result[k].first;
+        auto values_ptr = p.outputs[0] + i * K + k;
+        *values_ptr = result[k].second;
+      }
+    }
   } else {
     llvm_unreachable("generic cpu func not supported!\n");
   }
@@ -367,6 +364,9 @@ mlir::Type tpu::GenericCpuOp::type_verify(uint64_t opd_idx,
     if (opd_idx == 1) {
       return do_nothing(mode);
     }
+  }
+  if (func_name == "onnx_nms") {
+    return do_nothing(mode);
   }
   return type_verify_case_same(op, opd_idx, mode);
 }
