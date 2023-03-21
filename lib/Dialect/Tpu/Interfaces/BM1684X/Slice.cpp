@@ -79,12 +79,6 @@ void tpu::SliceOp::codegen_local_bm1684x(int64_t n_step, int64_t h_step,
     common.strides[i] = steps->at(i);
     common.end_index[i] = common.begin_index[i] + output_shape[i] * common.strides[i];
   }
-  common.begin_index[0] = 0;
-  common.end_index[0] = sec_info.n_slice;
-  if (num_dims > 2) {
-    common.begin_index[2] = 0;
-    common.end_index[2] = sec_info.h_slice;
-  }
 
   BM168x::call_local_func("backend_api_strideslice_local", &spec, sizeof(spec),
                           &sec_info, input_spec->data(), output_spec->data());
