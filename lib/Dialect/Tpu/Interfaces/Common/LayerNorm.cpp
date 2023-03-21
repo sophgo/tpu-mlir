@@ -120,6 +120,7 @@ LogicalResult tpu::LayerNormOp::inference(InferenceParameter &p) {
   std::vector<float> mean_arr(outer_dim, 0);
   std::vector<float> rstd_arr(outer_dim, 0);
 
+#pragma omp parallel for schedule(static, omp_schedule(outer_dim))
   for (int i = 0; i < outer_dim; ++i) {
     float _mean_data = 0;
     float _rstd_data = 0;
