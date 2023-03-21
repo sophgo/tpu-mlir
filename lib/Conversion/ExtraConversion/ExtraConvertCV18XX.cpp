@@ -16,6 +16,7 @@ namespace cv18xx {
 void populateDoExtraConversionPatterns(RewritePatternSet *patterns) {
   // clang-format off
   patterns->add<
+      ConvertArgmaxOp,
       ConvertConv1dOp,
       ConvertConvPading,
       ConvertConvDilation,

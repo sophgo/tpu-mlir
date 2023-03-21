@@ -95,7 +95,7 @@ void push_back(FuncOp funcOp);
 
 top::NoneOp getNoneOp(Operation *op);
 Value getOriValue(Value v);
-Operation *getNextOp(Operation *op);
+Operation *getNextOp(Operation *op, int i = 0);
 Value getOperand(Operation *op, int i);
 void updateModuleTypes();
 void removeUnusedOp();

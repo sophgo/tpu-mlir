@@ -118,14 +118,19 @@ Value getOriValue(Value v) {
   llvm_unreachable("Failed to get preOperation.FIx me");
 }
 
-Operation *getNextOp(Operation *op) {
+Operation *getNextOp(Operation *op, int i) {
   Operation *nextOp = nullptr;
-  if (op->getResult(0).hasOneUse()) {
-    for (auto &use : op->getResult(0).getUses()) {
+  if (op->getResult(i).hasOneUse()) {
+    for (auto &use : op->getResult(i).getUses()) {
       nextOp = use.getOwner();
       break;
     }
     assert(nextOp && "nextOp is nullptr");
+  } else {
+    auto users = op->getUsers();
+    if (1 == std::distance(users.begin(), users.end())) {
+      nextOp = *users.begin();
+    }
   }
   // if not found, will return NULL
   return nextOp;
