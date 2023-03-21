@@ -18,15 +18,12 @@ void tpu::ReshapeOp::deinit(InferenceParameter &p) {}
 
 LogicalResult tpu::ReshapeOp::inference(InferenceParameter &p) {
   auto num_elem = module::getNumElements(getOutput());
-#pragma omp parallel for schedule(static, omp_schedule(num_elem))
-  for (int64_t i = 0; i < num_elem; i++) {
-    p.outputs[0][i] = p.inputs[0][i];
-  }
+  memcpy(p.outputs[0], p.inputs[0], sizeof(float) * num_elem);
   return success();
 }
 
 LogicalResult tpu::ReshapeOp::LocalGenSupport() {
-  if (module::isCV18xx() || module::isBM1684Family() ) {
+  if (module::isCV18xx() || module::isBM1684Family()) {
     return failure();
   }
 
@@ -40,7 +37,7 @@ LogicalResult tpu::ReshapeOp::LocalGenSupport() {
 }
 
 LogicalResult tpu::ReshapeOp::AllowDataSplit(int64_t axis,
-                                            group_type_t group_type) {
+                                             group_type_t group_type) {
   if (axis == 0) {
     return success();
   }
