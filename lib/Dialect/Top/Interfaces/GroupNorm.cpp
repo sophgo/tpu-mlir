@@ -69,19 +69,19 @@ LogicalResult top::GroupNormOp::inference(InferenceParameter &p) {
       output_data[i * inner_dim + j] *= rstd_arr[i];
     }
   }
-  int num_channels = channel * input_shape[0];
-  int num_iter = module::getNumElements(getOutput()) / num_channels;
+  inner_dim /= channel_per_group;
+  int num_iter = module::getNumElements(getOutput()) / channel;
 #pragma omp parallel for schedule(static, omp_schedule(num_iter))
-  for (int i = 0; i < num_channels; ++i) {
-    int c = num_channels % channel;
-    float *output_i = output_data + i * num_iter;
-    auto weight = have_weight ? weight_data[c] : 1.0;
-    auto bias = have_bias ? bias_data[c] : 0.0;
-    if (weight == 1.0 && bias == 0.0) {
-      // do nothing
-    } else {
-      for (int j = 0; j < num_iter; ++j) {
-        output_i[j] = output_i[j] * weight + bias;
+  for (int i = 0; i < num_iter; ++i) {
+    const int p = i / inner_dim;
+    const int q = i % inner_dim;
+    float *output_i = output_data + p * channel * inner_dim + q;
+    for (int j = 0; j < channel; ++j) {
+      if (have_weight) {
+        output_i[j * inner_dim] *= weight_data[j];
+      }
+      if (have_bias) {
+        output_i[j * inner_dim] += bias_data[j];
       }
     }
   }

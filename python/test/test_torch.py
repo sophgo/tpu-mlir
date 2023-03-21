@@ -847,6 +847,8 @@ class TORCH_IR_TESTER(object):
             def __init__(self):
                 super(Model, self).__init__()
                 self.group_norm = nn.GroupNorm(8, 64)
+                nn.init.normal_(self.group_norm.weight, std=0.01)
+                nn.init.normal_(self.group_norm.bias, std=0.01)
 
             def forward(self, x):
                 return self.group_norm(x)
