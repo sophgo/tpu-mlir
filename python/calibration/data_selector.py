@@ -73,7 +73,8 @@ class DataSelector:
             if self.is_npz(name) or self.is_npy(name) or self.is_image(name):
                 full_list.append(name)
         # avoid different result by same command
-        #random.shuffle(full_list)
+        random.seed(777)
+        random.shuffle(full_list)
         num = num if len(full_list) > num else len(full_list)
         if num == 0:
             num = len(full_list)

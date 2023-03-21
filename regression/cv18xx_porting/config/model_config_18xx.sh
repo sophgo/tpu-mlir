@@ -1058,6 +1058,32 @@ export EVAL_SCRIPT_INT8="eval_yolo_v5.py"
 export CALI_IMAGES=$DATA_SET/coco/val2017
 fi
 
+if [ $NET = "yolo_v5_m" ]; then
+export MODEL_TYPE="onnx"
+export MODEL_DEF=$MODEL_PATH/object_detection/yolo_v5/onnx/yolov5m.onnx
+export CALI_TABLE=$REGRESSION_PATH/cv18xx_porting/cali_tables/${NET}_calibration_table
+export IMAGE_PATH=$REGRESSION_PATH/cv18xx_porting/data/dog.jpg
+export INPUT_SHAPE=[[1,3,640,640]]
+export NET_INPUT_DIMS=640,640 # h,w
+export IMAGE_RESIZE_DIMS=640,640
+export RESIZE_KEEP_ASPECT_RATIO=1
+export MODEL_CHANNEL_ORDER="rgb"
+export MEAN=0,0,0
+export INPUT_SCALE=0.00392,0.00392,0.00392
+export INPUT=input
+export TOLERANCE_INT8=0.96,0.71 #0.97,0.76 #set for yuv format, before is (0.96,0.74)
+export TOLERANCE_BF16=0.98,0.84 #set for yuv format, before is (0.99,0.96)
+export TOLERANCE_BF16_CMDBUF=0.99,0.98
+export TOLERANCE_FP32=0.99,0.99
+export DO_PREPROCESS=0
+export BGRAY=0
+# accuracy setting
+export EVAL_MODEL_TYPE="coco"
+export EVAL_SCRIPT_ONNX="eval_yolo_v5.py"
+export EVAL_SCRIPT_INT8="eval_yolo_v5.py"
+export CALI_IMAGES=$DATA_SET/coco/val2017
+fi
+
 if [ $NET = "yolov5s-face" ]; then
 export MODEL_TYPE="onnx"
 export MODEL_DEF=$MODEL_PATH/face_detection/yolov5-face/onnx/yolov5s-face.onnx
@@ -1071,7 +1097,7 @@ export MODEL_CHANNEL_ORDER="rgb"
 export MEAN=0,0,0
 export INPUT_SCALE=0.00392,0.00392,0.00392
 export INPUT=input
-export TOLERANCE_INT8=0.93,0.63 #0.96,0.72
+export TOLERANCE_INT8=0.97,0.76
 export TOLERANCE_BF16=0.99,0.95
 export TOLERANCE_BF16_CMDBUF=0.99,0.98
 export TOLERANCE_FP32=0.99,0.99
