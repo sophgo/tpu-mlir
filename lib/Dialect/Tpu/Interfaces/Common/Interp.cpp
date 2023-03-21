@@ -220,12 +220,41 @@ LogicalResult tpu::InterpOp::inference(InferenceParameter &p) {
         coord = 2;
     const int in_hw = ih * iw;
     const int out_hw = oh * ow;
+    auto platform = module::getPlatform();
     if (getMode() == tpu::ResizeMode::nearest) {
-        platform_sp = ONNX_NEAREST;
+        switch (platform)
+        {
+        case module::Platform::ONNX:
+            platform_sp = ONNX_NEAREST;
+            break;
+        case module::Platform::CAFFE:
+            platform_sp = CAFFE_NEAREST;
+            break;
+        case module::Platform::TORCH:
+            platform_sp = PYTORCH_NEAREST;
+            break;
+        case module::Platform::TFLITE:
+            platform_sp = TENSORFLOW_NEAREST;
+            break;
+        default:
+            platform_sp = ONNX_NEAREST;
+            break;
+        }
         align_corners = true;
         half_pixel = false;
     } else if (getMode() == tpu::ResizeMode::linear) {
-        platform_sp = PYTORCH_SUPPORT;
+        switch (platform)
+        {
+        case module::Platform::TORCH:
+            platform_sp = PYTORCH_SUPPORT;
+            break;
+        case module::Platform::CAFFE:
+            platform_sp = CAFFE_SUPPORT;
+            break;
+        default:
+            platform_sp = PYTORCH_SUPPORT;
+            break;
+        }
         align_corners = (coord == 2) ? 1: 0;
         half_pixel = (coord == 0 || coord == 1) ? 1 : 0;
     }

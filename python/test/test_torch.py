@@ -84,6 +84,7 @@ class TORCH_IR_TESTER(object):
             "T":                (self.test_T,           Y, N, N),
             "Tile":             (self.test_Tile,        Y, N, N),
             "Transpose":        (self.test_Transpose,   Y, N, N),
+            "Upsample":         (self.test_Upsample,    Y, N, N),
             "View":             (self.test_View,        Y, N, N),
             "Where":            (self.test_Where,       Y, N, N),
         }
@@ -1035,6 +1036,32 @@ class TORCH_IR_TESTER(object):
         _test_select((3, 32, 16), 0, 2)
         _test_select((32, 16), 1, 4)
 
+    #######################################################################
+    # Upsample
+    # ------------
+    def test_Upsample(self):
+        """Upsample"""
+
+        def _test_upsample(in0_shape, size=None, scale=None, mode='nearest'):
+
+            class Model(nn.Module):
+
+                def __init__(self):
+                    super(Model, self).__init__()
+
+                def forward(self, x):
+                    y1 = F.upsample(x, size=size, scale_factor=scale, mode=mode)
+                    return y1
+
+            self.trace_and_test([in0_shape], Model())
+
+        _test_upsample((1, 3, 36, 36), None, 2.2)
+        _test_upsample((1, 1, 32, 32), None, (2.5))
+        _test_upsample((1, 3, 32, 32), None, (2.0, 2.0))
+        # TODO: out size is given
+        # _test_upsample((1, 3, 32, 32), 64, None)
+        # _test_upsample((1, 3, 32, 32), (80), None)
+        # _test_upsample((1, 3, 32, 32), (64, 64), None)
 
     #######################################################################
     # IndexSelect

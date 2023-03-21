@@ -243,11 +243,41 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     const int in_hw = ih * iw;
     const int out_hw = oh * ow;
     if (getMode() == "nearest") {
-        platform_sp = ONNX_NEAREST;
+        auto platform = module::getPlatform();
+        switch (platform)
+        {
+        case module::Platform::ONNX:
+            platform_sp = ONNX_NEAREST;
+            break;
+        case module::Platform::CAFFE:
+            platform_sp = CAFFE_NEAREST;
+            break;
+        case module::Platform::TORCH:
+            platform_sp = PYTORCH_NEAREST;
+            break;
+        case module::Platform::TFLITE:
+            platform_sp = TENSORFLOW_NEAREST;
+            break;
+        default:
+            platform_sp = ONNX_NEAREST;
+            break;
+        }
         align_corners = true;
         half_pixel = false;
     } else if (getMode() == "linear") {
-        platform_sp = PYTORCH_SUPPORT;
+        auto platform = module::getPlatform();
+        switch (platform)
+        {
+        case module::Platform::TORCH:
+            platform_sp = PYTORCH_SUPPORT;
+            break;
+        case module::Platform::CAFFE:
+            platform_sp = CAFFE_SUPPORT;
+            break;
+        default:
+            platform_sp = PYTORCH_SUPPORT;
+            break;
+        }
         align_corners = (coord == 2) ? 1: 0;
         half_pixel = (coord == 0 || coord == 1) ? 1 : 0;
     }
@@ -263,5 +293,15 @@ LogicalResult top::InterpOp::inference(InferenceParameter &p) {
     return success();
 }
 
-void top::InterpOp::shape_inference() {}
+void top::InterpOp::shape_inference() {
+    auto in_shape = module::getShape(getInput());
+    auto scale_h_ = getScaleH().convertToDouble();
+    auto scale_w_ = getScaleW().convertToDouble();
+    std::vector<int64_t> out_shape(in_shape);
+    if (getMode() == "nearest") {
+        out_shape[2] = round(out_shape[2] * scale_h_);
+        out_shape[3] = round(out_shape[3] * scale_w_);
+        module::setShapeOrVerify(getOutput(), out_shape);
+    }
+}
 

@@ -778,8 +778,8 @@ class TFLiteConverter(BaseConverter):
         return "top.Interp", {
             "coord_mode": StringAttr.get(coord_mode),
             "mode": StringAttr.get("nearest"),
-            "scale_h": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[0]),
-            "scale_w": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[1]),
+            "scale_h": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[0] / op.inputs[0].shape[1]),
+            "scale_w": FloatAttr.get(self.type_to_mlir[TensorType.FLOAT64], scale[1] / op.inputs[0].shape[2]),
         }, False
 
     def stride_slice_op(self, op):
